@@ -1,0 +1,46 @@
+# Capability Catalog — 功能盤點唯一來源（批次 2／P600A 填充）
+#
+# 完整性驗收：LotteryNew 的所有 API route、前端入口、CLI、launchd/job、
+# DB writer 都必須對應一筆 capability，或明確標示 excluded/deprecated/unknown。
+#
+# schema（每筆 capability）：
+#   capability_id: string            # e.g. lottery.strategy_catalog.list
+#   name: string
+#   domain: string                   # lottery | (future: stock, betting_pool ...)
+#   entrypoints: {ui: [], api: [], cli: [], jobs: []}
+#   legacy_implementation:
+#     paths: []                      # LotteryNew 內路徑（唯讀參照）
+#     scanned_at_commit: null        # 掃描當下 LotteryNew commit（必填，批次2）
+#   side_effects: {db_read: bool, db_write: bool, filesystem_write: bool, scheduler: bool, external_call: bool}
+#   provenance: []                   # 任務 ID / 00-Plan 快照 / wiki 頁 / PR#（歷史軌跡反查）
+#   migration:
+#     disposition: MIGRATE_FIRST | MIGRATE_LATER | KEEP_LEGACY_TEMPORARILY | REPLACE | RETIRE | FREEZE_AS_RESEARCH | UNKNOWN_NEEDS_AUDIT
+#     target_module: string | null
+#     legacy_retirement_condition: string | null
+
+capabilities:
+  - capability_id: lottery.strategy_catalog.list
+    name: 策略目錄與生命週期查詢
+    domain: lottery
+    entrypoints:
+      ui: []
+      api: ["GET /api/strategies"]
+      cli: []
+      jobs: []
+    legacy_implementation:
+      paths:
+        - "lottery_api/models/replay_strategy_registry.py  # 待批次2核實"
+      scanned_at_commit: null
+    side_effects:
+      db_read: false
+      db_write: false
+      filesystem_write: false
+      scheduler: false
+      external_call: false
+    provenance:
+      - "P541F_R2 PR#690（OBSERVATION registry metadata）"
+      - "P600 重建總結 2026-07-15"
+    migration:
+      disposition: MIGRATE_FIRST
+      target_module: quantlab.strategies.catalog
+      legacy_retirement_condition: null

@@ -1,0 +1,26 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Node / frontend
+node_modules/
+frontend/dist/
+
+# Snapshot payloads (manifests in data/manifests/ ARE committed)
+data/*
+!data/README.md
+!data/manifests/
+
+# OS
+.DS_Store
+
+# ~/.gitignore_global (user-level) ignores README.md everywhere; re-include here
+!README.md
+!**/README.md

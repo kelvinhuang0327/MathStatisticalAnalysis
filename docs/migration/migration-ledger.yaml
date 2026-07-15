@@ -1,0 +1,16 @@
+# Migration Ledger — 每個 capability 的遷移狀態帳本
+#
+# 規則：
+# - 一次遷移一個 capability，一筆紀錄對應一個 PR。
+# - cutover 必附 parity evidence（characterization 測試或 golden 比對結果）。
+# - compatibility/KEEP_LEGACY 狀態必附退場條件；無退場條件的相容層不允許存在。
+#
+# schema（每筆 entry）：
+#   capability_id: string
+#   phase: PLANNED | MIGRATING | PARITY_VERIFIED | CUT_OVER | LEGACY_RETIRED
+#   pr: string | null
+#   parity_evidence: string | null   # 測試路徑或 manifest
+#   legacy_retirement_condition: string | null
+#   notes: string
+
+entries: []

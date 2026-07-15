@@ -1,0 +1,46 @@
+[project]
+name = "quantlab"
+version = "0.1.0"
+description = "數理統計分析平台 — lottery domain first, migrated from LotteryNew"
+readme = "README.md"
+authors = [
+    { name = "kelvin", email = "kelvin@webcomm.com.tw" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.139.0",
+    "pydantic>=2.13.4",
+    "typer>=0.26.8",
+    "uvicorn[standard]>=0.51.0",
+]
+
+[project.scripts]
+quantlab = "quantlab.interfaces.cli.main:main"
+
+[build-system]
+requires = ["uv_build>=0.9.6,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pyright>=1.1.411",
+    "pytest>=9.1.1",
+    "ruff>=0.15.21",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pyright]
+include = ["src", "tests", "tools"]
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

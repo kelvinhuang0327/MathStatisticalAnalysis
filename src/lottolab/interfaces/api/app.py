@@ -11,23 +11,21 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from lottolab.application.dto import StrategyView
-from lottolab.application.use_cases.list_strategies import ListStrategies
+from lottolab.interfaces.api.strategy_catalog import (
+    API_VERSION,
+    create_strategy_catalog_router,
+)
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
-
-API_VERSION = "v1"
 
 
 def create_app(catalog: StrategyCatalog | None = None) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
-    list_strategies = ListStrategies(catalog if catalog is not None else production_catalog())
+    resolved_catalog = catalog if catalog is not None else production_catalog()
 
     @app.get("/api/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "api_version": API_VERSION}
 
-    @app.get("/api/strategies", response_model=list[StrategyView])
-    def strategies() -> list[StrategyView]:
-        return list(list_strategies.execute())
+    app.include_router(create_strategy_catalog_router(resolved_catalog))
 
     return app

@@ -83,6 +83,28 @@ LEDGER_PHASES = frozenset(
         "LEGACY_RETIRED",
     }
 )
+LEDGER_IMPLEMENTATION_STATES = frozenset(
+    {
+        "IN_PROGRESS",
+        "IMPLEMENTED_PENDING_REVIEW",
+        "PARITY_VERIFIED",
+        "CUTOVER_COMPLETE",
+    }
+)
+LEDGER_PRODUCTION_STATES = frozenset(
+    {"NOT_CUTOVER_READY", "CUTOVER_READY_NOT_DEPLOYED", "DEPLOYED"}
+)
+MIGRATING_IMPLEMENTATION_STATES = frozenset(
+    {"IN_PROGRESS", "IMPLEMENTED_PENDING_REVIEW", "PARITY_VERIFIED"}
+)
+MIGRATING_CONTROL_FIELDS = frozenset(
+    {
+        "implementation_state",
+        "production_state",
+        "compatibility_condition",
+        "rollback_condition",
+    }
+)
 
 
 def load_document(path: Path) -> dict[str, Any]:
@@ -243,8 +265,7 @@ def _validate_entrypoints(
         expected = {name: counts.get(name, 0) for name in ("total", "mapped", "unknown")}
         if recorded != expected:
             errors.append(
-                f"coverage mismatch for {kind}: recorded={recorded!r} "
-                f"expected={expected!r}"
+                f"coverage mismatch for {kind}: recorded={recorded!r} expected={expected!r}"
             )
     for kind in ENTRYPOINT_KINDS_REQUIRING_COVERAGE:
         if kind not in calculated:
@@ -268,18 +289,53 @@ def _validate_ledger(
         seen.add(capability_id)
         if capability_id not in capabilities:
             errors.append(f"ledger references unknown capability: {capability_id}")
-        if entry.get("phase") not in LEDGER_PHASES:
-            errors.append(f"{capability_id}: invalid ledger phase {entry.get('phase')!r}")
-        if entry.get("phase") in {
+        phase = entry.get("phase")
+        if phase not in LEDGER_PHASES:
+            errors.append(f"{capability_id}: invalid ledger phase {phase!r}")
+        if phase in {
             "PARITY_VERIFIED",
             "CUTOVER_READY",
             "CUTOVER_COMPLETE",
         } and not _nonempty_string(entry.get("parity_evidence")):
-            errors.append(f"{capability_id}: {entry.get('phase')} requires parity_evidence")
-        if entry.get("phase") == "CUTOVER_COMPLETE":
+            errors.append(f"{capability_id}: {phase} requires parity_evidence")
+        if phase == "CUTOVER_COMPLETE":
             for field in ("deployed_revision", "deployment_target", "rollback_method"):
                 if not _nonempty_string(entry.get(field)):
                     errors.append(f"{capability_id}: CUTOVER_COMPLETE requires {field}")
+        if phase == "MIGRATING":
+            missing_controls = sorted(MIGRATING_CONTROL_FIELDS - entry.keys())
+            if missing_controls:
+                errors.append(
+                    f"{capability_id}: MIGRATING missing controls: {', '.join(missing_controls)}"
+                )
+        if "implementation_state" in entry and (
+            entry.get("implementation_state") not in LEDGER_IMPLEMENTATION_STATES
+        ):
+            errors.append(
+                f"{capability_id}: invalid implementation_state "
+                f"{entry.get('implementation_state')!r}"
+            )
+        if "production_state" in entry and (
+            entry.get("production_state") not in LEDGER_PRODUCTION_STATES
+        ):
+            errors.append(
+                f"{capability_id}: invalid production_state {entry.get('production_state')!r}"
+            )
+        for field in ("compatibility_condition", "rollback_condition"):
+            if field in entry and not _nonempty_string(entry.get(field)):
+                errors.append(f"{capability_id}: invalid {field}")
+        if phase == "MIGRATING" and entry.get("production_state") not in {
+            None,
+            "NOT_CUTOVER_READY",
+        }:
+            errors.append(f"{capability_id}: MIGRATING must remain NOT_CUTOVER_READY")
+        if phase == "MIGRATING" and entry.get(
+            "implementation_state"
+        ) not in MIGRATING_IMPLEMENTATION_STATES | {None}:
+            errors.append(
+                f"{capability_id}: invalid MIGRATING implementation_state "
+                f"{entry.get('implementation_state')!r}"
+            )
     missing = sorted(set(capabilities) - seen)
     extra = sorted(seen - set(capabilities))
     if missing:
@@ -301,17 +357,13 @@ def validate_documents(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--catalog", type=Path, default=Path("docs/capabilities/catalog.yaml")
-    )
+    parser.add_argument("--catalog", type=Path, default=Path("docs/capabilities/catalog.yaml"))
     parser.add_argument(
         "--entrypoints",
         type=Path,
         default=Path("docs/capabilities/legacy-entrypoints.yaml"),
     )
-    parser.add_argument(
-        "--ledger", type=Path, default=Path("docs/migration/migration-ledger.yaml")
-    )
+    parser.add_argument("--ledger", type=Path, default=Path("docs/migration/migration-ledger.yaml"))
     return parser.parse_args()
 
 

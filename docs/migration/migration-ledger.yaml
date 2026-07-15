@@ -68,11 +68,15 @@
     },
     {
       "capability_id": "lottery.strategy_catalog.list",
-      "phase": "INVENTORIED",
+      "phase": "MIGRATING",
       "pr": null,
-      "parity_evidence": null,
+      "parity_evidence": "tests/fixtures/legacy/p600b/manifest.json",
       "legacy_retirement_condition": "Scoped fixture parity, deployment health, traffic routing, and rollback are verified.",
-      "notes": "P600B pilot target; not yet CUTOVER_READY in the P600A commit."
+      "implementation_state": "IMPLEMENTED_PENDING_REVIEW",
+      "production_state": "NOT_CUTOVER_READY",
+      "compatibility_condition": "Keep the pinned legacy metadata contract available until merged CI, deployment, and traffic verification complete.",
+      "rollback_condition": "Revert the P600B implementation commit or route catalog traffic back to the unchanged legacy read-only endpoint.",
+      "notes": "P600B_R2 implements the scoped two-descriptor DB-free normalized list. Legacy filters, lifecycle-summary compatibility, deployment, and traffic cutover remain outstanding; no production target is documented."
     },
     {
       "capability_id": "lottery.replay.read_models",

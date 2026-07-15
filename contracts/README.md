@@ -10,5 +10,14 @@ print(json.dumps(create_app().openapi(), ensure_ascii=False, indent=2))" > contr
 規則：
 
 1. 任何修改 API 的 PR **必須重生** `openapi.json`——契約變更在 diff 中可見。
-2. 前端型別由此生成（之後接 `openapi-typescript`）：`frontend` 不得手寫 API payload 型別。
+2. 前端型別由此生成；`frontend` 不得手寫 API payload 型別：
+
+   ```bash
+   cd frontend
+   npm run api:generate
+   npm run api:check
+   ```
+
+   生成器只依賴 Node.js，從 OpenAPI paths/components 產生
+   `frontend/src/api/generated/openapi.d.ts`，`--check` 模式不寫檔。
 3. 破壞性變更需在 PR 說明中明示並同步前端。

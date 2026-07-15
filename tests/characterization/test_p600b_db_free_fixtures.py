@@ -15,6 +15,11 @@ TARGET_IDS = [
     "biglotto_social_wisdom_anti_popularity",
     "biglotto_zone_split_3bet_bet1",
 ]
+EXPECTED_FILE_HASHES = {
+    "strategy_catalog.json": "f78891865cc03d800ef1da1840150427d8e61e08aa06e1b8a7b16da9600ee9af",
+    "lifecycle_metadata.json": "c22178bd41d005dff8d1bcd0b8b0c7c6d71414ac2dc1d5aac17d53bcd4567e33",
+}
+EXPECTED_AGGREGATE_HASH = "8ba8d43fe046ff2eb1b46fbcb71bc5d14a18208aada3473379729f17c47e76ec"
 
 
 def _sha256(path: Path) -> str:
@@ -23,6 +28,15 @@ def _sha256(path: Path) -> str:
 
 def _json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _aggregate_sha256(payloads: dict[str, bytes]) -> str:
+    digest = hashlib.sha256()
+    for name in sorted(payloads):
+        digest.update(name.encode())
+        digest.update(b"\0")
+        digest.update(payloads[name])
+    return digest.hexdigest()
 
 
 def test_exporter_is_static_and_has_no_database_or_runtime_import() -> None:
@@ -47,6 +61,8 @@ def test_manifest_binds_exporter_and_both_reproducible_runs() -> None:
     exporter = cast(dict[str, object], manifest["exporter"])
     runs = cast(list[dict[str, object]], manifest["verification_runs"])
     canonical = cast(dict[str, object], manifest["canonical_output"])
+    canonical_files = cast(dict[str, dict[str, object]], canonical["files"])
+    payloads = {name: (FIXTURE_DIR / name).read_bytes() for name in EXPECTED_FILE_HASHES}
 
     assert extraction["database_access"] == "NONE"
     assert extraction["legacy_module_imported"] is False
@@ -54,9 +70,17 @@ def test_manifest_binds_exporter_and_both_reproducible_runs() -> None:
     assert extraction["prediction_adapters_executed"] is False
     assert exporter["sha256"] == _sha256(EXPORTER)
     assert len(runs) == 2
-    assert {run["aggregate_sha256"] for run in runs} == {
-        canonical["aggregate_sha256"]
-    }
+    assert {run["aggregate_sha256"] for run in runs} == {canonical["aggregate_sha256"]}
+    assert canonical["aggregate_sha256"] == EXPECTED_AGGREGATE_HASH
+    assert _aggregate_sha256(payloads) == EXPECTED_AGGREGATE_HASH
+    for name, expected_hash in EXPECTED_FILE_HASHES.items():
+        claim = canonical_files[name]
+        assert claim["sha256"] == expected_hash
+        assert claim["bytes"] == len(payloads[name])
+        assert hashlib.sha256(payloads[name]).hexdigest() == expected_hash
+        for run in runs:
+            run_files = cast(dict[str, dict[str, object]], run["files"])
+            assert run_files[name] == claim
 
 
 def test_fixture_payloads_have_expected_order_and_non_executable_lifecycle() -> None:

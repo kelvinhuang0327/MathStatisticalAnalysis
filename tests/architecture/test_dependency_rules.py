@@ -94,3 +94,48 @@ def test_production_code_does_not_import_legacy_or_migration_fixtures() -> None:
             if module.startswith(("lottery_api", "tests", "tools")):
                 violations.append(f"{path.relative_to(SRC)} imports {module}")
     assert not violations, "production import violations:\n" + "\n".join(violations)
+
+
+def test_local_runtime_path_has_no_database_or_execution_dependency() -> None:
+    forbidden_fragments = (
+        "sqlite",
+        "lotterynew",
+        "generation",
+        "prediction",
+        "replay",
+        "evaluation",
+        "scheduler",
+        "fixture",
+        "artifact",
+    )
+    for module in (
+        "lottolab.application.local_runtime",
+        "lottolab.infrastructure.local_runtime",
+    ):
+        imports = _transitive_imports(module)
+        lowered = {imported.lower() for imported in imports}
+        assert not any(
+            fragment in imported for imported in lowered for fragment in forbidden_fragments
+        ), module
+
+
+def test_local_runtime_cli_contains_no_process_or_network_supervisor_logic() -> None:
+    imports = imported_modules(SRC / "interfaces" / "cli" / "main.py")
+    assert imports.isdisjoint(
+        {
+            "fcntl",
+            "json",
+            "os",
+            "signal",
+            "socket",
+            "subprocess",
+            "tempfile",
+            "urllib",
+            "urllib.request",
+        }
+    )
+
+
+def test_local_runtime_policy_does_not_import_infrastructure() -> None:
+    imports = imported_modules(SRC / "application" / "local_runtime.py")
+    assert not any(module.startswith("lottolab.infrastructure") for module in imports)

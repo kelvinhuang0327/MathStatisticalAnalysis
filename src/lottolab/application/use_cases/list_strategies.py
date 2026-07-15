@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from quantlab.application.dto import StrategyView
-from quantlab.domain.lottery.draws import LotteryType
-from quantlab.domain.lottery.strategies import LifecycleStatus
-from quantlab.strategies.catalog import StrategyCatalog
+from lottolab.application.dto import StrategyView
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.strategies import LifecycleStatus
+from lottolab.strategies.catalog import StrategyCatalog
 
 
 class ListStrategies:

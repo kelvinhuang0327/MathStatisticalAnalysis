@@ -5,10 +5,10 @@
 
 from fastapi.testclient import TestClient
 
-from quantlab.domain.lottery.draws import LotteryType
-from quantlab.domain.lottery.strategies import LifecycleStatus, StrategyDescriptor
-from quantlab.interfaces.api.app import create_app
-from quantlab.strategies.catalog import StrategyCatalog
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.interfaces.api.app import create_app
+from lottolab.strategies.catalog import StrategyCatalog
 
 
 def fixture_catalog() -> StrategyCatalog:

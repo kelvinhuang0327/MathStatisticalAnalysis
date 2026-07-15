@@ -1,6 +1,6 @@
-# QuantLab
+# LottoLab
 
-數理統計分析平台。第一個 domain 是 **lottery**（自 `~/Kelvin-WorkSpace/LotteryNew` 逐步移植），架構預留多 domain 擴充（stock、betting-pool …）。
+樂透統計分析系統——LotteryNew 的次世代重建，功能自 `~/Kelvin-WorkSpace/LotteryNew` 逐 capability 移植。本 repo 為**樂透專用**（ADR-0004）。
 
 ## 軌道紀律（不可違反）
 
@@ -15,7 +15,7 @@ uv sync                        # 安裝依賴（Python 版本鎖定見 .python-v
 uv run pytest                  # unit / contract / architecture 測試
 uv run ruff check .            # lint
 uv run pyright                 # 型別檢查（strict）
-uv run uvicorn --factory quantlab.interfaces.api.app:create_app --reload   # API :8000
+uv run uvicorn --factory lottolab.interfaces.api.app:create_app --reload   # API :8000
 cd frontend && npm install && npm run dev                                  # 前端
 ```
 
@@ -23,11 +23,11 @@ cd frontend && npm install && npm run dev                                  # 前
 
 | 路徑 | 職責 |
 |---|---|
-| `src/quantlab/domain/` | 純業務模型（Draw、StrategyDescriptor、lifecycle）；不依賴任何其他層 |
-| `src/quantlab/strategies/` | StrategyCatalog（metadata 唯一來源）與 ExecutableRegistry（只載入 ONLINE adapter） |
-| `src/quantlab/application/` | Use cases、ports、DTO |
-| `src/quantlab/interfaces/` | FastAPI routes 與 CLI（薄殼，無業務邏輯） |
-| `src/quantlab/infrastructure/` | persistence／snapshot／scheduler，實作 application ports |
+| `src/lottolab/domain/` | 純業務模型（Draw、StrategyDescriptor、lifecycle）；不依賴任何其他層 |
+| `src/lottolab/strategies/` | StrategyCatalog（metadata 唯一來源）與 ExecutableRegistry（只載入 ONLINE adapter） |
+| `src/lottolab/application/` | Use cases、ports、DTO |
+| `src/lottolab/interfaces/` | FastAPI routes 與 CLI（薄殼，無業務邏輯） |
+| `src/lottolab/infrastructure/` | persistence／snapshot／scheduler，實作 application ports |
 | `frontend/` | Vue 3 + TypeScript + Vite |
 | `contracts/` | OpenAPI 匯出與前端型別生成鏈 |
 | `docs/` | canonical 文件：架構、ADR、capability catalog、migration ledger |
@@ -39,4 +39,4 @@ cd frontend && npm install && npm run dev                                  # 前
 
 ## 專案名
 
-`QuantLab` 為建議名（備選：MathStat、NumberLab）。改名＝改 `pyproject.toml` 的 `name`、`src/quantlab/` 目錄名與 import 前綴；骨架階段一次 `grep -rl quantlab | xargs sed` 可完成。
+**LottoLab**（owner 2026-07-15 定案，樂透專用；見 [ADR-0004](docs/decisions/ADR-0004-project-name-and-scope.md)）。

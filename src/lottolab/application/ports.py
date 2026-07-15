@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol
 
-from quantlab.domain.lottery.draws import Draw, LotteryType
+from lottolab.domain.draws import Draw, LotteryType
 
 
 class DrawRepository(Protocol):

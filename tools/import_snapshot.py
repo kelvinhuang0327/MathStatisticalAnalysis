@@ -19,7 +19,7 @@ from pathlib import Path
 import typer
 import yaml
 
-from quantlab.infrastructure.persistence.snapshot import SnapshotEntry, verify_snapshot
+from lottolab.infrastructure.persistence.snapshot import SnapshotEntry, verify_snapshot
 
 app = typer.Typer(no_args_is_help=True)
 

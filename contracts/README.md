@@ -3,7 +3,7 @@
 `openapi.json` 是前後端之間的機器可驗契約，由 FastAPI 匯出：
 
 ```bash
-uv run python -c "import json; from quantlab.interfaces.api.app import create_app; \
+uv run python -c "import json; from lottolab.interfaces.api.app import create_app; \
 print(json.dumps(create_app().openapi(), ensure_ascii=False, indent=2))" > contracts/openapi.json
 ```
 

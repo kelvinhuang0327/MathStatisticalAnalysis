@@ -1,7 +1,7 @@
 """FastAPI application factory.
 
 Run locally:
-    uv run uvicorn --factory quantlab.interfaces.api.app:create_app --reload
+    uv run uvicorn --factory lottolab.interfaces.api.app:create_app --reload
 """
 
 # pyright: reportUnusedFunction=false
@@ -11,15 +11,15 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from quantlab.application.dto import StrategyView
-from quantlab.application.use_cases.list_strategies import ListStrategies
-from quantlab.strategies.catalog import StrategyCatalog, production_catalog
+from lottolab.application.dto import StrategyView
+from lottolab.application.use_cases.list_strategies import ListStrategies
+from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
 API_VERSION = "v1"
 
 
 def create_app(catalog: StrategyCatalog | None = None) -> FastAPI:
-    app = FastAPI(title="QuantLab API", version="0.1.0")
+    app = FastAPI(title="LottoLab API", version="0.1.0")
     list_strategies = ListStrategies(catalog if catalog is not None else production_catalog())
 
     @app.get("/api/health")

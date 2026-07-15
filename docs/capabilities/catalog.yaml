@@ -6,7 +6,7 @@
 # schema（每筆 capability）：
 #   capability_id: string            # e.g. lottery.strategy_catalog.list
 #   name: string
-#   domain: string                   # lottery | (future: stock, betting_pool ...)
+#   domain: string                   # lottery（本 repo 為樂透專用，ADR-0004）
 #   entrypoints: {ui: [], api: [], cli: [], jobs: []}
 #   legacy_implementation:
 #     paths: []                      # LotteryNew 內路徑（唯讀參照）
@@ -42,5 +42,5 @@ capabilities:
       - "P600 重建總結 2026-07-15"
     migration:
       disposition: MIGRATE_FIRST
-      target_module: quantlab.strategies.catalog
+      target_module: lottolab.strategies.catalog
       legacy_retirement_condition: null

@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Iterator
 
-from quantlab.domain.lottery.draws import LotteryType
-from quantlab.domain.lottery.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
 
 
 class DuplicateStrategyIdError(ValueError):

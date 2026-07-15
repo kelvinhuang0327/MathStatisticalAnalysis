@@ -1,6 +1,6 @@
 """Dependency direction is a contract enforced by CI, not by code review.
 
-domain          → (nothing else in quantlab)
+domain          → (nothing else in lottolab)
 strategies      → domain
 application     → domain, strategies
 infrastructure  → domain, strategies, application (implements ports)
@@ -10,7 +10,7 @@ interfaces      → anything (composition root)
 import ast
 from pathlib import Path
 
-SRC = Path(__file__).resolve().parents[2] / "src" / "quantlab"
+SRC = Path(__file__).resolve().parents[2] / "src" / "lottolab"
 
 FORBIDDEN: dict[str, tuple[str, ...]] = {
     "domain": ("application", "interfaces", "infrastructure", "strategies"),
@@ -37,7 +37,7 @@ def test_layer_dependencies() -> None:
         for path in (SRC / layer).rglob("*.py"):
             for module in imported_modules(path):
                 for forbidden in forbidden_layers:
-                    prefix = f"quantlab.{forbidden}"
+                    prefix = f"lottolab.{forbidden}"
                     if module == prefix or module.startswith(prefix + "."):
                         violations.append(f"{path.relative_to(SRC)} imports {module}")
     assert not violations, "layer violations:\n" + "\n".join(violations)

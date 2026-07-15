@@ -2,7 +2,7 @@
 
 狀態：CURRENT ｜ 2026-07-15 ｜ 完整推導見 LotteryNew 對話紀錄與 owner 記憶檔
 
-目標：以本 repo（QuantLab）為新系統，將 LotteryNew 的功能逐 capability 移植，最終舊核心退役。**不是大爆炸重寫。**
+目標：以本 repo（LottoLab）為新系統，將 LotteryNew 的功能逐 capability 移植，最終舊核心退役。**不是大爆炸重寫。**
 
 ## 軌道紀律
 

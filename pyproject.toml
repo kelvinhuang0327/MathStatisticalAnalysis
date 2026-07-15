@@ -1,7 +1,7 @@
 [project]
-name = "quantlab"
+name = "lottolab"
 version = "0.1.0"
-description = "數理統計分析平台 — lottery domain first, migrated from LotteryNew"
+description = "LottoLab 樂透統計分析系統 — next-generation rebuild of LotteryNew"
 readme = "README.md"
 authors = [
     { name = "kelvin", email = "kelvin@webcomm.com.tw" }
@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.scripts]
-quantlab = "quantlab.interfaces.cli.main:main"
+lottolab = "lottolab.interfaces.cli.main:main"
 
 [build-system]
 requires = ["uv_build>=0.9.6,<0.10.0"]

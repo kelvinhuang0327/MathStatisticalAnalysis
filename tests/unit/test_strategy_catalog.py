@@ -5,14 +5,14 @@ Adding a strategy must NEVER require editing these tests.
 
 import pytest
 
-from quantlab.domain.lottery.draws import LotteryType
-from quantlab.domain.lottery.strategies import LifecycleStatus, StrategyDescriptor
-from quantlab.strategies.catalog import (
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
     StrategyCatalog,
     production_catalog,
 )
-from quantlab.strategies.executable_registry import ExecutableRegistry, NotExecutableError
+from lottolab.strategies.executable_registry import ExecutableRegistry, NotExecutableError
 
 
 def make_descriptor(

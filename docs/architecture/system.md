@@ -18,7 +18,7 @@ Infrastructure (persistence / snapshot / scheduler)  ← 實作 ports
 
 ## 依賴規則（由 tests/architecture 強制）
 
-- `domain` 不 import quantlab 其他層。
+- `domain` 不 import lottolab 其他層。
 - `strategies` 只 import `domain`；**catalog 不 import adapter 實作**。
 - `application` 不 import `interfaces`／`infrastructure`（透過 ports 反轉）。
 - `infrastructure` 不 import `interfaces`。

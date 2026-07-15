@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 
-from quantlab.strategies.catalog import StrategyCatalog
+from lottolab.strategies.catalog import StrategyCatalog
 
 
 class NotExecutableError(LookupError):

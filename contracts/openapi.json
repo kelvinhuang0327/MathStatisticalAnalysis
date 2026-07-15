@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "QuantLab API",
+    "title": "LottoLab API",
     "version": "0.1.0"
   },
   "paths": {

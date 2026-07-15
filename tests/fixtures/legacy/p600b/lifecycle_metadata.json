@@ -1,0 +1,33 @@
+{
+  "legacy_contract": "GET /api/replay/strategy-lifecycle (filtered P600B subset)",
+  "ordering": "legacy _ALL_ADAPTERS insertion order filtered to TARGET_IDS",
+  "strategies": [
+    {
+      "strategy_id": "biglotto_social_wisdom_anti_popularity",
+      "strategy_name": "大樂透 Social Wisdom Anti-Popularity",
+      "strategy_version": "v0.1",
+      "supported_lottery_types": [
+        "BIG_LOTTO"
+      ],
+      "min_history": 1,
+      "lifecycle_status": "OBSERVATION",
+      "is_executable": false
+    },
+    {
+      "strategy_id": "biglotto_zone_split_3bet_bet1",
+      "strategy_name": "大樂透 Zone Split 3注（Replay Bet 1）",
+      "strategy_version": "v0.1",
+      "supported_lottery_types": [
+        "BIG_LOTTO"
+      ],
+      "min_history": 1,
+      "lifecycle_status": "OBSERVATION",
+      "is_executable": false
+    }
+  ],
+  "executable_strategy_ids": [],
+  "non_executable_strategy_ids": [
+    "biglotto_social_wisdom_anti_popularity",
+    "biglotto_zone_split_3bet_bet1"
+  ]
+}

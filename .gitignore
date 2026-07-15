@@ -18,6 +18,9 @@ data/*
 !data/README.md
 !data/manifests/
 
+# Local migration inspection/snapshot payloads (never commit bytes)
+.local/
+
 # OS
 .DS_Store
 

@@ -1,0 +1,22 @@
+[
+  {
+    "strategy_id": "biglotto_social_wisdom_anti_popularity",
+    "strategy_name": "大樂透 Social Wisdom Anti-Popularity",
+    "version": "v0.1",
+    "lottery_types": [
+      "BIG_LOTTO"
+    ],
+    "lifecycle_status": "OBSERVATION",
+    "executable": false
+  },
+  {
+    "strategy_id": "biglotto_zone_split_3bet_bet1",
+    "strategy_name": "大樂透 Zone Split 3注（Replay Bet 1）",
+    "version": "v0.1",
+    "lottery_types": [
+      "BIG_LOTTO"
+    ],
+    "lifecycle_status": "OBSERVATION",
+    "executable": false
+  }
+]

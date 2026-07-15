@@ -16,8 +16,8 @@
 | 批次 | 內容 | 依賴 | 狀態 |
 |---|---|---|---|
 | 1 | 本 repo bootstrap：uv+Py3.13、分層骨架、catalog/registry、三類測試、docs/ADR、Vue3 前端骨架、CI | 無 | **DONE 2026-07-15** |
-| 2 | P600A 盤點：唯讀掃 LotteryNew（pin commit）→ 填 capability catalog + provenance；wiki 完整性稽核；ai-system 跨 repo 依賴登記；launchd/CLI/hook 背景入口掃描 | 無（與主線收尾並行） | 待授權 |
-| 3 | 資料快照：canonical DB 唯讀匯出 + SHA-256 manifest；開獎歷史轉 parquet/CSV | 主線一個安靜點 | 待授權 |
+| 2 | P600A 盤點：唯讀掃 LotteryNew（pin commit）→ 填 capability catalog + provenance；wiki 完整性稽核；ai-system 跨 repo 依賴登記；launchd/CLI/hook 背景入口掃描 | 無（與主線收尾並行） | **DONE 2026-07-15（pin `520c3922…`）** |
+| 3 | 資料快照：canonical DB 唯讀匯出 + SHA-256 manifest；開獎歷史轉 parquet/CSV | 主線一個安靜點 | **P600AB R1 IN PROGRESS** |
 
 ## 後續階段（需主線收尾後）
 

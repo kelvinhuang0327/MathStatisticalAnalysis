@@ -8,7 +8,11 @@
 |---|---|---|
 | 系統架構與依賴規則 | [architecture/system.md](architecture/system.md) | CURRENT |
 | 架構決策紀錄（ADR） | [decisions/](decisions/) | CURRENT |
-| 功能盤點（capability catalog） | [capabilities/catalog.yaml](capabilities/catalog.yaml) | SEEDED（批次 2 填充） |
+| 功能盤點（capability catalog） | [capabilities/catalog.yaml](capabilities/catalog.yaml) | P600A VERIFIED |
+| 舊系統入口機器清單 | [capabilities/legacy-entrypoints.yaml](capabilities/legacy-entrypoints.yaml) | P600A PINNED |
+| LotteryNew 基線稽核 | [audits/lotterynew-baseline.md](audits/lotterynew-baseline.md) | P600A VERIFIED |
+| LotteryNew wiki 完整性 | [audits/lotterynew-wiki-integrity.md](audits/lotterynew-wiki-integrity.md) | P600A VERIFIED |
+| 外部 agent 相依 | [integrations/external-agent-dependencies.yaml](integrations/external-agent-dependencies.yaml) | P600A METADATA ONLY |
 | 遷移計畫 P600 | [migration/p600-plan.md](migration/p600-plan.md) | CURRENT |
 | 遷移帳本（哪些 capability 已遷/退役） | [migration/migration-ledger.yaml](migration/migration-ledger.yaml) | EMPTY（隨遷移填寫） |
 | API 契約 | [../contracts/](../contracts/) | CURRENT |

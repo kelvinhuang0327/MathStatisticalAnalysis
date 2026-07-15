@@ -27,10 +27,13 @@
         }
       }
     },
-    "/api/strategies": {
+    "/api/v1/strategies": {
       "get": {
+        "tags": [
+          "strategy-catalog"
+        ],
         "summary": "Strategies",
-        "operationId": "strategies_api_strategies_get",
+        "operationId": "listStrategies",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -41,7 +44,7 @@
                     "$ref": "#/components/schemas/StrategyView"
                   },
                   "type": "array",
-                  "title": "Response Strategies Api Strategies Get"
+                  "title": "Response Liststrategies"
                 }
               }
             }
@@ -52,30 +55,54 @@
   },
   "components": {
     "schemas": {
+      "LifecycleStatus": {
+        "type": "string",
+        "enum": [
+          "IDEA",
+          "OBSERVATION",
+          "ONLINE",
+          "REJECTED",
+          "RETIRED"
+        ],
+        "title": "LifecycleStatus"
+      },
+      "LotteryType": {
+        "type": "string",
+        "enum": [
+          "DAILY_539",
+          "BIG_LOTTO",
+          "POWER_LOTTO"
+        ],
+        "title": "LotteryType"
+      },
       "StrategyView": {
         "properties": {
           "strategy_id": {
             "type": "string",
             "title": "Strategy Id"
           },
-          "strategy_name": {
+          "display_name": {
             "type": "string",
-            "title": "Strategy Name"
+            "title": "Display Name"
           },
           "version": {
             "type": "string",
             "title": "Version"
           },
-          "lottery_types": {
+          "supported_lottery_types": {
             "items": {
-              "type": "string"
+              "$ref": "#/components/schemas/LotteryType"
             },
             "type": "array",
-            "title": "Lottery Types"
+            "title": "Supported Lottery Types"
+          },
+          "minimum_history": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Minimum History"
           },
           "lifecycle_status": {
-            "type": "string",
-            "title": "Lifecycle Status"
+            "$ref": "#/components/schemas/LifecycleStatus"
           },
           "executable": {
             "type": "boolean",
@@ -85,9 +112,10 @@
         "type": "object",
         "required": [
           "strategy_id",
-          "strategy_name",
+          "display_name",
           "version",
-          "lottery_types",
+          "supported_lottery_types",
+          "minimum_history",
           "lifecycle_status",
           "executable"
         ],

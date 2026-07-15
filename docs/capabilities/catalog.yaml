@@ -1,46 +1,556 @@
-# Capability Catalog — 功能盤點唯一來源（批次 2／P600A 填充）
-#
-# 完整性驗收：LotteryNew 的所有 API route、前端入口、CLI、launchd/job、
-# DB writer 都必須對應一筆 capability，或明確標示 excluded/deprecated/unknown。
-#
-# schema（每筆 capability）：
-#   capability_id: string            # e.g. lottery.strategy_catalog.list
-#   name: string
-#   domain: string                   # lottery（本 repo 為樂透專用，ADR-0004）
-#   entrypoints: {ui: [], api: [], cli: [], jobs: []}
-#   legacy_implementation:
-#     paths: []                      # LotteryNew 內路徑（唯讀參照）
-#     scanned_at_commit: null        # 掃描當下 LotteryNew commit（必填，批次2）
-#   side_effects: {db_read: bool, db_write: bool, filesystem_write: bool, scheduler: bool, external_call: bool}
-#   provenance: []                   # 任務 ID / 00-Plan 快照 / wiki 頁 / PR#（歷史軌跡反查）
-#   migration:
-#     disposition: MIGRATE_FIRST | MIGRATE_LATER | KEEP_LEGACY_TEMPORARILY | REPLACE | RETIRE | FREEZE_AS_RESEARCH | UNKNOWN_NEEDS_AUDIT
-#     target_module: string | null
-#     legacy_retirement_condition: string | null
-
-capabilities:
-  - capability_id: lottery.strategy_catalog.list
-    name: 策略目錄與生命週期查詢
-    domain: lottery
-    entrypoints:
-      ui: []
-      api: ["GET /api/strategies"]
-      cli: []
-      jobs: []
-    legacy_implementation:
-      paths:
-        - "lottery_api/models/replay_strategy_registry.py  # 待批次2核實"
-      scanned_at_commit: null
-    side_effects:
-      db_read: false
-      db_write: false
-      filesystem_write: false
-      scheduler: false
-      external_call: false
-    provenance:
-      - "P541F_R2 PR#690（OBSERVATION registry metadata）"
-      - "P600 重建總結 2026-07-15"
-    migration:
-      disposition: MIGRATE_FIRST
-      target_module: lottolab.strategies.catalog
-      legacy_retirement_condition: null
+{
+  "schema_version": 2,
+  "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+  "catalog_policy": {
+    "source": "Detached static inspection of LotteryNew remote main",
+    "unknowns_are_explicit": true,
+    "legacy_runtime_executed": false,
+    "legacy_database_opened": false
+  },
+  "capabilities": [
+    {
+      "capability_id": "lottery.runtime.health_cache",
+      "name": "System health and in-memory cache administration",
+      "domain": "lottery",
+      "description": "Root, health, ping, cache statistics, and cache-clear API surfaces.",
+      "entrypoints": {"kinds": ["api"], "selection": "lottery_api/routes/admin.py"},
+      "current_implementation": ["lottery_api/routes/admin.py"],
+      "public_contracts": ["GET /", "GET /health", "GET /api/ping", "GET /api/cache/stats", "POST /api/cache/clear"],
+      "data_reads": ["process health", "in-memory cache statistics"],
+      "data_writes": ["in-memory cache state"],
+      "filesystem_side_effects": [],
+      "scheduler_or_runtime_effects": ["cache clear mutates process-local runtime state"],
+      "strategy_dependencies": [],
+      "tests": ["tests/test_api.py", "tests/test_p559a_api_client_timeout_cleanup.py"],
+      "production_status": "MIXED",
+      "migration_disposition": "MIGRATE_LATER",
+      "target_lottolab_module": "lottolab.interfaces.api.system",
+      "compatibility_required": true,
+      "retirement_condition": "Legacy system endpoints can retire after an existing LottoLab deployment has equivalent health and cache operations.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/admin.py", "lottery_api/app.py"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": []
+    },
+    {
+      "capability_id": "lottery.runtime.local_service",
+      "name": "Local legacy service lifecycle",
+      "domain": "lottery",
+      "description": "FastAPI/static frontend startup, shutdown, PID/log management, and launchd definition.",
+      "entrypoints": {"kinds": ["cli", "hook", "job"], "selection": "shell, app startup, and launchd surfaces"},
+      "current_implementation": ["lottery_api/app.py", "start_all.sh", "stop_all.sh", "com.kelvin.lottery.dev.plist"],
+      "public_contracts": ["localhost:8002 backend", "localhost:8081 static frontend"],
+      "data_reads": ["environment configuration", "service PID state"],
+      "data_writes": ["PID files", "runtime logs"],
+      "filesystem_side_effects": ["creates and removes PID/log files"],
+      "scheduler_or_runtime_effects": ["starts and stops local processes", "launchd RunAtLoad/KeepAlive declaration"],
+      "strategy_dependencies": [],
+      "tests": ["tests/test_p545d_launchd_quiescence_playbook.py"],
+      "production_status": "MIXED",
+      "migration_disposition": "REPLACE",
+      "target_lottolab_module": null,
+      "compatibility_required": true,
+      "retirement_condition": "Replace only after a documented LottoLab deployment target, health check, traffic route, and rollback revision exist.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["start_all.sh", "stop_all.sh", "com.kelvin.lottery.dev.plist", "lottery_api/app.py"],
+        "task_ids": ["P545D", "P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/operations/p545d_launchd_quiescence_playbook.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["The committed launchd definition is not proven installed or loaded at inventory time."]
+    },
+    {
+      "capability_id": "lottery.automation.schedulers",
+      "name": "Optimization and smart-learning schedulers",
+      "domain": "lottery",
+      "description": "APScheduler registrations and scheduled optimization/evaluation runtime.",
+      "entrypoints": {"kinds": ["scheduler"], "selection": "AST add_job registrations"},
+      "current_implementation": ["lottery_api/utils/scheduler.py", "lottery_api/utils/smart_scheduler.py"],
+      "public_contracts": ["three APScheduler add_job registrations"],
+      "data_reads": ["draw history", "optimization configuration"],
+      "data_writes": ["optimization history and runtime state"],
+      "filesystem_side_effects": ["may persist scheduler/optimization outputs"],
+      "scheduler_or_runtime_effects": ["starts recurring background jobs"],
+      "strategy_dependencies": ["legacy prediction and evaluation modules"],
+      "tests": [],
+      "production_status": "MIXED",
+      "migration_disposition": "KEEP_LEGACY_TEMPORARILY",
+      "target_lottolab_module": "lottolab.infrastructure.scheduler",
+      "compatibility_required": true,
+      "retirement_condition": "Retire only after each job has an explicit LottoLab owner, idempotency proof, and rollback procedure.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/utils/scheduler.py", "lottery_api/utils/smart_scheduler.py"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Runtime job enablement and installed scheduler state were not exercised."]
+    },
+    {
+      "capability_id": "lottery.draw_data.manage",
+      "name": "Lottery draw history management",
+      "domain": "lottery",
+      "description": "Draw history reads, uploads, CSV validation, create/update/delete, and database manager surfaces.",
+      "entrypoints": {"kinds": ["api", "db_reader", "db_writer", "ui"], "selection": "data routes and database layer"},
+      "current_implementation": ["lottery_api/routes/data.py", "lottery_api/database.py", "index.html#upload", "index.html#history"],
+      "public_contracts": ["GET /api/history", "GET /api/data/draws", "GET /api/data/stats", "POST/PUT/DELETE draw and upload routes"],
+      "data_reads": ["canonical SQLite draw tables", "uploaded CSV payloads"],
+      "data_writes": ["canonical SQLite draws and schema", "uploaded/normalized data"],
+      "filesystem_side_effects": ["upload and database files"],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": [],
+      "tests": ["tests/test_canonical_db_path.py", "tests/test_database.py"],
+      "production_status": "MUTATING",
+      "migration_disposition": "KEEP_LEGACY_TEMPORARILY",
+      "target_lottolab_module": "lottolab.infrastructure.persistence",
+      "compatibility_required": true,
+      "retirement_condition": "Keep legacy until ingestion and every canonical DB writer are separately migrated with writer-quiescence and rollback gates.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/canonical_db_path.py", "lottery_api/database.py", "lottery_api/routes/data.py"],
+        "task_ids": ["P291", "P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Historical alternate DB paths remain as decoys; only the canonical resolver is authoritative."]
+    },
+    {
+      "capability_id": "lottery.ingestion.manage",
+      "name": "Official draw ingestion and refresh",
+      "domain": "lottery",
+      "description": "Ingest status, fetch, missing-scan, backfill, log operations, and post-insert refresh hook.",
+      "entrypoints": {"kinds": ["api", "db_reader", "db_writer", "hook"], "selection": "ingest route and refresh hook"},
+      "current_implementation": ["lottery_api/routes/ingest.py", "lottery_api/fetcher/"],
+      "public_contracts": ["GET /api/ingest/status", "POST /api/ingest/fetch-latest", "GET /api/ingest/scan-missing", "POST /api/ingest/backfill", "GET/POST ingest log routes"],
+      "data_reads": ["official/external draw sources", "canonical SQLite draws", "ingest log"],
+      "data_writes": ["canonical SQLite draws", "ingest log"],
+      "filesystem_side_effects": ["ingest log writes"],
+      "scheduler_or_runtime_effects": ["post-insert scheduler.load_data refresh"],
+      "strategy_dependencies": [],
+      "tests": ["tests/test_p520j_disable_missing_afterinsert_hooks.py", "tests/test_p520k_ingest_afterinsert_active_surface_acceptance.py"],
+      "production_status": "MUTATING",
+      "migration_disposition": "KEEP_LEGACY_TEMPORARILY",
+      "target_lottolab_module": "lottolab.infrastructure.ingestion",
+      "compatibility_required": true,
+      "retirement_condition": "Retire only after official-source validation, DB writer ownership, post-insert refresh parity, and rollback are proven.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/ingest.py", "lottery_api/fetcher/"],
+        "task_ids": ["P520J", "P520K", "P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["artifacts/P520K_ingest_afterinsert_active_surface_acceptance_result.json"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["External source availability and active runtime hook invocation were not executed in P600A."]
+    },
+    {
+      "capability_id": "lottery.prediction.generate",
+      "name": "Prediction and ticket generation",
+      "domain": "lottery",
+      "description": "Prediction API variants, model listing, wheel generation, and next-prediction paths.",
+      "entrypoints": {"kinds": ["api", "db_reader", "db_writer", "ui"], "selection": "prediction routes and model modules"},
+      "current_implementation": ["lottery_api/routes/prediction.py", "lottery_api/models/", "index.html#prediction"],
+      "public_contracts": ["POST /api/predict*", "POST /api/wheel/generate", "GET /api/models", "GET /api/enhanced-methods"],
+      "data_reads": ["canonical draw history", "model/config artifacts"],
+      "data_writes": ["prediction/performance history for selected routes"],
+      "filesystem_side_effects": ["model and prediction artifacts on selected paths"],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": ["legacy ONLINE and standalone predictor implementations"],
+      "tests": ["tests/test_prediction.py", "tests/test_p541d_r2_biglotto_selected_adapters.py"],
+      "production_status": "MIXED",
+      "migration_disposition": "KEEP_LEGACY_TEMPORARILY",
+      "target_lottolab_module": "lottolab.strategies.adapters",
+      "compatibility_required": true,
+      "retirement_condition": "No generation path retires until algorithm semantics, causal history, output validation, and deployment parity pass independent goldens.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/prediction.py", "lottery_api/models/"],
+        "task_ids": ["P541D_R2", "P600A"],
+        "PR_numbers": [689],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["tests/test_p541d_r2_biglotto_selected_adapters.py"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Many standalone predictor entrypoints require individual data-write and semantics audits."]
+    },
+    {
+      "capability_id": "lottery.backtest.evaluate",
+      "name": "Backtest and historical evaluation",
+      "domain": "lottery",
+      "description": "Backtest API, comparison, optimization evaluation, and historical test tools.",
+      "entrypoints": {"kinds": ["api", "db_reader", "db_writer", "ui"], "selection": "backtest surfaces"},
+      "current_implementation": ["lottery_api/routes/backtest.py", "lottery_api/models/backtest_framework.py", "index.html#simulation"],
+      "public_contracts": ["/api/backtest/*"],
+      "data_reads": ["canonical draw history", "prediction/replay history"],
+      "data_writes": ["evaluation and optimization artifacts; some legacy candidates require audit"],
+      "filesystem_side_effects": ["backtest reports and generated artifacts"],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": ["legacy predictor implementations"],
+      "tests": ["tests/test_backtest.py"],
+      "production_status": "MIXED",
+      "migration_disposition": "MIGRATE_LATER",
+      "target_lottolab_module": "lottolab.application.evaluation",
+      "compatibility_required": true,
+      "retirement_condition": "Retire after deterministic replay inputs, metric semantics, and result contracts are independently frozen.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/backtest.py", "lottery_api/models/backtest_framework.py"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Historical backtest scripts use heterogeneous metrics and output locations."]
+    },
+    {
+      "capability_id": "lottery.optimization.manage",
+      "name": "Automatic and smart-learning optimization",
+      "domain": "lottery",
+      "description": "Optimization, evaluation, schedule control, best-strategy, and smart-learning APIs.",
+      "entrypoints": {"kinds": ["api", "db_reader", "db_writer", "ui"], "selection": "optimization routes"},
+      "current_implementation": ["lottery_api/routes/optimization.py", "lottery_api/utils/scheduler.py", "lottery_api/utils/smart_scheduler.py"],
+      "public_contracts": ["/api/auto-learning/*", "/api/smart-learning/*"],
+      "data_reads": ["draw history", "strategy configurations", "optimization history"],
+      "data_writes": ["strategy configurations", "optimization history", "runtime scheduler state"],
+      "filesystem_side_effects": ["configuration/history persistence"],
+      "scheduler_or_runtime_effects": ["starts/stops and immediately runs schedulers"],
+      "strategy_dependencies": ["legacy predictors and evaluators"],
+      "tests": [],
+      "production_status": "MUTATING",
+      "migration_disposition": "KEEP_LEGACY_TEMPORARILY",
+      "target_lottolab_module": "lottolab.application.optimization",
+      "compatibility_required": true,
+      "retirement_condition": "Keep legacy until optimizer semantics, scheduler ownership, persistence, and operational rollback are independently gated.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/optimization.py", "lottery_api/utils/scheduler.py", "lottery_api/utils/smart_scheduler.py"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Active scheduler/process state was not exercised."]
+    },
+    {
+      "capability_id": "lottery.strategy_catalog.list",
+      "name": "Strategy Catalog and lifecycle listing",
+      "domain": "lottery",
+      "description": "Read-only strategy metadata, lifecycle, executable classification, filters, and deterministic list order.",
+      "entrypoints": {"kinds": ["api"], "selection": "GET /api/replay/strategies and GET /api/replay/strategy-lifecycle"},
+      "current_implementation": ["lottery_api/models/replay_strategy_registry.py", "lottery_api/routes/replay.py"],
+      "public_contracts": ["GET /api/replay/strategies", "GET /api/replay/strategy-lifecycle"],
+      "data_reads": ["source-controlled strategy descriptor metadata"],
+      "data_writes": [],
+      "filesystem_side_effects": [],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": ["metadata only; adapter implementations are not imported by the LottoLab catalog"],
+      "tests": ["tests/test_p541f_r2_social_wisdom_zone_split_observation_registry.py"],
+      "production_status": "READ_ONLY",
+      "migration_disposition": "MIGRATE_FIRST",
+      "target_lottolab_module": "lottolab.strategies.catalog",
+      "compatibility_required": true,
+      "retirement_condition": "Legacy list traffic may retire only after fixture parity, merged CI, exact deployment, health checks, and rollback verification.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/models/replay_strategy_registry.py", "lottery_api/routes/replay.py", "tests/test_p541f_r2_social_wisdom_zone_split_observation_registry.py"],
+        "task_ids": ["P541F_R2", "P600A", "P600B"],
+        "PR_numbers": [690],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["tests/test_p541f_r2_social_wisdom_zone_split_observation_registry.py"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Several older legacy exact-count tests are stale and contradict the pinned 40-descriptor registry; P541F_R2 source and focused tests govern the two-descriptor pilot."]
+    },
+    {
+      "capability_id": "lottery.replay.read_models",
+      "name": "Historical replay read models",
+      "domain": "lottery",
+      "description": "Replay history, summary, run status, freshness, and grouped detail read-only APIs.",
+      "entrypoints": {"kinds": ["api", "db_reader", "ui"], "selection": "replay query routes"},
+      "current_implementation": ["lottery_api/routes/replay.py", "index.html#replay", "index.html#tracking", "index.html#p259a-replay-overview"],
+      "public_contracts": ["GET /api/replay/history", "GET /api/replay/summary", "GET /api/replay/runs", "GET /api/replay/run/{run_id}/status", "GET /api/replay/freshness", "GET /api/replay/history-overview", "GET /api/replay/history-detail", "GET /api/replay/history-detail-grouped"],
+      "data_reads": ["canonical SQLite replay tables", "source-controlled lifecycle registry"],
+      "data_writes": [],
+      "filesystem_side_effects": [],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": ["strategy lifecycle metadata"],
+      "tests": ["tests/test_replay_api_contract.py"],
+      "production_status": "READ_ONLY",
+      "migration_disposition": "MIGRATE_LATER",
+      "target_lottolab_module": "lottolab.application.replay",
+      "compatibility_required": true,
+      "retirement_condition": "Retire only after snapshot-backed query parity and production traffic verification for each endpoint.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/replay.py"],
+        "task_ids": ["P149-P159B", "P259A", "P261A", "P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": ["wiki/system/replay_data_hygiene.md"],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": []
+    },
+    {
+      "capability_id": "lottery.evidence.reporting",
+      "name": "Evidence dashboards, scoreboards, and artifact-backed reporting",
+      "domain": "lottery",
+      "description": "Read-only dashboards and historical evidence reports plus their artifact builders.",
+      "entrypoints": {"kinds": ["api", "cli", "db_reader", "db_writer", "ui"], "selection": "evidence/reporting routes, recovered tools, and dashboard sections"},
+      "current_implementation": ["lottery_api/routes/replay.py", "lottery_api/routes/p542b_scoreboard.py", "lottery_api/routes/best_strategy_overview.py", "recovered_strategies/", "index.html"],
+      "public_contracts": ["artifact-backed /api/replay reporting endpoints", "GET /api/research/p542a/scoreboard", "GET /api/best-strategy-overview"],
+      "data_reads": ["canonical replay tables", "committed and runtime evidence artifacts"],
+      "data_writes": ["generated evidence artifacts; individual historical tools remain separately gated"],
+      "filesystem_side_effects": ["JSON/CSV/Markdown/HTML report generation"],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": ["registry metadata and replay evidence"],
+      "tests": ["tests/test_p251d_evidence_dashboard_readonly_api_route.py", "tests/test_p542b_scoreboard_api.py"],
+      "production_status": "MIXED",
+      "migration_disposition": "MIGRATE_LATER",
+      "target_lottolab_module": "lottolab.application.evidence",
+      "compatibility_required": true,
+      "retirement_condition": "Retire report-by-report after artifact schema, provenance, and read-only API parity are pinned.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/routes/replay.py", "lottery_api/routes/p542b_scoreboard.py", "lottery_api/routes/best_strategy_overview.py", "recovered_strategies/"],
+        "task_ids": ["P251", "P257", "P333", "P536-P543", "P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Artifact contracts are heterogeneous and some builders are historical-only."]
+    },
+    {
+      "capability_id": "lottery.research.execution",
+      "name": "Historical analysis and research execution",
+      "domain": "lottery",
+      "description": "Analysis modules and research jobs retained as evidence, not production prediction semantics.",
+      "entrypoints": {"kinds": ["cli", "db_reader", "db_writer", "ui"], "selection": "analysis/ and research UI"},
+      "current_implementation": ["analysis/", "index.html#analysis", "lottery_api/research/"],
+      "public_contracts": ["standalone research CLIs and generated artifacts"],
+      "data_reads": ["draw and replay histories", "historical artifacts"],
+      "data_writes": ["research artifacts; static candidates include legacy SQL mutation and require individual audit"],
+      "filesystem_side_effects": ["research JSON/CSV/Markdown outputs"],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": ["historical and recovered strategy implementations"],
+      "tests": ["tests/test_p541a_biglotto_strategy_inventory_replay_coverage_audit.py"],
+      "production_status": "RESEARCH",
+      "migration_disposition": "FREEZE_AS_RESEARCH",
+      "target_lottolab_module": null,
+      "compatibility_required": false,
+      "retirement_condition": null,
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["analysis/", "lottery_api/research/"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/roadmap.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/audits/lotterynew-baseline.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Static inventory does not certify every research command as DB read-only."]
+    },
+    {
+      "capability_id": "lottery.legacy_cli.unknown",
+      "name": "Legacy scripts and tools requiring per-command audit",
+      "domain": "lottery",
+      "description": "Explicit holding capability for inventoried scripts/tools whose side effects are not safely inferable in bulk.",
+      "entrypoints": {"kinds": ["cli", "db_reader", "db_writer"], "selection": "scripts/ and tools/ main guards and DB candidates"},
+      "current_implementation": ["scripts/", "tools/"],
+      "public_contracts": ["standalone command-line entrypoints"],
+      "data_reads": ["UNKNOWN_NEEDS_AUDIT"],
+      "data_writes": ["UNKNOWN_NEEDS_AUDIT"],
+      "filesystem_side_effects": ["UNKNOWN_NEEDS_AUDIT"],
+      "scheduler_or_runtime_effects": ["UNKNOWN_NEEDS_AUDIT"],
+      "strategy_dependencies": ["UNKNOWN_NEEDS_AUDIT"],
+      "tests": [],
+      "production_status": "UNKNOWN",
+      "migration_disposition": "UNKNOWN_NEEDS_AUDIT",
+      "target_lottolab_module": null,
+      "compatibility_required": true,
+      "retirement_condition": "Each command must be classified as migrate, replace, retire, or research before its legacy path can be removed.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["scripts/", "tools/"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/capabilities/legacy-entrypoints.yaml"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["Side effects, runtime dependencies, and canonical-vs-historical status require per-command audit."]
+    },
+    {
+      "capability_id": "lottery.legacy_module_cli.unknown",
+      "name": "Legacy module and root executables requiring audit",
+      "domain": "lottery",
+      "description": "Explicit holding capability for root and lottery_api main-guard/DB surfaces outside classified production routes.",
+      "entrypoints": {"kinds": ["api", "cli", "db_reader", "db_writer"], "selection": "unclassified root and lottery_api executable modules"},
+      "current_implementation": ["lottery_api/", "root-level Python executables"],
+      "public_contracts": ["standalone module entrypoints"],
+      "data_reads": ["UNKNOWN_NEEDS_AUDIT"],
+      "data_writes": ["UNKNOWN_NEEDS_AUDIT"],
+      "filesystem_side_effects": ["UNKNOWN_NEEDS_AUDIT"],
+      "scheduler_or_runtime_effects": ["UNKNOWN_NEEDS_AUDIT"],
+      "strategy_dependencies": ["UNKNOWN_NEEDS_AUDIT"],
+      "tests": [],
+      "production_status": "UNKNOWN",
+      "migration_disposition": "UNKNOWN_NEEDS_AUDIT",
+      "target_lottolab_module": null,
+      "compatibility_required": true,
+      "retirement_condition": "Each module must be classified and mapped before removal.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["lottery_api/", "*.py"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/capabilities/legacy-entrypoints.yaml"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["These executable modules are explicit inventory debt, not silently omitted entrypoints."]
+    },
+    {
+      "capability_id": "lottery.frontend.legacy_shell",
+      "name": "Legacy single-page frontend shell",
+      "domain": "lottery",
+      "description": "Top-level browser event wiring and API client calls in the monolithic legacy index page.",
+      "entrypoints": {"kinds": ["frontend_api", "frontend_http_call", "ui_handler"], "selection": "frontend API literals, HTTP calls, and event registrations"},
+      "current_implementation": ["index.html"],
+      "public_contracts": ["browser event handlers", "frontend-to-backend /api calls"],
+      "data_reads": ["legacy API responses", "browser form and URL state"],
+      "data_writes": ["browser state and requests to mutating legacy APIs"],
+      "filesystem_side_effects": ["client-side downloads for selected evidence exports"],
+      "scheduler_or_runtime_effects": ["browser-triggered API requests"],
+      "strategy_dependencies": ["strategy, replay, evidence, and prediction API contracts"],
+      "tests": ["tests/test_replay_lifecycle_browser_e2e.py"],
+      "production_status": "MIXED",
+      "migration_disposition": "MIGRATE_LATER",
+      "target_lottolab_module": "frontend/src/features",
+      "compatibility_required": true,
+      "retirement_condition": "Retire sections only after their generated LottoLab API types, loading/error states, and action-safety behavior pass browser checks.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["index.html"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/capabilities/legacy-entrypoints.yaml"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["The monolithic page has inter-section shared state that requires feature-by-feature extraction."]
+    },
+    {
+      "capability_id": "lottery.wiki.documentation",
+      "name": "Legacy wiki knowledge routes",
+      "domain": "lottery",
+      "description": "Committed legacy wiki pages and declared-but-missing index routes.",
+      "entrypoints": {"kinds": ["docs"], "selection": "wiki route audit"},
+      "current_implementation": ["wiki/system/randomness_final_verdict.md", "wiki/system/replay_data_hygiene.md"],
+      "public_contracts": ["wiki page routes"],
+      "data_reads": ["committed documentation"],
+      "data_writes": [],
+      "filesystem_side_effects": [],
+      "scheduler_or_runtime_effects": [],
+      "strategy_dependencies": [],
+      "tests": [],
+      "production_status": "READ_ONLY",
+      "migration_disposition": "REPLACE",
+      "target_lottolab_module": "docs/",
+      "compatibility_required": false,
+      "retirement_condition": "Missing or superseded routes must be explicitly resolved; unmanaged worktree pages are never copied as canonical evidence.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["wiki/"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": ["00-Plan/roadmap/agent_bootstrap/CURRENT_STATE.md"],
+        "wiki_paths": ["wiki/system/randomness_final_verdict.md", "wiki/system/replay_data_hygiene.md", "wiki/README.md"],
+        "evidence_paths": ["docs/audits/lotterynew-wiki-integrity.md"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["wiki/README.md is absent from the pinned commit and all reachable history; an ignored unmanaged copy is not canonical."]
+    },
+    {
+      "capability_id": "lottery.external_agent.integration",
+      "name": "External ai-system invocation and governance integration",
+      "domain": "lottery",
+      "description": "External prompts/rules that select or constrain LotteryNew paths and worker behavior; metadata only.",
+      "entrypoints": {"kinds": ["external"], "selection": "external ai-system prompt/overlay metadata"},
+      "current_implementation": ["external ai-system prompts/rules (not copied)"],
+      "public_contracts": ["canonical-repo selection and task-worker constraints"],
+      "data_reads": ["external prompt and overlay configuration"],
+      "data_writes": [],
+      "filesystem_side_effects": [],
+      "scheduler_or_runtime_effects": ["can direct agents toward LotteryNew entrypoints"],
+      "strategy_dependencies": [],
+      "tests": [],
+      "production_status": "READ_ONLY",
+      "migration_disposition": "KEEP_LEGACY_TEMPORARILY",
+      "target_lottolab_module": null,
+      "compatibility_required": true,
+      "retirement_condition": "Retire or update only in the external ai-system after its LottoLab routing is separately authorized and validated.",
+      "provenance": {
+        "legacy_commit_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "source_paths": ["external-ai-system (metadata only)"],
+        "task_ids": ["P600A"],
+        "PR_numbers": [],
+        "roadmap_paths": [],
+        "wiki_paths": [],
+        "evidence_paths": ["docs/integrations/external-agent-dependencies.yaml"],
+        "artifact_hashes_when_available": []
+      },
+      "verified_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "unknowns": ["The external ai-system is not a Git repository, so no commit OID can be pinned for it."]
+    }
+  ]
+}

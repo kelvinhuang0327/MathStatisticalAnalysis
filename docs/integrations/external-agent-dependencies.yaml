@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "audited_against_legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+  "policy": "metadata and hashes only; external contents are not copied and external systems are not modified",
+  "dependencies": [
+    {
+      "dependency_id": "legacy-ai-system-prompts",
+      "source_label": "external ai-system/prompts",
+      "repository_commit": null,
+      "repository_status": "not a Git repository",
+      "integration_type": "agent prompt and workflow governance only",
+      "runtime_import_or_application_dependency": false,
+      "influenced_legacy_entrypoints": [
+        "canonical LotteryNew repository selection",
+        "roadmap/approval gates",
+        "orchestration and CTO UI/API declarations"
+      ],
+      "prompt_hashes": {
+        "AGENT_PROMPT.md": "552da3db70edb68bd6b62ea41e62f49d4c8fbff1037e9cd6bbccddb0e33874c9",
+        "AUTO_LEARNING_PROMPT.md": "735fcbc1c9385530f29c196cb3b7cbcdc5b296c7ec41802a3c492b0633574a5c",
+        "SHARED_MEMORY_PROMOTION_PROMPT.md": "6fbdbc4435b55f0ad58b25e6e6b02fab38999089e0376e7b6b8bd3ff4429d7a8",
+        "USER_PROMPT.md": "599ea88c00a1808be231291a7e030a71490ae0d5564991df1e88e882aec5cdce"
+      },
+      "declared_but_absent_legacy_contract_count": 30,
+      "disposition": "UNKNOWN_NEEDS_AUDIT",
+      "notes": "Thirty orchestrator/CTO method-path declarations are absent from pinned backend/runtime code and are not published as implemented capabilities."
+    },
+    {
+      "dependency_id": "current-personal-ai-flow",
+      "source_label": "external personal-ai-flow prompts/overlay",
+      "repository_commit": "5d0fc4332646f70a647cdec14cfd16405945dbea",
+      "integration_type": "current engineering workflow context and copied-overlay provenance",
+      "runtime_import_or_application_dependency": false,
+      "influenced_legacy_entrypoints": [
+        "profile/context lookup",
+        "branch and approval gates",
+        "test evidence and memory promotion"
+      ],
+      "disposition": "KEEP_LEGACY_TEMPORARILY",
+      "notes": "No evidence makes this external repository part of LotteryNew request processing."
+    }
+  ],
+  "unknowns": [
+    "No invocation log proves which external prompt set is actively invoked.",
+    "The project profile identifies personal-ai-flow as current while the older ai-system prompt is the only external file directly naming LotteryNew."
+  ]
+}

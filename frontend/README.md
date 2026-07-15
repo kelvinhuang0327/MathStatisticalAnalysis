@@ -1,5 +1,16 @@
-# Vue 3 + TypeScript + Vite
+# LottoLab Strategy Catalog frontend
 
-This template should help get you started developing with Vue 3 and TypeScript in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Vue 3 + TypeScript + Vite client for the read-only P600B Strategy Catalog.
 
-Learn more about the recommended Project Setup and IDE Support in the [Vue Docs TypeScript Guide](https://vuejs.org/guide/typescript/overview.html#project-setup).
+```bash
+npm ci
+npm run api:check
+npm run typecheck
+npm test
+npm run build
+```
+
+`src/api/generated/openapi.d.ts` is generated from `../contracts/openapi.json` by
+`npm run api:generate`; frontend code must derive response types from that file.
+During local development Vite proxies `/api` to the documented LottoLab API at
+`http://127.0.0.1:8000`.

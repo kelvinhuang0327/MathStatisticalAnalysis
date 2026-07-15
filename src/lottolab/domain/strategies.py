@@ -37,10 +37,24 @@ class StrategyDescriptor:
     provenance: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        if self.executable and self.lifecycle_status not in EXECUTABLE_STATUSES:
+        if not self.strategy_id.strip():
+            raise ValueError("strategy_id must not be blank")
+        if not self.strategy_name.strip():
+            raise ValueError(f"{self.strategy_id}: strategy_name must not be blank")
+        if not self.version.strip():
+            raise ValueError(f"{self.strategy_id}: version must not be blank")
+        if not self.lottery_types:
+            raise ValueError(f"{self.strategy_id}: at least one lottery type is required")
+        if self.min_history < 1:
+            raise ValueError(f"{self.strategy_id}: min_history must be positive")
+        if self.executable != (self.lifecycle_status in EXECUTABLE_STATUSES):
             raise ValueError(
-                f"{self.strategy_id}: only {sorted(EXECUTABLE_STATUSES)} strategies "
-                f"may be executable, got {self.lifecycle_status}"
+                f"{self.strategy_id}: executable=True iff lifecycle_status is ONLINE; "
+                f"got executable={self.executable} and {self.lifecycle_status}"
             )
         if self.executable and not self.adapter_path:
             raise ValueError(f"{self.strategy_id}: executable strategy requires adapter_path")
+        if not self.executable and self.adapter_path is not None:
+            raise ValueError(
+                f"{self.strategy_id}: non-executable strategy cannot declare adapter_path"
+            )

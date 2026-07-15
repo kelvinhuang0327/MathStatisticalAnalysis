@@ -12,6 +12,10 @@ class DuplicateStrategyIdError(ValueError):
     pass
 
 
+class UnknownStrategyError(KeyError):
+    pass
+
+
 class StrategyCatalog:
     def __init__(self, descriptors: Iterable[StrategyDescriptor]) -> None:
         self._by_id: dict[str, StrategyDescriptor] = {}
@@ -21,13 +25,16 @@ class StrategyCatalog:
             self._by_id[descriptor.strategy_id] = descriptor
 
     def __iter__(self) -> Iterator[StrategyDescriptor]:
-        return iter(self._by_id.values())
+        return iter(self.list())
 
     def __len__(self) -> int:
         return len(self._by_id)
 
     def get(self, strategy_id: str) -> StrategyDescriptor:
-        return self._by_id[strategy_id]
+        try:
+            return self._by_id[strategy_id]
+        except KeyError as exc:
+            raise UnknownStrategyError(strategy_id) from exc
 
     def list(
         self,
@@ -35,6 +42,7 @@ class StrategyCatalog:
         lottery_type: LotteryType | None = None,
         lifecycle_status: LifecycleStatus | None = None,
     ) -> tuple[StrategyDescriptor, ...]:
+        """Return matches in the descriptor declaration order pinned by provenance."""
         return tuple(
             descriptor
             for descriptor in self._by_id.values()
@@ -43,7 +51,42 @@ class StrategyCatalog:
         )
 
 
+_PRODUCTION_DESCRIPTORS = (
+    StrategyDescriptor(
+        strategy_id="biglotto_social_wisdom_anti_popularity",
+        strategy_name="大樂透 Social Wisdom Anti-Popularity",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.OBSERVATION,
+        executable=False,
+        min_history=1,
+        provenance=(
+            "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+            "legacy_source:lottery_api/models/replay_strategy_registry.py",
+            "legacy_task:P541F_R2",
+            "legacy_pr:690",
+            "migration_task:P600B_R2",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_zone_split_3bet_bet1",
+        strategy_name="大樂透 Zone Split 3注（Replay Bet 1）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.OBSERVATION,
+        executable=False,
+        min_history=1,
+        provenance=(
+            "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+            "legacy_source:lottery_api/models/replay_strategy_registry.py",
+            "legacy_task:P541F_R2",
+            "legacy_pr:690",
+            "migration_task:P600B_R2",
+        ),
+    ),
+)
+
+
 def production_catalog() -> StrategyCatalog:
-    """Production descriptors land here during migration batch 2 (P600A),
-    each carrying provenance back to the legacy task/PR that validated it."""
-    return StrategyCatalog(())
+    """Return metadata in the pinned legacy descriptor declaration order."""
+    return StrategyCatalog(_PRODUCTION_DESCRIPTORS)

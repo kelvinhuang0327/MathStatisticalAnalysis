@@ -1,0 +1,103 @@
+{
+  "schema_version": 2,
+  "purpose": "LottoLab P600B DB-free migration parity fixtures",
+  "legacy_commit": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+  "p541f_source_commit": "915cf6b0d42ee85bc00fe5d1e171879c5652af50",
+  "source_paths": [
+    "lottery_api/models/replay_strategy_registry.py"
+  ],
+  "source_sha256": {
+    "lottery_api/models/replay_strategy_registry.py": "c6c0352868f93c27e68c230e14b1b1c8f8c6a4f2feb021574d2f7cc49170976e"
+  },
+  "extraction": {
+    "method": "Python ast.parse/ast.literal_eval of _NON_EXECUTABLE_STUBS _LifecycleStub keyword literals",
+    "legacy_module_imported": false,
+    "legacy_runtime_executed": false,
+    "prediction_adapters_executed": false,
+    "database_access": "NONE",
+    "database_arguments_or_path_resolution": false,
+    "writes": "explicit output directories only"
+  },
+  "runtime": {
+    "python_version": "3.13.8",
+    "dependency_lock": null,
+    "dependency_lock_status": "ABSENT_AT_PIN",
+    "requirements_sha256": "2046dd0aa9cc084352a2fb1a664e032fba23ac81f0b1e7d3f1d70ff9d1a1e130",
+    "dependency_install_performed": false
+  },
+  "scope": {
+    "strategy_ids": [
+      "biglotto_social_wisdom_anti_popularity",
+      "biglotto_zone_split_3bet_bet1"
+    ],
+    "excluded": [
+      "database and snapshots",
+      "prediction algorithms",
+      "replay execution",
+      "evaluation",
+      "research artifacts",
+      "ONLINE adapter execution"
+    ]
+  },
+  "canonicalization_rules": [
+    "filter _NON_EXECUTABLE_STUBS to TARGET_IDS",
+    "preserve pinned legacy declaration order (Social Wisdom then Zone Split)",
+    "emit object keys in declared schema order",
+    "UTF-8 JSON, two-space indentation, trailing newline"
+  ],
+  "byte_exact_files": [
+    "strategy_catalog.json",
+    "lifecycle_metadata.json"
+  ],
+  "canonical_output": {
+    "files": {
+      "strategy_catalog.json": {
+        "sha256": "f78891865cc03d800ef1da1840150427d8e61e08aa06e1b8a7b16da9600ee9af",
+        "bytes": 534
+      },
+      "lifecycle_metadata.json": {
+        "sha256": "c22178bd41d005dff8d1bcd0b8b0c7c6d71414ac2dc1d5aac17d53bcd4567e33",
+        "bytes": 1003
+      }
+    },
+    "aggregate_sha256": "8ba8d43fe046ff2eb1b46fbcb71bc5d14a18208aada3473379729f17c47e76ec"
+  },
+  "verification_runs": [
+    {
+      "run": 1,
+      "files": {
+        "strategy_catalog.json": {
+          "sha256": "f78891865cc03d800ef1da1840150427d8e61e08aa06e1b8a7b16da9600ee9af",
+          "bytes": 534
+        },
+        "lifecycle_metadata.json": {
+          "sha256": "c22178bd41d005dff8d1bcd0b8b0c7c6d71414ac2dc1d5aac17d53bcd4567e33",
+          "bytes": 1003
+        }
+      },
+      "aggregate_sha256": "8ba8d43fe046ff2eb1b46fbcb71bc5d14a18208aada3473379729f17c47e76ec"
+    },
+    {
+      "run": 2,
+      "files": {
+        "strategy_catalog.json": {
+          "sha256": "f78891865cc03d800ef1da1840150427d8e61e08aa06e1b8a7b16da9600ee9af",
+          "bytes": 534
+        },
+        "lifecycle_metadata.json": {
+          "sha256": "c22178bd41d005dff8d1bcd0b8b0c7c6d71414ac2dc1d5aac17d53bcd4567e33",
+          "bytes": 1003
+        }
+      },
+      "aggregate_sha256": "8ba8d43fe046ff2eb1b46fbcb71bc5d14a18208aada3473379729f17c47e76ec"
+    }
+  ],
+  "two_run_reproducibility": {
+    "result": "PASS",
+    "canonical_aggregate_sha256": "8ba8d43fe046ff2eb1b46fbcb71bc5d14a18208aada3473379729f17c47e76ec"
+  },
+  "exporter": {
+    "path": "tools/export_legacy_p600b_fixtures.py",
+    "sha256": "f342728dd3796a318a640c66601a1fe2c7c8bdf7018a1eb9ba30b939ac918149"
+  }
+}

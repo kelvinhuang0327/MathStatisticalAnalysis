@@ -41,3 +41,56 @@ def test_layer_dependencies() -> None:
                     if module == prefix or module.startswith(prefix + "."):
                         violations.append(f"{path.relative_to(SRC)} imports {module}")
     assert not violations, "layer violations:\n" + "\n".join(violations)
+
+
+def _lottolab_module_path(module: str) -> Path | None:
+    if module == "lottolab":
+        return SRC / "__init__.py"
+    if not module.startswith("lottolab."):
+        return None
+    relative = Path(*module.removeprefix("lottolab.").split("."))
+    module_file = (SRC / relative).with_suffix(".py")
+    if module_file.is_file():
+        return module_file
+    package_file = SRC / relative / "__init__.py"
+    return package_file if package_file.is_file() else None
+
+
+def _transitive_imports(start: str) -> set[str]:
+    pending = [start]
+    visited: set[str] = set()
+    found: set[str] = set()
+    while pending:
+        module = pending.pop()
+        if module in visited:
+            continue
+        visited.add(module)
+        path = _lottolab_module_path(module)
+        if path is None:
+            continue
+        imports = imported_modules(path)
+        found.update(imports)
+        pending.extend(item for item in imports if item.startswith("lottolab"))
+    return found
+
+
+def test_strategy_catalog_request_path_has_no_database_dependency() -> None:
+    imports = _transitive_imports("lottolab.interfaces.api.strategy_catalog")
+    assert "sqlite3" not in imports
+    assert not any(module.startswith("lottolab.infrastructure") for module in imports)
+
+
+def test_catalog_does_not_import_adapters() -> None:
+    imports = imported_modules(SRC / "strategies" / "catalog.py")
+    assert "importlib" not in imports
+    assert "lottolab.strategies.executable_registry" not in imports
+    assert not any("adapter" in module for module in imports)
+
+
+def test_production_code_does_not_import_legacy_or_migration_fixtures() -> None:
+    violations: list[str] = []
+    for path in SRC.rglob("*.py"):
+        for module in imported_modules(path):
+            if module.startswith(("lottery_api", "tests", "tools")):
+                violations.append(f"{path.relative_to(SRC)} imports {module}")
+    assert not violations, "production import violations:\n" + "\n".join(violations)

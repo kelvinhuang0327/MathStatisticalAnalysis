@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import sqlite3
 import stat
 from collections.abc import Generator, Mapping
@@ -121,60 +122,134 @@ MIGRATION_STATEMENTS = (
 MIGRATION_SQL = ";\n".join(statement.strip() for statement in MIGRATION_STATEMENTS) + ";\n"
 MIGRATION_CHECKSUM = hashlib.sha256(MIGRATION_SQL.encode("utf-8")).hexdigest()
 
-_EXPECTED_COLUMNS = {
-    "schema_migrations": ("version", "name", "checksum", "applied_at"),
-    "draws": (
-        "id",
-        "lottery_type",
-        "draw_number",
-        "draw_date",
-        "main_numbers_json",
-        "special_numbers_json",
-        "normalized_record_hash",
-        "source_name",
-        "source_reference",
-        "ingestion_run_id",
-        "created_at",
-        "updated_at",
+_EXPECTED_TABLE_XINFO = {
+    "schema_migrations": (
+        (0, "version", "INTEGER", 0, None, 1, 0),
+        (1, "name", "TEXT", 1, None, 0, 0),
+        (2, "checksum", "TEXT", 1, None, 0, 0),
+        (3, "applied_at", "TEXT", 1, None, 0, 0),
     ),
     "ingestion_runs": (
-        "id",
-        "operation_type",
-        "status",
-        "lottery_type",
-        "source_filename",
-        "source_sha256",
-        "parser_version",
-        "total_count",
-        "inserted_count",
-        "skipped_count",
-        "conflict_count",
-        "failed_count",
-        "first_draw_number",
-        "last_draw_number",
-        "started_at",
-        "completed_at",
-        "error_summary",
+        (0, "id", "TEXT", 0, None, 1, 0),
+        (1, "operation_type", "TEXT", 1, None, 0, 0),
+        (2, "status", "TEXT", 1, None, 0, 0),
+        (3, "lottery_type", "TEXT", 0, None, 0, 0),
+        (4, "source_filename", "TEXT", 1, None, 0, 0),
+        (5, "source_sha256", "TEXT", 1, None, 0, 0),
+        (6, "parser_version", "TEXT", 1, None, 0, 0),
+        (7, "total_count", "INTEGER", 1, None, 0, 0),
+        (8, "inserted_count", "INTEGER", 1, None, 0, 0),
+        (9, "skipped_count", "INTEGER", 1, None, 0, 0),
+        (10, "conflict_count", "INTEGER", 1, None, 0, 0),
+        (11, "failed_count", "INTEGER", 1, None, 0, 0),
+        (12, "first_draw_number", "TEXT", 0, None, 0, 0),
+        (13, "last_draw_number", "TEXT", 0, None, 0, 0),
+        (14, "started_at", "TEXT", 1, None, 0, 0),
+        (15, "completed_at", "TEXT", 0, None, 0, 0),
+        (16, "error_summary", "TEXT", 0, None, 0, 0),
+    ),
+    "draws": (
+        (0, "id", "INTEGER", 0, None, 1, 0),
+        (1, "lottery_type", "TEXT", 1, None, 0, 0),
+        (2, "draw_number", "TEXT", 1, None, 0, 0),
+        (3, "draw_date", "TEXT", 1, None, 0, 0),
+        (4, "main_numbers_json", "TEXT", 1, None, 0, 0),
+        (5, "special_numbers_json", "TEXT", 1, None, 0, 0),
+        (6, "normalized_record_hash", "TEXT", 1, None, 0, 0),
+        (7, "source_name", "TEXT", 0, None, 0, 0),
+        (8, "source_reference", "TEXT", 0, None, 0, 0),
+        (9, "ingestion_run_id", "TEXT", 1, None, 0, 0),
+        (10, "created_at", "TEXT", 1, None, 0, 0),
+        (11, "updated_at", "TEXT", 1, None, 0, 0),
     ),
     "ingestion_items": (
-        "id",
-        "ingestion_run_id",
-        "source_row_number",
-        "lottery_type",
-        "draw_number",
-        "disposition",
-        "normalized_record_hash",
-        "message",
+        (0, "id", "INTEGER", 0, None, 1, 0),
+        (1, "ingestion_run_id", "TEXT", 1, None, 0, 0),
+        (2, "source_row_number", "INTEGER", 1, None, 0, 0),
+        (3, "lottery_type", "TEXT", 0, None, 0, 0),
+        (4, "draw_number", "TEXT", 0, None, 0, 0),
+        (5, "disposition", "TEXT", 1, None, 0, 0),
+        (6, "normalized_record_hash", "TEXT", 0, None, 0, 0),
+        (7, "message", "TEXT", 0, None, 0, 0),
     ),
 }
 
-_EXPECTED_INDEXES = {
-    "idx_draws_history",
-    "idx_ingestion_items_run_row",
-    "idx_ingestion_runs_history",
-    "sqlite_autoindex_draws_1",
-    "sqlite_autoindex_ingestion_runs_1",
+_EXPECTED_INDEX_LIST = {
+    "schema_migrations": {},
+    "ingestion_runs": {
+        "idx_ingestion_runs_history": (0, "c", 0),
+        "sqlite_autoindex_ingestion_runs_1": (1, "pk", 0),
+    },
+    "draws": {
+        "idx_draws_history": (0, "c", 0),
+        "sqlite_autoindex_draws_1": (1, "u", 0),
+    },
+    "ingestion_items": {
+        "idx_ingestion_items_run_row": (0, "c", 0),
+    },
 }
+
+_EXPECTED_INDEX_XINFO = {
+    "sqlite_autoindex_ingestion_runs_1": (
+        (0, 0, "id", 0, "BINARY", 1),
+        (1, -1, None, 0, "BINARY", 0),
+    ),
+    "sqlite_autoindex_draws_1": (
+        (0, 1, "lottery_type", 0, "BINARY", 1),
+        (1, 2, "draw_number", 0, "BINARY", 1),
+        (2, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_draws_history": (
+        (0, 1, "lottery_type", 0, "BINARY", 1),
+        (1, 3, "draw_date", 1, "BINARY", 1),
+        (2, 2, "draw_number", 1, "BINARY", 1),
+        (3, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_ingestion_runs_history": (
+        (0, 14, "started_at", 1, "BINARY", 1),
+        (1, 0, "id", 1, "BINARY", 1),
+        (2, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_ingestion_items_run_row": (
+        (0, 1, "ingestion_run_id", 0, "BINARY", 1),
+        (1, 2, "source_row_number", 0, "BINARY", 1),
+        (2, 0, "id", 0, "BINARY", 1),
+        (3, -1, None, 0, "BINARY", 0),
+    ),
+}
+
+_EXPECTED_FOREIGN_KEYS = {
+    "schema_migrations": (),
+    "ingestion_runs": (),
+    "draws": ((0, 0, "ingestion_runs", "ingestion_run_id", "id", "NO ACTION", "RESTRICT", "NONE"),),
+    "ingestion_items": (
+        (0, 0, "ingestion_runs", "ingestion_run_id", "id", "NO ACTION", "CASCADE", "NONE"),
+    ),
+}
+
+_EXPECTED_SCHEMA_SQL = {
+    "schema_migrations": MIGRATION_STATEMENTS[0],
+    "ingestion_runs": MIGRATION_STATEMENTS[1],
+    "draws": MIGRATION_STATEMENTS[2],
+    "ingestion_items": MIGRATION_STATEMENTS[3],
+    "idx_draws_history": MIGRATION_STATEMENTS[4],
+    "idx_ingestion_runs_history": MIGRATION_STATEMENTS[5],
+    "idx_ingestion_items_run_row": MIGRATION_STATEMENTS[6],
+    "sqlite_autoindex_draws_1": None,
+    "sqlite_autoindex_ingestion_runs_1": None,
+}
+
+_EXPECTED_SCHEMA_OBJECTS = {("table", name, name) for name in _EXPECTED_TABLE_XINFO} | {
+    ("index", "idx_draws_history", "draws"),
+    ("index", "idx_ingestion_runs_history", "ingestion_runs"),
+    ("index", "idx_ingestion_items_run_row", "ingestion_items"),
+    ("index", "sqlite_autoindex_draws_1", "draws"),
+    ("index", "sqlite_autoindex_ingestion_runs_1", "ingestion_runs"),
+}
+
+_SCHEMA_SQL_TOKEN = re.compile(
+    r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^]]*\]|[(),]|[^\s(),]+"
+)
 
 
 def resolve_local_data_paths(
@@ -359,35 +434,93 @@ def _verify_migration_state(connection: sqlite3.Connection) -> bool:
     if name != MIGRATION_NAME or checksum != MIGRATION_CHECKSUM:
         raise MigrationChecksumError("database migration checksum does not match")
 
-    expected_tables = set(_EXPECTED_COLUMNS)
-    if table_names != expected_tables:
-        raise SchemaMigrationError("database schema tables do not match version 1")
-    for table, expected_columns in _EXPECTED_COLUMNS.items():
-        columns = tuple(str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})"))
-        if columns != expected_columns:
-            raise SchemaMigrationError(f"database table shape does not match version 1: {table}")
-
-    indexes = {
-        str(row[0])
-        for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'index' ORDER BY name"
-        )
-    }
-    if indexes != _EXPECTED_INDEXES:
-        raise SchemaMigrationError("database schema indexes do not match version 1")
-
-    foreign_keys = {
-        (table, str(row[2]), str(row[3]), str(row[4]))
-        for table in ("draws", "ingestion_items")
-        for row in connection.execute(f"PRAGMA foreign_key_list({table})")
-    }
-    expected_foreign_keys = {
-        ("draws", "ingestion_runs", "ingestion_run_id", "id"),
-        ("ingestion_items", "ingestion_runs", "ingestion_run_id", "id"),
-    }
-    if foreign_keys != expected_foreign_keys:
-        raise SchemaMigrationError("database foreign keys do not match version 1")
+    _verify_schema_semantics(connection, table_names)
     return True
+
+
+def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[str]) -> None:
+    if table_names != set(_EXPECTED_TABLE_XINFO):
+        raise SchemaMigrationError("database schema tables do not match version 1")
+
+    schema_rows = connection.execute(
+        "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name"
+    ).fetchall()
+    schema_objects = {(str(row[0]), str(row[1]), str(row[2])) for row in schema_rows}
+    if schema_objects != _EXPECTED_SCHEMA_OBJECTS:
+        raise SchemaMigrationError("database schema objects do not match version 1")
+    for row in schema_rows:
+        name = str(row[1])
+        expected_sql = _EXPECTED_SCHEMA_SQL[name]
+        actual_sql = row[3]
+        if expected_sql is None:
+            if actual_sql is not None:
+                raise SchemaMigrationError(f"database schema SQL does not match version 1: {name}")
+        elif not isinstance(actual_sql, str) or _canonical_schema_sql(
+            actual_sql
+        ) != _canonical_schema_sql(expected_sql):
+            raise SchemaMigrationError(f"database schema SQL does not match version 1: {name}")
+
+    for table, expected_columns in _EXPECTED_TABLE_XINFO.items():
+        columns = tuple(
+            (
+                int(row[0]),
+                str(row[1]),
+                str(row[2]),
+                int(row[3]),
+                None if row[4] is None else str(row[4]),
+                int(row[5]),
+                int(row[6]),
+            )
+            for row in connection.execute(f"PRAGMA table_xinfo({table})")
+        )
+        if columns != expected_columns:
+            raise SchemaMigrationError(f"database table semantics do not match version 1: {table}")
+
+        indexes = {
+            str(row[1]): (int(row[2]), str(row[3]), int(row[4]))
+            for row in connection.execute(f"PRAGMA index_list({table})")
+        }
+        if indexes != _EXPECTED_INDEX_LIST[table]:
+            raise SchemaMigrationError(
+                f"database index inventory does not match version 1: {table}"
+            )
+
+        foreign_keys = tuple(
+            (
+                int(row[0]),
+                int(row[1]),
+                str(row[2]),
+                str(row[3]),
+                str(row[4]),
+                str(row[5]),
+                str(row[6]),
+                str(row[7]),
+            )
+            for row in connection.execute(f"PRAGMA foreign_key_list({table})")
+        )
+        if foreign_keys != _EXPECTED_FOREIGN_KEYS[table]:
+            raise SchemaMigrationError(
+                f"database foreign-key semantics do not match version 1: {table}"
+            )
+
+    for index, expected_index_columns in _EXPECTED_INDEX_XINFO.items():
+        index_columns = tuple(
+            (
+                int(row[0]),
+                int(row[1]),
+                None if row[2] is None else str(row[2]),
+                int(row[3]),
+                None if row[4] is None else str(row[4]),
+                int(row[5]),
+            )
+            for row in connection.execute(f"PRAGMA index_xinfo({index})")
+        )
+        if index_columns != expected_index_columns:
+            raise SchemaMigrationError(f"database index semantics do not match version 1: {index}")
+
+
+def _canonical_schema_sql(sql: str) -> tuple[str, ...]:
+    return tuple(token.casefold() for token in _SCHEMA_SQL_TOKEN.findall(sql))
 
 
 def _validate_path_definition(paths: LocalDataPaths) -> None:

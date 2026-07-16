@@ -73,8 +73,7 @@ class SQLiteDrawRepository:
 
     def find(self, lottery_type: LotteryType, draw_number: str) -> DrawRecord | None:
         row = self._connection.execute(
-            f"SELECT {_DRAW_COLUMNS} FROM draws "
-            "WHERE lottery_type = ? AND draw_number = ?",
+            f"SELECT {_DRAW_COLUMNS} FROM draws WHERE lottery_type = ? AND draw_number = ?",
             (lottery_type.value, draw_number),
         ).fetchone()
         return None if row is None else _draw_record(row)
@@ -416,15 +415,9 @@ class SQLiteDrawDataRepository:
             raise InvalidDrawImportError(result)
 
         try:
-            schema_existed = verify_schema_read_only(self._paths)
-            if not schema_existed:
-                initialize_schema(self._paths)
+            initialize_schema(self._paths)
             with open_database(self._paths) as connection:
-                return self._apply_transaction(
-                    connection,
-                    result=result,
-                    record_failed_run=schema_existed,
-                )
+                return self._apply_transaction(connection, result=result)
         except (InvalidDrawImportError, ExistingDrawConflictError):
             raise
         except (
@@ -440,7 +433,6 @@ class SQLiteDrawDataRepository:
         connection: sqlite3.Connection,
         *,
         result: DrawCsvParseResult,
-        record_failed_run: bool,
     ) -> ImportCommitResult:
         rows = result.normalized_rows
         lottery_type = _single_lottery_type(rows)
@@ -468,8 +460,7 @@ class SQLiteDrawDataRepository:
                 for row in rows
             )
             if any(
-                decision.disposition is IngestionItemDisposition.CONFLICT
-                for decision in decisions
+                decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
             ):
                 connection.rollback()
                 conflict_result = self._record_failed_conflict(
@@ -479,7 +470,6 @@ class SQLiteDrawDataRepository:
                     lottery_type=lottery_type,
                     first_draw_number=first_draw_number,
                     last_draw_number=last_draw_number,
-                    record_failed_run=record_failed_run,
                 )
                 raise ExistingDrawConflictError(conflict_result)
 
@@ -548,7 +538,6 @@ class SQLiteDrawDataRepository:
         lottery_type: LotteryType | None,
         first_draw_number: str | None,
         last_draw_number: str | None,
-        record_failed_run: bool,
     ) -> ImportCommitResult:
         rows = result.normalized_rows
         draw_repository = SQLiteDrawRepository(connection)
@@ -563,59 +552,55 @@ class SQLiteDrawDataRepository:
                 for decision in decisions
             )
             conflict_count = sum(
-                decision.disposition is IngestionItemDisposition.CONFLICT
-                for decision in decisions
+                decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
             )
             failed_count = len(rows) - skipped_count - conflict_count
             completed_at = _utc_now()
 
-            if record_failed_run:
-                run_repository = SQLiteIngestionRunRepository(connection)
-                item_repository = SQLiteIngestionItemRepository(connection)
-                run_repository.create(
+            run_repository = SQLiteIngestionRunRepository(connection)
+            item_repository = SQLiteIngestionItemRepository(connection)
+            run_repository.create(
+                run_id=run_id,
+                lottery_type=lottery_type,
+                result=result,
+                total_count=len(rows),
+                first_draw_number=first_draw_number,
+                last_draw_number=last_draw_number,
+                started_at=completed_at,
+            )
+            for decision in decisions:
+                disposition = decision.disposition
+                if disposition is IngestionItemDisposition.INSERTED:
+                    disposition = IngestionItemDisposition.FAILED
+                    message = "Not inserted because the batch contains a conflict."
+                elif disposition is IngestionItemDisposition.SKIPPED_DUPLICATE:
+                    message = "Existing draw is semantically identical."
+                else:
+                    message = "Existing draw differs; batch rejected."
+                item_repository.add(
                     run_id=run_id,
-                    lottery_type=lottery_type,
-                    result=result,
-                    total_count=len(rows),
-                    first_draw_number=first_draw_number,
-                    last_draw_number=last_draw_number,
-                    started_at=completed_at,
+                    row=decision.row,
+                    disposition=disposition,
+                    message=message,
                 )
-                for decision in decisions:
-                    disposition = decision.disposition
-                    if disposition is IngestionItemDisposition.INSERTED:
-                        disposition = IngestionItemDisposition.FAILED
-                        message = "Not inserted because the batch contains a conflict."
-                    elif disposition is IngestionItemDisposition.SKIPPED_DUPLICATE:
-                        message = "Existing draw is semantically identical."
-                    else:
-                        message = "Existing draw differs; batch rejected."
-                    item_repository.add(
-                        run_id=run_id,
-                        row=decision.row,
-                        disposition=disposition,
-                        message=message,
-                    )
-                run_repository.complete(
-                    run_id=run_id,
-                    status=IngestionRunStatus.FAILED,
-                    inserted_count=0,
-                    skipped_count=skipped_count,
-                    conflict_count=conflict_count,
-                    failed_count=failed_count,
-                    completed_at=completed_at,
-                    error_summary="Batch rejected because existing draw data conflicts.",
-                )
-                connection.commit()
-            else:
-                connection.rollback()
+            run_repository.complete(
+                run_id=run_id,
+                status=IngestionRunStatus.FAILED,
+                inserted_count=0,
+                skipped_count=skipped_count,
+                conflict_count=conflict_count,
+                failed_count=failed_count,
+                completed_at=completed_at,
+                error_summary="Batch rejected because existing draw data conflicts.",
+            )
+            connection.commit()
         except BaseException:
             if connection.in_transaction:
                 connection.rollback()
             raise
 
         failed = ImportCommitResult(
-            run_id=run_id if record_failed_run else None,
+            run_id=run_id,
             status=IngestionRunStatus.FAILED,
             lottery_type=lottery_type,
             total_count=len(rows),

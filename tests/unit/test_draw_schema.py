@@ -16,6 +16,8 @@ from lottolab.infrastructure.persistence.draw_schema import (
     CURRENT_SCHEMA_VERSION,
     DATA_DIRECTORY_ENV,
     MIGRATION_CHECKSUM,
+    MIGRATION_NAME,
+    MIGRATION_STATEMENTS,
     LocalDataError,
     LocalDataPaths,
     MigrationChecksumError,
@@ -30,6 +32,37 @@ from lottolab.infrastructure.persistence.draw_schema import (
 
 def task_paths(tmp_path: Path) -> LocalDataPaths:
     return resolve_local_data_paths(environ={DATA_DIRECTORY_ENV: str(tmp_path / "lottolab-data")})
+
+
+def create_lookalike_schema(
+    paths: LocalDataPaths,
+    *,
+    replacement: tuple[int, str, str] | None = None,
+    extra_sql: str | None = None,
+) -> None:
+    paths.data_directory.mkdir(mode=0o700, parents=True)
+    paths.data_directory.chmod(0o700)
+    descriptor = os.open(paths.database, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(descriptor)
+    paths.database.chmod(0o600)
+
+    statements: list[str] = list(MIGRATION_STATEMENTS)
+    if replacement is not None:
+        index, original, altered = replacement
+        assert original in statements[index]
+        statements[index] = statements[index].replace(original, altered)
+    with sqlite3.connect(paths.database) as connection:
+        for statement in statements:
+            connection.execute(statement)
+        if extra_sql is not None:
+            connection.execute(extra_sql)
+        connection.execute(
+            """
+            INSERT INTO schema_migrations (version, name, checksum, applied_at)
+            VALUES (?, ?, ?, '2026-07-16T00:00:00Z')
+            """,
+            (CURRENT_SCHEMA_VERSION, MIGRATION_NAME, MIGRATION_CHECKSUM),
+        )
 
 
 def test_resolver_is_lazy_and_uses_override_or_mac_default(tmp_path: Path) -> None:
@@ -226,4 +259,97 @@ def test_wal_database_fails_closed(tmp_path: Path) -> None:
         assert connection.execute("PRAGMA journal_mode = WAL").fetchone() == ("wal",)
 
     with pytest.raises(SchemaMigrationError, match="DELETE journal mode"):
+        verify_schema_read_only(paths)
+
+
+@pytest.mark.parametrize(
+    ("label", "replacement", "extra_sql"),
+    [
+        (
+            "column type",
+            (2, "draw_date TEXT NOT NULL", "draw_date BLOB NOT NULL"),
+            None,
+        ),
+        (
+            "column nullability",
+            (2, "draw_date TEXT NOT NULL", "draw_date TEXT"),
+            None,
+        ),
+        (
+            "column default",
+            (2, "draw_date TEXT NOT NULL", "draw_date TEXT NOT NULL DEFAULT ''"),
+            None,
+        ),
+        (
+            "unique index order",
+            (2, "UNIQUE (lottery_type, draw_number)", "UNIQUE (draw_number, lottery_type)"),
+            None,
+        ),
+        (
+            "foreign-key delete action",
+            (2, "ON DELETE RESTRICT", "ON DELETE CASCADE"),
+            None,
+        ),
+        (
+            "foreign-key update action",
+            (
+                2,
+                "REFERENCES ingestion_runs(id) ON DELETE RESTRICT",
+                "REFERENCES ingestion_runs(id) ON UPDATE CASCADE ON DELETE RESTRICT",
+            ),
+            None,
+        ),
+        (
+            "missing check",
+            (
+                3,
+                "source_row_number INTEGER NOT NULL CHECK (source_row_number >= 1)",
+                "source_row_number INTEGER NOT NULL",
+            ),
+            None,
+        ),
+        (
+            "partial index",
+            (
+                4,
+                "ON draws (lottery_type, draw_date DESC, draw_number DESC)",
+                "ON draws (lottery_type, draw_date DESC, draw_number DESC) "
+                "WHERE lottery_type IS NOT NULL",
+            ),
+            None,
+        ),
+        (
+            "unexpected trigger",
+            None,
+            """
+            CREATE TRIGGER unexpected_draw_trigger AFTER INSERT ON draws
+            BEGIN SELECT 1; END
+            """,
+        ),
+        (
+            "unexpected view",
+            None,
+            "CREATE VIEW unexpected_draw_view AS SELECT draw_number FROM draws",
+        ),
+        (
+            "extra semantic object",
+            None,
+            "CREATE INDEX unexpected_draw_date_index ON draws (draw_date)",
+        ),
+    ],
+)
+def test_lookalike_schema_semantic_changes_fail_closed(
+    tmp_path: Path,
+    label: str,
+    replacement: tuple[int, str, str] | None,
+    extra_sql: str | None,
+) -> None:
+    paths = task_paths(tmp_path / label.replace(" ", "-"))
+    create_lookalike_schema(paths, replacement=replacement, extra_sql=extra_sql)
+
+    with sqlite3.connect(paths.database) as connection:
+        assert connection.execute(
+            "SELECT name, checksum FROM schema_migrations WHERE version = 1"
+        ).fetchone() == (MIGRATION_NAME, MIGRATION_CHECKSUM)
+    with pytest.raises(SchemaMigrationError):
         verify_schema_read_only(paths)

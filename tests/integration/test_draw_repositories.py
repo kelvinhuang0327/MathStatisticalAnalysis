@@ -11,6 +11,7 @@ import pytest
 from pytest import MonkeyPatch
 
 import lottolab.infrastructure.persistence.draw_schema as draw_schema
+import lottolab.infrastructure.persistence.repositories as repositories
 from lottolab.application.draw_data import (
     DrawHistoryQuery,
     ExistingDrawConflictError,
@@ -43,9 +44,7 @@ HEADER = "lottery_type,draw_number,draw_date,main_numbers,special_numbers,source
 
 
 def task_paths(tmp_path: Path) -> LocalDataPaths:
-    return resolve_local_data_paths(
-        environ={DATA_DIRECTORY_ENV: str(tmp_path / "task-draw-data")}
-    )
+    return resolve_local_data_paths(environ={DATA_DIRECTORY_ENV: str(tmp_path / "task-draw-data")})
 
 
 def parsed(
@@ -64,9 +63,7 @@ def row(
     special_number: str = "7",
     source: str = "synthetic-reference",
 ) -> str:
-    return (
-        f"BIG_LOTTO,{draw_number},{draw_date},{main_numbers},{special_number},{source}"
-    )
+    return f"BIG_LOTTO,{draw_number},{draw_date},{main_numbers},{special_number},{source}"
 
 
 def test_empty_history_reads_do_not_create_directory_or_database(tmp_path: Path) -> None:
@@ -175,9 +172,7 @@ def test_history_filters_and_string_order_are_deterministic(tmp_path: Path) -> N
 def test_ingestion_run_item_details_are_ordered_and_bounded(tmp_path: Path) -> None:
     paths = task_paths(tmp_path)
     repository = SQLiteDrawDataRepository(paths)
-    document = parsed(
-        *(row(str(index), "2026-07-16") for index in range(1, 502))
-    )
+    document = parsed(*(row(str(index), "2026-07-16") for index in range(1, 502)))
 
     committed = repository.apply_valid_import(document)
     assert committed.run_id is not None
@@ -300,17 +295,28 @@ def test_concurrent_equivalent_commits_insert_once_then_skip(tmp_path: Path) -> 
     assert repository.list_ingestion_runs(IngestionRunQuery()).total_count == 2
 
 
-def test_concurrent_conflicting_commits_never_overwrite(tmp_path: Path) -> None:
+def test_concurrent_fresh_database_conflict_commits_failed_audit(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
     paths = task_paths(tmp_path)
-    initialize_schema(paths)
-    barrier = Barrier(2)
+    assert not paths.data_directory.exists()
+    assert not paths.database.exists()
+    start_barrier = Barrier(2)
+    fresh_path_barrier = Barrier(2)
+    original_initialize = repositories.initialize_schema
+
+    def synchronized_fresh_path(candidate: LocalDataPaths) -> None:
+        fresh_path_barrier.wait(timeout=5)
+        original_initialize(candidate)
+
+    monkeypatch.setattr(repositories, "initialize_schema", synchronized_fresh_path)
     documents = (
         parsed(row("600", "2026-07-16", main_numbers="1|3|9|17|24|49")),
         parsed(row("600", "2026-07-16", main_numbers="1|3|9|17|24|48")),
     )
 
     def commit(document: DrawCsvParseResult) -> ImportCommitResult | ExistingDrawConflictError:
-        barrier.wait(timeout=5)
+        start_barrier.wait(timeout=5)
         try:
             return SQLiteDrawDataRepository(paths).apply_valid_import(document)
         except ExistingDrawConflictError as exc:
@@ -321,12 +327,17 @@ def test_concurrent_conflicting_commits_never_overwrite(tmp_path: Path) -> None:
             executor.submit(commit, documents[0]),
             executor.submit(commit, documents[1]),
         )
-        results = [
-            future.result(timeout=10)
-            for future in futures
-        ]
+        results = [future.result(timeout=10) for future in futures]
 
     assert sum(isinstance(result, ExistingDrawConflictError) for result in results) == 1
+    failed = next(
+        result.result for result in results if isinstance(result, ExistingDrawConflictError)
+    )
+    assert failed.run_id is not None
+    assert failed.status is IngestionRunStatus.FAILED
+    assert failed.inserted_count == 0
+    assert failed.conflict_count == 1
+    assert failed.counts_are_consistent
     repository = SQLiteDrawDataRepository(paths)
     stored = repository.get_draw(LotteryType.BIG_LOTTO, "600")
     assert stored is not None
@@ -335,11 +346,65 @@ def test_concurrent_conflicting_commits_never_overwrite(tmp_path: Path) -> None:
         (1, 3, 9, 17, 24, 49),
     }
     assert repository.list_draws(DrawHistoryQuery()).total_count == 1
-    statuses = {
-        run.status
-        for run in repository.list_ingestion_runs(IngestionRunQuery(page_size=10)).records
+    runs = repository.list_ingestion_runs(IngestionRunQuery(page_size=10)).records
+    assert len(runs) == 2
+    assert {run.status for run in runs} == {
+        IngestionRunStatus.SUCCESS,
+        IngestionRunStatus.FAILED,
     }
-    assert statuses == {IngestionRunStatus.SUCCESS, IngestionRunStatus.FAILED}
+    detail = repository.get_ingestion_run(failed.run_id)
+    assert detail is not None
+    assert detail.run.status is IngestionRunStatus.FAILED
+    assert detail.run.total_count == detail.item_count == 1
+    assert [item.disposition for item in detail.items] == [IngestionItemDisposition.CONFLICT]
+
+
+def test_busy_failed_audit_returns_service_busy_without_false_conflict(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    paths = task_paths(tmp_path)
+    repository = SQLiteDrawDataRepository(paths)
+    successful = repository.apply_valid_import(parsed(row("650", "2026-07-16")))
+    stored_before = repository.get_draw(LotteryType.BIG_LOTTO, "650")
+    original_record_failed = (
+        SQLiteDrawDataRepository._record_failed_conflict  # pyright: ignore[reportPrivateUsage]
+    )
+    monkeypatch.setattr(draw_schema, "BUSY_TIMEOUT_MS", 10)
+
+    def hold_audit_writer_lock(
+        self: SQLiteDrawDataRepository,
+        connection: sqlite3.Connection,
+        *,
+        result: DrawCsvParseResult,
+        run_id: str,
+        lottery_type: LotteryType | None,
+        first_draw_number: str | None,
+        last_draw_number: str | None,
+    ) -> ImportCommitResult:
+        lock = sqlite3.connect(paths.database, isolation_level=None)
+        lock.execute("BEGIN IMMEDIATE")
+        try:
+            return original_record_failed(
+                self,
+                connection,
+                result=result,
+                run_id=run_id,
+                lottery_type=lottery_type,
+                first_draw_number=first_draw_number,
+                last_draw_number=last_draw_number,
+            )
+        finally:
+            lock.rollback()
+            lock.close()
+
+    monkeypatch.setattr(SQLiteDrawDataRepository, "_record_failed_conflict", hold_audit_writer_lock)
+    conflict = parsed(row("650", "2026-07-16", main_numbers="1|3|9|17|24|48"))
+    with pytest.raises(RepositoryBusyError, match="temporarily busy"):
+        repository.apply_valid_import(conflict)
+
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "650") == stored_before
+    runs = repository.list_ingestion_runs(IngestionRunQuery(page_size=10)).records
+    assert [run.run_id for run in runs] == [successful.run_id]
 
 
 def test_busy_timeout_is_bounded_and_error_is_sanitized(
@@ -353,9 +418,7 @@ def test_busy_timeout_is_bounded_and_error_is_sanitized(
     lock.execute("BEGIN IMMEDIATE")
     try:
         with pytest.raises(RepositoryBusyError, match="temporarily busy") as captured:
-            SQLiteDrawDataRepository(paths).apply_valid_import(
-                parsed(row("700", "2026-07-16"))
-            )
+            SQLiteDrawDataRepository(paths).apply_valid_import(parsed(row("700", "2026-07-16")))
     finally:
         lock.rollback()
         lock.close()

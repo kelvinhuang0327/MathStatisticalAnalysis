@@ -6,9 +6,9 @@ The CSV itself is comma-separated.  Values inside ``main_numbers`` and
 ``source`` are optional.  Headers are trimmed and case-insensitive.  Unknown
 columns are deliberately ignored and reported in ``ignored_columns``.
 
-This module performs only format-independent normalization.  BIG_LOTTO's rule
-contract is currently UNKNOWN, so even a syntactically normalized BIG_LOTTO row
-receives ``RULE_CONTRACT_UNKNOWN`` and cannot be committed.
+Lottery-specific count, range, uniqueness, overlap, and ordering validation is
+resolved from the immutable domain rule registry.  Missing or incomplete
+contracts remain fail-closed.
 """
 
 from __future__ import annotations
@@ -31,10 +31,17 @@ from lottolab.domain.ingestion import (
     LotteryRuleStatus,
     NormalizedDrawInput,
 )
+from lottolab.domain.lottery_rules import (
+    LOTTERY_RULE_CONTRACTS,
+    CanonicalNumberOrder,
+    LotteryRuleContract,
+    resolve_lottery_rule_contract,
+)
 
-PARSER_VERSION = "lottolab-draw-csv-v1"
+PARSER_VERSION = "lottolab-draw-csv-v2"
 MAX_CSV_BYTES = 1024 * 1024
 MAX_CSV_ROWS = 10_000
+MAX_DRAW_NUMBER_LENGTH = 32
 NUMBER_DELIMITER = "|"
 
 REQUIRED_COLUMNS = ("lottery_type", "draw_number", "draw_date", "main_numbers")
@@ -43,7 +50,11 @@ KNOWN_COLUMNS = frozenset((*REQUIRED_COLUMNS, *OPTIONAL_COLUMNS))
 UNKNOWN_COLUMNS_POLICY = "ignored-and-reported"
 
 RULE_STATUS_BY_LOTTERY_TYPE: Mapping[LotteryType, LotteryRuleStatus] = MappingProxyType(
-    {LotteryType.BIG_LOTTO: LotteryRuleStatus.UNKNOWN}
+    {
+        lottery_type: LotteryRuleStatus.PROVEN
+        for lottery_type, contract in LOTTERY_RULE_CONTRACTS.items()
+        if resolve_lottery_rule_contract(lottery_type, LOTTERY_RULE_CONTRACTS) is contract
+    }
 )
 SUPPORTED_LOTTERY_TYPES: tuple[LotteryType, ...] = tuple(
     lottery_type
@@ -117,7 +128,14 @@ def _normalize_draw_number(raw: str, row_number: int) -> tuple[str | None, DrawI
             row_number=row_number,
             field="draw_number",
         )
-    return raw.lstrip("0") or "0", None
+    if len(raw) > MAX_DRAW_NUMBER_LENGTH:
+        return None, DrawImportError(
+            code=DrawImportErrorCode.INVALID_DRAW_NUMBER,
+            message=f"draw_number must not exceed {MAX_DRAW_NUMBER_LENGTH} characters.",
+            row_number=row_number,
+            field="draw_number",
+        )
+    return raw, None
 
 
 def _normalize_draw_date(raw: str, row_number: int) -> tuple[date | None, DrawImportError | None]:
@@ -171,16 +189,116 @@ def _normalize_numbers(
 
     if errors:
         return None, tuple(errors)
-    if len(set(normalized)) != len(normalized):
-        return None, (
+    return tuple(normalized), ()
+
+
+def _validate_and_canonicalize_numbers(
+    main_numbers: tuple[int, ...],
+    special_numbers: tuple[int, ...],
+    *,
+    contract: LotteryRuleContract,
+    row_number: int,
+) -> tuple[tuple[int, ...], tuple[int, ...], tuple[DrawImportError, ...]]:
+    errors: list[DrawImportError] = []
+
+    if len(main_numbers) != contract.main_number_count:
+        errors.append(
+            DrawImportError(
+                code=DrawImportErrorCode.NUMBER_COUNT_MISMATCH,
+                message=(
+                    f"main_numbers must contain exactly {contract.main_number_count} values."
+                ),
+                row_number=row_number,
+                field="main_numbers",
+            )
+        )
+    if any(
+        value < contract.main_number_min or value > contract.main_number_max
+        for value in main_numbers
+    ):
+        errors.append(
+            DrawImportError(
+                code=DrawImportErrorCode.NUMBER_OUT_OF_RANGE,
+                message=(
+                    "main_numbers values must be between "
+                    f"{contract.main_number_min} and {contract.main_number_max}."
+                ),
+                row_number=row_number,
+                field="main_numbers",
+            )
+        )
+    if contract.main_numbers_unique and len(set(main_numbers)) != len(main_numbers):
+        errors.append(
             DrawImportError(
                 code=DrawImportErrorCode.DUPLICATE_NUMBER,
-                message=f"{field} contains a duplicate after numeric normalization.",
+                message="main_numbers must be unique after numeric normalization.",
                 row_number=row_number,
-                field=field,
-            ),
+                field="main_numbers",
+            )
         )
-    return tuple(sorted(normalized)), ()
+
+    allowed_special_counts = {contract.special_number_count}
+    if not contract.special_number_required:
+        allowed_special_counts.add(0)
+    if len(special_numbers) not in allowed_special_counts:
+        if contract.special_number_required:
+            message = (
+                "special_numbers is required and must contain exactly "
+                f"{contract.special_number_count} values."
+            )
+        else:
+            message = (
+                "special_numbers must be empty or contain exactly "
+                f"{contract.special_number_count} values."
+            )
+        errors.append(
+            DrawImportError(
+                code=DrawImportErrorCode.NUMBER_COUNT_MISMATCH,
+                message=message,
+                row_number=row_number,
+                field="special_numbers",
+            )
+        )
+    if any(
+        value < contract.special_number_min or value > contract.special_number_max
+        for value in special_numbers
+    ):
+        errors.append(
+            DrawImportError(
+                code=DrawImportErrorCode.NUMBER_OUT_OF_RANGE,
+                message=(
+                    "special_numbers values must be between "
+                    f"{contract.special_number_min} and {contract.special_number_max}."
+                ),
+                row_number=row_number,
+                field="special_numbers",
+            )
+        )
+    if contract.special_numbers_unique and len(set(special_numbers)) != len(special_numbers):
+        errors.append(
+            DrawImportError(
+                code=DrawImportErrorCode.DUPLICATE_NUMBER,
+                message="special_numbers must be unique after numeric normalization.",
+                row_number=row_number,
+                field="special_numbers",
+            )
+        )
+    if (
+        not contract.main_special_overlap_allowed
+        and set(main_numbers).intersection(special_numbers)
+    ):
+        errors.append(
+            DrawImportError(
+                code=DrawImportErrorCode.MAIN_SPECIAL_OVERLAP,
+                message="main_numbers and special_numbers must not overlap.",
+                row_number=row_number,
+                field="special_numbers",
+            )
+        )
+
+    if contract.canonical_number_order is CanonicalNumberOrder.ASCENDING_NUMERIC:
+        return tuple(sorted(main_numbers)), tuple(sorted(special_numbers)), tuple(errors)
+    raise AssertionError("resolved contracts must use a supported canonical number order")
 
 
 def _record_hash(
@@ -206,7 +324,12 @@ def _record_hash(
     return hashlib.sha256(canonical).hexdigest()
 
 
-def parse_draw_csv(content: str | bytes, *, filename: str = "") -> DrawCsvParseResult:
+def parse_draw_csv(
+    content: str | bytes,
+    *,
+    filename: str = "",
+    rule_contracts: Mapping[LotteryType, LotteryRuleContract] | None = None,
+) -> DrawCsvParseResult:
     """Return a bounded, deterministic parse result without filesystem or DB I/O."""
 
     raw, decoded = _decode_content(content)
@@ -369,6 +492,9 @@ def parse_draw_csv(content: str | bytes, *, filename: str = "") -> DrawCsvParseR
     duplicate_input_rows = 0
     conflicting_input_rows = 0
     seen_keys: dict[tuple[LotteryType, str], tuple[int, str]] = {}
+    active_rule_contracts = (
+        LOTTERY_RULE_CONTRACTS if rule_contracts is None else rule_contracts
+    )
 
     for row_number, row in indexed_rows:
         if all(not value.strip() for value in row):
@@ -401,6 +527,7 @@ def parse_draw_csv(content: str | bytes, *, filename: str = "") -> DrawCsvParseR
 
         lottery_type: LotteryType | None = None
         rule_status: LotteryRuleStatus | None = None
+        rule_contract: LotteryRuleContract | None = None
         if "lottery_type" not in missing_values:
             normalized_lottery_type = values["lottery_type"].upper()
             try:
@@ -421,7 +548,14 @@ def parse_draw_csv(content: str | bytes, *, filename: str = "") -> DrawCsvParseR
                 )
             else:
                 lottery_type = parsed_lottery_type
-                rule_status = RULE_STATUS_BY_LOTTERY_TYPE[parsed_lottery_type]
+                rule_contract = resolve_lottery_rule_contract(
+                    parsed_lottery_type, active_rule_contracts
+                )
+                rule_status = (
+                    LotteryRuleStatus.PROVEN
+                    if rule_contract is not None
+                    else LotteryRuleStatus.UNKNOWN
+                )
 
         draw_number: str | None = None
         if "draw_number" not in missing_values:
@@ -451,24 +585,35 @@ def parse_draw_csv(content: str | bytes, *, filename: str = "") -> DrawCsvParseR
             )
             row_errors.extend(number_errors)
 
-        if main_numbers is not None and special_numbers is not None:
-            overlap = set(main_numbers).intersection(special_numbers)
-            if overlap:
-                row_errors.append(
-                    DrawImportError(
-                        code=DrawImportErrorCode.DUPLICATE_NUMBER,
-                        message="main_numbers and special_numbers contain duplicate values.",
-                        row_number=row_number,
-                        field="special_numbers",
-                    )
-                )
+        if (
+            not row_errors
+            and rule_contract is not None
+            and main_numbers is not None
+            and special_numbers is not None
+        ):
+            main_numbers, special_numbers, rule_errors = _validate_and_canonicalize_numbers(
+                main_numbers,
+                special_numbers,
+                contract=rule_contract,
+                row_number=row_number,
+            )
+            row_errors.extend(rule_errors)
 
-        generic_errors = tuple(row_errors)
+        if rule_status is LotteryRuleStatus.UNKNOWN:
+            row_errors.append(
+                DrawImportError(
+                    code=DrawImportErrorCode.RULE_CONTRACT_UNKNOWN,
+                    message="No complete, active, primary rule contract is available.",
+                    row_number=row_number,
+                    field="lottery_type",
+                )
+            )
+
         candidate: NormalizedDrawInput | None = None
         if (
-            not generic_errors
+            not row_errors
             and lottery_type is not None
-            and rule_status is not None
+            and rule_status is LotteryRuleStatus.PROVEN
             and draw_number is not None
             and draw_date_value is not None
             and main_numbers is not None
@@ -519,18 +664,6 @@ def parse_draw_csv(content: str | bytes, *, filename: str = "") -> DrawCsvParseR
                     )
                 )
 
-        if rule_status is LotteryRuleStatus.UNKNOWN:
-            row_errors.append(
-                DrawImportError(
-                    code=DrawImportErrorCode.RULE_CONTRACT_UNKNOWN,
-                    message=(
-                        "BIG_LOTTO count, range, and special-number rules are not proven by "
-                        "committed project evidence."
-                    ),
-                    row_number=row_number,
-                    field="lottery_type",
-                )
-            )
         errors.extend(row_errors)
 
     return _result(

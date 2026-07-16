@@ -3,6 +3,7 @@
 from lottolab.infrastructure.imports.csv_draws import (
     MAX_CSV_BYTES,
     MAX_CSV_ROWS,
+    MAX_DRAW_NUMBER_LENGTH,
     NUMBER_DELIMITER,
     PARSER_VERSION,
     RULE_STATUS_BY_LOTTERY_TYPE,
@@ -13,6 +14,7 @@ from lottolab.infrastructure.imports.csv_draws import (
 __all__ = [
     "MAX_CSV_BYTES",
     "MAX_CSV_ROWS",
+    "MAX_DRAW_NUMBER_LENGTH",
     "NUMBER_DELIMITER",
     "PARSER_VERSION",
     "RULE_STATUS_BY_LOTTERY_TYPE",

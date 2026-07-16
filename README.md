@@ -39,6 +39,9 @@ uv run --no-sync lottolab local stop     # 僅停止 controller 擁有的 proces
 
 Controller 使用使用者專屬的系統暫存目錄保存 owner-only lock、state 與 log；不讀取 DB、
 不依賴 LotteryNew、不接受替代 port，也不會終止 foreign port owner。
+它目前面向 POSIX/macOS，Windows 尚不支援；固定使用 8000 與 5173 port 是刻意的安全限制。
+成功停止後會移除 active state，但 task-owned 診斷 log 會保留在 repo 外、owner-only 的 runtime
+目錄。Controller 只使用已存在的 locked Python／frontend 環境，絕不自行 bootstrap 依賴。
 
 ## 目錄地圖
 

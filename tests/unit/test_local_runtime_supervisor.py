@@ -6,6 +6,8 @@ import io
 import json
 import os
 import signal
+import stat
+import threading
 from http.client import HTTPMessage
 from pathlib import Path
 from typing import cast
@@ -258,6 +260,60 @@ def test_fresh_log_rejects_hardlink_and_symlink_without_modifying_target(
     with pytest.raises(LocalRuntimeSafetyError, match="cannot open controller file safely"):
         store.open_fresh_log(ServiceRole.BACKEND)
     assert target.read_bytes() == b"must remain unchanged"
+
+
+@pytest.mark.parametrize("role", tuple(ServiceRole))
+def test_fresh_log_rejects_fifo_without_blocking_or_modifying_it(
+    tmp_path: Path, role: ServiceRole
+) -> None:
+    policy = make_policy(tmp_path)
+    store = RuntimeStateStore(policy)
+    store.ensure_runtime_dir()
+    fifo_path = policy.log_path(role)
+    os.mkfifo(fifo_path, 0o600)
+    fifo_path.chmod(0o600)
+    before = os.lstat(fifo_path)
+    before_entries = {path.name for path in policy.runtime_dir.iterdir()}
+    outcome: list[BaseException | None] = []
+
+    def attempt_open() -> None:
+        try:
+            with store.open_fresh_log(role):
+                pass
+        except BaseException as exc:
+            outcome.append(exc)
+        else:
+            outcome.append(None)
+
+    worker = threading.Thread(target=attempt_open, daemon=True)
+    worker.start()
+    worker.join(timeout=1.0)
+
+    assert not worker.is_alive(), f"{role.value} FIFO validation blocked"
+    assert len(outcome) == 1
+    assert isinstance(outcome[0], LocalRuntimeSafetyError)
+    after = os.lstat(fifo_path)
+    assert stat.S_ISFIFO(after.st_mode)
+    assert (after.st_dev, after.st_ino) == (before.st_dev, before.st_ino)
+    assert stat.S_IMODE(after.st_mode) == stat.S_IMODE(before.st_mode) == 0o600
+    assert {path.name for path in policy.runtime_dir.iterdir()} == before_entries
+
+
+def test_fresh_log_creates_absent_0600_file(tmp_path: Path) -> None:
+    policy = make_policy(tmp_path)
+    store = RuntimeStateStore(policy)
+    store.ensure_runtime_dir()
+    log_path = policy.log_path(ServiceRole.BACKEND)
+
+    assert not log_path.exists()
+    with store.open_fresh_log(ServiceRole.BACKEND) as log:
+        log.write(b"fresh output")
+
+    metadata = log_path.stat()
+    assert stat.S_ISREG(metadata.st_mode)
+    assert stat.S_IMODE(metadata.st_mode) == 0o600
+    assert metadata.st_nlink == 1
+    assert log_path.read_bytes() == b"fresh output"
 
 
 def test_fresh_log_installs_new_0600_inode_and_captures_output(tmp_path: Path) -> None:

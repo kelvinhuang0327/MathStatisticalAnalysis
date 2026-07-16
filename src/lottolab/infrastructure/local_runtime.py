@@ -58,6 +58,7 @@ _HTTP_LIMIT_BYTES = 1_048_576
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 _DIRECTORY = getattr(os, "O_DIRECTORY", 0)
 _CLOEXEC = getattr(os, "O_CLOEXEC", 0)
+_NONBLOCK = getattr(os, "O_NONBLOCK", 0)
 _STATE_NAME = "state.json"
 _LOCK_NAME = "controller.lock"
 
@@ -253,8 +254,12 @@ class RuntimeStateStore:
     def open_fresh_log(self, role: ServiceRole) -> BinaryIO:
         directory_fd = self.directory_fd
         log_name = f"{role.value}.log"
+        if _NONBLOCK == 0:
+            raise LocalRuntimeSafetyError("nonblocking log validation is unavailable")
         try:
-            existing = _open_owned_regular_at(directory_fd, log_name, os.O_RDONLY)
+            existing = _open_owned_regular_at(
+                directory_fd, log_name, os.O_RDONLY | _NONBLOCK
+            )
         except FileNotFoundError:
             pass
         else:

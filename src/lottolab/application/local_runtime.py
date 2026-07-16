@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import re
+import stat
 import tempfile
 import time
 from collections.abc import Mapping, Sequence
@@ -22,8 +23,9 @@ EXPECTED_STRATEGY_IDS = (
     "biglotto_social_wisdom_anti_popularity",
     "biglotto_zone_split_3bet_bet1",
 )
-STATE_VERSION = 1
+STATE_VERSION = 2
 _TOKEN_PATTERN = re.compile(r"^[0-9a-f]{32}$")
+_GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
 _FORBIDDEN_ROUTE_WORDS = ("execute", "generate", "prediction", "replay", "scheduler")
 
 
@@ -121,6 +123,7 @@ class ProcessIdentity:
 @dataclass(frozen=True)
 class RuntimeState:
     repository_root: str
+    source_commit: str
     ownership_token: str
     created_at_ns: int
     services: tuple[ProcessIdentity, ...]
@@ -130,6 +133,7 @@ class RuntimeState:
         repository = Path(self.repository_root)
         if not repository.is_absolute():
             raise LocalRuntimeSafetyError("runtime repository path must be absolute")
+        validate_git_object_id(self.source_commit)
         if not _TOKEN_PATTERN.fullmatch(self.ownership_token):
             raise LocalRuntimeSafetyError("runtime ownership token is invalid")
         if isinstance(self.created_at_ns, bool) or self.created_at_ns <= 0:
@@ -151,6 +155,7 @@ class RuntimeState:
                 self.repository_root,
                 self.ownership_token,
                 f"--role {service.role.value}",
+                f"--source-commit {self.source_commit}",
             )
             if not all(fragment in command for fragment in required_fragments):
                 raise LocalRuntimeSafetyError(
@@ -170,6 +175,7 @@ class RuntimeState:
         )
         return RuntimeState(
             repository_root=self.repository_root,
+            source_commit=self.source_commit,
             ownership_token=self.ownership_token,
             created_at_ns=self.created_at_ns,
             services=ordered,
@@ -179,6 +185,7 @@ class RuntimeState:
         return {
             "state_version": self.state_version,
             "repository_root": self.repository_root,
+            "source_commit": self.source_commit,
             "ownership_token": self.ownership_token,
             "created_at_ns": self.created_at_ns,
             "services": [service.to_object() for service in self.services],
@@ -192,6 +199,7 @@ class RuntimeState:
             {
                 "state_version",
                 "repository_root",
+                "source_commit",
                 "ownership_token",
                 "created_at_ns",
                 "services",
@@ -205,6 +213,7 @@ class RuntimeState:
         return cls(
             state_version=_required_integer(record, "state_version"),
             repository_root=_required_string(record, "repository_root"),
+            source_commit=_required_string(record, "source_commit"),
             ownership_token=_required_string(record, "ownership_token"),
             created_at_ns=_required_integer(record, "created_at_ns"),
             services=tuple(ProcessIdentity.from_object(item) for item in service_values),
@@ -221,11 +230,13 @@ class LocalRuntimePolicy:
         cls, repository_root: Path, *, runtime_dir: Path | None = None
     ) -> LocalRuntimePolicy:
         root = repository_root.resolve(strict=True)
-        selected_runtime = (
-            runtime_dir.absolute()
+        requested_runtime = (
+            runtime_dir
             if runtime_dir is not None
-            else Path(tempfile.gettempdir()) / f"lottolab-local-{os.getuid()}"
+            else Path(tempfile.gettempdir()).resolve(strict=True)
+            / f"lottolab-local-{os.getuid()}"
         )
+        selected_runtime = _canonical_runtime_directory(requested_runtime)
         if selected_runtime == root or root in selected_runtime.parents:
             raise LocalRuntimeSafetyError("runtime directory must be outside the repository")
         return cls(repository_root=root, runtime_dir=selected_runtime)
@@ -241,9 +252,12 @@ class LocalRuntimePolicy:
     def log_path(self, role: ServiceRole) -> Path:
         return self.runtime_dir / f"{role.value}.log"
 
-    def initial_state(self, token: str, identity: ProcessIdentity) -> RuntimeState:
+    def initial_state(
+        self, token: str, source_commit: str, identity: ProcessIdentity
+    ) -> RuntimeState:
         return RuntimeState(
             repository_root=str(self.repository_root),
+            source_commit=source_commit,
             ownership_token=token,
             created_at_ns=time.time_ns(),
             services=(identity,),
@@ -290,6 +304,7 @@ class LocalRuntimePolicy:
         python_executable: str,
         role: ServiceRole,
         token: str,
+        source_commit: str,
         child_command: Sequence[str],
     ) -> tuple[str, ...]:
         working_directory = (
@@ -308,6 +323,8 @@ class LocalRuntimePolicy:
             token,
             "--repository",
             str(self.repository_root),
+            "--source-commit",
+            source_commit,
             "--cwd",
             str(working_directory),
             "--",
@@ -384,6 +401,40 @@ def validate_frontend_document(body: bytes) -> None:
         raise LocalRuntimeSafetyError("frontend root is not UTF-8") from exc
     if "<div id=\"app\"></div>" not in document:
         raise LocalRuntimeSafetyError("frontend root is not the LottoLab Vite application")
+
+
+def validate_git_object_id(value: str) -> None:
+    """Require an unabbreviated SHA-1 or SHA-256 Git object identifier."""
+    if not _GIT_OBJECT_ID_PATTERN.fullmatch(value):
+        raise LocalRuntimeSafetyError("runtime source commit is not a full Git object ID")
+
+
+def _canonical_runtime_directory(requested: Path) -> Path:
+    expanded = requested.expanduser()
+    if ".." in expanded.parts:
+        raise LocalRuntimeSafetyError("runtime directory traversal is not allowed")
+    absolute = expanded if expanded.is_absolute() else Path.cwd() / expanded
+    if absolute == Path(absolute.anchor):
+        raise LocalRuntimeSafetyError("runtime directory cannot be the filesystem root")
+
+    current = Path(absolute.anchor)
+    for component in absolute.parts[1:]:
+        current /= component
+        try:
+            metadata = os.lstat(current)
+        except FileNotFoundError:
+            break
+        except OSError as exc:
+            raise LocalRuntimeSafetyError(
+                f"cannot inspect runtime directory component: {exc}"
+            ) from exc
+        if stat.S_ISLNK(metadata.st_mode):
+            raise LocalRuntimeSafetyError("runtime directory cannot have a symlinked component")
+        if not stat.S_ISDIR(metadata.st_mode):
+            raise LocalRuntimeSafetyError(
+                "runtime directory path contains a non-directory component"
+            )
+    return absolute.resolve(strict=False)
 
 
 def _object_mapping(value: object, label: str) -> Mapping[str, object]:

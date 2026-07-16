@@ -12,6 +12,7 @@ from lottolab import __version__
 from lottolab.application.local_runtime import (
     LocalRuntimeError,
     LocalRuntimePolicy,
+    LocalRuntimeSafetyError,
     RuntimeStatus,
     RuntimeStatusKind,
 )
@@ -44,6 +45,12 @@ def local_start() -> None:
         status = _local_supervisor().start()
     except LocalRuntimeError as exc:
         _local_failure(exc)
+    if status.kind is not RuntimeStatusKind.RUNNING:
+        _local_failure(
+            LocalRuntimeSafetyError(
+                f"start returned unexpected non-running state: {status.kind.value}"
+            )
+        )
     typer.echo(_format_status(status))
     typer.echo("backend=http://127.0.0.1:8000 frontend=http://127.0.0.1:5173")
 

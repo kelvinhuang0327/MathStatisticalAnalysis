@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from lottolab.application.local_runtime import LocalRuntimePolicy, ServiceRole
+
 ROOT = Path(__file__).resolve().parents[2]
 RUN_REAL = os.environ.get("LOTTOLAB_RUN_LOCAL_RUNTIME_INTEGRATION") == "1"
 
@@ -47,6 +49,7 @@ def test_real_start_status_smoke_stop_lifecycle() -> None:
         pytest.skip("fixed local runtime port already has a listener")
 
     started = False
+    policy = LocalRuntimePolicy.for_repository(ROOT)
     try:
         start = run_local("start")
         assert start.returncode == 0, start.stderr
@@ -56,6 +59,7 @@ def test_real_start_status_smoke_stop_lifecycle() -> None:
         status = run_local("status")
         assert status.returncode == 0, status.stderr
         assert "ownership=verified" in status.stdout
+        assert "revision_match=yes" in status.stdout
 
         smoke = run_local("smoke")
         assert smoke.returncode == 0, smoke.stderr
@@ -66,6 +70,11 @@ def test_real_start_status_smoke_stop_lifecycle() -> None:
         assert stop.returncode == 0, stop.stderr
         started = False
         assert "state=stopped" in stop.stdout
+        assert not policy.state_path.exists()
+        for role in (ServiceRole.BACKEND, ServiceRole.FRONTEND):
+            log_path = policy.log_path(role)
+            assert log_path.is_file()
+            assert log_path.stat().st_mode & 0o777 == 0o600
 
         final_status = run_local("status")
         assert final_status.returncode == 0, final_status.stderr

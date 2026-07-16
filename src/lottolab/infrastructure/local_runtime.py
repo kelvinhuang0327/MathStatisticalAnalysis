@@ -13,16 +13,17 @@ import socket
 import stat
 import subprocess
 import sys
-import tempfile
 import time
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
+from http.client import HTTPMessage
 from pathlib import Path
 from types import FrameType
-from typing import BinaryIO, cast
+from typing import IO, BinaryIO, cast
 from urllib.error import HTTPError, URLError
-from urllib.request import ProxyHandler, Request, build_opener
+from urllib.parse import urlsplit
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from lottolab.application.local_runtime import (
     BACKEND_PORT,
@@ -44,6 +45,7 @@ from lottolab.application.local_runtime import (
     ServiceRole,
     SmokeReport,
     validate_frontend_document,
+    validate_git_object_id,
     validate_health_payload,
     validate_openapi_payload,
     validate_strategy_payloads,
@@ -54,6 +56,10 @@ _GRACEFUL_STOP_SECONDS = 5.0
 _FORCED_STOP_SECONDS = 3.0
 _HTTP_LIMIT_BYTES = 1_048_576
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+_DIRECTORY = getattr(os, "O_DIRECTORY", 0)
+_CLOEXEC = getattr(os, "O_CLOEXEC", 0)
+_STATE_NAME = "state.json"
+_LOCK_NAME = "controller.lock"
 
 
 @dataclass(frozen=True)
@@ -82,9 +88,11 @@ class HttpResponse:
     status: int
     body: bytes
     headers: dict[str, str]
+    effective_url: str = ""
 
 
 SnapshotReader = Callable[[int], ProcessSnapshot | None]
+RevisionReader = Callable[[Path], str]
 
 
 class RuntimeStateStore:
@@ -92,27 +100,91 @@ class RuntimeStateStore:
 
     def __init__(self, policy: LocalRuntimePolicy) -> None:
         self._policy = policy
+        self._directory_fd: int | None = None
+        self._directory_identity: tuple[int, int] | None = None
 
-    def ensure_runtime_dir(self) -> None:
+    def ensure_runtime_dir(self) -> int:
         path = self._policy.runtime_dir
-        with suppress(FileExistsError):
-            os.mkdir(path, 0o700)
+        if self._directory_fd is not None:
+            return self._verified_directory_fd()
+
+        descriptor, created = _open_or_create_runtime_directory(path)
         try:
-            metadata = os.lstat(path)
+            if created:
+                os.fchmod(descriptor, 0o700)
+            metadata = self._validate_directory_descriptor(descriptor)
+            pathname_descriptor, _ = _open_or_create_runtime_directory(
+                path, create=False
+            )
+            try:
+                pathname_metadata = os.fstat(pathname_descriptor)
+            finally:
+                os.close(pathname_descriptor)
+            if (pathname_metadata.st_dev, pathname_metadata.st_ino) != (
+                metadata.st_dev,
+                metadata.st_ino,
+            ):
+                raise LocalRuntimeSafetyError(
+                    "runtime directory pathname does not match the verified directory inode"
+                )
+        except BaseException:
+            os.close(descriptor)
+            raise
+        self._directory_fd = descriptor
+        self._directory_identity = (metadata.st_dev, metadata.st_ino)
+        return descriptor
+
+    @property
+    def directory_fd(self) -> int:
+        return self.ensure_runtime_dir()
+
+    def revalidate_directory(self) -> int:
+        return self._verified_directory_fd()
+
+    def _verified_directory_fd(self) -> int:
+        descriptor = self._directory_fd
+        identity = self._directory_identity
+        if descriptor is None or identity is None:
+            raise LocalRuntimeSafetyError("runtime directory anchor is unavailable")
+        metadata = self._validate_directory_descriptor(descriptor)
+        pathname_descriptor, _ = _open_or_create_runtime_directory(
+            self._policy.runtime_dir, create=False
+        )
+        try:
+            pathname_metadata = os.fstat(pathname_descriptor)
+        finally:
+            os.close(pathname_descriptor)
+        if (
+            (metadata.st_dev, metadata.st_ino) != identity
+            or (pathname_metadata.st_dev, pathname_metadata.st_ino) != identity
+        ):
+            raise LocalRuntimeSafetyError(
+                "runtime directory inode changed after verification"
+            )
+        return descriptor
+
+    @staticmethod
+    def _validate_directory_descriptor(descriptor: int) -> os.stat_result:
+        try:
+            metadata = os.fstat(descriptor)
         except OSError as exc:
-            raise LocalRuntimeSafetyError(f"cannot inspect runtime directory: {exc}") from exc
+            raise LocalRuntimeSafetyError(
+                f"cannot inspect runtime directory descriptor: {exc}"
+            ) from exc
         if not stat.S_ISDIR(metadata.st_mode):
             raise LocalRuntimeSafetyError("runtime directory is not a real directory")
         if metadata.st_uid != os.getuid():
             raise LocalRuntimeSafetyError("runtime directory has a foreign owner")
-        if stat.S_IMODE(metadata.st_mode) & 0o077:
-            raise LocalRuntimeSafetyError("runtime directory permissions are not owner-only")
+        if stat.S_IMODE(metadata.st_mode) != 0o700:
+            raise LocalRuntimeSafetyError("runtime directory mode must be exactly 0700")
+        return metadata
 
     def read(self) -> RuntimeState | None:
-        self.ensure_runtime_dir()
-        if not os.path.lexists(self._policy.state_path):
+        directory_fd = self.directory_fd
+        try:
+            descriptor = _open_owned_regular_at(directory_fd, _STATE_NAME, os.O_RDONLY)
+        except FileNotFoundError:
             return None
-        descriptor = _open_owned_regular(self._policy.state_path, os.O_RDONLY)
         try:
             with os.fdopen(descriptor, "r", encoding="utf-8") as handle:
                 payload = cast(object, json.load(handle))
@@ -121,20 +193,21 @@ class RuntimeStateStore:
         return RuntimeState.from_object(payload)
 
     def write(self, state: RuntimeState) -> None:
-        self.ensure_runtime_dir()
-        if os.path.lexists(self._policy.state_path):
-            descriptor = _open_owned_regular(self._policy.state_path, os.O_RDONLY)
+        directory_fd = self.directory_fd
+        try:
+            descriptor = _open_owned_regular_at(directory_fd, _STATE_NAME, os.O_RDONLY)
             os.close(descriptor)
+        except FileNotFoundError:
+            pass
         payload = (
             json.dumps(state.to_object(), sort_keys=True, separators=(",", ":"), ensure_ascii=True)
             + "\n"
         ).encode("utf-8")
-        descriptor, temporary_name = tempfile.mkstemp(
-            prefix=".state-", dir=self._policy.runtime_dir
-        )
-        temporary_path = Path(temporary_name)
+        descriptor, temporary_name = _create_exclusive_file_at(directory_fd, ".state-")
+        installed = False
         try:
             os.fchmod(descriptor, 0o600)
+            _validate_owned_regular_descriptor(descriptor, temporary_name)
             remaining = memoryview(payload)
             while remaining:
                 written = os.write(descriptor, remaining)
@@ -144,26 +217,85 @@ class RuntimeStateStore:
             os.fsync(descriptor)
             os.close(descriptor)
             descriptor = -1
-            os.replace(temporary_path, self._policy.state_path)
-            directory_descriptor = os.open(self._policy.runtime_dir, os.O_RDONLY)
-            try:
-                os.fsync(directory_descriptor)
-            finally:
-                os.close(directory_descriptor)
+            self._verified_directory_fd()
+            os.replace(
+                temporary_name,
+                _STATE_NAME,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+            )
+            installed = True
+            os.fsync(directory_fd)
         except BaseException:
             if descriptor >= 0:
                 os.close(descriptor)
-            if os.path.lexists(temporary_path):
-                os.unlink(temporary_path)
+            if not installed:
+                with suppress(FileNotFoundError):
+                    os.unlink(temporary_name, dir_fd=directory_fd)
             raise
 
     def delete(self) -> None:
-        self.ensure_runtime_dir()
-        if not os.path.lexists(self._policy.state_path):
+        directory_fd = self.directory_fd
+        try:
+            descriptor = _open_owned_regular_at(directory_fd, _STATE_NAME, os.O_RDONLY)
+        except FileNotFoundError:
             return
-        descriptor = _open_owned_regular(self._policy.state_path, os.O_RDONLY)
-        os.close(descriptor)
-        os.unlink(self._policy.state_path)
+        try:
+            if not _entry_matches_descriptor(directory_fd, _STATE_NAME, descriptor):
+                raise LocalRuntimeSafetyError(
+                    "runtime state changed before safe removal; preserving it"
+                )
+            os.unlink(_STATE_NAME, dir_fd=directory_fd)
+            os.fsync(directory_fd)
+        finally:
+            os.close(descriptor)
+
+    def open_fresh_log(self, role: ServiceRole) -> BinaryIO:
+        directory_fd = self.directory_fd
+        log_name = f"{role.value}.log"
+        try:
+            existing = _open_owned_regular_at(directory_fd, log_name, os.O_RDONLY)
+        except FileNotFoundError:
+            pass
+        else:
+            os.close(existing)
+
+        descriptor, temporary_name = _create_exclusive_file_at(
+            directory_fd, f".{role.value}-log-"
+        )
+        installed = False
+        try:
+            os.fchmod(descriptor, 0o600)
+            _validate_owned_regular_descriptor(descriptor, temporary_name)
+            self._verified_directory_fd()
+            os.replace(
+                temporary_name,
+                log_name,
+                src_dir_fd=directory_fd,
+                dst_dir_fd=directory_fd,
+            )
+            installed = True
+            os.fsync(directory_fd)
+            return cast(BinaryIO, os.fdopen(descriptor, "wb", buffering=0))
+        except BaseException:
+            os.close(descriptor)
+            if not installed:
+                with suppress(FileNotFoundError):
+                    os.unlink(temporary_name, dir_fd=directory_fd)
+            raise
+
+    def read_log_tail(self, role: ServiceRole) -> str:
+        directory_fd = self.directory_fd
+        descriptor = _open_owned_regular_at(
+            directory_fd, f"{role.value}.log", os.O_RDONLY
+        )
+        try:
+            size = os.fstat(descriptor).st_size
+            os.lseek(descriptor, max(0, size - 4096), os.SEEK_SET)
+            body = os.read(descriptor, 4096)
+        finally:
+            os.close(descriptor)
+        return body.decode("utf-8", errors="replace").strip() or "<empty log>"
 
 
 class RuntimeLock:
@@ -175,17 +307,34 @@ class RuntimeLock:
         self._descriptor: int | None = None
 
     def __enter__(self) -> RuntimeLock:
-        self._store.ensure_runtime_dir()
+        directory_fd = self._store.directory_fd
+        created = False
         try:
             descriptor = os.open(
-                self._policy.lock_path,
-                os.O_RDWR | os.O_CREAT | _NOFOLLOW,
+                _LOCK_NAME,
+                os.O_RDWR | os.O_CREAT | os.O_EXCL | _NOFOLLOW | _CLOEXEC,
                 0o600,
+                dir_fd=directory_fd,
             )
+            created = True
+        except FileExistsError:
+            try:
+                descriptor = os.open(
+                    _LOCK_NAME,
+                    os.O_RDWR | _NOFOLLOW | _CLOEXEC,
+                    dir_fd=directory_fd,
+                )
+            except OSError as exc:
+                raise LocalRuntimeSafetyError(
+                    f"cannot open controller lock safely: {exc}"
+                ) from exc
         except OSError as exc:
             raise LocalRuntimeSafetyError(f"cannot open controller lock safely: {exc}") from exc
         try:
-            _validate_owned_regular_descriptor(descriptor, self._policy.lock_path)
+            if created:
+                os.fchmod(descriptor, 0o600)
+            _validate_owned_regular_descriptor(descriptor, _LOCK_NAME)
+            self._store.revalidate_directory()
             try:
                 fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
             except OSError as exc:
@@ -281,35 +430,51 @@ class LocalRuntimeSupervisor:
         *,
         state_store: RuntimeStateStore | None = None,
         inspector: ProcessInspector | None = None,
+        revision_reader: RevisionReader | None = None,
     ) -> None:
         self.policy = policy
         self.store = state_store or RuntimeStateStore(policy)
         self.inspector = inspector or ProcessInspector()
+        self._revision_reader = revision_reader or _read_git_revision
 
     def start(self) -> RuntimeStatus:
         with RuntimeLock(self.policy, self.store):
             dependencies = self._assert_dependencies()
+            source_commit = self._current_source_commit()
             self._prepare_start()
             self._assert_all_ports_free()
             token = secrets.token_hex(16)
             started: list[ManagedLaunch] = []
             state: RuntimeState | None = None
             try:
-                backend = self._spawn_service(ServiceRole.BACKEND, token, dependencies)
+                backend = self._spawn_service(
+                    ServiceRole.BACKEND, token, source_commit, dependencies
+                )
                 started.append(backend)
-                state = self.policy.initial_state(token, backend.identity)
+                state = self.policy.initial_state(token, source_commit, backend.identity)
                 self.store.write(state)
                 self._wait_for_backend(state, backend.identity)
 
-                frontend = self._spawn_service(ServiceRole.FRONTEND, token, dependencies)
+                frontend = self._spawn_service(
+                    ServiceRole.FRONTEND, token, source_commit, dependencies
+                )
                 started.append(frontend)
                 state = state.with_service(frontend.identity)
                 self.store.write(state)
                 self._wait_for_frontend(state, frontend.identity)
-                return self._status_for_state(state)
+                current_revision = self._require_matching_revision(state)
+                final_status = self._status_for_state(
+                    state, current_revision=current_revision
+                )
+                if final_status.kind is not RuntimeStatusKind.RUNNING:
+                    raise LocalRuntimeError(
+                        "startup final status must be running; "
+                        f"observed {final_status.kind.value}: {final_status.detail}"
+                    )
+                return final_status
             except BaseException as original:
                 try:
-                    self._cleanup_partial_start(started, state is not None)
+                    self._cleanup_partial_start(started, state)
                 except Exception as cleanup_error:
                     raise LocalRuntimeSafetyError(
                         f"startup failed and safe partial cleanup failed: {cleanup_error}"
@@ -322,7 +487,8 @@ class LocalRuntimeSupervisor:
             if state is None:
                 return self._status_without_state()
             self._require_same_repository(state)
-            return self._status_for_state(state)
+            current_revision = self._require_matching_revision(state)
+            return self._status_for_state(state, current_revision=current_revision)
 
     def smoke(self) -> SmokeReport:
         with RuntimeLock(self.policy, self.store):
@@ -330,6 +496,7 @@ class LocalRuntimeSupervisor:
             if state is None:
                 raise LocalRuntimeError("local runtime is stopped")
             self._require_same_repository(state)
+            self._require_matching_revision(state)
             backend = self._require_owned_service(state, ServiceRole.BACKEND)
             frontend = self._require_owned_service(state, ServiceRole.FRONTEND)
             self._assert_owned_listener(backend)
@@ -399,7 +566,7 @@ class LocalRuntimeSupervisor:
             for role in (ServiceRole.FRONTEND, ServiceRole.BACKEND):
                 identity = state.service(role)
                 if identity is not None and ownership_by_role.get(role) is Ownership.OWNED:
-                    self._terminate_identity(identity)
+                    self._terminate_identity(identity, state=state)
 
             self._assert_all_ports_free()
             self.store.delete()
@@ -457,6 +624,7 @@ class LocalRuntimeSupervisor:
         self,
         role: ServiceRole,
         token: str,
+        source_commit: str,
         dependencies: RuntimeDependencies,
     ) -> ManagedLaunch:
         child_command = (
@@ -468,13 +636,14 @@ class LocalRuntimeSupervisor:
             python_executable=dependencies.python,
             role=role,
             token=token,
+            source_commit=source_commit,
             child_command=child_command,
         )
         environment = os.environ.copy()
         environment["UV_NO_SYNC"] = "1"
         environment["NO_COLOR"] = "1"
         log_path = self.policy.log_path(role)
-        with _open_controller_log(log_path) as log:
+        with self.store.open_fresh_log(role) as log:
             process = subprocess.Popen(
                 launcher_command,
                 cwd=self.policy.repository_root,
@@ -487,9 +656,15 @@ class LocalRuntimeSupervisor:
             )
         try:
             identity = self.inspector.capture(pid=process.pid, role=role, log_path=log_path)
-        except BaseException:
-            _terminate_new_process_group(process)
-            raise
+        except BaseException as original:
+            try:
+                _terminate_uncaptured_process_group(process)
+            except LocalRuntimeSafetyError as cleanup_error:
+                raise LocalRuntimeSafetyError(
+                    "launcher identity capture failed and startup rollback refused "
+                    f"unverified escalation: {cleanup_error}"
+                ) from cleanup_error
+            raise original
         return ManagedLaunch(identity=identity, process=process)
 
     def _wait_for_backend(self, state: RuntimeState, identity: ProcessIdentity) -> None:
@@ -557,36 +732,49 @@ class LocalRuntimeSupervisor:
         )
 
     def _cleanup_partial_start(
-        self, started: Sequence[ManagedLaunch], state_was_written: bool
+        self, started: Sequence[ManagedLaunch], state: RuntimeState | None
     ) -> None:
-        for managed in started:
+        cleanup_errors: list[str] = []
+        for managed in reversed(started):
             ownership = self.inspector.ownership(managed.identity)
             if ownership is Ownership.MISMATCH:
-                raise LocalRuntimeSafetyError(
+                cleanup_errors.append(
                     f"cannot clean {managed.identity.role.value}: PID identity mismatch"
                 )
-            listeners = self._listeners(managed.identity.port)
-            if listeners:
-                if ownership is not Ownership.OWNED:
-                    raise LocalRuntimeSafetyError(
-                        f"cannot clean {managed.identity.role.value}: foreign listener present"
-                    )
-                self._assert_owned_listener(managed.identity, listeners=listeners)
+                continue
+            if ownership is Ownership.DEAD:
+                continue
+            if state is None:
+                cleanup_errors.append(
+                    f"cannot clean {managed.identity.role.value}: runtime state is unavailable"
+                )
+                continue
+            try:
+                self._terminate_identity(
+                    managed.identity, state=state, process=managed.process
+                )
+            except LocalRuntimeSafetyError as exc:
+                cleanup_errors.append(str(exc))
 
-        for managed in reversed(started):
-            if self.inspector.ownership(managed.identity) is Ownership.OWNED:
-                self._terminate_identity(managed.identity, process=managed.process)
-        self._assert_all_ports_free()
-        if state_was_written:
+        try:
+            self._assert_all_ports_free()
+        except LocalRuntimeSafetyError as exc:
+            cleanup_errors.append(str(exc))
+        if cleanup_errors:
+            raise LocalRuntimeSafetyError("; ".join(cleanup_errors))
+        if state is not None:
             self.store.delete()
 
     def _terminate_identity(
         self,
         identity: ProcessIdentity,
         *,
+        state: RuntimeState,
         process: subprocess.Popen[bytes] | None = None,
     ) -> None:
-        ownership = self.inspector.ownership(identity)
+        ownership = self._revalidate_signal_ownership(
+            state, identity, escalation="SIGTERM"
+        )
         if ownership is Ownership.DEAD:
             return
         if ownership is Ownership.MISMATCH:
@@ -598,6 +786,17 @@ class LocalRuntimeSupervisor:
         except ProcessLookupError:
             return
         if not self._wait_for_group_exit(identity.pgid, _GRACEFUL_STOP_SECONDS, process):
+            ownership = self._revalidate_signal_ownership(
+                state, identity, escalation="SIGKILL"
+            )
+            if ownership is Ownership.DEAD:
+                self._reconcile_dead_before_escalation(identity)
+                return
+            if ownership is Ownership.MISMATCH:
+                raise LocalRuntimeSafetyError(
+                    f"{identity.role.value} ownership became ambiguous before SIGKILL; "
+                    "state was preserved"
+                )
             try:
                 os.killpg(identity.pgid, signal.SIGKILL)
             except ProcessLookupError:
@@ -606,6 +805,61 @@ class LocalRuntimeSupervisor:
                 raise LocalRuntimeSafetyError(
                     f"owned {identity.role.value} process group did not terminate"
                 )
+
+    def _revalidate_signal_ownership(
+        self,
+        state: RuntimeState,
+        identity: ProcessIdentity,
+        *,
+        escalation: str,
+    ) -> Ownership:
+        self._require_same_repository(state)
+        if state.service(identity.role) != identity:
+            raise LocalRuntimeSafetyError(
+                f"{identity.role.value} {escalation} evidence is not bound to runtime state"
+            )
+        ownership = self.inspector.ownership(identity)
+        if ownership is not Ownership.OWNED:
+            return ownership
+        try:
+            current_pgid = os.getpgid(identity.pid)
+        except ProcessLookupError:
+            return Ownership.DEAD
+        except OSError as exc:
+            raise LocalRuntimeSafetyError(
+                f"cannot revalidate {identity.role.value} process group before {escalation}: {exc}"
+            ) from exc
+        if current_pgid != identity.pgid or current_pgid != identity.pid:
+            return Ownership.MISMATCH
+        if escalation == "SIGKILL":
+            expected_address = f"{LOCAL_HOST}:{identity.port}"
+            for listener in self._listeners(identity.port):
+                if listener.address != expected_address:
+                    return Ownership.MISMATCH
+                try:
+                    listener_pgid = os.getpgid(listener.pid)
+                except ProcessLookupError:
+                    return Ownership.MISMATCH
+                except OSError as exc:
+                    raise LocalRuntimeSafetyError(
+                        f"cannot revalidate listener process group before {escalation}: {exc}"
+                    ) from exc
+                if listener_pgid != identity.pgid:
+                    return Ownership.MISMATCH
+        return Ownership.OWNED
+
+    def _reconcile_dead_before_escalation(self, identity: ProcessIdentity) -> None:
+        listeners = self._listeners(identity.port)
+        if listeners:
+            raise LocalRuntimeSafetyError(
+                f"{identity.role.value} leader died before escalation while a listener remains; "
+                "SIGKILL was not sent and state was preserved"
+            )
+        if _process_group_alive(identity.pgid):
+            raise LocalRuntimeSafetyError(
+                f"{identity.role.value} leader died before escalation and PGID may be reused; "
+                "SIGKILL was not sent and state was preserved"
+            )
 
     def _wait_for_group_exit(
         self,
@@ -644,7 +898,9 @@ class LocalRuntimeSupervisor:
             detail="no controller state and both ports are free",
         )
 
-    def _status_for_state(self, state: RuntimeState) -> RuntimeStatus:
+    def _status_for_state(
+        self, state: RuntimeState, *, current_revision: str
+    ) -> RuntimeStatus:
         observations: dict[ServiceRole, str] = {}
         has_foreign = False
         for role in (ServiceRole.BACKEND, ServiceRole.FRONTEND):
@@ -686,7 +942,11 @@ class LocalRuntimeSupervisor:
             ownership_proven=kind is RuntimeStatusKind.RUNNING,
             backend=observations[ServiceRole.BACKEND],
             frontend=observations[ServiceRole.FRONTEND],
-            detail=f"runtime state is {kind.value}; repository and PID identity were checked",
+            detail=(
+                f"runtime state is {kind.value}; repository, source revision, and PID "
+                f"identity were checked; running_revision={state.source_commit} "
+                f"current_revision={current_revision} revision_match=yes"
+            ),
         )
 
     def _require_owned_service(
@@ -707,6 +967,21 @@ class LocalRuntimeSupervisor:
             raise LocalRuntimeSafetyError(
                 "runtime state belongs to a different repository or worktree"
             )
+
+    def _require_matching_revision(self, state: RuntimeState) -> str:
+        current_revision = self._current_source_commit()
+        if state.source_commit != current_revision:
+            raise LocalRuntimeSafetyError(
+                "runtime revision mismatch: "
+                f"running_revision={state.source_commit} "
+                f"current_revision={current_revision} revision_match=no"
+            )
+        return current_revision
+
+    def _current_source_commit(self) -> str:
+        revision = self._revision_reader(self.policy.repository_root)
+        validate_git_object_id(revision)
+        return revision
 
     def _assert_all_ports_free(self) -> None:
         for port in (BACKEND_PORT, FRONTEND_PORT):
@@ -779,6 +1054,8 @@ class LocalRuntimeSupervisor:
     def _optional_http_get(self, url: str) -> HttpResponse | None:
         try:
             return _http_get(url)
+        except LocalRuntimeSafetyError:
+            raise
         except LocalRuntimeError:
             return None
 
@@ -795,63 +1072,135 @@ class LocalRuntimeSupervisor:
             )
 
     def _log_tail(self, identity: ProcessIdentity) -> str:
-        path = Path(identity.log_path)
+        if Path(identity.log_path) != self.policy.log_path(identity.role):
+            return "<log path does not match the anchored controller log>"
         try:
-            descriptor = _open_owned_regular(path, os.O_RDONLY)
-            try:
-                size = os.fstat(descriptor).st_size
-                os.lseek(descriptor, max(0, size - 4096), os.SEEK_SET)
-                body = os.read(descriptor, 4096)
-            finally:
-                os.close(descriptor)
-        except OSError:
+            return self.store.read_log_tail(identity.role)
+        except (OSError, LocalRuntimeSafetyError):
             return "<log unavailable>"
-        return body.decode("utf-8", errors="replace").strip() or "<empty log>"
 
 
-def _open_owned_regular(path: Path, flags: int) -> int:
+def _open_or_create_runtime_directory(
+    path: Path, *, create: bool = True
+) -> tuple[int, bool]:
+    if not path.is_absolute() or len(path.parts) < 2:
+        raise LocalRuntimeSafetyError("runtime directory must be a non-root absolute path")
     try:
-        descriptor = os.open(path, flags | _NOFOLLOW)
+        parent_fd = os.open(
+            path.anchor, os.O_RDONLY | _DIRECTORY | _NOFOLLOW | _CLOEXEC
+        )
+    except OSError as exc:
+        raise LocalRuntimeSafetyError(f"cannot open runtime filesystem root: {exc}") from exc
+    try:
+        for component in path.parts[1:-1]:
+            try:
+                next_fd = os.open(
+                    component,
+                    os.O_RDONLY | _DIRECTORY | _NOFOLLOW | _CLOEXEC,
+                    dir_fd=parent_fd,
+                )
+            except OSError as exc:
+                raise LocalRuntimeSafetyError(
+                    f"cannot anchor runtime parent component {component}: {exc}"
+                ) from exc
+            os.close(parent_fd)
+            parent_fd = next_fd
+
+        final_name = path.parts[-1]
+        created = False
+        if create:
+            try:
+                os.mkdir(final_name, 0o700, dir_fd=parent_fd)
+                created = True
+            except FileExistsError:
+                pass
+            except OSError as exc:
+                raise LocalRuntimeSafetyError(
+                    f"cannot create runtime directory: {exc}"
+                ) from exc
+        try:
+            descriptor = os.open(
+                final_name,
+                os.O_RDONLY | _DIRECTORY | _NOFOLLOW | _CLOEXEC,
+                dir_fd=parent_fd,
+            )
+        except OSError as exc:
+            raise LocalRuntimeSafetyError(
+                f"cannot open runtime directory safely: {exc}"
+            ) from exc
+        return descriptor, created
+    finally:
+        os.close(parent_fd)
+
+
+def _open_owned_regular_at(directory_fd: int, name: str, flags: int) -> int:
+    _validate_relative_controller_name(name)
+    try:
+        descriptor = os.open(
+            name,
+            flags | _NOFOLLOW | _CLOEXEC,
+            dir_fd=directory_fd,
+        )
+    except FileNotFoundError:
+        raise
     except OSError as exc:
         raise LocalRuntimeSafetyError(
-            f"cannot open controller file safely ({path.name}): {exc}"
+            f"cannot open controller file safely ({name}): {exc}"
         ) from exc
     try:
-        _validate_owned_regular_descriptor(descriptor, path)
+        _validate_owned_regular_descriptor(descriptor, name)
     except BaseException:
         os.close(descriptor)
         raise
     return descriptor
 
 
-def _validate_owned_regular_descriptor(descriptor: int, path: Path) -> None:
+def _validate_owned_regular_descriptor(descriptor: int, name: str) -> None:
     metadata = os.fstat(descriptor)
     if not stat.S_ISREG(metadata.st_mode):
-        raise LocalRuntimeSafetyError(f"controller path is not a regular file: {path.name}")
+        raise LocalRuntimeSafetyError(f"controller path is not a regular file: {name}")
     if metadata.st_uid != os.getuid():
-        raise LocalRuntimeSafetyError(f"controller path has a foreign owner: {path.name}")
-    if stat.S_IMODE(metadata.st_mode) & 0o077:
-        raise LocalRuntimeSafetyError(f"controller path permissions are unsafe: {path.name}")
+        raise LocalRuntimeSafetyError(f"controller path has a foreign owner: {name}")
+    if stat.S_IMODE(metadata.st_mode) != 0o600:
+        raise LocalRuntimeSafetyError(f"controller path mode must be exactly 0600: {name}")
+    if metadata.st_nlink != 1:
+        raise LocalRuntimeSafetyError(f"controller path must have one link: {name}")
 
 
-def _open_controller_log(path: Path) -> BinaryIO:
-    if os.path.lexists(path):
-        descriptor = _open_owned_regular(path, os.O_WRONLY)
-        os.close(descriptor)
+def _create_exclusive_file_at(directory_fd: int, prefix: str) -> tuple[int, str]:
+    for _ in range(128):
+        name = f"{prefix}{secrets.token_hex(12)}"
+        _validate_relative_controller_name(name)
+        try:
+            descriptor = os.open(
+                name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW | _CLOEXEC,
+                0o600,
+                dir_fd=directory_fd,
+            )
+        except FileExistsError:
+            continue
+        except OSError as exc:
+            raise LocalRuntimeSafetyError(
+                f"cannot create fresh controller file safely ({name}): {exc}"
+            ) from exc
+        return descriptor, name
+    raise LocalRuntimeSafetyError("cannot allocate an exclusive controller filename")
+
+
+def _entry_matches_descriptor(directory_fd: int, name: str, descriptor: int) -> bool:
     try:
-        descriptor = os.open(
-            path,
-            os.O_WRONLY | os.O_CREAT | os.O_TRUNC | _NOFOLLOW,
-            0o600,
-        )
-    except OSError as exc:
-        raise LocalRuntimeSafetyError(f"cannot open {path.name} safely: {exc}") from exc
-    try:
-        _validate_owned_regular_descriptor(descriptor, path)
-        return cast(BinaryIO, os.fdopen(descriptor, "wb", buffering=0))
-    except BaseException:
-        os.close(descriptor)
-        raise
+        entry = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    opened = os.fstat(descriptor)
+    return (entry.st_dev, entry.st_ino) == (opened.st_dev, opened.st_ino)
+
+
+def _validate_relative_controller_name(name: str) -> None:
+    path = Path(name)
+    if not name or path.name != name or name in {".", ".."}:
+        raise LocalRuntimeSafetyError("controller filename must be one safe relative name")
 
 
 def _read_process_snapshot(pid: int) -> ProcessSnapshot | None:
@@ -892,23 +1241,82 @@ def _port_bindable(port: int) -> bool:
     return True
 
 
+class _RejectRedirectHandler(HTTPRedirectHandler):
+    def redirect_request(
+        self,
+        req: Request,
+        fp: IO[bytes],
+        code: int,
+        msg: str,
+        headers: HTTPMessage,
+        newurl: str,
+    ) -> None:
+        del req, fp, code, msg, headers, newurl
+        return None
+
+
 def _http_get(url: str) -> HttpResponse:
-    opener = build_opener(ProxyHandler({}))
+    _validate_loopback_http_url(url)
+    opener = build_opener(ProxyHandler({}), _RejectRedirectHandler())
     request = Request(url, headers={"Accept": "application/json, text/html"}, method="GET")
     try:
         with opener.open(request, timeout=2.0) as response:
             status_code = response.getcode()
+            effective_url = response.url
             body = response.read(_HTTP_LIMIT_BYTES + 1)
             headers = {key.lower(): value for key, value in response.headers.items()}
     except HTTPError as exc:
         status_code = exc.code
+        effective_url = exc.url
         body = exc.read(_HTTP_LIMIT_BYTES + 1)
         headers = {key.lower(): value for key, value in exc.headers.items()}
     except (URLError, TimeoutError, OSError) as exc:
         raise LocalRuntimeError(f"HTTP request failed for {url}: {exc}") from exc
+    _validate_loopback_http_url(effective_url)
+    if effective_url != url:
+        raise LocalRuntimeSafetyError(
+            f"HTTP effective URL changed from {url} to {effective_url}"
+        )
+    if 300 <= int(status_code) < 400:
+        raise LocalRuntimeSafetyError(
+            f"HTTP redirect response is forbidden: {url} returned {status_code}"
+        )
     if len(body) > _HTTP_LIMIT_BYTES:
         raise LocalRuntimeSafetyError(f"HTTP response exceeded size limit: {url}")
-    return HttpResponse(status=int(status_code), body=body, headers=headers)
+    return HttpResponse(
+        status=int(status_code),
+        body=body,
+        headers=headers,
+        effective_url=effective_url,
+    )
+
+
+def _validate_loopback_http_url(url: str) -> None:
+    try:
+        parsed = urlsplit(url)
+        port = parsed.port
+    except ValueError as exc:
+        raise LocalRuntimeSafetyError(f"HTTP URL is invalid: {url}") from exc
+    allowed_paths = {
+        BACKEND_PORT: {HEALTH_PATH, STRATEGY_CATALOG_PATH, OPENAPI_PATH},
+        FRONTEND_PORT: {"/", STRATEGY_CATALOG_PATH},
+    }
+    exact_url = f"http://{LOCAL_HOST}:{port}{parsed.path}"
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname != LOCAL_HOST
+        or parsed.username is not None
+        or parsed.password is not None
+        or port not in allowed_paths
+        or parsed.netloc != f"{LOCAL_HOST}:{port}"
+        or parsed.path not in allowed_paths[port]
+        or parsed.query
+        or parsed.fragment
+        or url != exact_url
+    ):
+        raise LocalRuntimeSafetyError(
+            f"HTTP request is not an exact fixed loopback endpoint: {url}"
+        )
 
 
 def _json_payload(response: HttpResponse, label: str) -> object:
@@ -928,15 +1336,47 @@ def _process_group_alive(pgid: int) -> bool:
     return True
 
 
-def _terminate_new_process_group(process: subprocess.Popen[bytes]) -> None:
-    with suppress(ProcessLookupError):
+def _terminate_uncaptured_process_group(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is not None:
+        return
+    try:
+        current_pgid = os.getpgid(process.pid)
+    except ProcessLookupError:
+        return
+    if current_pgid != process.pid:
+        raise LocalRuntimeSafetyError(
+            "uncaptured launcher is not its expected process-group leader; no signal sent"
+        )
+    try:
         os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
     try:
         process.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        with suppress(ProcessLookupError):
-            os.killpg(process.pid, signal.SIGKILL)
-        process.wait(timeout=2)
+    except subprocess.TimeoutExpired as exc:
+        raise LocalRuntimeSafetyError(
+            "uncaptured launcher did not exit after SIGTERM; SIGKILL was not sent"
+        ) from exc
+
+
+def _read_git_revision(repository: Path) -> str:
+    git = shutil.which("git")
+    if git is None:
+        raise LocalRuntimeError("git is required to bind runtime state to source revision")
+    completed = subprocess.run(
+        [git, "-C", str(repository), "rev-parse", "--verify", "HEAD^{commit}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    if completed.returncode != 0:
+        raise LocalRuntimeSafetyError(
+            f"cannot resolve current Git commit: {completed.stderr.strip()}"
+        )
+    revision = completed.stdout.strip()
+    validate_git_object_id(revision)
+    return revision
 
 
 def _validate_launcher_child(role: ServiceRole, child: Sequence[str]) -> None:
@@ -974,14 +1414,15 @@ def _option_value(command: Sequence[str], option: str) -> str | None:
 
 
 def _launcher_main(arguments: Sequence[str]) -> int:
-    if len(arguments) < 10 or tuple(arguments[0::2][:4]) != (
+    if len(arguments) < 12 or tuple(arguments[0::2][:5]) != (
         "--role",
         "--token",
         "--repository",
+        "--source-commit",
         "--cwd",
     ):
         raise LocalRuntimeSafetyError("invalid internal launcher arguments")
-    if arguments[8] != "--":
+    if arguments[10] != "--":
         raise LocalRuntimeSafetyError("internal launcher child separator is missing")
     try:
         role = ServiceRole(arguments[1])
@@ -989,10 +1430,17 @@ def _launcher_main(arguments: Sequence[str]) -> int:
         raise LocalRuntimeSafetyError("invalid internal launcher role") from exc
     token = arguments[3]
     repository = Path(arguments[5]).resolve(strict=True)
-    child_cwd = Path(arguments[7]).resolve(strict=True)
-    child = tuple(arguments[9:])
+    source_commit = arguments[7]
+    child_cwd = Path(arguments[9]).resolve(strict=True)
+    child = tuple(arguments[11:])
     if not token or not child:
         raise LocalRuntimeSafetyError("internal launcher token or child command is missing")
+    validate_git_object_id(source_commit)
+    current_commit = _read_git_revision(repository)
+    if current_commit != source_commit:
+        raise LocalRuntimeSafetyError(
+            "internal launcher source revision differs from the requested start revision"
+        )
     if child_cwd != repository and repository not in child_cwd.parents:
         raise LocalRuntimeSafetyError("internal launcher working directory escapes the repository")
     _validate_launcher_child(role, child)

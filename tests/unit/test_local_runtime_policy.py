@@ -22,6 +22,7 @@ from lottolab.application.local_runtime import (
 )
 
 TOKEN = "a" * 32
+COMMIT = "1" * 40
 
 
 def make_policy(tmp_path: Path) -> LocalRuntimePolicy:
@@ -35,6 +36,7 @@ def make_identity(
     role: ServiceRole,
     *,
     token: str = TOKEN,
+    source_commit: str = COMMIT,
     pid: int | None = None,
 ) -> ProcessIdentity:
     selected_pid = pid if pid is not None else (41001 if role is ServiceRole.BACKEND else 41002)
@@ -42,7 +44,8 @@ def make_identity(
         f"{policy.repository_root}/.venv/bin/python -m "
         "lottolab.infrastructure.local_runtime _launch "
         f"--role {role.value} --token {token} "
-        f"--repository {policy.repository_root} --cwd {policy.repository_root} -- child"
+        f"--repository {policy.repository_root} --source-commit {source_commit} "
+        f"--cwd {policy.repository_root} -- child"
     )
     return ProcessIdentity(
         role=role,
@@ -76,6 +79,7 @@ def test_state_serialization_validation_and_service_order(tmp_path: Path) -> Non
     frontend = make_identity(policy, ServiceRole.FRONTEND)
     state = RuntimeState(
         repository_root=str(policy.repository_root),
+        source_commit=COMMIT,
         ownership_token=TOKEN,
         created_at_ns=1,
         services=(backend,),
@@ -100,8 +104,9 @@ def test_state_serialization_validation_and_service_order(tmp_path: Path) -> Non
             "services": [],
         },
         {
-            "state_version": 2,
+            "state_version": 3,
             "repository_root": "/tmp/repo",
+            "source_commit": COMMIT,
             "ownership_token": TOKEN,
             "created_at_ns": 1,
             "services": [],
@@ -118,6 +123,7 @@ def test_state_rejects_frontend_without_backend(tmp_path: Path) -> None:
     with pytest.raises(LocalRuntimeSafetyError, match="frontend state"):
         RuntimeState(
             repository_root=str(policy.repository_root),
+            source_commit=COMMIT,
             ownership_token=TOKEN,
             created_at_ns=1,
             services=(make_identity(policy, ServiceRole.FRONTEND),),
@@ -141,6 +147,7 @@ def test_state_rejects_pid_identity_or_repository_token_mismatch(tmp_path: Path)
     with pytest.raises(LocalRuntimeSafetyError, match="repository ownership"):
         RuntimeState(
             repository_root=str(policy.repository_root),
+            source_commit=COMMIT,
             ownership_token=TOKEN,
             created_at_ns=1,
             services=(identity,),
@@ -151,6 +158,13 @@ def test_commands_pin_localhost_ports_and_never_install(tmp_path: Path) -> None:
     policy = make_policy(tmp_path)
     backend = policy.backend_command("/opt/bin/uv", TOKEN)
     frontend = policy.frontend_command("/opt/bin/node")
+    launcher = policy.launcher_command(
+        python_executable="/repo/.venv/bin/python",
+        role=ServiceRole.BACKEND,
+        token=TOKEN,
+        source_commit=COMMIT,
+        child_command=backend,
+    )
 
     assert backend[:3] == ("/opt/bin/uv", "run", "--no-sync")
     assert backend[backend.index("--host") + 1] == LOCAL_HOST
@@ -164,6 +178,7 @@ def test_commands_pin_localhost_ports_and_never_install(tmp_path: Path) -> None:
     assert "npm ci" not in combined
     assert "uv sync" not in combined
     assert "pip install" not in combined
+    assert launcher[launcher.index("--source-commit") + 1] == COMMIT
 
 
 def test_runtime_directory_inside_repository_is_rejected(tmp_path: Path) -> None:
@@ -171,6 +186,58 @@ def test_runtime_directory_inside_repository_is_rejected(tmp_path: Path) -> None
     repository.mkdir()
     with pytest.raises(LocalRuntimeSafetyError, match="outside"):
         LocalRuntimePolicy.for_repository(repository, runtime_dir=repository / ".runtime")
+
+
+def test_runtime_directory_traversal_into_repository_is_rejected(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    traversal = tmp_path / "outside" / ".." / "repo" / ".runtime"
+    with pytest.raises(LocalRuntimeSafetyError, match="traversal"):
+        LocalRuntimePolicy.for_repository(repository, runtime_dir=traversal)
+
+
+def test_runtime_directory_symlink_parent_is_rejected(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    alias = tmp_path / "repo-alias"
+    alias.symlink_to(repository, target_is_directory=True)
+    with pytest.raises(LocalRuntimeSafetyError, match="symlinked"):
+        LocalRuntimePolicy.for_repository(repository, runtime_dir=alias / ".runtime")
+
+
+def test_runtime_directory_non_directory_component_is_rejected(tmp_path: Path) -> None:
+    repository = tmp_path / "repo"
+    repository.mkdir()
+    component = tmp_path / "not-a-directory"
+    component.write_text("sentinel", encoding="utf-8")
+    with pytest.raises(LocalRuntimeSafetyError, match="non-directory component"):
+        LocalRuntimePolicy.for_repository(repository, runtime_dir=component / "runtime")
+
+
+@pytest.mark.parametrize("source_commit", ["", "1" * 39, "g" * 40, "1" * 41])
+def test_state_rejects_malformed_or_missing_source_commit(
+    tmp_path: Path, source_commit: str
+) -> None:
+    policy = make_policy(tmp_path)
+    with pytest.raises(LocalRuntimeSafetyError, match="full Git object ID"):
+        RuntimeState(
+            repository_root=str(policy.repository_root),
+            source_commit=source_commit,
+            ownership_token=TOKEN,
+            created_at_ns=1,
+            services=(make_identity(policy, ServiceRole.BACKEND),),
+        )
+
+    valid = RuntimeState(
+        repository_root=str(policy.repository_root),
+        source_commit=COMMIT,
+        ownership_token=TOKEN,
+        created_at_ns=1,
+        services=(make_identity(policy, ServiceRole.BACKEND),),
+    ).to_object()
+    del valid["source_commit"]
+    with pytest.raises(LocalRuntimeSafetyError, match="keys are invalid"):
+        RuntimeState.from_object(valid)
 
 
 def test_smoke_payload_contract_and_deterministic_order() -> None:

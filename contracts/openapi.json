@@ -52,6 +52,105 @@
         }
       }
     },
+    "/api/v1/strategy-overview": {
+      "get": {
+        "tags": [
+          "strategy-catalog"
+        ],
+        "summary": "Strategy Overview",
+        "operationId": "queryStrategyOverview",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "lifecycle_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LifecycleStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lifecycle Status"
+            }
+          },
+          {
+            "name": "executable",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Executable"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyOverviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/draw-imports/preview": {
       "post": {
         "tags": [
@@ -955,6 +1054,19 @@
         ],
         "title": "DrawRecordView"
       },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
       "ImportCommitResultView": {
         "properties": {
           "run_id": {
@@ -1438,6 +1550,172 @@
         ],
         "title": "RequestValidationIssueView"
       },
+      "StrategyOverviewCapabilities": {
+        "properties": {
+          "evaluation_metrics_available": {
+            "type": "boolean",
+            "const": false,
+            "title": "Evaluation Metrics Available"
+          },
+          "d3_status_available": {
+            "type": "boolean",
+            "const": false,
+            "title": "D3 Status Available"
+          },
+          "best_strategy_ranking_available": {
+            "type": "boolean",
+            "const": false,
+            "title": "Best Strategy Ranking Available"
+          },
+          "unavailable_reason_codes": {
+            "items": {
+              "type": "string",
+              "const": "NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE"
+            },
+            "type": "array",
+            "title": "Unavailable Reason Codes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evaluation_metrics_available",
+          "d3_status_available",
+          "best_strategy_ranking_available",
+          "unavailable_reason_codes"
+        ],
+        "title": "StrategyOverviewCapabilities",
+        "description": "Truthful evidence availability at the current LottoLab migration boundary."
+      },
+      "StrategyOverviewItem": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "supported_lottery_types": {
+            "items": {
+              "$ref": "#/components/schemas/LotteryType"
+            },
+            "type": "array",
+            "title": "Supported Lottery Types"
+          },
+          "minimum_history": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Minimum History"
+          },
+          "lifecycle_status": {
+            "$ref": "#/components/schemas/LifecycleStatus"
+          },
+          "executable": {
+            "type": "boolean",
+            "title": "Executable"
+          },
+          "provenance": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "display_name",
+          "version",
+          "supported_lottery_types",
+          "minimum_history",
+          "lifecycle_status",
+          "executable",
+          "provenance"
+        ],
+        "title": "StrategyOverviewItem",
+        "description": "Canonical descriptor metadata exposed by the overview query."
+      },
+      "StrategyOverviewResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyOverviewItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/StrategyOverviewSummary"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/StrategyOverviewCapabilities"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "summary",
+          "capabilities"
+        ],
+        "title": "StrategyOverviewResponse"
+      },
+      "StrategyOverviewSummary": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total"
+          },
+          "executable_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Executable Count"
+          },
+          "metadata_only_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Metadata Only Count"
+          },
+          "lifecycle_counts": {
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0.0
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/LifecycleStatus"
+            },
+            "type": "object",
+            "title": "Lifecycle Counts"
+          },
+          "lottery_type_counts": {
+            "additionalProperties": {
+              "type": "integer",
+              "minimum": 0.0
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/LotteryType"
+            },
+            "type": "object",
+            "title": "Lottery Type Counts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "executable_count",
+          "metadata_only_count",
+          "lifecycle_counts",
+          "lottery_type_counts"
+        ],
+        "title": "StrategyOverviewSummary",
+        "description": "Counts over only the descriptors returned by the current query."
+      },
       "StrategyView": {
         "properties": {
           "strategy_id": {
@@ -1483,6 +1761,46 @@
           "executable"
         ],
         "title": "StrategyView"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
       }
     }
   }

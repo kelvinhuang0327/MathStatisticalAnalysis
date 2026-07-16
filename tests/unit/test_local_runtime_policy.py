@@ -286,6 +286,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     return {
         "/api/health": {"get": {}},
         "/api/v1/strategies": {"get": {}},
+        "/api/v1/strategy-overview": {"get": {}},
         "/api/v1/draw-imports/preview": {"post": {}},
         "/api/v1/draw-imports/commit": {"post": {}},
         "/api/v1/draws": {"get": {}},
@@ -335,6 +336,7 @@ def test_smoke_rejects_path_item_references(
     [
         ("/api/health", "get"),
         ("/api/v1/strategies", "get"),
+        ("/api/v1/strategy-overview", "get"),
         ("/api/v1/draw-imports/preview", "post"),
         ("/api/v1/draw-imports/commit", "post"),
         ("/api/v1/draws", "get"),
@@ -358,16 +360,23 @@ def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method
         ("/API/v1/strategies", "get", "unapproved local runtime path"),
         ("/api/v1/strategies", "GET", "duplicate or malformed"),
         ("/api/v1/strategies", "fetch", "duplicate or malformed"),
+        ("/api/v1/strategy-overview/", "get", "unapproved local runtime path"),
+        ("/API/v1/strategy-overview", "get", "unapproved local runtime path"),
     ],
 )
 def test_smoke_rejects_openapi_alias_case_and_malformed_operations(
     path: str, method: str, message: str
 ) -> None:
     paths = authorized_openapi_paths()
-    if path == "/api/v1/strategies":
+    approved_path = (
+        "/api/v1/strategy-overview"
+        if "strategy-overview" in path.casefold()
+        else "/api/v1/strategies"
+    )
+    if path == approved_path:
         paths[path] = {method: {}}
     else:
-        del paths["/api/v1/strategies"]
+        del paths[approved_path]
         paths[path] = {method: {}}
 
     with pytest.raises(LocalRuntimeSafetyError, match=message):
@@ -387,6 +396,7 @@ def test_smoke_rejects_malformed_openapi_operation_object() -> None:
     [
         ("/api/v1/unknown", "post", "unapproved local runtime path"),
         ("/api/v1/strategies", "post", "unapproved method/path"),
+        ("/api/v1/strategy-overview", "post", "unapproved method/path"),
         ("/api/v1/generation", "post", "generation or execution"),
         ("/api/v1/prediction", "post", "generation or execution"),
     ],

@@ -19,19 +19,45 @@ beforeEach(() => {
   window.location.hash = '#/strategies'
   fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
     const url = String(input)
-    if (url.includes('/api/v1/strategies')) {
+    if (url.includes('/api/v1/strategy-overview')) {
       return Promise.resolve(
-        apiResponse([
-          {
-            strategy_id: 'biglotto_social_wisdom_anti_popularity',
-            display_name: 'Strategy fixture',
-            version: 'v0.1',
-            supported_lottery_types: ['BIG_LOTTO'],
-            minimum_history: 1,
-            lifecycle_status: 'OBSERVATION',
-            executable: false,
+        apiResponse({
+          items: [
+            {
+              strategy_id: 'biglotto_social_wisdom_anti_popularity',
+              display_name: 'Strategy fixture',
+              version: 'v0.1',
+              supported_lottery_types: ['BIG_LOTTO'],
+              minimum_history: 1,
+              lifecycle_status: 'OBSERVATION',
+              executable: false,
+              provenance: ['fixture:navigation'],
+            },
+          ],
+          summary: {
+            total: 1,
+            executable_count: 0,
+            metadata_only_count: 1,
+            lifecycle_counts: {
+              IDEA: 0,
+              OBSERVATION: 1,
+              ONLINE: 0,
+              REJECTED: 0,
+              RETIRED: 0,
+            },
+            lottery_type_counts: {
+              DAILY_539: 0,
+              BIG_LOTTO: 1,
+              POWER_LOTTO: 0,
+            },
           },
-        ]),
+          capabilities: {
+            evaluation_metrics_available: false,
+            d3_status_available: false,
+            best_strategy_ranking_available: false,
+            unavailable_reason_codes: ['NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE'],
+          },
+        }),
       )
     }
     if (url.includes('/api/v1/ingestion-runs')) {
@@ -66,13 +92,13 @@ afterEach(() => {
 })
 
 describe('App navigation', () => {
-  it('navigates among Strategy Catalog, Data Center, and Draw History without a router', async () => {
+  it('navigates among Strategy Overview, Data Center, and Draw History without a router', async () => {
     const wrapper = mount(App)
     await flushPromises()
 
     const navigation = wrapper.get('nav[aria-label="Primary navigation"]')
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
-      'Strategy Catalog',
+      'Strategy Overview',
       'Data Center',
       'Draw History',
     ])

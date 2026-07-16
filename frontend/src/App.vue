@@ -36,7 +36,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       </a>
       <nav class="primary-nav" aria-label="Primary navigation">
         <a href="#/strategies" :aria-current="currentPage === 'strategies' ? 'page' : undefined">
-          Strategy Catalog
+          Strategy Overview
         </a>
         <a href="#/data-center" :aria-current="currentPage === 'data-center' ? 'page' : undefined">
           Data Center
@@ -56,7 +56,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
 
     <footer class="app-footer">
       <template v-if="currentPage === 'strategies'">
-        Strategy Catalog remains a DB-free metadata request path.
+        Strategy Overview remains a DB-free metadata request path with explicit evidence gaps.
       </template>
       <template v-else>
         Local draw data stays outside Git. Import writes occur only after explicit confirmation.

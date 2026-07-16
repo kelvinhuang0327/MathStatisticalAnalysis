@@ -41,6 +41,7 @@ _FORBIDDEN_ROUTE_WORDS = (
 _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/health": frozenset({"get"}),
     "/api/v1/strategies": frozenset({"get"}),
+    "/api/v1/strategy-overview": frozenset({"get"}),
     "/api/v1/draw-imports/preview": frozenset({"post"}),
     "/api/v1/draw-imports/commit": frozenset({"post"}),
     "/api/v1/draws": frozenset({"get"}),

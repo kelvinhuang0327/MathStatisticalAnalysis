@@ -24,6 +24,22 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/strategy-overview": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["StrategyOverviewResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["HTTPValidationError"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/draw-imports/preview": {
       post: {
           responses: {
@@ -236,6 +252,9 @@ export interface components {
           "created_at": string
           "updated_at": string
         }
+    "HTTPValidationError": {
+          "detail"?: Array<components['schemas']["ValidationError"]>
+        }
     "ImportCommitResultView": {
           "run_id": string | null
           "status": components['schemas']["IngestionRunStatus"]
@@ -309,6 +328,34 @@ export interface components {
           "location": string
           "type": string
         }
+    "StrategyOverviewCapabilities": {
+          "evaluation_metrics_available": boolean
+          "d3_status_available": boolean
+          "best_strategy_ranking_available": boolean
+          "unavailable_reason_codes": Array<string>
+        }
+    "StrategyOverviewItem": {
+          "strategy_id": string
+          "display_name": string
+          "version": string
+          "supported_lottery_types": Array<components['schemas']["LotteryType"]>
+          "minimum_history": number
+          "lifecycle_status": components['schemas']["LifecycleStatus"]
+          "executable": boolean
+          "provenance": Array<string>
+        }
+    "StrategyOverviewResponse": {
+          "items": Array<components['schemas']["StrategyOverviewItem"]>
+          "summary": components['schemas']["StrategyOverviewSummary"]
+          "capabilities": components['schemas']["StrategyOverviewCapabilities"]
+        }
+    "StrategyOverviewSummary": {
+          "total": number
+          "executable_count": number
+          "metadata_only_count": number
+          "lifecycle_counts": Record<string, number>
+          "lottery_type_counts": Record<string, number>
+        }
     "StrategyView": {
           "strategy_id": string
           "display_name": string
@@ -317,6 +364,13 @@ export interface components {
           "minimum_history": number
           "lifecycle_status": components['schemas']["LifecycleStatus"]
           "executable": boolean
+        }
+    "ValidationError": {
+          "loc": Array<string | number>
+          "msg": string
+          "type": string
+          "input"?: unknown
+          "ctx"?: Record<string, unknown>
         }
   }
 }

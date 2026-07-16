@@ -92,18 +92,13 @@ def _result(
     )
 
 
-def _decode_content(content: str | bytes) -> tuple[bytes | None, str | None]:
+def _raw_content(content: str | bytes) -> bytes | None:
     if isinstance(content, bytes):
-        raw = content
-        try:
-            return raw, raw.decode("utf-8-sig")
-        except UnicodeDecodeError:
-            return raw, None
+        return content
     try:
-        raw = content.encode("utf-8")
+        return content.encode("utf-8")
     except UnicodeEncodeError:
-        return None, None
-    return raw, content.removeprefix("\ufeff")
+        return None
 
 
 def _normalize_header(header: list[str]) -> tuple[str, ...]:
@@ -332,7 +327,7 @@ def parse_draw_csv(
 ) -> DrawCsvParseResult:
     """Return a bounded, deterministic parse result without filesystem or DB I/O."""
 
-    raw, decoded = _decode_content(content)
+    raw = _raw_content(content)
     if raw is None:
         return _result(
             filename=filename,
@@ -357,7 +352,9 @@ def parse_draw_csv(
                 ),
             ),
         )
-    if decoded is None:
+    try:
+        decoded = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
         return _result(
             filename=filename,
             content_sha256=content_sha256,

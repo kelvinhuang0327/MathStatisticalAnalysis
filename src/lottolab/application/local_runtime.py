@@ -26,7 +26,28 @@ EXPECTED_STRATEGY_IDS = (
 STATE_VERSION = 2
 _TOKEN_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 _GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
-_FORBIDDEN_ROUTE_WORDS = ("execute", "generate", "prediction", "replay", "scheduler")
+_FORBIDDEN_ROUTE_WORDS = (
+    "backfill",
+    "evaluation",
+    "execute",
+    "generate",
+    "generation",
+    "optimizer",
+    "prediction",
+    "replay",
+    "scheduler",
+    "training",
+)
+_ALLOWED_OPENAPI_OPERATIONS = {
+    "/api/health": frozenset({"get"}),
+    "/api/v1/strategies": frozenset({"get"}),
+    "/api/v1/draw-imports/preview": frozenset({"post"}),
+    "/api/v1/draw-imports/commit": frozenset({"post"}),
+    "/api/v1/draws": frozenset({"get"}),
+    "/api/v1/draws/{lottery_type}/{draw_number}": frozenset({"get"}),
+    "/api/v1/ingestion-runs": frozenset({"get"}),
+    "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
+}
 
 
 class LocalRuntimeError(RuntimeError):
@@ -388,10 +409,13 @@ def validate_openapi_payload(payload: object) -> None:
         lowered_path = path.lower()
         if any(word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS):
             raise LocalRuntimeSafetyError("OpenAPI exposes a generation or execution path")
+        allowed_methods = _ALLOWED_OPENAPI_OPERATIONS.get(path)
+        if allowed_methods is None:
+            raise LocalRuntimeSafetyError("OpenAPI exposes an unapproved local runtime path")
         operations = _object_mapping(raw_operations, f"OpenAPI operations for {path}")
         http_methods = {method.lower() for method in operations if not method.startswith("x-")}
-        if http_methods - {"get", "head", "options"}:
-            raise LocalRuntimeSafetyError("OpenAPI exposes a mutating local runtime operation")
+        if http_methods - allowed_methods:
+            raise LocalRuntimeSafetyError("OpenAPI exposes an unapproved method/path operation")
 
 
 def validate_frontend_document(body: bytes) -> None:

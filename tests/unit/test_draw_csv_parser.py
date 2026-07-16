@@ -16,7 +16,12 @@ from lottolab.domain.ingestion import (
     DrawImportErrorCode,
     LotteryRuleStatus,
 )
-from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT, LotteryRuleContract
+from lottolab.domain.lottery_rules import (
+    BIG_LOTTO_RULE_CONTRACT,
+    LotteryLifecycleStatus,
+    LotteryRuleContract,
+    ProvenanceStatus,
+)
 from lottolab.infrastructure.imports.csv_draws import (
     MAX_CSV_BYTES,
     MAX_CSV_ROWS,
@@ -91,6 +96,17 @@ def test_utf8_bom_is_accepted(content: str | bytes) -> None:
 
     assert result.is_valid
     assert len(result.normalized_rows) == 1
+
+
+def test_raw_byte_limit_is_checked_before_utf8_decode() -> None:
+    class DecodeSentinel(bytes):
+        def decode(self, *args: object, **kwargs: object) -> str:
+            del args, kwargs
+            raise AssertionError("oversized input must not be decoded")
+
+    result = parse_draw_csv(DecodeSentinel(b"x" * (MAX_CSV_BYTES + 1)))
+
+    assert error_codes(result) == [DrawImportErrorCode.FILE_TOO_LARGE]
 
 
 def test_missing_required_special_number_follows_contract() -> None:
@@ -255,6 +271,46 @@ def test_missing_rule_contract_fails_closed() -> None:
 
     assert error_codes(result) == [DrawImportErrorCode.RULE_CONTRACT_UNKNOWN]
     assert result.normalized_rows == ()
+
+
+@pytest.mark.parametrize(
+    "contract",
+    [
+        replace(
+            BIG_LOTTO_RULE_CONTRACT,
+            lifecycle_status=LotteryLifecycleStatus.RETIRED,
+        ),
+        replace(
+            BIG_LOTTO_RULE_CONTRACT,
+            provenance_status=ProvenanceStatus.CORROBORATING,
+        ),
+    ],
+    ids=["retired", "non-primary"],
+)
+def test_ineligible_rule_contracts_fail_closed(contract: LotteryRuleContract) -> None:
+    result = parse_big_lotto(rule_contracts={LotteryType.BIG_LOTTO: contract})
+
+    assert error_codes(result) == [DrawImportErrorCode.RULE_CONTRACT_UNKNOWN]
+    assert result.normalized_rows == ()
+
+
+@pytest.mark.parametrize(
+    ("main_numbers", "special_number"),
+    [
+        ("2|3|4|5|6|7", "1"),
+        ("1|2|3|4|5|6", "49"),
+    ],
+)
+def test_special_number_contract_boundaries_are_accepted(
+    main_numbers: str, special_number: str
+) -> None:
+    result = parse_big_lotto(
+        main_numbers=main_numbers,
+        special_numbers=special_number,
+    )
+
+    assert result.is_valid
+    assert result.normalized_rows[0].special_numbers == (int(special_number),)
 
 
 def test_incomplete_rule_contract_fails_closed() -> None:

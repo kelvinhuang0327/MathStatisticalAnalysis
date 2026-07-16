@@ -16,6 +16,12 @@ from lottolab.infrastructure.persistence.draw_schema import (
     resolve_local_data_paths,
     verify_schema_read_only,
 )
+from lottolab.infrastructure.persistence.repositories import (
+    SQLiteDrawDataRepository,
+    SQLiteDrawRepository,
+    SQLiteIngestionItemRepository,
+    SQLiteIngestionRunRepository,
+)
 
 __all__ = [
     "BUSY_TIMEOUT_MS",
@@ -27,6 +33,10 @@ __all__ = [
     "LocalDataPaths",
     "MigrationChecksumError",
     "NewerSchemaVersionError",
+    "SQLiteDrawDataRepository",
+    "SQLiteDrawRepository",
+    "SQLiteIngestionItemRepository",
+    "SQLiteIngestionRunRepository",
     "SchemaMigrationError",
     "initialize_schema",
     "open_database",

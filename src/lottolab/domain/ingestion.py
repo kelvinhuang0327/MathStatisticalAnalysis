@@ -20,6 +20,35 @@ class LotteryRuleStatus(StrEnum):
     UNKNOWN = "UNKNOWN"
 
 
+class IngestionOperationType(StrEnum):
+    """Stable operation identifiers stored in the local ingestion log."""
+
+    DRAW_CSV_IMPORT = "DRAW_CSV_IMPORT"
+
+
+class IngestionRunStatus(StrEnum):
+    """Lifecycle states for one transactional ingestion attempt."""
+
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
+
+class IngestionItemDisposition(StrEnum):
+    """Outcome for one normalized source row."""
+
+    INSERTED = "INSERTED"
+    SKIPPED_DUPLICATE = "SKIPPED_DUPLICATE"
+    CONFLICT = "CONFLICT"
+    FAILED = "FAILED"
+
+
+class ConflictPolicy(StrEnum):
+    """Import collision behavior supported by the current release."""
+
+    REJECT = "REJECT"
+
+
 class DrawImportErrorCode(StrEnum):
     """Stable machine-readable validation failures returned by import parsing."""
 

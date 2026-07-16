@@ -51,10 +51,1294 @@
           }
         }
       }
+    },
+    "/api/v1/draw-imports/preview": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Preview Draw Import",
+        "operationId": "previewDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawImportPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawImportPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-imports/commit": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Commit Draw Import",
+        "operationId": "commitDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawImportCommitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportCommitResultView"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitConflictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draws": {
+      "get": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "List Draw History",
+        "operationId": "listDraws",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "draw_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32,
+                  "pattern": "^[0-9]+$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Draw Number"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawHistoryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/draws/{lottery_type}/{draw_number}": {
+      "get": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Get Draw",
+        "operationId": "getDraw",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "draw_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32,
+              "pattern": "^[0-9]+$",
+              "title": "Draw Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawRecordView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion-runs": {
+      "get": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "List Ingestion Runs",
+        "operationId": "listIngestionRuns",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IngestionRunStatus"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 25,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/ingestion-runs/{run_id}": {
+      "get": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Get Ingestion Run",
+        "operationId": "getIngestionRun",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IngestionRunDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "ApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "ApiErrorResponse"
+      },
+      "ApiValidationErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DrawImportPreviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/RequestValidationIssueView"
+            },
+            "type": "array",
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "ApiValidationErrorResponse"
+      },
+      "CommitConflictResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImportCommitResultView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_code",
+          "message",
+          "result"
+        ],
+        "title": "CommitConflictResponse"
+      },
+      "ConflictPolicy": {
+        "type": "string",
+        "enum": [
+          "REJECT"
+        ],
+        "title": "ConflictPolicy",
+        "description": "Import collision behavior supported by the current release."
+      },
+      "DrawHistoryResponse": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/DrawRecordView"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          },
+          "sort": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sort"
+          }
+        },
+        "type": "object",
+        "required": [
+          "records",
+          "page",
+          "page_size",
+          "total_count",
+          "total_pages",
+          "sort"
+        ],
+        "title": "DrawHistoryResponse"
+      },
+      "DrawImportCommitRequest": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "csv_text": {
+            "type": "string",
+            "title": "Csv Text"
+          },
+          "expected_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Parser Version"
+          },
+          "conflict_policy": {
+            "$ref": "#/components/schemas/ConflictPolicy"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "csv_text",
+          "expected_sha256",
+          "parser_version",
+          "conflict_policy"
+        ],
+        "title": "DrawImportCommitRequest"
+      },
+      "DrawImportErrorView": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "row_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Number"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "row_number",
+          "field"
+        ],
+        "title": "DrawImportErrorView"
+      },
+      "DrawImportPreviewRequest": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "csv_text": {
+            "type": "string",
+            "title": "Csv Text"
+          },
+          "declared_parser_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Parser Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "csv_text"
+        ],
+        "title": "DrawImportPreviewRequest"
+      },
+      "DrawImportPreviewResponse": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid"
+          },
+          "content_sha256": {
+            "type": "string",
+            "title": "Content Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "title": "Parser Version"
+          },
+          "supported_lottery_types": {
+            "items": {
+              "$ref": "#/components/schemas/LotteryType"
+            },
+            "type": "array",
+            "title": "Supported Lottery Types"
+          },
+          "total_rows": {
+            "type": "integer",
+            "title": "Total Rows"
+          },
+          "valid_rows": {
+            "type": "integer",
+            "title": "Valid Rows"
+          },
+          "blank_rows": {
+            "type": "integer",
+            "title": "Blank Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows_inside_input": {
+            "type": "integer",
+            "title": "Conflict Rows Inside Input"
+          },
+          "validation_error_count": {
+            "type": "integer",
+            "title": "Validation Error Count"
+          },
+          "ignored_columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ignored Columns"
+          },
+          "normalized_preview": {
+            "items": {
+              "$ref": "#/components/schemas/NormalizedDrawPreviewView"
+            },
+            "type": "array",
+            "title": "Normalized Preview"
+          },
+          "validation_errors": {
+            "items": {
+              "$ref": "#/components/schemas/DrawImportErrorView"
+            },
+            "type": "array",
+            "title": "Validation Errors"
+          },
+          "preview_truncated": {
+            "type": "boolean",
+            "title": "Preview Truncated"
+          },
+          "errors_truncated": {
+            "type": "boolean",
+            "title": "Errors Truncated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "is_valid",
+          "content_sha256",
+          "parser_version",
+          "supported_lottery_types",
+          "total_rows",
+          "valid_rows",
+          "blank_rows",
+          "duplicate_rows",
+          "conflict_rows_inside_input",
+          "validation_error_count",
+          "ignored_columns",
+          "normalized_preview",
+          "validation_errors",
+          "preview_truncated",
+          "errors_truncated"
+        ],
+        "title": "DrawImportPreviewResponse"
+      },
+      "DrawRecordView": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Draw Date"
+          },
+          "main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Main Numbers"
+          },
+          "special_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Special Numbers"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "ingestion_run_id": {
+            "type": "string",
+            "title": "Ingestion Run Id"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "draw_number",
+          "draw_date",
+          "main_numbers",
+          "special_numbers",
+          "source_name",
+          "source_reference",
+          "ingestion_run_id",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "DrawRecordView"
+      },
+      "ImportCommitResultView": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IngestionRunStatus"
+          },
+          "lottery_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LotteryType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "inserted_count": {
+            "type": "integer",
+            "title": "Inserted Count"
+          },
+          "skipped_count": {
+            "type": "integer",
+            "title": "Skipped Count"
+          },
+          "conflict_count": {
+            "type": "integer",
+            "title": "Conflict Count"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "first_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Number"
+          },
+          "last_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Number"
+          },
+          "completed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "lottery_type",
+          "total_count",
+          "inserted_count",
+          "skipped_count",
+          "conflict_count",
+          "failed_count",
+          "first_draw_number",
+          "last_draw_number",
+          "completed_at"
+        ],
+        "title": "ImportCommitResultView"
+      },
+      "IngestionItemDisposition": {
+        "type": "string",
+        "enum": [
+          "INSERTED",
+          "SKIPPED_DUPLICATE",
+          "CONFLICT",
+          "FAILED"
+        ],
+        "title": "IngestionItemDisposition",
+        "description": "Outcome for one normalized source row."
+      },
+      "IngestionItemView": {
+        "properties": {
+          "source_row_number": {
+            "type": "integer",
+            "title": "Source Row Number"
+          },
+          "lottery_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LotteryType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw Number"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/IngestionItemDisposition"
+          },
+          "normalized_record_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Record Hash"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_row_number",
+          "lottery_type",
+          "draw_number",
+          "disposition",
+          "normalized_record_hash",
+          "message"
+        ],
+        "title": "IngestionItemView"
+      },
+      "IngestionOperationType": {
+        "type": "string",
+        "enum": [
+          "DRAW_CSV_IMPORT"
+        ],
+        "title": "IngestionOperationType",
+        "description": "Stable operation identifiers stored in the local ingestion log."
+      },
+      "IngestionRunDetailResponse": {
+        "properties": {
+          "run": {
+            "$ref": "#/components/schemas/IngestionRunView"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionItemView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "item_count": {
+            "type": "integer",
+            "title": "Item Count"
+          },
+          "items_truncated": {
+            "type": "boolean",
+            "title": "Items Truncated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run",
+          "items",
+          "item_count",
+          "items_truncated"
+        ],
+        "title": "IngestionRunDetailResponse"
+      },
+      "IngestionRunPageResponse": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/IngestionRunView"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          },
+          "sort": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sort"
+          }
+        },
+        "type": "object",
+        "required": [
+          "records",
+          "page",
+          "page_size",
+          "total_count",
+          "total_pages",
+          "sort"
+        ],
+        "title": "IngestionRunPageResponse"
+      },
+      "IngestionRunStatus": {
+        "type": "string",
+        "enum": [
+          "RUNNING",
+          "SUCCESS",
+          "FAILED"
+        ],
+        "title": "IngestionRunStatus",
+        "description": "Lifecycle states for one transactional ingestion attempt."
+      },
+      "IngestionRunView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "operation_type": {
+            "$ref": "#/components/schemas/IngestionOperationType"
+          },
+          "status": {
+            "$ref": "#/components/schemas/IngestionRunStatus"
+          },
+          "lottery_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LotteryType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "title": "Parser Version"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "inserted_count": {
+            "type": "integer",
+            "title": "Inserted Count"
+          },
+          "skipped_count": {
+            "type": "integer",
+            "title": "Skipped Count"
+          },
+          "conflict_count": {
+            "type": "integer",
+            "title": "Conflict Count"
+          },
+          "failed_count": {
+            "type": "integer",
+            "title": "Failed Count"
+          },
+          "first_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Number"
+          },
+          "last_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Number"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "operation_type",
+          "status",
+          "lottery_type",
+          "source_filename",
+          "source_sha256",
+          "parser_version",
+          "total_count",
+          "inserted_count",
+          "skipped_count",
+          "conflict_count",
+          "failed_count",
+          "first_draw_number",
+          "last_draw_number",
+          "started_at",
+          "completed_at",
+          "error_summary"
+        ],
+        "title": "IngestionRunView"
+      },
       "LifecycleStatus": {
         "type": "string",
         "enum": [
@@ -74,6 +1358,85 @@
           "POWER_LOTTO"
         ],
         "title": "LotteryType"
+      },
+      "NormalizedDrawPreviewView": {
+        "properties": {
+          "source_row_number": {
+            "type": "integer",
+            "title": "Source Row Number"
+          },
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Draw Date"
+          },
+          "main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Main Numbers"
+          },
+          "special_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Special Numbers"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "normalized_record_hash": {
+            "type": "string",
+            "title": "Normalized Record Hash"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_row_number",
+          "lottery_type",
+          "draw_number",
+          "draw_date",
+          "main_numbers",
+          "special_numbers",
+          "source_reference",
+          "normalized_record_hash"
+        ],
+        "title": "NormalizedDrawPreviewView"
+      },
+      "RequestValidationIssueView": {
+        "properties": {
+          "location": {
+            "type": "string",
+            "title": "Location"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "location",
+          "type"
+        ],
+        "title": "RequestValidationIssueView"
       },
       "StrategyView": {
         "properties": {

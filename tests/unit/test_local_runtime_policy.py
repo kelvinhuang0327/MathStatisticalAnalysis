@@ -267,18 +267,43 @@ def test_smoke_rejects_catalog_contract_drift(mutation: str) -> None:
         validate_strategy_payloads(direct, proxied)
 
 
-def test_smoke_rejects_generation_or_mutating_openapi_paths() -> None:
+def test_smoke_accepts_exact_authorized_openapi_surface() -> None:
     validate_openapi_payload(
         {
             "paths": {
                 "/api/health": {"get": {}},
                 "/api/v1/strategies": {"get": {}},
+                "/api/v1/draw-imports/preview": {"post": {}},
+                "/api/v1/draw-imports/commit": {"post": {}},
+                "/api/v1/draws": {"get": {}},
+                "/api/v1/draws/{lottery_type}/{draw_number}": {"get": {}},
+                "/api/v1/ingestion-runs": {"get": {}},
+                "/api/v1/ingestion-runs/{run_id}": {"get": {}},
             }
         }
     )
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "message"),
+    [
+        ("/api/v1/unknown", "post", "unapproved local runtime path"),
+        ("/api/v1/strategies", "post", "unapproved method/path"),
+        ("/api/v1/generation", "post", "generation or execution"),
+        ("/api/v1/prediction", "post", "generation or execution"),
+    ],
+)
+def test_smoke_rejects_unknown_or_executable_openapi_operations(
+    path: str, method: str, message: str
+) -> None:
+    with pytest.raises(LocalRuntimeSafetyError, match=message):
+        validate_openapi_payload({"paths": {path: {method: {}}}})
+
+
+def test_smoke_rejects_generation_or_mutating_openapi_paths() -> None:
     with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
         validate_openapi_payload({"paths": {"/api/v1/generate": {"get": {}}}})
-    with pytest.raises(LocalRuntimeSafetyError, match="mutating"):
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
         validate_openapi_payload({"paths": {"/api/v1/strategies": {"post": {}}}})
 
 

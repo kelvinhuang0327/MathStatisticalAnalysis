@@ -65,6 +65,9 @@ def test_default_strategy_endpoint_is_db_free(monkeypatch: MonkeyPatch) -> None:
 
     monkeypatch.setattr(sqlite3, "connect", fail_on_connect)
     client = TestClient(create_app())
+    health = client.get("/api/health")
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok", "api_version": "v1"}
     response = client.get("/api/v1/strategies")
     assert response.status_code == 200
     manifest = cast(

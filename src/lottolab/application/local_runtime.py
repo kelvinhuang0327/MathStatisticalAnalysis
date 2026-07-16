@@ -48,6 +48,11 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/ingestion-runs": frozenset({"get"}),
     "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
 }
+_ALLOWED_OPENAPI_OPERATION_SET = frozenset(
+    (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods
+)
+_HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
+_OPENAPI_PATH_ITEM_FIELDS = frozenset({"$ref", "summary", "description", "servers", "parameters"})
 
 
 class LocalRuntimeError(RuntimeError):
@@ -254,8 +259,7 @@ class LocalRuntimePolicy:
         requested_runtime = (
             runtime_dir
             if runtime_dir is not None
-            else Path(tempfile.gettempdir()).resolve(strict=True)
-            / f"lottolab-local-{os.getuid()}"
+            else Path(tempfile.gettempdir()).resolve(strict=True) / f"lottolab-local-{os.getuid()}"
         )
         selected_runtime = _canonical_runtime_directory(requested_runtime)
         if selected_runtime == root or root in selected_runtime.parents:
@@ -405,6 +409,7 @@ def validate_strategy_payloads(direct: object, proxied: object) -> tuple[str, ..
 def validate_openapi_payload(payload: object) -> None:
     document = _object_mapping(payload, "OpenAPI response")
     paths = _object_mapping(document.get("paths"), "OpenAPI paths")
+    operation_set: set[tuple[str, str]] = set()
     for path, raw_operations in paths.items():
         lowered_path = path.lower()
         if any(word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS):
@@ -413,9 +418,30 @@ def validate_openapi_payload(payload: object) -> None:
         if allowed_methods is None:
             raise LocalRuntimeSafetyError("OpenAPI exposes an unapproved local runtime path")
         operations = _object_mapping(raw_operations, f"OpenAPI operations for {path}")
-        http_methods = {method.lower() for method in operations if not method.startswith("x-")}
-        if http_methods - allowed_methods:
-            raise LocalRuntimeSafetyError("OpenAPI exposes an unapproved method/path operation")
+        normalized_methods: set[str] = set()
+        for method, operation in operations.items():
+            normalized_method = method.casefold()
+            if normalized_method in _HTTP_METHODS:
+                if method != normalized_method or normalized_method in normalized_methods:
+                    raise LocalRuntimeSafetyError(
+                        "OpenAPI contains a duplicate or malformed operation declaration"
+                    )
+                normalized_methods.add(normalized_method)
+                _object_mapping(operation, f"OpenAPI operation {method} {path}")
+                if normalized_method not in allowed_methods:
+                    raise LocalRuntimeSafetyError(
+                        "OpenAPI exposes an unapproved method/path operation"
+                    )
+                operation_set.add((normalized_method, path))
+            elif method not in _OPENAPI_PATH_ITEM_FIELDS and not method.startswith("x-"):
+                raise LocalRuntimeSafetyError(
+                    "OpenAPI contains a duplicate or malformed operation declaration"
+                )
+
+    if frozenset(operation_set) != _ALLOWED_OPENAPI_OPERATION_SET:
+        raise LocalRuntimeSafetyError(
+            "OpenAPI operation set does not match the exact approved surface"
+        )
 
 
 def validate_frontend_document(body: bytes) -> None:
@@ -423,7 +449,7 @@ def validate_frontend_document(body: bytes) -> None:
         document = body.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise LocalRuntimeSafetyError("frontend root is not UTF-8") from exc
-    if "<div id=\"app\"></div>" not in document:
+    if '<div id="app"></div>' not in document:
         raise LocalRuntimeSafetyError("frontend root is not the LottoLab Vite application")
 
 

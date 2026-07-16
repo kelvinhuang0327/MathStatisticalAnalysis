@@ -268,20 +268,72 @@ def test_smoke_rejects_catalog_contract_drift(mutation: str) -> None:
 
 
 def test_smoke_accepts_exact_authorized_openapi_surface() -> None:
-    validate_openapi_payload(
-        {
-            "paths": {
-                "/api/health": {"get": {}},
-                "/api/v1/strategies": {"get": {}},
-                "/api/v1/draw-imports/preview": {"post": {}},
-                "/api/v1/draw-imports/commit": {"post": {}},
-                "/api/v1/draws": {"get": {}},
-                "/api/v1/draws/{lottery_type}/{draw_number}": {"get": {}},
-                "/api/v1/ingestion-runs": {"get": {}},
-                "/api/v1/ingestion-runs/{run_id}": {"get": {}},
-            }
-        }
-    )
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+def authorized_openapi_paths() -> dict[str, dict[str, object]]:
+    return {
+        "/api/health": {"get": {}},
+        "/api/v1/strategies": {"get": {}},
+        "/api/v1/draw-imports/preview": {"post": {}},
+        "/api/v1/draw-imports/commit": {"post": {}},
+        "/api/v1/draws": {"get": {}},
+        "/api/v1/draws/{lottery_type}/{draw_number}": {"get": {}},
+        "/api/v1/ingestion-runs": {"get": {}},
+        "/api/v1/ingestion-runs/{run_id}": {"get": {}},
+    }
+
+
+@pytest.mark.parametrize(
+    ("path", "method"),
+    [
+        ("/api/health", "get"),
+        ("/api/v1/strategies", "get"),
+        ("/api/v1/draw-imports/preview", "post"),
+        ("/api/v1/draw-imports/commit", "post"),
+        ("/api/v1/draws", "get"),
+        ("/api/v1/draws/{lottery_type}/{draw_number}", "get"),
+        ("/api/v1/ingestion-runs", "get"),
+        ("/api/v1/ingestion-runs/{run_id}", "get"),
+    ],
+)
+def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:
+    paths = authorized_openapi_paths()
+    del paths[path][method]
+
+    with pytest.raises(LocalRuntimeSafetyError, match="exact approved surface"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    ("path", "method", "message"),
+    [
+        ("/api/v1/strategies/", "get", "unapproved local runtime path"),
+        ("/API/v1/strategies", "get", "unapproved local runtime path"),
+        ("/api/v1/strategies", "GET", "duplicate or malformed"),
+        ("/api/v1/strategies", "fetch", "duplicate or malformed"),
+    ],
+)
+def test_smoke_rejects_openapi_alias_case_and_malformed_operations(
+    path: str, method: str, message: str
+) -> None:
+    paths = authorized_openapi_paths()
+    if path == "/api/v1/strategies":
+        paths[path] = {method: {}}
+    else:
+        del paths["/api/v1/strategies"]
+        paths[path] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match=message):
+        validate_openapi_payload({"paths": paths})
+
+
+def test_smoke_rejects_malformed_openapi_operation_object() -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/strategies"] = {"get": []}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="must be a string-keyed object"):
+        validate_openapi_payload({"paths": paths})
 
 
 @pytest.mark.parametrize(
@@ -308,6 +360,4 @@ def test_smoke_rejects_generation_or_mutating_openapi_paths() -> None:
 
 
 def test_listener_value_is_plain_identity_data() -> None:
-    assert Listener(pid=42, address="127.0.0.1:8000") == Listener(
-        pid=42, address="127.0.0.1:8000"
-    )
+    assert Listener(pid=42, address="127.0.0.1:8000") == Listener(pid=42, address="127.0.0.1:8000")

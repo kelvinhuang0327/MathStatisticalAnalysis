@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const contractUrl = new URL('../../contracts/openapi.json', import.meta.url)
@@ -23,7 +24,7 @@ function referenceType(reference) {
   return `components['schemas'][${quote(reference.slice(prefix.length))}]`
 }
 
-function schemaType(schema, level = 0) {
+export function schemaType(schema, level = 0) {
   if (!schema || typeof schema !== 'object') return 'unknown'
   if (schema.$ref) return referenceType(schema.$ref)
   if (Array.isArray(schema.enum)) return schema.enum.map(quote).join(' | ')
@@ -38,6 +39,8 @@ function schemaType(schema, level = 0) {
       return 'number'
     case 'boolean':
       return 'boolean'
+    case 'null':
+      return 'null'
     case 'array':
       return `Array<${schemaType(schema.items, level)}>`
     case 'object': {
@@ -106,15 +109,20 @@ const generated = [
   '',
 ].join('\n')
 
-if (process.argv.includes('--check')) {
-  const current = readFileSync(outputUrl, 'utf8')
-  if (current !== generated) {
-    console.error('Generated OpenAPI declarations are stale. Run npm run api:generate.')
-    process.exitCode = 1
+const invokedAsScript =
+  process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (invokedAsScript) {
+  if (process.argv.includes('--check')) {
+    const current = readFileSync(outputUrl, 'utf8')
+    if (current !== generated) {
+      console.error('Generated OpenAPI declarations are stale. Run npm run api:generate.')
+      process.exitCode = 1
+    } else {
+      console.log('Generated OpenAPI declarations are current.')
+    }
   } else {
-    console.log('Generated OpenAPI declarations are current.')
+    writeFileSync(outputUrl, generated, 'utf8')
+    console.log(`Generated ${fileURLToPath(outputUrl)}`)
   }
-} else {
-  writeFileSync(outputUrl, generated, 'utf8')
-  console.log(`Generated ${fileURLToPath(outputUrl)}`)
 }

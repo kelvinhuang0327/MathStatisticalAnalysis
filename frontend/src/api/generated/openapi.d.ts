@@ -171,13 +171,13 @@ export interface components {
     "ApiValidationErrorResponse": {
           "error_code": string
           "message": string
-          "preview"?: components['schemas']["DrawImportPreviewResponse"] | unknown
+          "preview"?: components['schemas']["DrawImportPreviewResponse"] | null
           "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
         }
     "CommitConflictResponse": {
           "error_code": string
           "message": string
-          "result": components['schemas']["ImportCommitResultView"] | unknown
+          "result": components['schemas']["ImportCommitResultView"] | null
         }
     "ConflictPolicy": "REJECT"
     "DrawHistoryResponse": {
@@ -198,13 +198,13 @@ export interface components {
     "DrawImportErrorView": {
           "code": string
           "message": string
-          "row_number": number | unknown
-          "field": string | unknown
+          "row_number": number | null
+          "field": string | null
         }
     "DrawImportPreviewRequest": {
           "filename": string
           "csv_text": string
-          "declared_parser_version"?: string | unknown
+          "declared_parser_version"?: string | null
         }
     "DrawImportPreviewResponse": {
           "filename": string
@@ -230,33 +230,33 @@ export interface components {
           "draw_date": string
           "main_numbers": Array<number>
           "special_numbers": Array<number>
-          "source_name": string | unknown
-          "source_reference": string | unknown
+          "source_name": string | null
+          "source_reference": string | null
           "ingestion_run_id": string
           "created_at": string
           "updated_at": string
         }
     "ImportCommitResultView": {
-          "run_id": string | unknown
+          "run_id": string | null
           "status": components['schemas']["IngestionRunStatus"]
-          "lottery_type": components['schemas']["LotteryType"] | unknown
+          "lottery_type": components['schemas']["LotteryType"] | null
           "total_count": number
           "inserted_count": number
           "skipped_count": number
           "conflict_count": number
           "failed_count": number
-          "first_draw_number": string | unknown
-          "last_draw_number": string | unknown
+          "first_draw_number": string | null
+          "last_draw_number": string | null
           "completed_at": string
         }
     "IngestionItemDisposition": "INSERTED" | "SKIPPED_DUPLICATE" | "CONFLICT" | "FAILED"
     "IngestionItemView": {
           "source_row_number": number
-          "lottery_type": components['schemas']["LotteryType"] | unknown
-          "draw_number": string | unknown
+          "lottery_type": components['schemas']["LotteryType"] | null
+          "draw_number": string | null
           "disposition": components['schemas']["IngestionItemDisposition"]
-          "normalized_record_hash": string | unknown
-          "message": string | unknown
+          "normalized_record_hash": string | null
+          "message": string | null
         }
     "IngestionOperationType": "DRAW_CSV_IMPORT"
     "IngestionRunDetailResponse": {
@@ -278,7 +278,7 @@ export interface components {
           "run_id": string
           "operation_type": components['schemas']["IngestionOperationType"]
           "status": components['schemas']["IngestionRunStatus"]
-          "lottery_type": components['schemas']["LotteryType"] | unknown
+          "lottery_type": components['schemas']["LotteryType"] | null
           "source_filename": string
           "source_sha256": string
           "parser_version": string
@@ -287,11 +287,11 @@ export interface components {
           "skipped_count": number
           "conflict_count": number
           "failed_count": number
-          "first_draw_number": string | unknown
-          "last_draw_number": string | unknown
+          "first_draw_number": string | null
+          "last_draw_number": string | null
           "started_at": string
-          "completed_at": string | unknown
-          "error_summary": string | unknown
+          "completed_at": string | null
+          "error_summary": string | null
         }
     "LifecycleStatus": "IDEA" | "OBSERVATION" | "ONLINE" | "REJECTED" | "RETIRED"
     "LotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
@@ -302,7 +302,7 @@ export interface components {
           "draw_date": string
           "main_numbers": Array<number>
           "special_numbers": Array<number>
-          "source_reference": string | unknown
+          "source_reference": string | null
           "normalized_record_hash": string
         }
     "RequestValidationIssueView": {

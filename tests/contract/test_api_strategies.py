@@ -91,6 +91,28 @@ def test_default_strategy_endpoint_is_db_free(monkeypatch: MonkeyPatch) -> None:
     assert all(records_by_id[strategy_id]["executable"] is False for strategy_id in target_ids)
 
 
+def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
+    response = TestClient(create_app()).get("/openapi.json")
+    assert response.status_code == 200
+    document = response.json()
+    operations = {
+        (method, path)
+        for path, path_item in document["paths"].items()
+        for method in path_item
+        if method in {"get", "put", "post", "delete", "options", "head", "patch", "trace"}
+    }
+    assert operations == {
+        ("get", "/api/health"),
+        ("get", "/api/v1/strategies"),
+        ("post", "/api/v1/draw-imports/preview"),
+        ("post", "/api/v1/draw-imports/commit"),
+        ("get", "/api/v1/draws"),
+        ("get", "/api/v1/draws/{lottery_type}/{draw_number}"),
+        ("get", "/api/v1/ingestion-runs"),
+        ("get", "/api/v1/ingestion-runs/{run_id}"),
+    }
+
+
 def test_committed_openapi_contract_is_current() -> None:
     committed = cast(
         dict[str, object],

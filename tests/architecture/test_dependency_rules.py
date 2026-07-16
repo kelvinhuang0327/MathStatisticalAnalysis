@@ -8,6 +8,7 @@ interfaces      → anything (composition root)
 """
 
 import ast
+import re
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[2] / "src" / "lottolab"
@@ -139,3 +140,57 @@ def test_local_runtime_cli_contains_no_process_or_network_supervisor_logic() -> 
 def test_local_runtime_policy_does_not_import_infrastructure() -> None:
     imports = imported_modules(SRC / "application" / "local_runtime.py")
     assert not any(module.startswith("lottolab.infrastructure") for module in imports)
+
+
+def test_domain_has_no_database_api_or_frontend_dependency() -> None:
+    forbidden = {"sqlite3", "fastapi", "pydantic"}
+    for path in (SRC / "domain").rglob("*.py"):
+        imports = imported_modules(path)
+        assert imports.isdisjoint(forbidden), path
+        assert not any(
+            module.startswith(("lottolab.infrastructure", "lottolab.interfaces"))
+            for module in imports
+        ), path
+
+
+def test_application_owns_draw_data_ports_and_use_cases() -> None:
+    ports = (SRC / "application" / "ports.py").read_text(encoding="utf-8")
+    assert "class DrawRepository(Protocol)" in ports
+    assert "class DrawImportRepository(Protocol)" in ports
+    assert "class IngestionRunRepository(Protocol)" in ports
+    assert "apply_valid_import" in ports
+    for use_case in ("draw_imports.py", "draw_history.py"):
+        imports = imported_modules(SRC / "application" / "use_cases" / use_case)
+        assert not any(module.startswith("lottolab.infrastructure") for module in imports)
+
+
+def test_api_adapters_contain_no_sql_or_sqlite_calls() -> None:
+    sql = re.compile(r"\b(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|PRAGMA)\b")
+    for path in (SRC / "interfaces" / "api").rglob("*.py"):
+        source = path.read_text(encoding="utf-8")
+        imports = imported_modules(path)
+        assert "sqlite3" not in imports, path
+        assert sql.search(source) is None, path
+
+
+def test_frontend_knows_api_contract_not_sqlite_schema_or_raw_html() -> None:
+    frontend = SRC.parents[1] / "frontend" / "src"
+    forbidden = (
+        "main_numbers_json",
+        "schema_migrations",
+        "sqlite3",
+        "v-html",
+    )
+    for path in frontend.rglob("*"):
+        if path.suffix not in {".ts", ".vue"}:
+            continue
+        lowered = path.read_text(encoding="utf-8").casefold()
+        assert not any(fragment.casefold() in lowered for fragment in forbidden), path
+
+    data_center = (
+        frontend / "features" / "data-center" / "DataCenterPage.vue"
+    ).read_text(encoding="utf-8")
+    assert not any(
+        storage in data_center
+        for storage in ("localStorage", "sessionStorage", "indexedDB")
+    )

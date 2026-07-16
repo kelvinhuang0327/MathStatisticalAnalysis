@@ -43,6 +43,54 @@ Controller 使用使用者專屬的系統暫存目錄保存 owner-only lock、st
 成功停止後會移除 active state，但 task-owned 診斷 log 會保留在 repo 外、owner-only 的 runtime
 目錄。Controller 只使用已存在的 locked Python／frontend 環境，絕不自行 bootstrap 依賴。
 
+## 本機 Draw Data（P600D R1B）
+
+前端以 hash navigation 提供三個頁面：`Strategy Catalog`、`Data Center`、`Draw History`。
+Data Center 只接受 LottoLab canonical CSV；瀏覽器把檔案讀成 UTF-8 文字並以 JSON 傳送，
+不使用 multipart，也不把 CSV 放進 localStorage、sessionStorage 或 IndexedDB。
+
+Canonical 欄位如下；`special_numbers` 與 `source` 可省略欄位，但目前 BIG_LOTTO 規則要求
+恰好一個特別號，因此有效資料列仍須提供 `special_numbers`。號碼欄以 `|` 分隔：
+
+```csv
+lottery_type,draw_number,draw_date,main_numbers,special_numbers,source
+BIG_LOTTO,000001,2026-07-16,1|3|9|17|24|49,7,synthetic-reference
+```
+
+- `preview` 只做後端權威解析、SHA-256 與 bounded preview；不解析 data path、不建立目錄／DB，
+  也不寫 ingestion log。
+- `commit` 必須帶回相同內容、preview digest、目前 parser version 與唯一支援的 conflict policy
+  `REJECT`，後端會重新解析。Validation、digest、parser-version、input duplicate 與 input conflict
+  失敗都保持 DB-free，且不會建立 ingestion run。
+- 有效 commit 以單一 transaction 寫入 draws、ingestion items 與 SUCCESS run。語意完全相同的
+  draw 會記為 `SKIPPED_DUPLICATE`。
+- 已通過驗證的 persisted-draw conflict（同 key 不同內容）會先 rollback draw transaction、永不覆寫
+  既有 draw，再以獨立 transaction commit FAILED ingestion audit。此行為同時適用於既有 DB，
+  以及 fresh-path 在 schema 初始化後發生的 concurrent first-write conflict。
+- BIG_LOTTO import contract 固定為 6 個不重複主號（1–49）、1 個必要且不與主號重疊的特別號
+  （1–49），canonical storage order 為數字遞增；draw number 是保留前導零的 ASCII digit string。
+- Draw History 的 draw-number filter 是 substring search；結果固定依 draw date descending、
+  draw number stable-string descending、internal ID descending 排序並分頁，且沒有編輯／刪除功能。
+
+本機 DB 永遠在 Git worktree 外。可用絕對、owner-only 的目錄覆寫預設位置：
+
+```bash
+LOTTOLAB_DATA_DIR=/absolute/owner-only/path uv run --no-sync lottolab local start
+```
+
+未存在 DB 的 history read 會回傳 deterministic empty result，不建立目錄、DB 或 migration；第一個
+有效 commit 才能建立 version-1 schema。使用者 DB、SQLite sidecar、upload 與 runtime artifacts
+都不進 Git。測試與 task lifecycle 一律把 `LOTTOLAB_DATA_DIR` 指向 repo 外的新建暫存目錄，並在
+驗證後只移除該 task 自己建立的路徑。
+
+LottoLab 是本機、非機密的研究應用。固定 path、owner、權限、symlink、hardlink、special-file、
+repository 與 LotteryNew 邊界檢查仍會強制執行；但已用相同 OS 使用者身分執行、可競速或直接修改
+owner-owned 檔案的惡意 process 不在支援的 threat model 內，實作不宣稱具備 same-UID
+namespace-race immunity。若需更強隔離，必須採用 OS sandboxing 或 privilege separation，超出目前範圍。
+
+R1B 不提供 fetch-latest、missing-period scan、backfill、scheduler 或自動 ingestion；這些不是
+隱藏或 disabled controls，而是明確不在目前功能面。
+
 ## 目錄地圖
 
 | 路徑 | 職責 |

@@ -32,34 +32,51 @@ const runsMessage = ref('')
 let previewController: AbortController | undefined
 let commitController: AbortController | undefined
 let runsController: AbortController | undefined
+let selectedFile: File | null = null
+let selectionGeneration = 0
+let previewGeneration = 0
+let commitGeneration = 0
+let runsGeneration = 0
+let unmounted = false
 
 async function selectFile(event: Event): Promise<void> {
   const input = event.currentTarget as HTMLInputElement
   const file = input.files?.[0]
-  clearImportOutcome()
+  invalidateImportWork()
+  clearSelectedCsv(false)
+  clearCommitOutcome()
   if (!file) {
-    clearSelectedCsv()
     return
   }
 
+  const generation = selectionGeneration
+  selectedFile = file
   filename.value = file.name
   fileSize.value = file.size
-  csvText.value = ''
   previewState.value = 'reading'
-  previewMessage.value = ''
   try {
-    csvText.value = await file.text()
+    const content = await file.text()
+    if (!isCurrentSelection(generation, file)) return
+    csvText.value = content
     previewState.value = 'idle'
   } catch {
+    if (!isCurrentSelection(generation, file)) return
     previewState.value = 'error'
     previewMessage.value = 'The selected file could not be read as UTF-8 text.'
   }
 }
 
 async function requestPreview(): Promise<void> {
-  if (!filename.value || !csvText.value) return
+  const file = selectedFile
+  if (!file || !filename.value || !csvText.value) return
+  const selection = selectionGeneration
+  const selectedFilename = filename.value
+  const selectedCsvText = csvText.value
   previewController?.abort()
-  previewController = new AbortController()
+  const generation = ++previewGeneration
+  const controller = new AbortController()
+  previewController = controller
+  invalidateCommitWork()
   previewPending.value = true
   previewMessage.value = ''
   preview.value = null
@@ -69,9 +86,20 @@ async function requestPreview(): Promise<void> {
   commitMessage.value = ''
   try {
     const outcome = await previewDrawImport(
-      { filename: filename.value, csv_text: csvText.value },
-      previewController.signal,
+      { filename: selectedFilename, csv_text: selectedCsvText },
+      controller.signal,
     )
+    if (
+      !isCurrentPreview(
+        generation,
+        selection,
+        file,
+        selectedFilename,
+        selectedCsvText,
+      )
+    ) {
+      return
+    }
     preview.value = outcome.preview
     if (outcome.ok) {
       previewState.value = 'ready'
@@ -80,37 +108,82 @@ async function requestPreview(): Promise<void> {
       previewMessage.value = outcome.message ?? 'CSV validation failed.'
     }
   } catch (error: unknown) {
+    if (
+      !isCurrentPreview(
+        generation,
+        selection,
+        file,
+        selectedFilename,
+        selectedCsvText,
+      )
+    ) {
+      return
+    }
     if (isAbort(error)) return
     previewState.value = 'error'
     previewMessage.value = error instanceof Error ? error.message : 'CSV preview failed.'
   } finally {
-    previewPending.value = false
+    if (!unmounted && previewGeneration === generation) {
+      previewPending.value = false
+      if (previewController === controller) previewController = undefined
+    }
   }
 }
 
 async function commitPreview(): Promise<void> {
+  if (commitPending.value) return
   const approvedPreview = preview.value
-  if (!approvedPreview?.is_valid || !commitConfirmed.value || !csvText.value) return
+  const file = selectedFile
+  if (
+    !file ||
+    !approvedPreview?.is_valid ||
+    !commitConfirmed.value ||
+    !filename.value ||
+    !csvText.value
+  ) {
+    return
+  }
+  const selection = selectionGeneration
+  const selectedFilename = filename.value
+  const selectedCsvText = csvText.value
+  const previewDigest = approvedPreview.content_sha256
+  const parserVersion = approvedPreview.parser_version
   commitController?.abort()
-  commitController = new AbortController()
+  const generation = ++commitGeneration
+  const controller = new AbortController()
+  commitController = controller
   commitPending.value = true
   commitKind.value = ''
   commitMessage.value = ''
   try {
     const outcome = await commitDrawImport(
       {
-        filename: filename.value,
-        csv_text: csvText.value,
-        expected_sha256: approvedPreview.content_sha256,
-        parser_version: approvedPreview.parser_version,
+        filename: selectedFilename,
+        csv_text: selectedCsvText,
+        expected_sha256: previewDigest,
+        parser_version: parserVersion,
         conflict_policy: 'REJECT',
       },
-      commitController.signal,
+      controller.signal,
     )
+    if (
+      !isCurrentCommit(
+        generation,
+        selection,
+        file,
+        selectedFilename,
+        selectedCsvText,
+        previewDigest,
+        parserVersion,
+      )
+    ) {
+      return
+    }
     commitResult.value = outcome.result
     if (outcome.ok) {
       commitKind.value = 'success'
       commitMessage.value = 'Import committed atomically.'
+      selectedFile = null
       clearSelectedCsv()
       await loadIngestionRuns()
     } else {
@@ -119,38 +192,82 @@ async function commitPreview(): Promise<void> {
       if (outcome.preview) preview.value = outcome.preview
     }
   } catch (error: unknown) {
+    if (
+      !isCurrentCommit(
+        generation,
+        selection,
+        file,
+        selectedFilename,
+        selectedCsvText,
+        previewDigest,
+        parserVersion,
+      )
+    ) {
+      return
+    }
     if (isAbort(error)) return
     commitKind.value = 'error'
     commitMessage.value = error instanceof Error ? error.message : 'Import commit failed.'
   } finally {
-    commitPending.value = false
+    if (!unmounted && commitGeneration === generation) {
+      commitPending.value = false
+      if (commitController === controller) commitController = undefined
+    }
   }
 }
 
 async function loadIngestionRuns(): Promise<void> {
   runsController?.abort()
-  runsController = new AbortController()
+  const generation = ++runsGeneration
+  const controller = new AbortController()
+  runsController = controller
   runsState.value = 'loading'
   runsMessage.value = ''
   try {
-    const page = await listIngestionRuns(runsController.signal)
+    const page = await listIngestionRuns(controller.signal)
+    if (unmounted || runsGeneration !== generation) return
     ingestionRuns.value = page.records
     runsState.value = page.records.length === 0 ? 'empty' : 'ready'
   } catch (error: unknown) {
+    if (unmounted || runsGeneration !== generation) return
     if (isAbort(error)) return
     runsState.value = 'error'
     runsMessage.value = error instanceof Error ? error.message : 'Ingestion runs could not load.'
+  } finally {
+    if (!unmounted && runsGeneration === generation && runsController === controller) {
+      runsController = undefined
+    }
   }
 }
 
 function resetImport(): void {
-  previewController?.abort()
-  commitController?.abort()
+  invalidateImportWork()
   clearSelectedCsv()
-  clearImportOutcome()
+  clearCommitOutcome()
 }
 
-function clearSelectedCsv(): void {
+function invalidateImportWork(): void {
+  selectionGeneration += 1
+  selectedFile = null
+  invalidatePreviewWork()
+  invalidateCommitWork()
+}
+
+function invalidatePreviewWork(): void {
+  previewGeneration += 1
+  previewController?.abort()
+  previewController = undefined
+  previewPending.value = false
+}
+
+function invalidateCommitWork(): void {
+  commitGeneration += 1
+  commitController?.abort()
+  commitController = undefined
+  commitPending.value = false
+}
+
+function clearSelectedCsv(clearInput = true): void {
   filename.value = ''
   fileSize.value = 0
   csvText.value = ''
@@ -158,17 +275,51 @@ function clearSelectedCsv(): void {
   previewState.value = 'idle'
   previewMessage.value = ''
   commitConfirmed.value = false
-  if (fileInput.value) fileInput.value.value = ''
+  if (clearInput && fileInput.value) fileInput.value.value = ''
 }
 
-function clearImportOutcome(): void {
-  preview.value = null
-  previewState.value = 'idle'
-  previewMessage.value = ''
-  commitConfirmed.value = false
+function clearCommitOutcome(): void {
   commitResult.value = null
   commitKind.value = ''
   commitMessage.value = ''
+}
+
+function isCurrentSelection(generation: number, file: File): boolean {
+  return !unmounted && selectionGeneration === generation && selectedFile === file
+}
+
+function isCurrentPreview(
+  generation: number,
+  selection: number,
+  file: File,
+  selectedFilename: string,
+  selectedCsvText: string,
+): boolean {
+  return (
+    previewGeneration === generation &&
+    isCurrentSelection(selection, file) &&
+    filename.value === selectedFilename &&
+    csvText.value === selectedCsvText
+  )
+}
+
+function isCurrentCommit(
+  generation: number,
+  selection: number,
+  file: File,
+  selectedFilename: string,
+  selectedCsvText: string,
+  previewDigest: string,
+  parserVersion: string,
+): boolean {
+  return (
+    commitGeneration === generation &&
+    isCurrentSelection(selection, file) &&
+    filename.value === selectedFilename &&
+    csvText.value === selectedCsvText &&
+    preview.value?.content_sha256 === previewDigest &&
+    preview.value.parser_version === parserVersion
+  )
 }
 
 function formatBytes(bytes: number): string {
@@ -187,14 +338,18 @@ function formatTimestamp(value: unknown): string {
 }
 
 function isAbort(error: unknown): boolean {
-  return error instanceof DOMException && error.name === 'AbortError'
+  return (
+    (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError'
+  )
 }
 
 onMounted(loadIngestionRuns)
 onBeforeUnmount(() => {
-  previewController?.abort()
-  commitController?.abort()
+  unmounted = true
+  invalidateImportWork()
+  runsGeneration += 1
   runsController?.abort()
+  runsController = undefined
   csvText.value = ''
 })
 </script>
@@ -224,7 +379,14 @@ onBeforeUnmount(() => {
             <p class="step-label">01 · Select</p>
             <h2>Choose a canonical CSV</h2>
           </div>
-          <button class="button button--quiet" type="button" @click="resetImport">Reset</button>
+          <button
+            class="button button--quiet"
+            data-testid="reset-import"
+            type="button"
+            @click="resetImport"
+          >
+            Reset
+          </button>
         </div>
 
         <label class="file-picker">
@@ -254,7 +416,7 @@ onBeforeUnmount(() => {
           class="button button--primary"
           data-testid="preview-action"
           type="button"
-          :disabled="!csvText || previewPending || previewState === 'reading'"
+          :disabled="!csvText || previewPending || commitPending || previewState === 'reading'"
           @click="requestPreview"
         >
           {{ previewPending ? 'Previewing…' : previewState === 'reading' ? 'Reading…' : 'Preview CSV' }}

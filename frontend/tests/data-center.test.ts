@@ -116,6 +116,50 @@ async function chooseCsv(wrapper: VueWrapper): Promise<void> {
   await flushPromises()
 }
 
+interface Deferred<T> {
+  promise: Promise<T>
+  resolve: (value: T | PromiseLike<T>) => void
+  reject: (reason?: unknown) => void
+}
+
+function deferred<T>(): Deferred<T> {
+  let resolve!: Deferred<T>['resolve']
+  let reject!: Deferred<T>['reject']
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+  return { promise, resolve, reject }
+}
+
+function controlledFile(name: string, text: Promise<string>, size = content.length): File {
+  return {
+    name,
+    size,
+    text: vi.fn().mockReturnValue(text),
+  } as unknown as File
+}
+
+async function selectCsvFile(wrapper: VueWrapper, file: File): Promise<void> {
+  const input = wrapper.get('[data-testid="csv-file"]')
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+  await input.trigger('change')
+}
+
+async function preparePendingCommit(
+  wrapper: VueWrapper,
+  commitResponse: Deferred<Response>,
+): Promise<RequestInit> {
+  await chooseCsv(wrapper)
+  await wrapper.get('[data-testid="preview-action"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('[data-testid="commit-confirmation"]').setValue(true)
+  fetchMock.mockImplementationOnce(() => commitResponse.promise)
+  await wrapper.get('[data-testid="commit-action"]').trigger('click')
+  await flushPromises()
+  return fetchMock.mock.calls.at(-1)?.[1] as RequestInit
+}
+
 beforeEach(() => {
   fetchMock = vi.fn<typeof fetch>()
   vi.stubGlobal('fetch', fetchMock)
@@ -264,6 +308,210 @@ describe('DataCenterPage', () => {
     expect(wrapper.text()).toContain('the batch inserted no draws')
     expect(wrapper.find('.file-facts').exists()).toBe(true)
     expect(fetchMock).toHaveBeenCalledTimes(3)
+    wrapper.unmount()
+  })
+
+  it('discards file A text when it resolves after file B', async () => {
+    const fileAContent = content.replace('0001', '0101')
+    const fileBContent = content.replace('0001', '0202')
+    const fileARead = deferred<string>()
+    const fileBRead = deferred<string>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectCsvFile(wrapper, controlledFile('a.csv', fileARead.promise))
+    await selectCsvFile(wrapper, controlledFile('b.csv', fileBRead.promise))
+    fileBRead.resolve(fileBContent)
+    await flushPromises()
+    fileARead.resolve(fileAContent)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('b.csv')
+    expect(wrapper.text()).not.toContain('a.csv')
+    await wrapper.get('[data-testid="preview-action"]').trigger('click')
+    await flushPromises()
+    const previewRequest = fetchMock.mock.calls[1]?.[1] as RequestInit
+    expect(JSON.parse(String(previewRequest.body))).toEqual({
+      filename: 'b.csv',
+      csv_text: fileBContent,
+    })
+    wrapper.unmount()
+  })
+
+  it('discards an old preview that resolves after a new file selection', async () => {
+    const oldPreview = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockImplementationOnce(() => oldPreview.promise)
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await chooseCsv(wrapper)
+    await wrapper.get('[data-testid="preview-action"]').trigger('click')
+    await flushPromises()
+
+    await selectCsvFile(wrapper, controlledFile('new.csv', Promise.resolve(content)))
+    await flushPromises()
+    oldPreview.resolve(apiResponse(validPreview))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('new.csv')
+    expect(wrapper.text()).not.toContain(validPreview.content_sha256)
+    expect(wrapper.find('[data-testid="commit-action"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('reset invalidates a pending preview and prevents repopulation', async () => {
+    const pendingPreview = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockImplementationOnce(() => pendingPreview.promise)
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await chooseCsv(wrapper)
+    await wrapper.get('[data-testid="preview-action"]').trigger('click')
+    await flushPromises()
+    const previewRequest = fetchMock.mock.calls[1]?.[1] as RequestInit
+
+    await wrapper.get('[data-testid="reset-import"]').trigger('click')
+    pendingPreview.resolve(apiResponse(validPreview))
+    await flushPromises()
+
+    expect(previewRequest.signal?.aborted).toBe(true)
+    expect(wrapper.text()).toContain('No CSV selected')
+    expect(wrapper.text()).not.toContain(validPreview.content_sha256)
+    wrapper.unmount()
+  })
+
+  it('reset invalidates a pending commit and prevents repopulation', async () => {
+    const pendingCommit = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    const commitRequest = await preparePendingCommit(wrapper, pendingCommit)
+
+    await wrapper.get('[data-testid="reset-import"]').trigger('click')
+    pendingCommit.resolve(apiResponse(commitResult))
+    await flushPromises()
+
+    expect(commitRequest.signal?.aborted).toBe(true)
+    expect(wrapper.text()).toContain('No CSV selected')
+    expect(wrapper.text()).not.toContain('Commit complete')
+    expect(wrapper.text()).not.toContain(commitResult.run_id)
+    wrapper.unmount()
+  })
+
+  it('unmount aborts and invalidates a pending preview', async () => {
+    const pendingPreview = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockImplementationOnce(() => pendingPreview.promise)
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await chooseCsv(wrapper)
+    await wrapper.get('[data-testid="preview-action"]').trigger('click')
+    await flushPromises()
+    const previewRequest = fetchMock.mock.calls[1]?.[1] as RequestInit
+
+    wrapper.unmount()
+    pendingPreview.resolve(apiResponse(validPreview))
+    await flushPromises()
+
+    expect(previewRequest.signal?.aborted).toBe(true)
+  })
+
+  it('unmount aborts and invalidates a pending commit', async () => {
+    const pendingCommit = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    const commitRequest = await preparePendingCommit(wrapper, pendingCommit)
+
+    wrapper.unmount()
+    pendingCommit.resolve(apiResponse(commitResult))
+    await flushPromises()
+
+    expect(commitRequest.signal?.aborted).toBe(true)
+  })
+
+  it('two rapid commit invocations issue one API request', async () => {
+    const pendingCommit = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await chooseCsv(wrapper)
+    await wrapper.get('[data-testid="preview-action"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="commit-confirmation"]').setValue(true)
+    fetchMock.mockImplementationOnce(() => pendingCommit.promise)
+
+    const button = wrapper.get('[data-testid="commit-action"]')
+    const first = button.trigger('click')
+    const second = button.trigger('click')
+    await Promise.all([first, second])
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    pendingCommit.resolve(
+      apiResponse(
+        {
+          error_code: 'EXISTING_DRAW_CONFLICT',
+          message: 'Conflict.',
+          result: { ...commitResult, status: 'FAILED', inserted_count: 0, conflict_count: 1 },
+        },
+        409,
+      ),
+    )
+    await flushPromises()
+    wrapper.unmount()
+  })
+
+  it('stale commit success does not clear a newly selected file', async () => {
+    const pendingCommit = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await preparePendingCommit(wrapper, pendingCommit)
+
+    await selectCsvFile(wrapper, controlledFile('new.csv', Promise.resolve(content)))
+    await flushPromises()
+    pendingCommit.resolve(apiResponse(commitResult))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('new.csv')
+    expect(wrapper.text()).not.toContain('Commit complete')
+    wrapper.unmount()
+  })
+
+  it('stale commit error does not overwrite a newly selected file state', async () => {
+    const pendingCommit = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await preparePendingCommit(wrapper, pendingCommit)
+
+    await selectCsvFile(wrapper, controlledFile('new.csv', Promise.resolve(content)))
+    await flushPromises()
+    pendingCommit.resolve(
+      apiResponse({ error_code: 'REPOSITORY_BUSY', message: 'Temporarily busy.' }, 503),
+    )
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('new.csv')
+    expect(wrapper.text()).not.toContain('Commit failed')
+    expect(wrapper.text()).not.toContain('Temporarily busy.')
     wrapper.unmount()
   })
 })

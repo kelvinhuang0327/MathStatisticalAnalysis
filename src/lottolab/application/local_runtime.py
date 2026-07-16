@@ -52,7 +52,7 @@ _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods
 )
 _HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch", "trace"})
-_OPENAPI_PATH_ITEM_FIELDS = frozenset({"$ref", "summary", "description", "servers", "parameters"})
+_OPENAPI_PATH_ITEM_FIELDS = frozenset({"summary", "description", "servers", "parameters"})
 
 
 class LocalRuntimeError(RuntimeError):
@@ -411,13 +411,15 @@ def validate_openapi_payload(payload: object) -> None:
     paths = _object_mapping(document.get("paths"), "OpenAPI paths")
     operation_set: set[tuple[str, str]] = set()
     for path, raw_operations in paths.items():
+        operations = _object_mapping(raw_operations, f"OpenAPI operations for {path}")
+        if "$ref" in operations:
+            raise LocalRuntimeSafetyError("OpenAPI Path Item references are not supported")
         lowered_path = path.lower()
         if any(word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS):
             raise LocalRuntimeSafetyError("OpenAPI exposes a generation or execution path")
         allowed_methods = _ALLOWED_OPENAPI_OPERATIONS.get(path)
         if allowed_methods is None:
             raise LocalRuntimeSafetyError("OpenAPI exposes an unapproved local runtime path")
-        operations = _object_mapping(raw_operations, f"OpenAPI operations for {path}")
         normalized_methods: set[str] = set()
         for method, operation in operations.items():
             normalized_method = method.casefold()

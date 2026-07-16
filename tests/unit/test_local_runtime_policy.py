@@ -267,8 +267,19 @@ def test_smoke_rejects_catalog_contract_drift(mutation: str) -> None:
         validate_strategy_payloads(direct, proxied)
 
 
-def test_smoke_accepts_exact_authorized_openapi_surface() -> None:
-    validate_openapi_payload({"paths": authorized_openapi_paths()})
+def test_smoke_accepts_exact_authorized_openapi_surface_with_path_metadata() -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/health"].update(
+        {
+            "summary": "Local health",
+            "description": "DB-free readiness check",
+            "servers": [{"url": "http://127.0.0.1:8000"}],
+            "parameters": [],
+            "x-lottolab-local": True,
+        }
+    )
+
+    validate_openapi_payload({"paths": paths})
 
 
 def authorized_openapi_paths() -> dict[str, dict[str, object]]:
@@ -282,6 +293,41 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/ingestion-runs": {"get": {}},
         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
     }
+
+
+@pytest.mark.parametrize(
+    ("path", "path_item"),
+    [
+        (
+            "/api/v1/referenced-path-item",
+            {"$ref": "#/components/pathItems/AdditionalOperation"},
+        ),
+        (
+            "/api/v1/strategies",
+            {
+                "get": {},
+                "$ref": "#/components/pathItems/AdditionalOperation",
+            },
+        ),
+    ],
+    ids=("reference-alone", "reference-beside-approved-operation"),
+)
+def test_smoke_rejects_path_item_references(
+    path: str, path_item: dict[str, object]
+) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = path_item
+    payload: dict[str, object] = {
+        "paths": paths,
+        "components": {
+            "pathItems": {
+                "AdditionalOperation": {"post": {}},
+            }
+        },
+    }
+
+    with pytest.raises(LocalRuntimeSafetyError, match="Path Item references"):
+        validate_openapi_payload(payload)
 
 
 @pytest.mark.parametrize(

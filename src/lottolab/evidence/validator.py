@@ -18,8 +18,10 @@ succeeds).
 from __future__ import annotations
 
 import os
+import stat
 import subprocess
 from collections import Counter
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -69,6 +71,9 @@ _READ_ONLY_GIT_SUBCOMMANDS: frozenset[str] = frozenset(
     }
 )
 
+_GIT_OID_HEX_DIGITS = frozenset("0123456789abcdef")
+_MAX_ALTERNATES_FILE_BYTES = 64 * 1024
+
 
 @dataclass(frozen=True, slots=True)
 class Finding:
@@ -110,6 +115,8 @@ class DefinitionPathRejected(Exception):
 def _lexical_check(raw_path: str) -> str | None:
     if not raw_path:
         return "definition path must not be empty"
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in raw_path):
+        return "definition path must not contain control characters"
     if raw_path.startswith("/"):
         return "definition path must not be absolute"
     if "\\" in raw_path:
@@ -138,6 +145,17 @@ def _allowed_roots_for(evidence_status: EvidenceStatus) -> tuple[str, ...]:
 def _is_within_allowed_roots(relative_posix: str, allowed_roots: tuple[str, ...]) -> bool:
     return any(
         relative_posix == root or relative_posix.startswith(root + "/") for root in allowed_roots
+    )
+
+
+def _resolution_failure(pointer: str) -> DefinitionPathRejected:
+    return DefinitionPathRejected(
+        Finding(
+            FindingCategory.SEMANTIC_FAILURE,
+            "DEFINITION_PATH_RESOLUTION_FAILED",
+            pointer,
+            "definition path could not be resolved safely",
+        )
     )
 
 
@@ -190,8 +208,20 @@ def resolve_definition_path(
             )
         )
 
-    resolved_repo_root = repo_root.resolve()
-    candidate = (resolved_repo_root / raw_path).resolve()
+    try:
+        resolved_repo_root = repo_root.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _resolution_failure(pointer) from exc
+    unresolved_candidate = resolved_repo_root / raw_path
+    try:
+        candidate = unresolved_candidate.resolve(strict=True)
+    except FileNotFoundError:
+        try:
+            candidate = unresolved_candidate.resolve()
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise _resolution_failure(pointer) from exc
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _resolution_failure(pointer) from exc
     if candidate != resolved_repo_root and resolved_repo_root not in candidate.parents:
         raise DefinitionPathRejected(
             Finding(
@@ -202,7 +232,10 @@ def resolve_definition_path(
             )
         )
 
-    post_relative = candidate.relative_to(resolved_repo_root).as_posix()
+    try:
+        post_relative = candidate.relative_to(resolved_repo_root).as_posix()
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _resolution_failure(pointer) from exc
     if _is_protected(post_relative) or not _is_within_allowed_roots(post_relative, allowed_roots):
         raise DefinitionPathRejected(
             Finding(
@@ -226,11 +259,45 @@ def hash_referenced_file(resolved_path: Path) -> str | None:
     return canonical_json.sha256_hex(data)
 
 
+def _is_full_git_oid(value: str) -> bool:
+    return len(value) == 40 and all(character in _GIT_OID_HEX_DIGITS for character in value)
+
+
+def _is_validated_blob_spec(value: str) -> bool:
+    oid, separator, raw_path = value.partition(":")
+    if separator != ":" or not _is_full_git_oid(oid) or _lexical_check(raw_path) is not None:
+        return False
+    if _is_protected(raw_path):
+        return False
+    return _is_within_allowed_roots(
+        raw_path,
+        CANONICAL_DRAFT_ALLOWED_ROOTS + SYNTHETIC_ADDITIONAL_ROOTS,
+    )
+
+
+def _is_exact_read_only_git_argv(args: tuple[str, ...]) -> bool:
+    if args in {
+        ("rev-parse", "--show-toplevel"),
+        ("rev-parse", "--git-common-dir"),
+    }:
+        return True
+    if len(args) == 3 and args[:2] == ("cat-file", "-t"):
+        return _is_full_git_oid(args[2]) or _is_validated_blob_spec(args[2])
+    if len(args) == 3 and args[:2] == ("cat-file", "blob"):
+        return _is_validated_blob_spec(args[2])
+    return (
+        len(args) == 4
+        and args[:2] == ("merge-base", "--is-ancestor")
+        and _is_full_git_oid(args[2])
+        and args[3] == "HEAD"
+    )
+
+
 def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProcess[bytes] | None:
     """Run one allowlisted, local-only Git query without shell or repository mutation."""
 
-    if not args or args[0] not in _READ_ONLY_GIT_SUBCOMMANDS:
-        raise ValueError("Git provenance query is outside the read-only allowlist")
+    if not _is_exact_read_only_git_argv(args):
+        raise ValueError("Git provenance query is outside the exact read-only allowlist")
 
     env = dict(os.environ)
     repository_redirecting_variables = {
@@ -238,7 +305,6 @@ def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProce
         "GIT_CEILING_DIRECTORIES",
         "GIT_COMMON_DIR",
         "GIT_DIR",
-        "GIT_GRAFT_FILE",
         "GIT_INDEX_FILE",
         "GIT_NAMESPACE",
         "GIT_OBJECT_DIRECTORY",
@@ -247,13 +313,16 @@ def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProce
         "GIT_WORK_TREE",
     }
     for name in tuple(env):
-        if name in repository_redirecting_variables or name.startswith(
-            ("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_")
+        if (
+            name in repository_redirecting_variables
+            or name.startswith("GIT_TRACE")
+            or name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))
         ):
             env.pop(name)
     env.pop("GIT_CONFIG_COUNT", None)
     env.update(
         {
+            "GIT_GRAFT_FILE": os.devnull,
             "GIT_NO_LAZY_FETCH": "1",
             "GIT_NO_REPLACE_OBJECTS": "1",
             "GIT_OPTIONAL_LOCKS": "0",
@@ -272,6 +341,97 @@ def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProce
         )
     except (OSError, subprocess.SubprocessError):
         return None
+
+
+def _alternate_configuration_file_is_unsafe(path: Path) -> bool:
+    try:
+        path_status = os.lstat(path)
+    except FileNotFoundError:
+        return False
+    except OSError:
+        return True
+
+    if not stat.S_ISREG(path_status.st_mode) or path_status.st_size > _MAX_ALTERNATES_FILE_BYTES:
+        return True
+
+    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+    except OSError:
+        return True
+
+    try:
+        opened_status = os.fstat(descriptor)
+        if (
+            not stat.S_ISREG(opened_status.st_mode)
+            or opened_status.st_dev != path_status.st_dev
+            or opened_status.st_ino != path_status.st_ino
+        ):
+            return True
+
+        content = bytearray()
+        while True:
+            chunk = os.read(descriptor, 8192)
+            if not chunk:
+                break
+            content.extend(chunk)
+            if len(content) > _MAX_ALTERNATES_FILE_BYTES:
+                return True
+
+        final_status = os.fstat(descriptor)
+        if (
+            final_status.st_dev != opened_status.st_dev
+            or final_status.st_ino != opened_status.st_ino
+            or final_status.st_size != len(content)
+            or final_status.st_mtime_ns != opened_status.st_mtime_ns
+        ):
+            return True
+    except OSError:
+        return True
+    finally:
+        with suppress(OSError):
+            os.close(descriptor)
+
+    try:
+        text = bytes(content).decode("utf-8")
+    except UnicodeDecodeError:
+        return True
+    return any(character not in " \t\n" for character in text)
+
+
+def _repository_has_unsafe_alternate_object_database(repo_root: Path) -> bool:
+    common_dir_query = _run_read_only_git(repo_root, "rev-parse", "--git-common-dir")
+    if common_dir_query is None or common_dir_query.returncode != 0:
+        return True
+    try:
+        common_dir_output = common_dir_query.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return True
+    if not common_dir_output.endswith("\n") or common_dir_output.count("\n") != 1:
+        return True
+
+    raw_common_dir = common_dir_output[:-1]
+    if not raw_common_dir or any(
+        ord(character) < 0x20 or ord(character) == 0x7F for character in raw_common_dir
+    ):
+        return True
+
+    unresolved_common_dir = Path(raw_common_dir)
+    if not unresolved_common_dir.is_absolute():
+        unresolved_common_dir = repo_root / unresolved_common_dir
+    try:
+        common_dir = unresolved_common_dir.resolve(strict=True)
+        common_dir_status = os.stat(common_dir)
+    except (OSError, RuntimeError, ValueError):
+        return True
+    if not stat.S_ISDIR(common_dir_status.st_mode):
+        return True
+
+    alternates_info = common_dir / "objects" / "info"
+    return any(
+        _alternate_configuration_file_is_unsafe(alternates_info / filename)
+        for filename in ("alternates", "http-alternates")
+    )
 
 
 # --------------------------------------------------------------------------
@@ -650,7 +810,7 @@ def verify_dataset_provenance(
         top_level_text = top_level.stdout.decode("utf-8").strip()
         resolved_top_level = Path(top_level_text).resolve() if top_level_text else None
         resolved_supplied_root = repo_root.resolve()
-    except (OSError, UnicodeDecodeError):
+    except (OSError, RuntimeError, UnicodeDecodeError, ValueError):
         resolved_top_level = None
         resolved_supplied_root = None
     if resolved_top_level is None or resolved_top_level != resolved_supplied_root:
@@ -658,6 +818,13 @@ def verify_dataset_provenance(
             "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
             pointer=_DATASET_SOURCE_OID_POINTER,
             message="the supplied repository is unavailable for local provenance verification",
+        )
+
+    if _repository_has_unsafe_alternate_object_database(repo_root):
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="repository alternate object database configuration is unsafe",
         )
 
     object_type = _run_read_only_git(repo_root, "cat-file", "-t", source_git_oid)

@@ -12,6 +12,7 @@ import copy
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any, cast
 
@@ -337,6 +338,37 @@ def _git(repo_root: Path, *args: str) -> bytes:
         shell=False,
     )
     return result.stdout.strip()
+
+
+def _observe_git_repository(repo_root: Path) -> tuple[bytes, ...]:
+    return (
+        _git(repo_root, "rev-parse", "HEAD"),
+        _git(repo_root, "diff", "--binary"),
+        _git(repo_root, "diff", "--cached", "--binary"),
+        _git(repo_root, "status", "--porcelain=v1", "--untracked-files=all"),
+        _git(repo_root, "show-ref"),
+        _git(repo_root, "config", "--local", "--list"),
+    )
+
+
+def _git_info_path(repo_root: Path, filename: str) -> Path:
+    git_dir_output = _git(repo_root, "rev-parse", "--git-dir").decode("utf-8")
+    git_dir = Path(git_dir_output)
+    if not git_dir.is_absolute():
+        git_dir = repo_root / git_dir
+    info_path = git_dir / "objects" / "info" / filename
+    info_path.parent.mkdir(parents=True, exist_ok=True)
+    return info_path
+
+
+def _run_validator_read_only_git(
+    repo_root: Path, *args: str
+) -> subprocess.CompletedProcess[bytes] | None:
+    runner = cast(
+        Callable[..., subprocess.CompletedProcess[bytes] | None],
+        vars(validator)["_run_read_only_git"],
+    )
+    return runner(repo_root, *args)
 
 
 def _build_local_committed_pair(
@@ -930,23 +962,45 @@ def test_local_source_uses_historical_blob_not_modified_worktree_bytes(tmp_path:
     assert _git(repo_root, "status", "--porcelain=v1", "--untracked-files=all") == status_before
 
 
+def test_local_source_uses_declared_commit_a_when_head_b_changes_the_same_path(tmp_path: Path):
+    dataset, evidence, repo_root, source_path, source_bytes_a = _build_local_committed_pair(
+        tmp_path
+    )
+    commit_a = dataset["source_provenance"]["source_git_oid"]
+    source_bytes_b = b'{"fixture":"task-owned-synthetic-source-v2"}\n'
+    (repo_root / source_path).write_bytes(source_bytes_b)
+    _git(repo_root, "add", "--", source_path)
+    _git(repo_root, "commit", "-q", "-m", "descendant changes historical source")
+    head_b = _git(repo_root, "rev-parse", "HEAD").decode("ascii")
+
+    assert head_b != commit_a
+    assert _git(repo_root, "show", f"{commit_a}:{source_path}") == source_bytes_a.strip()
+    assert _git(repo_root, "show", f"{head_b}:{source_path}") == source_bytes_b.strip()
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.VERIFIED_MATCH
+    )
+    assert report.findings == ()
+    assert report.canonical_gate_passed is True
+
+
 def test_local_git_provenance_verification_does_not_mutate_repository_state(tmp_path: Path):
     dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
         tmp_path
     )
 
-    def observe() -> tuple[bytes, ...]:
-        return (
-            _git(repo_root, "rev-parse", "HEAD"),
-            _git(repo_root, "diff", "--binary"),
-            _git(repo_root, "diff", "--cached", "--binary"),
-            _git(repo_root, "status", "--porcelain=v1", "--untracked-files=all"),
-            _git(repo_root, "show-ref"),
-        )
-
-    before = observe()
+    before = _observe_git_repository(repo_root)
     report = _validate(evidence, dataset, repo_root)
-    after = observe()
+    after = _observe_git_repository(repo_root)
 
     assert report.findings == ()
     assert after == before
@@ -967,6 +1021,73 @@ def test_local_git_provenance_verification_creates_no_data_directory(
     assert not data_dir.exists()
 
 
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ("rev-parse", "--show-toplevel"),
+        ("rev-parse", "--git-common-dir"),
+        ("cat-file", "-t", OID_A),
+        ("cat-file", "-t", f"{OID_A}:contracts/evidence/source.json"),
+        ("cat-file", "blob", f"{OID_A}:contracts/evidence/source.json"),
+        ("merge-base", "--is-ancestor", OID_A, "HEAD"),
+    ],
+)
+def test_read_only_git_exact_argument_allowlist_accepts_only_required_shapes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    argv: tuple[str, ...],
+):
+    calls: list[list[str]] = []
+
+    def recording_run(args: list[str], **_kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        assert isinstance(args, list)
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, stdout=b"", stderr=b"")
+
+    monkeypatch.setattr(validator.subprocess, "run", recording_run)
+
+    result = _run_validator_read_only_git(tmp_path, *argv)
+
+    assert result is not None
+    assert result.returncode == 0
+    assert calls == [["git", "-C", str(tmp_path), *argv]]
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        (),
+        ("status",),
+        ("rev-parse", "--git-dir"),
+        ("rev-parse", "--show-toplevel", "extra"),
+        ("rev-parse", "--git-common-dir", "extra"),
+        ("cat-file", "--filters", f"{OID_A}:contracts/evidence/source.json"),
+        ("cat-file", "--textconv", f"{OID_A}:contracts/evidence/source.json"),
+        ("cat-file", "--batch"),
+        ("cat-file", "--batch-command"),
+        ("cat-file", "-t", "HEAD"),
+        ("cat-file", "-t", "--help"),
+        ("cat-file", "-t", f"{OID_A}:contracts/evidence/../../outside"),
+        ("cat-file", "blob", OID_A),
+        ("merge-base", "--is-ancestor", OID_A, "HEAD", "extra"),
+        ("merge-base", "--is-ancestor", OID_A, "main"),
+        ("merge-base", "--is-ancestor", "HEAD", OID_A),
+    ],
+)
+def test_read_only_git_rejects_malformed_arguments_before_subprocess(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    argv: tuple[str, ...],
+):
+    def forbidden_run(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("rejected Git argv must not reach subprocess.run")
+
+    monkeypatch.setattr(validator.subprocess, "run", forbidden_run)
+
+    with pytest.raises(ValueError, match="exact read-only allowlist"):
+        _run_validator_read_only_git(tmp_path, *argv)
+
+
 def test_local_git_provenance_commands_are_shell_free_read_only_and_offline(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
@@ -978,8 +1099,12 @@ def test_local_git_provenance_commands_are_shell_free_read_only_and_offline(
     monkeypatch.setenv("GIT_DIR", str(tmp_path / "redirected-git-dir"))
     monkeypatch.setenv("GIT_OBJECT_DIRECTORY", str(tmp_path / "redirected-objects"))
     monkeypatch.setenv("GIT_CONFIG_COUNT", "0")
+    monkeypatch.setenv("GIT_TRACE", str(tmp_path / "trace.log"))
+    monkeypatch.setenv("GIT_TRACE2_EVENT", str(tmp_path / "trace2-event.log"))
+    monkeypatch.setenv("GIT_TRACE_PERFORMANCE", str(tmp_path / "trace-performance.log"))
 
     def recording_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        assert isinstance(args, list)
         calls.append((tuple(args), kwargs))
         return cast(subprocess.CompletedProcess[bytes], real_run(args, **kwargs))
 
@@ -1001,16 +1126,28 @@ def test_local_git_provenance_commands_are_shell_free_read_only_and_offline(
         "update-index",
         "worktree",
     }
+    source_oid = dataset["source_provenance"]["source_git_oid"]
+    source_path = dataset["source_provenance"]["source_definition_path"]
+    blob_spec = f"{source_oid}:{source_path}"
+    approved_argv = {
+        ("rev-parse", "--show-toplevel"),
+        ("rev-parse", "--git-common-dir"),
+        ("cat-file", "-t", source_oid),
+        ("cat-file", "-t", blob_spec),
+        ("cat-file", "blob", blob_spec),
+        ("merge-base", "--is-ancestor", source_oid, "HEAD"),
+    }
     for command, kwargs in calls:
         assert command[:2] == ("git", "-C")
-        assert command[3] in {"cat-file", "merge-base", "rev-parse"}
+        assert command[3:] in approved_argv
         assert forbidden.isdisjoint(command)
         assert kwargs["shell"] is False
-        env = kwargs["env"]
-        assert isinstance(env, dict)
+        env = cast(dict[str, str], kwargs["env"])
         assert "GIT_CONFIG_COUNT" not in env
         assert "GIT_DIR" not in env
         assert "GIT_OBJECT_DIRECTORY" not in env
+        assert not any(name.startswith("GIT_TRACE") for name in env)
+        assert env["GIT_GRAFT_FILE"] == os.devnull
         assert env["GIT_NO_LAZY_FETCH"] == "1"
         assert env["GIT_NO_REPLACE_OBJECTS"] == "1"
         assert env["GIT_OPTIONAL_LOCKS"] == "0"
@@ -1018,10 +1155,268 @@ def test_local_git_provenance_commands_are_shell_free_read_only_and_offline(
 
 
 @pytest.mark.parametrize(
+    "trace_variable",
+    ["GIT_TRACE", "GIT_TRACE2_EVENT", "GIT_TRACE_PERFORMANCE"],
+)
+def test_local_git_provenance_never_creates_inherited_trace_destination(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    trace_variable: str,
+):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    trace_dir = tmp_path / "task-owned-traces"
+    trace_dir.mkdir()
+    trace_path = trace_dir / f"{trace_variable.lower()}.log"
+    before = _observe_git_repository(repo_root)
+    monkeypatch.setenv(trace_variable, str(trace_path))
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    assert report.findings == ()
+    assert report.canonical_gate_passed is True
+    assert not trace_path.exists()
+    monkeypatch.delenv(trace_variable)
+    assert _observe_git_repository(repo_root) == before
+
+
+def test_local_git_provenance_ignores_repository_graft_that_forges_ancestry(tmp_path: Path):
+    dataset, evidence, repo_root, source_path, source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    head_oid = _git(repo_root, "rev-parse", "HEAD").decode("ascii")
+    tree_oid = _git(repo_root, "write-tree").decode("ascii")
+    unrelated_oid = _git(
+        repo_root, "commit-tree", tree_oid, "-m", "unrelated task-owned graft object"
+    ).decode("ascii")
+    ordinary_before = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", unrelated_oid, "HEAD"],
+        cwd=repo_root,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        shell=False,
+    )
+    assert ordinary_before.returncode == 1
+
+    git_dir = repo_root / ".git"
+    graft_file = git_dir / "info" / "grafts"
+    graft_file.parent.mkdir(parents=True, exist_ok=True)
+    graft_file.write_text(f"{head_oid} {unrelated_oid}\n", encoding="ascii")
+    ordinary_with_graft = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", unrelated_oid, "HEAD"],
+        cwd=repo_root,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        shell=False,
+    )
+    assert ordinary_with_graft.returncode == 0
+
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=unrelated_oid,
+        source_file_sha256=canonical_json.sha256_hex(source_bytes),
+    )
+    before = _observe_git_repository(repo_root)
+    graft_before = graft_file.read_bytes()
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DATASET_SOURCE_GIT_OID_NOT_ANCESTOR"
+    )
+    assert finding.category is FindingCategory.UNVERIFIED_PROVENANCE
+    assert report.canonical_gate_passed is False
+    assert graft_file.read_bytes() == graft_before
+    assert _observe_git_repository(repo_root) == before
+
+
+def test_local_git_provenance_rejects_object_available_only_from_alternate_database(
+    tmp_path: Path,
+):
+    primary_owner = tmp_path / "primary-owner"
+    primary_owner.mkdir()
+    _primary_dataset, _primary_evidence, primary_repo, _primary_path, _primary_bytes = (
+        _build_local_committed_pair(primary_owner)
+    )
+
+    alternate_owner = tmp_path / "alternate-owner"
+    alternate_owner.mkdir()
+    dataset, evidence, alternate_repo, source_path, _source_bytes = _build_local_committed_pair(
+        alternate_owner
+    )
+    hostile_bytes = b'{"fixture":"alternate-only-source"}\n'
+    (alternate_repo / source_path).write_bytes(hostile_bytes)
+    _git(alternate_repo, "add", "--", source_path)
+    _git(alternate_repo, "commit", "-q", "-m", "alternate-only provenance object")
+    hostile_oid = _git(alternate_repo, "rev-parse", "HEAD").decode("ascii")
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=hostile_oid,
+        source_file_sha256=canonical_json.sha256_hex(hostile_bytes),
+    )
+
+    primary_without_alternate = subprocess.run(
+        ["git", "cat-file", "-t", hostile_oid],
+        cwd=primary_repo,
+        stdin=subprocess.DEVNULL,
+        capture_output=True,
+        check=False,
+        shell=False,
+    )
+    assert primary_without_alternate.returncode != 0
+
+    alternates_file = _git_info_path(primary_repo, "alternates")
+    alternates_file.write_text(str(alternate_repo / ".git" / "objects") + "\n", encoding="utf-8")
+    assert _git(primary_repo, "cat-file", "-t", hostile_oid) == b"commit"
+    alternates_before = alternates_file.read_bytes()
+    before = _observe_git_repository(primary_repo)
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=primary_repo,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE"
+    )
+    assert finding.category is FindingCategory.UNVERIFIED_PROVENANCE
+    assert str(primary_repo) not in finding.message
+    assert str(alternate_repo) not in finding.message
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT
+    )
+    assert report.canonical_gate_passed is False
+    assert alternates_file.read_bytes() == alternates_before
+    assert _observe_git_repository(primary_repo) == before
+
+
+def test_local_git_provenance_accepts_empty_alternates_file(tmp_path: Path):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    alternates_file = _git_info_path(repo_root, "alternates")
+    alternates_file.write_bytes(b"")
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    assert report.findings == ()
+    assert report.canonical_gate_passed is True
+    assert alternates_file.read_bytes() == b""
+
+
+def test_local_git_provenance_supports_linked_worktree_common_directory(tmp_path: Path):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    linked_worktree = tmp_path / "linked-worktree"
+    _git(repo_root, "worktree", "add", "--detach", str(linked_worktree), "HEAD")
+    common_dir = _git(linked_worktree, "rev-parse", "--git-common-dir").decode("utf-8")
+    assert Path(common_dir).is_absolute()
+    assert Path(common_dir) != linked_worktree / ".git"
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=linked_worktree,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    assert report.findings == ()
+    assert report.canonical_gate_passed is True
+
+
+@pytest.mark.parametrize("unsafe_kind", ["malformed", "symlink", "unreadable", "http-entry"])
+def test_local_git_provenance_fails_closed_on_unsafe_alternates_configuration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    unsafe_kind: str,
+):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    filename = "http-alternates" if unsafe_kind == "http-entry" else "alternates"
+    configuration_file = _git_info_path(repo_root, filename)
+    if unsafe_kind == "malformed":
+        configuration_file.write_bytes(b"\xff\n")
+    elif unsafe_kind == "symlink":
+        symlink_target = tmp_path / "task-owned-empty-alternates"
+        symlink_target.write_bytes(b"")
+        configuration_file.symlink_to(symlink_target)
+    elif unsafe_kind == "unreadable":
+        configuration_file.write_bytes(b"")
+        real_open = validator.os.open
+
+        def denied_open(path: os.PathLike[str] | str, flags: int, *args: int) -> int:
+            if Path(path) == configuration_file:
+                raise PermissionError("task-owned simulated unreadable alternates")
+            return real_open(path, flags, *args)
+
+        monkeypatch.setattr(validator.os, "open", denied_open)
+    else:
+        configuration_file.write_text("https://example.invalid/objects\n", encoding="utf-8")
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE"
+    )
+    assert finding.category is FindingCategory.UNVERIFIED_PROVENANCE
+    assert str(configuration_file) not in finding.message
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT
+    )
+    assert report.canonical_gate_passed is False
+
+
+@pytest.mark.parametrize(
     ("raw_path", "expected_code"),
     [
         ("docs/ownerinit.md", "DEFINITION_PATH_PROTECTED"),
         ("contracts/evidence/../../outside.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
+        ("contracts/evidence/nul\x00source.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
+        ("contracts/evidence/newline\nsource.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
+        ("contracts/evidence/control\x01source.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
+        ("contracts/evidence/tab\tsource.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
+        ("contracts/evidence/del\x7fsource.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
     ],
 )
 def test_local_provenance_rejects_paths_before_any_git_blob_access(
@@ -1613,6 +2008,127 @@ def test_absolute_and_traversal_paths_rejected_without_filesystem_access(
             pointer="/x",
         )
     assert traversal_exc.value.finding.code == "DEFINITION_PATH_LEXICALLY_INVALID"
+
+
+@pytest.mark.parametrize(
+    "raw_path",
+    [
+        "contracts/evidence/nul\x00source.json",
+        "contracts/evidence/newline\nsource.json",
+        "contracts/evidence/control\x01source.json",
+        "contracts/evidence/tab\tsource.json",
+        "contracts/evidence/del\x7fsource.json",
+    ],
+)
+def test_control_character_paths_rejected_without_filesystem_access(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    raw_path: str,
+):
+    def _forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("control-character path must fail before filesystem access")
+
+    monkeypatch.setattr(Path, "resolve", _forbidden)
+    monkeypatch.setattr(Path, "stat", _forbidden)
+    monkeypatch.setattr(Path, "open", _forbidden)
+    monkeypatch.setattr(Path, "read_bytes", _forbidden)
+
+    with pytest.raises(validator.DefinitionPathRejected) as exc:
+        validator.resolve_definition_path(
+            raw_path,
+            repo_root=tmp_path,
+            evidence_status=EvidenceStatus.CANONICAL,
+            pointer="/x",
+        )
+
+    finding = exc.value.finding
+    assert finding.code == "DEFINITION_PATH_LEXICALLY_INVALID"
+    assert finding.message == "definition path must not contain control characters"
+    assert raw_path not in finding.message
+
+
+@pytest.mark.parametrize(
+    "resolution_error",
+    [
+        ValueError("raw path and absolute location must not leak"),
+        RuntimeError("symlink detail must not leak"),
+        OSError("OS-specific detail must not leak"),
+    ],
+)
+def test_definition_path_resolution_exceptions_are_sanitized(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    resolution_error: Exception,
+):
+    raw_path = "contracts/evidence/task-owned-source.json"
+
+    def failed_resolve(*_args: object, **_kwargs: object) -> None:
+        raise resolution_error
+
+    monkeypatch.setattr(Path, "resolve", failed_resolve)
+
+    with pytest.raises(validator.DefinitionPathRejected) as exc:
+        validator.resolve_definition_path(
+            raw_path,
+            repo_root=tmp_path,
+            evidence_status=EvidenceStatus.CANONICAL,
+            pointer="/x",
+        )
+
+    finding = exc.value.finding
+    assert finding.code == "DEFINITION_PATH_RESOLUTION_FAILED"
+    assert finding.message == "definition path could not be resolved safely"
+    assert raw_path not in finding.message
+    assert str(tmp_path) not in finding.message
+    assert type(resolution_error).__name__ not in finding.message
+
+
+def test_local_provenance_symlink_loop_is_sanitized_and_registry_cannot_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    dataset, evidence, repo_root, _source_path, source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    loop_a = repo_root / "contracts/evidence/loop-a"
+    loop_b = repo_root / "contracts/evidence/loop-b"
+    loop_a.symlink_to("loop-b")
+    loop_b.symlink_to("loop-a")
+    raw_path = "contracts/evidence/loop-a/source.json"
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=raw_path,
+        source_git_oid=dataset["source_provenance"]["source_git_oid"],
+        source_file_sha256=canonical_json.sha256_hex(source_bytes),
+    )
+
+    def forbidden_git(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("resolution failure must happen before any Git query")
+
+    monkeypatch.setattr(validator, "_run_read_only_git", forbidden_git)
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DEFINITION_PATH_RESOLUTION_FAILED"
+    )
+    assert finding.message == "definition path could not be resolved safely"
+    assert raw_path not in finding.message
+    assert str(repo_root) not in finding.message
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT
+    )
+    assert report.canonical_gate_passed is False
 
 
 def test_protected_path_rejected_without_any_filesystem_access(

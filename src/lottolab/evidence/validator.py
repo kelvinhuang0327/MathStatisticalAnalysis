@@ -21,7 +21,8 @@ import os
 import stat
 import subprocess
 from collections import Counter
-from contextlib import suppress
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -72,7 +73,11 @@ _READ_ONLY_GIT_SUBCOMMANDS: frozenset[str] = frozenset(
 )
 
 _GIT_OID_HEX_DIGITS = frozenset("0123456789abcdef")
-_MAX_ALTERNATES_FILE_BYTES = 64 * 1024
+_MAX_COMMON_GIT_DIR_OUTPUT_BYTES = 4096
+_ALTERNATE_METADATA_FILENAMES: tuple[str, ...] = ("alternates", "http-alternates")
+_OS_OPEN_SUPPORTS_DIR_FD = os.open in os.supports_dir_fd
+_OS_STAT_SUPPORTS_DIR_FD = os.stat in os.supports_dir_fd
+_OS_STAT_SUPPORTS_NOFOLLOW = os.stat in os.supports_follow_symlinks
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +110,38 @@ class DefinitionPathRejected(Exception):
     def __init__(self, finding: Finding) -> None:
         self.finding = finding
         super().__init__(finding.message)
+
+
+class _UnsafeAlternateObjectDatabase(Exception):
+    """Internal fail-closed signal without filesystem or Git detail."""
+
+
+@dataclass(frozen=True, slots=True)
+class _DirectoryIdentity:
+    mode: int
+    device: int
+    inode: int
+
+
+@dataclass(frozen=True, slots=True)
+class _FileMetadata:
+    mode: int
+    device: int
+    inode: int
+    size: int
+    mtime_ns: int
+    ctime_ns: int
+
+
+@dataclass(frozen=True, slots=True)
+class _GitObjectDirectoryChain:
+    common_path: Path
+    common_descriptor: int
+    objects_descriptor: int
+    info_descriptor: int
+    common_identity: _DirectoryIdentity
+    objects_identity: _DirectoryIdentity
+    info_identity: _DirectoryIdentity
 
 
 # --------------------------------------------------------------------------
@@ -343,95 +380,261 @@ def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProce
         return None
 
 
-def _alternate_configuration_file_is_unsafe(path: Path) -> bool:
+def _descriptor_anchoring_is_supported() -> bool:
+    required_flags = ("O_DIRECTORY", "O_NOFOLLOW", "O_CLOEXEC", "O_NONBLOCK")
+    return (
+        all(hasattr(os, name) for name in required_flags)
+        and _OS_OPEN_SUPPORTS_DIR_FD
+        and _OS_STAT_SUPPORTS_DIR_FD
+        and _OS_STAT_SUPPORTS_NOFOLLOW
+    )
+
+
+def _directory_identity(path_status: os.stat_result) -> _DirectoryIdentity:
+    return _DirectoryIdentity(
+        mode=path_status.st_mode,
+        device=path_status.st_dev,
+        inode=path_status.st_ino,
+    )
+
+
+def _timestamp_ns(path_status: os.stat_result, name: str) -> int:
+    nanoseconds = getattr(path_status, f"st_{name}_ns", None)
+    if nanoseconds is not None:
+        return int(nanoseconds)
+    return int(getattr(path_status, f"st_{name}") * 1_000_000_000)
+
+
+def _file_metadata(path_status: os.stat_result) -> _FileMetadata:
+    return _FileMetadata(
+        mode=path_status.st_mode,
+        device=path_status.st_dev,
+        inode=path_status.st_ino,
+        size=path_status.st_size,
+        mtime_ns=_timestamp_ns(path_status, "mtime"),
+        ctime_ns=_timestamp_ns(path_status, "ctime"),
+    )
+
+
+def _status_matches_directory(
+    path_status: os.stat_result, expected: _DirectoryIdentity
+) -> bool:
+    return stat.S_ISDIR(path_status.st_mode) and _directory_identity(path_status) == expected
+
+
+def _stat_no_follow(
+    path: str | Path, *, parent_descriptor: int | None = None
+) -> os.stat_result:
+    if parent_descriptor is None:
+        return os.stat(path, follow_symlinks=False)
+    return os.stat(path, dir_fd=parent_descriptor, follow_symlinks=False)
+
+
+def _open_anchored_directory(
+    path: str | Path, *, parent_descriptor: int | None = None
+) -> tuple[int, _DirectoryIdentity] | None:
     try:
-        path_status = os.lstat(path)
-    except FileNotFoundError:
-        return False
-    except OSError:
-        return True
+        path_status = _stat_no_follow(path, parent_descriptor=parent_descriptor)
+        if not stat.S_ISDIR(path_status.st_mode):
+            return None
+        flags = (
+            os.O_RDONLY
+            | os.O_DIRECTORY
+            | os.O_NOFOLLOW
+            | os.O_CLOEXEC
+            | os.O_NONBLOCK
+        )
+        if parent_descriptor is None:
+            descriptor = os.open(path, flags)
+        else:
+            descriptor = os.open(path, flags, dir_fd=parent_descriptor)
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return None
 
-    if not stat.S_ISREG(path_status.st_mode) or path_status.st_size > _MAX_ALTERNATES_FILE_BYTES:
-        return True
-
-    flags = os.O_RDONLY | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
-    try:
-        descriptor = os.open(path, flags)
-    except OSError:
-        return True
-
+    keep_descriptor = False
     try:
         opened_status = os.fstat(descriptor)
+        opened_identity = _directory_identity(opened_status)
         if (
-            not stat.S_ISREG(opened_status.st_mode)
-            or opened_status.st_dev != path_status.st_dev
-            or opened_status.st_ino != path_status.st_ino
+            not stat.S_ISDIR(opened_status.st_mode)
+            or opened_identity != _directory_identity(path_status)
         ):
-            return True
-
-        content = bytearray()
-        while True:
-            chunk = os.read(descriptor, 8192)
-            if not chunk:
-                break
-            content.extend(chunk)
-            if len(content) > _MAX_ALTERNATES_FILE_BYTES:
-                return True
-
-        final_status = os.fstat(descriptor)
-        if (
-            final_status.st_dev != opened_status.st_dev
-            or final_status.st_ino != opened_status.st_ino
-            or final_status.st_size != len(content)
-            or final_status.st_mtime_ns != opened_status.st_mtime_ns
-        ):
-            return True
-    except OSError:
-        return True
+            return None
+        keep_descriptor = True
+        return descriptor, opened_identity
+    except (OSError, TypeError, ValueError):
+        return None
     finally:
-        with suppress(OSError):
-            os.close(descriptor)
-
-    try:
-        text = bytes(content).decode("utf-8")
-    except UnicodeDecodeError:
-        return True
-    return any(character not in " \t\n" for character in text)
+        if not keep_descriptor:
+            with suppress(OSError):
+                os.close(descriptor)
 
 
-def _repository_has_unsafe_alternate_object_database(repo_root: Path) -> bool:
+def _resolve_common_git_directory(repo_root: Path) -> Path | None:
     common_dir_query = _run_read_only_git(repo_root, "rev-parse", "--git-common-dir")
     if common_dir_query is None or common_dir_query.returncode != 0:
-        return True
+        return None
+    if not (0 < len(common_dir_query.stdout) <= _MAX_COMMON_GIT_DIR_OUTPUT_BYTES):
+        return None
     try:
         common_dir_output = common_dir_query.stdout.decode("utf-8")
     except UnicodeDecodeError:
-        return True
+        return None
     if not common_dir_output.endswith("\n") or common_dir_output.count("\n") != 1:
-        return True
+        return None
 
     raw_common_dir = common_dir_output[:-1]
     if not raw_common_dir or any(
         ord(character) < 0x20 or ord(character) == 0x7F for character in raw_common_dir
     ):
-        return True
+        return None
 
     unresolved_common_dir = Path(raw_common_dir)
     if not unresolved_common_dir.is_absolute():
         unresolved_common_dir = repo_root / unresolved_common_dir
     try:
-        common_dir = unresolved_common_dir.resolve(strict=True)
-        common_dir_status = os.stat(common_dir)
+        return unresolved_common_dir.resolve(strict=True)
     except (OSError, RuntimeError, ValueError):
+        return None
+
+
+def _open_git_object_directory_chain(repo_root: Path) -> _GitObjectDirectoryChain | None:
+    if not _descriptor_anchoring_is_supported():
+        return None
+    common_path = _resolve_common_git_directory(repo_root)
+    if common_path is None:
+        return None
+
+    common_opened = _open_anchored_directory(common_path)
+    if common_opened is None:
+        return None
+    common_descriptor, common_identity = common_opened
+
+    objects_opened = _open_anchored_directory(
+        "objects", parent_descriptor=common_descriptor
+    )
+    if objects_opened is None:
+        with suppress(OSError):
+            os.close(common_descriptor)
+        return None
+    objects_descriptor, objects_identity = objects_opened
+
+    info_opened = _open_anchored_directory("info", parent_descriptor=objects_descriptor)
+    if info_opened is None:
+        with suppress(OSError):
+            os.close(objects_descriptor)
+        with suppress(OSError):
+            os.close(common_descriptor)
+        return None
+    info_descriptor, info_identity = info_opened
+
+    return _GitObjectDirectoryChain(
+        common_path=common_path,
+        common_descriptor=common_descriptor,
+        objects_descriptor=objects_descriptor,
+        info_descriptor=info_descriptor,
+        common_identity=common_identity,
+        objects_identity=objects_identity,
+        info_identity=info_identity,
+    )
+
+
+def _close_git_object_directory_chain(chain: _GitObjectDirectoryChain) -> None:
+    for descriptor in (
+        chain.info_descriptor,
+        chain.objects_descriptor,
+        chain.common_descriptor,
+    ):
+        with suppress(OSError):
+            os.close(descriptor)
+
+
+def _git_object_directory_chain_is_stable(chain: _GitObjectDirectoryChain) -> bool:
+    try:
+        common_path_status = _stat_no_follow(chain.common_path)
+        common_descriptor_status = os.fstat(chain.common_descriptor)
+        objects_path_status = _stat_no_follow(
+            "objects", parent_descriptor=chain.common_descriptor
+        )
+        objects_descriptor_status = os.fstat(chain.objects_descriptor)
+        info_path_status = _stat_no_follow("info", parent_descriptor=chain.objects_descriptor)
+        info_descriptor_status = os.fstat(chain.info_descriptor)
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return False
+
+    return all(
+        (
+            _status_matches_directory(common_path_status, chain.common_identity),
+            _status_matches_directory(common_descriptor_status, chain.common_identity),
+            _status_matches_directory(objects_path_status, chain.objects_identity),
+            _status_matches_directory(objects_descriptor_status, chain.objects_identity),
+            _status_matches_directory(info_path_status, chain.info_identity),
+            _status_matches_directory(info_descriptor_status, chain.info_identity),
+        )
+    )
+
+
+def _alternate_configuration_file_is_unsafe(
+    info_descriptor: int, filename: str
+) -> bool:
+    if filename not in _ALTERNATE_METADATA_FILENAMES:
         return True
-    if not stat.S_ISDIR(common_dir_status.st_mode):
+    try:
+        path_status = _stat_no_follow(filename, parent_descriptor=info_descriptor)
+    except FileNotFoundError:
+        return False
+    except (OSError, NotImplementedError, TypeError, ValueError):
         return True
 
-    alternates_info = common_dir / "objects" / "info"
-    return any(
-        _alternate_configuration_file_is_unsafe(alternates_info / filename)
-        for filename in ("alternates", "http-alternates")
+    if not stat.S_ISREG(path_status.st_mode) or path_status.st_size != 0:
+        return True
+
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
+    try:
+        descriptor = os.open(filename, flags, dir_fd=info_descriptor)
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return True
+
+    try:
+        opened_status = os.fstat(descriptor)
+        final_status = _stat_no_follow(filename, parent_descriptor=info_descriptor)
+        metadata = (
+            _file_metadata(path_status),
+            _file_metadata(opened_status),
+            _file_metadata(final_status),
+        )
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return True
+    finally:
+        with suppress(OSError):
+            os.close(descriptor)
+
+    return not (
+        all(stat.S_ISREG(item.mode) and item.size == 0 for item in metadata)
+        and metadata[0] == metadata[1] == metadata[2]
     )
+
+
+@contextmanager
+def _validated_primary_object_database(repo_root: Path) -> Generator[None]:
+    chain = _open_git_object_directory_chain(repo_root)
+    if chain is None:
+        raise _UnsafeAlternateObjectDatabase
+    try:
+        if any(
+            _alternate_configuration_file_is_unsafe(chain.info_descriptor, filename)
+            for filename in _ALTERNATE_METADATA_FILENAMES
+        ):
+            raise _UnsafeAlternateObjectDatabase
+        if not _git_object_directory_chain_is_stable(chain):
+            raise _UnsafeAlternateObjectDatabase
+        try:
+            yield
+        finally:
+            if not _git_object_directory_chain_is_stable(chain):
+                raise _UnsafeAlternateObjectDatabase
+    finally:
+        _close_git_object_directory_chain(chain)
 
 
 # --------------------------------------------------------------------------
@@ -799,96 +1002,108 @@ def verify_dataset_provenance(
             True,
         )
 
-    top_level = _run_read_only_git(repo_root, "rev-parse", "--show-toplevel")
-    if top_level is None or top_level.returncode != 0:
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
-            pointer=_DATASET_SOURCE_OID_POINTER,
-            message="the supplied repository is unavailable for local provenance verification",
-        )
     try:
-        top_level_text = top_level.stdout.decode("utf-8").strip()
-        resolved_top_level = Path(top_level_text).resolve() if top_level_text else None
-        resolved_supplied_root = repo_root.resolve()
-    except (OSError, RuntimeError, UnicodeDecodeError, ValueError):
-        resolved_top_level = None
-        resolved_supplied_root = None
-    if resolved_top_level is None or resolved_top_level != resolved_supplied_root:
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
-            pointer=_DATASET_SOURCE_OID_POINTER,
-            message="the supplied repository is unavailable for local provenance verification",
-        )
+        with _validated_primary_object_database(repo_root):
+            top_level = _run_read_only_git(repo_root, "rev-parse", "--show-toplevel")
+            if top_level is None or top_level.returncode != 0:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message=(
+                        "the supplied repository is unavailable for local provenance "
+                        "verification"
+                    ),
+                )
+            try:
+                top_level_text = top_level.stdout.decode("utf-8").strip()
+                resolved_top_level = Path(top_level_text).resolve() if top_level_text else None
+                resolved_supplied_root = repo_root.resolve()
+            except (OSError, RuntimeError, UnicodeDecodeError, ValueError):
+                resolved_top_level = None
+                resolved_supplied_root = None
+            if resolved_top_level is None or resolved_top_level != resolved_supplied_root:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message=(
+                        "the supplied repository is unavailable for local provenance "
+                        "verification"
+                    ),
+                )
 
-    if _repository_has_unsafe_alternate_object_database(repo_root):
+            object_type = _run_read_only_git(repo_root, "cat-file", "-t", source_git_oid)
+            if (
+                object_type is None
+                or object_type.returncode != 0
+                or object_type.stdout.strip() != b"commit"
+            ):
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_OID_UNVERIFIED",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message="the declared source Git object is not a verifiable commit",
+                )
+
+            ancestry = _run_read_only_git(
+                repo_root, "merge-base", "--is-ancestor", source_git_oid, "HEAD"
+            )
+            if ancestry is None or ancestry.returncode not in (0, 1):
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_OID_UNVERIFIED",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message="the declared source Git commit cannot be verified against HEAD",
+                )
+            if ancestry.returncode == 1:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_OID_NOT_ANCESTOR",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message="the declared source Git commit is not an ancestor of HEAD",
+                )
+
+            blob_spec = f"{source_git_oid}:{raw_path}"
+            blob_type = _run_read_only_git(repo_root, "cat-file", "-t", blob_spec)
+            if (
+                blob_type is None
+                or blob_type.returncode != 0
+                or blob_type.stdout.strip() != b"blob"
+            ):
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_BLOB_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_PATH_POINTER,
+                    message="the declared historical source blob is unavailable",
+                )
+
+            blob = _run_read_only_git(repo_root, "cat-file", "blob", blob_spec)
+            if blob is None or blob.returncode != 0:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_BLOB_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_PATH_POINTER,
+                    message="the declared historical source bytes are unavailable",
+                )
+
+            recomputed_source_hash = canonical_json.sha256_hex(blob.stdout)
+            state = verify_hash(declared_source_hash, recomputed_source_hash)
+            hash_checks = [HashCheck(_DATASET_SOURCE_HASH_POINTER, state)]
+            if state is HashVerificationState.VERIFIED_MISMATCH:
+                return (
+                    [
+                        Finding(
+                            FindingCategory.HASH_MISMATCH,
+                            "DATASET_SOURCE_FILE_HASH_MISMATCH",
+                            _DATASET_SOURCE_HASH_POINTER,
+                            "declared source_file_sha256 does not match the historical "
+                            "Git blob bytes",
+                        )
+                    ],
+                    hash_checks,
+                    True,
+                )
+            return [], hash_checks, False
+    except _UnsafeAlternateObjectDatabase:
         return _dataset_source_not_verifiable(
             "DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE",
             pointer=_DATASET_SOURCE_OID_POINTER,
             message="repository alternate object database configuration is unsafe",
         )
-
-    object_type = _run_read_only_git(repo_root, "cat-file", "-t", source_git_oid)
-    if (
-        object_type is None
-        or object_type.returncode != 0
-        or object_type.stdout.strip() != b"commit"
-    ):
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_GIT_OID_UNVERIFIED",
-            pointer=_DATASET_SOURCE_OID_POINTER,
-            message="the declared source Git object is not a verifiable commit",
-        )
-
-    ancestry = _run_read_only_git(
-        repo_root, "merge-base", "--is-ancestor", source_git_oid, "HEAD"
-    )
-    if ancestry is None or ancestry.returncode not in (0, 1):
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_GIT_OID_UNVERIFIED",
-            pointer=_DATASET_SOURCE_OID_POINTER,
-            message="the declared source Git commit cannot be verified against HEAD",
-        )
-    if ancestry.returncode == 1:
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_GIT_OID_NOT_ANCESTOR",
-            pointer=_DATASET_SOURCE_OID_POINTER,
-            message="the declared source Git commit is not an ancestor of HEAD",
-        )
-
-    blob_spec = f"{source_git_oid}:{raw_path}"
-    blob_type = _run_read_only_git(repo_root, "cat-file", "-t", blob_spec)
-    if blob_type is None or blob_type.returncode != 0 or blob_type.stdout.strip() != b"blob":
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_BLOB_UNAVAILABLE",
-            pointer=_DATASET_SOURCE_PATH_POINTER,
-            message="the declared historical source blob is unavailable",
-        )
-
-    blob = _run_read_only_git(repo_root, "cat-file", "blob", blob_spec)
-    if blob is None or blob.returncode != 0:
-        return _dataset_source_not_verifiable(
-            "DATASET_SOURCE_BLOB_UNAVAILABLE",
-            pointer=_DATASET_SOURCE_PATH_POINTER,
-            message="the declared historical source bytes are unavailable",
-        )
-
-    recomputed_source_hash = canonical_json.sha256_hex(blob.stdout)
-    state = verify_hash(declared_source_hash, recomputed_source_hash)
-    hash_checks = [HashCheck(_DATASET_SOURCE_HASH_POINTER, state)]
-    if state is HashVerificationState.VERIFIED_MISMATCH:
-        return (
-            [
-                Finding(
-                    FindingCategory.HASH_MISMATCH,
-                    "DATASET_SOURCE_FILE_HASH_MISMATCH",
-                    _DATASET_SOURCE_HASH_POINTER,
-                    "declared source_file_sha256 does not match the historical Git blob bytes",
-                )
-            ],
-            hash_checks,
-            True,
-        )
-    return [], hash_checks, False
 
 
 # --------------------------------------------------------------------------

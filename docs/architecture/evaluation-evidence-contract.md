@@ -202,16 +202,38 @@ prompt 與 optional locks。
 
 每次 Git subprocess 都會移除所有名稱以 `GIT_TRACE` 開頭的 inherited variable，避免 trace
 destination 建立或 append 檔案；`GIT_GRAFT_FILE` 固定設為 `os.devnull`，因此 repository-local
-`info/grafts` 不參與 ancestry proof。可能把 Git 指向其他 repository／object database 的其餘
-environment variables 也會先移除。
+`info/grafts` 不參與 ancestry proof。Inherited `GIT_ALTERNATE_OBJECT_DIRECTORIES` 會被明確移除；
+可能把 Git 指向其他 repository／object database 的其餘 environment variables 也會先移除。
 
-在 commit、ancestry 或 blob query 前，validator 以唯一允許的
-`rev-parse --git-common-dir` 找到 shared Git metadata，並以不跟隨 symlink、bounded、UTF-8
-strict 的方式檢查 `objects/info/alternates` 與 `objects/info/http-alternates`。不存在或空的 regular
-file 可接受；非空 entry、malformed／undecodable content、symlink、special file、無法安全讀取或
-檢查失敗都回報 `DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE`，source hash 是
-`NOT_VERIFIABLE_INPUT_ABSENT`，不可由 registry 注入覆寫。合法 linked worktree 的 common Git
-directory 可以位於 working tree 外；這不會被誤判成 alternate object database。
+在任何 repository top-level、commit、ancestry 或 blob query 前，validator 以唯一允許的
+`rev-parse --git-common-dir` 找到 shared Git metadata。輸出必須是 bounded、單行且 UTF-8 strict；
+relative path 一律相對於供 `git -C` 使用的 `repo_root` 解析。空白、control character、decode／
+resolution failure 都 fail closed，且不把 absolute common-directory path 暴露於 finding。解析後的
+common Git directory 是後續 object metadata inspection 的唯一 anchor；合法 linked worktree 的
+common directory 可以位於 linked working tree 外，不會因此被拒絕。
+
+Validator 先以 `O_DIRECTORY`、`O_NOFOLLOW`、`O_CLOEXEC` 及 nonblocking protection 開啟 common
+directory，再只用 parent directory descriptor 依序開啟固定名稱 `objects` 與 `info`。它不對
+`objects`、`objects/info` 或 final metadata name 呼叫 `resolve()`，也不透過一般 `Path.open()`
+走訪中間元件。任一中間元件不存在、是 symlink、不是 directory、不可讀或在 stat／open 間被
+替換，都視為 unsafe；目標平台缺少 no-follow 或 directory-fd primitive 時同樣 fail closed。
+
+`alternates` 與 `http-alternates` 只相對於已錨定的 `info` descriptor 檢查。唯一安全狀態是 final
+file 不存在，或它在 no-follow stat、no-follow/nonblocking open、`fstat()` 與 final no-follow stat
+四個 stage 都是同一個 exact zero-byte regular file。比較欄位包含 type／mode、device、inode、
+size、nanosecond mtime 與 ctime。任何 nonzero file 都 unsafe；單一 space、tab、LF、CRLF 或 mixed
+whitespace 也不例外，validator 不做 whitespace normalization，也不需要 decode nonzero content。
+Symlink、directory、FIFO、socket／其他 special type、unreadable file、open／stat failure 或任何
+被觀察到的 metadata instability 都回報
+`DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE`；source hash 是
+`NOT_VERIFIABLE_INPUT_ABSENT`，canonical gate 為 false，且不可由 registry 注入覆寫。Finding 不
+包含 raw metadata path、content、OS exception 或 traceback。
+
+Common、`objects` 與 `info` descriptors 在完整 Git object proof 期間保持開啟。Validator 在 proof
+正前與正後，分別以 parent-relative no-follow stat 及 descriptor `fstat()` 重查 directory type、
+device 與 inode；任何可觀察到的 replacement 都 fail closed。這是 before／after observation 的
+有限保證，不宣稱能偵測完全發生在兩次 observation 之間、且不留下可見 metadata 差異的 concurrent
+change。
 
 驗證不執行 checkout、switch、reset、index／ref／config mutation、fetch 或任何網路操作，也不
 修改 HEAD、index、working tree、refs、config、graft 或 alternate configuration。

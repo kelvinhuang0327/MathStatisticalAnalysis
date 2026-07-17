@@ -4,20 +4,26 @@ domain          → (nothing else in lottolab)
 strategies      → domain
 application     → domain, strategies
 infrastructure  → domain, strategies, application (implements ports)
+evidence        → domain (stdlib and Pydantic only otherwise; no data path, no runtime)
 interfaces      → anything (composition root)
 """
 
 import ast
+import os
 import re
+import subprocess
+import sys
 from pathlib import Path
 
-SRC = Path(__file__).resolve().parents[2] / "src" / "lottolab"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SRC = REPO_ROOT / "src" / "lottolab"
 
 FORBIDDEN: dict[str, tuple[str, ...]] = {
-    "domain": ("application", "interfaces", "infrastructure", "strategies"),
+    "domain": ("application", "interfaces", "infrastructure", "strategies", "evidence"),
     "strategies": ("application", "interfaces", "infrastructure"),
     "application": ("interfaces", "infrastructure"),
     "infrastructure": ("interfaces",),
+    "evidence": ("application", "interfaces", "infrastructure", "strategies"),
 }
 
 
@@ -187,10 +193,106 @@ def test_frontend_knows_api_contract_not_sqlite_schema_or_raw_html() -> None:
         lowered = path.read_text(encoding="utf-8").casefold()
         assert not any(fragment.casefold() in lowered for fragment in forbidden), path
 
-    data_center = (
-        frontend / "features" / "data-center" / "DataCenterPage.vue"
-    ).read_text(encoding="utf-8")
-    assert not any(
-        storage in data_center
-        for storage in ("localStorage", "sessionStorage", "indexedDB")
+    data_center = (frontend / "features" / "data-center" / "DataCenterPage.vue").read_text(
+        encoding="utf-8"
     )
+    assert not any(
+        storage in data_center for storage in ("localStorage", "sessionStorage", "indexedDB")
+    )
+
+
+def test_evidence_imports_no_infrastructure_or_sqlite() -> None:
+    for path in (SRC / "evidence").rglob("*.py"):
+        imports = imported_modules(path)
+        assert "sqlite3" not in imports, path
+        assert not any(
+            module.startswith(
+                (
+                    "lottolab.infrastructure",
+                    "lottolab.interfaces",
+                    "lottolab.application",
+                    "lottolab.strategies",
+                )
+            )
+            for module in imports
+        ), path
+
+
+def test_evidence_transitively_imports_no_sqlite_or_forbidden_layer() -> None:
+    for module in (
+        "lottolab.evidence.canonical_json",
+        "lottolab.evidence.models",
+        "lottolab.evidence.validator",
+        "lottolab.evidence.comparability",
+    ):
+        imports = _transitive_imports(module)
+        assert "sqlite3" not in imports, module
+        assert not any(
+            imported.startswith(
+                (
+                    "lottolab.infrastructure",
+                    "lottolab.interfaces",
+                    "lottolab.application",
+                    "lottolab.strategies",
+                )
+            )
+            for imported in imports
+        ), module
+
+
+def _run_isolated(code: str, data_dir: Path) -> None:
+    env = {**os.environ, "LOTTOLAB_DATA_DIR": str(data_dir)}
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not data_dir.exists(), f"{data_dir} was created as a side effect"
+
+
+def test_importing_evidence_creates_no_data_directory(tmp_path: Path) -> None:
+    data_dir = tmp_path / "nonexistent-data"
+    _run_isolated(
+        "import lottolab.evidence.canonical_json\n"
+        "import lottolab.evidence.models\n"
+        "import lottolab.evidence.validator\n"
+        "import lottolab.evidence.comparability\n",
+        data_dir,
+    )
+
+
+def test_schema_generation_creates_no_data_directory(tmp_path: Path) -> None:
+    data_dir = tmp_path / "nonexistent-data"
+    env = {**os.environ, "LOTTOLAB_DATA_DIR": str(data_dir)}
+    result = subprocess.run(
+        [sys.executable, "tools/generate_evidence_schemas.py", "--check"],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not data_dir.exists()
+
+
+def test_cli_validation_creates_no_data_directory_or_db(tmp_path: Path) -> None:
+    data_dir = tmp_path / "nonexistent-data"
+    env = {**os.environ, "LOTTOLAB_DATA_DIR": str(data_dir)}
+    result = subprocess.run(
+        [
+            sys.executable,
+            "tools/validate_evaluation_evidence.py",
+            "tests/fixtures/evidence/synthetic/evaluation_evidence.json",
+            "--dataset",
+            "tests/fixtures/evidence/synthetic/dataset_snapshot.json",
+        ],
+        cwd=REPO_ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not data_dir.exists(), "CLI validation must never create a database or data directory"

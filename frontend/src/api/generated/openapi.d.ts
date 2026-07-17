@@ -34,7 +34,7 @@ export interface paths {
                         }
                   422: {
                           content: {
-                                    "application/json": components['schemas']["HTTPValidationError"]
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
                                   }
                         }
                 }
@@ -252,9 +252,6 @@ export interface components {
           "created_at": string
           "updated_at": string
         }
-    "HTTPValidationError": {
-          "detail"?: Array<components['schemas']["ValidationError"]>
-        }
     "ImportCommitResultView": {
           "run_id": string | null
           "status": components['schemas']["IngestionRunStatus"]
@@ -364,13 +361,6 @@ export interface components {
           "minimum_history": number
           "lifecycle_status": components['schemas']["LifecycleStatus"]
           "executable": boolean
-        }
-    "ValidationError": {
-          "loc": Array<string | number>
-          "msg": string
-          "type": string
-          "input"?: unknown
-          "ctx"?: Record<string, unknown>
         }
   }
 }

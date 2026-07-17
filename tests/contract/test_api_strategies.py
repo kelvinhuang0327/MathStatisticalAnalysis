@@ -136,14 +136,65 @@ def test_strategy_overview_filtered_empty_is_successful() -> None:
 def test_strategy_overview_rejects_blank_overlong_and_unknown_query_properties() -> None:
     client = TestClient(create_app(fixture_catalog()))
 
-    for params in (
-        {"q": "   "},
-        {"q": "x" * 101},
-        {"unknown": "value"},
+    for params, expected_location, expected_type in (
+        ({"q": "   "}, "query.q", "string_too_short"),
+        ({"q": "x" * 101}, "query.q", "string_too_long"),
+        ({"unknown": "value"}, "query.unknown", "extra_forbidden"),
     ):
         response = client.get("/api/v1/strategy-overview", params=params)
         assert response.status_code == 422
-        assert response.json()["error_code"] == "REQUEST_VALIDATION_FAILED"
+        payload = cast(dict[str, object], response.json())
+        assert payload["error_code"] == "REQUEST_VALIDATION_FAILED"
+        assert payload["message"] == "Request validation failed."
+        assert "detail" not in payload
+
+        fields = cast(list[dict[str, str]], payload["fields"])
+        assert isinstance(fields, list)
+        assert {
+            "location": expected_location,
+            "type": expected_type,
+        } in fields
+        assert all(set(field) == {"location", "type"} for field in fields)
+
+
+def test_strategy_overview_documents_sanitized_validation_response() -> None:
+    document = create_app(fixture_catalog()).openapi()
+    response_422 = document["paths"]["/api/v1/strategy-overview"]["get"][
+        "responses"
+    ]["422"]
+
+    assert response_422["content"]["application/json"]["schema"] == {
+        "$ref": "#/components/schemas/ApiValidationErrorResponse"
+    }
+    assert "#/components/schemas/HTTPValidationError" not in json.dumps(response_422)
+
+    schemas = document["components"]["schemas"]
+    validation_response = schemas["ApiValidationErrorResponse"]
+    assert {"error_code", "message", "fields"} <= set(
+        validation_response["properties"]
+    )
+    assert validation_response["properties"]["fields"] == {
+        "items": {"$ref": "#/components/schemas/RequestValidationIssueView"},
+        "type": "array",
+        "title": "Fields",
+    }
+    assert "HTTPValidationError" not in schemas
+    assert "ValidationError" not in schemas
+
+
+def test_strategy_overview_generated_declaration_uses_sanitized_response() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    overview_declaration = declaration.split('"/api/v1/strategy-overview": {', 1)[
+        1
+    ].split('"/api/v1/draw-imports/preview": {', 1)[0]
+
+    assert (
+        '"application/json": components[\'schemas\']["ApiValidationErrorResponse"]'
+        in overview_declaration
+    )
+    assert "HTTPValidationError" not in overview_declaration
 
 
 def test_strategy_overview_is_db_and_data_path_free(tmp_path: Path) -> None:

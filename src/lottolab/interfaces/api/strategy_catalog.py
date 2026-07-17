@@ -53,6 +53,18 @@ def create_strategy_catalog_router(catalog: StrategyCatalog) -> APIRouter:
         "/strategy-overview",
         response_model=StrategyOverviewResponse,
         operation_id="queryStrategyOverview",
+        responses={
+            422: {
+                "description": "Unprocessable Content",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                        }
+                    }
+                },
+            }
+        },
     )
     def strategy_overview(
         query: Annotated[StrategyOverviewQuery, Query()],

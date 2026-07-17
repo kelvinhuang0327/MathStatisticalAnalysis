@@ -9,6 +9,9 @@ parses successfully and then checks what the semantic validator finds.
 from __future__ import annotations
 
 import copy
+import os
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +60,14 @@ DRAWS_BY_ID: dict[str, tuple[int, str, tuple[int, ...], tuple[int, ...]]] = {
 
 def _with_self_hash(draft: dict[str, Any], key: str) -> dict[str, Any]:
     return {**draft, key: canonical_json.self_key_removed_sha256(draft, key)}
+
+
+def _rehash_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
+    rehashed = copy.deepcopy(evidence)
+    rehashed["records"] = [
+        _with_self_hash(record, "record_sha256") for record in rehashed["records"]
+    ]
+    return _with_self_hash(rehashed, "artifact_content_sha256")
 
 
 def _rule_parameters() -> dict[str, Any]:
@@ -255,6 +266,70 @@ def _codes(report: validator.ValidationReport) -> set[str]:
 
 
 # --------------------------------------------------------------------------
+# Sanitized malformed input
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b'{"secret":"RAW_INPUT_MUST_NOT_LEAK",',
+        b'\xff{"secret":"RAW_BYTES_MUST_NOT_LEAK"}',
+    ],
+    ids=("malformed-json", "invalid-utf8"),
+)
+def test_load_evidence_returns_one_sanitized_schema_finding(
+    tmp_path: Path, payload: bytes
+):
+    evidence_path = tmp_path / "malformed-evidence.json"
+    evidence_path.write_bytes(payload)
+
+    evidence, findings = validator.load_evidence(evidence_path)
+
+    assert evidence is None
+    assert len(findings) == 1
+    finding = findings[0]
+    assert finding.category is FindingCategory.SCHEMA_FAILURE
+    assert finding.code == "EVIDENCE_NOT_LCJ1"
+    assert finding.message == "$: input is not valid UTF-8 JSON"
+    assert "RAW_INPUT_MUST_NOT_LEAK" not in finding.message
+    assert "RAW_BYTES_MUST_NOT_LEAK" not in finding.message
+    assert str(evidence_path) not in finding.message
+
+
+def test_cli_malformed_json_fails_without_traceback_or_input_disclosure(tmp_path: Path):
+    sensitive_absolute_marker = "/SENSITIVE/PROTECTED/ABSOLUTE/PATH"
+    raw_marker = "RAW_INVALID_INPUT_MUST_NOT_LEAK"
+    evidence_path = tmp_path / "malformed-evidence.json"
+    evidence_path.write_bytes(
+        f'{{"secret":"{sensitive_absolute_marker}","raw":"{raw_marker}",'.encode()
+    )
+    data_dir = tmp_path / "nonexistent-data"
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "tools/validate_evaluation_evidence.py"),
+            str(evidence_path),
+        ],
+        cwd=REPO_ROOT,
+        env={**os.environ, "LOTTOLAB_DATA_DIR": str(data_dir)},
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    output = result.stdout + result.stderr
+
+    assert result.returncode == 1
+    assert "EVIDENCE_VALIDATION_FAILED" in output
+    assert "EVIDENCE_NOT_LCJ1" in output
+    assert "Traceback" not in output
+    assert sensitive_absolute_marker not in output
+    assert raw_marker not in output
+    assert not data_dir.exists()
+
+
+# --------------------------------------------------------------------------
 # Baseline must be clean
 # --------------------------------------------------------------------------
 
@@ -329,9 +404,197 @@ def test_reference_draw_count_first_last_mismatch_rejected(tmp_path: Path):
     assert "DATASET_LAST_DRAW_MISMATCH" in codes
 
 
+@pytest.mark.parametrize(
+    ("boundary", "false_date", "expected_code"),
+    [
+        ("first_draw", "2020-01-02", "DATASET_FIRST_DRAW_MISMATCH"),
+        ("last_draw", "2020-01-03", "DATASET_LAST_DRAW_MISMATCH"),
+    ],
+)
+def test_reference_first_and_last_draw_date_mismatch_rejected(
+    tmp_path: Path, boundary: str, false_date: str, expected_code: str
+):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence["dataset_reference"][boundary]["draw_date"] = false_date
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert expected_code in _codes(report)
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    ("evaluation_evidence.json", "historical_replay_evidence.json"),
+)
+def test_committed_synthetic_evidence_fixtures_have_zero_findings(fixture_name: str):
+    fixture_root = REPO_ROOT / "tests/fixtures/evidence/synthetic"
+    evidence, evidence_findings = validator.load_evidence(fixture_root / fixture_name)
+    dataset, dataset_findings = validator.load_dataset_snapshot(
+        fixture_root / "dataset_snapshot.json"
+    )
+
+    assert evidence is not None
+    assert dataset is not None
+    assert evidence_findings == []
+    assert dataset_findings == []
+
+    report = validator.validate_evidence_artifact(
+        evidence,
+        repo_root=REPO_ROOT,
+        dataset=dataset,
+    )
+    assert report.findings == ()
+
+
 # --------------------------------------------------------------------------
 # EX_ANTE causality
 # --------------------------------------------------------------------------
+
+
+def test_hindsight_target_sequence_lie_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    record = evidence["records"][0]
+    record["target"] = {**_draw_ref("D1"), "draw_sequence": 2}
+    record["cutoff"] = _draw_ref("D1")
+    record["tickets"] = [
+        _make_ticket("T0", (1, 2, 3, 4, 5, 6), (7,), "D1")
+    ]
+    _sequence, _date, actual_main, actual_special = DRAWS_BY_ID["D1"]
+    record["actual_main_numbers"] = list(actual_main)
+    record["actual_special_numbers"] = list(actual_special)
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "TARGET_REF_INCONSISTENT_WITH_SNAPSHOT"
+    )
+    assert finding.category is FindingCategory.CAUSAL_VIOLATION
+    assert all(check.state is HashVerificationState.VERIFIED_MATCH for check in report.hash_checks)
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_falsified_cutoff_sequence_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence["records"][0]["cutoff"] = {**_draw_ref("D0"), "draw_sequence": 1}
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT"
+    )
+    assert finding.category is FindingCategory.CAUSAL_VIOLATION
+    assert all(check.state is HashVerificationState.VERIFIED_MATCH for check in report.hash_checks)
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_unknown_cutoff_draw_id_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence["records"][0]["cutoff"] = {
+        "draw_id": "UNKNOWN",
+        "draw_sequence": 1,
+        "draw_date": "2020-01-02",
+    }
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding for finding in report.findings if finding.code == "CUTOFF_DRAW_NOT_IN_DATASET"
+    )
+    assert finding.category is FindingCategory.SEMANTIC_FAILURE
+    assert all(check.state is HashVerificationState.VERIFIED_MATCH for check in report.hash_checks)
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_falsified_target_draw_date_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence["records"][0]["target"]["draw_date"] = "2030-01-01"
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "TARGET_REF_INCONSISTENT_WITH_SNAPSHOT"
+    )
+    assert finding.category is FindingCategory.CAUSAL_VIOLATION
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_falsified_cutoff_draw_date_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence["records"][0]["cutoff"]["draw_date"] = "2030-01-01"
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT"
+    )
+    assert finding.category is FindingCategory.CAUSAL_VIOLATION
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_maximum_data_cutoff_contradiction_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence["evaluation_windows"]["maximum_data_cutoff"]["draw_date"] = "2030-01-01"
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.pointer == "/evaluation_windows/maximum_data_cutoff"
+        and finding.code == "CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT"
+    )
+    assert finding.category is FindingCategory.CAUSAL_VIOLATION
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_one_shot_cutoff_contradiction_is_rejected_against_snapshot(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    shared_cutoff = _draw_ref("D1")
+    evidence["evaluation_protocol"] = "ONE_SHOT"
+    evidence["evaluation_windows"].pop("walk_forward_cutoff_lag")
+    evidence["evaluation_windows"]["one_shot_cutoff"] = {
+        **shared_cutoff,
+        "draw_date": "2030-01-01",
+    }
+    evidence["evaluation_windows"]["maximum_data_cutoff"] = shared_cutoff
+    for record in evidence["records"]:
+        record["cutoff"] = shared_cutoff
+    evidence = _rehash_evidence(evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.pointer == "/evaluation_windows/one_shot_cutoff"
+        and finding.code == "CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT"
+    )
+    assert finding.category is FindingCategory.CAUSAL_VIOLATION
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
 
 
 def test_cutoff_equal_to_target_rejected(tmp_path: Path):

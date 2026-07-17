@@ -63,6 +63,11 @@ snapshot、evidence artifact、metric definition、ranking policy、
 registry），不約束 schema 匯出檔本身；後者只沿用相同的排序／緊縮
 格式慣例以利 diff。
 
+讀取 LCJ-1 時，語法不完整的 JSON 或非 UTF-8 bytes 一律轉成固定、有限的
+`CanonicalizationError`（`$: input is not valid UTF-8 JSON`）。一般 validator／
+CLI 路徑會把它回報為 sanitized validation failure，不輸出原始 bytes、完整
+輸入、受保護的絕對路徑或 traceback。
+
 ## Hash 規則（Contract Part 2）
 
 **Self-key-removed tree hashing**（hash 欄位是文件自身的一部分，計算時
@@ -131,8 +136,11 @@ shared-environment 維度之一就是 `evaluation_mode`）。`HISTORICAL_REPLAY`
 
 因果驗證（cutoff 嚴格早於 target、target 落在評估窗內、訓練窗與固定
 參數選窗不得晚於任一 record 的 cutoff、walk-forward 的 lag 算術、
-one-shot 的共用 cutoff）只證明**宣告 metadata 的順序一致性**，**不**
-證明 producer process 實際上從未存取未來資料。這是刻意的、有限度的
+one-shot 的共用 cutoff）仍**不**證明 producer process 實際上從未存取
+未來資料；`METADATA_CHECKED_ONLY` 專指這種本地無法觀察的 producer 行為。
+但只要有供給 dataset snapshot，validator 能直接觀察到的 DrawRef
+矛盾就不是此限制：ID／sequence／date 對不上 snapshot 是 fail-closed 的
+`CAUSAL_VIOLATION`，不得繼續視為乾淨的 EX_ANTE。這是刻意的、有限度的
 證明——避免給出超出本契約能力範圍的保證，也是防止「事後調參」
 （hindsight tuning）偽裝成預測的第一道欄杆，而非唯一欄杆。
 
@@ -145,6 +153,13 @@ Dataset provenance 三種：`SYNTHETIC`（ID 必須以 `SYNTHETIC_` 開頭）、
 本基礎任務中，target 的實際開獎結果只能來自**同一份**供給的 dataset
 snapshot；evidence 明確區分「策略在 cutoff 當下能看到的資料」與「後續
 用於評分的實際結果」。
+
+供給 snapshot 時，每筆 record 的 `target` 與 `cutoff` 都必須以 `draw_id`
+解析到 snapshot，且宣告的 `draw_sequence`、`draw_date` 必須逐項相等；
+不存在的 cutoff ID 或任一可觀察矛盾都會阻擋 structural／canonical gate。
+artifact 層級的 `maximum_data_cutoff` 與（若存在）`one_shot_cutoff` 也做
+相同 reconciliation。`dataset_reference.first_draw`／`last_draw` 除了 ID 與
+sequence，日期也必須吻合 snapshot 的首末 draw。
 
 ## Ticket 與 Hit 重算（Contract Part 7）
 

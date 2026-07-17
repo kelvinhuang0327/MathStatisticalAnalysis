@@ -93,6 +93,24 @@ def test_duplicate_key_rejected_during_parse():
         canonical_json.loads_canonical('{"a": 1, "a": 2}')
 
 
+def test_malformed_json_rejected_with_sanitized_error_and_preserved_cause():
+    with pytest.raises(canonical_json.CanonicalizationError) as exc_info:
+        canonical_json.loads_canonical(b'{"secret":"RAW_INPUT_MUST_NOT_LEAK",')
+
+    assert str(exc_info.value) == "$: input is not valid UTF-8 JSON"
+    assert isinstance(exc_info.value.__cause__, json.JSONDecodeError)
+    assert "RAW_INPUT_MUST_NOT_LEAK" not in str(exc_info.value)
+
+
+def test_invalid_utf8_rejected_with_sanitized_error_and_preserved_cause():
+    with pytest.raises(canonical_json.CanonicalizationError) as exc_info:
+        canonical_json.loads_canonical(b'\xff{"secret":"RAW_BYTES_MUST_NOT_LEAK"}')
+
+    assert str(exc_info.value) == "$: input is not valid UTF-8 JSON"
+    assert isinstance(exc_info.value.__cause__, UnicodeDecodeError)
+    assert "RAW_BYTES_MUST_NOT_LEAK" not in str(exc_info.value)
+
+
 def test_unknown_keys_rejected_where_contracts_are_closed():
     # closed-schema enforcement itself is a Pydantic (models.py) concern;
     # this only proves the LCJ-1 layer imposes no permissive key rewriting

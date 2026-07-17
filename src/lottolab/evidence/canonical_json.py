@@ -148,6 +148,10 @@ def loads_canonical(raw: bytes | str) -> Any:
             result[key] = item
         return result
 
-    value = json.loads(raw, object_pairs_hook=_reject_duplicates)
+    try:
+        text = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+        value = json.loads(text, object_pairs_hook=_reject_duplicates)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise CanonicalizationError("$: input is not valid UTF-8 JSON") from exc
     validate_value_domain(value)
     return value

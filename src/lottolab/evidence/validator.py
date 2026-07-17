@@ -28,6 +28,8 @@ from lottolab.evidence import canonical_json
 from lottolab.evidence.canonical_json import CanonicalizationError
 from lottolab.evidence.models import (
     DatasetSnapshot,
+    DrawEntry,
+    DrawRef,
     EvaluationProtocol,
     EvidenceStatus,
     EvidenceTrustClass,
@@ -920,6 +922,42 @@ def _check_metric_results(
     return unverified_any
 
 
+def _reconcile_draw_ref_with_snapshot(
+    reference: DrawRef,
+    snapshot_draw: DrawEntry | None,
+    *,
+    pointer: str,
+    missing_code: str,
+    inconsistent_code: str,
+    reference_name: str,
+    findings: list[Finding],
+) -> None:
+    if snapshot_draw is None:
+        findings.append(
+            Finding(
+                FindingCategory.SEMANTIC_FAILURE,
+                missing_code,
+                pointer,
+                f"{reference_name} draw_id is not present in the supplied dataset snapshot",
+            )
+        )
+        return
+
+    if (
+        reference.draw_sequence != snapshot_draw.draw_sequence
+        or reference.draw_date != snapshot_draw.draw_date
+    ):
+        findings.append(
+            Finding(
+                FindingCategory.CAUSAL_VIOLATION,
+                inconsistent_code,
+                pointer,
+                f"{reference_name} draw_sequence/draw_date contradict the supplied "
+                "dataset snapshot",
+            )
+        )
+
+
 def _check_dataset_cross_reference(
     evidence: StrategyEvaluationEvidence, dataset: DatasetSnapshot, findings: list[Finding]
 ) -> None:
@@ -966,6 +1004,7 @@ def _check_dataset_cross_reference(
     if (
         ref.first_draw.draw_id != first.draw_id
         or ref.first_draw.draw_sequence != first.draw_sequence
+        or ref.first_draw.draw_date != first.draw_date
     ):
         findings.append(
             Finding(
@@ -975,7 +1014,11 @@ def _check_dataset_cross_reference(
                 "first_draw does not match the supplied snapshot",
             )
         )
-    if ref.last_draw.draw_id != last.draw_id or ref.last_draw.draw_sequence != last.draw_sequence:
+    if (
+        ref.last_draw.draw_id != last.draw_id
+        or ref.last_draw.draw_sequence != last.draw_sequence
+        or ref.last_draw.draw_date != last.draw_date
+    ):
         findings.append(
             Finding(
                 FindingCategory.SEMANTIC_FAILURE,
@@ -986,19 +1029,54 @@ def _check_dataset_cross_reference(
         )
 
     draws_by_id = {draw.draw_id: draw for draw in dataset.draws}
+
+    maximum_cutoff = evidence.evaluation_windows.maximum_data_cutoff
+    _reconcile_draw_ref_with_snapshot(
+        maximum_cutoff,
+        draws_by_id.get(maximum_cutoff.draw_id),
+        pointer="/evaluation_windows/maximum_data_cutoff",
+        missing_code="CUTOFF_DRAW_NOT_IN_DATASET",
+        inconsistent_code="CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT",
+        reference_name="maximum_data_cutoff",
+        findings=findings,
+    )
+
+    one_shot_cutoff = evidence.evaluation_windows.one_shot_cutoff
+    if one_shot_cutoff is not None:
+        _reconcile_draw_ref_with_snapshot(
+            one_shot_cutoff,
+            draws_by_id.get(one_shot_cutoff.draw_id),
+            pointer="/evaluation_windows/one_shot_cutoff",
+            missing_code="CUTOFF_DRAW_NOT_IN_DATASET",
+            inconsistent_code="CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT",
+            reference_name="one_shot_cutoff",
+            findings=findings,
+        )
+
     for r_index, record in enumerate(evidence.records):
         target_draw = draws_by_id.get(record.target.draw_id)
-        if target_draw is None:
-            findings.append(
-                Finding(
-                    FindingCategory.SEMANTIC_FAILURE,
-                    "TARGET_DRAW_NOT_IN_DATASET",
-                    f"/records/{r_index}/target",
-                    "target draw_id is not present in the supplied dataset snapshot",
-                )
-            )
-            continue
-        if (
+        _reconcile_draw_ref_with_snapshot(
+            record.target,
+            target_draw,
+            pointer=f"/records/{r_index}/target",
+            missing_code="TARGET_DRAW_NOT_IN_DATASET",
+            inconsistent_code="TARGET_REF_INCONSISTENT_WITH_SNAPSHOT",
+            reference_name="target",
+            findings=findings,
+        )
+
+        cutoff_draw = draws_by_id.get(record.cutoff.draw_id)
+        _reconcile_draw_ref_with_snapshot(
+            record.cutoff,
+            cutoff_draw,
+            pointer=f"/records/{r_index}/cutoff",
+            missing_code="CUTOFF_DRAW_NOT_IN_DATASET",
+            inconsistent_code="CUTOFF_REF_INCONSISTENT_WITH_SNAPSHOT",
+            reference_name="cutoff",
+            findings=findings,
+        )
+
+        if target_draw is not None and (
             tuple(record.actual_main_numbers) != target_draw.main_numbers
             or tuple(record.actual_special_numbers) != target_draw.special_numbers
         ):

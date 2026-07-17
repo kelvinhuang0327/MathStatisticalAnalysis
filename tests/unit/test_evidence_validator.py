@@ -13,7 +13,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -145,7 +145,12 @@ def _write_definition(repo_root: Path, relative_path: str, definition: dict[str,
     return canonical_json.sha256_hex(path.read_bytes())
 
 
-def _write_hit_rate_definition(repo_root: Path) -> tuple[str, str]:
+def _write_hit_rate_definition(
+    repo_root: Path,
+    *,
+    sample_unit: str = "TICKETS",
+    aggregation: str = "MEAN",
+) -> tuple[str, str]:
     relative_path = "contracts/evidence/metric_definition_hit_rate.json"
     definition = {
         "schema_id": "lottolab.evidence.metric_definition",
@@ -154,8 +159,8 @@ def _write_hit_rate_definition(repo_root: Path) -> tuple[str, str]:
         "metric_version": "v1",
         "direction": "HIGHER_IS_BETTER",
         "unit": "RATIO",
-        "aggregation": "MEAN",
-        "sample_unit": "TICKETS",
+        "aggregation": aggregation,
+        "sample_unit": sample_unit,
         "decimal_scale": 4,
         "rounding_mode": "ROUND_HALF_EVEN",
         "formula_status": "DEFINED",
@@ -249,6 +254,119 @@ def _build_valid_pair(tmp_path: Path) -> tuple[dict[str, Any], dict[str, Any], P
     evidence["dataset_reference"]["dataset_sha256"] = dataset["dataset_sha256"]
     evidence = _with_self_hash(evidence, "artifact_content_sha256")
     return dataset, evidence, tmp_path
+
+
+def _rehash_dataset(dataset: dict[str, Any]) -> dict[str, Any]:
+    return _with_self_hash(
+        {**copy.deepcopy(dataset), "dataset_sha256": "0" * 64},
+        "dataset_sha256",
+    )
+
+
+def _bind_evidence_to_dataset(
+    evidence: dict[str, Any],
+    dataset: dict[str, Any],
+    *,
+    evidence_status: str | None = None,
+) -> dict[str, Any]:
+    rebound = copy.deepcopy(evidence)
+    rebound["dataset_reference"]["dataset_id"] = dataset["dataset_id"]
+    rebound["dataset_reference"]["dataset_version"] = dataset["dataset_version"]
+    rebound["dataset_reference"]["dataset_sha256"] = dataset["dataset_sha256"]
+    if evidence_status is not None:
+        rebound["evidence_status"] = evidence_status
+        rebound["artifact_id"] = (
+            "SYNTHETIC_VALIDATOR_TEST_EVIDENCE"
+            if evidence_status == "SYNTHETIC_TEST_ONLY"
+            else "VALIDATOR_TEST_EVIDENCE"
+        )
+    return _rehash_evidence(rebound)
+
+
+def _with_local_provenance(
+    dataset: dict[str, Any],
+    evidence: dict[str, Any],
+    *,
+    source_path: str,
+    source_git_oid: str,
+    source_file_sha256: str,
+    evidence_status: str = "CANONICAL",
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    rebound_dataset = copy.deepcopy(dataset)
+    rebound_dataset["dataset_id"] = "VALIDATOR_LOCAL_COMMITTED_DATASET"
+    rebound_dataset["source_provenance"] = {
+        "kind": "LOCAL_COMMITTED_FILE",
+        "source_definition_path": source_path,
+        "source_git_oid": source_git_oid,
+        "source_file_sha256": source_file_sha256,
+        "declared_description": "task-owned temporary Git provenance fixture",
+    }
+    rebound_dataset = _rehash_dataset(rebound_dataset)
+    rebound_evidence = _bind_evidence_to_dataset(
+        evidence,
+        rebound_dataset,
+        evidence_status=evidence_status,
+    )
+    return rebound_dataset, rebound_evidence
+
+
+def _with_external_provenance(
+    dataset: dict[str, Any], evidence: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    rebound_dataset = copy.deepcopy(dataset)
+    rebound_dataset["dataset_id"] = "VALIDATOR_EXTERNAL_DECLARED_DATASET"
+    rebound_dataset["source_provenance"] = {
+        "kind": "EXTERNAL_DECLARED",
+        "declared_description": "task-owned unverified external declaration",
+    }
+    rebound_dataset = _rehash_dataset(rebound_dataset)
+    rebound_evidence = _bind_evidence_to_dataset(
+        evidence,
+        rebound_dataset,
+        evidence_status="CANONICAL",
+    )
+    return rebound_dataset, rebound_evidence
+
+
+def _git(repo_root: Path, *args: str) -> bytes:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo_root,
+        capture_output=True,
+        check=True,
+        shell=False,
+    )
+    return result.stdout.strip()
+
+
+def _build_local_committed_pair(
+    tmp_path: Path,
+) -> tuple[dict[str, Any], dict[str, Any], Path, str, bytes]:
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    _git(repo_root, "init", "-q")
+    _git(repo_root, "config", "user.name", "LottoLab validator test")
+    _git(repo_root, "config", "user.email", "validator-test@example.invalid")
+
+    dataset, evidence, _ = _build_valid_pair(repo_root)
+    source_path = "contracts/evidence/task_owned_source.json"
+    source_bytes = b'{"fixture":"task-owned-synthetic-source-v1"}\n'
+    source_file = repo_root / source_path
+    source_file.write_bytes(source_bytes)
+    _git(repo_root, "add", "--", "contracts/evidence")
+    _git(repo_root, "commit", "-q", "-m", "task-owned provenance fixture")
+    source_git_oid = _git(repo_root, "rev-parse", "HEAD").decode("ascii")
+    assert len(source_git_oid) == 40
+    source_file_sha256 = canonical_json.sha256_hex(source_bytes)
+
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=source_git_oid,
+        source_file_sha256=source_file_sha256,
+    )
+    return dataset, evidence, repo_root, source_path, source_bytes
 
 
 def _validate(
@@ -391,6 +509,104 @@ def test_wrong_number_ordering_rejected():
     assert any(f.code == "MAIN_NUMBERS_NOT_ASCENDING" for f in findings)
 
 
+def test_evidence_validation_recomputes_supplied_dataset_intrinsic_hashes(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/dataset_sha256"]
+        is HashVerificationState.VERIFIED_MATCH
+    )
+    assert (
+        checks["/dataset_snapshot/rule_binding/rule_parameters_sha256"]
+        is HashVerificationState.VERIFIED_MATCH
+    )
+
+
+def test_matching_fake_dataset_declarations_cannot_bypass_intrinsic_recomputation(
+    tmp_path: Path,
+):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    dataset["source_provenance"]["declared_description"] = "changed without rehashing"
+    assert evidence["dataset_reference"]["dataset_sha256"] == dataset["dataset_sha256"]
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert "DATASET_HASH_MISMATCH" in _codes(report)
+    assert "DATASET_REFERENCE_HASH_MISMATCH" not in _codes(report)
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/dataset_sha256"]
+        is HashVerificationState.VERIFIED_MISMATCH
+    )
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_evidence_validation_recomputes_dataset_rule_binding_hash(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    dataset["rule_binding"]["rule_parameters_sha256"] = HASH_A
+    dataset = _rehash_dataset(dataset)
+    evidence = _bind_evidence_to_dataset(evidence, dataset)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    rule_findings = [
+        finding
+        for finding in report.findings
+        if finding.code == "RULE_PARAMETERS_HASH_MISMATCH"
+    ]
+    assert rule_findings
+    assert rule_findings[0].pointer == (
+        "/dataset_snapshot/rule_binding/rule_parameters_sha256"
+    )
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/rule_binding/rule_parameters_sha256"]
+        is HashVerificationState.VERIFIED_MISMATCH
+    )
+
+
+def test_dataset_semantic_findings_are_integrated_with_prefixed_pointers(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    dataset["draws"][2]["draw_sequence"] = 7
+    dataset = _rehash_dataset(dataset)
+    evidence = _bind_evidence_to_dataset(evidence, dataset)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding for finding in report.findings if finding.code == "DRAW_SEQUENCE_NOT_CONTIGUOUS"
+    )
+    assert finding.pointer == "/dataset_snapshot/draws/2/draw_sequence"
+    assert report.structurally_valid is False
+
+
+def test_dataset_schema_findings_are_prefixed_in_file_validation(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    dataset.pop("dataset_id")
+    evidence_path = tmp_path / "evidence.json"
+    dataset_path = tmp_path / "dataset.json"
+    evidence_path.write_bytes(canonical_json.canonical_file_bytes(evidence))
+    dataset_path.write_bytes(canonical_json.canonical_file_bytes(dataset))
+
+    report = validator.validate_evidence_file(
+        evidence_path,
+        repo_root=repo_root,
+        dataset_path=dataset_path,
+    )
+
+    finding = next(
+        finding for finding in report.findings if finding.code == "SCHEMA_VALIDATION_ERROR"
+    )
+    assert finding.pointer == "/dataset_snapshot/dataset_id"
+    assert report.schema_valid is False
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
 def test_reference_draw_count_first_last_mismatch_rejected(tmp_path: Path):
     dataset, evidence, repo_root = _build_valid_pair(tmp_path)
     evidence = copy.deepcopy(evidence)
@@ -447,6 +663,401 @@ def test_committed_synthetic_evidence_fixtures_have_zero_findings(fixture_name: 
         dataset=dataset,
     )
     assert report.findings == ()
+
+
+# --------------------------------------------------------------------------
+# Dataset provenance trust matrix
+# --------------------------------------------------------------------------
+
+
+def test_synthetic_dataset_with_synthetic_evidence_remains_valid_synthetic(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert report.findings == ()
+    assert report.trust_classification is not None
+    assert report.trust_classification.value == "SYNTHETIC"
+    assert report.canonical_gate_passed is False
+
+
+def test_synthetic_dataset_with_draft_evidence_is_authority_blocked(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _bind_evidence_to_dataset(evidence, dataset, evidence_status="DRAFT")
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "SYNTHETIC_DATASET_REQUIRES_SYNTHETIC_EVIDENCE"
+    )
+    assert finding.category is FindingCategory.AUTHORITY_FAILURE
+    assert report.canonical_gate_passed is False
+
+
+def test_synthetic_dataset_with_canonical_evidence_is_authority_blocked(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _bind_evidence_to_dataset(evidence, dataset, evidence_status="CANONICAL")
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert "SYNTHETIC_DATASET_REQUIRES_SYNTHETIC_EVIDENCE" in _codes(report)
+    assert report.trust_classification is not None
+    assert report.trust_classification.value == "UNTRUSTED_DECLARED"
+    assert report.canonical_gate_passed is False
+
+
+def test_registry_injection_cannot_override_synthetic_dataset_incompatibility(
+    tmp_path: Path,
+):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _bind_evidence_to_dataset(evidence, dataset, evidence_status="CANONICAL")
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    assert "SYNTHETIC_DATASET_REQUIRES_SYNTHETIC_EVIDENCE" in _codes(report)
+    assert report.trust_classification is not None
+    assert report.trust_classification.value != "REGISTERED_CANONICAL"
+    assert report.canonical_gate_passed is False
+
+
+def test_external_declared_dataset_is_always_unverified_but_can_be_structurally_valid(
+    tmp_path: Path,
+):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    dataset, evidence = _with_external_provenance(dataset, evidence)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DATASET_EXTERNAL_DECLARED_UNVERIFIED"
+    )
+    assert finding.category is FindingCategory.UNVERIFIED_PROVENANCE
+    assert report.structurally_valid is True
+    assert report.canonical_gate_passed is False
+
+
+def test_registry_injection_cannot_make_external_declared_dataset_canonical(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    dataset, evidence = _with_external_provenance(dataset, evidence)
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    assert "DATASET_EXTERNAL_DECLARED_UNVERIFIED" in _codes(report)
+    assert report.trust_classification is not None
+    assert report.trust_classification.value == "UNTRUSTED_DECLARED"
+    assert report.canonical_gate_passed is False
+
+
+def test_local_committed_file_exact_reachable_blob_hash_can_pass_provenance_gate(
+    tmp_path: Path,
+):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    assert report.findings == ()
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.VERIFIED_MATCH
+    )
+    assert report.trust_classification is not None
+    assert report.trust_classification.value == "REGISTERED_CANONICAL"
+    assert report.canonical_gate_passed is True
+
+
+def test_local_source_git_oid_must_name_a_commit_object(tmp_path: Path):
+    dataset, evidence, repo_root, source_path, source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    blob_oid = _git(repo_root, "hash-object", source_path).decode("ascii")
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=blob_oid,
+        source_file_sha256=canonical_json.sha256_hex(source_bytes),
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert "DATASET_SOURCE_GIT_OID_UNVERIFIED" in _codes(report)
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT
+    )
+
+
+def test_local_source_git_oid_must_be_an_ancestor_of_head(tmp_path: Path):
+    dataset, evidence, repo_root, source_path, source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    tree_oid = _git(repo_root, "write-tree").decode("ascii")
+    unrelated_commit = _git(
+        repo_root, "commit-tree", tree_oid, "-m", "unrelated task-owned commit"
+    ).decode("ascii")
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=unrelated_commit,
+        source_file_sha256=canonical_json.sha256_hex(source_bytes),
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert "DATASET_SOURCE_GIT_OID_NOT_ANCESTOR" in _codes(report)
+    assert report.canonical_gate_passed is False
+
+
+def test_local_source_without_git_repository_remains_unverified(tmp_path: Path):
+    repo_root = tmp_path / "plain-directory"
+    dataset, evidence, _ = _build_valid_pair(repo_root)
+    source_path = "contracts/evidence/task_owned_source.json"
+    source_bytes = b'{"fixture":"not-in-git"}\n'
+    (repo_root / source_path).write_bytes(source_bytes)
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=OID_A,
+        source_file_sha256=canonical_json.sha256_hex(source_bytes),
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE"
+    )
+    assert finding.category is FindingCategory.UNVERIFIED_PROVENANCE
+    assert report.canonical_gate_passed is False
+
+
+def test_local_source_missing_historical_path_remains_unverified(tmp_path: Path):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    source_git_oid = _git(repo_root, "rev-parse", "HEAD").decode("ascii")
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path="contracts/evidence/missing_historical_source.json",
+        source_git_oid=source_git_oid,
+        source_file_sha256=HASH_A,
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert "DATASET_SOURCE_BLOB_UNAVAILABLE" in _codes(report)
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT
+    )
+
+
+def test_local_source_declared_sha_mismatch_is_verified_mismatch(tmp_path: Path):
+    dataset, evidence, repo_root, source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    source_git_oid = _git(repo_root, "rev-parse", "HEAD").decode("ascii")
+    dataset, evidence = _with_local_provenance(
+        dataset,
+        evidence,
+        source_path=source_path,
+        source_git_oid=source_git_oid,
+        source_file_sha256=HASH_A,
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding
+        for finding in report.findings
+        if finding.code == "DATASET_SOURCE_FILE_HASH_MISMATCH"
+    )
+    assert finding.category is FindingCategory.HASH_MISMATCH
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.VERIFIED_MISMATCH
+    )
+    assert report.structurally_valid is False
+    assert report.canonical_gate_passed is False
+
+
+def test_local_source_uses_historical_blob_not_modified_worktree_bytes(tmp_path: Path):
+    dataset, evidence, repo_root, source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    (repo_root / source_path).write_bytes(b'{"fixture":"modified-working-tree"}\n')
+    status_before = _git(repo_root, "status", "--porcelain=v1", "--untracked-files=all")
+
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(evidence),
+        repo_root=repo_root,
+        dataset=DatasetSnapshot.model_validate(dataset),
+        canonical_registry=frozenset({evidence["artifact_content_sha256"]}),
+    )
+
+    checks = {check.pointer: check.state for check in report.hash_checks}
+    assert (
+        checks["/dataset_snapshot/source_provenance/source_file_sha256"]
+        is HashVerificationState.VERIFIED_MATCH
+    )
+    assert report.canonical_gate_passed is True
+    assert _git(repo_root, "status", "--porcelain=v1", "--untracked-files=all") == status_before
+
+
+def test_local_git_provenance_verification_does_not_mutate_repository_state(tmp_path: Path):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+
+    def observe() -> tuple[bytes, ...]:
+        return (
+            _git(repo_root, "rev-parse", "HEAD"),
+            _git(repo_root, "diff", "--binary"),
+            _git(repo_root, "diff", "--cached", "--binary"),
+            _git(repo_root, "status", "--porcelain=v1", "--untracked-files=all"),
+            _git(repo_root, "show-ref"),
+        )
+
+    before = observe()
+    report = _validate(evidence, dataset, repo_root)
+    after = observe()
+
+    assert report.findings == ()
+    assert after == before
+
+
+def test_local_git_provenance_verification_creates_no_data_directory(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    data_dir = tmp_path / "nonexistent-data"
+    monkeypatch.setenv("LOTTOLAB_DATA_DIR", str(data_dir))
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert report.findings == ()
+    assert not data_dir.exists()
+
+
+def test_local_git_provenance_commands_are_shell_free_read_only_and_offline(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    dataset, evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    real_run = subprocess.run
+    calls: list[tuple[tuple[str, ...], dict[str, Any]]] = []
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "redirected-git-dir"))
+    monkeypatch.setenv("GIT_OBJECT_DIRECTORY", str(tmp_path / "redirected-objects"))
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "0")
+
+    def recording_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[bytes]:
+        calls.append((tuple(args), kwargs))
+        return cast(subprocess.CompletedProcess[bytes], real_run(args, **kwargs))
+
+    monkeypatch.setattr(validator.subprocess, "run", recording_run)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert report.findings == ()
+    assert calls
+    forbidden = {
+        "add",
+        "checkout",
+        "commit",
+        "config",
+        "fetch",
+        "push",
+        "reset",
+        "switch",
+        "update-index",
+        "worktree",
+    }
+    for command, kwargs in calls:
+        assert command[:2] == ("git", "-C")
+        assert command[3] in {"cat-file", "merge-base", "rev-parse"}
+        assert forbidden.isdisjoint(command)
+        assert kwargs["shell"] is False
+        env = kwargs["env"]
+        assert isinstance(env, dict)
+        assert "GIT_CONFIG_COUNT" not in env
+        assert "GIT_DIR" not in env
+        assert "GIT_OBJECT_DIRECTORY" not in env
+        assert env["GIT_NO_LAZY_FETCH"] == "1"
+        assert env["GIT_NO_REPLACE_OBJECTS"] == "1"
+        assert env["GIT_OPTIONAL_LOCKS"] == "0"
+        assert env["GIT_TERMINAL_PROMPT"] == "0"
+
+
+@pytest.mark.parametrize(
+    ("raw_path", "expected_code"),
+    [
+        ("docs/ownerinit.md", "DEFINITION_PATH_PROTECTED"),
+        ("contracts/evidence/../../outside.json", "DEFINITION_PATH_LEXICALLY_INVALID"),
+    ],
+)
+def test_local_provenance_rejects_paths_before_any_git_blob_access(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    raw_path: str,
+    expected_code: str,
+):
+    dataset, _evidence, repo_root, _source_path, _source_bytes = _build_local_committed_pair(
+        tmp_path
+    )
+    dataset_model = DatasetSnapshot.model_validate(dataset)
+    bad_provenance = dataset_model.source_provenance.model_copy(
+        update={"source_definition_path": raw_path}
+    )
+    bad_dataset = dataset_model.model_copy(update={"source_provenance": bad_provenance})
+
+    def forbidden_git(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("path rejection must happen before any Git query")
+
+    monkeypatch.setattr(validator, "_run_read_only_git", forbidden_git)
+
+    findings, hash_checks, unverified = validator.verify_dataset_provenance(
+        bad_dataset,
+        repo_root=repo_root,
+        evidence_status=EvidenceStatus.CANONICAL,
+    )
+
+    assert {finding.code for finding in findings} == {expected_code}
+    assert hash_checks == [
+        validator.HashCheck(
+            "/dataset_snapshot/source_provenance/source_file_sha256",
+            HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT,
+        )
+    ]
+    assert unverified is True
 
 
 # --------------------------------------------------------------------------
@@ -747,9 +1358,18 @@ def test_actual_outcome_inconsistent_with_snapshot_rejected(tmp_path: Path):
 
 
 def _add_metric_result(
-    evidence: dict[str, Any], repo_root: Path, **overrides: object
+    evidence: dict[str, Any],
+    repo_root: Path,
+    *,
+    definition_sample_unit: str = "TICKETS",
+    definition_aggregation: str = "MEAN",
+    **overrides: object,
 ) -> dict[str, Any]:
-    metric_path, metric_sha256 = _write_hit_rate_definition(repo_root)
+    metric_path, metric_sha256 = _write_hit_rate_definition(
+        repo_root,
+        sample_unit=definition_sample_unit,
+        aggregation=definition_aggregation,
+    )
     result: dict[str, Any] = {
         "metric_id": "HIT_RATE_MAIN",
         "metric_version": "v1",
@@ -774,11 +1394,101 @@ def _add_metric_result(
     )
 
 
+def _with_three_candidate_tickets(evidence: dict[str, Any]) -> dict[str, Any]:
+    expanded = copy.deepcopy(evidence)
+    expanded["records"][0]["tickets"].append(
+        _make_ticket("T0-B", (1, 2, 3, 4, 5, 7), (8,), "D2")
+    )
+    return _rehash_evidence(expanded)
+
+
 def test_sample_size_mismatch_rejected(tmp_path: Path):
     dataset, evidence, repo_root = _build_valid_pair(tmp_path)
     evidence = _add_metric_result(evidence, repo_root, sample_size=999)
     report = _validate(evidence, dataset, repo_root)
     assert "SAMPLE_SIZE_MISMATCH" in _codes(report)
+
+
+def test_metric_result_sample_unit_must_match_definition(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _add_metric_result(evidence, repo_root, sample_unit="DRAWS")
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding for finding in report.findings if finding.code == "METRIC_SAMPLE_UNIT_MISMATCH"
+    )
+    assert finding.category is FindingCategory.METRIC_DEFINITION_FAILURE
+    assert finding.pointer == "/metric_results/0/sample_unit"
+
+
+def test_metric_result_aggregation_must_match_definition(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _add_metric_result(evidence, repo_root, aggregation="SUM")
+
+    report = _validate(evidence, dataset, repo_root)
+
+    finding = next(
+        finding for finding in report.findings if finding.code == "METRIC_AGGREGATION_MISMATCH"
+    )
+    assert finding.category is FindingCategory.METRIC_DEFINITION_FAILURE
+    assert finding.pointer == "/metric_results/0/aggregation"
+
+
+def test_ticket_sized_result_cannot_evade_draw_definition_sample_size(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _with_three_candidate_tickets(evidence)
+    evidence = _add_metric_result(
+        evidence,
+        repo_root,
+        definition_sample_unit="DRAWS",
+        sample_unit="TICKETS",
+        sample_size=3,
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert {"METRIC_SAMPLE_UNIT_MISMATCH", "SAMPLE_SIZE_MISMATCH"} <= _codes(report)
+
+
+def test_draw_sized_result_cannot_evade_ticket_definition_sample_size(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _with_three_candidate_tickets(evidence)
+    evidence = _add_metric_result(
+        evidence,
+        repo_root,
+        definition_sample_unit="TICKETS",
+        sample_unit="DRAWS",
+        sample_size=2,
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert {"METRIC_SAMPLE_UNIT_MISMATCH", "SAMPLE_SIZE_MISMATCH"} <= _codes(report)
+
+
+def test_aggregation_mismatch_does_not_suppress_sample_size_validation(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _add_metric_result(
+        evidence,
+        repo_root,
+        aggregation="SUM",
+        sample_size=999,
+    )
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert {"METRIC_AGGREGATION_MISMATCH", "SAMPLE_SIZE_MISMATCH"} <= _codes(report)
+
+
+def test_matching_metric_alignment_uses_definition_owned_ticket_count(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    evidence = _with_three_candidate_tickets(evidence)
+    evidence = _add_metric_result(evidence, repo_root, sample_size=3)
+
+    report = _validate(evidence, dataset, repo_root)
+
+    assert report.findings == ()
 
 
 def test_invalid_decimal_scale_rejected(tmp_path: Path):

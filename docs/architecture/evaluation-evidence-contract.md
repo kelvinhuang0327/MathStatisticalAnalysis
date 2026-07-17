@@ -1,6 +1,6 @@
 # 策略評估證據契約（Strategy Evaluation Evidence Contract）
 
-狀態：DESIGN FOUNDATION — 契約與驗證層，非生產判斷依據 ｜ 建立：2026-07-17（P600F R2）
+狀態：DESIGN FOUNDATION — 契約與驗證層，非生產判斷依據 ｜ 建立：2026-07-17（P600F R2）｜ 更新：P600F R3
 
 本文件涵蓋 `src/lottolab/evidence/`、`tools/generate_evidence_schemas.py`、
 `tools/validate_evaluation_evidence.py`、`contracts/evidence/` 的設計與不變式。
@@ -80,6 +80,14 @@ CLI 路徑會把它回報為 sanitized validation failure，不輸出原始 byte
 - `rule_parameters_sha256`：`rule_parameters`／`rule_binding` 物件扣除
   自身欄位之後的 bytes（此欄位本身就內嵌在該物件中）。
 
+Evidence validation 只要收到 dataset snapshot，就會在同一份 report 內重新執行
+dataset 的 intrinsic validation：重算 `dataset_sha256` 與 dataset
+`rule_binding.rule_parameters_sha256`，並保留 draw sequence、日期、ID 與號碼規則的
+語意檢查。Dataset 內部 finding／hash-check pointer 一律加上
+`/dataset_snapshot` 前綴；因此 evidence reference 與 dataset 宣告即使填入同一個
+假 hash，也無法繞過 snapshot bytes 的獨立重算。Dataset 自身 hash 不符會讓
+`structurally_valid = false` 並阻擋 canonical gate。
+
 **Sibling hash**（hash 欄位在文件中，但描述的是「另一個」子物件，該子
 物件不含自己的 hash 欄位）：
 
@@ -90,6 +98,9 @@ CLI 路徑會把它回報為 sanitized validation failure，不輸出原始 byte
 
 - `feature_definition_sha256`、`metric_definition_sha256`：對應
   `*_definition_path` 指向檔案的 SHA-256。
+- `source_file_sha256`（`LOCAL_COMMITTED_FILE`）：對指定、可達的 Git commit
+  中指定 path 的 blob 原始 bytes 計算 SHA-256；不讀取目前 working tree 的檔案
+  內容。
 - `policy_definition_sha256`：ranking policy **自身檔案**的原始 bytes
   SHA-256（用於比對 `approved_ranking_policy_registry.json`；不是
   policy 文件內的欄位）。
@@ -113,9 +124,13 @@ Definition 文件本身**不**內嵌自己的 content hash。
 - Policy trust：`UNTRUSTED_DECLARED`、`REGISTERED_APPROVED`。
 
 `REGISTERED_CANONICAL` 需要同時滿足：宣告狀態為 `CANONICAL`、非
-synthetic、`artifact_content_sha256` 出現在已提交的 canonical registry
-中、structural／semantic 驗證通過、所有必要 hash 皆
-`VERIFIED_MATCH`、無阻擋 canonical gate 的未驗證來源。
+synthetic、供給的 dataset snapshot 自身有效、dataset provenance 與 canonical
+用途相容、`artifact_content_sha256` 出現在已提交的 canonical registry 中、
+structural／semantic 驗證通過、artifact／dataset／rule／definition／local-source
+所有必要 hash 皆 `VERIFIED_MATCH`、無 `AUTHORITY_FAILURE`，且沒有阻擋
+canonical gate 的未驗證來源。Registry membership 只是必要條件，不能覆寫
+synthetic／external provenance、Git 證明缺席、source hash mismatch 或 dataset
+self-hash mismatch。
 
 ## 空的 Owner-gated Registries
 
@@ -146,9 +161,46 @@ one-shot 的共用 cutoff）仍**不**證明 producer process 實際上從未存
 
 ## Dataset 與 Outcome Provenance（Contract Part 4）
 
-Dataset provenance 三種：`SYNTHETIC`（ID 必須以 `SYNTHETIC_` 開頭）、
-`LOCAL_COMMITTED_FILE`（path／git OID／file hash 三者必備）、
-`EXTERNAL_DECLARED`（除非能獨立取得 bytes，否則永遠 unverified）。
+Dataset provenance 有三種，採 fail-closed trust matrix：
+
+| Dataset provenance | 本地證明與 evidence 相容性 | Canonical 結果 |
+| --- | --- | --- |
+| `SYNTHETIC` | Dataset ID 必須以 `SYNTHETIC_` 開頭；只可搭配 `SYNTHETIC_TEST_ONLY` evidence。 | 合法 synthetic evidence 維持 `SYNTHETIC` trust，永不通過 canonical gate。搭配 `DRAFT`／`CANONICAL` 會得到 `AUTHORITY_FAILURE`（`SYNTHETIC_DATASET_REQUIRES_SYNTHETIC_EVIDENCE`）。 |
+| `EXTERNAL_DECLARED` | 本 foundation 不做網路或外部來源查詢；固定回報 `UNVERIFIED_PROVENANCE`（`DATASET_EXTERNAL_DECLARED_UNVERIFIED`）。 | 若無其他結構缺陷，`structurally_valid` 可以是 true，但 canonical gate 永遠為 false。 |
+| `LOCAL_COMMITTED_FILE` | path／Git OID／raw-file SHA-256 三者必備；依下列 Git proof 驗證。 | 只有完整 proof 為 match 時，provenance component 才能支援 canonical gate；缺席或 mismatch 一律 fail closed。 |
+
+### `LOCAL_COMMITTED_FILE` 的精確 Git proof
+
+在讀取任何 blob bytes 之前，`source_definition_path` 必須通過既有的 lexical、
+protected-path、status-based allowed-root 與 symlink containment 規則。接著 validator
+只對呼叫者供給的 repository 執行以下本地、唯讀證明：
+
+1. repository top level 必須可解析，且就是供給的 `repo_root`；
+2. `source_git_oid` 的 exact object type 必須是 commit；
+3. 該 commit 必須是目前 `HEAD` 的 ancestor；
+4. `source_git_oid:source_definition_path` 必須存在且 object type 是 blob；
+5. 以 `git cat-file blob` 從 object database 讀取該 historical blob 的 exact bytes；
+6. blob bytes 的 SHA-256 必須等於 `source_file_sha256`，並在
+   `/dataset_snapshot/source_provenance/source_file_sha256` 產生 hash check。
+
+Match 為 `VERIFIED_MATCH`。Repository、commit、ancestry、historical path 或 blob
+bytes 無法取得時，source hash 為 `NOT_VERIFIABLE_INPUT_ABSENT` 並回報
+`UNVERIFIED_PROVENANCE`；raw-byte hash 不同時為 `VERIFIED_MISMATCH` 加
+`HASH_MISMATCH`（`DATASET_SOURCE_FILE_HASH_MISMATCH`）。目前 working tree 即使在
+該 commit 之後被修改，也不會取代 historical blob。
+
+Git boundary 僅允許 `rev-parse`（top level）、`cat-file`（object type／blob
+bytes）與 `merge-base --is-ancestor`。所有命令使用 argument array、
+`shell=False`，停用 lazy fetch、replace objects、terminal prompt 與 optional locks；不執行
+checkout、switch、reset、index／ref／config mutation、fetch 或任何網路操作。
+可能把 Git 指向其他 repository／object database 的 inherited environment variables
+會先被移除。驗證不修改 HEAD、index、working tree 或 refs。
+
+這個 proof 的能力邊界必須明確：它只證明「指定的 exact reachable commit 中，
+指定 path 的 raw bytes 具有宣告的 SHA-256」；**尚未**證明任意 source-file
+內容如何被 normalization／ingestion 成 dataset snapshot。Source-to-snapshot
+derivation 與 authoritative ingestion 是未來的獨立任務，不可把 Git blob proof
+誤稱為 ingestion proof。
 
 本基礎任務中，target 的實際開獎結果只能來自**同一份**供給的 dataset
 snapshot；evidence 明確區分「策略在 cutoff 當下能看到的資料」與「後續
@@ -193,11 +245,16 @@ Metric definition 文件宣告 `direction`、`unit`、`aggregation`、
 未知欄位拒絕）。
 
 Metric result 宣告 `metric_id`/`metric_version`/`metric_definition_path`/
-`metric_definition_sha256`，驗證器會解析路徑、雜湊比對，並讀入
-definition 檢查 `metric_id`/`metric_version` 是否一致、`sample_size`
-是否符合 `sample_unit`（`DRAWS` = record 數；`TICKETS` = 全部 ticket
-數之和）、canonical decimal 字串是否符合 definition 宣告的
-`decimal_scale`。
+`metric_definition_sha256`，驗證器會解析路徑、雜湊比對，並讀入 definition
+檢查 `metric_id`/`metric_version`、`sample_unit` 與 `aggregation` 是否逐字一致。
+`sample_unit` 不同回報 `METRIC_SAMPLE_UNIT_MISMATCH`；`aggregation` 不同回報
+`METRIC_AGGREGATION_MISMATCH`。
+
+`sample_size` 的唯一 source of truth 是 **metric definition 的** `sample_unit`，
+不是 result 自行宣告的 unit：`DRAWS` = record 數；`TICKETS` = 全部 ticket 數之
+和。即使 result 與 definition 的 unit 已不一致，sample-size 重算仍會執行，
+所以錯誤 unit 不能略過或規避 `SAMPLE_SIZE_MISMATCH`。Metric value 仍維持
+`DECLARED_NOT_RECOMPUTED`；validator 不計算、不推導、不補上任何 metric value。
 
 ### Missing／Zero／Not-computable 三態
 
@@ -290,10 +347,13 @@ Tie-breaker 清單必須以 `strategy_id`（字典序）結尾以保證全序。
 - 沒有任何已核准的 ranking policy。
 - 沒有任何排名輸出。
 - D3 仍是 reserved／unavailable。
+- 沒有 source-to-snapshot ingestion／normalization proof，也沒有 evidence
+  ingestion 或 persistence。
 
 ## 未來任務需要做的事
 
-1. 真實證據的 ingestion 與持久化（本任務刻意不碰）。
+1. Source-to-snapshot normalization contract、真實證據的 ingestion 與持久化
+   （本任務刻意不碰）。
 2. Owner 審查並將第一筆 canonical evidence／approved policy 寫入
    registry。
 3. D3 公式與門檻的正式定義與核准。

@@ -240,6 +240,25 @@ def test_evidence_transitively_imports_no_sqlite_or_forbidden_layer() -> None:
         ), module
 
 
+def test_evidence_provenance_git_boundary_is_read_only_db_free_and_offline() -> None:
+    from lottolab.evidence import validator
+
+    imports = imported_modules(SRC / "evidence" / "validator.py")
+    assert imports.isdisjoint(
+        {
+            "http.client",
+            "httpx",
+            "requests",
+            "socket",
+            "sqlite3",
+            "urllib",
+            "urllib.request",
+        }
+    )
+    allowed_subcommands: object = vars(validator)["_READ_ONLY_GIT_SUBCOMMANDS"]
+    assert frozenset({"cat-file", "merge-base", "rev-parse"}) == allowed_subcommands
+
+
 def _run_isolated(code: str, data_dir: Path) -> None:
     env = {**os.environ, "LOTTOLAB_DATA_DIR": str(data_dir)}
     result = subprocess.run(

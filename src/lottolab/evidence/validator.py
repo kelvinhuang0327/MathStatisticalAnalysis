@@ -17,6 +17,8 @@ succeeds).
 
 from __future__ import annotations
 
+import os
+import subprocess
 from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
@@ -27,6 +29,7 @@ from lottolab.domain.lottery_rules import LOTTERY_RULE_CONTRACTS, resolve_lotter
 from lottolab.evidence import canonical_json
 from lottolab.evidence.canonical_json import CanonicalizationError
 from lottolab.evidence.models import (
+    DatasetProvenanceKind,
     DatasetSnapshot,
     DrawEntry,
     DrawRef,
@@ -55,6 +58,16 @@ PROTECTED_RELATIVE_PATHS: tuple[str, ...] = ("docs/ownerinit.md", ".local")
 #: reference SYNTHETIC_ADDITIONAL_ROOTS.
 CANONICAL_DRAFT_ALLOWED_ROOTS: tuple[str, ...] = ("contracts/evidence",)
 SYNTHETIC_ADDITIONAL_ROOTS: tuple[str, ...] = ("tests/fixtures/evidence",)
+
+#: The provenance boundary admits only these read-only local Git operations.
+#: ``_run_read_only_git`` also disables lazy object fetching and optional locks.
+_READ_ONLY_GIT_SUBCOMMANDS: frozenset[str] = frozenset(
+    {
+        "cat-file",
+        "merge-base",
+        "rev-parse",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,6 +224,54 @@ def hash_referenced_file(resolved_path: Path) -> str | None:
     except OSError:
         return None
     return canonical_json.sha256_hex(data)
+
+
+def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProcess[bytes] | None:
+    """Run one allowlisted, local-only Git query without shell or repository mutation."""
+
+    if not args or args[0] not in _READ_ONLY_GIT_SUBCOMMANDS:
+        raise ValueError("Git provenance query is outside the read-only allowlist")
+
+    env = dict(os.environ)
+    repository_redirecting_variables = {
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_CEILING_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_DIR",
+        "GIT_GRAFT_FILE",
+        "GIT_INDEX_FILE",
+        "GIT_NAMESPACE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_SHALLOW_FILE",
+        "GIT_WORK_TREE",
+    }
+    for name in tuple(env):
+        if name in repository_redirecting_variables or name.startswith(
+            ("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_")
+        ):
+            env.pop(name)
+    env.pop("GIT_CONFIG_COUNT", None)
+    env.update(
+        {
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+    )
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_root), *args],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=False,
+            shell=False,
+            env=env,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
 
 
 # --------------------------------------------------------------------------
@@ -464,6 +525,203 @@ def validate_dataset_snapshot(snapshot: DatasetSnapshot) -> tuple[list[Finding],
         )
 
     return findings, hash_checks
+
+
+def _dataset_snapshot_pointer(pointer: str) -> str:
+    return "/dataset_snapshot" if pointer == "/" else f"/dataset_snapshot{pointer}"
+
+
+def _prefix_dataset_findings(findings: list[Finding]) -> list[Finding]:
+    return [
+        Finding(
+            finding.category,
+            finding.code,
+            _dataset_snapshot_pointer(finding.pointer),
+            finding.message,
+        )
+        for finding in findings
+    ]
+
+
+_DATASET_PROVENANCE_KIND_POINTER = "/dataset_snapshot/source_provenance/kind"
+_DATASET_SOURCE_PATH_POINTER = "/dataset_snapshot/source_provenance/source_definition_path"
+_DATASET_SOURCE_OID_POINTER = "/dataset_snapshot/source_provenance/source_git_oid"
+_DATASET_SOURCE_HASH_POINTER = "/dataset_snapshot/source_provenance/source_file_sha256"
+
+
+def _dataset_source_not_verifiable(
+    code: str, *, pointer: str, message: str
+) -> tuple[list[Finding], list[HashCheck], bool]:
+    return (
+        [Finding(FindingCategory.UNVERIFIED_PROVENANCE, code, pointer, message)],
+        [
+            HashCheck(
+                _DATASET_SOURCE_HASH_POINTER,
+                HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT,
+            )
+        ],
+        True,
+    )
+
+
+def verify_dataset_provenance(
+    dataset: DatasetSnapshot,
+    *,
+    repo_root: Path,
+    evidence_status: EvidenceStatus,
+) -> tuple[list[Finding], list[HashCheck], bool]:
+    """Verify dataset provenance and return findings, hash checks, and unverified state.
+
+    ``LOCAL_COMMITTED_FILE`` proves only that the declared path at the exact
+    reachable commit has the declared raw-byte SHA-256. It deliberately does
+    not claim that those bytes were normalized into the snapshot correctly.
+    """
+
+    provenance = dataset.source_provenance
+    if provenance.kind is DatasetProvenanceKind.SYNTHETIC:
+        if evidence_status is EvidenceStatus.SYNTHETIC_TEST_ONLY:
+            return [], [], False
+        return (
+            [
+                Finding(
+                    FindingCategory.AUTHORITY_FAILURE,
+                    "SYNTHETIC_DATASET_REQUIRES_SYNTHETIC_EVIDENCE",
+                    _DATASET_PROVENANCE_KIND_POINTER,
+                    "a synthetic dataset may support only SYNTHETIC_TEST_ONLY evidence",
+                )
+            ],
+            [],
+            True,
+        )
+
+    if provenance.kind is DatasetProvenanceKind.EXTERNAL_DECLARED:
+        return (
+            [
+                Finding(
+                    FindingCategory.UNVERIFIED_PROVENANCE,
+                    "DATASET_EXTERNAL_DECLARED_UNVERIFIED",
+                    _DATASET_PROVENANCE_KIND_POINTER,
+                    "externally declared dataset provenance is not independently verifiable",
+                )
+            ],
+            [],
+            True,
+        )
+
+    raw_path = provenance.source_definition_path
+    source_git_oid = provenance.source_git_oid
+    declared_source_hash = provenance.source_file_sha256
+    if raw_path is None or source_git_oid is None or declared_source_hash is None:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_BLOB_UNAVAILABLE",
+            pointer=_DATASET_SOURCE_PATH_POINTER,
+            message="the declared historical source blob is unavailable",
+        )
+
+    # Reuse the definition-path containment system before any Git object bytes
+    # are requested. The resolved working-tree path is intentionally not read.
+    try:
+        resolve_definition_path(
+            raw_path,
+            repo_root=repo_root,
+            evidence_status=evidence_status,
+            pointer=_DATASET_SOURCE_PATH_POINTER,
+        )
+    except DefinitionPathRejected as exc:
+        return (
+            [exc.finding],
+            [
+                HashCheck(
+                    _DATASET_SOURCE_HASH_POINTER,
+                    HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT,
+                )
+            ],
+            True,
+        )
+
+    top_level = _run_read_only_git(repo_root, "rev-parse", "--show-toplevel")
+    if top_level is None or top_level.returncode != 0:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="the supplied repository is unavailable for local provenance verification",
+        )
+    try:
+        top_level_text = top_level.stdout.decode("utf-8").strip()
+        resolved_top_level = Path(top_level_text).resolve() if top_level_text else None
+        resolved_supplied_root = repo_root.resolve()
+    except (OSError, UnicodeDecodeError):
+        resolved_top_level = None
+        resolved_supplied_root = None
+    if resolved_top_level is None or resolved_top_level != resolved_supplied_root:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="the supplied repository is unavailable for local provenance verification",
+        )
+
+    object_type = _run_read_only_git(repo_root, "cat-file", "-t", source_git_oid)
+    if (
+        object_type is None
+        or object_type.returncode != 0
+        or object_type.stdout.strip() != b"commit"
+    ):
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_GIT_OID_UNVERIFIED",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="the declared source Git object is not a verifiable commit",
+        )
+
+    ancestry = _run_read_only_git(
+        repo_root, "merge-base", "--is-ancestor", source_git_oid, "HEAD"
+    )
+    if ancestry is None or ancestry.returncode not in (0, 1):
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_GIT_OID_UNVERIFIED",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="the declared source Git commit cannot be verified against HEAD",
+        )
+    if ancestry.returncode == 1:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_GIT_OID_NOT_ANCESTOR",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="the declared source Git commit is not an ancestor of HEAD",
+        )
+
+    blob_spec = f"{source_git_oid}:{raw_path}"
+    blob_type = _run_read_only_git(repo_root, "cat-file", "-t", blob_spec)
+    if blob_type is None or blob_type.returncode != 0 or blob_type.stdout.strip() != b"blob":
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_BLOB_UNAVAILABLE",
+            pointer=_DATASET_SOURCE_PATH_POINTER,
+            message="the declared historical source blob is unavailable",
+        )
+
+    blob = _run_read_only_git(repo_root, "cat-file", "blob", blob_spec)
+    if blob is None or blob.returncode != 0:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_BLOB_UNAVAILABLE",
+            pointer=_DATASET_SOURCE_PATH_POINTER,
+            message="the declared historical source bytes are unavailable",
+        )
+
+    recomputed_source_hash = canonical_json.sha256_hex(blob.stdout)
+    state = verify_hash(declared_source_hash, recomputed_source_hash)
+    hash_checks = [HashCheck(_DATASET_SOURCE_HASH_POINTER, state)]
+    if state is HashVerificationState.VERIFIED_MISMATCH:
+        return (
+            [
+                Finding(
+                    FindingCategory.HASH_MISMATCH,
+                    "DATASET_SOURCE_FILE_HASH_MISMATCH",
+                    _DATASET_SOURCE_HASH_POINTER,
+                    "declared source_file_sha256 does not match the historical Git blob bytes",
+                )
+            ],
+            hash_checks,
+            True,
+        )
+    return [], hash_checks, False
 
 
 # --------------------------------------------------------------------------
@@ -906,18 +1164,37 @@ def _check_metric_results(
                 )
             )
 
-        if definition.sample_unit is result.sample_unit:
-            expected_sample_size = sample_size_by_unit[definition.sample_unit]
-            if result.sample_size != expected_sample_size:
-                findings.append(
-                    Finding(
-                        FindingCategory.METRIC_DEFINITION_FAILURE,
-                        "SAMPLE_SIZE_MISMATCH",
-                        f"{pointer_prefix}/sample_size",
-                        f"sample_size {result.sample_size} does not match recomputed "
-                        f"{expected_sample_size}",
-                    )
+        if result.sample_unit is not definition.sample_unit:
+            findings.append(
+                Finding(
+                    FindingCategory.METRIC_DEFINITION_FAILURE,
+                    "METRIC_SAMPLE_UNIT_MISMATCH",
+                    f"{pointer_prefix}/sample_unit",
+                    "result sample_unit does not match the referenced metric definition",
                 )
+            )
+
+        if result.aggregation != definition.aggregation:
+            findings.append(
+                Finding(
+                    FindingCategory.METRIC_DEFINITION_FAILURE,
+                    "METRIC_AGGREGATION_MISMATCH",
+                    f"{pointer_prefix}/aggregation",
+                    "result aggregation does not match the referenced metric definition",
+                )
+            )
+
+        expected_sample_size = sample_size_by_unit[definition.sample_unit]
+        if result.sample_size != expected_sample_size:
+            findings.append(
+                Finding(
+                    FindingCategory.METRIC_DEFINITION_FAILURE,
+                    "SAMPLE_SIZE_MISMATCH",
+                    f"{pointer_prefix}/sample_size",
+                    f"sample_size {result.sample_size} does not match recomputed "
+                    f"{expected_sample_size}",
+                )
+            )
 
     return unverified_any
 
@@ -1097,6 +1374,7 @@ def classify_evidence_trust(
     hash_checks: list[HashCheck],
     canonical_registry: frozenset[str],
     unverified_provenance: bool,
+    authority_failure: bool,
 ) -> EvidenceTrustClass:
     if evidence.evidence_status is EvidenceStatus.SYNTHETIC_TEST_ONLY:
         return EvidenceTrustClass.SYNTHETIC
@@ -1109,6 +1387,7 @@ def classify_evidence_trust(
         and evidence.artifact_content_sha256 in canonical_registry
         and required_hashes_verified
         and not unverified_provenance
+        and not authority_failure
     ):
         return EvidenceTrustClass.REGISTERED_CANONICAL
     return EvidenceTrustClass.UNTRUSTED_DECLARED
@@ -1186,6 +1465,22 @@ def validate_evidence_artifact(
 
     dataset_unverified = dataset is None
     if dataset is not None:
+        dataset_findings, dataset_hash_checks = validate_dataset_snapshot(dataset)
+        findings.extend(_prefix_dataset_findings(dataset_findings))
+        hash_checks.extend(
+            HashCheck(_dataset_snapshot_pointer(check.pointer), check.state)
+            for check in dataset_hash_checks
+        )
+
+        provenance_findings, provenance_hash_checks, dataset_unverified = (
+            verify_dataset_provenance(
+                dataset,
+                repo_root=repo_root,
+                evidence_status=evidence.evidence_status,
+            )
+        )
+        findings.extend(provenance_findings)
+        hash_checks.extend(provenance_hash_checks)
         _check_dataset_cross_reference(evidence, dataset, findings)
 
     unverified_provenance = (
@@ -1210,6 +1505,7 @@ def validate_evidence_artifact(
         hash_checks=hash_checks,
         canonical_registry=canonical_registry,
         unverified_provenance=unverified_provenance,
+        authority_failure=authority_finding,
     )
 
     all_required_hashes_verified = all(
@@ -1254,14 +1550,18 @@ def validate_evidence_file(
     dataset: DatasetSnapshot | None = None
     if dataset_path is not None:
         dataset, dataset_findings = load_dataset_snapshot(dataset_path)
-        load_findings = load_findings + dataset_findings
+        load_findings = load_findings + _prefix_dataset_findings(dataset_findings)
 
     report = validate_evidence_artifact(
         evidence, repo_root=repo_root, dataset=dataset, canonical_registry=canonical_registry
     )
     if load_findings:
         return ValidationReport(
-            schema_valid=report.schema_valid,
+            schema_valid=report.schema_valid
+            and not any(
+                finding.category is FindingCategory.SCHEMA_FAILURE
+                for finding in load_findings
+            ),
             findings=tuple(load_findings) + report.findings,
             hash_checks=report.hash_checks,
             trust_classification=report.trust_classification,

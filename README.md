@@ -43,9 +43,23 @@ Controller 使用使用者專屬的系統暫存目錄保存 owner-only lock、st
 成功停止後會移除 active state，但 task-owned 診斷 log 會保留在 repo 外、owner-only 的 runtime
 目錄。Controller 只使用已存在的 locked Python／frontend 環境，絕不自行 bootstrap 依賴。
 
+## Strategy Overview（P600F R1）
+
+`#/strategies` 透過 DB-free 的 `GET /api/v1/strategy-overview` 查詢既有 Strategy Catalog。
+可選參數為 `q`、`lottery_type`、`lifecycle_status` 與 `executable`；所有條件採 AND，結果固定保留
+descriptor declaration order。`q` 會先 trim，再以 Unicode casefold 後對 strategy ID 與 display name
+做 substring match；空白 query、超過 100 字元或未知 query property 會被 API validation 拒絕。
+
+每筆結果只含 descriptor metadata 與 provenance。Summary 計算目前回傳集合的 total、execution、
+lifecycle 與 lottery-type counts；支援多彩種的 descriptor 會分別計入每個 lottery type。
+目前 LottoLab 沒有已註冊的 canonical strategy evaluation evidence，因此 evaluation metrics、D3 status
+與 best-strategy ranking 皆明確回傳 unavailable，reason code 為
+`NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE`。Lifecycle 或 executable metadata 不是品質分數；此頁不提供
+score、rank、D3 值、hit rate、prediction、replay 或 execution control，也不解析 data path 或建立 DB。
+
 ## 本機 Draw Data（P600D R1B）
 
-前端以 hash navigation 提供三個頁面：`Strategy Catalog`、`Data Center`、`Draw History`。
+前端以 hash navigation 提供三個頁面：`Strategy Overview`、`Data Center`、`Draw History`。
 Data Center 只接受 LottoLab canonical CSV；瀏覽器把檔案讀成 UTF-8 文字並以 JSON 傳送，
 不使用 multipart，也不把 CSV 放進 localStorage、sessionStorage 或 IndexedDB。
 

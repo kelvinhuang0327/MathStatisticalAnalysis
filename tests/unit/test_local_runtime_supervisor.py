@@ -1300,6 +1300,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                     "paths": {
                         "/api/health": {"get": {}},
                         "/api/v1/strategies": {"get": {}},
+                        "/api/v1/strategy-overview": {"get": {}},
                         "/api/v1/draw-imports/preview": {"post": {}},
                         "/api/v1/draw-imports/commit": {"post": {}},
                         "/api/v1/draws": {"get": {}},

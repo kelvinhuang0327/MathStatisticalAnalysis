@@ -37,6 +37,26 @@ python prompt/control-plane-v1/prototype/promptctl.py render \
 twice, compares fresh bytes with committed outputs, validates role boundaries and route contracts,
 and scans operational content for consumer hardcoding and public-repository hazards.
 
+## Manifest safety gates
+
+`owner_statement_ref` stores evidence metadata, never an authorization statement or token. Its exact
+grammar is `NOT_REQUIRED`, `PENDING_OWNER_REFERENCE`, or
+`OWNER_MESSAGE_REF:<opaque-id>`, where `<opaque-id>` matches `[A-Za-z0-9._-]{1,128}`.
+
+- `NONE` / `NOT_REQUIRED` uses `NOT_REQUIRED`.
+- `SINGLE_PROMPT` or `STANDALONE` / `MISSING` uses `PENDING_OWNER_REFERENCE`.
+- `SINGLE_PROMPT` or `STANDALONE` / `PRESENT` uses `OWNER_MESSAGE_REF:<opaque-id>`.
+
+`L23_UNSAFE_OWNER_STATEMENT_REFERENCE` rejects any other combination and scans external manifest
+bytes for real-looking authorization or credential material before linting or rendering. The
+reference never independently authorizes execution.
+
+Every worktree records `mode`, exact `path`, and exact task `branch`. `NOT_APPLICABLE` requires empty
+repository writes and uses `NOT_APPLICABLE` for both path and branch. A write-capable mode requires
+non-placeholder path and branch values. `L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES` rejects
+repository writes without that worktree envelope. `lint --manifest` and `render --manifest` use the
+same fail-closed validation pipeline.
+
 ## Change flow
 
 1. Edit only the relevant canonical source or sources.

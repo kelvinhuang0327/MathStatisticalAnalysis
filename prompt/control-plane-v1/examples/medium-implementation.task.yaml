@@ -22,7 +22,8 @@
     "head_sha": "1111111",
     "worktree": {
       "mode": "REUSABLE_AGENT_WORKTREE",
-      "path": "/workspace/neutral-catalog-agent"
+      "path": "/workspace/neutral-catalog-agent",
+      "branch": "task/catalog-ordering"
     }
   },
   "scope": {
@@ -34,8 +35,8 @@
   "risk": {"level": "MEDIUM", "triggers": [], "overrides": []},
   "authorization": {
     "class": "SINGLE_PROMPT",
-    "state": "PRESENT",
-    "owner_statement_ref": "<OWNER_MESSAGE_REFERENCE>"
+    "state": "MISSING",
+    "owner_statement_ref": "PENDING_OWNER_REFERENCE"
   },
   "routing": {
     "path": "MEDIUM_IMPLEMENTATION",

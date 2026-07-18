@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
+import runpy
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 CONTROL_PLANE = REPO / "prompt" / "control-plane-v1"
@@ -40,6 +46,57 @@ def marked_block(text: str, label: str) -> str:
     start = f"<!-- {label}:START -->"
     end = f"<!-- {label}:END -->"
     return text[text.index(start) : text.index(end) + len(end)]
+
+
+def load_example(filename: str) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        json.loads(
+            (CONTROL_PLANE / "examples" / filename).read_text(encoding="utf-8")
+        ),
+    )
+
+
+def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
+    path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def control_plane_snapshot() -> dict[str, bytes]:
+    return {
+        str(path.relative_to(CONTROL_PLANE)): path.read_bytes()
+        for path in sorted(CONTROL_PLANE.rglob("*"))
+        if path.is_file()
+    }
+
+
+def assert_manifest_rejected(
+    manifest: dict[str, Any], tmp_path: Path, filename: str, lint_code: str
+) -> None:
+    manifest_path = tmp_path / filename
+    output_path = tmp_path / f"{manifest_path.stem}.worker.md"
+    write_manifest(manifest_path, manifest)
+    before = control_plane_snapshot()
+
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode != 0
+    assert lint_code in lint.stderr
+
+    render = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+        check=False,
+    )
+    assert render.returncode != 0
+    assert lint_code in render.stderr
+    assert not output_path.exists()
+    assert control_plane_snapshot() == before
 
 
 def test_control_plane_check_passes() -> None:
@@ -107,7 +164,7 @@ def test_examples_lint_and_invalid_authorization_is_rejected(tmp_path: Path) -> 
     manifest["authorization"] = {
         "class": "NONE",
         "state": "NOT_REQUIRED",
-        "owner_statement_ref": "NOT_APPLICABLE",
+        "owner_statement_ref": "NOT_REQUIRED",
     }
     invalid = tmp_path / "invalid.task.yaml"
     invalid.write_text(
@@ -118,7 +175,255 @@ def test_examples_lint_and_invalid_authorization_is_rejected(tmp_path: Path) -> 
     result = run_tool("lint", "--manifest", str(invalid), check=False)
     assert result.returncode == 1
     assert "$.authorization.class: expected constant 'SINGLE_PROMPT'" in result.stderr
-    assert "$.authorization.state: expected constant 'PRESENT'" in result.stderr
+
+
+def test_l23_safe_reference_grammar_and_metadata_rendering(tmp_path: Path) -> None:
+    low = CONTROL_PLANE / "examples" / "low-readonly.task.yaml"
+    pending = CONTROL_PLANE / "examples" / "medium-implementation.task.yaml"
+    run_tool("lint", "--manifest", str(low))
+    run_tool("lint", "--manifest", str(pending))
+
+    confirmed = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], confirmed["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = "OWNER_MESSAGE_REF:msg-123_example"
+    confirmed_path = tmp_path / "confirmed-external.task.yaml"
+    output_path = tmp_path / "confirmed-external.worker.md"
+    write_manifest(confirmed_path, confirmed)
+
+    run_tool("lint", "--manifest", str(confirmed_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(confirmed_path),
+        "--output",
+        str(output_path),
+    )
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Owner statement reference: `OWNER_MESSAGE_REF:msg-123_example`" in rendered
+    assert "evidence metadata only" in rendered
+    assert "does not independently authorize" in rendered
+    assert "Exact task branch: `task/catalog-ordering`" in rendered
+
+
+@pytest.mark.parametrize(
+    ("example", "auth_class", "state", "reference"),
+    [
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "AUTHORIZE_EXAMPLE_TOKEN_123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "Owner approved this task",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "Owner approved\nthis task",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "Bearer abc123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "token=abc123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "secret:abc123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "cookie=session123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "password=hunter2",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "-----BEGIN PRIVATE KEY-----abc",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "https://example.invalid/owner/123",
+        ),
+        (
+            "low-readonly.task.yaml",
+            "NONE",
+            "NOT_REQUIRED",
+            "PENDING_OWNER_REFERENCE",
+        ),
+        (
+            "low-readonly.task.yaml",
+            "NONE",
+            "NOT_REQUIRED",
+            "OWNER_MESSAGE_REF:msg-123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "NOT_REQUIRED",
+            "NOT_REQUIRED",
+        ),
+    ],
+)
+def test_l23_rejects_unsafe_authorization_references_without_output(
+    tmp_path: Path,
+    example: str,
+    auth_class: str,
+    state: str,
+    reference: str,
+) -> None:
+    manifest = load_example(example)
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization.update(
+        {
+            "class": auth_class,
+            "state": state,
+            "owner_statement_ref": reference,
+        }
+    )
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-l23.task.yaml",
+        "L23_UNSAFE_OWNER_STATEMENT_REFERENCE",
+    )
+
+
+def test_external_manifest_bytes_receive_l23_sensitive_text_scan(
+    tmp_path: Path,
+) -> None:
+    manifest = load_example("medium-implementation.task.yaml")
+    task = cast(dict[str, Any], manifest["task"])
+    task["goal"] = f"{task['goal']} Bearer abc123"
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-sensitive-bytes.task.yaml",
+        "L23_UNSAFE_OWNER_STATEMENT_REFERENCE",
+    )
+
+
+def test_l24_accepts_read_only_and_write_capable_worktree_envelopes(
+    tmp_path: Path,
+) -> None:
+    cases: list[tuple[str, dict[str, Any]]] = []
+    cases.append(("low-readonly", load_example("low-readonly.task.yaml")))
+
+    medium_readonly = load_example("medium-implementation.task.yaml")
+    medium_readonly_scope = cast(dict[str, Any], medium_readonly["scope"])
+    medium_readonly_context = cast(dict[str, Any], medium_readonly["context"])
+    medium_readonly_scope["allowed_writes"] = []
+    medium_readonly_context["worktree"] = {
+        "mode": "NOT_APPLICABLE",
+        "path": "NOT_APPLICABLE",
+        "branch": "NOT_APPLICABLE",
+    }
+    cases.append(("medium-readonly", medium_readonly))
+
+    reusable = load_example("medium-implementation.task.yaml")
+    cases.append(("medium-reusable", reusable))
+
+    isolated = copy.deepcopy(reusable)
+    isolated_context = cast(dict[str, Any], isolated["context"])
+    isolated_context["worktree"] = {
+        "mode": "EPHEMERAL_TASK_WORKTREE",
+        "path": "/workspace/neutral-catalog-isolated",
+        "branch": "task/catalog-ordering-isolated",
+    }
+    cases.append(("medium-isolated", isolated))
+
+    for name, manifest in cases:
+        manifest_path = tmp_path / f"{name}.task.yaml"
+        write_manifest(manifest_path, manifest)
+        run_tool("lint", "--manifest", str(manifest_path))
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "medium-writes-not-applicable",
+        "low-writes-not-applicable",
+        "missing-path",
+        "missing-branch",
+        "empty-path",
+        "placeholder-path",
+        "empty-branch",
+        "placeholder-branch",
+    ],
+)
+def test_l24_rejects_repository_writes_without_exact_worktree_envelope(
+    tmp_path: Path, case: str
+) -> None:
+    if case == "low-writes-not-applicable":
+        manifest = load_example("low-readonly.task.yaml")
+        scope = cast(dict[str, Any], manifest["scope"])
+        scope["allowed_writes"] = ["src/catalog/order.py"]
+    else:
+        manifest = load_example("medium-implementation.task.yaml")
+
+    context = cast(dict[str, Any], manifest["context"])
+    worktree = cast(dict[str, Any], context["worktree"])
+    if case == "medium-writes-not-applicable":
+        context["worktree"] = {
+            "mode": "NOT_APPLICABLE",
+            "path": "NOT_APPLICABLE",
+            "branch": "NOT_APPLICABLE",
+        }
+    elif case == "missing-path":
+        del worktree["path"]
+    elif case == "missing-branch":
+        del worktree["branch"]
+    elif case == "empty-path":
+        worktree["path"] = ""
+    elif case == "placeholder-path":
+        worktree["path"] = "UNKNOWN"
+    elif case == "empty-branch":
+        worktree["branch"] = ""
+    elif case == "placeholder-branch":
+        worktree["branch"] = "PENDING"
+
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        f"external-{case}.task.yaml",
+        "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES",
+    )
 
 
 def test_renderer_is_deterministic_and_complete(tmp_path: Path) -> None:
@@ -133,6 +438,8 @@ def test_renderer_is_deterministic_and_complete(tmp_path: Path) -> None:
     assert STATUS in text
     assert "SINGLE_PROMPT" in text
     assert "REUSABLE_AGENT_WORKTREE" in text
+    assert "PENDING_OWNER_REFERENCE" in text
+    assert "task/catalog-ordering" in text
 
 
 def test_public_safety_and_web_portability_scan() -> None:
@@ -157,6 +464,28 @@ def test_public_safety_and_web_portability_scan() -> None:
         assert "AUTHORIZE_" not in text
         assert "/Users/" not in text
         assert "../" not in text
+
+
+@pytest.mark.parametrize(
+    "unsafe_text, expected_kind",
+    (
+        ("AUTHORIZE_" + "OWNER_REVIEW_123", "authorization token"),
+        ("token=" + "examplecredential123", "credential assignment"),
+        ("-----BEGIN " + "PRIVATE KEY-----", "private key"),
+        ("/Users/" + "example/consumer/repository", "user-specific absolute path"),
+        ("./consumer/memory/session.json", "consumer memory path"),
+        ("./consumer/data.sqlite", "database path"),
+    ),
+)
+def test_public_safety_scanner_rejects_required_categories(
+    unsafe_text: str, expected_kind: str
+) -> None:
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    scanner = cast(
+        Callable[[str, str], list[str]], namespace["_public_safety_text_errors"]
+    )
+    errors = scanner("synthetic fixture", unsafe_text)
+    assert any(expected_kind in error for error in errors)
 
 
 def test_compiled_prompts_are_materially_shorter_than_legacy_sources() -> None:

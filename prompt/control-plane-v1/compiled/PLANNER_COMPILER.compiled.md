@@ -1,7 +1,7 @@
 # Planner / Task Compiler — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:c2ce88f98084e0f32731895859370b2b1592e81f2e482abcbb81d26bbd49ccab`
+Durable-source fingerprint: `sha256:aa42f7770f5a140d8cb42c82b64cd40d16eddca6567a8c215ba4208e95aa5d07`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract
@@ -318,10 +318,11 @@ The following JSON-compatible YAML schema is normative for compilation.
         "worktree": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["mode", "path"],
+          "required": ["mode", "path", "branch"],
           "properties": {
             "mode": {"enum": ["NOT_APPLICABLE", "REUSABLE_AGENT_WORKTREE", "EPHEMERAL_TASK_WORKTREE", "EXISTING_TASK_WORKTREE"]},
-            "path": {"type": "string", "minLength": 1}
+            "path": {"type": "string", "minLength": 1},
+            "branch": {"type": "string", "minLength": 1}
           }
         }
       }
@@ -354,7 +355,10 @@ The following JSON-compatible YAML schema is normative for compilation.
       "properties": {
         "class": {"enum": ["NONE", "SINGLE_PROMPT", "STANDALONE"]},
         "state": {"enum": ["NOT_REQUIRED", "PRESENT", "MISSING"]},
-        "owner_statement_ref": {"type": "string", "minLength": 3}
+        "owner_statement_ref": {
+          "type": "string",
+          "pattern": "^(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128})$"
+        }
       }
     },
     "routing": {
@@ -411,7 +415,7 @@ The following JSON-compatible YAML schema is normative for compilation.
             "properties": {
               "class": {"const": "NONE"},
               "state": {"const": "NOT_REQUIRED"},
-              "owner_statement_ref": {"const": "NOT_APPLICABLE"}
+              "owner_statement_ref": {"const": "NOT_REQUIRED"}
             }
           },
           "context": {
@@ -419,7 +423,8 @@ The following JSON-compatible YAML schema is normative for compilation.
               "worktree": {
                 "properties": {
                   "mode": {"const": "NOT_APPLICABLE"},
-                  "path": {"const": "NOT_APPLICABLE"}
+                  "path": {"const": "NOT_APPLICABLE"},
+                  "branch": {"const": "NOT_APPLICABLE"}
                 }
               }
             }
@@ -433,10 +438,7 @@ The following JSON-compatible YAML schema is normative for compilation.
       "then": {
         "properties": {
           "authorization": {
-            "properties": {
-              "class": {"const": "SINGLE_PROMPT"},
-              "state": {"const": "PRESENT"}
-            }
+            "properties": {"class": {"const": "SINGLE_PROMPT"}}
           }
         }
       }
@@ -446,10 +448,7 @@ The following JSON-compatible YAML schema is normative for compilation.
       "then": {
         "properties": {
           "authorization": {
-            "properties": {
-              "class": {"const": "STANDALONE"},
-              "state": {"const": "PRESENT"}
-            }
+            "properties": {"class": {"const": "STANDALONE"}}
           }
         }
       }
@@ -473,8 +472,9 @@ Rendered by: Planner / Task Compiler
 - Route: `{{ROUTING_PATH}}`
 - Stages: {{ROUTING_STAGES_INLINE}}
 
-This prompt records but does not create authorization. STOP if the required authorization state is
-not satisfied or if the live task exceeds the authorized scope.
+The Owner statement reference is evidence metadata only; it does not independently authorize
+execution. This prompt records but does not create authorization. STOP if the required authorization
+state is not satisfied or if the live task exceeds the authorized scope.
 
 ## Project context
 
@@ -486,6 +486,7 @@ not satisfied or if the live task exceeds the authorized scope.
 - Project profile: `{{PROFILE_PATH}}`
 - Worktree mode: `{{WORKTREE_MODE}}`
 - Exact worktree path: `{{WORKTREE_PATH}}`
+- Exact task branch: `{{WORKTREE_BRANCH}}`
 
 Read the repo-local project profile when available, then observe the relevant live state. Consumer
 context overrides examples; the manifest does not override contrary live facts.

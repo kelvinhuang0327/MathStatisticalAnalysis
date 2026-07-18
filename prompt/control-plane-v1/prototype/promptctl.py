@@ -14,6 +14,59 @@ from typing import Any, cast
 STATUS = "DRAFT_FOR_OWNER_REVIEW"
 ROOT = Path(__file__).resolve().parents[1]
 COMPILED_DIR = ROOT / "compiled"
+L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
+L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
+
+OWNER_REFERENCE_PATTERN = re.compile(
+    r"(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|"
+    r"OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128})"
+)
+OWNER_MESSAGE_REFERENCE_PATTERN = re.compile(
+    r"OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128}"
+)
+WRITE_CAPABLE_WORKTREE_MODES = frozenset(
+    {
+        "REUSABLE_AGENT_WORKTREE",
+        "EPHEMERAL_TASK_WORKTREE",
+        "EXISTING_TASK_WORKTREE",
+    }
+)
+NON_EXACT_VALUES = frozenset(
+    {"", "NOT_APPLICABLE", "UNKNOWN", "PENDING", "TBD", "TODO"}
+)
+MANIFEST_SENSITIVE_PATTERNS = (
+    (
+        "authorization token",
+        re.compile(r"\bAUTHORIZE_[A-Z0-9_]+\b"),
+    ),
+    (
+        "Bearer credential",
+        re.compile(r"(?i)\bBearer[ \t]+[A-Za-z0-9._~+/-]{6,}\b"),
+    ),
+    (
+        "credential assignment",
+        re.compile(
+            r"(?i)\b(?:token|secret|password|cookie)[ \t]*[:=][ \t]*"
+            r"[^\s\"']{6,}"
+        ),
+    ),
+    (
+        "private key",
+        re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    ),
+    (
+        "Git hosting token",
+        re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
+    ),
+    (
+        "API secret",
+        re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b"),
+    ),
+    (
+        "cloud access key",
+        re.compile(r"\bAKIA[0-9A-Z]{16}\b"),
+    ),
+)
 
 DURABLE_SOURCES = (
     "AGENT_CORE.md",
@@ -249,12 +302,108 @@ def _schema_errors(value: Any, schema: dict[str, Any], path: str = "$") -> list[
     return errors
 
 
+def _manifest_input_text_errors(text: str) -> list[str]:
+    for kind, pattern in MANIFEST_SENSITIVE_PATTERNS:
+        if pattern.search(text):
+            return [f"{L23}: manifest bytes contain real-looking {kind}"]
+    return []
+
+
+def _is_exact_value(value: Any) -> bool:
+    if not isinstance(value, str) or value != value.strip() or "\n" in value:
+        return False
+    if value.upper() in NON_EXACT_VALUES:
+        return False
+    return not (value.startswith("<") and value.endswith(">"))
+
+
+def _manifest_contract_errors(manifest: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    authorization_value = manifest.get("authorization")
+    if isinstance(authorization_value, dict):
+        authorization = cast(dict[str, Any], authorization_value)
+        auth_class = authorization.get("class")
+        auth_state = authorization.get("state")
+        owner_reference = authorization.get("owner_statement_ref")
+        owner_reference_is_safe = (
+            isinstance(owner_reference, str)
+            and OWNER_REFERENCE_PATTERN.fullmatch(owner_reference) is not None
+        )
+        valid_authorization = False
+        if auth_class == "NONE":
+            valid_authorization = (
+                auth_state == "NOT_REQUIRED" and owner_reference == "NOT_REQUIRED"
+            )
+        elif auth_class in {"SINGLE_PROMPT", "STANDALONE"}:
+            if auth_state == "MISSING":
+                valid_authorization = owner_reference == "PENDING_OWNER_REFERENCE"
+            elif auth_state == "PRESENT":
+                valid_authorization = (
+                    isinstance(owner_reference, str)
+                    and OWNER_MESSAGE_REFERENCE_PATTERN.fullmatch(owner_reference)
+                    is not None
+                )
+        if not owner_reference_is_safe or not valid_authorization:
+            errors.append(
+                f"{L23}: $.authorization.owner_statement_ref must be safe "
+                "evidence metadata consistent with authorization class and state"
+            )
+
+    scope_value = manifest.get("scope")
+    context_value = manifest.get("context")
+    scope = (
+        cast(dict[str, Any], scope_value) if isinstance(scope_value, dict) else None
+    )
+    context = (
+        cast(dict[str, Any], context_value)
+        if isinstance(context_value, dict)
+        else None
+    )
+    allowed_writes: Any = scope.get("allowed_writes") if scope is not None else None
+    worktree_value: Any = context.get("worktree") if context is not None else None
+    if isinstance(allowed_writes, list):
+        repository_writes = bool(cast(list[Any], allowed_writes))
+        if not isinstance(worktree_value, dict):
+            if repository_writes:
+                errors.append(
+                    f"{L24}: $.context.worktree is required for repository writes"
+                )
+            return errors
+
+        worktree = cast(dict[str, Any], worktree_value)
+        mode = worktree.get("mode")
+        path = worktree.get("path")
+        branch = worktree.get("branch")
+        if mode == "NOT_APPLICABLE":
+            if repository_writes or path != "NOT_APPLICABLE" or branch != "NOT_APPLICABLE":
+                errors.append(
+                    f"{L24}: NOT_APPLICABLE requires empty repository writes "
+                    "and NOT_APPLICABLE path and branch"
+                )
+        elif mode in WRITE_CAPABLE_WORKTREE_MODES:
+            if not _is_exact_value(path) or not _is_exact_value(branch):
+                errors.append(
+                    f"{L24}: write-capable worktree mode requires an exact path "
+                    "and exact task branch"
+                )
+        elif repository_writes:
+            errors.append(
+                f"{L24}: repository writes require a supported write-capable worktree mode"
+            )
+    return errors
+
+
 def validate_manifest(manifest: Any, schema: dict[str, Any], routes: dict[str, Any]) -> list[str]:
     errors = _schema_errors(manifest, schema)
-    if errors or not isinstance(manifest, dict):
+    if not isinstance(manifest, dict):
         return errors
 
     manifest_object = cast(dict[str, Any], manifest)
+    errors.extend(_manifest_contract_errors(manifest_object))
+    errors = list(dict.fromkeys(errors))
+    if errors:
+        return errors
+
     routing = cast(dict[str, Any], manifest_object["routing"])
     route_name = routing["path"]
     route = cast(dict[str, Any] | None, routes.get(cast(str, route_name)))
@@ -269,20 +418,8 @@ def validate_manifest(manifest: Any, schema: dict[str, Any], routes: dict[str, A
     if routing["stages"] != route.get("stages"):
         errors.append("$.routing.stages: must exactly match the selected route")
 
-    if authorization["class"] == "NONE":
-        if authorization["state"] != "NOT_REQUIRED":
-            errors.append("$.authorization.state: NONE requires NOT_REQUIRED")
-        if authorization["owner_statement_ref"] != "NOT_APPLICABLE":
-            errors.append("$.authorization.owner_statement_ref: NONE requires NOT_APPLICABLE")
-    elif authorization["state"] != "PRESENT":
-        errors.append("$.authorization.state: required authorization must be PRESENT")
-
     context = cast(dict[str, Any], manifest_object["context"])
     worktree = cast(dict[str, Any], context["worktree"])
-    if worktree["mode"] == "NOT_APPLICABLE" and worktree["path"] != "NOT_APPLICABLE":
-        errors.append("$.context.worktree.path: NOT_APPLICABLE mode requires NOT_APPLICABLE")
-    if worktree["mode"] != "NOT_APPLICABLE" and worktree["path"] == "NOT_APPLICABLE":
-        errors.append("$.context.worktree.path: selected mode requires an exact path")
 
     if risk["level"] == "LOW":
         scope = cast(dict[str, Any], manifest_object["scope"])
@@ -291,6 +428,23 @@ def validate_manifest(manifest: Any, schema: dict[str, Any], routes: dict[str, A
         if worktree["mode"] != "NOT_APPLICABLE":
             errors.append("$.context.worktree.mode: LOW read-only route requires NOT_APPLICABLE")
     return errors
+
+
+def _validated_manifest_file(
+    path: Path, schema: dict[str, Any], routes: dict[str, Any]
+) -> tuple[Any, list[str]]:
+    text = _read_text(path)
+    try:
+        manifest: Any = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ControlPlaneError(
+            f"{path} must use deterministic JSON-compatible YAML: {exc}"
+        ) from exc
+    errors = validate_manifest(manifest, schema, routes)
+    input_errors = _manifest_input_text_errors(text)
+    if input_errors and not any(error.startswith(f"{L23}:") for error in errors):
+        errors.extend(input_errors)
+    return manifest, errors
 
 
 def _markdown_errors(path: Path, text: str) -> list[str]:
@@ -328,6 +482,20 @@ def _public_safety_text_errors(label: str, text: str) -> list[str]:
         "Git hosting token": r"\bgh[pousr]_[A-Za-z0-9]{20,}\b",
         "API secret": r"\bsk-[A-Za-z0-9]{20,}\b",
         "cloud access key": r"\bAKIA[0-9A-Z]{16}\b",
+        "Bearer credential": r"(?i)\bBearer[ \t]+[A-Za-z0-9._~+/-]{6,}\b",
+        "credential assignment": (
+            r"(?i)\b(?:token|secret|password|cookie)[ \t]*[:=][ \t]*"
+            r"[^\s\"']{6,}"
+        ),
+        "database path": (
+            r"(?i)(?:^|[\s`'\"])(?:[./~]|[A-Za-z]:\\)"
+            r"[^\s`'\"]+\.(?:db|sqlite3?)(?:$|[\s`'\"])"
+        ),
+        "consumer memory path": (
+            r"(?i)(?:^|[\s`'\"])(?:[./~]|[A-Za-z]:\\)"
+            r"[^\s`'\"]*(?:[/\\](?:memory|memories)(?:[/\\][^\s`'\"]*)?)"
+            r"(?:$|[\s`'\"])"
+        ),
     }
     for kind, pattern in credential_patterns.items():
         if re.search(pattern, text):
@@ -417,10 +585,10 @@ def repository_lint(manifest_path: Path | None = None) -> list[str]:
 
     example_manifests = sorted((ROOT / "examples").glob("*.task.yaml"))
     for path in example_manifests:
-        manifest = _json_yaml(path)
+        _, manifest_errors = _validated_manifest_file(path, schema_object, routes)
         errors.extend(
             f"{path}: {error}"
-            for error in validate_manifest(manifest, schema_object, routes)
+            for error in manifest_errors
         )
 
     profile_path = ROOT / "examples" / "agent-profile.example.yaml"
@@ -436,10 +604,12 @@ def repository_lint(manifest_path: Path | None = None) -> list[str]:
             errors.append(f"{profile_path}: incorrect document status")
 
     if manifest_path is not None:
-        manifest = _json_yaml(manifest_path)
+        _, manifest_errors = _validated_manifest_file(
+            manifest_path, schema_object, routes
+        )
         errors.extend(
             f"{manifest_path}: {error}"
-            for error in validate_manifest(manifest, schema_object, routes)
+            for error in manifest_errors
         )
 
     outputs = generated_outputs(texts)
@@ -481,6 +651,7 @@ def render_worker(manifest: dict[str, Any]) -> bytes:
         "HEAD_SHA": manifest["context"]["head_sha"],
         "WORKTREE_MODE": manifest["context"]["worktree"]["mode"],
         "WORKTREE_PATH": manifest["context"]["worktree"]["path"],
+        "WORKTREE_BRANCH": manifest["context"]["worktree"]["branch"],
         "ALLOWED_READS": _bullets(manifest["scope"]["allowed_reads"]),
         "ALLOWED_WRITES": _bullets(manifest["scope"]["allowed_writes"]),
         "PROTECTED_PATHS": _bullets(manifest["scope"]["protected_paths"]),
@@ -579,11 +750,19 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.command == "render":
             schema = _json_yaml(ROOT / "TASK_MANIFEST.schema.yaml")
-            manifest = _json_yaml(args.manifest)
-            errors = validate_manifest(manifest, schema, _route_table())
+            manifest, errors = _validated_manifest_file(
+                args.manifest, schema, _route_table()
+            )
             if errors:
                 return _print_errors([f"{args.manifest}: {error}" for error in errors])
-            payload = render_worker(manifest)
+            payload = render_worker(cast(dict[str, Any], manifest))
+            rendered_errors = _manifest_input_text_errors(
+                payload.decode("utf-8", errors="strict")
+            )
+            if rendered_errors:
+                return _print_errors(
+                    [f"rendered Worker Prompt: {error}" for error in rendered_errors]
+                )
             if args.output:
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_bytes(payload)

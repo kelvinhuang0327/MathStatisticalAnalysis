@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/math-statistical-analysis/control-plane-v1/task-manifest.schema.yaml",
+  "title": "Shared Control Plane Task Manifest v1",
+  "x-document-status": "DRAFT_FOR_OWNER_REVIEW",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "document_status",
+    "task",
+    "project",
+    "context",
+    "scope",
+    "risk",
+    "authorization",
+    "routing",
+    "verification",
+    "lifecycle",
+    "memory",
+    "handoff"
+  ],
+  "properties": {
+    "schema_version": {"const": "1.0"},
+    "document_status": {"const": "DRAFT_FOR_OWNER_REVIEW"},
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "goal", "steps"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Z0-9][A-Z0-9_-]{2,79}$"},
+        "title": {"type": "string", "minLength": 3},
+        "goal": {"type": "string", "minLength": 10},
+        "steps": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 3}}
+      }
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity", "canonical_repo", "canonical_branch", "profile_path"],
+      "properties": {
+        "identity": {"type": "string", "minLength": 2},
+        "canonical_repo": {"type": "string", "minLength": 3},
+        "canonical_branch": {"type": "string", "minLength": 1},
+        "profile_path": {"type": "string", "const": ".ai/agent-profile.yaml"}
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_sha", "head_sha", "worktree"],
+      "properties": {
+        "base_sha": {"type": "string", "minLength": 7},
+        "head_sha": {"type": "string", "minLength": 7},
+        "worktree": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["mode", "path"],
+          "properties": {
+            "mode": {"enum": ["NOT_APPLICABLE", "REUSABLE_AGENT_WORKTREE", "EPHEMERAL_TASK_WORKTREE", "EXISTING_TASK_WORKTREE"]},
+            "path": {"type": "string", "minLength": 1}
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_reads", "allowed_writes", "protected_paths", "forbidden_actions"],
+      "properties": {
+        "allowed_reads": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "allowed_writes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "protected_paths": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "forbidden_actions": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 2}}
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "triggers", "overrides"],
+      "properties": {
+        "level": {"enum": ["LOW", "MEDIUM", "HIGH"]},
+        "triggers": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 2}},
+        "overrides": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 2}}
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["class", "state", "owner_statement_ref"],
+      "properties": {
+        "class": {"enum": ["NONE", "SINGLE_PROMPT", "STANDALONE"]},
+        "state": {"enum": ["NOT_REQUIRED", "PRESENT", "MISSING"]},
+        "owner_statement_ref": {"type": "string", "minLength": 3}
+      }
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "stages"],
+      "properties": {
+        "path": {"enum": ["LOW_READ_ONLY", "MEDIUM_IMPLEMENTATION", "TECHNICAL", "STRATEGIC_HIGH"]},
+        "stages": {"type": "array", "minItems": 3, "uniqueItems": true, "items": {"type": "string", "minLength": 2}}
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commands", "expected_observations"],
+      "properties": {
+        "commands": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 2}},
+        "expected_observations": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 3}}
+      }
+    },
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["integration", "cleanup"],
+      "properties": {
+        "integration": {"type": "string", "minLength": 3},
+        "cleanup": {"type": "string", "minLength": 3}
+      }
+    },
+    "memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read", "write"],
+      "properties": {
+        "read": {"enum": ["BOUNDED", "FORBIDDEN"]},
+        "write": {"enum": ["FORBIDDEN", "APPEND_ONLY_EXPLICIT"]}
+      }
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required_fields"],
+      "properties": {
+        "required_fields": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 2}}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"risk": {"properties": {"level": {"const": "LOW"}}}}},
+      "then": {
+        "properties": {
+          "authorization": {
+            "properties": {
+              "class": {"const": "NONE"},
+              "state": {"const": "NOT_REQUIRED"},
+              "owner_statement_ref": {"const": "NOT_APPLICABLE"}
+            }
+          },
+          "context": {
+            "properties": {
+              "worktree": {
+                "properties": {
+                  "mode": {"const": "NOT_APPLICABLE"},
+                  "path": {"const": "NOT_APPLICABLE"}
+                }
+              }
+            }
+          },
+          "scope": {"properties": {"allowed_writes": {"maxItems": 0}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"risk": {"properties": {"level": {"const": "MEDIUM"}}}}},
+      "then": {
+        "properties": {
+          "authorization": {
+            "properties": {
+              "class": {"const": "SINGLE_PROMPT"},
+              "state": {"const": "PRESENT"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"risk": {"properties": {"level": {"const": "HIGH"}}}}},
+      "then": {
+        "properties": {
+          "authorization": {
+            "properties": {
+              "class": {"const": "STANDALONE"},
+              "state": {"const": "PRESENT"}
+            }
+          }
+        }
+      }
+    }
+  ]
+}

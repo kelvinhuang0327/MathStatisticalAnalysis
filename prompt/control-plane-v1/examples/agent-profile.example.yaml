@@ -1,0 +1,21 @@
+{
+  "document_status": "DRAFT_FOR_OWNER_REVIEW",
+  "profile_version": "1.0",
+  "project": {
+    "identity": "Neutral Catalog Service",
+    "canonical_repo": "https://example.invalid/neutral/catalog-service",
+    "canonical_branch": "main"
+  },
+  "paths": {
+    "allowed_roots": ["src/", "tests/"],
+    "protected_paths": ["data/", ".env"],
+    "approved_worktree_roots": ["/workspace/neutral-catalog-agent"]
+  },
+  "restrictions": {
+    "data": "READ_ONLY",
+    "runtime": "NO_PRODUCTION_MUTATION",
+    "deployment": "FORBIDDEN_BY_DEFAULT",
+    "registry": "FORBIDDEN_BY_DEFAULT",
+    "risk_overrides": []
+  }
+}

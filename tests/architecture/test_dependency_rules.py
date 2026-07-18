@@ -105,6 +105,50 @@ def test_production_code_does_not_import_legacy_or_migration_fixtures() -> None:
     assert not violations, "production import violations:\n" + "\n".join(violations)
 
 
+def test_strategy_adapters_are_target_native_db_free_and_offline() -> None:
+    """Inspect declared project dependencies, never incidental ``sys.modules`` state."""
+
+    imports: set[str] = set()
+    for module in (
+        "lottolab.strategies.adapters",
+        "lottolab.strategies.adapters.base",
+        "lottolab.strategies.adapters.biglotto_selected",
+    ):
+        imports.update(_transitive_imports(module))
+
+    forbidden_exact = {
+        "http.client",
+        "importlib",
+        "os",
+        "pathlib",
+        "socket",
+        "sqlite3",
+        "subprocess",
+        "time",
+        "urllib",
+        "urllib.request",
+    }
+    forbidden_prefixes = (
+        "lottery_api",
+        "number_pattern_research",
+        "lottolab.application",
+        "lottolab.infrastructure",
+        "lottolab.interfaces",
+    )
+    forbidden_project_fragments = (".database", ".db_", ".persistence")
+    violations = sorted(
+        module
+        for module in imports
+        if module in forbidden_exact
+        or module.startswith(forbidden_prefixes)
+        or (
+            module.startswith("lottolab.")
+            and any(fragment in module.casefold() for fragment in forbidden_project_fragments)
+        )
+    )
+    assert not violations, "adapter dependency violations:\n" + "\n".join(violations)
+
+
 def test_local_runtime_path_has_no_database_or_execution_dependency() -> None:
     forbidden_fragments = (
         "sqlite",

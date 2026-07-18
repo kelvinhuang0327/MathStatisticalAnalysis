@@ -44,11 +44,17 @@
     },
     {
       "capability_id": "lottery.prediction.generate",
-      "phase": "INVENTORIED",
-      "pr": null,
-      "parity_evidence": null,
+      "phase": "MIGRATING",
+      "pr": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/8",
+      "parity_evidence": "tests/unit/test_biglotto_selected_adapters.py",
       "legacy_retirement_condition": "Semantics and causal-history goldens pass per generator.",
-      "notes": "Generation and ONLINE execution remain on LotteryNew."
+      "implementation_state": "IMPLEMENTED_PENDING_REVIEW",
+      "production_state": "NOT_CUTOVER_READY",
+      "compatibility_condition": "Keep legacy generation available until remaining generators, lifecycle promotion, deployment, and traffic cutover are separately verified.",
+      "rollback_condition": "Revert the single P601B target commit; the donor and production executable registry remain unchanged.",
+      "donor_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+      "migrated_strategy_ids": ["biglotto_zone_split_3bet_bet1", "biglotto_social_wisdom_anti_popularity"],
+      "notes": "P601B migrates two selected adapters into an internal DB-free callable. Descriptors remain OBSERVATION and non-executable; lifecycle, API, and frontend promotion remain out of scope."
     },
     {
       "capability_id": "lottery.backtest.evaluate",

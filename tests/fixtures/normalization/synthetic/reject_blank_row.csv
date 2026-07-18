@@ -1,0 +1,4 @@
+draw_id,draw_sequence,draw_date,main_numbers,special_numbers
+SYN-D-0,0,2020-01-01,1|2|3|4|5|6,7
+
+SYN-D-2,2,2020-01-03,3|4|5|6|7|8,9

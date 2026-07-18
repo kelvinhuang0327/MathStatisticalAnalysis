@@ -17,7 +17,12 @@ succeeds).
 
 from __future__ import annotations
 
+import os
+import stat
+import subprocess
 from collections import Counter
+from collections.abc import Generator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +32,7 @@ from lottolab.domain.lottery_rules import LOTTERY_RULE_CONTRACTS, resolve_lotter
 from lottolab.evidence import canonical_json
 from lottolab.evidence.canonical_json import CanonicalizationError
 from lottolab.evidence.models import (
+    DatasetProvenanceKind,
     DatasetSnapshot,
     DrawEntry,
     DrawRef,
@@ -55,6 +61,23 @@ PROTECTED_RELATIVE_PATHS: tuple[str, ...] = ("docs/ownerinit.md", ".local")
 #: reference SYNTHETIC_ADDITIONAL_ROOTS.
 CANONICAL_DRAFT_ALLOWED_ROOTS: tuple[str, ...] = ("contracts/evidence",)
 SYNTHETIC_ADDITIONAL_ROOTS: tuple[str, ...] = ("tests/fixtures/evidence",)
+
+#: The provenance boundary admits only these read-only local Git operations.
+#: ``_run_read_only_git`` also disables lazy object fetching and optional locks.
+_READ_ONLY_GIT_SUBCOMMANDS: frozenset[str] = frozenset(
+    {
+        "cat-file",
+        "merge-base",
+        "rev-parse",
+    }
+)
+
+_GIT_OID_HEX_DIGITS = frozenset("0123456789abcdef")
+_MAX_COMMON_GIT_DIR_OUTPUT_BYTES = 4096
+_ALTERNATE_METADATA_FILENAMES: tuple[str, ...] = ("alternates", "http-alternates")
+_OS_OPEN_SUPPORTS_DIR_FD = os.open in os.supports_dir_fd
+_OS_STAT_SUPPORTS_DIR_FD = os.stat in os.supports_dir_fd
+_OS_STAT_SUPPORTS_NOFOLLOW = os.stat in os.supports_follow_symlinks
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +112,38 @@ class DefinitionPathRejected(Exception):
         super().__init__(finding.message)
 
 
+class _UnsafeAlternateObjectDatabase(Exception):
+    """Internal fail-closed signal without filesystem or Git detail."""
+
+
+@dataclass(frozen=True, slots=True)
+class _DirectoryIdentity:
+    mode: int
+    device: int
+    inode: int
+
+
+@dataclass(frozen=True, slots=True)
+class _FileMetadata:
+    mode: int
+    device: int
+    inode: int
+    size: int
+    mtime_ns: int
+    ctime_ns: int
+
+
+@dataclass(frozen=True, slots=True)
+class _GitObjectDirectoryChain:
+    common_path: Path
+    common_descriptor: int
+    objects_descriptor: int
+    info_descriptor: int
+    common_identity: _DirectoryIdentity
+    objects_identity: _DirectoryIdentity
+    info_identity: _DirectoryIdentity
+
+
 # --------------------------------------------------------------------------
 # Definition-path containment (fail-closed, staged; see module docstring)
 # --------------------------------------------------------------------------
@@ -97,6 +152,8 @@ class DefinitionPathRejected(Exception):
 def _lexical_check(raw_path: str) -> str | None:
     if not raw_path:
         return "definition path must not be empty"
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in raw_path):
+        return "definition path must not contain control characters"
     if raw_path.startswith("/"):
         return "definition path must not be absolute"
     if "\\" in raw_path:
@@ -125,6 +182,17 @@ def _allowed_roots_for(evidence_status: EvidenceStatus) -> tuple[str, ...]:
 def _is_within_allowed_roots(relative_posix: str, allowed_roots: tuple[str, ...]) -> bool:
     return any(
         relative_posix == root or relative_posix.startswith(root + "/") for root in allowed_roots
+    )
+
+
+def _resolution_failure(pointer: str) -> DefinitionPathRejected:
+    return DefinitionPathRejected(
+        Finding(
+            FindingCategory.SEMANTIC_FAILURE,
+            "DEFINITION_PATH_RESOLUTION_FAILED",
+            pointer,
+            "definition path could not be resolved safely",
+        )
     )
 
 
@@ -177,8 +245,20 @@ def resolve_definition_path(
             )
         )
 
-    resolved_repo_root = repo_root.resolve()
-    candidate = (resolved_repo_root / raw_path).resolve()
+    try:
+        resolved_repo_root = repo_root.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _resolution_failure(pointer) from exc
+    unresolved_candidate = resolved_repo_root / raw_path
+    try:
+        candidate = unresolved_candidate.resolve(strict=True)
+    except FileNotFoundError:
+        try:
+            candidate = unresolved_candidate.resolve()
+        except (OSError, RuntimeError, ValueError) as exc:
+            raise _resolution_failure(pointer) from exc
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _resolution_failure(pointer) from exc
     if candidate != resolved_repo_root and resolved_repo_root not in candidate.parents:
         raise DefinitionPathRejected(
             Finding(
@@ -189,7 +269,10 @@ def resolve_definition_path(
             )
         )
 
-    post_relative = candidate.relative_to(resolved_repo_root).as_posix()
+    try:
+        post_relative = candidate.relative_to(resolved_repo_root).as_posix()
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise _resolution_failure(pointer) from exc
     if _is_protected(post_relative) or not _is_within_allowed_roots(post_relative, allowed_roots):
         raise DefinitionPathRejected(
             Finding(
@@ -211,6 +294,347 @@ def hash_referenced_file(resolved_path: Path) -> str | None:
     except OSError:
         return None
     return canonical_json.sha256_hex(data)
+
+
+def _is_full_git_oid(value: str) -> bool:
+    return len(value) == 40 and all(character in _GIT_OID_HEX_DIGITS for character in value)
+
+
+def _is_validated_blob_spec(value: str) -> bool:
+    oid, separator, raw_path = value.partition(":")
+    if separator != ":" or not _is_full_git_oid(oid) or _lexical_check(raw_path) is not None:
+        return False
+    if _is_protected(raw_path):
+        return False
+    return _is_within_allowed_roots(
+        raw_path,
+        CANONICAL_DRAFT_ALLOWED_ROOTS + SYNTHETIC_ADDITIONAL_ROOTS,
+    )
+
+
+def _is_exact_read_only_git_argv(args: tuple[str, ...]) -> bool:
+    if args in {
+        ("rev-parse", "--show-toplevel"),
+        ("rev-parse", "--git-common-dir"),
+    }:
+        return True
+    if len(args) == 3 and args[:2] == ("cat-file", "-t"):
+        return _is_full_git_oid(args[2]) or _is_validated_blob_spec(args[2])
+    if len(args) == 3 and args[:2] == ("cat-file", "blob"):
+        return _is_validated_blob_spec(args[2])
+    return (
+        len(args) == 4
+        and args[:2] == ("merge-base", "--is-ancestor")
+        and _is_full_git_oid(args[2])
+        and args[3] == "HEAD"
+    )
+
+
+def _run_read_only_git(repo_root: Path, *args: str) -> subprocess.CompletedProcess[bytes] | None:
+    """Run one allowlisted, local-only Git query without shell or repository mutation."""
+
+    if not _is_exact_read_only_git_argv(args):
+        raise ValueError("Git provenance query is outside the exact read-only allowlist")
+
+    env = dict(os.environ)
+    repository_redirecting_variables = {
+        "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+        "GIT_CEILING_DIRECTORIES",
+        "GIT_COMMON_DIR",
+        "GIT_DIR",
+        "GIT_INDEX_FILE",
+        "GIT_NAMESPACE",
+        "GIT_OBJECT_DIRECTORY",
+        "GIT_REPLACE_REF_BASE",
+        "GIT_SHALLOW_FILE",
+        "GIT_WORK_TREE",
+    }
+    for name in tuple(env):
+        if (
+            name in repository_redirecting_variables
+            or name.startswith("GIT_TRACE")
+            or name.startswith(("GIT_CONFIG_KEY_", "GIT_CONFIG_VALUE_"))
+        ):
+            env.pop(name)
+    env.pop("GIT_CONFIG_COUNT", None)
+    env.update(
+        {
+            "GIT_GRAFT_FILE": os.devnull,
+            "GIT_NO_LAZY_FETCH": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+            "GIT_TERMINAL_PROMPT": "0",
+        }
+    )
+    try:
+        return subprocess.run(
+            ["git", "-C", str(repo_root), *args],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            check=False,
+            shell=False,
+            env=env,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _descriptor_anchoring_is_supported() -> bool:
+    required_flags = ("O_DIRECTORY", "O_NOFOLLOW", "O_CLOEXEC", "O_NONBLOCK")
+    return (
+        all(hasattr(os, name) for name in required_flags)
+        and _OS_OPEN_SUPPORTS_DIR_FD
+        and _OS_STAT_SUPPORTS_DIR_FD
+        and _OS_STAT_SUPPORTS_NOFOLLOW
+    )
+
+
+def _directory_identity(path_status: os.stat_result) -> _DirectoryIdentity:
+    return _DirectoryIdentity(
+        mode=path_status.st_mode,
+        device=path_status.st_dev,
+        inode=path_status.st_ino,
+    )
+
+
+def _timestamp_ns(path_status: os.stat_result, name: str) -> int:
+    nanoseconds = getattr(path_status, f"st_{name}_ns", None)
+    if nanoseconds is not None:
+        return int(nanoseconds)
+    return int(getattr(path_status, f"st_{name}") * 1_000_000_000)
+
+
+def _file_metadata(path_status: os.stat_result) -> _FileMetadata:
+    return _FileMetadata(
+        mode=path_status.st_mode,
+        device=path_status.st_dev,
+        inode=path_status.st_ino,
+        size=path_status.st_size,
+        mtime_ns=_timestamp_ns(path_status, "mtime"),
+        ctime_ns=_timestamp_ns(path_status, "ctime"),
+    )
+
+
+def _status_matches_directory(
+    path_status: os.stat_result, expected: _DirectoryIdentity
+) -> bool:
+    return stat.S_ISDIR(path_status.st_mode) and _directory_identity(path_status) == expected
+
+
+def _stat_no_follow(
+    path: str | Path, *, parent_descriptor: int | None = None
+) -> os.stat_result:
+    if parent_descriptor is None:
+        return os.stat(path, follow_symlinks=False)
+    return os.stat(path, dir_fd=parent_descriptor, follow_symlinks=False)
+
+
+def _open_anchored_directory(
+    path: str | Path, *, parent_descriptor: int | None = None
+) -> tuple[int, _DirectoryIdentity] | None:
+    try:
+        path_status = _stat_no_follow(path, parent_descriptor=parent_descriptor)
+        if not stat.S_ISDIR(path_status.st_mode):
+            return None
+        flags = (
+            os.O_RDONLY
+            | os.O_DIRECTORY
+            | os.O_NOFOLLOW
+            | os.O_CLOEXEC
+            | os.O_NONBLOCK
+        )
+        if parent_descriptor is None:
+            descriptor = os.open(path, flags)
+        else:
+            descriptor = os.open(path, flags, dir_fd=parent_descriptor)
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return None
+
+    keep_descriptor = False
+    try:
+        opened_status = os.fstat(descriptor)
+        opened_identity = _directory_identity(opened_status)
+        if (
+            not stat.S_ISDIR(opened_status.st_mode)
+            or opened_identity != _directory_identity(path_status)
+        ):
+            return None
+        keep_descriptor = True
+        return descriptor, opened_identity
+    except (OSError, TypeError, ValueError):
+        return None
+    finally:
+        if not keep_descriptor:
+            with suppress(OSError):
+                os.close(descriptor)
+
+
+def _resolve_common_git_directory(repo_root: Path) -> Path | None:
+    common_dir_query = _run_read_only_git(repo_root, "rev-parse", "--git-common-dir")
+    if common_dir_query is None or common_dir_query.returncode != 0:
+        return None
+    if not (0 < len(common_dir_query.stdout) <= _MAX_COMMON_GIT_DIR_OUTPUT_BYTES):
+        return None
+    try:
+        common_dir_output = common_dir_query.stdout.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if not common_dir_output.endswith("\n") or common_dir_output.count("\n") != 1:
+        return None
+
+    raw_common_dir = common_dir_output[:-1]
+    if not raw_common_dir or any(
+        ord(character) < 0x20 or ord(character) == 0x7F for character in raw_common_dir
+    ):
+        return None
+
+    unresolved_common_dir = Path(raw_common_dir)
+    if not unresolved_common_dir.is_absolute():
+        unresolved_common_dir = repo_root / unresolved_common_dir
+    try:
+        return unresolved_common_dir.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return None
+
+
+def _open_git_object_directory_chain(repo_root: Path) -> _GitObjectDirectoryChain | None:
+    if not _descriptor_anchoring_is_supported():
+        return None
+    common_path = _resolve_common_git_directory(repo_root)
+    if common_path is None:
+        return None
+
+    common_opened = _open_anchored_directory(common_path)
+    if common_opened is None:
+        return None
+    common_descriptor, common_identity = common_opened
+
+    objects_opened = _open_anchored_directory(
+        "objects", parent_descriptor=common_descriptor
+    )
+    if objects_opened is None:
+        with suppress(OSError):
+            os.close(common_descriptor)
+        return None
+    objects_descriptor, objects_identity = objects_opened
+
+    info_opened = _open_anchored_directory("info", parent_descriptor=objects_descriptor)
+    if info_opened is None:
+        with suppress(OSError):
+            os.close(objects_descriptor)
+        with suppress(OSError):
+            os.close(common_descriptor)
+        return None
+    info_descriptor, info_identity = info_opened
+
+    return _GitObjectDirectoryChain(
+        common_path=common_path,
+        common_descriptor=common_descriptor,
+        objects_descriptor=objects_descriptor,
+        info_descriptor=info_descriptor,
+        common_identity=common_identity,
+        objects_identity=objects_identity,
+        info_identity=info_identity,
+    )
+
+
+def _close_git_object_directory_chain(chain: _GitObjectDirectoryChain) -> None:
+    for descriptor in (
+        chain.info_descriptor,
+        chain.objects_descriptor,
+        chain.common_descriptor,
+    ):
+        with suppress(OSError):
+            os.close(descriptor)
+
+
+def _git_object_directory_chain_is_stable(chain: _GitObjectDirectoryChain) -> bool:
+    try:
+        common_path_status = _stat_no_follow(chain.common_path)
+        common_descriptor_status = os.fstat(chain.common_descriptor)
+        objects_path_status = _stat_no_follow(
+            "objects", parent_descriptor=chain.common_descriptor
+        )
+        objects_descriptor_status = os.fstat(chain.objects_descriptor)
+        info_path_status = _stat_no_follow("info", parent_descriptor=chain.objects_descriptor)
+        info_descriptor_status = os.fstat(chain.info_descriptor)
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return False
+
+    return all(
+        (
+            _status_matches_directory(common_path_status, chain.common_identity),
+            _status_matches_directory(common_descriptor_status, chain.common_identity),
+            _status_matches_directory(objects_path_status, chain.objects_identity),
+            _status_matches_directory(objects_descriptor_status, chain.objects_identity),
+            _status_matches_directory(info_path_status, chain.info_identity),
+            _status_matches_directory(info_descriptor_status, chain.info_identity),
+        )
+    )
+
+
+def _alternate_configuration_file_is_unsafe(
+    info_descriptor: int, filename: str
+) -> bool:
+    if filename not in _ALTERNATE_METADATA_FILENAMES:
+        return True
+    try:
+        path_status = _stat_no_follow(filename, parent_descriptor=info_descriptor)
+    except FileNotFoundError:
+        return False
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return True
+
+    if not stat.S_ISREG(path_status.st_mode) or path_status.st_size != 0:
+        return True
+
+    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK
+    try:
+        descriptor = os.open(filename, flags, dir_fd=info_descriptor)
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return True
+
+    try:
+        opened_status = os.fstat(descriptor)
+        final_status = _stat_no_follow(filename, parent_descriptor=info_descriptor)
+        metadata = (
+            _file_metadata(path_status),
+            _file_metadata(opened_status),
+            _file_metadata(final_status),
+        )
+    except (OSError, NotImplementedError, TypeError, ValueError):
+        return True
+    finally:
+        with suppress(OSError):
+            os.close(descriptor)
+
+    return not (
+        all(stat.S_ISREG(item.mode) and item.size == 0 for item in metadata)
+        and metadata[0] == metadata[1] == metadata[2]
+    )
+
+
+@contextmanager
+def _validated_primary_object_database(repo_root: Path) -> Generator[None]:
+    chain = _open_git_object_directory_chain(repo_root)
+    if chain is None:
+        raise _UnsafeAlternateObjectDatabase
+    try:
+        if any(
+            _alternate_configuration_file_is_unsafe(chain.info_descriptor, filename)
+            for filename in _ALTERNATE_METADATA_FILENAMES
+        ):
+            raise _UnsafeAlternateObjectDatabase
+        if not _git_object_directory_chain_is_stable(chain):
+            raise _UnsafeAlternateObjectDatabase
+        try:
+            yield
+        finally:
+            if not _git_object_directory_chain_is_stable(chain):
+                raise _UnsafeAlternateObjectDatabase
+    finally:
+        _close_git_object_directory_chain(chain)
 
 
 # --------------------------------------------------------------------------
@@ -464,6 +888,222 @@ def validate_dataset_snapshot(snapshot: DatasetSnapshot) -> tuple[list[Finding],
         )
 
     return findings, hash_checks
+
+
+def _dataset_snapshot_pointer(pointer: str) -> str:
+    return "/dataset_snapshot" if pointer == "/" else f"/dataset_snapshot{pointer}"
+
+
+def _prefix_dataset_findings(findings: list[Finding]) -> list[Finding]:
+    return [
+        Finding(
+            finding.category,
+            finding.code,
+            _dataset_snapshot_pointer(finding.pointer),
+            finding.message,
+        )
+        for finding in findings
+    ]
+
+
+_DATASET_PROVENANCE_KIND_POINTER = "/dataset_snapshot/source_provenance/kind"
+_DATASET_SOURCE_PATH_POINTER = "/dataset_snapshot/source_provenance/source_definition_path"
+_DATASET_SOURCE_OID_POINTER = "/dataset_snapshot/source_provenance/source_git_oid"
+_DATASET_SOURCE_HASH_POINTER = "/dataset_snapshot/source_provenance/source_file_sha256"
+
+
+def _dataset_source_not_verifiable(
+    code: str, *, pointer: str, message: str
+) -> tuple[list[Finding], list[HashCheck], bool]:
+    return (
+        [Finding(FindingCategory.UNVERIFIED_PROVENANCE, code, pointer, message)],
+        [
+            HashCheck(
+                _DATASET_SOURCE_HASH_POINTER,
+                HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT,
+            )
+        ],
+        True,
+    )
+
+
+def verify_dataset_provenance(
+    dataset: DatasetSnapshot,
+    *,
+    repo_root: Path,
+    evidence_status: EvidenceStatus,
+) -> tuple[list[Finding], list[HashCheck], bool]:
+    """Verify dataset provenance and return findings, hash checks, and unverified state.
+
+    ``LOCAL_COMMITTED_FILE`` proves only that the declared path at the exact
+    reachable commit has the declared raw-byte SHA-256. It deliberately does
+    not claim that those bytes were normalized into the snapshot correctly.
+    """
+
+    provenance = dataset.source_provenance
+    if provenance.kind is DatasetProvenanceKind.SYNTHETIC:
+        if evidence_status is EvidenceStatus.SYNTHETIC_TEST_ONLY:
+            return [], [], False
+        return (
+            [
+                Finding(
+                    FindingCategory.AUTHORITY_FAILURE,
+                    "SYNTHETIC_DATASET_REQUIRES_SYNTHETIC_EVIDENCE",
+                    _DATASET_PROVENANCE_KIND_POINTER,
+                    "a synthetic dataset may support only SYNTHETIC_TEST_ONLY evidence",
+                )
+            ],
+            [],
+            True,
+        )
+
+    if provenance.kind is DatasetProvenanceKind.EXTERNAL_DECLARED:
+        return (
+            [
+                Finding(
+                    FindingCategory.UNVERIFIED_PROVENANCE,
+                    "DATASET_EXTERNAL_DECLARED_UNVERIFIED",
+                    _DATASET_PROVENANCE_KIND_POINTER,
+                    "externally declared dataset provenance is not independently verifiable",
+                )
+            ],
+            [],
+            True,
+        )
+
+    raw_path = provenance.source_definition_path
+    source_git_oid = provenance.source_git_oid
+    declared_source_hash = provenance.source_file_sha256
+    if raw_path is None or source_git_oid is None or declared_source_hash is None:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_BLOB_UNAVAILABLE",
+            pointer=_DATASET_SOURCE_PATH_POINTER,
+            message="the declared historical source blob is unavailable",
+        )
+
+    # Reuse the definition-path containment system before any Git object bytes
+    # are requested. The resolved working-tree path is intentionally not read.
+    try:
+        resolve_definition_path(
+            raw_path,
+            repo_root=repo_root,
+            evidence_status=evidence_status,
+            pointer=_DATASET_SOURCE_PATH_POINTER,
+        )
+    except DefinitionPathRejected as exc:
+        return (
+            [exc.finding],
+            [
+                HashCheck(
+                    _DATASET_SOURCE_HASH_POINTER,
+                    HashVerificationState.NOT_VERIFIABLE_INPUT_ABSENT,
+                )
+            ],
+            True,
+        )
+
+    try:
+        with _validated_primary_object_database(repo_root):
+            top_level = _run_read_only_git(repo_root, "rev-parse", "--show-toplevel")
+            if top_level is None or top_level.returncode != 0:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message=(
+                        "the supplied repository is unavailable for local provenance "
+                        "verification"
+                    ),
+                )
+            try:
+                top_level_text = top_level.stdout.decode("utf-8").strip()
+                resolved_top_level = Path(top_level_text).resolve() if top_level_text else None
+                resolved_supplied_root = repo_root.resolve()
+            except (OSError, RuntimeError, UnicodeDecodeError, ValueError):
+                resolved_top_level = None
+                resolved_supplied_root = None
+            if resolved_top_level is None or resolved_top_level != resolved_supplied_root:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_REPOSITORY_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message=(
+                        "the supplied repository is unavailable for local provenance "
+                        "verification"
+                    ),
+                )
+
+            object_type = _run_read_only_git(repo_root, "cat-file", "-t", source_git_oid)
+            if (
+                object_type is None
+                or object_type.returncode != 0
+                or object_type.stdout.strip() != b"commit"
+            ):
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_OID_UNVERIFIED",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message="the declared source Git object is not a verifiable commit",
+                )
+
+            ancestry = _run_read_only_git(
+                repo_root, "merge-base", "--is-ancestor", source_git_oid, "HEAD"
+            )
+            if ancestry is None or ancestry.returncode not in (0, 1):
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_OID_UNVERIFIED",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message="the declared source Git commit cannot be verified against HEAD",
+                )
+            if ancestry.returncode == 1:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_GIT_OID_NOT_ANCESTOR",
+                    pointer=_DATASET_SOURCE_OID_POINTER,
+                    message="the declared source Git commit is not an ancestor of HEAD",
+                )
+
+            blob_spec = f"{source_git_oid}:{raw_path}"
+            blob_type = _run_read_only_git(repo_root, "cat-file", "-t", blob_spec)
+            if (
+                blob_type is None
+                or blob_type.returncode != 0
+                or blob_type.stdout.strip() != b"blob"
+            ):
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_BLOB_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_PATH_POINTER,
+                    message="the declared historical source blob is unavailable",
+                )
+
+            blob = _run_read_only_git(repo_root, "cat-file", "blob", blob_spec)
+            if blob is None or blob.returncode != 0:
+                return _dataset_source_not_verifiable(
+                    "DATASET_SOURCE_BLOB_UNAVAILABLE",
+                    pointer=_DATASET_SOURCE_PATH_POINTER,
+                    message="the declared historical source bytes are unavailable",
+                )
+
+            recomputed_source_hash = canonical_json.sha256_hex(blob.stdout)
+            state = verify_hash(declared_source_hash, recomputed_source_hash)
+            hash_checks = [HashCheck(_DATASET_SOURCE_HASH_POINTER, state)]
+            if state is HashVerificationState.VERIFIED_MISMATCH:
+                return (
+                    [
+                        Finding(
+                            FindingCategory.HASH_MISMATCH,
+                            "DATASET_SOURCE_FILE_HASH_MISMATCH",
+                            _DATASET_SOURCE_HASH_POINTER,
+                            "declared source_file_sha256 does not match the historical "
+                            "Git blob bytes",
+                        )
+                    ],
+                    hash_checks,
+                    True,
+                )
+            return [], hash_checks, False
+    except _UnsafeAlternateObjectDatabase:
+        return _dataset_source_not_verifiable(
+            "DATASET_SOURCE_ALTERNATE_OBJECT_DATABASE_UNSAFE",
+            pointer=_DATASET_SOURCE_OID_POINTER,
+            message="repository alternate object database configuration is unsafe",
+        )
 
 
 # --------------------------------------------------------------------------
@@ -906,18 +1546,37 @@ def _check_metric_results(
                 )
             )
 
-        if definition.sample_unit is result.sample_unit:
-            expected_sample_size = sample_size_by_unit[definition.sample_unit]
-            if result.sample_size != expected_sample_size:
-                findings.append(
-                    Finding(
-                        FindingCategory.METRIC_DEFINITION_FAILURE,
-                        "SAMPLE_SIZE_MISMATCH",
-                        f"{pointer_prefix}/sample_size",
-                        f"sample_size {result.sample_size} does not match recomputed "
-                        f"{expected_sample_size}",
-                    )
+        if result.sample_unit is not definition.sample_unit:
+            findings.append(
+                Finding(
+                    FindingCategory.METRIC_DEFINITION_FAILURE,
+                    "METRIC_SAMPLE_UNIT_MISMATCH",
+                    f"{pointer_prefix}/sample_unit",
+                    "result sample_unit does not match the referenced metric definition",
                 )
+            )
+
+        if result.aggregation != definition.aggregation:
+            findings.append(
+                Finding(
+                    FindingCategory.METRIC_DEFINITION_FAILURE,
+                    "METRIC_AGGREGATION_MISMATCH",
+                    f"{pointer_prefix}/aggregation",
+                    "result aggregation does not match the referenced metric definition",
+                )
+            )
+
+        expected_sample_size = sample_size_by_unit[definition.sample_unit]
+        if result.sample_size != expected_sample_size:
+            findings.append(
+                Finding(
+                    FindingCategory.METRIC_DEFINITION_FAILURE,
+                    "SAMPLE_SIZE_MISMATCH",
+                    f"{pointer_prefix}/sample_size",
+                    f"sample_size {result.sample_size} does not match recomputed "
+                    f"{expected_sample_size}",
+                )
+            )
 
     return unverified_any
 
@@ -1097,6 +1756,7 @@ def classify_evidence_trust(
     hash_checks: list[HashCheck],
     canonical_registry: frozenset[str],
     unverified_provenance: bool,
+    authority_failure: bool,
 ) -> EvidenceTrustClass:
     if evidence.evidence_status is EvidenceStatus.SYNTHETIC_TEST_ONLY:
         return EvidenceTrustClass.SYNTHETIC
@@ -1109,6 +1769,7 @@ def classify_evidence_trust(
         and evidence.artifact_content_sha256 in canonical_registry
         and required_hashes_verified
         and not unverified_provenance
+        and not authority_failure
     ):
         return EvidenceTrustClass.REGISTERED_CANONICAL
     return EvidenceTrustClass.UNTRUSTED_DECLARED
@@ -1186,6 +1847,22 @@ def validate_evidence_artifact(
 
     dataset_unverified = dataset is None
     if dataset is not None:
+        dataset_findings, dataset_hash_checks = validate_dataset_snapshot(dataset)
+        findings.extend(_prefix_dataset_findings(dataset_findings))
+        hash_checks.extend(
+            HashCheck(_dataset_snapshot_pointer(check.pointer), check.state)
+            for check in dataset_hash_checks
+        )
+
+        provenance_findings, provenance_hash_checks, dataset_unverified = (
+            verify_dataset_provenance(
+                dataset,
+                repo_root=repo_root,
+                evidence_status=evidence.evidence_status,
+            )
+        )
+        findings.extend(provenance_findings)
+        hash_checks.extend(provenance_hash_checks)
         _check_dataset_cross_reference(evidence, dataset, findings)
 
     unverified_provenance = (
@@ -1210,6 +1887,7 @@ def validate_evidence_artifact(
         hash_checks=hash_checks,
         canonical_registry=canonical_registry,
         unverified_provenance=unverified_provenance,
+        authority_failure=authority_finding,
     )
 
     all_required_hashes_verified = all(
@@ -1254,14 +1932,18 @@ def validate_evidence_file(
     dataset: DatasetSnapshot | None = None
     if dataset_path is not None:
         dataset, dataset_findings = load_dataset_snapshot(dataset_path)
-        load_findings = load_findings + dataset_findings
+        load_findings = load_findings + _prefix_dataset_findings(dataset_findings)
 
     report = validate_evidence_artifact(
         evidence, repo_root=repo_root, dataset=dataset, canonical_registry=canonical_registry
     )
     if load_findings:
         return ValidationReport(
-            schema_valid=report.schema_valid,
+            schema_valid=report.schema_valid
+            and not any(
+                finding.category is FindingCategory.SCHEMA_FAILURE
+                for finding in load_findings
+            ),
             findings=tuple(load_findings) + report.findings,
             hash_checks=report.hash_checks,
             trust_classification=report.trust_classification,

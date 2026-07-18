@@ -5,6 +5,7 @@ strategies      → domain
 application     → domain, strategies
 infrastructure  → domain, strategies, application (implements ports)
 evidence        → domain (stdlib and Pydantic only otherwise; no data path, no runtime)
+normalization   → domain, evidence models/canonical JSON
 interfaces      → anything (composition root)
 """
 
@@ -24,6 +25,7 @@ FORBIDDEN: dict[str, tuple[str, ...]] = {
     "application": ("interfaces", "infrastructure"),
     "infrastructure": ("interfaces",),
     "evidence": ("application", "interfaces", "infrastructure", "strategies"),
+    "normalization": ("application", "interfaces", "infrastructure", "strategies"),
 }
 
 
@@ -238,6 +240,51 @@ def test_evidence_transitively_imports_no_sqlite_or_forbidden_layer() -> None:
             )
             for imported in imports
         ), module
+
+
+def test_normalization_imports_only_domain_and_evidence_contract_layers() -> None:
+    for path in (SRC / "normalization").rglob("*.py"):
+        imports = imported_modules(path)
+        assert "sqlite3" not in imports, path
+        assert not any(
+            module.startswith(
+                (
+                    "lottolab.application",
+                    "lottolab.infrastructure",
+                    "lottolab.interfaces",
+                    "lottolab.strategies",
+                )
+            )
+            for module in imports
+        ), path
+
+
+def test_evidence_does_not_import_normalization() -> None:
+    for path in (SRC / "evidence").rglob("*.py"):
+        assert not any(
+            module.startswith("lottolab.normalization") for module in imported_modules(path)
+        ), path
+
+
+def test_normalization_does_not_import_tolerant_csv_or_effectful_modules() -> None:
+    imports = _transitive_imports("lottolab.normalization.normalizer")
+    assert "lottolab.infrastructure.imports.csv_draws" not in imports
+    assert imports.isdisjoint(
+        {
+            "csv",
+            "http.client",
+            "httpx",
+            "os",
+            "random",
+            "requests",
+            "socket",
+            "sqlite3",
+            "subprocess",
+            "time",
+            "urllib",
+            "urllib.request",
+        }
+    )
 
 
 def test_evidence_provenance_git_boundary_is_read_only_db_free_and_offline() -> None:

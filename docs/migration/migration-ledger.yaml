@@ -45,16 +45,16 @@
     {
       "capability_id": "lottery.prediction.generate",
       "phase": "MIGRATING",
-      "pr": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/8",
+      "pr": null,
       "parity_evidence": "tests/unit/test_biglotto_selected_adapters.py",
       "legacy_retirement_condition": "Semantics and causal-history goldens pass per generator.",
       "implementation_state": "IMPLEMENTED_PENDING_REVIEW",
       "production_state": "NOT_CUTOVER_READY",
-      "compatibility_condition": "Keep legacy generation available until remaining generators, lifecycle promotion, deployment, and traffic cutover are separately verified.",
-      "rollback_condition": "Revert the single P601B target commit; the donor and production executable registry remain unchanged.",
+      "compatibility_condition": "Keep legacy generation available until remaining generators, deployment, and traffic cutover are separately verified. Lifecycle promotion and a bounded local CLI execution vertical are now complete for the two P602B strategies; no HTTP, frontend, or deployment surface is exposed.",
+      "rollback_condition": "Revert the P602B target commit to restore OBSERVATION/non-executable status for both strategies and remove the generate-bet CLI command; the P601B adapter port and ExecutableRegistry mechanism remain unchanged.",
       "donor_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
       "migrated_strategy_ids": ["biglotto_zone_split_3bet_bet1", "biglotto_social_wisdom_anti_popularity"],
-      "notes": "P601B migrates two selected adapters into an internal DB-free callable. Descriptors remain OBSERVATION and non-executable; lifecycle, API, and frontend promotion remain out of scope."
+      "notes": "P601B migrated two selected adapters into an internal DB-free callable (OBSERVATION, non-executable). P602B (branch codex/p602b-biglotto-cli-execution-vertical) promotes both to ONLINE/executable and adds a thin `lottolab generate-bet` CLI command that resolves them through the production ExecutableRegistry and GenerateOneBet use case for deterministic, offline, machine-readable single-bet output. No HTTP route, frontend, or deployment change; API and Strategy Catalog contract tests updated to reflect the new ONLINE/executable descriptors. `pr` intentionally left null pending the PR number, which is only known after this commit is pushed."
     },
     {
       "capability_id": "lottery.backtest.evaluate",

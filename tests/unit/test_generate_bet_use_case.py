@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import random
 import subprocess
 import sys
 from dataclasses import FrozenInstanceError
@@ -16,6 +18,11 @@ from lottolab.application.use_cases.generate_bet import (
     GenerateOneBetReason,
     GenerateOneBetResult,
     GenerateOneBetStatus,
+    HistoryParseError,
+    build_production_generate_one_bet,
+    parse_history_json,
+    render_result_json,
+    run_cli_generate_bet,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
@@ -266,7 +273,7 @@ def test_adapter_mapping_is_a_construction_time_snapshot() -> None:
     assert adapters == adapters_after_caller_mutation
 
 
-def test_production_descriptors_remain_observation_and_non_executable() -> None:
+def test_production_descriptors_are_promoted_online_and_executable() -> None:
     catalog = production_catalog()
     adapters: dict[str, BetAdapter] = {
         BigLottoSocialWisdomAntiPopularityAdapter.strategy_id: (
@@ -277,9 +284,9 @@ def test_production_descriptors_remain_observation_and_non_executable() -> None:
     use_case = GenerateOneBet(catalog, adapters)
     for strategy_id in adapters:
         descriptor = catalog.get(strategy_id)
-        assert descriptor.lifecycle_status is LifecycleStatus.OBSERVATION
-        assert descriptor.executable is False
-        assert descriptor.adapter_path is None
+        assert descriptor.lifecycle_status is LifecycleStatus.ONLINE
+        assert descriptor.executable is True
+        assert descriptor.adapter_path is not None
 
     result = use_case.execute(
         GenerateOneBetInput(
@@ -387,3 +394,142 @@ def test_import_does_not_load_or_mutate_executable_registry() -> None:
         text=True,
     )
     assert completed.stdout == "False\n"
+
+
+def _history_json(rows: tuple[CausalDrawRow, ...] = _history()) -> str:
+    return json.dumps(
+        [{"draw": row.draw, "date": row.date, "numbers": list(row.numbers)} for row in rows]
+    )
+
+
+def test_parse_history_json_accepts_canonical_rows() -> None:
+    parsed = parse_history_json(_history_json())
+    assert parsed == _history()
+
+
+@pytest.mark.parametrize(
+    ("raw", "message"),
+    [
+        ("not json", "not valid JSON"),
+        ("{}", "must be a list"),
+        ("[1]", "must be an object"),
+        ('[{"date":"x","numbers":[1]}]', "draw must be a non-empty string"),
+        ('[{"draw":"","date":"x","numbers":[1]}]', "draw must be a non-empty string"),
+        ('[{"draw":"1","date":"","numbers":[1]}]', "date must be a non-empty string"),
+        ('[{"draw":"1","date":"x","numbers":"bad"}]', "numbers must be a list of integers"),
+        ('[{"draw":"1","date":"x","numbers":[1.5]}]', "numbers must be a list of integers"),
+    ],
+    ids=[
+        "invalid-json",
+        "not-a-list",
+        "row-not-an-object",
+        "missing-draw",
+        "blank-draw",
+        "blank-date",
+        "numbers-not-a-list",
+        "numbers-not-integers",
+    ],
+)
+def test_parse_history_json_rejects_malformed_shapes(raw: str, message: str) -> None:
+    with pytest.raises(HistoryParseError, match=message):
+        parse_history_json(raw)
+
+
+def test_render_result_json_is_canonical_and_sorted() -> None:
+    ok_result = GenerateOneBetResult(
+        status=GenerateOneBetStatus.OK,
+        numbers=(1, 2, 3, 4, 5, 6),
+        special_number=None,
+        reason_code=None,
+    )
+    text = render_result_json(ok_result, strategy_id="fixture", seed=3)
+    assert json.loads(text) == {
+        "strategy_id": "fixture",
+        "lottery_type": "BIG_LOTTO",
+        "seed": 3,
+        "status": "OK",
+        "numbers": [1, 2, 3, 4, 5, 6],
+        "reason_code": None,
+    }
+    assert text == json.dumps(json.loads(text), sort_keys=True, separators=(",", ":"))
+
+    failure_result = GenerateOneBetResult(
+        status=GenerateOneBetStatus.REJECTED,
+        numbers=None,
+        special_number=None,
+        reason_code=GenerateOneBetReason.REJECTED_BY_STRATEGY,
+    )
+    failure_payload = json.loads(render_result_json(failure_result, strategy_id="fixture", seed=0))
+    assert failure_payload["numbers"] is None
+    assert failure_payload["reason_code"] == "REJECTED_BY_STRATEGY"
+
+
+def test_build_production_generate_one_bet_registers_exactly_the_two_approved_adapters() -> None:
+    use_case = build_production_generate_one_bet()
+    for strategy_id, expected_numbers_len in (
+        (BigLottoSocialWisdomAntiPopularityAdapter.strategy_id, 6),
+        (BigLottoZoneSplit3BetBet1Adapter.strategy_id, 6),
+    ):
+        result = use_case.execute(
+            GenerateOneBetInput(
+                strategy_id=strategy_id,
+                lottery_type=LotteryType.BIG_LOTTO,
+                history=_history(),
+            )
+        )
+        assert result.status is GenerateOneBetStatus.OK
+        assert result.numbers is not None
+        assert len(result.numbers) == expected_numbers_len
+
+    unregistered = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id="some_other_strategy",
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+        )
+    )
+    assert unregistered.status is GenerateOneBetStatus.STRATEGY_UNAVAILABLE
+    assert unregistered.reason_code is GenerateOneBetReason.UNKNOWN_STRATEGY
+
+
+def test_run_cli_generate_bet_unknown_strategy_is_fail_closed() -> None:
+    output, ok = run_cli_generate_bet(
+        strategy_id="does-not-exist", seed=1, history_json=_history_json()
+    )
+    assert ok is False
+    payload = json.loads(output)
+    assert payload["status"] == "STRATEGY_UNAVAILABLE"
+    assert payload["reason_code"] == "UNKNOWN_STRATEGY"
+    assert payload["numbers"] is None
+
+
+def test_run_cli_generate_bet_propagates_history_parse_errors() -> None:
+    with pytest.raises(HistoryParseError):
+        run_cli_generate_bet(
+            strategy_id=BigLottoZoneSplit3BetBet1Adapter.strategy_id,
+            seed=1,
+            history_json="not json",
+        )
+
+
+def test_run_cli_generate_bet_is_deterministic_and_preserves_global_random_state() -> None:
+    random.seed(20260719)
+    state_before = random.getstate()
+
+    first, first_ok = run_cli_generate_bet(
+        strategy_id=BigLottoZoneSplit3BetBet1Adapter.strategy_id,
+        seed=99,
+        history_json=_history_json(),
+    )
+    state_between = random.getstate()
+    second, second_ok = run_cli_generate_bet(
+        strategy_id=BigLottoZoneSplit3BetBet1Adapter.strategy_id,
+        seed=99,
+        history_json=_history_json(),
+    )
+    state_after = random.getstate()
+
+    assert first == second
+    assert first_ok is True
+    assert second_ok is True
+    assert state_before == state_between == state_after

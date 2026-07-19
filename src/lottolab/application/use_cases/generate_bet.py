@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
@@ -17,7 +18,7 @@ from lottolab.strategies.adapters.base import (
     RejectPrediction,
     UnsupportedLotteryType,
 )
-from lottolab.strategies.catalog import StrategyCatalog, UnknownStrategyError
+from lottolab.strategies.catalog import StrategyCatalog, UnknownStrategyError, production_catalog
 
 
 class GenerateOneBetStatus(StrEnum):
@@ -175,6 +176,110 @@ class GenerateOneBet:
         )
 
 
+class HistoryParseError(ValueError):
+    """CLI-supplied history JSON does not match the canonical row shape."""
+
+
+def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
+    """Parse a JSON array of ``{draw, date, numbers}`` rows into causal history.
+
+    Only shape is checked here; rule validity (range, count, uniqueness) is
+    the adapter's job via :func:`lottolab.strategies.adapters.base.validated_history`.
+    """
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise HistoryParseError(f"history is not valid JSON: {exc}") from exc
+    if not isinstance(parsed, list):
+        raise HistoryParseError("history JSON must be a list of draw rows")
+
+    rows: list[CausalDrawRow] = []
+    for index, item in enumerate(cast("list[object]", parsed)):
+        if not isinstance(item, dict):
+            raise HistoryParseError(f"history row {index} must be an object")
+        record = cast("dict[str, object]", item)
+        draw = record.get("draw")
+        date = record.get("date")
+        numbers = record.get("numbers")
+        if not isinstance(draw, str) or not draw:
+            raise HistoryParseError(f"history row {index}: draw must be a non-empty string")
+        if not isinstance(date, str) or not date:
+            raise HistoryParseError(f"history row {index}: date must be a non-empty string")
+        if not isinstance(numbers, list) or not all(
+            type(number) is int for number in cast("list[object]", numbers)
+        ):
+            raise HistoryParseError(f"history row {index}: numbers must be a list of integers")
+        rows.append(
+            CausalDrawRow(draw=draw, date=date, numbers=tuple(cast("list[int]", numbers)))
+        )
+    return tuple(rows)
+
+
+def render_result_json(result: GenerateOneBetResult, *, strategy_id: str, seed: int) -> str:
+    """Render a canonical, machine-readable single-bet result."""
+
+    payload: dict[str, object] = {
+        "strategy_id": strategy_id,
+        "lottery_type": LotteryType.BIG_LOTTO.value,
+        "seed": seed,
+        "status": result.status.value,
+        "numbers": list(result.numbers) if result.numbers is not None else None,
+        "reason_code": result.reason_code.value if result.reason_code is not None else None,
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _instantiated_adapter(strategy_id: str, adapter_class: object) -> BetAdapter:
+    if not (isinstance(adapter_class, type) and issubclass(adapter_class, BetAdapter)):
+        raise AdapterIdentityMismatchError(
+            f"{strategy_id}: adapter_path does not resolve to a BetAdapter subclass"
+        )
+    return adapter_class()
+
+
+def build_production_generate_one_bet() -> GenerateOneBet:
+    """Compose the production catalog with its executable adapters.
+
+    Imports :class:`ExecutableRegistry` lazily so importing this module never
+    loads or mutates it — see ``test_import_does_not_load_or_mutate_executable_registry``.
+    """
+
+    from lottolab.strategies.executable_registry import ExecutableRegistry
+
+    catalog = production_catalog()
+    registry = ExecutableRegistry(catalog)
+    adapters: dict[str, BetAdapter] = {
+        strategy_id: _instantiated_adapter(strategy_id, registry.load_adapter(strategy_id))
+        for strategy_id in registry.executable_ids()
+    }
+    return GenerateOneBet(catalog, adapters)
+
+
+def run_cli_generate_bet(*, strategy_id: str, seed: int, history_json: str) -> tuple[str, bool]:
+    """Parse, execute, and render one CLI bet request.
+
+    Returns ``(json_text, ok)``; ``ok`` is false for every non-``OK`` status
+    so the caller can select a fail-closed process exit code. May raise
+    :class:`HistoryParseError` for malformed input, by design left to the
+    caller so it can be reported the same way as other CLI input errors.
+    """
+
+    history = parse_history_json(history_json)
+    use_case = build_production_generate_one_bet()
+    result = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=history,
+        )
+    )
+    return (
+        render_result_json(result, strategy_id=strategy_id, seed=seed),
+        result.status is GenerateOneBetStatus.OK,
+    )
+
+
 __all__ = [
     "AdapterIdentityMismatchError",
     "GenerateOneBet",
@@ -182,4 +287,9 @@ __all__ = [
     "GenerateOneBetReason",
     "GenerateOneBetResult",
     "GenerateOneBetStatus",
+    "HistoryParseError",
+    "build_production_generate_one_bet",
+    "parse_history_json",
+    "render_result_json",
+    "run_cli_generate_bet",
 ]

@@ -260,10 +260,9 @@ def test_default_strategy_endpoint_is_db_free(monkeypatch: MonkeyPatch) -> None:
         record["strategy_id"] for record in records if record["strategy_id"] in target_ids
     ] == target_ids
     assert all(
-        records_by_id[strategy_id]["lifecycle_status"] == "OBSERVATION"
-        for strategy_id in target_ids
+        records_by_id[strategy_id]["lifecycle_status"] == "ONLINE" for strategy_id in target_ids
     )
-    assert all(records_by_id[strategy_id]["executable"] is False for strategy_id in target_ids)
+    assert all(records_by_id[strategy_id]["executable"] is True for strategy_id in target_ids)
 
 
 def test_openapi_exposes_exact_local_runtime_operation_set() -> None:

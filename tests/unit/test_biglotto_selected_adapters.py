@@ -19,6 +19,7 @@ from typing import cast
 
 import pytest
 
+import lottolab.strategies.adapters.biglotto_selected as biglotto_selected_module
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies import adapters as public_adapters
 from lottolab.strategies.adapters import (
@@ -262,6 +263,117 @@ def test_social_equal_score_boundary_uses_ascending_number_tie_break() -> None:
     assert 41 not in result[0]
 
 
+def test_social_secondary_number_tie_break_is_load_bearing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The boundary fixture above ties on score, but `range(1, 50)` already
+    enumerates candidates ascending and Python's sort is stable, so a mutant
+    that drops the explicit ``number`` tie-break can still pass it by
+    accident. Reverse the candidate enumeration for the ranking call only
+    (not the score-table call inside ``_unpopular_scores``) so the correct
+    code must lean on the explicit tie-break to still get the right answer.
+    """
+
+    call_count = {"n": 0}
+    real_range = range
+
+    def reordering_range(*args: int) -> object:
+        call_count["n"] += 1
+        sequence = real_range(*args)
+        if call_count["n"] == 1:
+            # First call: _unpopular_scores() building its score table. This
+            # must stay ascending or the number<->score correspondence breaks.
+            return sequence
+        # Second call: the candidate enumeration inside _social_wisdom_prediction's
+        # sorted(...). Reversing it defeats "stable sort of already-sorted input".
+        return tuple(reversed(sequence))
+
+    monkeypatch.setattr(biglotto_selected_module, "range", reordering_range, raising=False)
+
+    boundary_candidates = (32, 33, 34, 35, 37, 39, 41)
+    history = tuple(
+        _row(
+            draw=f"equal-{excluded}",
+            date=f"equal-{excluded}",
+            numbers=tuple(number for number in boundary_candidates if number != excluded),
+        )
+        for excluded in boundary_candidates
+    )
+
+    result = _social_wisdom_prediction(history)
+
+    assert call_count["n"] == 2
+    assert result == (32, 33, 34, 35, 37, 39)
+    assert 41 not in result
+
+    # Mutation-sensitivity proof: recompute the ranking with the same reversed
+    # candidate order but the mutant key (-score,) with no secondary tie-break.
+    # A stable sort over the reversed order now preserves that reversed order
+    # among the tied candidates, selecting the *largest* six instead.
+    unpopular = _unpopular_scores()
+    historical = _historical_frequency(history)
+    combined = tuple(
+        _UNPOPULAR_BLEND * u + _HISTORICAL_BLEND * h
+        for u, h in zip(unpopular, historical, strict=True)
+    )
+    mutant_candidates = tuple(reversed(real_range(1, 50)))
+    mutant_ranked = sorted(mutant_candidates, key=lambda number: -combined[number - 1])
+    mutant_result = tuple(sorted(mutant_ranked[:6]))
+    assert mutant_result != result
+    assert 41 in mutant_result
+    assert 32 not in mutant_result
+
+
+BLEND_BOUNDARY_HISTORY = (
+    _row("blend-1", "blend-1", (2, 3, 4, 5, 32, 42)),
+    _row("blend-2", "blend-2", (11, 12, 13, 14, 15, 43)),
+    _row("blend-3", "blend-3", (17, 19, 21, 22, 23, 44)),
+    _row("blend-4", "blend-4", (24, 25, 27, 29, 31, 45)),
+    _row("blend-5", "blend-5", (6, 7, 8, 9, 16, 47)),
+)
+
+
+def test_social_blend_use_site_operand_swap_flips_sixth_selection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """42-45 and 47 are the only zero-history members of the top unpopularity
+    tier once they're the only ones with any historical mention, so they're
+    safely top-5 under either blend. 49 (also top-tier, zero history) and 32
+    (a lower tier boosted by one historical mention) are engineered to swap
+    which of them takes the sixth slot depending on which blend weight lands
+    on which term."""
+
+    assert _UNPOPULAR_BLEND == 0.7
+    assert _HISTORICAL_BLEND == 0.3
+
+    correct_result = _social_wisdom_prediction(BLEND_BOUNDARY_HISTORY)
+    assert correct_result == (42, 43, 44, 45, 47, 49)
+    assert 32 not in correct_result
+
+    unpopular = _unpopular_scores()
+    historical = _historical_frequency(BLEND_BOUNDARY_HISTORY)
+    score_49_correct = 0.7 * unpopular[48] + 0.3 * historical[48]
+    score_32_correct = 0.7 * unpopular[31] + 0.3 * historical[31]
+    assert score_49_correct > score_32_correct
+
+    # Simulate the use-site operand swap by monkeypatching the constants to
+    # their swapped *values*: `_UNPOPULAR_BLEND * u + _HISTORICAL_BLEND * h`
+    # with (0.3, 0.7) computes the identical formula as swapping which
+    # constant multiplies which variable while leaving the values at
+    # (0.7, 0.3) — without ever touching production source.
+    monkeypatch.setattr(biglotto_selected_module, "_UNPOPULAR_BLEND", 0.3)
+    monkeypatch.setattr(biglotto_selected_module, "_HISTORICAL_BLEND", 0.7)
+
+    swapped_result = _social_wisdom_prediction(BLEND_BOUNDARY_HISTORY)
+    assert swapped_result != correct_result
+    assert swapped_result == (32, 42, 43, 44, 45, 47)
+    assert 49 not in swapped_result
+
+    score_49_swapped = 0.3 * unpopular[48] + 0.7 * historical[48]
+    score_32_swapped = 0.3 * unpopular[31] + 0.7 * historical[31]
+    assert score_32_swapped > score_49_swapped
+
+
 def test_social_near_tie_freezes_float_scores_and_target_output() -> None:
     common = frozenset({42, 43, 44, 45, 47})
     low_frequency_candidates = tuple(
@@ -364,6 +476,56 @@ def test_social_uses_only_latest_50_of_54_causal_rows() -> None:
     latest_only = adapter.get_one_bet(latest_50, LotteryType.BIG_LOTTO)
     assert first == second == malformed_excluded == latest_only
     assert latest_only == ((32, 33, 34, 35, 41, 49), None)
+
+
+def test_social_51_entries_excludes_oldest_boundary_row_via_get_one_bet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exactly 51 rows: the oldest one is deliberately malformed. Correct
+    ``history[-50:]`` windowing drops it before row validation ever sees it;
+    an off-by-one (or missing) window pulls it into validation and fails
+    closed. Goes through ``get_one_bet`` itself, not just the frequency
+    helper, since the window is applied by the adapter before validation."""
+
+    malformed_oldest_entry = cast(CausalDrawRow, {"excluded": "oldest-boundary"})
+    valid_50 = tuple(
+        _row(
+            draw=f"latest-{index}",
+            date=f"latest-{index}",
+            numbers=(32, 33, 34, 35, 41, 49),
+        )
+        for index in range(50)
+    )
+    history = (malformed_oldest_entry, *valid_50)
+    assert len(history) == 51
+    assert len(valid_50) == 50
+
+    adapter = BigLottoSocialWisdomAntiPopularityAdapter()
+    result = adapter.get_one_bet(history, LotteryType.BIG_LOTTO)
+    assert result == ((32, 33, 34, 35, 41, 49), None)
+
+    # Mutation-sensitivity proof: history[-50:] mutated to history[-51:], or
+    # to no windowing at all, pulls the malformed oldest row into validation.
+    def off_by_one_window(
+        self: BigLottoSocialWisdomAntiPopularityAdapter,
+        raw_history: tuple[object, ...],
+    ) -> tuple[object, ...]:
+        return raw_history[-51:]
+
+    def no_window(
+        self: BigLottoSocialWisdomAntiPopularityAdapter,
+        raw_history: tuple[object, ...],
+    ) -> tuple[object, ...]:
+        return raw_history
+
+    for mutant_window in (off_by_one_window, no_window):
+        monkeypatch.setattr(
+            BigLottoSocialWisdomAntiPopularityAdapter,
+            "_history_window",
+            mutant_window,
+        )
+        with pytest.raises(InvalidOutput):
+            adapter.get_one_bet(history, LotteryType.BIG_LOTTO)
 
 
 @pytest.mark.parametrize("adapter_class", ADAPTER_CLASSES)

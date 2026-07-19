@@ -29,6 +29,17 @@ FORBIDDEN: dict[str, tuple[str, ...]] = {
 }
 
 
+def _relative_base_package(package: str, level: int) -> str | None:
+    """Resolve the dot-count of a relative import to its ancestor package."""
+
+    package_parts = package.split(".") if package else []
+    parent_count = level - 1
+    if parent_count > len(package_parts):
+        return None
+    resolved_parts = package_parts[: len(package_parts) - parent_count]
+    return ".".join(resolved_parts) or None
+
+
 def _absolute_from_import(package: str, node: ast.ImportFrom) -> str | None:
     if node.level == 0:
         return node.module
@@ -49,9 +60,21 @@ def _imported_modules_from_source(source: str, *, package: str) -> set[str]:
         if isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names)
         elif isinstance(node, ast.ImportFrom):
-            absolute_module = _absolute_from_import(package, node)
-            if absolute_module:
-                modules.add(absolute_module)
+            if node.level > 0 and node.module is None:
+                # Alias-form relative import (``from ... import infrastructure``):
+                # there is no module component to resolve, so each imported name
+                # is itself a module hanging directly off the resolved package.
+                base = _relative_base_package(package, node.level)
+                for alias in node.names:
+                    if alias.name == "*":
+                        if base:
+                            modules.add(base)
+                        continue
+                    modules.add(f"{base}.{alias.name}" if base else alias.name)
+            else:
+                absolute_module = _absolute_from_import(package, node)
+                if absolute_module:
+                    modules.add(absolute_module)
     return modules
 
 
@@ -72,6 +95,47 @@ def test_import_walker_catches_absolute_target_of_relative_import() -> None:
         or module.startswith("lottolab.infrastructure.")
         for module in imports
     )
+
+
+def test_import_walker_resolves_alias_form_relative_import_with_no_module() -> None:
+    """``from ... import infrastructure`` has ``node.module is None``: the alias
+    itself (not just the dot-resolved base package) must appear in the result."""
+
+    imports = _imported_modules_from_source(
+        "from ... import infrastructure\n",
+        package="lottolab.strategies.adapters",
+    )
+    assert imports == {"lottolab.infrastructure"}
+    assert any(
+        module == "lottolab.infrastructure"
+        or module.startswith("lottolab.infrastructure.")
+        for module in imports
+    )
+
+
+def test_import_walker_resolves_single_dot_alias_import_with_no_module() -> None:
+    imports = _imported_modules_from_source(
+        "from . import helper\n",
+        package="lottolab.evidence",
+    )
+    assert imports == {"lottolab.evidence.helper"}
+
+
+def test_import_walker_resolves_multiple_aliases_in_alias_form_import() -> None:
+    imports = _imported_modules_from_source(
+        "from ... import infrastructure, application\n",
+        package="lottolab.strategies.adapters",
+    )
+    assert imports == {"lottolab.infrastructure", "lottolab.application"}
+
+
+def test_import_walker_star_alias_import_retains_base_package_only() -> None:
+    imports = _imported_modules_from_source(
+        "from . import *\n",
+        package="lottolab.evidence",
+    )
+    assert imports == {"lottolab.evidence"}
+    assert not any(module.endswith(".*") for module in imports)
 
 
 def test_layer_dependencies() -> None:

@@ -31,7 +31,11 @@ from lottolab.strategies.adapters import (
     UnsupportedLotteryType,
 )
 from lottolab.strategies.adapters.biglotto_selected import (
+    _HISTORICAL_BLEND,
+    _UNPOPULAR_BLEND,
+    _historical_frequency,
     _social_wisdom_prediction,
+    _unpopular_scores,
     _zone_seed_digest,
     _zone_seed_preimage,
     _zone_split_bets,
@@ -79,6 +83,60 @@ def _row(
     numbers: tuple[int, ...] = (1, 2, 3, 4, 5, 6),
 ) -> CausalDrawRow:
     return CausalDrawRow(draw=draw, date=date, numbers=numbers)
+
+
+SOCIAL_NEAR_TIE_HISTORY = (
+    CausalDrawRow("near-tie-01", "near-tie-01", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-02", "near-tie-02", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-03", "near-tie-03", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-04", "near-tie-04", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-05", "near-tie-05", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-06", "near-tie-06", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-07", "near-tie-07", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-08", "near-tie-08", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-09", "near-tie-09", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-10", "near-tie-10", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-11", "near-tie-11", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-12", "near-tie-12", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-13", "near-tie-13", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-14", "near-tie-14", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-15", "near-tie-15", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-16", "near-tie-16", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-17", "near-tie-17", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-18", "near-tie-18", (32, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-19", "near-tie-19", (1, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-20", "near-tie-20", (2, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-21", "near-tie-21", (3, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-22", "near-tie-22", (4, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-23", "near-tie-23", (5, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-24", "near-tie-24", (6, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-25", "near-tie-25", (7, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-26", "near-tie-26", (8, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-27", "near-tie-27", (9, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-28", "near-tie-28", (10, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-29", "near-tie-29", (11, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-30", "near-tie-30", (12, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-31", "near-tie-31", (13, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-32", "near-tie-32", (14, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-33", "near-tie-33", (15, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-34", "near-tie-34", (16, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-35", "near-tie-35", (17, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-36", "near-tie-36", (18, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-37", "near-tie-37", (19, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-38", "near-tie-38", (20, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-39", "near-tie-39", (21, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-40", "near-tie-40", (22, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-41", "near-tie-41", (23, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-42", "near-tie-42", (24, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-43", "near-tie-43", (25, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-44", "near-tie-44", (26, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-45", "near-tie-45", (27, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-46", "near-tie-46", (28, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-47", "near-tie-47", (29, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-48", "near-tie-48", (30, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-49", "near-tie-49", (31, 42, 43, 44, 45, 47)),
+    CausalDrawRow("near-tie-50", "near-tie-50", (33, 42, 43, 44, 45, 47)),
+)
 
 
 class _TwoHistoryAdapter(BetAdapter):
@@ -180,6 +238,97 @@ def test_social_repeated_high_golden() -> None:
 
 def test_social_empty_history_scorer_golden() -> None:
     assert _social_wisdom_prediction(()) == (42, 43, 44, 45, 47, 49)
+
+
+def test_social_equal_score_boundary_uses_ascending_number_tie_break() -> None:
+    boundary_candidates = (32, 33, 34, 35, 37, 39, 41)
+    history = tuple(
+        _row(
+            draw=f"equal-{excluded}",
+            date=f"equal-{excluded}",
+            numbers=tuple(
+                number for number in boundary_candidates if number != excluded
+            ),
+        )
+        for excluded in boundary_candidates
+    )
+
+    result = BigLottoSocialWisdomAntiPopularityAdapter().get_one_bet(
+        history,
+        LotteryType.BIG_LOTTO,
+    )
+
+    assert result == ((32, 33, 34, 35, 37, 39), None)
+    assert 41 not in result[0]
+
+
+def test_social_near_tie_freezes_float_scores_and_target_output() -> None:
+    common = frozenset({42, 43, 44, 45, 47})
+    low_frequency_candidates = tuple(
+        next(iter(set(row.numbers) - common)) for row in SOCIAL_NEAR_TIE_HISTORY[18:]
+    )
+    assert len(SOCIAL_NEAR_TIE_HISTORY) == 50
+    assert all(common.issubset(row.numbers) for row in SOCIAL_NEAR_TIE_HISTORY)
+    assert sum(32 in row.numbers for row in SOCIAL_NEAR_TIE_HISTORY) == 18
+    assert low_frequency_candidates == (*range(1, 32), 33)
+    assert _UNPOPULAR_BLEND == 0.7
+    assert _HISTORICAL_BLEND == 0.3
+
+    unpopular = _unpopular_scores()
+    historical = _historical_frequency(tuple(reversed(SOCIAL_NEAR_TIE_HISTORY)))
+    score_32 = _UNPOPULAR_BLEND * unpopular[31] + _HISTORICAL_BLEND * historical[31]
+    score_49 = _UNPOPULAR_BLEND * unpopular[48] + _HISTORICAL_BLEND * historical[48]
+    assert score_32 == pytest.approx(0.04032617478205401, rel=0.0, abs=1e-15)
+    assert score_49 == pytest.approx(0.040187114607697215, rel=0.0, abs=1e-15)
+    assert score_32 - score_49 == pytest.approx(
+        0.00013906017435679624,
+        rel=0.0,
+        abs=1e-15,
+    )
+
+    result = BigLottoSocialWisdomAntiPopularityAdapter().get_one_bet(
+        SOCIAL_NEAR_TIE_HISTORY,
+        LotteryType.BIG_LOTTO,
+    )
+    assert result == ((32, 42, 43, 44, 45, 47), None)
+    assert 49 not in result[0]
+
+
+def test_social_oldest_first_input_selects_only_the_latest_50_rows() -> None:
+    oldest_high_impact = tuple(
+        _row(
+            draw=f"oldest-high-{index}",
+            date=f"oldest-high-{index}",
+            numbers=(42, 43, 44, 45, 47, 49),
+        )
+        for index in range(50)
+    )
+    latest_low = tuple(
+        _row(
+            draw=f"latest-low-{index}",
+            date=f"latest-low-{index}",
+            numbers=(32, 33, 34, 35, 37, 39),
+        )
+        for index in range(50)
+    )
+    adapter = BigLottoSocialWisdomAntiPopularityAdapter()
+
+    first_50_result = adapter.get_one_bet(oldest_high_impact, LotteryType.BIG_LOTTO)
+    latest_50_result = adapter.get_one_bet(latest_low, LotteryType.BIG_LOTTO)
+    high_rows_outside_window = adapter.get_one_bet(
+        oldest_high_impact + latest_low,
+        LotteryType.BIG_LOTTO,
+    )
+    high_rows_moved_into_window = adapter.get_one_bet(
+        latest_low + oldest_high_impact,
+        LotteryType.BIG_LOTTO,
+    )
+
+    assert first_50_result == ((42, 43, 44, 45, 47, 49), None)
+    assert latest_50_result == ((32, 33, 34, 35, 37, 39), None)
+    assert first_50_result != latest_50_result
+    assert high_rows_outside_window == latest_50_result
+    assert high_rows_moved_into_window == first_50_result
 
 
 def test_social_uses_only_latest_50_of_54_causal_rows() -> None:

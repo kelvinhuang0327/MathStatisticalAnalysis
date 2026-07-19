@@ -14,6 +14,7 @@ from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
     GenerateOneBetInput,
     GenerateOneBetReason,
+    GenerateOneBetResult,
     GenerateOneBetStatus,
 )
 from lottolab.domain.draws import LotteryType
@@ -26,6 +27,7 @@ from lottolab.strategies.adapters import (
     InsufficientHistory,
     InvalidOutput,
     RejectPrediction,
+    UnsupportedLotteryType,
 )
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
@@ -94,6 +96,10 @@ class _OutcomeAdapter(BetAdapter):
             raise InvalidOutput("raw invalid detail must not escape")
         if self.outcome == "replay-error":
             raise RuntimeError("raw runtime detail must not escape")
+        if self.outcome == "unsupported":
+            raise UnsupportedLotteryType("raw unsupported detail must not escape")
+        if self.outcome == "interrupt":
+            raise KeyboardInterrupt("control-flow exceptions must propagate")
         return (49, 41, 35, 34, 33, 32)
 
 
@@ -186,6 +192,30 @@ def test_unsupported_lottery_type_is_unavailable() -> None:
     assert result.reason_code is GenerateOneBetReason.UNSUPPORTED_LOTTERY_TYPE
 
 
+def test_adapter_raised_unsupported_lottery_type_is_unavailable() -> None:
+    use_case = GenerateOneBet(
+        StrategyCatalog((_descriptor(),)),
+        {STRATEGY_ID: _OutcomeAdapter("unsupported")},
+    )
+
+    result = use_case.execute(_request())
+
+    assert result.status is GenerateOneBetStatus.STRATEGY_UNAVAILABLE
+    assert result.reason_code is GenerateOneBetReason.UNSUPPORTED_LOTTERY_TYPE
+    assert result.numbers is None
+    assert result.special_number is None
+
+
+def test_non_exception_base_exception_propagates() -> None:
+    use_case = GenerateOneBet(
+        StrategyCatalog((_descriptor(),)),
+        {STRATEGY_ID: _OutcomeAdapter("interrupt")},
+    )
+
+    with pytest.raises(KeyboardInterrupt, match="control-flow exceptions must propagate"):
+        use_case.execute(_request())
+
+
 @pytest.mark.parametrize(
     "adapter",
     [_WrongIdAdapter(), _WrongNameAdapter(), _WrongVersionAdapter()],
@@ -211,6 +241,29 @@ def test_injected_dependencies_are_isolated_and_not_mutated() -> None:
     assert adapter.calls == 1
     assert catalog.list() == catalog_before
     assert adapters == adapters_before
+
+
+def test_adapter_mapping_is_a_construction_time_snapshot() -> None:
+    catalog = StrategyCatalog((_descriptor(),))
+    original_adapter = _OutcomeAdapter()
+    adapters = {STRATEGY_ID: original_adapter}
+    adapters_before_construction = dict(adapters)
+
+    use_case = GenerateOneBet(catalog, adapters)
+
+    assert adapters == adapters_before_construction
+    adapters.clear()
+    replacement_adapter = _OutcomeAdapter()
+    adapters["replacement"] = replacement_adapter
+    adapters_after_caller_mutation = dict(adapters)
+
+    result = use_case.execute(_request())
+
+    assert result.status is GenerateOneBetStatus.OK
+    assert result.numbers == (32, 33, 34, 35, 41, 49)
+    assert original_adapter.calls == 1
+    assert replacement_adapter.calls == 0
+    assert adapters == adapters_after_caller_mutation
 
 
 def test_production_descriptors_remain_observation_and_non_executable() -> None:
@@ -248,6 +301,63 @@ def test_status_enum_is_closed_to_authorized_outcomes() -> None:
         "INVALID_OUTPUT",
         "REPLAY_ERROR",
     }
+
+
+@pytest.mark.parametrize(
+    ("status", "numbers", "reason"),
+    [
+        (GenerateOneBetStatus.OK, None, None),
+        (
+            GenerateOneBetStatus.OK,
+            (1, 2, 3, 4, 5, 6),
+            GenerateOneBetReason.INVALID_OUTPUT,
+        ),
+        (
+            GenerateOneBetStatus.REJECTED,
+            (1, 2, 3, 4, 5, 6),
+            GenerateOneBetReason.REJECTED_BY_STRATEGY,
+        ),
+        (GenerateOneBetStatus.REJECTED, None, None),
+    ],
+    ids=[
+        "ok-without-numbers",
+        "ok-with-reason",
+        "failure-with-numbers",
+        "failure-without-reason",
+    ],
+)
+def test_result_invariants_reject_invalid_direct_construction(
+    status: GenerateOneBetStatus,
+    numbers: tuple[int, ...] | None,
+    reason: GenerateOneBetReason | None,
+) -> None:
+    with pytest.raises(ValueError):
+        GenerateOneBetResult(
+            status=status,
+            numbers=numbers,
+            special_number=None,
+            reason_code=reason,
+        )
+
+
+def test_result_invariants_allow_valid_direct_construction() -> None:
+    valid_ok = GenerateOneBetResult(
+        status=GenerateOneBetStatus.OK,
+        numbers=(1, 2, 3, 4, 5, 6),
+        special_number=None,
+        reason_code=None,
+    )
+    valid_failure = GenerateOneBetResult(
+        status=GenerateOneBetStatus.REJECTED,
+        numbers=None,
+        special_number=None,
+        reason_code=GenerateOneBetReason.REJECTED_BY_STRATEGY,
+    )
+
+    assert valid_ok.numbers == (1, 2, 3, 4, 5, 6)
+    assert valid_ok.reason_code is None
+    assert valid_failure.numbers is None
+    assert valid_failure.reason_code is GenerateOneBetReason.REJECTED_BY_STRATEGY
 
 
 def test_input_and_result_models_are_frozen() -> None:

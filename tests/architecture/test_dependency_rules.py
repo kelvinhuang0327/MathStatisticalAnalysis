@@ -29,15 +29,49 @@ FORBIDDEN: dict[str, tuple[str, ...]] = {
 }
 
 
-def imported_modules(path: Path) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+def _absolute_from_import(package: str, node: ast.ImportFrom) -> str | None:
+    if node.level == 0:
+        return node.module
+    package_parts = package.split(".") if package else []
+    parent_count = node.level - 1
+    if parent_count > len(package_parts):
+        return node.module
+    resolved_parts = package_parts[: len(package_parts) - parent_count]
+    if node.module:
+        resolved_parts.extend(node.module.split("."))
+    return ".".join(resolved_parts) or None
+
+
+def _imported_modules_from_source(source: str, *, package: str) -> set[str]:
+    tree = ast.parse(source)
     modules: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            modules.add(node.module)
+        elif isinstance(node, ast.ImportFrom):
+            absolute_module = _absolute_from_import(package, node)
+            if absolute_module:
+                modules.add(absolute_module)
     return modules
+
+
+def imported_modules(path: Path) -> set[str]:
+    relative_parent = path.parent.relative_to(REPO_ROOT / "src")
+    package = ".".join(relative_parent.parts)
+    return _imported_modules_from_source(path.read_text(encoding="utf-8"), package=package)
+
+
+def test_import_walker_catches_absolute_target_of_relative_import() -> None:
+    imports = _imported_modules_from_source(
+        "from ...infrastructure import local_runtime\n",
+        package="lottolab.strategies.adapters",
+    )
+    assert imports == {"lottolab.infrastructure"}
+    assert any(
+        module == "lottolab.infrastructure"
+        or module.startswith("lottolab.infrastructure.")
+        for module in imports
+    )
 
 
 def test_layer_dependencies() -> None:
@@ -147,6 +181,36 @@ def test_strategy_adapters_are_target_native_db_free_and_offline() -> None:
         )
     )
     assert not violations, "adapter dependency violations:\n" + "\n".join(violations)
+    assert not _unapproved_third_party_roots(imports), (
+        "adapter third-party dependency violations:\n"
+        + "\n".join(sorted(_unapproved_third_party_roots(imports)))
+    )
+
+
+def _unapproved_third_party_roots(modules: set[str]) -> set[str]:
+    project_roots = {"lottolab"}
+    stdlib_roots = set(sys.stdlib_module_names) | {"__future__"}
+    return {
+        root
+        for module in modules
+        if (root := module.partition(".")[0])
+        and root not in project_roots
+        and root not in stdlib_roots
+    }
+
+
+def test_external_dependency_guard_rejects_unapproved_third_party_roots() -> None:
+    unapproved = {
+        "numpy",
+        "pandas",
+        "scipy",
+        "requests",
+        "httpx",
+        "sqlalchemy",
+        "aiohttp",
+    }
+    imports = unapproved | {"json", "pathlib", "lottolab.domain.draws"}
+    assert _unapproved_third_party_roots(imports) == unapproved
 
 
 def test_local_runtime_path_has_no_database_or_execution_dependency() -> None:

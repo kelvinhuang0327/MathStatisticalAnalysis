@@ -22,6 +22,7 @@ OPENAPI_PATH = "/openapi.json"
 EXPECTED_STRATEGY_IDS = (
     "biglotto_social_wisdom_anti_popularity",
     "biglotto_zone_split_3bet_bet1",
+    "biglotto_deviation_2bet",
 )
 EXECUTABLE_STRATEGY_IDS = frozenset(EXPECTED_STRATEGY_IDS)
 STATE_VERSION = 2

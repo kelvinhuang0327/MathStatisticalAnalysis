@@ -28,6 +28,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
 from lottolab.strategies.adapters import (
     BetAdapter,
+    BigLottoDeviation2BetAdapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     CausalDrawRow,
@@ -64,6 +65,13 @@ def _descriptor(
 
 def _history() -> tuple[CausalDrawRow, ...]:
     return (CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),)
+
+
+def _long_history(rows: int = 100) -> tuple[CausalDrawRow, ...]:
+    """A history long enough to clear biglotto_deviation_2bet's min_history=100."""
+    return tuple(
+        CausalDrawRow(str(index), str(index), (1, 2, 3, 4, 5, 6)) for index in range(rows)
+    )
 
 
 def _request(
@@ -280,6 +288,7 @@ def test_production_descriptors_are_promoted_online_and_executable() -> None:
             BigLottoSocialWisdomAntiPopularityAdapter()
         ),
         BigLottoZoneSplit3BetBet1Adapter.strategy_id: BigLottoZoneSplit3BetBet1Adapter(),
+        BigLottoDeviation2BetAdapter.strategy_id: BigLottoDeviation2BetAdapter(),
     }
     use_case = GenerateOneBet(catalog, adapters)
     for strategy_id in adapters:
@@ -464,17 +473,18 @@ def test_render_result_json_is_canonical_and_sorted() -> None:
     assert failure_payload["reason_code"] == "REJECTED_BY_STRATEGY"
 
 
-def test_build_production_generate_one_bet_registers_exactly_the_two_approved_adapters() -> None:
+def test_build_production_generate_one_bet_registers_exactly_the_three_approved_adapters() -> None:
     use_case = build_production_generate_one_bet()
-    for strategy_id, expected_numbers_len in (
-        (BigLottoSocialWisdomAntiPopularityAdapter.strategy_id, 6),
-        (BigLottoZoneSplit3BetBet1Adapter.strategy_id, 6),
+    for strategy_id, expected_numbers_len, history in (
+        (BigLottoSocialWisdomAntiPopularityAdapter.strategy_id, 6, _history()),
+        (BigLottoZoneSplit3BetBet1Adapter.strategy_id, 6, _history()),
+        (BigLottoDeviation2BetAdapter.strategy_id, 6, _long_history()),
     ):
         result = use_case.execute(
             GenerateOneBetInput(
                 strategy_id=strategy_id,
                 lottery_type=LotteryType.BIG_LOTTO,
-                history=_history(),
+                history=history,
             )
         )
         assert result.status is GenerateOneBetStatus.OK
@@ -501,6 +511,22 @@ def test_run_cli_generate_bet_unknown_strategy_is_fail_closed() -> None:
     assert payload["status"] == "STRATEGY_UNAVAILABLE"
     assert payload["reason_code"] == "UNKNOWN_STRATEGY"
     assert payload["numbers"] is None
+
+
+def test_run_cli_generate_bet_executes_the_deviation_strategy() -> None:
+    """End-to-end proof that the existing generate-bet CLI vertical executes
+    the newly migrated biglotto_deviation_2bet strategy id without any CLI
+    syntax change."""
+    output, ok = run_cli_generate_bet(
+        strategy_id=BigLottoDeviation2BetAdapter.strategy_id,
+        seed=1,
+        history_json=_history_json(_long_history()),
+    )
+    assert ok is True
+    payload = json.loads(output)
+    assert payload["strategy_id"] == BigLottoDeviation2BetAdapter.strategy_id
+    assert payload["status"] == "OK"
+    assert payload["numbers"] == [1, 2, 3, 4, 5, 6]
 
 
 def test_run_cli_generate_bet_propagates_history_parse_errors() -> None:

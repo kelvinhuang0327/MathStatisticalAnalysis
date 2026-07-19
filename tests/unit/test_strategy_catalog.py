@@ -148,3 +148,22 @@ def test_production_catalog_invariants() -> None:
             assert descriptor.adapter_path, descriptor.strategy_id
         else:
             assert descriptor.adapter_path is None
+
+
+def test_p603a_catalog_appends_deviation_strategy_as_stable_suffix() -> None:
+    """P603A appends biglotto_deviation_2bet without disturbing the existing
+    two P602B descriptors or their order."""
+    catalog = production_catalog()
+    ids = [descriptor.strategy_id for descriptor in catalog]
+    assert ids == [
+        "biglotto_social_wisdom_anti_popularity",
+        "biglotto_zone_split_3bet_bet1",
+        "biglotto_deviation_2bet",
+    ]
+    online_ids = {
+        descriptor.strategy_id
+        for descriptor in catalog
+        if descriptor.lifecycle_status is LifecycleStatus.ONLINE
+    }
+    assert online_ids == set(ids)
+    assert ExecutableRegistry(catalog).executable_ids() == frozenset(ids)

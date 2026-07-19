@@ -859,6 +859,33 @@ def test_deviation_hot_fallback_uses_nearest_expected_not_ascending_order() -> N
     assert not any(number in hot for number in (1, 2, 3, 4, 5))
 
 
+def test_deviation_cold_fallback_uses_ascending_unused_not_nearest_expected() -> None:
+    """Mirrors the hot-fallback test above but for bet two: only one number
+    clears the cold threshold, so the other five bet-two slots must be
+    filled by ascending unused number, not nearest-to-expected frequency.
+    Numbers 1-10 sit one count below expected (dev=-1, the cold boundary,
+    correctly excluded from ``cold`` itself) — a nearest-frequency fallback
+    would wrongly prefer them, and the dev=0 filler numbers 11-15 even more
+    so, ahead of the correct ascending-unused numbers 1-5."""
+    counts: dict[int, int] = {}
+    for number in range(40, 46):
+        counts[number] = 8  # dev=+2, hot
+    counts[30] = 4  # dev=-2, the only genuine cold candidate
+    for number in range(1, 11):
+        counts[number] = 5  # dev=-1, the cold boundary (excluded, not cold)
+    for number in range(1, 50):
+        counts.setdefault(number, 6)  # dev=0, neutral filler
+
+    assert sum(counts.values()) == 49 * 6
+
+    history = _counts_history(counts, total_rows=49)
+    hot, cold = _deviation_complement_2bet(history, window=49)
+
+    assert hot == (40, 41, 42, 43, 44, 45)
+    assert cold == (1, 2, 3, 4, 5, 30)
+    assert not any(number in cold for number in (11, 12, 13, 14, 15))
+
+
 def test_deviation_minimum_history_gate_is_explicit() -> None:
     history_99 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(99))
     history_100 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(100))
@@ -876,9 +903,45 @@ def test_deviation_wrong_lottery_type_is_rejected() -> None:
         BigLottoDeviation2BetAdapter().get_one_bet(None, LotteryType.POWER_LOTTO)
 
 
-def test_deviation_malformed_row_is_not_coerced() -> None:
-    history = (cast(CausalDrawRow, {"draw": "1"}),)
+def test_deviation_validates_full_history_before_window_slice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """100 rows exactly meet min_history=100. The oldest row is malformed
+    and sits outside the last-50-row window ``_deviation_complement_2bet``
+    slices for its own calculation. This adapter does not override
+    ``_history_window`` (unlike the Social adapter), so base-class
+    validation covers the full supplied history before any windowing —
+    the malformed row is caught even though it never reaches the internal
+    50-row calculation.
+    """
+    malformed_oldest = cast(CausalDrawRow, {"excluded": "oldest-outside-window"})
+    valid_99 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(99))
+    history = (malformed_oldest, *valid_99)
+    assert len(history) == 100
+
     with pytest.raises(InvalidOutput):
+        BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+
+    # Mutation-sensitivity proof: if the adapter validated only its
+    # calculation window — mirroring the Social adapter's real
+    # `_history_window` override — the malformed row (outside that window)
+    # would be sliced away before validation ever saw it. Because the
+    # calculation window (50) is smaller than min_history (100), this
+    # specific mutant cannot silently succeed instead: it necessarily
+    # surfaces as a *different* failure, InsufficientHistory, proving the
+    # malformed row is no longer what the adapter rejects.
+    def window_before_validation(
+        self: BigLottoDeviation2BetAdapter,
+        raw_history: tuple[object, ...],
+    ) -> tuple[object, ...]:
+        return raw_history[-50:]
+
+    monkeypatch.setattr(
+        BigLottoDeviation2BetAdapter,
+        "_history_window",
+        window_before_validation,
+    )
+    with pytest.raises(InsufficientHistory):
         BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
 
 

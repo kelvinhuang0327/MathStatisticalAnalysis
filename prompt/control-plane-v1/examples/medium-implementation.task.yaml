@@ -35,7 +35,7 @@
   "risk": {"level": "MEDIUM", "triggers": [], "overrides": []},
   "authorization": {
     "class": "SINGLE_PROMPT",
-    "state": "MISSING",
+    "state": "PENDING",
     "owner_statement_ref": "PENDING_OWNER_REFERENCE"
   },
   "routing": {

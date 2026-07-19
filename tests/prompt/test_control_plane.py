@@ -22,8 +22,7 @@ L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
 L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
 L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
 L25_FAILURE = (
-    f"{L25}: required authorization must be PRESENT with a safe "
-    "OWNER_MESSAGE_REF before rendering"
+    f"{L25}: required authorization must be PRESENT with a safe OWNER_MESSAGE_REF before rendering"
 )
 ROLE_FILES = (
     "HANDOFF_REPORTER.compiled.md",
@@ -322,6 +321,102 @@ def test_l25_allows_standalone_present_with_safe_metadata(tmp_path: Path) -> Non
 
 
 @pytest.mark.parametrize(
+    ("auth_class", "state", "reference", "render_ready"),
+    [
+        pytest.param("NONE", "NOT_REQUIRED", "NOT_REQUIRED", True, id="none-not-required"),
+        pytest.param(
+            "SINGLE_PROMPT",
+            "MISSING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="single-missing",
+        ),
+        pytest.param(
+            "SINGLE_PROMPT",
+            "PENDING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="single-pending",
+        ),
+        pytest.param(
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:single-1",
+            True,
+            id="single-present",
+        ),
+        pytest.param(
+            "STANDALONE",
+            "MISSING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="standalone-missing",
+        ),
+        pytest.param(
+            "STANDALONE",
+            "PENDING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="standalone-pending",
+        ),
+        pytest.param(
+            "STANDALONE",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:standalone-1",
+            True,
+            id="standalone-present",
+        ),
+    ],
+)
+def test_external_authorization_state_matrix_matches_cli_and_direct_renderer(
+    tmp_path: Path,
+    auth_class: str,
+    state: str,
+    reference: str,
+    render_ready: bool,
+) -> None:
+    if auth_class == "NONE":
+        manifest = load_example("low-readonly.task.yaml")
+    elif auth_class == "STANDALONE":
+        manifest = standalone_manifest()
+    else:
+        manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization.update({"class": auth_class, "state": state, "owner_statement_ref": reference})
+    case_name = f"{auth_class.lower()}-{state.lower()}"
+    manifest_path = tmp_path / f"{case_name}.task.yaml"
+    output_path = tmp_path / f"{case_name}.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    renderer = cast(Callable[[dict[str, Any]], bytes], namespace["render_worker"])
+    control_plane_error = namespace["ControlPlaneError"]
+    before = control_plane_snapshot()
+
+    if not render_ready:
+        assert_render_blocked(manifest_path, tmp_path, output_path.name)
+        with pytest.raises(control_plane_error) as exc_info:
+            renderer(manifest)
+        assert str(exc_info.value) == L25_FAILURE
+        assert control_plane_snapshot() == before
+        return
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    stdout_render = run_tool("render", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+    direct_payload = renderer(manifest)
+    assert stdout_render.stdout.encode("utf-8") == direct_payload
+    assert output_path.read_bytes() == direct_payload
+    assert control_plane_snapshot() == before
+
+
+@pytest.mark.parametrize(
     "opaque_id",
     [pytest.param("a", id="length-1"), pytest.param("a" * 128, id="length-128")],
 )
@@ -467,6 +562,77 @@ def test_l23_rejects_unsafe_authorization_references_without_output(
         tmp_path,
         "external-l23.task.yaml",
         "L23_UNSAFE_OWNER_STATEMENT_REFERENCE",
+    )
+
+
+@pytest.mark.parametrize(
+    ("example", "auth_class", "state", "reference"),
+    [
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PENDING",
+            "OWNER_MESSAGE_REF:requested-1",
+            id="pending-owner-message-reference",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PENDING",
+            "NOT_REQUIRED",
+            id="pending-not-required-reference",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PENDING",
+            None,
+            id="pending-missing-reference",
+        ),
+        pytest.param(
+            "low-readonly.task.yaml",
+            "NONE",
+            "PENDING",
+            "PENDING_OWNER_REFERENCE",
+            id="none-pending",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "UNRECOGNIZED",
+            "PENDING_OWNER_REFERENCE",
+            id="invalid-state",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "PENDING_OWNER_REFERENCE",
+            id="present-pending-reference",
+        ),
+    ],
+)
+def test_l23_rejects_invalid_authorization_combinations_before_l25(
+    tmp_path: Path,
+    example: str,
+    auth_class: str,
+    state: str,
+    reference: str | None,
+) -> None:
+    manifest = load_example(example)
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["class"] = auth_class
+    authorization["state"] = state
+    if reference is None:
+        authorization.pop("owner_statement_ref", None)
+    else:
+        authorization["owner_statement_ref"] = reference
+
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-invalid-authorization.task.yaml",
+        L23,
     )
 
 

@@ -101,6 +101,12 @@ STOP. Do not stash, reset, clean, force-remove, or broadly prune to bypass it.
 
 Lint before rendering. Require schema validity, a route whose risk/authorization/stages match the
 route table, an exact allowed scope, verification observations, and safe placeholders rather than
-secrets or real tokens. Render the complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
+secrets or real tokens. Authorization has four exact states: `NOT_REQUIRED`, `MISSING`, `PENDING`,
+and `PRESENT`. `MISSING` means required authorization has not been supplied and a request may not
+yet have been issued; `PENDING` means the Owner decision has been requested but remains unresolved.
+Both unresolved states use `PENDING_OWNER_REFERENCE`, remain lint-valid, and block executable
+rendering. For `SINGLE_PROMPT` and `STANDALONE`, only `PRESENT` with a safe `OWNER_MESSAGE_REF`
+can render; `NONE` remains renderable only through the exact `NOT_REQUIRED` envelope. Render the
+complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
 Generated text must remain byte-reproducible for the same five durable sources and manifest.
 <!-- PLANNER_ROUTING:END -->

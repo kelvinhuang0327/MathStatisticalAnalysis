@@ -91,7 +91,7 @@
       "required": ["class", "state", "owner_statement_ref"],
       "properties": {
         "class": {"enum": ["NONE", "SINGLE_PROMPT", "STANDALONE"]},
-        "state": {"enum": ["NOT_REQUIRED", "PRESENT", "MISSING"]},
+        "state": {"enum": ["NOT_REQUIRED", "MISSING", "PENDING", "PRESENT"]},
         "owner_statement_ref": {
           "type": "string",
           "pattern": "^(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128})$"

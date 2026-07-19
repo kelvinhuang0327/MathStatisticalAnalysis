@@ -1,7 +1,7 @@
 # Planner / Task Compiler — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:aa42f7770f5a140d8cb42c82b64cd40d16eddca6567a8c215ba4208e95aa5d07`
+Durable-source fingerprint: `sha256:91b4db6bba1f39a04fb5e283f3c0be7f54c990d75fa22fa7a566fb740f6235f2`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract
@@ -253,7 +253,13 @@ STOP. Do not stash, reset, clean, force-remove, or broadly prune to bypass it.
 
 Lint before rendering. Require schema validity, a route whose risk/authorization/stages match the
 route table, an exact allowed scope, verification observations, and safe placeholders rather than
-secrets or real tokens. Render the complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
+secrets or real tokens. Authorization has four exact states: `NOT_REQUIRED`, `MISSING`, `PENDING`,
+and `PRESENT`. `MISSING` means required authorization has not been supplied and a request may not
+yet have been issued; `PENDING` means the Owner decision has been requested but remains unresolved.
+Both unresolved states use `PENDING_OWNER_REFERENCE`, remain lint-valid, and block executable
+rendering. For `SINGLE_PROMPT` and `STANDALONE`, only `PRESENT` with a safe `OWNER_MESSAGE_REF`
+can render; `NONE` remains renderable only through the exact `NOT_REQUIRED` envelope. Render the
+complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
 Generated text must remain byte-reproducible for the same five durable sources and manifest.
 <!-- PLANNER_ROUTING:END -->
 ## Embedded Task Manifest Schema
@@ -354,7 +360,7 @@ The following JSON-compatible YAML schema is normative for compilation.
       "required": ["class", "state", "owner_statement_ref"],
       "properties": {
         "class": {"enum": ["NONE", "SINGLE_PROMPT", "STANDALONE"]},
-        "state": {"enum": ["NOT_REQUIRED", "PRESENT", "MISSING"]},
+        "state": {"enum": ["NOT_REQUIRED", "MISSING", "PENDING", "PRESENT"]},
         "owner_statement_ref": {
           "type": "string",
           "pattern": "^(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128})$"

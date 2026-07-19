@@ -336,7 +336,7 @@ def _manifest_contract_errors(manifest: dict[str, Any]) -> list[str]:
                 auth_state == "NOT_REQUIRED" and owner_reference == "NOT_REQUIRED"
             )
         elif auth_class in {"SINGLE_PROMPT", "STANDALONE"}:
-            if auth_state == "MISSING":
+            if auth_state in {"MISSING", "PENDING"}:
                 valid_authorization = owner_reference == "PENDING_OWNER_REFERENCE"
             elif auth_state == "PRESENT":
                 valid_authorization = (

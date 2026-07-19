@@ -44,16 +44,19 @@ grammar is `NOT_REQUIRED`, `PENDING_OWNER_REFERENCE`, or
 `OWNER_MESSAGE_REF:<opaque-id>`, where `<opaque-id>` matches `[A-Za-z0-9._-]{1,128}`.
 
 - `NONE` / `NOT_REQUIRED` uses `NOT_REQUIRED`.
-- `SINGLE_PROMPT` or `STANDALONE` / `MISSING` uses `PENDING_OWNER_REFERENCE`.
+- `SINGLE_PROMPT` or `STANDALONE` / `MISSING` uses `PENDING_OWNER_REFERENCE` when no usable Owner
+  authorization has been supplied and a request may not yet have been issued.
+- `SINGLE_PROMPT` or `STANDALONE` / `PENDING` uses `PENDING_OWNER_REFERENCE` when the Owner decision
+  has been requested but remains unresolved.
 - `SINGLE_PROMPT` or `STANDALONE` / `PRESENT` uses `OWNER_MESSAGE_REF:<opaque-id>`.
 
 `L23_UNSAFE_OWNER_STATEMENT_REFERENCE` rejects any other combination and scans external manifest
 bytes for real-looking authorization or credential material before linting or rendering. The
 reference never independently authorizes execution.
 
-`lint --manifest` validates structure, safe-reference grammar, and cross-field consistency, so
-pending authorization metadata may remain lint-valid. When authorization is required, Worker Prompt
-rendering additionally requires state `PRESENT`; otherwise it exits with
+`lint --manifest` validates structure, safe-reference grammar, and cross-field consistency.
+`MISSING` and `PENDING` are distinct lint-valid unresolved states, and both block Worker Prompt
+rendering. When authorization is required, rendering requires state `PRESENT`; otherwise it exits with
 `L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER` and emits no prompt. A manifest stores only the Owner
 message reference, never the authorization token or raw Owner message.
 

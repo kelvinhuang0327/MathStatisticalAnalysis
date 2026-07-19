@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import runpy
 import subprocess
 import sys
@@ -17,6 +18,13 @@ CONTROL_PLANE = REPO / "prompt" / "control-plane-v1"
 TOOL = CONTROL_PLANE / "prototype" / "promptctl.py"
 COMPILED = CONTROL_PLANE / "compiled"
 STATUS = "DRAFT_FOR_OWNER_REVIEW"
+L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
+L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
+L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
+L25_FAILURE = (
+    f"{L25}: required authorization must be PRESENT with a safe "
+    "OWNER_MESSAGE_REF before rendering"
+)
 ROLE_FILES = (
     "HANDOFF_REPORTER.compiled.md",
     "CEO_DECISION_REVIEW.compiled.md",
@@ -65,6 +73,29 @@ def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
     )
 
 
+def standalone_manifest() -> dict[str, Any]:
+    manifest = load_example("medium-implementation.task.yaml")
+    risk = cast(dict[str, Any], manifest["risk"])
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    routing = cast(dict[str, Any], manifest["routing"])
+    risk["level"] = "HIGH"
+    authorization["class"] = "STANDALONE"
+    routing["path"] = "STRATEGIC_HIGH"
+    routing["stages"] = [
+        "CTO",
+        "CEO",
+        "OWNER_DECISION",
+        "PLANNER",
+        "WORKER",
+        "REVIEW",
+    ]
+    return manifest
+
+
+def stable_diagnostic_codes(stderr: str) -> set[str]:
+    return set(re.findall(r"\bL\d+_[A-Z0-9_]+\b", stderr))
+
+
 def control_plane_snapshot() -> dict[str, bytes]:
     return {
         str(path.relative_to(CONTROL_PLANE)): path.read_bytes()
@@ -82,8 +113,10 @@ def assert_manifest_rejected(
     before = control_plane_snapshot()
 
     lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
-    assert lint.returncode != 0
+    assert lint.returncode == 1
     assert lint_code in lint.stderr
+    assert stable_diagnostic_codes(lint.stderr) == {lint_code}
+    assert lint.stdout == ""
 
     render = run_tool(
         "render",
@@ -93,8 +126,46 @@ def assert_manifest_rejected(
         str(output_path),
         check=False,
     )
-    assert render.returncode != 0
+    assert render.returncode == 1
     assert lint_code in render.stderr
+    assert stable_diagnostic_codes(render.stderr) == {lint_code}
+    assert render.stdout == ""
+    assert not output_path.exists()
+    assert control_plane_snapshot() == before
+
+
+def assert_render_blocked(
+    manifest_path: Path, tmp_path: Path, output_name: str = "blocked.worker.md"
+) -> None:
+    output_path = tmp_path / output_name
+    before = control_plane_snapshot()
+
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode == 0
+    assert lint.stderr == ""
+
+    render_stdout = run_tool("render", "--manifest", str(manifest_path), check=False)
+    render_file = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+        check=False,
+    )
+    for result in (render_stdout, render_file):
+        assert result.returncode == 1
+        assert result.stderr == f"FAIL {L25_FAILURE}\n"
+        assert stable_diagnostic_codes(result.stderr) == {L25}
+        assert result.stdout == ""
+        for partial in (
+            "# Executable Worker Task",
+            "## Goal",
+            "## Allowed writes",
+            "## Execution",
+            "## Memory and lifecycle",
+        ):
+            assert partial not in result.stdout
     assert not output_path.exists()
     assert control_plane_snapshot() == before
 
@@ -206,6 +277,74 @@ def test_l23_safe_reference_grammar_and_metadata_rendering(tmp_path: Path) -> No
     assert "Exact task branch: `task/catalog-ordering`" in rendered
 
 
+def test_l25_allows_none_with_the_valid_none_envelope(tmp_path: Path) -> None:
+    manifest_path = CONTROL_PLANE / "examples" / "low-readonly.task.yaml"
+    output_path = tmp_path / "low-readonly.worker.md"
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Authorization class: `NONE`" in rendered
+    assert "Authorization state: `NOT_REQUIRED`" in rendered
+    assert "Owner statement reference: `NOT_REQUIRED`" in rendered
+
+
+def test_l25_allows_standalone_present_with_safe_metadata(tmp_path: Path) -> None:
+    manifest = standalone_manifest()
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = "OWNER_MESSAGE_REF:decision-456"
+    manifest_path = tmp_path / "standalone-present.task.yaml"
+    output_path = tmp_path / "standalone-present.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Authorization class: `STANDALONE`" in rendered
+    assert "Authorization state: `PRESENT`" in rendered
+    assert "OWNER_MESSAGE_REF:decision-456" in rendered
+    assert "AUTHORIZE_" not in rendered
+
+
+@pytest.mark.parametrize(
+    "opaque_id",
+    [pytest.param("a", id="length-1"), pytest.param("a" * 128, id="length-128")],
+)
+def test_l23_accepts_owner_message_reference_boundaries(tmp_path: Path, opaque_id: str) -> None:
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = f"OWNER_MESSAGE_REF:{opaque_id}"
+    manifest_path = tmp_path / f"owner-ref-{len(opaque_id)}.task.yaml"
+    output_path = tmp_path / f"owner-ref-{len(opaque_id)}.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+    assert f"OWNER_MESSAGE_REF:{opaque_id}" in output_path.read_text(encoding="utf-8")
+
+
 @pytest.mark.parametrize(
     ("example", "auth_class", "state", "reference"),
     [
@@ -268,6 +407,12 @@ def test_l23_safe_reference_grammar_and_metadata_rendering(tmp_path: Path) -> No
             "SINGLE_PROMPT",
             "PRESENT",
             "OWNER_MESSAGE_REF:",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:" + "a" * 129,
         ),
         (
             "medium-implementation.task.yaml",
@@ -337,6 +482,68 @@ def test_external_manifest_bytes_receive_l23_sensitive_text_scan(
         "external-sensitive-bytes.task.yaml",
         "L23_UNSAFE_OWNER_STATEMENT_REFERENCE",
     )
+
+
+def test_l23_rejects_present_authorization_without_owner_reference(
+    tmp_path: Path,
+) -> None:
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    del authorization["owner_statement_ref"]
+
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-missing-owner-ref.task.yaml",
+        L23,
+    )
+
+
+@pytest.mark.parametrize(
+    "auth_class",
+    [
+        pytest.param("SINGLE_PROMPT", id="single-prompt-missing-pending-reference"),
+        pytest.param("STANDALONE", id="standalone-missing-pending-reference"),
+    ],
+)
+def test_l25_blocks_lint_valid_unresolved_required_authorization(
+    tmp_path: Path, auth_class: str
+) -> None:
+    manifest = (
+        standalone_manifest()
+        if auth_class == "STANDALONE"
+        else load_example("medium-implementation.task.yaml")
+    )
+    manifest_path = tmp_path / f"{auth_class.lower()}-unresolved.task.yaml"
+    write_manifest(manifest_path, manifest)
+
+    assert_render_blocked(manifest_path, tmp_path)
+
+
+def test_l25_pending_medium_example_cannot_emit_any_worker_prompt(
+    tmp_path: Path,
+) -> None:
+    manifest_path = CONTROL_PLANE / "examples" / "medium-implementation.task.yaml"
+    assert_render_blocked(manifest_path, tmp_path, "pending-example.worker.md")
+
+
+def test_l25_direct_renderer_call_cannot_bypass_readiness_gate(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    renderer = cast(Callable[[dict[str, Any]], bytes], namespace["render_worker"])
+    control_plane_error = namespace["ControlPlaneError"]
+    before = control_plane_snapshot()
+
+    with pytest.raises(control_plane_error) as exc_info:
+        renderer(load_example("medium-implementation.task.yaml"))
+
+    captured = capsys.readouterr()
+    assert str(exc_info.value) == L25_FAILURE
+    assert captured.out == ""
+    assert captured.err == ""
+    assert control_plane_snapshot() == before
 
 
 def test_l24_accepts_read_only_and_write_capable_worktree_envelopes(
@@ -427,18 +634,32 @@ def test_l24_rejects_repository_writes_without_exact_worktree_envelope(
 
 
 def test_renderer_is_deterministic_and_complete(tmp_path: Path) -> None:
-    manifest = CONTROL_PLANE / "examples" / "medium-implementation.task.yaml"
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = "OWNER_MESSAGE_REF:msg-123_example"
+    manifest_path = tmp_path / "authorized-external.task.yaml"
     first = tmp_path / "worker-1.md"
     second = tmp_path / "worker-2.md"
-    run_tool("render", "--manifest", str(manifest), "--output", str(first))
-    run_tool("render", "--manifest", str(manifest), "--output", str(second))
+    write_manifest(manifest_path, manifest)
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool("render", "--manifest", str(manifest_path), "--output", str(first))
+    run_tool("render", "--manifest", str(manifest_path), "--output", str(second))
+
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    direct_renderer = cast(Callable[[dict[str, Any]], bytes], namespace["render_worker"])
     assert first.read_bytes() == second.read_bytes()
+    assert first.read_bytes() == direct_renderer(manifest)
     text = first.read_text(encoding="utf-8")
     assert "{{" not in text
     assert STATUS in text
     assert "SINGLE_PROMPT" in text
     assert "REUSABLE_AGENT_WORKTREE" in text
-    assert "PENDING_OWNER_REFERENCE" in text
+    assert "PRESENT" in text
+    assert "OWNER_MESSAGE_REF:msg-123_example" in text
+    assert "PENDING_OWNER_REFERENCE" not in text
+    assert "AUTHORIZE_" not in text
     assert "task/catalog-ordering" in text
 
 

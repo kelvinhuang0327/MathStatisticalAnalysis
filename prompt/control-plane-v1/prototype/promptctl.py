@@ -16,6 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPILED_DIR = ROOT / "compiled"
 L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
 L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
+L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
 
 OWNER_REFERENCE_PATTERN = re.compile(
     r"(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|"
@@ -636,7 +637,33 @@ def _numbered(values: list[str]) -> str:
     return "\n".join(f"{index}. {value}" for index, value in enumerate(values, start=1))
 
 
+def _require_authorization_ready_for_render(manifest: dict[str, Any]) -> None:
+    authorization_value = manifest.get("authorization")
+    authorization = (
+        cast(dict[str, Any], authorization_value) if isinstance(authorization_value, dict) else {}
+    )
+    auth_class = authorization.get("class")
+    auth_state = authorization.get("state")
+    owner_reference = authorization.get("owner_statement_ref")
+
+    ready = auth_class == "NONE" and (
+        auth_state == "NOT_REQUIRED" and owner_reference == "NOT_REQUIRED"
+    )
+    if auth_class in {"SINGLE_PROMPT", "STANDALONE"}:
+        ready = (
+            auth_state == "PRESENT"
+            and isinstance(owner_reference, str)
+            and OWNER_MESSAGE_REFERENCE_PATTERN.fullmatch(owner_reference) is not None
+        )
+    if not ready:
+        raise ControlPlaneError(
+            f"{L25}: required authorization must be PRESENT with a safe "
+            "OWNER_MESSAGE_REF before rendering"
+        )
+
+
 def render_worker(manifest: dict[str, Any]) -> bytes:
+    _require_authorization_ready_for_render(manifest)
     template = _read_text(ROOT / "WORKER_TASK_TEMPLATE.md")
     replacements = {
         "TASK_ID": manifest["task"]["id"],

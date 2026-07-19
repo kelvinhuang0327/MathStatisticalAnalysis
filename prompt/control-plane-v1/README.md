@@ -51,11 +51,17 @@ grammar is `NOT_REQUIRED`, `PENDING_OWNER_REFERENCE`, or
 bytes for real-looking authorization or credential material before linting or rendering. The
 reference never independently authorizes execution.
 
+`lint --manifest` validates structure, safe-reference grammar, and cross-field consistency, so
+pending authorization metadata may remain lint-valid. When authorization is required, Worker Prompt
+rendering additionally requires state `PRESENT`; otherwise it exits with
+`L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER` and emits no prompt. A manifest stores only the Owner
+message reference, never the authorization token or raw Owner message.
+
 Every worktree records `mode`, exact `path`, and exact task `branch`. `NOT_APPLICABLE` requires empty
 repository writes and uses `NOT_APPLICABLE` for both path and branch. A write-capable mode requires
 non-placeholder path and branch values. `L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES` rejects
 repository writes without that worktree envelope. `lint --manifest` and `render --manifest` use the
-same fail-closed validation pipeline.
+same fail-closed parsing and L23/L24 validation pipeline before rendering applies L25.
 
 ## Change flow
 

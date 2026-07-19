@@ -66,8 +66,8 @@ def expected_catalog() -> list[dict[str, object]]:
             "version": "v0.1",
             "supported_lottery_types": ["BIG_LOTTO"],
             "minimum_history": 1,
-            "lifecycle_status": "OBSERVATION",
-            "executable": False,
+            "lifecycle_status": "ONLINE",
+            "executable": True,
         }
         for strategy_id in EXPECTED_STRATEGY_IDS
     ]
@@ -256,11 +256,11 @@ def test_smoke_rejects_catalog_contract_drift(mutation: str) -> None:
         direct.reverse()
         proxied.reverse()
     elif mutation == "lifecycle":
-        direct[0]["lifecycle_status"] = "ONLINE"
-        proxied[0]["lifecycle_status"] = "ONLINE"
+        direct[0]["lifecycle_status"] = "OBSERVATION"
+        proxied[0]["lifecycle_status"] = "OBSERVATION"
     elif mutation == "executable":
-        direct[0]["executable"] = True
-        proxied[0]["executable"] = True
+        direct[0]["executable"] = False
+        proxied[0]["executable"] = False
     else:
         proxied[0]["version"] = "different"
     with pytest.raises(LocalRuntimeSafetyError):

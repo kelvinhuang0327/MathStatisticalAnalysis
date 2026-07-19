@@ -23,6 +23,7 @@ EXPECTED_STRATEGY_IDS = (
     "biglotto_social_wisdom_anti_popularity",
     "biglotto_zone_split_3bet_bet1",
 )
+EXECUTABLE_STRATEGY_IDS = frozenset(EXPECTED_STRATEGY_IDS)
 STATE_VERSION = 2
 _TOKEN_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 _GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
@@ -398,10 +399,15 @@ def validate_strategy_payloads(direct: object, proxied: object) -> tuple[str, ..
     if ids != EXPECTED_STRATEGY_IDS:
         raise LocalRuntimeSafetyError("Strategy Catalog IDs or deterministic order changed")
     for record in records:
-        if record.get("lifecycle_status") != "OBSERVATION":
-            raise LocalRuntimeSafetyError("every expected strategy must remain OBSERVATION")
-        if record.get("executable") is not False:
-            raise LocalRuntimeSafetyError("every expected strategy must remain non-executable")
+        strategy_id = _required_string(record, "strategy_id")
+        executable = strategy_id in EXECUTABLE_STRATEGY_IDS
+        expected_status = "ONLINE" if executable else "OBSERVATION"
+        if record.get("lifecycle_status") != expected_status:
+            raise LocalRuntimeSafetyError(
+                f"{strategy_id} must report lifecycle_status={expected_status}"
+            )
+        if record.get("executable") is not executable:
+            raise LocalRuntimeSafetyError(f"{strategy_id} must report executable={executable}")
         if any(word in str(key).lower() for key in record for word in _FORBIDDEN_ROUTE_WORDS):
             raise LocalRuntimeSafetyError("Strategy Catalog exposed an execution control field")
     return ids

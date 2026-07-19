@@ -29,15 +29,113 @@ FORBIDDEN: dict[str, tuple[str, ...]] = {
 }
 
 
-def imported_modules(path: Path) -> set[str]:
-    tree = ast.parse(path.read_text(encoding="utf-8"))
+def _relative_base_package(package: str, level: int) -> str | None:
+    """Resolve the dot-count of a relative import to its ancestor package."""
+
+    package_parts = package.split(".") if package else []
+    parent_count = level - 1
+    if parent_count > len(package_parts):
+        return None
+    resolved_parts = package_parts[: len(package_parts) - parent_count]
+    return ".".join(resolved_parts) or None
+
+
+def _absolute_from_import(package: str, node: ast.ImportFrom) -> str | None:
+    if node.level == 0:
+        return node.module
+    package_parts = package.split(".") if package else []
+    parent_count = node.level - 1
+    if parent_count > len(package_parts):
+        return node.module
+    resolved_parts = package_parts[: len(package_parts) - parent_count]
+    if node.module:
+        resolved_parts.extend(node.module.split("."))
+    return ".".join(resolved_parts) or None
+
+
+def _imported_modules_from_source(source: str, *, package: str) -> set[str]:
+    tree = ast.parse(source)
     modules: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             modules.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom) and node.module:
-            modules.add(node.module)
+        elif isinstance(node, ast.ImportFrom):
+            if node.level > 0 and node.module is None:
+                # Alias-form relative import (``from ... import infrastructure``):
+                # there is no module component to resolve, so each imported name
+                # is itself a module hanging directly off the resolved package.
+                base = _relative_base_package(package, node.level)
+                for alias in node.names:
+                    if alias.name == "*":
+                        if base:
+                            modules.add(base)
+                        continue
+                    modules.add(f"{base}.{alias.name}" if base else alias.name)
+            else:
+                absolute_module = _absolute_from_import(package, node)
+                if absolute_module:
+                    modules.add(absolute_module)
     return modules
+
+
+def imported_modules(path: Path) -> set[str]:
+    relative_parent = path.parent.relative_to(REPO_ROOT / "src")
+    package = ".".join(relative_parent.parts)
+    return _imported_modules_from_source(path.read_text(encoding="utf-8"), package=package)
+
+
+def test_import_walker_catches_absolute_target_of_relative_import() -> None:
+    imports = _imported_modules_from_source(
+        "from ...infrastructure import local_runtime\n",
+        package="lottolab.strategies.adapters",
+    )
+    assert imports == {"lottolab.infrastructure"}
+    assert any(
+        module == "lottolab.infrastructure"
+        or module.startswith("lottolab.infrastructure.")
+        for module in imports
+    )
+
+
+def test_import_walker_resolves_alias_form_relative_import_with_no_module() -> None:
+    """``from ... import infrastructure`` has ``node.module is None``: the alias
+    itself (not just the dot-resolved base package) must appear in the result."""
+
+    imports = _imported_modules_from_source(
+        "from ... import infrastructure\n",
+        package="lottolab.strategies.adapters",
+    )
+    assert imports == {"lottolab.infrastructure"}
+    assert any(
+        module == "lottolab.infrastructure"
+        or module.startswith("lottolab.infrastructure.")
+        for module in imports
+    )
+
+
+def test_import_walker_resolves_single_dot_alias_import_with_no_module() -> None:
+    imports = _imported_modules_from_source(
+        "from . import helper\n",
+        package="lottolab.evidence",
+    )
+    assert imports == {"lottolab.evidence.helper"}
+
+
+def test_import_walker_resolves_multiple_aliases_in_alias_form_import() -> None:
+    imports = _imported_modules_from_source(
+        "from ... import infrastructure, application\n",
+        package="lottolab.strategies.adapters",
+    )
+    assert imports == {"lottolab.infrastructure", "lottolab.application"}
+
+
+def test_import_walker_star_alias_import_retains_base_package_only() -> None:
+    imports = _imported_modules_from_source(
+        "from . import *\n",
+        package="lottolab.evidence",
+    )
+    assert imports == {"lottolab.evidence"}
+    assert not any(module.endswith(".*") for module in imports)
 
 
 def test_layer_dependencies() -> None:
@@ -103,6 +201,80 @@ def test_production_code_does_not_import_legacy_or_migration_fixtures() -> None:
             if module.startswith(("lottery_api", "tests", "tools")):
                 violations.append(f"{path.relative_to(SRC)} imports {module}")
     assert not violations, "production import violations:\n" + "\n".join(violations)
+
+
+def test_strategy_adapters_are_target_native_db_free_and_offline() -> None:
+    """Inspect declared project dependencies, never incidental ``sys.modules`` state."""
+
+    imports: set[str] = set()
+    for module in (
+        "lottolab.strategies.adapters",
+        "lottolab.strategies.adapters.base",
+        "lottolab.strategies.adapters.biglotto_selected",
+    ):
+        imports.update(_transitive_imports(module))
+
+    forbidden_exact = {
+        "http.client",
+        "importlib",
+        "os",
+        "pathlib",
+        "socket",
+        "sqlite3",
+        "subprocess",
+        "time",
+        "urllib",
+        "urllib.request",
+    }
+    forbidden_prefixes = (
+        "lottery_api",
+        "number_pattern_research",
+        "lottolab.application",
+        "lottolab.infrastructure",
+        "lottolab.interfaces",
+    )
+    forbidden_project_fragments = (".database", ".db_", ".persistence")
+    violations = sorted(
+        module
+        for module in imports
+        if module in forbidden_exact
+        or module.startswith(forbidden_prefixes)
+        or (
+            module.startswith("lottolab.")
+            and any(fragment in module.casefold() for fragment in forbidden_project_fragments)
+        )
+    )
+    assert not violations, "adapter dependency violations:\n" + "\n".join(violations)
+    assert not _unapproved_third_party_roots(imports), (
+        "adapter third-party dependency violations:\n"
+        + "\n".join(sorted(_unapproved_third_party_roots(imports)))
+    )
+
+
+def _unapproved_third_party_roots(modules: set[str]) -> set[str]:
+    project_roots = {"lottolab"}
+    stdlib_roots = set(sys.stdlib_module_names) | {"__future__"}
+    return {
+        root
+        for module in modules
+        if (root := module.partition(".")[0])
+        and root not in project_roots
+        and root not in stdlib_roots
+    }
+
+
+def test_external_dependency_guard_rejects_unapproved_third_party_roots() -> None:
+    unapproved = {
+        "numpy",
+        "pandas",
+        "scipy",
+        "requests",
+        "httpx",
+        "sqlalchemy",
+        "aiohttp",
+    }
+    imports = unapproved | {"json", "pathlib", "lottolab.domain.draws"}
+    assert _unapproved_third_party_roots(imports) == unapproved
 
 
 def test_local_runtime_path_has_no_database_or_execution_dependency() -> None:

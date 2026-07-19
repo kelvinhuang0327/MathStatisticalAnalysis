@@ -45,16 +45,16 @@
     {
       "capability_id": "lottery.prediction.generate",
       "phase": "MIGRATING",
-      "pr": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/10",
+      "pr": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/11",
       "parity_evidence": "tests/unit/test_biglotto_selected_adapters.py",
       "legacy_retirement_condition": "Semantics and causal-history goldens pass per generator.",
       "implementation_state": "IMPLEMENTED_PENDING_REVIEW",
       "production_state": "NOT_CUTOVER_READY",
-      "compatibility_condition": "Keep legacy generation available until remaining generators, deployment, and traffic cutover are separately verified. Lifecycle promotion and a bounded local CLI execution vertical are now complete for the two P602B strategies; no HTTP, frontend, or deployment surface is exposed.",
-      "rollback_condition": "Revert the P602B target commit to restore OBSERVATION/non-executable status for both strategies and remove the generate-bet CLI command; the P601B adapter port and ExecutableRegistry mechanism remain unchanged.",
+      "compatibility_condition": "Keep legacy generation available until remaining generators, deployment, and traffic cutover are separately verified. Three target-native CLI strategies (biglotto_zone_split_3bet_bet1, biglotto_social_wisdom_anti_popularity, biglotto_deviation_2bet) are now ONLINE/executable through the generate-bet CLI vertical; no HTTP, frontend, or deployment cutover is claimed.",
+      "rollback_condition": "Reverting the P603A target commits removes biglotto_deviation_2bet and restores the P602B two-strategy CLI state (biglotto_zone_split_3bet_bet1 and biglotto_social_wisdom_anti_popularity only); the P601B/P602B adapter port, ExecutableRegistry mechanism, and CLI behavior remain unchanged.",
       "donor_oid": "520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
-      "migrated_strategy_ids": ["biglotto_zone_split_3bet_bet1", "biglotto_social_wisdom_anti_popularity"],
-      "notes": "P601B migrated two selected adapters into an internal DB-free callable (OBSERVATION, non-executable). P602B (branch codex/p602b-biglotto-cli-execution-vertical) promotes both to ONLINE/executable and adds a thin `lottolab generate-bet` CLI command that resolves them through the production ExecutableRegistry and GenerateOneBet use case for deterministic, offline, machine-readable single-bet output. No HTTP route, frontend, or deployment change; API and Strategy Catalog contract tests updated to reflect the new ONLINE/executable descriptors. The CLI's `--seed` value is caller-provided bookkeeping metadata only, echoed in the output and never threaded into donor-replay execution or generated numbers."
+      "migrated_strategy_ids": ["biglotto_zone_split_3bet_bet1", "biglotto_social_wisdom_anti_popularity", "biglotto_deviation_2bet"],
+      "notes": "P601B migrated two selected adapters into an internal DB-free callable (OBSERVATION, non-executable). P602B (branch codex/p602b-biglotto-cli-execution-vertical) promotes both to ONLINE/executable and adds a thin `lottolab generate-bet` CLI command that resolves them through the production ExecutableRegistry and GenerateOneBet use case for deterministic, offline, machine-readable single-bet output. No HTTP route, frontend, or deployment change; API and Strategy Catalog contract tests updated to reflect the new ONLINE/executable descriptors. The CLI's `--seed` value is caller-provided bookkeeping metadata only, echoed in the output and never threaded into donor-replay execution or generated numbers. P603A (branch codex/p603a-biglotto-deviation-cli-migration) migrates biglotto_deviation_2bet as a third target-native, DB-free, deterministic adapter appended to the existing catalog and executed through the same already-merged generate-bet CLI vertical; no CLI syntax change; no HTTP route, frontend, or deployment change."
     },
     {
       "capability_id": "lottery.backtest.evaluate",

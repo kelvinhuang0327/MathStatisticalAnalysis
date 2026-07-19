@@ -197,7 +197,98 @@ class BigLottoZoneSplit3BetBet1Adapter(BetAdapter):
         return _zone_split_bets(history)[0]
 
 
+_DEVIATION_STRATEGY_ID = "biglotto_deviation_2bet"
+_DEVIATION_HISTORY_WINDOW = 50
+_DEVIATION_HOT_THRESHOLD = 1
+_DEVIATION_COLD_THRESHOLD = -1
+
+
+def _deviation_complement_2bet(
+    history: tuple[CausalDrawRow, ...],
+    window: int = _DEVIATION_HISTORY_WINDOW,
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Port of the donor's ``deviation_complement_2bet`` — (hot bet, cold complement bet).
+
+    Bet one is numbers whose recent frequency exceeds expectation by a strict
+    margin (trend continuation); bet two is the complement, numbers whose
+    frequency falls short by a strict margin (mean reversion). The two bets
+    pad differently when short of six candidates, exactly as the donor did:
+    bet one pads by nearest-to-expected frequency, bet two pads by ascending
+    unused number.
+    """
+
+    rule = BIG_LOTTO_RULE_CONTRACT
+    recent = history[-window:] if len(history) > window else history
+    total = len(recent)
+    expected = total * rule.main_number_count / rule.main_number_max
+
+    freq: dict[int, int] = {}
+    for row in recent:
+        for number in row.numbers:
+            freq[number] = freq.get(number, 0) + 1
+
+    hot: list[tuple[int, float]] = []
+    cold: list[tuple[int, float]] = []
+    for number in range(rule.main_number_min, rule.main_number_max + 1):
+        deviation = freq.get(number, 0) - expected
+        if deviation > _DEVIATION_HOT_THRESHOLD:
+            hot.append((number, deviation))
+        elif deviation < _DEVIATION_COLD_THRESHOLD:
+            cold.append((number, abs(deviation)))
+
+    hot.sort(key=lambda candidate: candidate[1], reverse=True)
+    cold.sort(key=lambda candidate: candidate[1], reverse=True)
+
+    bet1 = [number for number, _ in hot[: rule.main_number_count]]
+    used = set(bet1)
+
+    if len(bet1) < rule.main_number_count:
+        nearest_expected = sorted(
+            range(rule.main_number_min, rule.main_number_max + 1),
+            key=lambda number: abs(freq.get(number, 0) - expected),
+        )
+        for number in nearest_expected:
+            if number not in used and len(bet1) < rule.main_number_count:
+                bet1.append(number)
+                used.add(number)
+
+    bet2: list[int] = []
+    for number, _ in cold:
+        if number not in used and len(bet2) < rule.main_number_count:
+            bet2.append(number)
+            used.add(number)
+
+    if len(bet2) < rule.main_number_count:
+        for number in range(rule.main_number_min, rule.main_number_max + 1):
+            if number not in used and len(bet2) < rule.main_number_count:
+                bet2.append(number)
+                used.add(number)
+
+    return (
+        tuple(sorted(bet1[: rule.main_number_count])),
+        tuple(sorted(bet2[: rule.main_number_count])),
+    )
+
+
+class BigLottoDeviation2BetAdapter(BetAdapter):
+    """Deterministic frequency-deviation adapter returning the donor hot bet."""
+
+    strategy_id = _DEVIATION_STRATEGY_ID
+    strategy_name = "大樂透 Deviation 2注"
+    strategy_version = "v0.1"
+    min_history = 100
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+
+    def _predict(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[int, ...]:
+        return _deviation_complement_2bet(history)[0]
+
+
 __all__ = [
+    "BigLottoDeviation2BetAdapter",
     "BigLottoSocialWisdomAntiPopularityAdapter",
     "BigLottoZoneSplit3BetBet1Adapter",
 ]

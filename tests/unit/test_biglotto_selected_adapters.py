@@ -24,6 +24,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.strategies import adapters as public_adapters
 from lottolab.strategies.adapters import (
     BetAdapter,
+    BigLottoDeviation2BetAdapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     CausalDrawRow,
@@ -34,6 +35,7 @@ from lottolab.strategies.adapters import (
 from lottolab.strategies.adapters.biglotto_selected import (
     _HISTORICAL_BLEND,
     _UNPOPULAR_BLEND,
+    _deviation_complement_2bet,
     _historical_frequency,
     _social_wisdom_prediction,
     _unpopular_scores,
@@ -195,6 +197,7 @@ def test_public_adapter_exports_are_explicit() -> None:
     assert set(public_adapters.__all__) == {
         "BetAdapter",
         "BetAdapterError",
+        "BigLottoDeviation2BetAdapter",
         "BigLottoSocialWisdomAntiPopularityAdapter",
         "BigLottoZoneSplit3BetBet1Adapter",
         "CausalDrawRow",
@@ -714,3 +717,269 @@ def test_adapter_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoZoneSplit3BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((4, 6, 11, 14, 15, 18), None)
+
+
+# ─── biglotto_deviation_2bet (P603A) ──────────────────────────────────────────
+#
+# Frozen donor semantics from tools/predict_biglotto_deviation_2bet.py and
+# lottery_api/models/replay_strategy_registry.py::_BigLottoDeviation2BetAdapter
+# at 520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f: window=50 recent-history slice,
+# expected = total*6/49, hot dev>1 / cold dev<-1 (both strict), descending
+# deviation with donor-stable (ascending number) ties, hot fallback pads by
+# nearest-expected-frequency, cold fallback pads by ascending unused number,
+# and the registry adapter exposes only the first (hot) of the two donor bets.
+
+DEVIATION_OUTSIDE_WINDOW_NUMBERS = (1, 2, 3, 4, 5, 6)
+DEVIATION_INSIDE_WINDOW_NUMBERS = (10, 20, 30, 40, 41, 42)
+
+
+def _deviation_row(index: int, numbers: tuple[int, ...]) -> CausalDrawRow:
+    return CausalDrawRow(draw=f"dev-{index}", date=f"dev-{index}", numbers=numbers)
+
+
+def _deviation_history(
+    outside_window: tuple[int, ...] = DEVIATION_OUTSIDE_WINDOW_NUMBERS,
+    inside_window: tuple[int, ...] = DEVIATION_INSIDE_WINDOW_NUMBERS,
+) -> tuple[CausalDrawRow, ...]:
+    return tuple(_deviation_row(index, outside_window) for index in range(50)) + tuple(
+        _deviation_row(50 + index, inside_window) for index in range(50)
+    )
+
+
+def _counts_history(counts: dict[int, int], total_rows: int) -> tuple[CausalDrawRow, ...]:
+    """Build a synthetic history realizing an exact per-number occurrence count.
+
+    Greedily assigns, for each row, the six numbers with the largest
+    remaining budget (ties broken ascending) until every budget is
+    exhausted. A number absent from ``counts`` implicitly gets zero.
+    """
+    remaining = dict(counts)
+    rows: list[CausalDrawRow] = []
+    for index in range(total_rows):
+        chosen = sorted(remaining, key=lambda n: (-remaining[n], n))[:6]
+        for number in chosen:
+            remaining[number] -= 1
+        rows.append(_deviation_row(index, tuple(sorted(chosen))))
+    assert all(count == 0 for count in remaining.values())
+    return tuple(rows)
+
+
+def test_deviation_golden_windowing_and_first_bet_extraction() -> None:
+    """100 rows: the oldest 50 hold one number set, the newest 50 hold
+    another. Only the newest 50 (the window) may influence the result, and
+    ``get_one_bet`` must expose only the hot bet, matching the donor
+    registry's first-bet extraction from ``[bet1_hot, bet2_cold]``."""
+    history = _deviation_history()
+    hot, cold = _deviation_complement_2bet(history)
+    assert hot == DEVIATION_INSIDE_WINDOW_NUMBERS
+    assert cold == DEVIATION_OUTSIDE_WINDOW_NUMBERS
+    assert BigLottoDeviation2BetAdapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (DEVIATION_INSIDE_WINDOW_NUMBERS, None)
+
+
+def test_deviation_50_vs_51_rows_boundary_is_mutation_sensitive() -> None:
+    """``history[-window:] if len(history) > window else history``: exactly
+    50 rows must use all of them; 51 rows must drop the oldest one. An extra
+    oldest row with a distinct number set changes the result only if it is
+    wrongly counted, proving the boundary is load-bearing."""
+    window_rows = tuple(_deviation_row(index, (7, 8, 9, 10, 11, 12)) for index in range(50))
+    extra_row = _deviation_row(-1, (1, 2, 3, 4, 5, 6))
+
+    history_50 = window_rows
+    history_51 = (extra_row, *window_rows)
+
+    result_50 = _deviation_complement_2bet(history_50)
+    result_51_correct = _deviation_complement_2bet(history_51)
+    assert result_50 == result_51_correct == ((7, 8, 9, 10, 11, 12), (1, 2, 3, 4, 5, 6))
+
+    # Mutation-sensitivity proof: an off-by-one window (51 instead of 50)
+    # wrongly counts the extra row and changes the cold bet.
+    result_51_wrong_window = _deviation_complement_2bet(history_51, window=51)
+    assert result_51_wrong_window != result_51_correct
+    assert result_51_wrong_window == ((7, 8, 9, 10, 11, 12), (13, 14, 15, 16, 17, 18))
+
+
+def test_deviation_strict_thresholds_exclude_exact_boundary() -> None:
+    """window=49 makes expected exactly 6. Number 2 sits at dev=+1 (the hot
+    boundary) and number 3 at dev=-1 (the cold boundary) — neither strict
+    inequality is satisfied, so both must be excluded despite six genuine
+    hot and six genuine cold candidates existing at more extreme deviations."""
+    counts = {2: 7, 3: 5}
+    for number in (10, 11, 12, 13, 14, 15):
+        counts[number] = 8  # dev=+2, genuinely hot
+    for number in (20, 21, 22, 23, 24, 25):
+        counts[number] = 4  # dev=-2, genuinely cold
+    for number in range(1, 50):
+        counts.setdefault(number, 6)  # dev=0, neutral filler
+
+    history = _counts_history(counts, total_rows=49)
+    hot, cold = _deviation_complement_2bet(history, window=49)
+
+    assert hot == (10, 11, 12, 13, 14, 15)
+    assert 2 not in hot
+    assert cold == (20, 21, 22, 23, 24, 25)
+    assert 3 not in cold
+
+
+def test_deviation_selects_top_six_by_descending_deviation() -> None:
+    """Eight numbers all exceed the hot threshold at distinct deviations;
+    only the top six by deviation may be selected, not merely any six."""
+    counts = {1: 15, 2: 14, 3: 13, 4: 12, 5: 11, 6: 10, 7: 9, 8: 8}
+    remaining_numbers = tuple(range(9, 50))
+    budget = 294 - sum(counts.values())
+    base, extra = divmod(budget, len(remaining_numbers))
+    for index, number in enumerate(remaining_numbers):
+        counts[number] = base + (1 if index < extra else 0)
+
+    history = _counts_history(counts, total_rows=49)
+    hot, _cold = _deviation_complement_2bet(history, window=49)
+
+    assert hot == (1, 2, 3, 4, 5, 6)
+    assert 7 not in hot
+    assert 8 not in hot
+
+
+def test_deviation_hot_fallback_uses_nearest_expected_not_ascending_order() -> None:
+    """Only one number clears the hot threshold; the other five bet-one
+    slots must be filled by nearest-to-expected frequency. Numbers 45-49 sit
+    at the expected frequency while the smallest-numbered alternatives sit
+    far from it — an ascending-order fallback would wrongly prefer those."""
+    counts = {40: 8}
+    for number in (45, 46, 47, 48, 49):
+        counts[number] = 6  # dev≈-0.12, nearest to expected
+    others = tuple(number for number in range(1, 50) if number not in counts)
+    for index, number in enumerate(others):
+        counts[number] = 7 if index < 30 else 4  # never exactly 6, never the nearest
+
+    history = _counts_history(counts, total_rows=50)
+    hot, _cold = _deviation_complement_2bet(history)
+
+    assert hot == (40, 45, 46, 47, 48, 49)
+    assert not any(number in hot for number in (1, 2, 3, 4, 5))
+
+
+def test_deviation_cold_fallback_uses_ascending_unused_not_nearest_expected() -> None:
+    """Mirrors the hot-fallback test above but for bet two: only one number
+    clears the cold threshold, so the other five bet-two slots must be
+    filled by ascending unused number, not nearest-to-expected frequency.
+    Numbers 1-10 sit one count below expected (dev=-1, the cold boundary,
+    correctly excluded from ``cold`` itself) — a nearest-frequency fallback
+    would wrongly prefer them, and the dev=0 filler numbers 11-15 even more
+    so, ahead of the correct ascending-unused numbers 1-5."""
+    counts: dict[int, int] = {}
+    for number in range(40, 46):
+        counts[number] = 8  # dev=+2, hot
+    counts[30] = 4  # dev=-2, the only genuine cold candidate
+    for number in range(1, 11):
+        counts[number] = 5  # dev=-1, the cold boundary (excluded, not cold)
+    for number in range(1, 50):
+        counts.setdefault(number, 6)  # dev=0, neutral filler
+
+    assert sum(counts.values()) == 49 * 6
+
+    history = _counts_history(counts, total_rows=49)
+    hot, cold = _deviation_complement_2bet(history, window=49)
+
+    assert hot == (40, 41, 42, 43, 44, 45)
+    assert cold == (1, 2, 3, 4, 5, 30)
+    assert not any(number in cold for number in (11, 12, 13, 14, 15))
+
+
+def test_deviation_minimum_history_gate_is_explicit() -> None:
+    history_99 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(99))
+    history_100 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(100))
+
+    with pytest.raises(InsufficientHistory):
+        BigLottoDeviation2BetAdapter().get_one_bet(history_99, LotteryType.BIG_LOTTO)
+
+    assert BigLottoDeviation2BetAdapter().get_one_bet(
+        history_100, LotteryType.BIG_LOTTO
+    ) == ((1, 2, 3, 4, 5, 6), None)
+
+
+def test_deviation_wrong_lottery_type_is_rejected() -> None:
+    with pytest.raises(UnsupportedLotteryType):
+        BigLottoDeviation2BetAdapter().get_one_bet(None, LotteryType.POWER_LOTTO)
+
+
+def test_deviation_validates_full_history_before_window_slice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """100 rows exactly meet min_history=100. The oldest row is malformed
+    and sits outside the last-50-row window ``_deviation_complement_2bet``
+    slices for its own calculation. This adapter does not override
+    ``_history_window`` (unlike the Social adapter), so base-class
+    validation covers the full supplied history before any windowing —
+    the malformed row is caught even though it never reaches the internal
+    50-row calculation.
+    """
+    malformed_oldest = cast(CausalDrawRow, {"excluded": "oldest-outside-window"})
+    valid_99 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(99))
+    history = (malformed_oldest, *valid_99)
+    assert len(history) == 100
+
+    with pytest.raises(InvalidOutput):
+        BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+
+    # Mutation-sensitivity proof: if the adapter validated only its
+    # calculation window — mirroring the Social adapter's real
+    # `_history_window` override — the malformed row (outside that window)
+    # would be sliced away before validation ever saw it. Because the
+    # calculation window (50) is smaller than min_history (100), this
+    # specific mutant cannot silently succeed instead: it necessarily
+    # surfaces as a *different* failure, InsufficientHistory, proving the
+    # malformed row is no longer what the adapter rejects.
+    def window_before_validation(
+        self: BigLottoDeviation2BetAdapter,
+        raw_history: tuple[object, ...],
+    ) -> tuple[object, ...]:
+        return raw_history[-50:]
+
+    monkeypatch.setattr(
+        BigLottoDeviation2BetAdapter,
+        "_history_window",
+        window_before_validation,
+    )
+    with pytest.raises(InsufficientHistory):
+        BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+
+
+def test_deviation_input_is_immutable_and_never_modified() -> None:
+    history = _deviation_history()
+    before = history
+    BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+    assert history == before
+    with pytest.raises(FrozenInstanceError):
+        history[0].draw = "changed"  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_deviation_preserves_global_random_state() -> None:
+    before = random.getstate()
+    _deviation_complement_2bet(_deviation_history())
+    assert random.getstate() == before
+
+
+def test_deviation_cross_instance_equality() -> None:
+    history = _deviation_history()
+    first = BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+    second = BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+    assert first == second
+
+
+def test_deviation_execution_needs_no_filesystem_clock_database_or_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("external state access is forbidden")
+
+    monkeypatch.setattr(builtins, "open", forbidden)
+    monkeypatch.setattr(sqlite3, "connect", forbidden)
+    monkeypatch.setattr(socket, "socket", forbidden)
+    monkeypatch.setattr(time, "time", forbidden)
+    monkeypatch.setattr(time, "monotonic", forbidden)
+
+    history = _deviation_history()
+    assert BigLottoDeviation2BetAdapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (DEVIATION_INSIDE_WINDOW_NUMBERS, None)

@@ -93,6 +93,24 @@ _PRODUCTION_DESCRIPTORS = (
             "migration_task:P602B",
         ),
     ),
+    StrategyDescriptor(
+        strategy_id="biglotto_deviation_2bet",
+        strategy_name="大樂透 Deviation 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_selected:BigLottoDeviation2BetAdapter"
+        ),
+        min_history=100,
+        provenance=(
+            "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+            "legacy_source:lottery_api/models/replay_strategy_registry.py",
+            "legacy_source:tools/predict_biglotto_deviation_2bet.py",
+            "migration_task:P603A",
+        ),
+    ),
 )
 
 

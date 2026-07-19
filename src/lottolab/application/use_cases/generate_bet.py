@@ -217,7 +217,12 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
 
 
 def render_result_json(result: GenerateOneBetResult, *, strategy_id: str, seed: int) -> str:
-    """Render a canonical, machine-readable single-bet result."""
+    """Render a canonical, machine-readable single-bet result.
+
+    ``seed`` is caller-provided bookkeeping metadata: it is echoed verbatim
+    in the ``seed`` field and never influences ``result``, which is fully
+    determined upstream by strategy_id and causal history.
+    """
 
     payload: dict[str, object] = {
         "strategy_id": strategy_id,
@@ -263,6 +268,8 @@ def run_cli_generate_bet(*, strategy_id: str, seed: int, history_json: str) -> t
     so the caller can select a fail-closed process exit code. May raise
     :class:`HistoryParseError` for malformed input, by design left to the
     caller so it can be reported the same way as other CLI input errors.
+    ``seed`` is metadata-only: it is echoed in the output and is never
+    passed to the resolved adapter or used to influence execution.
     """
 
     history = parse_history_json(history_json)

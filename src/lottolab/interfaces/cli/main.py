@@ -42,7 +42,16 @@ def info() -> None:
 @app.command("generate-bet")
 def generate_bet_command(
     strategy_id: str,
-    seed: Annotated[int, typer.Option(min=0, help="Recorded for reproducibility.")],
+    seed: Annotated[
+        int,
+        typer.Option(
+            min=0,
+            help=(
+                "Caller-provided bookkeeping value echoed verbatim in the output; "
+                "does not affect the generated numbers."
+            ),
+        ),
+    ],
     history_file: Annotated[
         Path,
         typer.Option(
@@ -52,7 +61,12 @@ def generate_bet_command(
         ),
     ],
 ) -> None:
-    """Generate one deterministic BIG_LOTTO bet through the executable registry."""
+    """Generate one deterministic BIG_LOTTO bet through the executable registry.
+
+    The generated numbers are determined solely by ``strategy_id`` and
+    history; ``seed`` is echoed in the JSON output as caller-provided
+    bookkeeping metadata and never influences which numbers are produced.
+    """
     try:
         history_json = history_file.read_text(encoding="utf-8")
         output, ok = run_cli_generate_bet(

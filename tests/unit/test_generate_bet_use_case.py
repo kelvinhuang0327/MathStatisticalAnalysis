@@ -533,3 +533,32 @@ def test_run_cli_generate_bet_is_deterministic_and_preserves_global_random_state
     assert first_ok is True
     assert second_ok is True
     assert state_before == state_between == state_after
+
+
+def test_run_cli_generate_bet_seed_is_metadata_only_and_does_not_affect_numbers() -> None:
+    random.seed(20260719)
+    state_before = random.getstate()
+
+    first, first_ok = run_cli_generate_bet(
+        strategy_id=BigLottoZoneSplit3BetBet1Adapter.strategy_id,
+        seed=1,
+        history_json=_history_json(),
+    )
+    state_between = random.getstate()
+    second, second_ok = run_cli_generate_bet(
+        strategy_id=BigLottoZoneSplit3BetBet1Adapter.strategy_id,
+        seed=2,
+        history_json=_history_json(),
+    )
+    state_after = random.getstate()
+
+    first_payload = json.loads(first)
+    second_payload = json.loads(second)
+
+    assert first_ok is True
+    assert second_ok is True
+    assert first_payload["seed"] == 1
+    assert second_payload["seed"] == 2
+    for key in ("strategy_id", "lottery_type", "status", "numbers", "reason_code"):
+        assert first_payload[key] == second_payload[key]
+    assert state_before == state_between == state_after

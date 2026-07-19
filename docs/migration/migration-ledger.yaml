@@ -45,7 +45,7 @@
     {
       "capability_id": "lottery.prediction.generate",
       "phase": "MIGRATING",
-      "pr": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/10",
+      "pr": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/11",
       "parity_evidence": "tests/unit/test_biglotto_selected_adapters.py",
       "legacy_retirement_condition": "Semantics and causal-history goldens pass per generator.",
       "implementation_state": "IMPLEMENTED_PENDING_REVIEW",

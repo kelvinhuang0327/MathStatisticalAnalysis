@@ -13,11 +13,12 @@
   and untouched by this task.
 - `docs/ownerinit.md` (untracked in the primary checkout) remains protected and
   untouched by this task.
-- The original Replay M0 blocker was a missing `.ai/` context layer; this bootstrap
-  creates that layer.
+- `[Confirmed]` Before this bootstrap branch, the pinned `main` tree contained no
+  `.ai/` directory; this bootstrap creates that layer.
 - Current Replay status (`lottery.replay.read_models`) remains `INVENTORIED` per
   `docs/migration/migration-ledger.yaml`; this task does not change or advance that
   status.
-- Next gate: bootstrap PR review and merge, then rerun Replay M0.
+- `[Inferred]` After this PR is independently reviewed and merged, perform a separate
+  read-only Replay architecture-fit review based on the then-current `main` branch.
 - This task does not authorize Replay implementation, Replay architecture-fit work, or
   local-main reconciliation of `ae1bee5…`.

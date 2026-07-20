@@ -61,9 +61,10 @@ directly for current phase/PR/parity-evidence per capability.
 `[Confirmed]` (docs/migration/migration-ledger.yaml)
 
 **Replay implementation and parity evidence are not yet complete.** This bootstrap does
-not change that status and does not constitute or claim any Replay M0 pass. The next
-gate for the Replay track is: merge this bootstrap PR, then rerun Replay M0 with the
-now-present `.ai/` context layer available.
+not change that status and does not constitute or claim any Replay validation.
+`[Inferred]` After this bootstrap is reviewed and merged, the next safe planning step is
+a separate read-only Replay architecture-fit review based on the then-current `main`
+branch. This is a planning recommendation, not an existing repository milestone.
 
 ## Reproducibility
 

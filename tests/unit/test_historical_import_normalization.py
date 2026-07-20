@@ -6,6 +6,7 @@ import copy
 import json
 from typing import Any
 
+import pytest
 from tests.fixtures.historical.builder import (
     CUTOFF_DRAW_NUMBER,
     CUTOFF_MAIN_NUMBERS,
@@ -550,3 +551,37 @@ def test_ticket_with_out_of_range_main_number_is_rejected() -> None:
     ticket["main_numbers"][0] = 50
     envelope = recompute_envelope_hashes(envelope)
     assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+# --- BLHQ R1 ticket special-number invariants (closes the post-PR#18 gap) ------
+
+
+@pytest.mark.parametrize(
+    ("special_numbers", "expected_outcome"),
+    [
+        pytest.param([], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="empty"),
+        pytest.param(
+            [7, 8], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="multiple_values"
+        ),
+        pytest.param([0], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="below_range"),
+        pytest.param([50], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="above_range"),
+        pytest.param(
+            [1], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="overlaps_main_numbers"
+        ),
+        pytest.param([7], HistoricalImportOutcome.IMPORT_PASS, id="valid_non_overlapping"),
+    ],
+)
+def test_ticket_special_number_invariants(
+    special_numbers: list[int], expected_outcome: HistoricalImportOutcome
+) -> None:
+    envelope = build_baseline_envelope()
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    assert ticket["main_numbers"] == [1, 2, 3, 4, 5, 6]
+    ticket["special_numbers"] = special_numbers
+    envelope = recompute_envelope_hashes(envelope)
+    result = _verify(envelope)
+    assert result.outcome is expected_outcome
+    if expected_outcome is HistoricalImportOutcome.IMPORT_PASS:
+        assert result.normalized_import is not None
+    else:
+        assert result.normalized_import is None

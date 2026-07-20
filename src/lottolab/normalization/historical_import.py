@@ -209,8 +209,8 @@ class _TicketWire(BaseModel):
     legacy_storage_bet_index: int | None = None
 
     @model_validator(mode="after")
-    def _check_big_lotto_main_numbers(self) -> _TicketWire:
-        main = self.main_numbers
+    def _check_big_lotto_numbers(self) -> _TicketWire:
+        main, special = self.main_numbers, self.special_numbers
         if len(main) != _BIG_LOTTO_MAIN_COUNT:
             raise ValueError(f"a ticket must have exactly {_BIG_LOTTO_MAIN_COUNT} main numbers")
         if any(n < _BIG_LOTTO_MAIN_MIN or n > _BIG_LOTTO_MAIN_MAX for n in main):
@@ -219,6 +219,17 @@ class _TicketWire(BaseModel):
             )
         if len(set(main)) != len(main):
             raise ValueError("main numbers must be unique")
+        if len(special) != _BIG_LOTTO_SPECIAL_COUNT:
+            raise ValueError(
+                f"a ticket must have exactly {_BIG_LOTTO_SPECIAL_COUNT} special number(s)"
+            )
+        if any(n < _BIG_LOTTO_SPECIAL_MIN or n > _BIG_LOTTO_SPECIAL_MAX for n in special):
+            raise ValueError(
+                f"a special number must be within "
+                f"{_BIG_LOTTO_SPECIAL_MIN}-{_BIG_LOTTO_SPECIAL_MAX}"
+            )
+        if set(main) & set(special):
+            raise ValueError("main and special numbers must not overlap")
         return self
 
 

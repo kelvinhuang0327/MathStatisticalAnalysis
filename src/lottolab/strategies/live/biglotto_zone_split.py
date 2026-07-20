@@ -124,6 +124,7 @@ def _validate_bet(
     pick_count: int,
     min_num: int,
     max_num: int,
+    pool: tuple[int, ...],
 ) -> tuple[int, ...]:
     """Validate one sampler-produced bet, failing closed on any contract violation."""
 
@@ -139,6 +140,11 @@ def _validate_bet(
         raise MalformedSamplerOutput("sampler returned duplicate numbers")
     if not all(min_num <= value <= max_num for value in values):
         raise MalformedSamplerOutput(f"sampler returned a number outside [{min_num}..{max_num}]")
+    pool_set = set(pool)
+    if not all(value in pool_set for value in values):
+        raise MalformedSamplerOutput(
+            "sampler returned a number outside the zone population supplied to that call"
+        )
     return tuple(sorted(values))
 
 
@@ -175,7 +181,13 @@ def generate_live_zone_split_bets(
         )
         raw_bet = resolved_sampler(pool, pick_count)
         bets.append(
-            _validate_bet(raw_bet, pick_count=pick_count, min_num=min_num, max_num=max_num)
+            _validate_bet(
+                raw_bet,
+                pick_count=pick_count,
+                min_num=min_num,
+                max_num=max_num,
+                pool=pool,
+            )
         )
 
     all_numbers = {number for bet in bets for number in bet}

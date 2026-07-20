@@ -196,6 +196,13 @@ def _malformed_wrong_container_type(population: Sequence[int], k: int) -> str:
     return "123456"
 
 
+def _malformed_wrong_zone(population: Sequence[int], k: int) -> list[int]:
+    # Globally valid BIG_LOTTO numbers (unique, six of them, within [1, 49]),
+    # but always drawn from the last zone's pool regardless of which zone's
+    # population was actually supplied to this call.
+    return [44, 45, 46, 47, 48, 49]
+
+
 class TestMalformedSamplerOutputFailsClosed:
     """Proof point 10: malformed sampler output fails closed."""
 
@@ -208,11 +215,43 @@ class TestMalformedSamplerOutputFailsClosed:
             _malformed_above_range,
             _malformed_wrong_element_type,
             _malformed_wrong_container_type,
+            _malformed_wrong_zone,
         ],
     )
     def test_malformed_output_raises(self, sampler: object) -> None:
         with pytest.raises(MalformedSamplerOutput):
             generate_live_zone_split_bets(3, sampler=sampler)  # type: ignore[arg-type]
+
+
+class TestZonePopulationMembershipFailsClosed:
+    """Proof point 11: globally valid numbers from the wrong zone fail closed.
+
+    ``[44, 45, 46, 47, 48, 49]`` are six unique, in-range (1-49) BIG_LOTTO
+    numbers, so they pass every prior check (container, length, type,
+    uniqueness, global range). They are members of the *last* zone's pool
+    (``[31, 49]`` per ``TestLastZoneRemainder``), not the *first* zone's pool
+    (``[1, 18]`` per ``TestFrozenDonorZoneGeometry``). A sampler that ignores
+    the population it is given and always returns these values must still be
+    rejected when called for the first zone.
+    """
+
+    def test_globally_valid_wrong_zone_numbers_raise(self) -> None:
+        with pytest.raises(MalformedSamplerOutput, match="zone population"):
+            generate_live_zone_split_bets(3, sampler=_malformed_wrong_zone)
+
+    def test_same_numbers_are_individually_valid_big_lotto_numbers(self) -> None:
+        # Isolates the cause: this is not a range/type/count/duplicate failure.
+        values = (44, 45, 46, 47, 48, 49)
+        assert len(values) == _PICK
+        assert len(set(values)) == _PICK
+        assert all(_MIN <= number <= _MAX for number in values)
+
+    def test_same_numbers_are_accepted_when_they_are_the_correct_zone(self) -> None:
+        # Confirms the rejection above is about zone membership, not the
+        # specific numeric values: the identical sampler output is accepted
+        # when it is actually drawn from the zone it corresponds to.
+        result = generate_live_zone_split_bets(3, sampler=_last_k)
+        assert result.bets[2] == (44, 45, 46, 47, 48, 49)
 
 
 class TestDistinctFromDeterministicStrategy:

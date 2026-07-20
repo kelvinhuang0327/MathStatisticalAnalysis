@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from lottolab.application.draw_data import (
     DrawHistoryPage,
@@ -17,6 +17,7 @@ from lottolab.application.draw_data import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
+from lottolab.domain.replay_history import ReplayCausalDrawRow
 
 
 class DrawRepository(Protocol):
@@ -67,3 +68,37 @@ class HistoricalResultRepository(Protocol):
         that FAILED result.
         """
         ...
+
+
+class TargetDrawNotFoundError(LookupError):
+    """No draw matches ``(lottery_type, target_draw_number)`` exactly."""
+
+
+@runtime_checkable
+class DrawHistoryReader(Protocol):
+    """Replay's narrow, read-only causal Big Lotto history boundary.
+
+    Returns/raises in terms of domain types only — never sqlite3 rows, SQL
+    strings, or any UI/HTTP concept.
+    """
+
+    def read_causal_history(
+        self,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+        *,
+        maximum_history_draws: int | None = None,
+    ) -> tuple[ReplayCausalDrawRow, ...]:
+        """Return draws strictly before ``target_draw_number``, ascending.
+
+        Ordering is by ``draw_date`` then by the numeric ``draw_number`` —
+        never lexicographic (see :attr:`lottolab.domain.draws.Draw.sort_key`
+        for why). When ``maximum_history_draws`` is given, only the most
+        recent N draws before the target are returned (still ascending).
+        Raises :class:`TargetDrawNotFoundError` when the target does not
+        exist for ``lottery_type``.
+        """
+        ...
+
+
+type DrawHistoryReaderFactory = Callable[[], DrawHistoryReader]

@@ -192,6 +192,22 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/live-zone-split-bets": {
+      post: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["LiveZoneSplitResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -286,6 +302,8 @@ export interface components {
           "numbers": Array<number> | null
           "reason_code": components['schemas']["GenerateOneBetReason"] | null
         }
+    "GenerateLiveZoneSplitBetsReason": "INVALID_NUM_BETS" | "MALFORMED_OUTPUT" | "EXECUTION_ERROR"
+    "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
     "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
     "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
     "ImportCommitResultView": {
@@ -346,6 +364,18 @@ export interface components {
           "error_summary": string | null
         }
     "LifecycleStatus": "IDEA" | "OBSERVATION" | "ONLINE" | "REJECTED" | "RETIRED"
+    "LiveZoneSplitRequest": {
+          "num_bets": number
+        }
+    "LiveZoneSplitResponse": {
+          "status": components['schemas']["GenerateLiveZoneSplitBetsStatus"]
+          "bets": Array<Array<number>> | null
+          "coverage_rate": number | null
+          "total_unique_numbers": number | null
+          "method": string | null
+          "philosophy": string | null
+          "reason_code": components['schemas']["GenerateLiveZoneSplitBetsReason"] | null
+        }
     "LotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
     "NormalizedDrawPreviewView": {
           "source_row_number": number

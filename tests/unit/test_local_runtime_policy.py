@@ -294,6 +294,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/ingestion-runs": {"get": {}},
         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
         "/api/v1/generate-bet": {"post": {}},
+        "/api/v1/live-zone-split-bets": {"post": {}},
     }
 
 
@@ -345,6 +346,7 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/ingestion-runs", "get"),
         ("/api/v1/ingestion-runs/{run_id}", "get"),
         ("/api/v1/generate-bet", "post"),
+        ("/api/v1/live-zone-split-bets", "post"),
     ],
 )
 def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:

@@ -51,6 +51,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/ingestion-runs": frozenset({"get"}),
     "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
     "/api/v1/generate-bet": frozenset({"post"}),
+    "/api/v1/live-zone-split-bets": frozenset({"post"}),
 }
 _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATH = "/api/v1/generate-bet"
 """The one narrow, approved execution path exempt from the forbidden-word screen.

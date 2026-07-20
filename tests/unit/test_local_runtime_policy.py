@@ -293,6 +293,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/draws/{lottery_type}/{draw_number}": {"get": {}},
         "/api/v1/ingestion-runs": {"get": {}},
         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
+        "/api/v1/generate-bet": {"post": {}},
     }
 
 
@@ -343,6 +344,7 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/draws/{lottery_type}/{draw_number}", "get"),
         ("/api/v1/ingestion-runs", "get"),
         ("/api/v1/ingestion-runs/{run_id}", "get"),
+        ("/api/v1/generate-bet", "post"),
     ],
 )
 def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:
@@ -413,6 +415,27 @@ def test_smoke_rejects_generation_or_mutating_openapi_paths() -> None:
         validate_openapi_payload({"paths": {"/api/v1/generate": {"get": {}}}})
     with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
         validate_openapi_payload({"paths": {"/api/v1/strategies": {"post": {}}}})
+
+
+def test_smoke_accepts_exact_approved_generate_bet_operation() -> None:
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+@pytest.mark.parametrize("method", ["get", "put", "patch", "delete"])
+def test_smoke_rejects_non_post_methods_on_generate_bet(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/generate-bet"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+def test_smoke_rejects_other_paths_containing_generate_word() -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/generate-bet-extra"] = {"post": {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": paths})
 
 
 def test_listener_value_is_plain_identity_data() -> None:

@@ -19,6 +19,10 @@ from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
     build_production_generate_one_bet,
 )
+from lottolab.application.use_cases.generate_live_zone_split_bets import (
+    GenerateLiveZoneSplitBets,
+    build_production_generate_live_zone_split_bets,
+)
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
@@ -30,6 +34,7 @@ from lottolab.interfaces.api.draw_data import (
     create_draw_data_router,
 )
 from lottolab.interfaces.api.generate_bet import create_generate_bet_router
+from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
     create_strategy_catalog_router,
@@ -43,6 +48,7 @@ def create_app(
     catalog: StrategyCatalog | None = None,
     data_paths_provider: LocalDataPathsProvider | None = None,
     generate_one_bet: GenerateOneBet | None = None,
+    generate_live_zone_split_bets: GenerateLiveZoneSplitBets | None = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -51,6 +57,11 @@ def create_app(
     )
     resolved_generate_one_bet = (
         generate_one_bet if generate_one_bet is not None else build_production_generate_one_bet()
+    )
+    resolved_generate_live_zone_split_bets = (
+        generate_live_zone_split_bets
+        if generate_live_zone_split_bets is not None
+        else build_production_generate_live_zone_split_bets()
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -85,5 +96,6 @@ def create_app(
     app.include_router(create_strategy_catalog_router(resolved_catalog))
     app.include_router(create_draw_data_router(repository_factory))
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
+    app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
 
     return app

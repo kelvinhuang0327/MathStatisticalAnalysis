@@ -303,8 +303,9 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/ingestion-runs"),
         ("get", "/api/v1/ingestion-runs/{run_id}"),
         ("post", "/api/v1/generate-bet"),
+        ("post", "/api/v1/live-zone-split-bets"),
     }
-    assert len(operations) == 10
+    assert len(operations) == 11
 
 
 def test_committed_openapi_contract_is_current() -> None:

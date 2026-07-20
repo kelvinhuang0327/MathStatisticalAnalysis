@@ -663,6 +663,47 @@
           }
         }
       }
+    },
+    "/api/v1/live-zone-split-bets": {
+      "post": {
+        "tags": [
+          "live-zone-split"
+        ],
+        "summary": "Live Zone Split Bets",
+        "operationId": "generateLiveZoneSplitBets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LiveZoneSplitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveZoneSplitResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1210,6 +1251,25 @@
         ],
         "title": "GenerateBetResponse"
       },
+      "GenerateLiveZoneSplitBetsReason": {
+        "type": "string",
+        "enum": [
+          "INVALID_NUM_BETS",
+          "MALFORMED_OUTPUT",
+          "EXECUTION_ERROR"
+        ],
+        "title": "GenerateLiveZoneSplitBetsReason"
+      },
+      "GenerateLiveZoneSplitBetsStatus": {
+        "type": "string",
+        "enum": [
+          "OK",
+          "INVALID_REQUEST",
+          "INVALID_OUTPUT",
+          "EXECUTION_ERROR"
+        ],
+        "title": "GenerateLiveZoneSplitBetsStatus"
+      },
       "GenerateOneBetReason": {
         "type": "string",
         "enum": [
@@ -1629,6 +1689,111 @@
           "RETIRED"
         ],
         "title": "LifecycleStatus"
+      },
+      "LiveZoneSplitRequest": {
+        "properties": {
+          "num_bets": {
+            "type": "integer",
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Num Bets"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "num_bets"
+        ],
+        "title": "LiveZoneSplitRequest"
+      },
+      "LiveZoneSplitResponse": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/GenerateLiveZoneSplitBetsStatus"
+          },
+          "bets": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bets"
+          },
+          "coverage_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage Rate"
+          },
+          "total_unique_numbers": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Unique Numbers"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "philosophy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Philosophy"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerateLiveZoneSplitBetsReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "bets",
+          "coverage_rate",
+          "total_unique_numbers",
+          "method",
+          "philosophy",
+          "reason_code"
+        ],
+        "title": "LiveZoneSplitResponse"
       },
       "LotteryType": {
         "type": "string",

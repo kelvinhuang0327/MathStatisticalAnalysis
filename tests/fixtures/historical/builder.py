@@ -131,6 +131,22 @@ def build_portfolio(
     return portfolio
 
 
+def _draw_sha256(
+    *,
+    draw_number: int,
+    draw_date: str,
+    main_numbers: tuple[int, ...],
+    special_numbers: tuple[int, ...],
+) -> str:
+    payload = {
+        "draw_number": draw_number,
+        "draw_date": draw_date,
+        "main_numbers": sorted(main_numbers),
+        "special_numbers": sorted(special_numbers),
+    }
+    return sha256_hex(canonical_bytes(payload))
+
+
 def build_draw_snapshot(
     *,
     draw_number: int,
@@ -144,7 +160,12 @@ def build_draw_snapshot(
         "main_numbers": list(main_numbers),
         "special_numbers": list(special_numbers),
     }
-    draw["draw_sha256"] = sha256_hex(canonical_bytes(draw))
+    draw["draw_sha256"] = _draw_sha256(
+        draw_number=draw_number,
+        draw_date=draw_date,
+        main_numbers=main_numbers,
+        special_numbers=special_numbers,
+    )
     return draw
 
 
@@ -179,6 +200,15 @@ def build_strategy_descriptor(
 
 def _import_identity_payload(envelope: dict[str, Any]) -> dict[str, Any]:
     strategy_identities = sorted(d["descriptor_sha256"] for d in envelope["strategy_descriptors"])
+    draw_identities = [
+        _draw_sha256(
+            draw_number=draw["draw_number"],
+            draw_date=draw["draw_date"],
+            main_numbers=draw["main_numbers"],
+            special_numbers=draw["special_numbers"],
+        )
+        for draw in sorted(envelope["draw_snapshots"], key=lambda draw: draw["draw_number"])
+    ]
     target_numbers = sorted({p["target_draw_number"] for p in envelope["portfolios"]})
     pairs = sorted(
         {(p["target_draw_number"], p["cutoff_draw_number"]) for p in envelope["portfolios"]}
@@ -195,6 +225,7 @@ def _import_identity_payload(envelope: dict[str, Any]) -> dict[str, Any]:
         "dataset_identity": dataset["dataset_identity"],
         "dataset_sha256": dataset["dataset_sha256"],
         "strategy_descriptor_identities": strategy_identities,
+        "draw_snapshot_identities": draw_identities,
         "target_draw_numbers": target_numbers,
         "target_cutoff_pairs": [[target, cutoff] for target, cutoff in pairs],
         "portfolio_payload_hashes": portfolio_hashes,

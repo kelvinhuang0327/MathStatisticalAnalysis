@@ -26,7 +26,9 @@ from tests.fixtures.historical.builder import (
     build_portfolio,
     build_strategy_descriptor,
     build_tickets,
+    deep_copy,
     envelope_bytes,
+    recompute_envelope_hashes,
 )
 from tests.fixtures.historical.builder import build_small_envelope as _build_small_envelope
 
@@ -102,6 +104,48 @@ def test_exact_completed_reimport_is_idempotent_no_op(tmp_path: Path) -> None:
     with open_database(database, read_only=True) as connection:
         run_count = connection.execute("SELECT COUNT(*) FROM historical_result_run").fetchone()[0]
     assert run_count == 1
+
+
+def test_changed_cutoff_draw_content_is_not_silently_replayed_as_idempotent(
+    tmp_path: Path,
+) -> None:
+    """BLHQ R1 correction: same target/cutoff draw *numbers*, different cutoff
+    *content*, with the cutoff draw's ``draw_sha256`` correctly recomputed for
+    its new content, must commit as a distinct run rather than being returned
+    as the first run's exact idempotent replay.
+    """
+
+    database = tmp_path / "historical.db"
+    repository = SQLiteHistoricalResultRepository(database)
+
+    first_envelope = build_baseline_envelope()
+    first_result = repository.commit_import(_normalized_import(first_envelope))
+    assert first_result.status is HistoricalRunStatus.COMPLETED
+    assert first_result.is_idempotent_replay is False
+
+    second_envelope = deep_copy(first_envelope)
+    draw_snapshots = second_envelope["draw_snapshots"]
+    for index, draw in enumerate(draw_snapshots):
+        if draw["draw_number"] == CUTOFF_DRAW_NUMBER:
+            draw_snapshots[index] = build_draw_snapshot(
+                draw_number=CUTOFF_DRAW_NUMBER,
+                draw_date="2026-01-02",
+                main_numbers=CUTOFF_MAIN_NUMBERS,
+                special_numbers=CUTOFF_SPECIAL_NUMBERS,
+            )
+    second_envelope = recompute_envelope_hashes(second_envelope)
+    assert second_envelope["import_identity_sha256"] != first_envelope["import_identity_sha256"]
+
+    second_result = repository.commit_import(_normalized_import(second_envelope))
+    assert second_result.status is HistoricalRunStatus.COMPLETED
+    assert second_result.is_idempotent_replay is False
+    assert second_result.run_id != first_result.run_id
+
+    with open_database(database, read_only=True) as connection:
+        run_count = connection.execute(
+            "SELECT COUNT(*) FROM historical_result_run WHERE status = 'COMPLETED'"
+        ).fetchone()[0]
+    assert run_count == 2
 
 
 def test_two_different_shape_envelopes_yield_distinct_identities_and_both_commit(
@@ -189,7 +233,7 @@ def test_same_draw_number_with_different_values_coexists_across_runs(tmp_path: P
     first_result = repository.commit_import(_normalized_import(build_baseline_envelope()))
     assert first_result.status is HistoricalRunStatus.COMPLETED
 
-    different_target_main = (2, 3, 4, 5, 6, 7)
+    different_target_main = (2, 3, 4, 5, 6, 8)
     draw_snapshots = [
         build_draw_snapshot(
             draw_number=CUTOFF_DRAW_NUMBER,

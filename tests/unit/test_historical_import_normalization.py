@@ -8,8 +8,11 @@ from typing import Any
 
 from tests.fixtures.historical.builder import (
     CUTOFF_DRAW_NUMBER,
+    CUTOFF_MAIN_NUMBERS,
+    CUTOFF_SPECIAL_NUMBERS,
     REAL_STRATEGY_IDS,
     build_baseline_envelope,
+    build_draw_snapshot,
     build_small_envelope,
     deep_copy,
     envelope_bytes,
@@ -278,3 +281,272 @@ def test_explicit_json_null_is_rejected_and_distinguished_from_omission() -> Non
     result = verify_and_normalize_historical_import(raw_with_explicit_null)
     assert result.outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
     assert result.normalized_import is None
+
+
+# --- BLHQ R1 R3 correction: import-identity/draw-content binding ---------------
+
+
+def test_target_draw_main_numbers_tamper_with_stale_hash_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    target_draw = next(
+        draw for draw in envelope["draw_snapshots"] if draw["draw_number"] != CUTOFF_DRAW_NUMBER
+    )
+    target_draw["main_numbers"][0] = 40
+    envelope = recompute_envelope_hashes(envelope)
+    result = _verify(envelope)
+    assert result.outcome is HistoricalImportOutcome.IMPORT_HASH_MISMATCH
+    assert result.normalized_import is None
+
+
+def test_target_draw_special_number_tamper_with_stale_hash_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    target_draw = next(
+        draw for draw in envelope["draw_snapshots"] if draw["draw_number"] != CUTOFF_DRAW_NUMBER
+    )
+    target_draw["special_numbers"] = [41]
+    envelope = recompute_envelope_hashes(envelope)
+    result = _verify(envelope)
+    assert result.outcome is HistoricalImportOutcome.IMPORT_HASH_MISMATCH
+    assert result.normalized_import is None
+
+
+def test_repeated_normalization_of_same_envelope_is_deterministic() -> None:
+    raw = envelope_bytes(build_baseline_envelope())
+    first = verify_and_normalize_historical_import(raw)
+    second = verify_and_normalize_historical_import(raw)
+    assert first.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert second.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert first.normalized_import is not None
+    assert second.normalized_import is not None
+    assert (
+        first.normalized_import.import_identity_sha256
+        == second.normalized_import.import_identity_sha256
+    )
+
+
+# --- BLHQ R1 R3 correction: canonical ordering ---------------------------------
+
+
+def test_reordered_draw_main_numbers_yield_identical_hash_and_identity() -> None:
+    ascending = build_draw_snapshot(
+        draw_number=CUTOFF_DRAW_NUMBER,
+        draw_date="2026-01-01",
+        main_numbers=CUTOFF_MAIN_NUMBERS,
+        special_numbers=CUTOFF_SPECIAL_NUMBERS,
+    )
+    reordered = build_draw_snapshot(
+        draw_number=CUTOFF_DRAW_NUMBER,
+        draw_date="2026-01-01",
+        main_numbers=tuple(reversed(CUTOFF_MAIN_NUMBERS)),
+        special_numbers=CUTOFF_SPECIAL_NUMBERS,
+    )
+    assert ascending["draw_sha256"] == reordered["draw_sha256"]
+
+    baseline_envelope = build_baseline_envelope()
+    baseline_result = _verify(baseline_envelope)
+    assert baseline_result.normalized_import is not None
+
+    envelope = deep_copy(baseline_envelope)
+    envelope["draw_snapshots"] = [
+        reordered if draw["draw_number"] == CUTOFF_DRAW_NUMBER else draw
+        for draw in envelope["draw_snapshots"]
+    ]
+    envelope = recompute_envelope_hashes(envelope)
+    result = _verify(envelope)
+    assert result.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert result.normalized_import is not None
+    assert (
+        result.normalized_import.import_identity_sha256
+        == baseline_result.normalized_import.import_identity_sha256
+    )
+    normalized_cutoff = next(
+        draw
+        for draw in result.normalized_import.draw_snapshots
+        if draw.draw_number == CUTOFF_DRAW_NUMBER
+    )
+    assert normalized_cutoff.main_numbers == tuple(sorted(CUTOFF_MAIN_NUMBERS))
+
+
+def test_reordered_ticket_main_numbers_normalize_to_canonical_domain_order() -> None:
+    envelope = build_baseline_envelope()
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    original_main = list(ticket["main_numbers"])
+    ticket["main_numbers"] = list(reversed(original_main))
+    envelope = recompute_envelope_hashes(envelope)
+    result = _verify(envelope)
+    assert result.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert result.normalized_import is not None
+    normalized_ticket = result.normalized_import.portfolios[0].tickets[0]
+    assert normalized_ticket.main_numbers == tuple(sorted(original_main))
+    assert normalized_ticket.portfolio_position == 1
+
+
+# --- BLHQ R1 R3 correction: calendar-valid canonical date contract -------------
+
+
+def test_non_date_string_draw_date_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["draw_date"] = "not-a-date"
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_invalid_month_and_day_draw_date_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["draw_date"] = "2026-99-99"
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_impossible_calendar_date_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["draw_date"] = "2026-02-30"
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_noncanonical_timestamp_draw_date_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["draw_date"] = "2026-01-01T00:00:00Z"
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_non_leap_year_february_29_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["draw_date"] = "2026-02-29"
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_leap_day_draw_date_is_accepted() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"] = [
+        build_draw_snapshot(
+            draw_number=CUTOFF_DRAW_NUMBER,
+            draw_date="2024-02-29",
+            main_numbers=CUTOFF_MAIN_NUMBERS,
+            special_numbers=CUTOFF_SPECIAL_NUMBERS,
+        )
+        if draw["draw_number"] == CUTOFF_DRAW_NUMBER
+        else draw
+        for draw in envelope["draw_snapshots"]
+    ]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_PASS
+
+
+def test_valid_canonical_draw_date_is_preserved() -> None:
+    envelope = build_baseline_envelope()
+    result = _verify(envelope)
+    assert result.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert result.normalized_import is not None
+    assert {draw.draw_date for draw in result.normalized_import.draw_snapshots} == {
+        "2026-01-01",
+        "2026-01-10",
+    }
+
+
+# --- BLHQ R1 R3 correction: BIG_LOTTO draw-number invariants -------------------
+
+
+def test_draw_with_five_main_numbers_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["main_numbers"] = envelope["draw_snapshots"][0]["main_numbers"][
+        :5
+    ]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_seven_main_numbers_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["main_numbers"].append(48)
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_duplicate_main_number_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    draw = envelope["draw_snapshots"][0]
+    draw["main_numbers"][1] = draw["main_numbers"][0]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_main_number_below_range_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["main_numbers"][0] = 0
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_main_number_above_range_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["main_numbers"][0] = 50
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_zero_special_numbers_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["special_numbers"] = []
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_two_special_numbers_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    draw = envelope["draw_snapshots"][0]
+    draw["special_numbers"] = [draw["special_numbers"][0], 40]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_special_number_below_range_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["special_numbers"] = [0]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_special_number_above_range_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    envelope["draw_snapshots"][0]["special_numbers"] = [50]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_draw_with_main_special_overlap_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    draw = envelope["draw_snapshots"][0]
+    draw["special_numbers"] = [draw["main_numbers"][0]]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+# --- BLHQ R1 R3 correction: BIG_LOTTO ticket main-number invariants ------------
+
+
+def test_ticket_with_wrong_main_number_count_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    ticket["main_numbers"] = ticket["main_numbers"][:5]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_ticket_with_duplicate_main_number_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    ticket["main_numbers"][1] = ticket["main_numbers"][0]
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+
+
+def test_ticket_with_out_of_range_main_number_is_rejected() -> None:
+    envelope = build_baseline_envelope()
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    ticket["main_numbers"][0] = 50
+    envelope = recompute_envelope_hashes(envelope)
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED

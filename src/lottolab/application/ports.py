@@ -15,6 +15,7 @@ from lottolab.application.draw_data import (
     IngestionRunQuery,
 )
 from lottolab.domain.draws import LotteryType
+from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
 
 
@@ -53,3 +54,16 @@ class DrawCsvParser(Protocol):
 
 
 type DrawDataRepositoryFactory = Callable[[], DrawDataRepository]
+
+
+class HistoricalResultRepository(Protocol):
+    def commit_import(self, run_import: HistoricalRunImport) -> HistoricalImportCommitResult:
+        """Atomically commit one validated historical import.
+
+        Returns the existing COMPLETED result as an idempotent no-op when a run
+        with the same ``import_identity_sha256`` already completed; otherwise
+        commits a fresh COMPLETED run, or, on a mid-transaction persistence
+        failure, records a FAILED audit run with zero child rows and returns
+        that FAILED result.
+        """
+        ...

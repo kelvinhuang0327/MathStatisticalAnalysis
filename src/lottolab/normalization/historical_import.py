@@ -210,6 +210,33 @@ def _reject(
     return HistoricalImportVerificationResult(outcome=outcome, findings=(finding,))
 
 
+def _compute_descriptor_sha256(descriptor: _StrategyDescriptorWire) -> str:
+    payload: dict[str, Any] = {
+        "strategy_id": descriptor.strategy_id,
+        "effective_strategy_id": descriptor.effective_strategy_id,
+        "strategy_version": descriptor.strategy_version,
+        "replicate": descriptor.replicate,
+        "identity_kind": descriptor.identity_kind.value,
+        "governance_status": descriptor.governance_status.value,
+        "nested_prefix_supported": descriptor.nested_prefix_supported,
+    }
+    if descriptor.alias_of_strategy_id is not None:
+        payload["alias_of_strategy_id"] = descriptor.alias_of_strategy_id
+    if descriptor.equivalence_group is not None:
+        payload["equivalence_group"] = descriptor.equivalence_group
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
+def _compute_draw_sha256(draw: _DrawSnapshotWire) -> str:
+    payload = {
+        "draw_number": draw.draw_number,
+        "draw_date": draw.draw_date,
+        "main_numbers": list(draw.main_numbers),
+        "special_numbers": list(draw.special_numbers),
+    }
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
 def _compute_ticket_sha256(ticket: _TicketWire) -> str:
     payload = {
         "portfolio_position": ticket.portfolio_position,
@@ -344,7 +371,14 @@ def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerifi
 
     Fails closed at the first violation found, in this fixed order: well-typed
     envelope shape, import-identity hash, manifest hash, alias-target
-    resolution, then per-portfolio causal/ticket-shape/hit/hash checks.
+    resolution, independent strategy-descriptor content hash, independent
+    draw-snapshot content hash, then per-portfolio causal/ticket-shape/hit/hash
+    checks. Descriptor and draw hashes are re-derived from their own content
+    fields (never trusted from the declared value) so a stale child hash
+    cannot ride through on a self-consistent ``import_identity_sha256`` /
+    ``manifest_sha256`` pair; they run after alias-target resolution so an
+    unrelated content-hash defect never masks a still-observable
+    alias-target-absent violation.
     """
 
     if type(raw) is not bytes:
@@ -399,6 +433,24 @@ def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerifi
                 HistoricalImportOutcome.IMPORT_ALIAS_TARGET_ABSENT,
                 field="strategy_descriptors.alias_of_strategy_id",
                 message=f"alias target {descriptor.alias_of_strategy_id!r} is absent",
+            )
+
+    for descriptor in envelope.strategy_descriptors:
+        recomputed_descriptor_hash = _compute_descriptor_sha256(descriptor)
+        if recomputed_descriptor_hash != descriptor.descriptor_sha256:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="strategy_descriptors.descriptor_sha256",
+                message="declared descriptor_sha256 does not match independent recomputation",
+            )
+
+    for draw in envelope.draw_snapshots:
+        recomputed_draw_hash = _compute_draw_sha256(draw)
+        if recomputed_draw_hash != draw.draw_sha256:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="draw_snapshots.draw_sha256",
+                message="declared draw_sha256 does not match independent recomputation",
             )
 
     strategy_triples = {

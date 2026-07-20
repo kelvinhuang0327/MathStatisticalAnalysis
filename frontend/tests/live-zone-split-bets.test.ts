@@ -3,7 +3,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { LiveZoneSplitBetsResponse } from '../src/api/liveZoneSplitBets'
+import {
+  generateLiveZoneSplitBets,
+  LiveZoneSplitBetsRequestError,
+  type LiveZoneSplitBetsResponse,
+} from '../src/api/liveZoneSplitBets'
 import App from '../src/App.vue'
 import LiveZoneSplitBetsPage from '../src/features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
 
@@ -279,6 +283,84 @@ describe('LiveZoneSplitBetsPage', () => {
     expect(body).not.toHaveProperty('seed')
     expect(body).not.toHaveProperty('strategy_id')
     expect(body).not.toHaveProperty('sampler')
+    wrapper.unmount()
+  })
+})
+
+describe('generateLiveZoneSplitBets HTTP 422 handling', () => {
+  it('classifies a valid generated-shaped 422 envelope as http_422 with the fixed sanitized message', async () => {
+    fetchMock.mockResolvedValue(
+      apiResponse(
+        {
+          error_code: 'VALIDATION_ERROR',
+          message: 'num_bets must be an integer from server',
+          fields: [{ location: 'body.num_bets', type: 'value_error' }],
+          preview: null,
+        },
+        422,
+      ),
+    )
+
+    const error = await generateLiveZoneSplitBets(5).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(LiveZoneSplitBetsRequestError)
+    const requestError = error as LiveZoneSplitBetsRequestError
+    expect(requestError.kind).toBe('http_422')
+    expect(requestError.status).toBe(422)
+    expect(requestError.message).toBe('Live Zone Split rejected the request as invalid.')
+    expect(requestError.message).not.toContain('num_bets must be an integer from server')
+    expect(requestError.message).not.toContain('VALIDATION_ERROR')
+  })
+
+  it('classifies a 422 envelope missing required generated fields as malformed_response', async () => {
+    fetchMock.mockResolvedValue(apiResponse({ error_code: 'VALIDATION_ERROR' }, 422))
+
+    const error = await generateLiveZoneSplitBets(5).catch((caught: unknown) => caught)
+
+    expect(error).toBeInstanceOf(LiveZoneSplitBetsRequestError)
+    const requestError = error as LiveZoneSplitBetsRequestError
+    expect(requestError.kind).toBe('malformed_response')
+    expect(requestError.status).toBe(422)
+    expect(requestError.message).toBe('Live Zone Split returned a malformed validation response.')
+  })
+
+  it('classifies a 422 envelope with a blank message as malformed_response', async () => {
+    fetchMock.mockResolvedValue(
+      apiResponse({ error_code: 'VALIDATION_ERROR', message: '   ' }, 422),
+    )
+
+    const error = await generateLiveZoneSplitBets(5).catch((caught: unknown) => caught)
+
+    expect((error as LiveZoneSplitBetsRequestError).kind).toBe('malformed_response')
+  })
+
+  it('classifies a 422 envelope with an invalid fields entry as malformed_response', async () => {
+    fetchMock.mockResolvedValue(
+      apiResponse(
+        {
+          error_code: 'VALIDATION_ERROR',
+          message: 'Request rejected',
+          fields: [{ location: 'body.num_bets' }],
+        },
+        422,
+      ),
+    )
+
+    const error = await generateLiveZoneSplitBets(5).catch((caught: unknown) => caught)
+
+    expect((error as LiveZoneSplitBetsRequestError).kind).toBe('malformed_response')
+  })
+
+  it('renders a malformed 422 response as a page-level error, distinct from HTTP-200 application failures', async () => {
+    fetchMock.mockResolvedValue(apiResponse({ error_code: '', message: '' }, 422))
+    const wrapper = mount(LiveZoneSplitBetsPage)
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+
+    expect(wrapper.find('.state-panel--warning').exists()).toBe(false)
+    expect(wrapper.get('.state-panel--error').text()).toBe(
+      'Live Zone Split returned a malformed validation response.',
+    )
     wrapper.unmount()
   })
 })

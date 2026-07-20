@@ -3,6 +3,8 @@ import type { components, paths } from './generated/openapi'
 export type LiveZoneSplitBetsRequest = components['schemas']['LiveZoneSplitRequest']
 export type LiveZoneSplitBetsResponse =
   paths['/api/v1/live-zone-split-bets']['post']['responses'][200]['content']['application/json']
+export type LiveZoneSplitBetsValidationErrorResponse =
+  paths['/api/v1/live-zone-split-bets']['post']['responses'][422]['content']['application/json']
 
 export const MIN_NUM_BETS = 1
 export const MAX_NUM_BETS = 10
@@ -53,6 +55,33 @@ function isStatus(value: unknown): value is (typeof STATUSES)[number] {
 
 function isReasonCode(value: unknown): value is (typeof REASONS)[number] {
   return typeof value === 'string' && (REASONS as readonly string[]).includes(value)
+}
+
+function isNonBlankString(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function isLiveZoneSplitBetsValidationErrorResponse(
+  value: unknown,
+): value is LiveZoneSplitBetsValidationErrorResponse {
+  if (!isRecord(value)) return false
+  if (!isNonBlankString(value.error_code)) return false
+  if (!isNonBlankString(value.message)) return false
+
+  if (value.fields !== undefined) {
+    if (!Array.isArray(value.fields)) return false
+    const fieldsValid = value.fields.every(
+      (entry) =>
+        isRecord(entry) && typeof entry.location === 'string' && typeof entry.type === 'string',
+    )
+    if (!fieldsValid) return false
+  }
+
+  if (value.preview !== undefined) {
+    if (value.preview !== null && !isRecord(value.preview)) return false
+  }
+
+  return true
 }
 
 function isLiveZoneSplitBetsResponse(value: unknown): value is LiveZoneSplitBetsResponse {
@@ -134,9 +163,16 @@ export async function generateLiveZoneSplitBets(
   }
 
   if (response.status === 422) {
+    if (isLiveZoneSplitBetsValidationErrorResponse(payload)) {
+      throw new LiveZoneSplitBetsRequestError(
+        'Live Zone Split rejected the request as invalid.',
+        'http_422',
+        response.status,
+      )
+    }
     throw new LiveZoneSplitBetsRequestError(
-      'Live Zone Split rejected the request as invalid.',
-      'http_422',
+      'Live Zone Split returned a malformed validation response.',
+      'malformed_response',
       response.status,
     )
   }

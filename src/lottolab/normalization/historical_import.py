@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, Literal, cast
 
@@ -36,7 +37,19 @@ PORTFOLIO_TICKET_COUNT = 20
 _SYNTHETIC_PREFIX = "SYNTHETIC_"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _GIT_OID = re.compile(r"^[0-9a-f]{40}$")
+_ISO_DATE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 _CLOSED = ConfigDict(extra="forbid", frozen=True)
+
+# BIG_LOTTO number invariants (mirrors lottolab.domain.lottery_rules.BIG_LOTTO_RULE_CONTRACT).
+# Duplicated locally, not imported: this module's architecture contract
+# (tests/architecture/test_historical_dependency_rules.py) restricts it to
+# lottolab.domain.historical_results and lottolab.evidence.canonical_json only.
+_BIG_LOTTO_MAIN_COUNT = 6
+_BIG_LOTTO_MAIN_MIN = 1
+_BIG_LOTTO_MAIN_MAX = 49
+_BIG_LOTTO_SPECIAL_COUNT = 1
+_BIG_LOTTO_SPECIAL_MIN = 1
+_BIG_LOTTO_SPECIAL_MAX = 49
 
 
 class HistoricalImportOutcome(StrEnum):
@@ -89,8 +102,19 @@ def _check_git_oid(value: str) -> str:
     return value
 
 
+def _check_iso_date(value: str) -> str:
+    if _ISO_DATE.fullmatch(value) is None:
+        raise ValueError("must be a canonical YYYY-MM-DD date")
+    try:
+        date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError("must be a calendar-valid YYYY-MM-DD date") from exc
+    return value
+
+
 Sha256Hex = Annotated[str, AfterValidator(_check_sha256)]
 GitOidHex = Annotated[str, AfterValidator(_check_git_oid)]
+IsoDateStr = Annotated[str, AfterValidator(_check_iso_date)]
 
 
 class _SourceWire(BaseModel):
@@ -140,10 +164,36 @@ class _DrawSnapshotWire(BaseModel):
     model_config = _CLOSED
 
     draw_number: int = Field(ge=1)
-    draw_date: str = Field(min_length=1)
+    draw_date: IsoDateStr
     main_numbers: tuple[int, ...] = Field(min_length=1)
     special_numbers: tuple[int, ...]
     draw_sha256: Sha256Hex
+
+    @model_validator(mode="after")
+    def _check_big_lotto_numbers(self) -> _DrawSnapshotWire:
+        main, special = self.main_numbers, self.special_numbers
+        if len(main) != _BIG_LOTTO_MAIN_COUNT:
+            raise ValueError(f"a draw must have exactly {_BIG_LOTTO_MAIN_COUNT} main numbers")
+        if any(n < _BIG_LOTTO_MAIN_MIN or n > _BIG_LOTTO_MAIN_MAX for n in main):
+            raise ValueError(
+                f"a main number must be within {_BIG_LOTTO_MAIN_MIN}-{_BIG_LOTTO_MAIN_MAX}"
+            )
+        if len(set(main)) != len(main):
+            raise ValueError("main numbers must be unique")
+        if len(special) != _BIG_LOTTO_SPECIAL_COUNT:
+            raise ValueError(
+                f"a draw must have exactly {_BIG_LOTTO_SPECIAL_COUNT} special number(s)"
+            )
+        if any(n < _BIG_LOTTO_SPECIAL_MIN or n > _BIG_LOTTO_SPECIAL_MAX for n in special):
+            raise ValueError(
+                f"a special number must be within "
+                f"{_BIG_LOTTO_SPECIAL_MIN}-{_BIG_LOTTO_SPECIAL_MAX}"
+            )
+        if len(set(special)) != len(special):
+            raise ValueError("special numbers must be unique")
+        if set(main) & set(special):
+            raise ValueError("main and special numbers must not overlap")
+        return self
 
 
 class _TicketWire(BaseModel):
@@ -157,6 +207,19 @@ class _TicketWire(BaseModel):
     ticket_sha256: Sha256Hex
     legacy_row_id: str | None = None
     legacy_storage_bet_index: int | None = None
+
+    @model_validator(mode="after")
+    def _check_big_lotto_main_numbers(self) -> _TicketWire:
+        main = self.main_numbers
+        if len(main) != _BIG_LOTTO_MAIN_COUNT:
+            raise ValueError(f"a ticket must have exactly {_BIG_LOTTO_MAIN_COUNT} main numbers")
+        if any(n < _BIG_LOTTO_MAIN_MIN or n > _BIG_LOTTO_MAIN_MAX for n in main):
+            raise ValueError(
+                f"a main number must be within {_BIG_LOTTO_MAIN_MIN}-{_BIG_LOTTO_MAIN_MAX}"
+            )
+        if len(set(main)) != len(main):
+            raise ValueError("main numbers must be unique")
+        return self
 
 
 class _PortfolioWire(BaseModel):
@@ -231,8 +294,8 @@ def _compute_draw_sha256(draw: _DrawSnapshotWire) -> str:
     payload = {
         "draw_number": draw.draw_number,
         "draw_date": draw.draw_date,
-        "main_numbers": list(draw.main_numbers),
-        "special_numbers": list(draw.special_numbers),
+        "main_numbers": sorted(draw.main_numbers),
+        "special_numbers": sorted(draw.special_numbers),
     }
     return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
 
@@ -268,6 +331,10 @@ def _compute_prefix_sha256(ticket_hashes: list[str]) -> str:
 
 def _compute_import_identity_sha256(envelope: HistoricalResultImportV1) -> str:
     strategy_identities = sorted(d.descriptor_sha256 for d in envelope.strategy_descriptors)
+    draw_identities = [
+        _compute_draw_sha256(d)
+        for d in sorted(envelope.draw_snapshots, key=lambda draw: draw.draw_number)
+    ]
     target_numbers = sorted({p.target_draw_number for p in envelope.portfolios})
     pairs = sorted({(p.target_draw_number, p.cutoff_draw_number) for p in envelope.portfolios})
     portfolio_hashes = sorted(p.portfolio_sha256 for p in envelope.portfolios)
@@ -280,6 +347,7 @@ def _compute_import_identity_sha256(envelope: HistoricalResultImportV1) -> str:
         "dataset_identity": envelope.dataset.dataset_identity,
         "dataset_sha256": envelope.dataset.dataset_sha256,
         "strategy_descriptor_identities": strategy_identities,
+        "draw_snapshot_identities": draw_identities,
         "target_draw_numbers": target_numbers,
         "target_cutoff_pairs": [[target, cutoff] for target, cutoff in pairs],
         "portfolio_payload_hashes": portfolio_hashes,
@@ -319,8 +387,8 @@ def _build_domain_import(envelope: HistoricalResultImportV1) -> HistoricalRunImp
         HistoricalDrawSnapshot(
             draw_number=d.draw_number,
             draw_date=d.draw_date,
-            main_numbers=d.main_numbers,
-            special_numbers=d.special_numbers,
+            main_numbers=tuple(sorted(d.main_numbers)),
+            special_numbers=tuple(sorted(d.special_numbers)),
             draw_sha256=d.draw_sha256,
         )
         for d in envelope.draw_snapshots
@@ -337,8 +405,8 @@ def _build_domain_import(envelope: HistoricalResultImportV1) -> HistoricalRunImp
             tickets=tuple(
                 HistoricalTicket(
                     portfolio_position=t.portfolio_position,
-                    main_numbers=t.main_numbers,
-                    special_numbers=t.special_numbers,
+                    main_numbers=tuple(sorted(t.main_numbers)),
+                    special_numbers=tuple(sorted(t.special_numbers)),
                     main_hit_count=t.main_hit_count,
                     special_hit=t.special_hit,
                     ticket_sha256=t.ticket_sha256,
@@ -370,15 +438,25 @@ def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerifi
     """Verify ``raw`` against ``HistoricalResultImportV1`` and normalize it.
 
     Fails closed at the first violation found, in this fixed order: well-typed
-    envelope shape, import-identity hash, manifest hash, alias-target
-    resolution, independent strategy-descriptor content hash, independent
-    draw-snapshot content hash, then per-portfolio causal/ticket-shape/hit/hash
-    checks. Descriptor and draw hashes are re-derived from their own content
-    fields (never trusted from the declared value) so a stale child hash
-    cannot ride through on a self-consistent ``import_identity_sha256`` /
-    ``manifest_sha256`` pair; they run after alias-target resolution so an
-    unrelated content-hash defect never masks a still-observable
-    alias-target-absent violation.
+    envelope shape (including the BIG_LOTTO number invariants and calendar-valid
+    ``YYYY-MM-DD`` draw dates bound at the Pydantic-model layer), import-identity
+    hash, manifest hash, alias-target resolution, independent strategy-descriptor
+    content hash, independent draw-snapshot content hash, then per-portfolio
+    causal/ticket-shape/hit/hash checks. Descriptor and draw hashes are
+    re-derived from their own content fields (never trusted from the declared
+    value) so a stale child hash cannot ride through on a self-consistent
+    ``import_identity_sha256`` / ``manifest_sha256`` pair; they run after
+    alias-target resolution so an unrelated content-hash defect never masks a
+    still-observable alias-target-absent violation.
+
+    ``import_identity_sha256`` binds the ordered (by ``draw_number``) canonical
+    content hash of every draw snapshot, so a re-import that keeps the same
+    target/cutoff draw *numbers* but changes their content (date, main
+    numbers, or special number) recomputes to a different identity rather than
+    silently replaying a prior completed run. Main/special numbers are sorted
+    before hashing and before domain construction, so a reordered-but-equal
+    number set produces an identical draw hash, ticket hash, and import
+    identity, and the persisted representation is always canonical-ascending.
     """
 
     if type(raw) is not bytes:

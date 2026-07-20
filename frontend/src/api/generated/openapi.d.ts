@@ -176,6 +176,22 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/generate-bet": {
+      post: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["GenerateBetResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -252,6 +268,26 @@ export interface components {
           "created_at": string
           "updated_at": string
         }
+    "GenerateBetHistoryRow": {
+          "draw": string
+          "date": string
+          "numbers": Array<number>
+        }
+    "GenerateBetRequest": {
+          "strategy_id": string
+          "seed": number
+          "history": Array<components['schemas']["GenerateBetHistoryRow"]>
+        }
+    "GenerateBetResponse": {
+          "strategy_id": string
+          "lottery_type": components['schemas']["LotteryType"]
+          "seed": number
+          "status": components['schemas']["GenerateOneBetStatus"]
+          "numbers": Array<number> | null
+          "reason_code": components['schemas']["GenerateOneBetReason"] | null
+        }
+    "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
+    "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
     "ImportCommitResultView": {
           "run_id": string | null
           "status": components['schemas']["IngestionRunStatus"]

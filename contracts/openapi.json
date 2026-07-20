@@ -622,6 +622,47 @@
           }
         }
       }
+    },
+    "/api/v1/generate-bet": {
+      "post": {
+        "tags": [
+          "generate-bet"
+        ],
+        "summary": "Generate Bet",
+        "operationId": "generateOneBet",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateBetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateBetResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1053,6 +1094,146 @@
           "updated_at"
         ],
         "title": "DrawRecordView"
+      },
+      "GenerateBetHistoryRow": {
+        "properties": {
+          "draw": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Draw"
+          },
+          "date": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Date"
+          },
+          "numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Numbers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "draw",
+          "date",
+          "numbers"
+        ],
+        "title": "GenerateBetHistoryRow"
+      },
+      "GenerateBetRequest": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Strategy Id"
+          },
+          "seed": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Seed"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/GenerateBetHistoryRow"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "title": "History"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "seed",
+          "history"
+        ],
+        "title": "GenerateBetRequest"
+      },
+      "GenerateBetResponse": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "seed": {
+            "type": "integer",
+            "title": "Seed"
+          },
+          "status": {
+            "$ref": "#/components/schemas/GenerateOneBetStatus"
+          },
+          "numbers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Numbers"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerateOneBetReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "lottery_type",
+          "seed",
+          "status",
+          "numbers",
+          "reason_code"
+        ],
+        "title": "GenerateBetResponse"
+      },
+      "GenerateOneBetReason": {
+        "type": "string",
+        "enum": [
+          "REJECTED_BY_STRATEGY",
+          "INSUFFICIENT_HISTORY",
+          "UNKNOWN_STRATEGY",
+          "ADAPTER_NOT_INJECTED",
+          "UNSUPPORTED_LOTTERY_TYPE",
+          "INVALID_OUTPUT",
+          "REPLAY_ERROR"
+        ],
+        "title": "GenerateOneBetReason"
+      },
+      "GenerateOneBetStatus": {
+        "type": "string",
+        "enum": [
+          "OK",
+          "REJECTED",
+          "INSUFFICIENT_HISTORY",
+          "STRATEGY_UNAVAILABLE",
+          "INVALID_OUTPUT",
+          "REPLAY_ERROR"
+        ],
+        "title": "GenerateOneBetStatus"
       },
       "ImportCommitResultView": {
         "properties": {

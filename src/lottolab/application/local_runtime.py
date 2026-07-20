@@ -50,7 +50,15 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/draws/{lottery_type}/{draw_number}": frozenset({"get"}),
     "/api/v1/ingestion-runs": frozenset({"get"}),
     "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
+    "/api/v1/generate-bet": frozenset({"post"}),
 }
+_FORBIDDEN_ROUTE_WORD_EXCEPTION_PATH = "/api/v1/generate-bet"
+"""The one narrow, approved execution path exempt from the forbidden-word screen.
+
+Only this exact path is exempted; every other path containing a forbidden word
+(including "/api/v1/generate" and "/api/v1/generation") is still rejected, and
+the exact-operation-set check below still fails closed on method or path drift.
+"""
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods
 )
@@ -423,7 +431,9 @@ def validate_openapi_payload(payload: object) -> None:
         if "$ref" in operations:
             raise LocalRuntimeSafetyError("OpenAPI Path Item references are not supported")
         lowered_path = path.lower()
-        if any(word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS):
+        if path != _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATH and any(
+            word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS
+        ):
             raise LocalRuntimeSafetyError("OpenAPI exposes a generation or execution path")
         allowed_methods = _ALLOWED_OPENAPI_OPERATIONS.get(path)
         if allowed_methods is None:

@@ -15,6 +15,10 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from lottolab.application.use_cases.generate_bet import (
+    GenerateOneBet,
+    build_production_generate_one_bet,
+)
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
@@ -25,6 +29,7 @@ from lottolab.interfaces.api.draw_data import (
     RequestValidationIssueView,
     create_draw_data_router,
 )
+from lottolab.interfaces.api.generate_bet import create_generate_bet_router
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
     create_strategy_catalog_router,
@@ -37,11 +42,15 @@ LocalDataPathsProvider = Callable[[], LocalDataPaths]
 def create_app(
     catalog: StrategyCatalog | None = None,
     data_paths_provider: LocalDataPathsProvider | None = None,
+    generate_one_bet: GenerateOneBet | None = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
     resolved_paths_provider = (
         data_paths_provider if data_paths_provider is not None else resolve_local_data_paths
+    )
+    resolved_generate_one_bet = (
+        generate_one_bet if generate_one_bet is not None else build_production_generate_one_bet()
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -75,5 +84,6 @@ def create_app(
 
     app.include_router(create_strategy_catalog_router(resolved_catalog))
     app.include_router(create_draw_data_router(repository_factory))
+    app.include_router(create_generate_bet_router(resolved_generate_one_bet))
 
     return app

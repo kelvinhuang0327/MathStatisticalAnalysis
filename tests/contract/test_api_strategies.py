@@ -197,6 +197,22 @@ def test_strategy_overview_generated_declaration_uses_sanitized_response() -> No
     assert "HTTPValidationError" not in overview_declaration
 
 
+def test_generate_bet_generated_declaration_documents_operation_and_sanitized_response() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    generate_bet_declaration = declaration.split('"/api/v1/generate-bet": {', 1)[
+        1
+    ].split("export interface components", 1)[0]
+
+    assert "post:" in generate_bet_declaration
+    assert (
+        '"application/json": components[\'schemas\']["ApiValidationErrorResponse"]'
+        in generate_bet_declaration
+    )
+    assert "HTTPValidationError" not in generate_bet_declaration
+
+
 def test_strategy_overview_is_db_and_data_path_free(tmp_path: Path) -> None:
     forbidden_data_path = tmp_path / "must-not-exist"
 
@@ -286,8 +302,9 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/draws/{lottery_type}/{draw_number}"),
         ("get", "/api/v1/ingestion-runs"),
         ("get", "/api/v1/ingestion-runs/{run_id}"),
+        ("post", "/api/v1/generate-bet"),
     }
-    assert len(operations) == 9
+    assert len(operations) == 10
 
 
 def test_committed_openapi_contract_is_current() -> None:

@@ -1030,6 +1030,61 @@
           }
         }
       }
+    },
+    "/api/v1/replay-rankings/optimal": {
+      "get": {
+        "tags": [
+          "replay-rankings"
+        ],
+        "summary": "Get Optimal Replay Portfolio Rankings",
+        "operationId": "getOptimalReplayPortfolioRankings",
+        "parameters": [
+          {
+            "name": "top_k",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 10,
+              "title": "Top K"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayPortfolioRankingResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2678,6 +2733,253 @@
           "normalized_record_hash"
         ],
         "title": "NormalizedDrawPreviewView"
+      },
+      "ReplayPortfolioRankingCandidateView": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayPortfolioRankingMemberView"
+            },
+            "type": "array",
+            "title": "Members"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "total_ticket_count": {
+            "type": "integer",
+            "title": "Total Ticket Count"
+          },
+          "scored_count": {
+            "type": "integer",
+            "title": "Scored Count"
+          },
+          "history_closed_count": {
+            "type": "integer",
+            "title": "History Closed Count"
+          },
+          "prediction_closed_count": {
+            "type": "integer",
+            "title": "Prediction Closed Count"
+          },
+          "target_outcome_not_found_count": {
+            "type": "integer",
+            "title": "Target Outcome Not Found Count"
+          },
+          "target_identity_mismatch_count": {
+            "type": "integer",
+            "title": "Target Identity Mismatch Count"
+          },
+          "first_prize_count": {
+            "type": "integer",
+            "title": "First Prize Count"
+          },
+          "second_prize_count": {
+            "type": "integer",
+            "title": "Second Prize Count"
+          },
+          "third_prize_count": {
+            "type": "integer",
+            "title": "Third Prize Count"
+          },
+          "fourth_prize_count": {
+            "type": "integer",
+            "title": "Fourth Prize Count"
+          },
+          "fifth_prize_count": {
+            "type": "integer",
+            "title": "Fifth Prize Count"
+          },
+          "sixth_prize_count": {
+            "type": "integer",
+            "title": "Sixth Prize Count"
+          },
+          "seventh_prize_count": {
+            "type": "integer",
+            "title": "Seventh Prize Count"
+          },
+          "general_prize_count": {
+            "type": "integer",
+            "title": "General Prize Count"
+          },
+          "no_prize_count": {
+            "type": "integer",
+            "title": "No Prize Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "candidate_sha256": {
+            "type": "string",
+            "title": "Candidate Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "ticket_count",
+          "members",
+          "target_count",
+          "total_ticket_count",
+          "scored_count",
+          "history_closed_count",
+          "prediction_closed_count",
+          "target_outcome_not_found_count",
+          "target_identity_mismatch_count",
+          "first_prize_count",
+          "second_prize_count",
+          "third_prize_count",
+          "fourth_prize_count",
+          "fifth_prize_count",
+          "sixth_prize_count",
+          "seventh_prize_count",
+          "general_prize_count",
+          "no_prize_count",
+          "winning_ticket_count",
+          "candidate_sha256"
+        ],
+        "title": "ReplayPortfolioRankingCandidateView"
+      },
+      "ReplayPortfolioRankingGroupView": {
+        "properties": {
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "total_candidate_count": {
+            "type": "integer",
+            "title": "Total Candidate Count"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayPortfolioRankingCandidateView"
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_count",
+          "status",
+          "total_candidate_count",
+          "candidates"
+        ],
+        "title": "ReplayPortfolioRankingGroupView"
+      },
+      "ReplayPortfolioRankingMemberView": {
+        "properties": {
+          "source_position": {
+            "type": "integer",
+            "title": "Source Position"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Version"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_position",
+          "strategy_id"
+        ],
+        "title": "ReplayPortfolioRankingMemberView"
+      },
+      "ReplayPortfolioRankingResponse": {
+        "properties": {
+          "artifact_schema_version": {
+            "type": "string",
+            "title": "Artifact Schema Version"
+          },
+          "ranking_policy_id": {
+            "type": "string",
+            "title": "Ranking Policy Id"
+          },
+          "source_scoring_artifact_payload_sha256": {
+            "type": "string",
+            "title": "Source Scoring Artifact Payload Sha256"
+          },
+          "source_replay_artifact_payload_sha256": {
+            "type": "string",
+            "title": "Source Replay Artifact Payload Sha256"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "top_k": {
+            "type": "integer",
+            "title": "Top K"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayPortfolioRankingGroupView"
+            },
+            "type": "array",
+            "title": "Groups"
+          },
+          "artifact_sha256": {
+            "type": "string",
+            "title": "Artifact Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "artifact_schema_version",
+          "ranking_policy_id",
+          "source_scoring_artifact_payload_sha256",
+          "source_replay_artifact_payload_sha256",
+          "dataset_id",
+          "dataset_version",
+          "lottery_type",
+          "target_count",
+          "strategy_count",
+          "top_k",
+          "groups",
+          "artifact_sha256"
+        ],
+        "title": "ReplayPortfolioRankingResponse"
       },
       "RequestValidationIssueView": {
         "properties": {

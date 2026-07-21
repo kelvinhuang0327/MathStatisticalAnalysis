@@ -307,6 +307,27 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-rankings/optimal": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayPortfolioRankingResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -573,6 +594,54 @@ export interface components {
           "special_numbers": Array<number>
           "source_reference": string | null
           "normalized_record_hash": string
+        }
+    "ReplayPortfolioRankingCandidateView": {
+          "rank": number
+          "ticket_count": number
+          "members": Array<components['schemas']["ReplayPortfolioRankingMemberView"]>
+          "target_count": number
+          "total_ticket_count": number
+          "scored_count": number
+          "history_closed_count": number
+          "prediction_closed_count": number
+          "target_outcome_not_found_count": number
+          "target_identity_mismatch_count": number
+          "first_prize_count": number
+          "second_prize_count": number
+          "third_prize_count": number
+          "fourth_prize_count": number
+          "fifth_prize_count": number
+          "sixth_prize_count": number
+          "seventh_prize_count": number
+          "general_prize_count": number
+          "no_prize_count": number
+          "winning_ticket_count": number
+          "candidate_sha256": string
+        }
+    "ReplayPortfolioRankingGroupView": {
+          "ticket_count": number
+          "status": string
+          "total_candidate_count": number
+          "candidates": Array<components['schemas']["ReplayPortfolioRankingCandidateView"]>
+        }
+    "ReplayPortfolioRankingMemberView": {
+          "source_position": number
+          "strategy_id": string
+          "strategy_version"?: string | null
+        }
+    "ReplayPortfolioRankingResponse": {
+          "artifact_schema_version": string
+          "ranking_policy_id": string
+          "source_scoring_artifact_payload_sha256": string
+          "source_replay_artifact_payload_sha256": string
+          "dataset_id": string
+          "dataset_version": string
+          "lottery_type": string
+          "target_count": number
+          "strategy_count": number
+          "top_k": number
+          "groups": Array<components['schemas']["ReplayPortfolioRankingGroupView"]>
+          "artifact_sha256": string
         }
     "RequestValidationIssueView": {
           "location": string

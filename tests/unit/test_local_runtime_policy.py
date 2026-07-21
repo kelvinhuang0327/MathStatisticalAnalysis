@@ -299,6 +299,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
         "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
+        "/api/v1/replay-rankings/optimal": {"get": {}},
     }
 
 
@@ -355,6 +356,7 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/historical-results/runs/{run_id}/strategies", "get"),
         ("/api/v1/historical-results/runs/{run_id}/replay", "get"),
         ("/api/v1/historical-results/portfolios/{portfolio_id}", "get"),
+        ("/api/v1/replay-rankings/optimal", "get"),
     ],
 )
 def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:
@@ -474,6 +476,37 @@ def test_smoke_rejects_unrelated_replay_or_execute_paths(path: str) -> None:
     """Only the two named exceptions bypass the forbidden-word screen; every other
     path containing "replay" or "execute" -- including near-miss historical-results
     paths -- must still fail closed."""
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
+
+
+def test_smoke_accepts_exact_approved_replay_portfolio_ranking_operation() -> None:
+    """The read-only /replay-rankings/optimal path is the third narrow exception."""
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_non_get_methods_on_replay_portfolio_ranking(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/replay-rankings/optimal"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-rankings/execute",
+        "/api/v1/replay-rankings/optimize",
+        "/api/v1/replay-ranking/optimal",
+        "/api/v1/replay-rankings/optimal/run",
+    ],
+)
+def test_smoke_rejects_replay_portfolio_ranking_near_miss_paths(path: str) -> None:
+    """Only the exact approved path bypasses the forbidden-word screen; near
+    misses -- wrong verb, wrong singular/plural, an extra path segment -- still
+    fail closed, with no prefix or wildcard exception."""
     with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
         validate_openapi_payload({"paths": {path: {"get": {}}}})
 

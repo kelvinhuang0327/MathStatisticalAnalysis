@@ -14,6 +14,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Any
 
+from lottolab.domain import lottery_rules
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import (
     BIG_LOTTO_RULE_CONTRACT,
@@ -319,27 +320,23 @@ class ReplayScoredPrediction:
                 raise ValueError("main_number_hit_count is outside the Big Lotto range")
             if type(self.special_number_hit) is not bool:
                 raise ValueError("SCORED requires special_number_hit")
-            winning = self.prize_tier_id is not None or self.prize_official_label is not None
-            losing = self.no_prize_result is not None
-            if winning == losing:
-                raise ValueError("SCORED requires exactly one winning tier or NO_PRIZE")
-            if winning:
-                if self.prize_tier_id is None or self.prize_official_label is None:
-                    raise ValueError("winning result requires tier id and official label")
-                _require_text(self.prize_official_label, "prize_official_label")
-                tier = next(
-                    candidate
-                    for candidate in BIG_LOTTO_RULE_CONTRACT.prize_rule.tiers
-                    if candidate.tier_id is self.prize_tier_id
-                )
+            resolution = lottery_rules.resolve_big_lotto_prize_tier(
+                self.main_number_hit_count,
+                self.special_number_hit,
+            )
+            if resolution is NoPrizeResult.NO_PRIZE:
+                if self.prize_tier_id is not None or self.prize_official_label is not None:
+                    raise ValueError("losing signature cannot carry a winning tier")
+                if self.no_prize_result is not resolution:
+                    raise ValueError("losing signature requires explicit canonical NO_PRIZE")
+            else:
+                if self.no_prize_result is not None:
+                    raise ValueError("winning signature cannot carry NO_PRIZE")
                 if (
-                    tier.official_label != self.prize_official_label
-                    or tier.main_hits != self.main_number_hit_count
-                    or tier.special_hit is not self.special_number_hit
+                    self.prize_tier_id is not resolution.tier_id
+                    or self.prize_official_label != resolution.official_label
                 ):
-                    raise ValueError("winning tier does not match the canonical hit signature")
-            elif self.no_prize_result is not NoPrizeResult.NO_PRIZE:
-                raise ValueError("losing result must be explicit NO_PRIZE")
+                    raise ValueError("winning signature requires the canonical prize tier")
         else:
             if any(value is not None for value in scoring_fields):
                 raise ValueError("not-scored results cannot carry hit or prize fields")

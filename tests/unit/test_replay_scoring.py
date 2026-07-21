@@ -7,13 +7,20 @@ from datetime import date
 import pytest
 
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.lottery_rules import BigLottoPrizeTierId, NoPrizeResult
+from lottolab.domain.lottery_rules import (
+    BIG_LOTTO_RULE_CONTRACT,
+    BigLottoPrizeTier,
+    BigLottoPrizeTierId,
+    NoPrizeResult,
+    resolve_big_lotto_prize_tier,
+)
 from lottolab.domain.replay_scoring import (
     SCORING_SCHEMA_VERSION,
     ReplayScoredPrediction,
     ReplayScoringReason,
     ReplayScoringStatus,
     ReplayTargetOutcome,
+    recompute_scored_result_sha256,
 )
 
 _SOURCE_ARTIFACT_SHA = "a" * 64
@@ -122,9 +129,71 @@ def test_target_outcome_preserves_leading_zeroes_as_identity() -> None:
 def test_scored_requires_the_complete_hit_and_prize_field_set() -> None:
     with pytest.raises(ValueError, match="main_number_hit_count"):
         ReplayScoredPrediction.create(**_scored_values(main_number_hit_count=None))
-    with pytest.raises(ValueError, match="exactly one"):
+    with pytest.raises(ValueError, match="special_number_hit"):
+        ReplayScoredPrediction.create(**_scored_values(special_number_hit=None))
+    with pytest.raises(ValueError, match="canonical prize tier"):
         ReplayScoredPrediction.create(
             **_scored_values(prize_tier_id=None, prize_official_label=None)
+        )
+
+
+def test_impossible_scored_signature_cannot_obtain_a_valid_result_hash() -> None:
+    record: ReplayScoredPrediction | None = None
+
+    with pytest.raises(ValueError, match="ticket size"):
+        record = ReplayScoredPrediction.create(
+            **_scored_values(
+                main_number_hit_count=6,
+                special_number_hit=True,
+                prize_tier_id=None,
+                prize_official_label=None,
+                no_prize_result=NoPrizeResult.NO_PRIZE,
+            )
+        )
+
+    assert record is None
+
+
+def test_winning_signature_rejects_no_prize() -> None:
+    with pytest.raises(ValueError, match="winning signature cannot carry NO_PRIZE"):
+        ReplayScoredPrediction.create(
+            **_scored_values(
+                main_number_hit_count=6,
+                special_number_hit=False,
+                prize_tier_id=None,
+                prize_official_label=None,
+                no_prize_result=NoPrizeResult.NO_PRIZE,
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    ("prize_tier_id", "prize_official_label"),
+    (
+        (BigLottoPrizeTierId.SECOND, "頭獎"),
+        (BigLottoPrizeTierId.FIRST, "貳獎"),
+    ),
+)
+def test_winning_signature_rejects_wrong_canonical_tier(
+    prize_tier_id: BigLottoPrizeTierId,
+    prize_official_label: str,
+) -> None:
+    with pytest.raises(ValueError, match="canonical prize tier"):
+        ReplayScoredPrediction.create(
+            **_scored_values(
+                prize_tier_id=prize_tier_id,
+                prize_official_label=prize_official_label,
+            )
+        )
+
+
+def test_losing_signature_rejects_winning_tier() -> None:
+    with pytest.raises(ValueError, match="cannot carry a winning tier"):
+        ReplayScoredPrediction.create(
+            **_scored_values(
+                main_number_hit_count=1,
+                special_number_hit=False,
+            )
         )
 
 
@@ -142,6 +211,32 @@ def test_no_prize_is_scored_and_distinct_from_not_scored() -> None:
     assert record.scoring_status is ReplayScoringStatus.SCORED
     assert record.no_prize_result is NoPrizeResult.NO_PRIZE
     assert record.prize_tier_id is None
+    assert record.prize_official_label is None
+    assert record.scored_result_sha256 == recompute_scored_result_sha256(record)
+
+
+@pytest.mark.parametrize(
+    "tier",
+    BIG_LOTTO_RULE_CONTRACT.prize_rule.tiers,
+    ids=lambda tier: tier.tier_id.value,
+)
+def test_every_canonical_winning_tier_remains_valid(tier: BigLottoPrizeTier) -> None:
+    resolution = resolve_big_lotto_prize_tier(tier.main_hits, tier.special_hit)
+
+    assert resolution is tier
+    record = ReplayScoredPrediction.create(
+        **_scored_values(
+            main_number_hit_count=tier.main_hits,
+            special_number_hit=tier.special_hit,
+            prize_tier_id=tier.tier_id,
+            prize_official_label=tier.official_label,
+        )
+    )
+
+    assert record.prize_tier_id is tier.tier_id
+    assert record.prize_official_label == tier.official_label
+    assert record.no_prize_result is None
+    assert record.scored_result_sha256 == recompute_scored_result_sha256(record)
 
 
 def test_closed_history_and_prediction_reject_hit_and_tier_fields() -> None:

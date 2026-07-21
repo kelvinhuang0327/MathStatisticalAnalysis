@@ -26,6 +26,9 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
 from lottolab.domain.replay_history import ReplayCausalDrawRow
+from lottolab.domain.replay_scoring import (
+    ReplayTargetOutcomeReadResult,
+)
 
 
 class DrawRepository(Protocol):
@@ -144,3 +147,16 @@ class DrawHistoryReader(Protocol):
 
 
 type DrawHistoryReaderFactory = Callable[[], DrawHistoryReader]
+
+
+@runtime_checkable
+class ReplayTargetOutcomeReader(Protocol):
+    """Narrow, read-only boundary for one exact Replay target outcome."""
+
+    def load_target_outcome(
+        self,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+    ) -> ReplayTargetOutcomeReadResult:
+        """Return a typed found/not-found result without leaking storage errors."""
+        ...

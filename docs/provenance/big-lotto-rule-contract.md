@@ -40,6 +40,64 @@ The runtime provenance tuple binds only the content-bearing asset: its asset tit
 asset digest, and byte locator all identify that same first-party response. The canonical rendered
 page and its separate `CORROBORATING` response digest remain recorded above for navigation.
 
+## Current prize-tier contract
+
+- Publisher: 台灣彩券股份有限公司
+- Title: `/_nuxt/_game_.1_0_8_04.js`
+- Canonical content URL: <https://www.taiwanlottery.com/_nuxt/_game_.1_0_8_04.js>
+- Accessed: `2026-07-21T07:25:51Z`
+- Response SHA-256: `397639210969faba3002ffbd309dba10c44ead2063dd51ed47def98624994c15`
+- Response metadata: `application/javascript`; 120,610 bytes; server-reported last modified
+  `2026-03-24T07:06:12Z`
+- Locator: `lotto649.tableData`, UTF-8 bytes 7446–8159
+- Language/encoding: Traditional Chinese in UTF-8 JavaScript
+- Status: `PRIMARY`, current
+
+Current-route corroboration:
+
+- Publisher: 台灣彩券股份有限公司
+- Title: `/_nuxt/entry.1_0_8_0.js`
+- Canonical content URL: <https://www.taiwanlottery.com/_nuxt/entry.1_0_8_0.js>
+- Accessed: `2026-07-21T07:33:54Z`
+- Response SHA-256: `8f386a4d4e3f2e0028172b22eafa6f52385d06e5bd7936eca289d12f3ee674bb`
+- Locator: `/lotto/info/:game` route component import at UTF-8 byte 195374
+- Language/encoding: JavaScript in UTF-8
+- Status: `CORROBORATING`, current route manifest
+
+Current applicability was established by reloading the canonical rendered game page on the access
+date. The route manifest above loads the exact `_game_.1_0_8_04.js` asset for
+`/lotto/info/:game`, and the asset returned HTTP 200 from the operator's official host. Neither the
+page nor the asset states a rule-effective or expiry date. No current official source with
+conflicting tier labels or hit conditions was found. The website build identifiers and asset
+filename are deployment identifiers, not official rule versions.
+
+The official rows normalize to the runtime hit-signature contract as follows. `main_hits` counts
+matches against the six main winning numbers; `special_hit` records whether the ticket also matches
+the distinct special number. Prize amounts shown elsewhere in the source are deliberately excluded.
+
+| Stable LottoLab tier ID | Official label | `main_hits` | `special_hit` |
+|---|---:|---:|---:|
+| `FIRST` | 頭獎 | 6 | false |
+| `SECOND` | 貳獎 | 5 | true |
+| `THIRD` | 參獎 | 5 | false |
+| `FOURTH` | 肆獎 | 4 | true |
+| `FIFTH` | 伍獎 | 4 | false |
+| `SIXTH` | 陸獎 | 3 | true |
+| `SEVENTH` | 柒獎 | 2 | true |
+| `GENERAL` | 普獎 | 3 | false |
+
+All other logically possible hit signatures are valid non-winning results. `(6, true)` is invalid:
+a six-number ticket that matches all six distinct main numbers cannot also contain the separate
+special number. The runtime resolver therefore distinguishes explicit `NO_PRIZE` from invalid
+input.
+
+The executable values live only in
+`src/lottolab/domain/lottery_rules.py::BIG_LOTTO_RULE_CONTRACT`; this ledger records their evidence
+and derivation but is not a second runtime table. The prize section uses LottoLab-internal schema
+version `1.0.0`. The encompassing game-mechanics descriptor remains `2026-07-16.1` because the
+prize section has its own version identity and changing the existing descriptor would invalidate
+unrelated evidence hashes. Neither value is presented as an official rule version.
+
 ## Current procedural corroboration
 
 - Publisher: 台灣彩券股份有限公司

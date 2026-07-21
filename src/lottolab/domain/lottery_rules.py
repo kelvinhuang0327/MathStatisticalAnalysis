@@ -36,6 +36,25 @@ class ProvenanceStatus(StrEnum):
     AMBIGUOUS = "AMBIGUOUS"
 
 
+class BigLottoPrizeTierId(StrEnum):
+    """Stable LottoLab identifiers for the official BIG_LOTTO prize tiers."""
+
+    FIRST = "FIRST"
+    SECOND = "SECOND"
+    THIRD = "THIRD"
+    FOURTH = "FOURTH"
+    FIFTH = "FIFTH"
+    SIXTH = "SIXTH"
+    SEVENTH = "SEVENTH"
+    GENERAL = "GENERAL"
+
+
+class NoPrizeResult(StrEnum):
+    """Explicit non-winning result for a valid BIG_LOTTO hit signature."""
+
+    NO_PRIZE = "NO_PRIZE"
+
+
 AUTHORITATIVE_SOURCE_HOSTS = frozenset(
     {
         "lotto.ctbcbank.com",
@@ -46,6 +65,109 @@ AUTHORITATIVE_SOURCE_HOSTS = frozenset(
 )
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+
+
+def _validate_big_lotto_hit_signature(
+    main_hits: int,
+    special_hit: bool,
+    *,
+    ticket_size: int,
+) -> None:
+    if type(main_hits) is not int:
+        raise ValueError("main_hits must be an integer")
+    if type(special_hit) is not bool:
+        raise ValueError("special_hit must be a boolean")
+    if not 0 <= main_hits <= ticket_size:
+        raise ValueError(f"main_hits must be between 0 and {ticket_size}")
+    if main_hits + int(special_hit) > ticket_size:
+        raise ValueError("hit signature exceeds the ticket size")
+
+
+@dataclass(frozen=True, slots=True)
+class BigLottoPrizeTier:
+    """One official prize tier and its unique hit signature."""
+
+    tier_id: BigLottoPrizeTierId
+    official_label: str
+    main_hits: int
+    special_hit: bool
+
+    def validate(self, *, ticket_size: int) -> None:
+        if type(self.tier_id) is not BigLottoPrizeTierId:
+            raise ValueError("tier_id must be a BigLottoPrizeTierId")
+        if type(self.official_label) is not str or not self.official_label.strip():
+            raise ValueError("official_label must be a non-empty string")
+        _validate_big_lotto_hit_signature(
+            self.main_hits,
+            self.special_hit,
+            ticket_size=ticket_size,
+        )
+
+    def canonical_dict(self) -> dict[str, bool | int | str]:
+        return {
+            "main_hits": self.main_hits,
+            "official_label": self.official_label,
+            "special_hit": self.special_hit,
+            "tier_id": self.tier_id.value,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class BigLottoPrizeRuleContract:
+    """Versioned, source-bound collection of official BIG_LOTTO prize tiers."""
+
+    schema_version: str
+    source_sha256: str
+    source_locator: str
+    source_accessed_at: datetime
+    tiers: tuple[BigLottoPrizeTier, ...]
+
+    def validate(self, *, ticket_size: int) -> None:
+        for name, value in (
+            ("schema_version", self.schema_version),
+            ("source_sha256", self.source_sha256),
+            ("source_locator", self.source_locator),
+        ):
+            if type(value) is not str or not value.strip():
+                raise ValueError(f"prize_rule.{name} must be a non-empty string")
+        if _SHA256.fullmatch(self.source_sha256) is None:
+            raise ValueError("prize_rule.source_sha256 must be a lowercase SHA-256 digest")
+        if type(self.source_accessed_at) is not datetime:
+            raise ValueError("prize_rule.source_accessed_at must be a datetime")
+        if self.source_accessed_at.tzinfo is None:
+            raise ValueError("prize_rule.source_accessed_at must be timezone-aware")
+        if self.source_accessed_at.utcoffset() != UTC.utcoffset(self.source_accessed_at):
+            raise ValueError("prize_rule.source_accessed_at must use UTC")
+        if type(self.tiers) is not tuple or not self.tiers:
+            raise ValueError("prize_rule.tiers must be a non-empty tuple")
+
+        expected_ids = tuple(BigLottoPrizeTierId)
+        actual_ids: list[BigLottoPrizeTierId] = []
+        signatures: set[tuple[int, bool]] = set()
+        for tier in self.tiers:
+            if type(tier) is not BigLottoPrizeTier:
+                raise ValueError("prize_rule.tiers must contain BigLottoPrizeTier values")
+            tier.validate(ticket_size=ticket_size)
+            actual_ids.append(tier.tier_id)
+            signature = (tier.main_hits, tier.special_hit)
+            if signature in signatures:
+                raise ValueError("prize_rule.tiers contains an ambiguous hit signature")
+            signatures.add(signature)
+        if tuple(actual_ids) != expected_ids:
+            raise ValueError(
+                "prize_rule.tiers must contain every tier identifier exactly once "
+                "in canonical order"
+            )
+
+    def canonical_dict(self) -> dict[str, object]:
+        accessed_at = self.source_accessed_at.isoformat().replace("+00:00", "Z")
+        return {
+            "schema_version": self.schema_version,
+            "source_accessed_at": accessed_at,
+            "source_locator": self.source_locator,
+            "source_sha256": self.source_sha256,
+            "tiers": [tier.canonical_dict() for tier in self.tiers],
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,6 +197,7 @@ class LotteryRuleContract:
     source_locator: str
     source_accessed_at: datetime
     provenance_status: ProvenanceStatus
+    prize_rule: BigLottoPrizeRuleContract
 
     def __post_init__(self) -> None:
         self.validate()
@@ -90,6 +213,8 @@ class LotteryRuleContract:
             raise ValueError("canonical_number_order must be a CanonicalNumberOrder")
         if type(self.provenance_status) is not ProvenanceStatus:
             raise ValueError("provenance_status must be a ProvenanceStatus")
+        if type(self.prize_rule) is not BigLottoPrizeRuleContract:
+            raise ValueError("prize_rule must be a BigLottoPrizeRuleContract")
 
         text_fields = {
             "contract_version": self.contract_version,
@@ -168,8 +293,11 @@ class LotteryRuleContract:
             raise ValueError("source_accessed_at must be timezone-aware")
         if self.source_accessed_at.utcoffset() != UTC.utcoffset(self.source_accessed_at):
             raise ValueError("source_accessed_at must use UTC")
+        self.prize_rule.validate(ticket_size=self.main_number_count)
+        if self.prize_rule.source_sha256 != self.source_sha256:
+            raise ValueError("prize_rule source digest must match the primary source digest")
 
-    def canonical_dict(self) -> dict[str, bool | int | str | None]:
+    def canonical_dict(self) -> dict[str, object]:
         """Return a stable, JSON-ready representation of every required field."""
 
         accessed_at = self.source_accessed_at.isoformat().replace("+00:00", "Z")
@@ -186,6 +314,7 @@ class LotteryRuleContract:
             "main_numbers_unique": self.main_numbers_unique,
             "main_special_overlap_allowed": self.main_special_overlap_allowed,
             "provenance_status": self.provenance_status.value,
+            "prize_rule": self.prize_rule.canonical_dict(),
             "source_accessed_at": accessed_at,
             "source_locator": self.source_locator,
             "source_publisher": self.source_publisher,
@@ -236,6 +365,22 @@ BIG_LOTTO_RULE_CONTRACT = LotteryRuleContract(
     ),
     source_accessed_at=datetime(2026, 7, 16, 5, 19, 34, tzinfo=UTC),
     provenance_status=ProvenanceStatus.PRIMARY,
+    prize_rule=BigLottoPrizeRuleContract(
+        schema_version="1.0.0",
+        source_sha256="397639210969faba3002ffbd309dba10c44ead2063dd51ed47def98624994c15",
+        source_locator="lotto649.tableData, UTF-8 bytes 7446-8159",
+        source_accessed_at=datetime(2026, 7, 21, 7, 25, 51, tzinfo=UTC),
+        tiers=(
+            BigLottoPrizeTier(BigLottoPrizeTierId.FIRST, "頭獎", 6, False),
+            BigLottoPrizeTier(BigLottoPrizeTierId.SECOND, "貳獎", 5, True),
+            BigLottoPrizeTier(BigLottoPrizeTierId.THIRD, "參獎", 5, False),
+            BigLottoPrizeTier(BigLottoPrizeTierId.FOURTH, "肆獎", 4, True),
+            BigLottoPrizeTier(BigLottoPrizeTierId.FIFTH, "伍獎", 4, False),
+            BigLottoPrizeTier(BigLottoPrizeTierId.SIXTH, "陸獎", 3, True),
+            BigLottoPrizeTier(BigLottoPrizeTierId.SEVENTH, "柒獎", 2, True),
+            BigLottoPrizeTier(BigLottoPrizeTierId.GENERAL, "普獎", 3, False),
+        ),
+    ),
 )
 
 LOTTERY_RULE_CONTRACTS: Mapping[LotteryType, LotteryRuleContract] = MappingProxyType(
@@ -263,3 +408,20 @@ def resolve_lottery_rule_contract(
     except (AttributeError, TypeError, ValueError):
         return None
     return candidate
+
+
+def resolve_big_lotto_prize_tier(
+    main_hits: int,
+    special_hit: bool,
+) -> BigLottoPrizeTier | NoPrizeResult:
+    """Resolve one valid hit signature from the sole committed prize-rule table."""
+
+    _validate_big_lotto_hit_signature(
+        main_hits,
+        special_hit,
+        ticket_size=BIG_LOTTO_RULE_CONTRACT.main_number_count,
+    )
+    for tier in BIG_LOTTO_RULE_CONTRACT.prize_rule.tiers:
+        if tier.main_hits == main_hits and tier.special_hit is special_hit:
+            return tier
+    return NoPrizeResult.NO_PRIZE

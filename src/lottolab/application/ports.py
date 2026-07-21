@@ -14,6 +14,14 @@ from lottolab.application.draw_data import (
     IngestionRunPage,
     IngestionRunQuery,
 )
+from lottolab.application.historical_queries import (
+    HistoricalPortfolioRecord,
+    HistoricalReplayPage,
+    HistoricalReplayQuery,
+    HistoricalRunPage,
+    HistoricalRunQuery,
+    HistoricalStrategySummaryList,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
@@ -68,6 +76,40 @@ class HistoricalResultRepository(Protocol):
         that FAILED result.
         """
         ...
+
+
+class HistoricalResultQueryRepository(Protocol):
+    """Read-only query port over the already-committed historical-results projection.
+
+    Distinct from ``HistoricalResultRepository`` (write-side ``commit_import``):
+    this port never mutates storage. Every method treats a run whose
+    ``status`` is not ``COMPLETED`` as though it does not exist.
+    """
+
+    def list_runs(self, query: HistoricalRunQuery) -> HistoricalRunPage:
+        """Return one deterministic page of COMPLETED runs, newest first."""
+        ...
+
+    def list_strategies(
+        self, run_id: str, *, ticket_count: int
+    ) -> HistoricalStrategySummaryList | None:
+        """Return per-strategy summaries for a COMPLETED run, or None if not found."""
+        ...
+
+    def list_replay_portfolios(
+        self, run_id: str, query: HistoricalReplayQuery
+    ) -> HistoricalReplayPage | None:
+        """Return one page of portfolios for a COMPLETED run, or None if not found."""
+        ...
+
+    def get_portfolio(
+        self, portfolio_id: str, *, ticket_count: int
+    ) -> HistoricalPortfolioRecord | None:
+        """Return one portfolio's committed detail, or None if not found."""
+        ...
+
+
+type HistoricalResultQueryRepositoryFactory = Callable[[], HistoricalResultQueryRepository]
 
 
 class TargetDrawNotFoundError(LookupError):

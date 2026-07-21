@@ -9,17 +9,37 @@ from __future__ import annotations
 import json
 import sqlite3
 import uuid
-from collections.abc import Callable
+from collections.abc import Callable, Generator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
+from lottolab.application.historical_queries import (
+    HistoricalDrawIdentity,
+    HistoricalPortfolioRecord,
+    HistoricalReplayPage,
+    HistoricalReplayQuery,
+    HistoricalResultsUnavailableError,
+    HistoricalRunPage,
+    HistoricalRunQuery,
+    HistoricalRunSummary,
+    HistoricalStrategySummary,
+    HistoricalStrategySummaryList,
+    HistoricalTicketRecord,
+)
 from lottolab.domain.historical_results import (
     HistoricalImportCommitResult,
     HistoricalRunImport,
     HistoricalRunStatus,
 )
-from lottolab.infrastructure.persistence.historical_schema import initialize_schema, open_database
+from lottolab.infrastructure.persistence.historical_schema import (
+    HistoricalSchemaError,
+    initialize_schema,
+    open_database,
+    verify_schema_read_only,
+)
 
 TICKET_COUNT_TIERS: tuple[int, ...] = (10, 15, 20)
 PERSISTENCE_FAILURE_ERROR_CODE = "HISTORICAL_IMPORT_PERSISTENCE_FAILURE"
@@ -382,3 +402,386 @@ def _format_utc(value: datetime) -> str:
     if value.tzinfo is None or value.utcoffset() != UTC.utcoffset(value):
         raise ValueError("timestamp must use UTC")
     return value.isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+class SQLiteHistoricalResultQueryRepository:
+    """Explicit-path, read-only SQLite implementation of ``HistoricalResultQueryRepository``.
+
+    Never calls ``initialize_schema`` and never writes. An absent database is
+    treated as "no data yet" (see :func:`_verify_available`); an existing but
+    corrupt/incompatible database fails closed with
+    :class:`HistoricalResultsUnavailableError`.
+    """
+
+    def __init__(self, database: Path) -> None:
+        self._database = database
+
+    def list_runs(self, query: HistoricalRunQuery) -> HistoricalRunPage:
+        if not _verify_available(self._database):
+            return HistoricalRunPage(
+                items=(), total_count=0, limit=query.limit, offset=query.offset
+            )
+        with _read_only_connection(self._database) as connection:
+            total_count = _scalar(
+                connection, "SELECT COUNT(*) FROM historical_result_run WHERE status = 'COMPLETED'"
+            )
+            rows = connection.execute(
+                """
+                SELECT id, import_identity_sha256, manifest_sha256, contract_version, source_kind,
+                       source_repository, source_commit_oid, source_artifact_sha256,
+                       dataset_identity, dataset_sha256, legacy_run_id, lottery_type,
+                       started_at, completed_at
+                FROM historical_result_run
+                WHERE status = 'COMPLETED'
+                ORDER BY completed_at DESC, id DESC
+                LIMIT ? OFFSET ?
+                """,
+                (query.limit, query.offset),
+            ).fetchall()
+        items = tuple(_row_to_run_summary(row) for row in rows)
+        return HistoricalRunPage(
+            items=items, total_count=total_count, limit=query.limit, offset=query.offset
+        )
+
+    def list_strategies(
+        self, run_id: str, *, ticket_count: int
+    ) -> HistoricalStrategySummaryList | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            if not _run_is_completed(connection, run_id):
+                return None
+            rows = connection.execute(
+                """
+                SELECT s.id, s.strategy_id, s.effective_strategy_id, s.strategy_version,
+                       s.replicate, s.identity_kind, s.governance_status, s.alias_of_strategy_id,
+                       s.equivalence_group, s.nested_prefix_supported,
+                       c.evaluated_draws, c.complete_portfolios, c.m4plus_hit_count
+                FROM historical_strategy_snapshot s
+                JOIN historical_count_summary c
+                    ON c.strategy_snapshot_id = s.id AND c.run_id = s.run_id AND c.ticket_count = ?
+                WHERE s.run_id = ?
+                ORDER BY s.strategy_id ASC, s.strategy_version ASC, s.replicate ASC
+                """,
+                (ticket_count, run_id),
+            ).fetchall()
+        items = tuple(_row_to_strategy_summary(row, ticket_count) for row in rows)
+        return HistoricalStrategySummaryList(run_id=run_id, ticket_count=ticket_count, items=items)
+
+    def list_replay_portfolios(
+        self, run_id: str, query: HistoricalReplayQuery
+    ) -> HistoricalReplayPage | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            if not _run_is_completed(connection, run_id):
+                return None
+            portfolio_rows = connection.execute(
+                """
+                SELECT p.id, p.run_id, p.strategy_snapshot_id, p.constructor_identifier,
+                       p.source_record_locator, p.portfolio_sha256, p.prefix10_sha256,
+                       p.prefix15_sha256, s.strategy_id, s.effective_strategy_id,
+                       s.strategy_version, s.replicate,
+                       td.draw_number, td.draw_date, td.main_numbers_json,
+                       td.special_numbers_json, td.draw_sha256,
+                       cd.draw_number, cd.draw_date, cd.main_numbers_json,
+                       cd.special_numbers_json, cd.draw_sha256
+                FROM historical_portfolio p
+                JOIN historical_strategy_snapshot s ON s.id = p.strategy_snapshot_id
+                JOIN historical_draw_snapshot td ON td.id = p.target_draw_snapshot_id
+                JOIN historical_draw_snapshot cd ON cd.id = p.cutoff_draw_snapshot_id
+                WHERE p.run_id = ? AND s.strategy_id = ?
+                ORDER BY
+                    td.draw_date ASC,
+                    CAST(td.draw_number AS INTEGER) ASC,
+                    s.strategy_id ASC,
+                    s.strategy_version ASC,
+                    s.replicate ASC,
+                    p.id ASC
+                """,
+                (run_id, query.strategy_id),
+            ).fetchall()
+            candidates = [
+                _row_to_portfolio_record(
+                    connection, row, ticket_count=query.ticket_count, run_id=run_id
+                )
+                for row in portfolio_rows
+            ]
+        filtered = (
+            [item for item in candidates if item.m4plus] if query.m4plus_only else candidates
+        )
+        total_count = len(filtered)
+        page_items = tuple(filtered[query.offset : query.offset + query.limit])
+        return HistoricalReplayPage(
+            run_id=run_id,
+            strategy_id=query.strategy_id,
+            ticket_count=query.ticket_count,
+            items=page_items,
+            total_count=total_count,
+            limit=query.limit,
+            offset=query.offset,
+        )
+
+    def get_portfolio(
+        self, portfolio_id: str, *, ticket_count: int
+    ) -> HistoricalPortfolioRecord | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            row = connection.execute(
+                """
+                SELECT p.id, p.run_id, p.strategy_snapshot_id, p.constructor_identifier,
+                       p.source_record_locator, p.portfolio_sha256, p.prefix10_sha256,
+                       p.prefix15_sha256, s.strategy_id, s.effective_strategy_id,
+                       s.strategy_version, s.replicate,
+                       td.draw_number, td.draw_date, td.main_numbers_json,
+                       td.special_numbers_json, td.draw_sha256,
+                       cd.draw_number, cd.draw_date, cd.main_numbers_json,
+                       cd.special_numbers_json, cd.draw_sha256,
+                       r.status
+                FROM historical_portfolio p
+                JOIN historical_strategy_snapshot s ON s.id = p.strategy_snapshot_id
+                JOIN historical_draw_snapshot td ON td.id = p.target_draw_snapshot_id
+                JOIN historical_draw_snapshot cd ON cd.id = p.cutoff_draw_snapshot_id
+                JOIN historical_result_run r ON r.id = p.run_id
+                WHERE p.id = ?
+                """,
+                (portfolio_id,),
+            ).fetchone()
+            if row is None or row[-1] != "COMPLETED":
+                return None
+            return _row_to_portfolio_record(
+                connection, row[:-1], ticket_count=ticket_count, run_id=str(row[1])
+            )
+
+
+def _verify_available(database: Path) -> bool:
+    """Return False for an absent database; raise for a corrupt/incompatible one."""
+
+    try:
+        return verify_schema_read_only(database)
+    except (HistoricalSchemaError, sqlite3.Error) as exc:
+        raise HistoricalResultsUnavailableError(
+            "historical results storage failed schema verification"
+        ) from exc
+
+
+@contextmanager
+def _read_only_connection(database: Path) -> Generator[sqlite3.Connection]:
+    try:
+        with open_database(database, read_only=True) as connection:
+            yield connection
+    except (HistoricalSchemaError, sqlite3.Error) as exc:
+        raise HistoricalResultsUnavailableError(
+            "historical results storage is unavailable"
+        ) from exc
+
+
+def _scalar(connection: sqlite3.Connection, sql: str) -> int:
+    row = connection.execute(sql).fetchone()
+    if row is None:
+        raise HistoricalResultsUnavailableError("expected aggregate query result is missing")
+    return int(row[0])
+
+
+def _run_is_completed(connection: sqlite3.Connection, run_id: str) -> bool:
+    row = connection.execute(
+        "SELECT 1 FROM historical_result_run WHERE id = ? AND status = 'COMPLETED'",
+        (run_id,),
+    ).fetchone()
+    return row is not None
+
+
+def _decode_int(raw: object) -> int:
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        raise HistoricalResultsUnavailableError("stored integer column is malformed")
+    return raw
+
+
+def _decode_numbers(raw: object) -> tuple[int, ...]:
+    try:
+        parsed: object = json.loads(str(raw))
+    except (TypeError, ValueError) as exc:
+        raise HistoricalResultsUnavailableError(
+            "stored ticket/draw numbers are malformed"
+        ) from exc
+    if not isinstance(parsed, list):
+        raise HistoricalResultsUnavailableError("stored ticket/draw numbers are malformed")
+    numbers: list[int] = []
+    for item in cast(list[object], parsed):
+        numbers.append(_decode_int(item))
+    return tuple(numbers)
+
+
+def _row_to_run_summary(row: sqlite3.Row | tuple[object, ...]) -> HistoricalRunSummary:
+    (
+        run_id,
+        import_identity_sha256,
+        manifest_sha256,
+        contract_version,
+        source_kind,
+        source_repository,
+        source_commit_oid,
+        source_artifact_sha256,
+        dataset_identity,
+        dataset_sha256,
+        legacy_run_id,
+        lottery_type,
+        started_at,
+        completed_at,
+    ) = row
+    return HistoricalRunSummary(
+        run_id=str(run_id),
+        import_identity_sha256=str(import_identity_sha256),
+        manifest_sha256=str(manifest_sha256),
+        contract_version=str(contract_version),
+        source_kind=str(source_kind),
+        source_repository=str(source_repository),
+        source_commit_oid=str(source_commit_oid),
+        source_artifact_sha256=str(source_artifact_sha256),
+        dataset_identity=str(dataset_identity),
+        dataset_sha256=str(dataset_sha256),
+        legacy_run_id=None if legacy_run_id is None else str(legacy_run_id),
+        lottery_type=str(lottery_type),
+        started_at=str(started_at),
+        completed_at=str(completed_at),
+    )
+
+
+def _row_to_strategy_summary(
+    row: sqlite3.Row | tuple[object, ...], ticket_count: int
+) -> HistoricalStrategySummary:
+    (
+        strategy_snapshot_id,
+        strategy_id,
+        effective_strategy_id,
+        strategy_version,
+        replicate,
+        identity_kind,
+        governance_status,
+        alias_of_strategy_id,
+        equivalence_group,
+        nested_prefix_supported,
+        evaluated_draws,
+        complete_portfolios,
+        m4plus_hit_count,
+    ) = row
+    return HistoricalStrategySummary(
+        strategy_snapshot_id=str(strategy_snapshot_id),
+        strategy_id=str(strategy_id),
+        effective_strategy_id=str(effective_strategy_id),
+        strategy_version=str(strategy_version),
+        replicate=_decode_int(replicate),
+        identity_kind=str(identity_kind),
+        governance_status=str(governance_status),
+        alias_of_strategy_id=None if alias_of_strategy_id is None else str(alias_of_strategy_id),
+        equivalence_group=None if equivalence_group is None else str(equivalence_group),
+        nested_prefix_supported=bool(nested_prefix_supported),
+        ticket_count=ticket_count,
+        evaluated_draws=_decode_int(evaluated_draws),
+        complete_portfolios=_decode_int(complete_portfolios),
+        m4plus_hit_count=_decode_int(m4plus_hit_count),
+    )
+
+
+def _row_to_portfolio_record(
+    connection: sqlite3.Connection,
+    row: sqlite3.Row | tuple[object, ...],
+    *,
+    ticket_count: int,
+    run_id: str,
+) -> HistoricalPortfolioRecord:
+    (
+        portfolio_id,
+        _run_id_column,
+        strategy_snapshot_id,
+        constructor_identifier,
+        source_record_locator,
+        portfolio_sha256,
+        prefix10_sha256,
+        prefix15_sha256,
+        strategy_id,
+        effective_strategy_id,
+        strategy_version,
+        replicate,
+        target_draw_number,
+        target_draw_date,
+        target_main_numbers_json,
+        target_special_numbers_json,
+        target_draw_sha256,
+        cutoff_draw_number,
+        cutoff_draw_date,
+        cutoff_main_numbers_json,
+        cutoff_special_numbers_json,
+        cutoff_draw_sha256,
+    ) = row
+    ticket_rows = connection.execute(
+        """
+        SELECT portfolio_position, main_numbers_json, special_numbers_json, main_hit_count,
+               special_hit, ticket_sha256, legacy_row_id, legacy_storage_bet_index
+        FROM historical_ticket
+        WHERE portfolio_id = ? AND portfolio_position <= ?
+        ORDER BY portfolio_position ASC
+        """,
+        (portfolio_id, ticket_count),
+    ).fetchall()
+    tickets = tuple(_row_to_ticket_record(ticket_row) for ticket_row in ticket_rows)
+    m4plus = any(ticket.main_hit_count >= 4 for ticket in tickets)
+    return HistoricalPortfolioRecord(
+        portfolio_id=str(portfolio_id),
+        run_id=run_id,
+        strategy_snapshot_id=str(strategy_snapshot_id),
+        strategy_id=str(strategy_id),
+        effective_strategy_id=str(effective_strategy_id),
+        strategy_version=str(strategy_version),
+        replicate=_decode_int(replicate),
+        constructor_identifier=str(constructor_identifier),
+        source_record_locator=(
+            None if source_record_locator is None else str(source_record_locator)
+        ),
+        portfolio_sha256=str(portfolio_sha256),
+        prefix10_sha256=str(prefix10_sha256),
+        prefix15_sha256=str(prefix15_sha256),
+        target_draw=HistoricalDrawIdentity(
+            draw_number=str(target_draw_number),
+            draw_date=str(target_draw_date),
+            main_numbers=_decode_numbers(target_main_numbers_json),
+            special_numbers=_decode_numbers(target_special_numbers_json),
+            draw_sha256=str(target_draw_sha256),
+        ),
+        cutoff_draw=HistoricalDrawIdentity(
+            draw_number=str(cutoff_draw_number),
+            draw_date=str(cutoff_draw_date),
+            main_numbers=_decode_numbers(cutoff_main_numbers_json),
+            special_numbers=_decode_numbers(cutoff_special_numbers_json),
+            draw_sha256=str(cutoff_draw_sha256),
+        ),
+        requested_ticket_count=ticket_count,
+        m4plus=m4plus,
+        tickets=tickets,
+    )
+
+
+def _row_to_ticket_record(row: sqlite3.Row | tuple[object, ...]) -> HistoricalTicketRecord:
+    (
+        portfolio_position,
+        main_numbers_json,
+        special_numbers_json,
+        main_hit_count,
+        special_hit,
+        ticket_sha256,
+        legacy_row_id,
+        legacy_storage_bet_index,
+    ) = row
+    return HistoricalTicketRecord(
+        portfolio_position=_decode_int(portfolio_position),
+        main_numbers=_decode_numbers(main_numbers_json),
+        special_numbers=_decode_numbers(special_numbers_json),
+        main_hit_count=_decode_int(main_hit_count),
+        special_hit=bool(special_hit),
+        ticket_sha256=str(ticket_sha256),
+        legacy_row_id=None if legacy_row_id is None else str(legacy_row_id),
+        legacy_storage_bet_index=(
+            None if legacy_storage_bet_index is None else _decode_int(legacy_storage_bet_index)
+        ),
+    )

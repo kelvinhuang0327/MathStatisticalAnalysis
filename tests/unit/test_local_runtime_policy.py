@@ -295,6 +295,10 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
         "/api/v1/generate-bet": {"post": {}},
         "/api/v1/live-zone-split-bets": {"post": {}},
+        "/api/v1/historical-results/runs": {"get": {}},
+        "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
+        "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
+        "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
     }
 
 
@@ -347,6 +351,10 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/ingestion-runs/{run_id}", "get"),
         ("/api/v1/generate-bet", "post"),
         ("/api/v1/live-zone-split-bets", "post"),
+        ("/api/v1/historical-results/runs", "get"),
+        ("/api/v1/historical-results/runs/{run_id}/strategies", "get"),
+        ("/api/v1/historical-results/runs/{run_id}/replay", "get"),
+        ("/api/v1/historical-results/portfolios/{portfolio_id}", "get"),
     ],
 )
 def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:
@@ -438,6 +446,36 @@ def test_smoke_rejects_other_paths_containing_generate_word() -> None:
 
     with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
         validate_openapi_payload({"paths": paths})
+
+
+def test_smoke_accepts_exact_approved_historical_results_replay_operation() -> None:
+    """BLHQ R2: the read-only /replay projection path is the second narrow exception."""
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_non_get_methods_on_historical_results_replay(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/historical-results/runs/{run_id}/replay"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay",
+        "/api/v1/replay/execute",
+        "/api/v1/historical-results/replay/execute",
+    ],
+)
+def test_smoke_rejects_unrelated_replay_or_execute_paths(path: str) -> None:
+    """Only the two named exceptions bypass the forbidden-word screen; every other
+    path containing "replay" or "execute" -- including near-miss historical-results
+    paths -- must still fail closed."""
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
 
 
 def test_listener_value_is_plain_identity_data() -> None:

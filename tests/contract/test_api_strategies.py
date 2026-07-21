@@ -308,8 +308,9 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/historical-results/runs/{run_id}/strategies"),
         ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
         ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
+        ("get", "/api/v1/replay-rankings/optimal"),
     }
-    assert len(operations) == 15
+    assert len(operations) == 16
 
 
 def test_committed_openapi_contract_is_current() -> None:

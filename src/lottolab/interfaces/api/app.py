@@ -37,6 +37,10 @@ from lottolab.interfaces.api.draw_data import (
 from lottolab.interfaces.api.generate_bet import create_generate_bet_router
 from lottolab.interfaces.api.historical_results import create_historical_results_router
 from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
+from lottolab.interfaces.api.replay_portfolio_rankings import (
+    ReplayScoringArtifactProvider,
+    create_replay_portfolio_rankings_router,
+)
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
     create_strategy_catalog_router,
@@ -52,6 +56,7 @@ def create_app(
     generate_one_bet: GenerateOneBet | None = None,
     generate_live_zone_split_bets: GenerateLiveZoneSplitBets | None = None,
     historical_query_repository_factory: HistoricalResultQueryRepositoryFactory | None = None,
+    scoring_artifact_provider: ReplayScoringArtifactProvider | None = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -101,5 +106,8 @@ def create_app(
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))
+    app.include_router(
+        create_replay_portfolio_rankings_router(scoring_artifact_provider)
+    )
 
     return app

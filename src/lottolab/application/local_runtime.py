@@ -56,11 +56,13 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/historical-results/runs/{run_id}/strategies": frozenset({"get"}),
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
+    "/api/v1/replay-rankings/optimal": frozenset({"get"}),
 }
 _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
     {
         "/api/v1/generate-bet",
         "/api/v1/historical-results/runs/{run_id}/replay",
+        "/api/v1/replay-rankings/optimal",
     }
 )
 """The narrow, approved paths exempt from the forbidden-word screen.
@@ -70,10 +72,14 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
 view over an already-committed historical-results portfolio (BLHQ R2) — it
 never consumes or modifies Replay's ``DrawHistoryReader`` and executes no
 strategy, but its path segment happens to contain the forbidden word
-"replay". Only these two exact paths are exempted; every other path
-containing a forbidden word (including "/api/v1/generate" and
-"/api/v1/generation") is still rejected, and the exact-operation-set check
-below still fails closed on method or path drift.
+"replay". ``/api/v1/replay-rankings/optimal`` is a read-only, strictly
+post-hoc ranking over an already-validated ``ReplayScoringArtifact`` — it
+generates no numbers, executes no strategy, and persists nothing, but its
+path segment likewise contains "replay". Only these three exact paths are
+exempted; every other path containing a forbidden word (including
+"/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",
+and "/api/v1/replay-rankings/optimize") is still rejected, and the
+exact-operation-set check below still fails closed on method or path drift.
 """
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods

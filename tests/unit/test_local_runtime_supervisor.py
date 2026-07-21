@@ -1377,6 +1377,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
                         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
                         "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
+                        "/api/v1/replay-rankings/optimal": {"get": {}},
                     }
                 }
             ).encode(),

@@ -13,7 +13,11 @@ import pytest
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_history import ReplayCausalDrawRow
-from lottolab.domain.replay_predictions import ReplayPredictionSnapshot, ReplayTarget
+from lottolab.domain.replay_predictions import (
+    ReplayPredictionSnapshot,
+    ReplaySourceMode,
+    ReplayTarget,
+)
 from lottolab.evidence.replay_artifact import (
     ReplayArtifact,
     ReplayArtifactShapeError,
@@ -135,8 +139,21 @@ def test_ok_snapshot_carries_history_and_prediction_fields() -> None:
     assert snapshot.strategy_version == "v1"
     assert snapshot.adapter_strategy_id == _STRATEGY_ID
     assert snapshot.source_mode.value == "TARGET_NATIVE"
-    assert snapshot.cutoff_draw_number == snapshot.target_draw_number
-    assert snapshot.cutoff_draw_date == snapshot.target_draw_date
+    assert snapshot.cutoff_draw_number == _history()[-1].draw_number
+    assert snapshot.cutoff_draw_date == _history()[-1].draw_date
+    assert snapshot.cutoff_draw_number != snapshot.target_draw_number
+    assert snapshot.cutoff_draw_date != snapshot.target_draw_date
+
+
+def test_ok_snapshot_with_empty_history_has_no_cutoff() -> None:
+    snapshot = _ok_snapshot(history=())
+    assert snapshot.history_status == "OK"
+    assert snapshot.causal_history_count == 0
+    assert snapshot.causal_history_sha256 == causal_history_sha256(())
+    assert snapshot.cutoff_draw_number is None
+    assert snapshot.cutoff_draw_date is None
+    assert snapshot.prediction_status == "OK"
+    assert snapshot.predicted_main_numbers == (1, 2, 3, 4, 5, 6)
 
 
 def test_failure_snapshot_has_no_prediction_or_history_payload() -> None:
@@ -145,11 +162,113 @@ def test_failure_snapshot_has_no_prediction_or_history_payload() -> None:
     assert snapshot.history_reason_code == "TARGET_DRAW_NOT_FOUND"
     assert snapshot.causal_history_count is None
     assert snapshot.causal_history_sha256 is None
+    assert snapshot.cutoff_draw_number is None
+    assert snapshot.cutoff_draw_date is None
     assert snapshot.prediction_status is None
     assert snapshot.prediction_reason_code is None
     assert snapshot.predicted_main_numbers is None
     assert snapshot.strategy_version is None
     assert snapshot.adapter_strategy_id is None
+
+
+# --------------------------------------------------------------------------
+# Cutoff invariants
+# --------------------------------------------------------------------------
+
+
+def _snapshot(
+    *,
+    cutoff_draw_number: str | None,
+    cutoff_draw_date: date | None,
+    history_status: str,
+    history_reason_code: str | None,
+    causal_history_count: int | None,
+    causal_history_sha256_value: str | None,
+) -> ReplayPredictionSnapshot:
+    return ReplayPredictionSnapshot(
+        snapshot_schema_version="1.0.0",
+        dataset_id="DS1",
+        dataset_version="1",
+        lottery_type=LotteryType.BIG_LOTTO,
+        source_mode=ReplaySourceMode.TARGET_NATIVE,
+        target_draw_number="999",
+        target_draw_date=date(2020, 1, 3),
+        cutoff_draw_number=cutoff_draw_number,
+        cutoff_draw_date=cutoff_draw_date,
+        strategy_id=_STRATEGY_ID,
+        strategy_version=None,
+        adapter_strategy_id=None,
+        adapter_strategy_name=None,
+        adapter_strategy_version=None,
+        history_status=history_status,
+        history_reason_code=history_reason_code,
+        causal_history_count=causal_history_count,
+        causal_history_sha256=causal_history_sha256_value,
+        prediction_status=None,
+        prediction_reason_code=None,
+        predicted_main_numbers=None,
+        result_sha256="0" * 64,
+    )
+
+
+def test_partial_cutoff_population_is_rejected() -> None:
+    with pytest.raises(ValueError, match="cutoff_draw_number and cutoff_draw_date"):
+        _snapshot(
+            cutoff_draw_number="1",
+            cutoff_draw_date=None,
+            history_status="OK",
+            history_reason_code=None,
+            causal_history_count=1,
+            causal_history_sha256_value="a" * 64,
+        )
+
+
+def test_ok_with_positive_count_and_no_cutoff_is_rejected() -> None:
+    with pytest.raises(ValueError, match="requires a cutoff"):
+        _snapshot(
+            cutoff_draw_number=None,
+            cutoff_draw_date=None,
+            history_status="OK",
+            history_reason_code=None,
+            causal_history_count=1,
+            causal_history_sha256_value="a" * 64,
+        )
+
+
+def test_ok_with_zero_count_and_a_cutoff_is_rejected() -> None:
+    with pytest.raises(ValueError, match="zero causal history must not carry a cutoff"):
+        _snapshot(
+            cutoff_draw_number="1",
+            cutoff_draw_date=date(2020, 1, 1),
+            history_status="OK",
+            history_reason_code=None,
+            causal_history_count=0,
+            causal_history_sha256_value=causal_history_sha256(()),
+        )
+
+
+def test_non_ok_with_cutoff_is_rejected() -> None:
+    with pytest.raises(ValueError, match="non-OK history_status must not carry a cutoff"):
+        _snapshot(
+            cutoff_draw_number="1",
+            cutoff_draw_date=date(2020, 1, 1),
+            history_status="TARGET_NOT_FOUND",
+            history_reason_code="TARGET_DRAW_NOT_FOUND",
+            causal_history_count=None,
+            causal_history_sha256_value=None,
+        )
+
+
+def test_cutoff_on_or_after_target_is_rejected() -> None:
+    with pytest.raises(ValueError, match="strictly before the target"):
+        _snapshot(
+            cutoff_draw_number="999",
+            cutoff_draw_date=date(2020, 1, 3),
+            history_status="OK",
+            history_reason_code=None,
+            causal_history_count=1,
+            causal_history_sha256_value="a" * 64,
+        )
 
 
 def test_snapshot_result_sha256_is_stable_for_identical_construction() -> None:
@@ -295,6 +414,40 @@ def test_round_trip_preserves_a_failure_snapshot_exactly() -> None:
     restored = deserialize_replay_artifact(serialize_replay_artifact(artifact))
     assert restored == artifact
     assert restored.snapshots[0].prediction_status is None
+
+
+def _empty_history_artifact() -> ReplayArtifact:
+    return build_replay_artifact(
+        dataset_id="DS1",
+        dataset_version="1",
+        lottery_type=LotteryType.BIG_LOTTO,
+        strategy_ids=(_STRATEGY_ID,),
+        targets=(_target(),),
+        snapshots=(_ok_snapshot(history=()),),
+    )
+
+
+def test_serialize_omits_cutoff_keys_when_history_is_empty() -> None:
+    data = serialize_replay_artifact(_empty_history_artifact())
+    assert b"cutoff_draw_number" not in data
+    assert b"cutoff_draw_date" not in data
+    assert b"null" not in data
+
+
+def test_round_trip_preserves_an_empty_history_ok_snapshot_exactly() -> None:
+    artifact = _empty_history_artifact()
+    restored = deserialize_replay_artifact(serialize_replay_artifact(artifact))
+    assert restored == artifact
+    assert restored.snapshots[0].cutoff_draw_number is None
+    assert restored.snapshots[0].cutoff_draw_date is None
+
+
+def test_deserialize_detects_tampering_in_a_present_cutoff_field() -> None:
+    data = serialize_replay_artifact(_artifact())
+    tampered = data.replace(b'"cutoff_draw_number":"2"', b'"cutoff_draw_number":"1"')
+    assert tampered != data
+    with pytest.raises(ReplayArtifactTamperError):
+        deserialize_replay_artifact(tampered)
 
 
 def test_deserialize_detects_tampering_in_a_string_field() -> None:

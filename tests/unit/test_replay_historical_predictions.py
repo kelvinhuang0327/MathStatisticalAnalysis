@@ -26,6 +26,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_history import ReplayCausalDrawRow
 from lottolab.domain.replay_predictions import ReplayTarget
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.evidence.replay_artifact import causal_history_sha256
 from lottolab.strategies.adapters.base import (
     BetAdapter,
     CausalDrawRow,
@@ -300,6 +301,33 @@ def test_ok_prediction_carries_predicted_main_numbers() -> None:
     snapshot = result.snapshots[0]
     assert snapshot.prediction_status == "OK"
     assert snapshot.predicted_main_numbers == (1, 2, 3, 4, 5, 6)
+
+
+def test_ok_history_with_empty_causal_history_has_no_cutoff_and_still_attempts_prediction() -> None:
+    # The target is the first draw in the dataset: BuildCausalHistory legitimately
+    # returns OK with an empty tuple (no minimum_history_draws is set). A prediction
+    # is still attempted under existing rules — the fixture adapter's own
+    # min_history=1 floor means that attempt closes as INSUFFICIENT_HISTORY, not a
+    # crash and not a fabricated OK.
+    use_case, _ = _use_case(history_by_target={"1": ()})
+    result = use_case.execute(
+        ReplayHistoricalPredictionsInput(
+            lottery_type=LotteryType.BIG_LOTTO,
+            dataset_id="DS1",
+            dataset_version="1",
+            targets=(_target("1", 1),),
+            strategy_ids=(_STRATEGY_A,),
+        )
+    )
+    snapshot = result.snapshots[0]
+    assert snapshot.history_status == "OK"
+    assert snapshot.causal_history_count == 0
+    assert snapshot.causal_history_sha256 == causal_history_sha256(())
+    assert snapshot.cutoff_draw_number is None
+    assert snapshot.cutoff_draw_date is None
+    assert snapshot.prediction_status == "INSUFFICIENT_HISTORY"
+    assert snapshot.prediction_reason_code == "INSUFFICIENT_HISTORY"
+    assert snapshot.predicted_main_numbers is None
 
 
 # --------------------------------------------------------------------------

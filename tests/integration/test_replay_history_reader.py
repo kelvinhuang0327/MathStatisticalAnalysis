@@ -14,6 +14,12 @@ from pathlib import Path
 import pytest
 
 from lottolab.application.ports import TargetDrawNotFoundError
+from lottolab.application.use_cases.build_causal_history import (
+    BuildCausalHistory,
+    BuildCausalHistoryInput,
+    BuildCausalHistoryReason,
+    BuildCausalHistoryStatus,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
@@ -204,6 +210,45 @@ def test_maximum_history_draws_rejects_non_positive_values(tmp_path: Path) -> No
 
     with pytest.raises(ValueError):
         reader.read_causal_history(LotteryType.BIG_LOTTO, "20", maximum_history_draws=0)
+
+
+def test_absent_database_raises_target_draw_not_found_and_creates_nothing(
+    tmp_path: Path,
+) -> None:
+    paths = task_paths(tmp_path)
+    assert not paths.data_directory.exists()
+    assert not paths.database.exists()
+    reader = SQLiteDrawHistoryReader(paths)
+
+    with pytest.raises(TargetDrawNotFoundError):
+        reader.read_causal_history(LotteryType.BIG_LOTTO, "1")
+
+    assert not paths.data_directory.exists()
+    assert not paths.database.exists()
+    assert not Path(f"{paths.database}-wal").exists()
+    assert not Path(f"{paths.database}-shm").exists()
+    assert not Path(f"{paths.database}-journal").exists()
+
+
+def test_build_causal_history_closes_absent_database_as_target_not_found(
+    tmp_path: Path,
+) -> None:
+    paths = task_paths(tmp_path)
+    use_case = BuildCausalHistory(lambda: SQLiteDrawHistoryReader(paths))
+
+    result = use_case.execute(
+        BuildCausalHistoryInput(
+            lottery_type=LotteryType.BIG_LOTTO,
+            target_draw_number="1",
+        )
+    )
+
+    assert result.status is BuildCausalHistoryStatus.TARGET_NOT_FOUND
+    assert result.reason_code is BuildCausalHistoryReason.TARGET_DRAW_NOT_FOUND
+    assert result.history is None
+    assert result.available_history_count is None
+    assert not paths.data_directory.exists()
+    assert not paths.database.exists()
 
 
 def test_unbounded_query_does_not_use_sqlite_row_factory_row_type(tmp_path: Path) -> None:

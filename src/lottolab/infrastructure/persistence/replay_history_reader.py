@@ -17,7 +17,11 @@ from typing import cast
 from lottolab.application.ports import TargetDrawNotFoundError
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_history import ReplayCausalDrawRow
-from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths, open_database
+from lottolab.infrastructure.persistence.draw_schema import (
+    LocalDataPaths,
+    open_database,
+    verify_schema_read_only,
+)
 
 _COLUMNS = "draw_number, draw_date, main_numbers_json, special_numbers_json"
 
@@ -52,6 +56,11 @@ class SQLiteDrawHistoryReader:
     ) -> tuple[ReplayCausalDrawRow, ...]:
         if maximum_history_draws is not None and maximum_history_draws <= 0:
             raise ValueError("maximum_history_draws must be positive when provided")
+
+        if verify_schema_read_only(self._paths) is False:
+            raise TargetDrawNotFoundError(
+                f"no {lottery_type.value} draw matches draw_number={target_draw_number!r}"
+            )
 
         with open_database(self._paths, read_only=True) as connection:
             target_date_text, target_numeric = self._resolve_target(

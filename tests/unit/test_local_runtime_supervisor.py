@@ -1373,6 +1373,10 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
                         "/api/v1/generate-bet": {"post": {}},
                         "/api/v1/live-zone-split-bets": {"post": {}},
+                        "/api/v1/historical-results/runs": {"get": {}},
+                        "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
+                        "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
+                        "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
                     }
                 }
             ).encode(),

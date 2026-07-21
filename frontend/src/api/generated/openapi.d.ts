@@ -208,6 +208,105 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-results/runs": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalRunPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-results/runs/{run_id}/strategies": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalStrategySummaryListResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-results/runs/{run_id}/replay": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalReplayPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-results/portfolios/{portfolio_id}": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPortfolioView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -306,6 +405,94 @@ export interface components {
     "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
     "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
     "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
+    "HistoricalDrawIdentityView": {
+          "draw_number": string
+          "draw_date": string
+          "main_numbers": Array<number>
+          "special_numbers": Array<number>
+          "draw_sha256": string
+        }
+    "HistoricalPortfolioView": {
+          "portfolio_id": string
+          "run_id": string
+          "strategy_snapshot_id": string
+          "strategy_id": string
+          "effective_strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "constructor_identifier": string
+          "source_record_locator": string | null
+          "portfolio_sha256": string
+          "prefix10_sha256": string
+          "prefix15_sha256": string
+          "target_draw": components['schemas']["HistoricalDrawIdentityView"]
+          "cutoff_draw": components['schemas']["HistoricalDrawIdentityView"]
+          "requested_ticket_count": number
+          "m4plus": boolean
+          "tickets": Array<components['schemas']["HistoricalTicketView"]>
+        }
+    "HistoricalReplayPageResponse": {
+          "run_id": string
+          "strategy_id": string
+          "ticket_count": number
+          "items": Array<components['schemas']["HistoricalPortfolioView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "HistoricalRunPageResponse": {
+          "items": Array<components['schemas']["HistoricalRunView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "HistoricalRunView": {
+          "run_id": string
+          "import_identity_sha256": string
+          "manifest_sha256": string
+          "contract_version": string
+          "source_kind": string
+          "source_repository": string
+          "source_commit_oid": string
+          "source_artifact_sha256": string
+          "dataset_identity": string
+          "dataset_sha256": string
+          "legacy_run_id": string | null
+          "lottery_type": string
+          "started_at": string
+          "completed_at": string
+        }
+    "HistoricalStrategySummaryListResponse": {
+          "run_id": string
+          "ticket_count": number
+          "items": Array<components['schemas']["HistoricalStrategySummaryView"]>
+        }
+    "HistoricalStrategySummaryView": {
+          "strategy_snapshot_id": string
+          "strategy_id": string
+          "effective_strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "identity_kind": string
+          "governance_status": string
+          "alias_of_strategy_id": string | null
+          "equivalence_group": string | null
+          "nested_prefix_supported": boolean
+          "ticket_count": number
+          "evaluated_draws": number
+          "complete_portfolios": number
+          "m4plus_hit_count": number
+        }
+    "HistoricalTicketView": {
+          "portfolio_position": number
+          "main_numbers": Array<number>
+          "special_numbers": Array<number>
+          "main_hit_count": number
+          "special_hit": boolean
+          "ticket_sha256": string
+          "legacy_row_id": string | null
+          "legacy_storage_bet_index": number | null
+        }
     "ImportCommitResultView": {
           "run_id": string | null
           "status": components['schemas']["IngestionRunStatus"]
@@ -428,5 +615,6 @@ export interface components {
           "lifecycle_status": components['schemas']["LifecycleStatus"]
           "executable": boolean
         }
+    "TicketCount": 10 | 15 | 20
   }
 }

@@ -704,6 +704,332 @@
           }
         }
       }
+    },
+    "/api/v1/historical-results/runs": {
+      "get": {
+        "tags": [
+          "historical-results"
+        ],
+        "summary": "List Historical Runs",
+        "operationId": "listHistoricalRuns",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalRunPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/historical-results/runs/{run_id}/strategies": {
+      "get": {
+        "tags": [
+          "historical-results"
+        ],
+        "summary": "List Historical Run Strategies",
+        "operationId": "listHistoricalRunStrategies",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "ticket_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TicketCount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalStrategySummaryListResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/historical-results/runs/{run_id}/replay": {
+      "get": {
+        "tags": [
+          "historical-results"
+        ],
+        "summary": "List Historical Run Replay Portfolios",
+        "operationId": "listHistoricalRunReplayPortfolios",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "ticket_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TicketCount"
+            }
+          },
+          {
+            "name": "m4plus_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "M4Plus Only"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalReplayPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/historical-results/portfolios/{portfolio_id}": {
+      "get": {
+        "tags": [
+          "historical-results"
+        ],
+        "summary": "Get Historical Portfolio",
+        "operationId": "getHistoricalPortfolio",
+        "parameters": [
+          {
+            "name": "portfolio_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Portfolio Id"
+            }
+          },
+          {
+            "name": "ticket_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TicketCount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPortfolioView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1294,6 +1620,494 @@
           "REPLAY_ERROR"
         ],
         "title": "GenerateOneBetStatus"
+      },
+      "HistoricalDrawIdentityView": {
+        "properties": {
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          },
+          "main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Main Numbers"
+          },
+          "special_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Special Numbers"
+          },
+          "draw_sha256": {
+            "type": "string",
+            "title": "Draw Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draw_number",
+          "draw_date",
+          "main_numbers",
+          "special_numbers",
+          "draw_sha256"
+        ],
+        "title": "HistoricalDrawIdentityView"
+      },
+      "HistoricalPortfolioView": {
+        "properties": {
+          "portfolio_id": {
+            "type": "string",
+            "title": "Portfolio Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_snapshot_id": {
+            "type": "string",
+            "title": "Strategy Snapshot Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "effective_strategy_id": {
+            "type": "string",
+            "title": "Effective Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "replicate": {
+            "type": "integer",
+            "title": "Replicate"
+          },
+          "constructor_identifier": {
+            "type": "string",
+            "title": "Constructor Identifier"
+          },
+          "source_record_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Record Locator"
+          },
+          "portfolio_sha256": {
+            "type": "string",
+            "title": "Portfolio Sha256"
+          },
+          "prefix10_sha256": {
+            "type": "string",
+            "title": "Prefix10 Sha256"
+          },
+          "prefix15_sha256": {
+            "type": "string",
+            "title": "Prefix15 Sha256"
+          },
+          "target_draw": {
+            "$ref": "#/components/schemas/HistoricalDrawIdentityView"
+          },
+          "cutoff_draw": {
+            "$ref": "#/components/schemas/HistoricalDrawIdentityView"
+          },
+          "requested_ticket_count": {
+            "type": "integer",
+            "title": "Requested Ticket Count"
+          },
+          "m4plus": {
+            "type": "boolean",
+            "title": "M4Plus"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalTicketView"
+            },
+            "type": "array",
+            "title": "Tickets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "portfolio_id",
+          "run_id",
+          "strategy_snapshot_id",
+          "strategy_id",
+          "effective_strategy_id",
+          "strategy_version",
+          "replicate",
+          "constructor_identifier",
+          "source_record_locator",
+          "portfolio_sha256",
+          "prefix10_sha256",
+          "prefix15_sha256",
+          "target_draw",
+          "cutoff_draw",
+          "requested_ticket_count",
+          "m4plus",
+          "tickets"
+        ],
+        "title": "HistoricalPortfolioView"
+      },
+      "HistoricalReplayPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPortfolioView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_id",
+          "ticket_count",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "HistoricalReplayPageResponse"
+      },
+      "HistoricalRunPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalRunView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "HistoricalRunPageResponse"
+      },
+      "HistoricalRunView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "import_identity_sha256": {
+            "type": "string",
+            "title": "Import Identity Sha256"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "contract_version": {
+            "type": "string",
+            "title": "Contract Version"
+          },
+          "source_kind": {
+            "type": "string",
+            "title": "Source Kind"
+          },
+          "source_repository": {
+            "type": "string",
+            "title": "Source Repository"
+          },
+          "source_commit_oid": {
+            "type": "string",
+            "title": "Source Commit Oid"
+          },
+          "source_artifact_sha256": {
+            "type": "string",
+            "title": "Source Artifact Sha256"
+          },
+          "dataset_identity": {
+            "type": "string",
+            "title": "Dataset Identity"
+          },
+          "dataset_sha256": {
+            "type": "string",
+            "title": "Dataset Sha256"
+          },
+          "legacy_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Run Id"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "import_identity_sha256",
+          "manifest_sha256",
+          "contract_version",
+          "source_kind",
+          "source_repository",
+          "source_commit_oid",
+          "source_artifact_sha256",
+          "dataset_identity",
+          "dataset_sha256",
+          "legacy_run_id",
+          "lottery_type",
+          "started_at",
+          "completed_at"
+        ],
+        "title": "HistoricalRunView"
+      },
+      "HistoricalStrategySummaryListResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalStrategySummaryView"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "ticket_count",
+          "items"
+        ],
+        "title": "HistoricalStrategySummaryListResponse"
+      },
+      "HistoricalStrategySummaryView": {
+        "properties": {
+          "strategy_snapshot_id": {
+            "type": "string",
+            "title": "Strategy Snapshot Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "effective_strategy_id": {
+            "type": "string",
+            "title": "Effective Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "replicate": {
+            "type": "integer",
+            "title": "Replicate"
+          },
+          "identity_kind": {
+            "type": "string",
+            "title": "Identity Kind"
+          },
+          "governance_status": {
+            "type": "string",
+            "title": "Governance Status"
+          },
+          "alias_of_strategy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias Of Strategy Id"
+          },
+          "equivalence_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equivalence Group"
+          },
+          "nested_prefix_supported": {
+            "type": "boolean",
+            "title": "Nested Prefix Supported"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "evaluated_draws": {
+            "type": "integer",
+            "title": "Evaluated Draws"
+          },
+          "complete_portfolios": {
+            "type": "integer",
+            "title": "Complete Portfolios"
+          },
+          "m4plus_hit_count": {
+            "type": "integer",
+            "title": "M4Plus Hit Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_snapshot_id",
+          "strategy_id",
+          "effective_strategy_id",
+          "strategy_version",
+          "replicate",
+          "identity_kind",
+          "governance_status",
+          "alias_of_strategy_id",
+          "equivalence_group",
+          "nested_prefix_supported",
+          "ticket_count",
+          "evaluated_draws",
+          "complete_portfolios",
+          "m4plus_hit_count"
+        ],
+        "title": "HistoricalStrategySummaryView"
+      },
+      "HistoricalTicketView": {
+        "properties": {
+          "portfolio_position": {
+            "type": "integer",
+            "title": "Portfolio Position"
+          },
+          "main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Main Numbers"
+          },
+          "special_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Special Numbers"
+          },
+          "main_hit_count": {
+            "type": "integer",
+            "title": "Main Hit Count"
+          },
+          "special_hit": {
+            "type": "boolean",
+            "title": "Special Hit"
+          },
+          "ticket_sha256": {
+            "type": "string",
+            "title": "Ticket Sha256"
+          },
+          "legacy_row_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Row Id"
+          },
+          "legacy_storage_bet_index": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Legacy Storage Bet Index"
+          }
+        },
+        "type": "object",
+        "required": [
+          "portfolio_position",
+          "main_numbers",
+          "special_numbers",
+          "main_hit_count",
+          "special_hit",
+          "ticket_sha256",
+          "legacy_row_id",
+          "legacy_storage_bet_index"
+        ],
+        "title": "HistoricalTicketView"
       },
       "ImportCommitResultView": {
         "properties": {
@@ -2094,6 +2908,16 @@
           "executable"
         ],
         "title": "StrategyView"
+      },
+      "TicketCount": {
+        "type": "integer",
+        "enum": [
+          10,
+          15,
+          20
+        ],
+        "title": "TicketCount",
+        "description": "The closed ticket_count set (10/15/20).\n\nA bare ``Literal[10, 15, 20]`` does not coerce a query string like\n\"10\" to the matching int literal and always 422s; ``IntEnum`` does\ncoerce correctly and still round-trips as a plain int in responses."
       }
     }
   }

@@ -29,6 +29,14 @@ from lottolab.domain.replay_history import ReplayCausalDrawRow
 from lottolab.domain.replay_scoring import (
     ReplayTargetOutcomeReadResult,
 )
+from lottolab.domain.replay_scoring_projection import (
+    ReplayOverallAggregateProjection,
+    ReplayScoredPredictionProjection,
+    ReplayScoringPersistResult,
+    ReplayScoringRunProjection,
+    ReplayStrategyAggregateProjection,
+)
+from lottolab.evidence.replay_scoring_artifact import ReplayScoringArtifact
 
 
 class DrawRepository(Protocol):
@@ -143,6 +151,66 @@ class DrawHistoryReader(Protocol):
         Raises :class:`TargetDrawNotFoundError` when the target does not
         exist for ``lottery_type``.
         """
+        ...
+
+
+class ReplayScoringProjectionWriter(Protocol):
+    """Narrow, transactional writer for one whole Replay-scoring run."""
+
+    def persist_replay_scoring_artifact(
+        self,
+        artifact: ReplayScoringArtifact,
+        canonical_bytes: bytes,
+    ) -> ReplayScoringPersistResult:
+        """Persist one already-validated artifact transactionally, or fail closed.
+
+        Returns ``INSERTED`` for a fresh run, ``ALREADY_PRESENT`` for an exact
+        idempotent re-import (identical ``canonical_bytes``), or ``CONFLICT``
+        when the same run identity already exists with different content —
+        never overwriting, merging, or partially persisting a run.
+        """
+        ...
+
+
+class ReplayScoringProjectionReader(Protocol):
+    """Narrow, read-only boundary over the persisted Replay-scoring projection.
+
+    Every method treats an absent run as ``None`` rather than raising. Reads
+    never mutate storage.
+    """
+
+    def get_run(
+        self, scoring_artifact_payload_sha256: str
+    ) -> ReplayScoringRunProjection | None:
+        """Return the stored run identity, or ``None`` if not found."""
+        ...
+
+    def get_replay_scoring_artifact(
+        self, scoring_artifact_payload_sha256: str
+    ) -> ReplayScoringArtifact | None:
+        """Reconstruct the exact original typed artifact, or ``None`` if not found."""
+        ...
+
+    def list_scored_predictions(
+        self,
+        scoring_artifact_payload_sha256: str,
+        *,
+        target_draw_number: str | None = None,
+        strategy_id: str | None = None,
+    ) -> tuple[ReplayScoredPredictionProjection, ...]:
+        """Return scored records in stored ordinal order, optionally filtered."""
+        ...
+
+    def list_strategy_aggregates(
+        self, scoring_artifact_payload_sha256: str
+    ) -> tuple[ReplayStrategyAggregateProjection, ...]:
+        """Return per-strategy aggregates in stored ordinal order."""
+        ...
+
+    def get_overall_aggregate(
+        self, scoring_artifact_payload_sha256: str
+    ) -> ReplayOverallAggregateProjection | None:
+        """Return the run's single overall aggregate, or ``None`` if not found."""
         ...
 
 

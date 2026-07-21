@@ -196,6 +196,37 @@ def test_social_and_zone_split_strategies_succeed_on_both_targets() -> None:
         assert snapshot.predicted_main_numbers is not None
 
 
+def test_cutoff_provenance_matches_the_actual_last_pre_target_fixture_row() -> None:
+    fixture = _load_fixture()
+    reader = _FixtureDrawHistoryReader(fixture)
+    use_case = _use_case(reader)
+    targets = _targets(fixture)
+
+    result = use_case.execute(
+        ReplayHistoricalPredictionsInput(
+            lottery_type=LotteryType.BIG_LOTTO,
+            dataset_id="SYNTHETIC_BIG_LOTTO_REPLAY_GOLDEN_R1",
+            dataset_version="1",
+            targets=targets,
+            strategy_ids=(BigLottoSocialWisdomAntiPopularityAdapter.strategy_id,),
+        )
+    )
+
+    expected_last_row = {
+        entry["draw_number"]: fixture["history_rows"][entry["pre_target_row_count"] - 1]
+        for entry in fixture["targets"]
+    }
+    for snapshot in result.snapshots:
+        assert snapshot.causal_history_count is not None
+        assert snapshot.causal_history_count > 0
+        last_row = expected_last_row[snapshot.target_draw_number]
+        assert snapshot.cutoff_draw_number == last_row["draw_number"]
+        assert snapshot.cutoff_draw_date == date.fromisoformat(last_row["draw_date"])
+        assert snapshot.cutoff_draw_number != snapshot.target_draw_number
+        assert snapshot.cutoff_draw_date is not None
+        assert snapshot.cutoff_draw_date < snapshot.target_draw_date
+
+
 def test_no_future_leakage_history_count_matches_pre_target_row_count_exactly() -> None:
     fixture = _load_fixture()
     reader = _FixtureDrawHistoryReader(fixture)

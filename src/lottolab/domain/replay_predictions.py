@@ -59,8 +59,8 @@ class ReplayPredictionSnapshot:
     source_mode: ReplaySourceMode
     target_draw_number: str
     target_draw_date: date
-    cutoff_draw_number: str
-    cutoff_draw_date: date
+    cutoff_draw_number: str | None
+    cutoff_draw_date: date | None
     strategy_id: str
     strategy_version: str | None
     adapter_strategy_id: str | None
@@ -83,12 +83,28 @@ class ReplayPredictionSnapshot:
         if not self.strategy_id:
             raise ValueError("strategy_id must be a non-empty string")
 
+        if (self.cutoff_draw_number is None) != (self.cutoff_draw_date is None):
+            raise ValueError(
+                "cutoff_draw_number and cutoff_draw_date must be both present or both absent"
+            )
+
         history_ok = self.history_status == "OK"
         if history_ok:
             if self.history_reason_code is not None:
                 raise ValueError("OK history_status must not carry a history_reason_code")
             if self.causal_history_count is None or self.causal_history_sha256 is None:
                 raise ValueError("OK history_status requires causal_history_count and _sha256")
+            if self.causal_history_count < 0:
+                raise ValueError("causal_history_count must not be negative")
+            if self.causal_history_count == 0:
+                if self.cutoff_draw_number is not None or self.cutoff_draw_date is not None:
+                    raise ValueError(
+                        "OK history_status with zero causal history must not carry a cutoff"
+                    )
+            elif self.cutoff_draw_number is None or self.cutoff_draw_date is None:
+                raise ValueError(
+                    "OK history_status with non-zero causal history requires a cutoff"
+                )
         else:
             if self.history_reason_code is None:
                 raise ValueError("non-OK history_status requires a history_reason_code")
@@ -96,10 +112,18 @@ class ReplayPredictionSnapshot:
                 raise ValueError(
                     "non-OK history_status must not carry causal_history_count or _sha256"
                 )
+            if self.cutoff_draw_number is not None or self.cutoff_draw_date is not None:
+                raise ValueError("non-OK history_status must not carry a cutoff")
             if self.prediction_status is not None or self.prediction_reason_code is not None:
                 raise ValueError("prediction is unattempted when history_status is not OK")
             if self.predicted_main_numbers is not None:
                 raise ValueError("predicted_main_numbers requires an OK prediction_status")
+
+        if self.cutoff_draw_number is not None and self.cutoff_draw_date is not None:
+            cutoff_key = (self.cutoff_draw_date, int(self.cutoff_draw_number))
+            target_key = (self.target_draw_date, int(self.target_draw_number))
+            if cutoff_key >= target_key:
+                raise ValueError("cutoff must represent a draw strictly before the target")
 
         if history_ok and self.prediction_status is None:
             raise ValueError("OK history_status requires an attempted prediction_status")

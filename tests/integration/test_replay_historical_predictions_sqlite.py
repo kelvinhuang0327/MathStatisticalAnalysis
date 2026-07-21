@@ -209,12 +209,16 @@ def test_real_sqlite_replay_builds_and_verifies_canonical_artifact(tmp_path: Pat
         (snapshot.target_draw_number, snapshot.strategy_id) for snapshot in result.snapshots
     ) == tuple((_TARGET.draw_number, strategy_id) for strategy_id in _STRATEGY_IDS)
     expected_history_sha256 = causal_history_sha256(history)
+    expected_cutoff_row = history[-1]
     for snapshot in result.snapshots:
         assert snapshot.history_status == BuildCausalHistoryStatus.OK.value
         assert snapshot.causal_history_count == _EXPECTED_HISTORY_COUNT
         assert snapshot.causal_history_sha256 == expected_history_sha256
         assert snapshot.causal_history_sha256 is not None
         assert len(snapshot.causal_history_sha256) == 64
+        assert snapshot.cutoff_draw_number == expected_cutoff_row.draw_number
+        assert snapshot.cutoff_draw_date == expected_cutoff_row.draw_date
+        assert snapshot.cutoff_draw_number != _TARGET.draw_number
         assert snapshot.prediction_status == GenerateOneBetStatus.OK.value
         assert snapshot.predicted_main_numbers is not None
         assert len(snapshot.predicted_main_numbers) == 6
@@ -300,6 +304,8 @@ def test_real_sqlite_missing_target_closes_without_infrastructure_exception(
     assert snapshot.history_reason_code == BuildCausalHistoryReason.TARGET_DRAW_NOT_FOUND.value
     assert snapshot.causal_history_count is None
     assert snapshot.causal_history_sha256 is None
+    assert snapshot.cutoff_draw_number is None
+    assert snapshot.cutoff_draw_date is None
     assert snapshot.prediction_status is None
     assert snapshot.prediction_reason_code is None
     assert snapshot.predicted_main_numbers is None

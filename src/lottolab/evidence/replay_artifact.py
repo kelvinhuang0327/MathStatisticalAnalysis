@@ -79,8 +79,8 @@ def _snapshot_content_dict(
     source_mode: ReplaySourceMode,
     target_draw_number: str,
     target_draw_date: date,
-    cutoff_draw_number: str,
-    cutoff_draw_date: date,
+    cutoff_draw_number: str | None,
+    cutoff_draw_date: date | None,
     strategy_id: str,
     strategy_version: str | None,
     adapter_strategy_id: str | None,
@@ -103,12 +103,13 @@ def _snapshot_content_dict(
         "source_mode": source_mode.value,
         "target_draw_number": target_draw_number,
         "target_draw_date": target_draw_date.isoformat(),
-        "cutoff_draw_number": cutoff_draw_number,
-        "cutoff_draw_date": cutoff_draw_date.isoformat(),
         "strategy_id": strategy_id,
         "history_status": history_status,
         "result_sha256": result_sha256,
     }
+    if cutoff_draw_number is not None and cutoff_draw_date is not None:
+        payload["cutoff_draw_number"] = cutoff_draw_number
+        payload["cutoff_draw_date"] = cutoff_draw_date.isoformat()
     if strategy_version is not None:
         payload["strategy_version"] = strategy_version
         payload["adapter_strategy_id"] = adapter_strategy_id
@@ -170,6 +171,12 @@ def build_replay_prediction_snapshot(
     causal_history_hash = (
         causal_history_sha256(causal_history) if causal_history is not None else None
     )
+    if causal_history:
+        cutoff_draw_number: str | None = causal_history[-1].draw_number
+        cutoff_draw_date: date | None = causal_history[-1].draw_date
+    else:
+        cutoff_draw_number = None
+        cutoff_draw_date = None
 
     content = _snapshot_content_dict(
         snapshot_schema_version=SNAPSHOT_SCHEMA_VERSION,
@@ -179,8 +186,8 @@ def build_replay_prediction_snapshot(
         source_mode=ReplaySourceMode.TARGET_NATIVE,
         target_draw_number=target.draw_number,
         target_draw_date=target.draw_date,
-        cutoff_draw_number=target.draw_number,
-        cutoff_draw_date=target.draw_date,
+        cutoff_draw_number=cutoff_draw_number,
+        cutoff_draw_date=cutoff_draw_date,
         strategy_id=strategy_id,
         strategy_version=strategy_version,
         adapter_strategy_id=adapter_id,
@@ -204,8 +211,8 @@ def build_replay_prediction_snapshot(
         source_mode=ReplaySourceMode.TARGET_NATIVE,
         target_draw_number=target.draw_number,
         target_draw_date=target.draw_date,
-        cutoff_draw_number=target.draw_number,
-        cutoff_draw_date=target.draw_date,
+        cutoff_draw_number=cutoff_draw_number,
+        cutoff_draw_date=cutoff_draw_date,
         strategy_id=strategy_id,
         strategy_version=strategy_version,
         adapter_strategy_id=adapter_id,
@@ -227,6 +234,10 @@ def _snapshot_from_canonical_dict(payload: dict[str, Any]) -> ReplayPredictionSn
         value = payload.get(key)
         return tuple(value) if value is not None else None
 
+    def _optional_date(key: str) -> date | None:
+        value = payload.get(key)
+        return date.fromisoformat(value) if value is not None else None
+
     return ReplayPredictionSnapshot(
         snapshot_schema_version=payload["snapshot_schema_version"],
         dataset_id=payload["dataset_id"],
@@ -235,8 +246,8 @@ def _snapshot_from_canonical_dict(payload: dict[str, Any]) -> ReplayPredictionSn
         source_mode=ReplaySourceMode(payload["source_mode"]),
         target_draw_number=payload["target_draw_number"],
         target_draw_date=date.fromisoformat(payload["target_draw_date"]),
-        cutoff_draw_number=payload["cutoff_draw_number"],
-        cutoff_draw_date=date.fromisoformat(payload["cutoff_draw_date"]),
+        cutoff_draw_number=payload.get("cutoff_draw_number"),
+        cutoff_draw_date=_optional_date("cutoff_draw_date"),
         strategy_id=payload["strategy_id"],
         strategy_version=payload.get("strategy_version"),
         adapter_strategy_id=payload.get("adapter_strategy_id"),

@@ -12,7 +12,9 @@ PATHS = {
     "domain": SRC / "domain" / "replay_portfolio_ranking.py",
     "use_case": SRC / "application" / "use_cases" / "rank_replay_strategy_portfolios.py",
     "artifact": SRC / "evidence" / "replay_portfolio_ranking_artifact.py",
+    "query": SRC / "application" / "use_cases" / "query_replay_scoring_projection.py",
     "api": SRC / "interfaces" / "api" / "replay_portfolio_rankings.py",
+    "app": SRC / "interfaces" / "api" / "app.py",
 }
 
 
@@ -55,6 +57,14 @@ def test_ranking_use_case_imports_no_infrastructure_or_interfaces() -> None:
     )
 
 
+def test_persisted_artifact_query_imports_no_infrastructure_or_interfaces() -> None:
+    imports = _imports(PATHS["query"])
+    assert not any(
+        module.startswith(("lottolab.infrastructure", "lottolab.interfaces"))
+        for module in imports
+    )
+
+
 def test_ranking_artifact_imports_no_database_or_transport() -> None:
     imports = _imports(PATHS["artifact"])
     assert "sqlite3" not in imports
@@ -74,7 +84,7 @@ def test_ranking_artifact_imports_no_database_or_transport() -> None:
 
 def test_ranking_sources_touch_no_persistence_or_scheduler_concept() -> None:
     forbidden = ("sqlite3", "Repository", "scheduler", "Scheduler")
-    for path in PATHS.values():
+    for path in (PATHS["domain"], PATHS["use_case"], PATHS["artifact"], PATHS["api"]):
         source = path.read_text(encoding="utf-8")
         assert not any(token in source for token in forbidden), path
 
@@ -83,6 +93,17 @@ def test_ranking_api_declares_no_default_production_provider() -> None:
     source = PATHS["api"].read_text(encoding="utf-8")
     assert "sqlite3" not in source
     assert "Repository" not in source
+
+
+def test_zero_argument_ranking_provider_is_removed_from_api_wiring() -> None:
+    combined_source = "\n".join(
+        PATHS[name].read_text(encoding="utf-8") for name in ("api", "app")
+    )
+    assert "ReplayScoringArtifactProvider" not in combined_source
+    assert "scoring_artifact_provider" not in combined_source
+    assert "replay_scoring_projection_reader_factory" in PATHS["app"].read_text(
+        encoding="utf-8"
+    )
 
 
 def test_protected_ranking_domain_shapes_are_unchanged() -> None:

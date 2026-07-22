@@ -363,6 +363,42 @@ def test_replay_scoring_openapi_pins_exact_sha_get_contract_and_sanitized_errors
         ] == {"$ref": "#/components/schemas/ApiErrorResponse"}
 
 
+def test_replay_ranking_openapi_requires_exact_sha_and_documents_sanitized_errors() -> None:
+    operation = create_app().openapi()["paths"]["/api/v1/replay-rankings/optimal"][
+        "get"
+    ]
+
+    assert operation["operationId"] == "getOptimalReplayPortfolioRankings"
+    selector = next(
+        parameter
+        for parameter in operation["parameters"]
+        if parameter["name"] == "scoring_artifact_payload_sha256"
+    )
+    assert selector["in"] == "query"
+    assert selector["required"] is True
+    assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
+    assert set(operation["responses"]) == {"200", "404", "422", "503"}
+    for status in ("404", "503"):
+        assert operation["responses"][status]["content"]["application/json"][
+            "schema"
+        ] == {"$ref": "#/components/schemas/ApiErrorResponse"}
+
+
+def test_replay_ranking_generated_type_requires_exact_sha_selector() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    marker = '  "/api/v1/replay-rankings/optimal": {'
+    start = declaration.index(marker)
+    end = declaration.index('\n  "/api/', start + len(marker))
+    path_block = declaration[start:end]
+
+    assert "scoring_artifact_payload_sha256: string" in path_block
+    assert "scoring_artifact_payload_sha256?: string" not in path_block
+    for status in (200, 404, 422, 503):
+        assert f"{status}: {{" in path_block
+
+
 def test_replay_scoring_generated_types_include_all_read_only_operations() -> None:
     declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
         encoding="utf-8"

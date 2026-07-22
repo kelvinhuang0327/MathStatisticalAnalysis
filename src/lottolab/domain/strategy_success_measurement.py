@@ -201,6 +201,44 @@ class BigLottoOutcomeSignature:
 
 
 @dataclass(frozen=True, slots=True)
+class BigLottoPortfolioOutcomeSignature:
+    """Source-ordered atomic outcomes for one legal-ticket portfolio."""
+
+    tickets: tuple[BigLottoOutcomeSignature, ...]
+
+    def __post_init__(self) -> None:
+        if type(self.tickets) is not tuple:
+            raise ValueError("tickets must be an immutable tuple")
+        if not self.tickets:
+            raise ValueError("tickets must not be empty")
+        if any(type(ticket) is not BigLottoOutcomeSignature for ticket in self.tickets):
+            raise ValueError("tickets must contain only BigLottoOutcomeSignature values")
+
+    @property
+    def ticket_count(self) -> int:
+        return len(self.tickets)
+
+    @property
+    def maximum_main_hits(self) -> int:
+        return max(ticket.main_hits for ticket in self.tickets)
+
+    def canonical_dict(self) -> dict[str, object]:
+        return {
+            "maximum_main_hits": self.maximum_main_hits,
+            "ticket_count": self.ticket_count,
+            "tickets": [ticket.canonical_dict() for ticket in self.tickets],
+        }
+
+    def canonical_json(self) -> str:
+        return json.dumps(
+            self.canonical_dict(),
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class PowerLottoOutcomeSignature:
     zone1_hits: int
     zone2_hit: bool | None
@@ -253,7 +291,10 @@ class Daily539OutcomeSignature:
 
 
 OutcomeSignature = (
-    BigLottoOutcomeSignature | PowerLottoOutcomeSignature | Daily539OutcomeSignature
+    BigLottoOutcomeSignature
+    | BigLottoPortfolioOutcomeSignature
+    | PowerLottoOutcomeSignature
+    | Daily539OutcomeSignature
 )
 
 
@@ -335,9 +376,12 @@ class StrategySuccessMeasurement:
             raise ValueError("window_policy must be a MeasurementWindowPolicy")
         _require_optional_text(self.official_prize_tier_id, "official_prize_tier_id")
 
-        expected_outcome_type: type[OutcomeSignature]
         if self.selection.lottery is LotteryType.BIG_LOTTO:
-            expected_outcome_type = BigLottoOutcomeSignature
+            expected_outcome_type = (
+                BigLottoPortfolioOutcomeSignature
+                if self.mode is MeasurementMode.LEGAL_TICKET_PRIZE
+                else BigLottoOutcomeSignature
+            )
         elif self.selection.lottery is LotteryType.POWER_LOTTO:
             expected_outcome_type = PowerLottoOutcomeSignature
         else:
@@ -353,6 +397,11 @@ class StrategySuccessMeasurement:
         elif self.mode is MeasurementMode.LEGAL_TICKET_PRIZE:
             if self.selection.ticket_count is None:
                 raise ValueError("legal-ticket prize measurement requires ticket_count")
+            if (
+                type(self.outcome_signature) is BigLottoPortfolioOutcomeSignature
+                and self.selection.ticket_count != self.outcome_signature.ticket_count
+            ):
+                raise ValueError("selection ticket_count must match the portfolio ticket count")
             if self.official_prize_tier_id is not None:
                 raise ValueError("legal-ticket prize mode is distinct from official-tier mode")
         else:
@@ -406,6 +455,7 @@ __all__ = [
     "DEFAULT_WINDOW_POLICY",
     "DEFAULT_WINDOW_POLICY_VERSION",
     "BigLottoOutcomeSignature",
+    "BigLottoPortfolioOutcomeSignature",
     "Daily539OutcomeSignature",
     "EvidenceStatus",
     "MeasurementMode",

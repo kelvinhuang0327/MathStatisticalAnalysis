@@ -22,6 +22,7 @@ from lottolab.domain.strategy_success_evaluation import (
 from lottolab.domain.strategy_success_measurement import (
     DEFAULT_WINDOW_POLICY,
     BigLottoOutcomeSignature,
+    BigLottoPortfolioOutcomeSignature,
     Daily539OutcomeSignature,
     EvidenceStatus,
     MeasurementMode,
@@ -53,7 +54,10 @@ def _measurement(
     *,
     lottery: LotteryType = LotteryType.BIG_LOTTO,
     mode: MeasurementMode = MeasurementMode.CANDIDATE_COVERAGE,
-    outcome: BigLottoOutcomeSignature | PowerLottoOutcomeSignature | Daily539OutcomeSignature
+    outcome: BigLottoOutcomeSignature
+    | BigLottoPortfolioOutcomeSignature
+    | PowerLottoOutcomeSignature
+    | Daily539OutcomeSignature
     | None = None,
     selection: SelectionIdentity | None = None,
     policy: MeasurementWindowPolicy = DEFAULT_WINDOW_POLICY,
@@ -61,13 +65,30 @@ def _measurement(
 ) -> StrategySuccessMeasurement:
     if outcome is None:
         if lottery is LotteryType.BIG_LOTTO:
-            outcome = BigLottoOutcomeSignature(main_hits=2, special_hit=True)
+            atomic_outcome = BigLottoOutcomeSignature(main_hits=2, special_hit=True)
+            outcome = (
+                BigLottoPortfolioOutcomeSignature((atomic_outcome,))
+                if mode is MeasurementMode.LEGAL_TICKET_PRIZE
+                else atomic_outcome
+            )
         elif lottery is LotteryType.POWER_LOTTO:
             outcome = PowerLottoOutcomeSignature(zone1_hits=1, zone2_hit=True)
         else:
             outcome = Daily539OutcomeSignature(main_hits=1)
     if mode is MeasurementMode.OFFICIAL_PRIZE_TIER and official_prize_tier_id is None:
         official_prize_tier_id = "TIER_A"
+    if (
+        selection is None
+        and lottery is LotteryType.BIG_LOTTO
+        and mode is MeasurementMode.LEGAL_TICKET_PRIZE
+        and type(outcome) is BigLottoPortfolioOutcomeSignature
+    ):
+        selection = SelectionIdentity(
+            lottery=lottery,
+            strategy_id="name-without-parsed-axes",
+            strategy_version="v1",
+            ticket_count=outcome.ticket_count,
+        )
     return StrategySuccessMeasurement(
         mode=mode,
         selection=selection or _selection(lottery, mode),
@@ -236,13 +257,111 @@ def test_candidate_and_legal_ticket_modes_are_not_interchangeable() -> None:
     legal = _measurement(
         1,
         mode=MeasurementMode.LEGAL_TICKET_PRIZE,
-        outcome=BigLottoOutcomeSignature(3, True),
+        outcome=BigLottoPortfolioOutcomeSignature((BigLottoOutcomeSignature(3, True),)),
     )
     candidate_criterion = _big_criterion(mode=MeasurementMode.CANDIDATE_COVERAGE)
     legal_criterion = _big_criterion(mode=MeasurementMode.LEGAL_TICKET_PRIZE)
 
     assert evaluate_observation(legal, candidate_criterion) is ObservationEvaluation.EXCLUDED
     assert evaluate_observation(legal, legal_criterion) is ObservationEvaluation.SUCCESS
+
+
+@pytest.mark.parametrize(
+    ("tickets", "minimum", "special", "expected"),
+    [
+        ((BigLottoOutcomeSignature(2, True),), 2, True, ObservationEvaluation.SUCCESS),
+        (
+            (BigLottoOutcomeSignature(2, False), BigLottoOutcomeSignature(1, True)),
+            2,
+            True,
+            ObservationEvaluation.FAILURE,
+        ),
+        (
+            (BigLottoOutcomeSignature(3, False), BigLottoOutcomeSignature(1, True)),
+            3,
+            False,
+            ObservationEvaluation.SUCCESS,
+        ),
+        (
+            (BigLottoOutcomeSignature(1, True), BigLottoOutcomeSignature(0, False)),
+            2,
+            False,
+            ObservationEvaluation.FAILURE,
+        ),
+    ],
+)
+def test_legal_ticket_portfolio_requires_one_same_ticket_to_satisfy_the_criterion(
+    tickets: tuple[BigLottoOutcomeSignature, ...],
+    minimum: int,
+    special: bool,
+    expected: ObservationEvaluation,
+) -> None:
+    observation = _measurement(
+        1,
+        mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+        outcome=BigLottoPortfolioOutcomeSignature(tickets),
+    )
+    criterion = _big_criterion(
+        minimum=minimum,
+        special=special,
+        mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+    )
+
+    assert evaluate_observation(observation, criterion) is expected
+
+
+def test_portfolio_windows_preserve_slicing_counts_exact_rates_and_descriptive_status() -> None:
+    successful = BigLottoPortfolioOutcomeSignature(
+        (BigLottoOutcomeSignature(2, True), BigLottoOutcomeSignature(0, False))
+    )
+    split_failure = BigLottoPortfolioOutcomeSignature(
+        (BigLottoOutcomeSignature(2, False), BigLottoOutcomeSignature(1, True))
+    )
+    observations = tuple(
+        _measurement(
+            index,
+            mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+            outcome=successful if index % 2 == 0 else split_failure,
+        )
+        for index in range(800)
+    )
+
+    summaries = evaluate_strategy_success_windows(
+        observations,
+        _big_criterion(mode=MeasurementMode.LEGAL_TICKET_PRIZE),
+    )
+
+    assert tuple(summary.source_draw_count for summary in summaries) == (800, 750, 300, 50)
+    assert tuple(summary.success_count for summary in summaries) == (400, 375, 150, 25)
+    assert tuple(summary.failure_count for summary in summaries) == (400, 375, 150, 25)
+    assert tuple(summary.excluded_draw_count for summary in summaries) == (0, 0, 0, 0)
+    assert tuple(summary.success_rate for summary in summaries) == (
+        ExactSuccessRate(400, 800),
+        ExactSuccessRate(375, 750),
+        ExactSuccessRate(150, 300),
+        ExactSuccessRate(25, 50),
+    )
+    assert all(summary.evidence_status is EvidenceStatus.DESCRIPTIVE_ONLY for summary in summaries)
+    assert all(not hasattr(summary, "promotion_status") for summary in summaries)
+
+
+def test_mode_mismatched_portfolio_windows_exclude_without_counting_failures() -> None:
+    portfolio = BigLottoPortfolioOutcomeSignature((BigLottoOutcomeSignature(2, True),))
+    observations = tuple(
+        _measurement(
+            index,
+            mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+            outcome=portfolio,
+        )
+        for index in range(50)
+    )
+
+    full, _, _, short = evaluate_strategy_success_windows(observations, _big_criterion())
+
+    assert (full.excluded_draw_count, full.failure_count) == (50, 0)
+    assert (short.excluded_draw_count, short.failure_count) == (50, 0)
+    assert full.success_rate == ExactSuccessRate.unavailable()
+    assert short.success_rate == ExactSuccessRate.unavailable()
 
 
 def test_power_lotto_hit_miss_missing_and_explicit_zone1_only_semantics() -> None:

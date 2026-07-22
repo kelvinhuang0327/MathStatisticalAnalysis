@@ -40,6 +40,7 @@ def test_measurement_domain_imports_no_upper_or_legacy_layer() -> None:
         "number_pattern_research",
     )
     assert not any(module.startswith(forbidden_prefixes) for module in imports)
+    assert not any(module.startswith("lottolab.domain.historical_") for module in imports)
 
 
 def test_measurement_domain_imports_no_database_transport_or_runtime_library() -> None:
@@ -59,11 +60,13 @@ def test_measurement_domain_imports_no_database_transport_or_runtime_library() -
 
 def test_measurement_domain_performs_no_filesystem_or_environment_read() -> None:
     forbidden_calls = {
+        "connect",
         "getenv",
         "open",
         "read_bytes",
         "read_text",
         "resolve_local_data_paths",
+        "urlopen",
     }
     called_names: set[str] = set()
     for node in ast.walk(_syntax_tree()):

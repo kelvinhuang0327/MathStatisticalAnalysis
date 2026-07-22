@@ -23,6 +23,9 @@ REPLAY_EXECUTION_MODULE_PATHS: dict[str, Path] = {
         SRC / "application" / "use_cases" / "replay_historical_predictions.py"
     ),
     "lottolab.evidence.replay_artifact": SRC / "evidence" / "replay_artifact.py",
+    "lottolab.interfaces.cli.replay_predictions": (
+        SRC / "interfaces" / "cli" / "replay_predictions.py"
+    ),
 }
 
 
@@ -57,7 +60,7 @@ def _imported_modules(path: Path) -> set[str]:
     return modules
 
 
-def test_all_three_replay_execution_modules_exist() -> None:
+def test_all_replay_execution_modules_exist() -> None:
     for name, path in REPLAY_EXECUTION_MODULE_PATHS.items():
         assert path.is_file(), f"{name} missing at {path}"
 
@@ -115,9 +118,70 @@ def test_replay_execution_modules_import_no_sqlite_cli_or_network_dependency() -
         "httpx",
         "importlib",
     }
-    for path in REPLAY_EXECUTION_MODULE_PATHS.values():
+    non_interface_paths = {
+        name: path
+        for name, path in REPLAY_EXECUTION_MODULE_PATHS.items()
+        if not name.startswith("lottolab.interfaces")
+    }
+    for path in non_interface_paths.values():
         imports = _imported_modules(path)
         assert imports.isdisjoint(forbidden_exact), path
+
+
+def test_replay_cli_is_a_thin_composition_of_existing_entrypoints() -> None:
+    path = REPLAY_EXECUTION_MODULE_PATHS["lottolab.interfaces.cli.replay_predictions"]
+    source = path.read_text(encoding="utf-8")
+    imports = _imported_modules(path)
+    required_imports = {
+        "lottolab.application.use_cases.build_causal_history",
+        "lottolab.application.use_cases.generate_bet",
+        "lottolab.application.use_cases.replay_historical_predictions",
+        "lottolab.evidence.replay_artifact",
+        "lottolab.infrastructure.persistence.draw_schema",
+        "lottolab.infrastructure.persistence.replay_history_reader",
+        "lottolab.infrastructure.persistence.repositories",
+        "lottolab.strategies.catalog",
+    }
+    assert required_imports <= imports
+    assert "sqlite3" not in imports
+    assert "initialize_schema" not in source
+    assert "open_database" not in source
+    assert "apply_valid_import" not in source
+    assert "execute(" not in source.replace("replay.execute(", "")
+    assert "json.dumps" not in source
+    assert "hashlib" not in source
+
+
+def test_replay_cli_uses_only_the_read_facets_of_combined_draw_repository() -> None:
+    path = REPLAY_EXECUTION_MODULE_PATHS["lottolab.interfaces.cli.replay_predictions"]
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    called_attributes = {
+        node.func.attr
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+    }
+    assert "get_draw" in called_attributes
+    assert called_attributes.isdisjoint(
+        {
+            "apply_valid_import",
+            "insert",
+            "commit",
+            "vacuum",
+            "checkpoint",
+            "initialize_schema",
+        }
+    )
+
+
+def test_replay_cli_is_registered_only_at_the_interface_composition_root() -> None:
+    main_source = (SRC / "interfaces" / "cli" / "main.py").read_text(encoding="utf-8")
+    assert 'app.command("replay-predictions")(replay_predictions_command)' in main_source
+
+    for layer in (SRC / "application", SRC / "domain"):
+        for path in layer.rglob("*.py"):
+            assert "lottolab.interfaces.cli.replay_predictions" not in path.read_text(
+                encoding="utf-8"
+            )
 
 
 def test_causal_draw_row_in_strategies_adapters_base_is_unchanged() -> None:

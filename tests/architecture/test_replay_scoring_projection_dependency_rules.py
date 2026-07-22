@@ -93,16 +93,92 @@ def test_no_http_cli_or_frontend_dependency_in_new_modules() -> None:
         ), name
 
 
-def test_no_cli_router_or_frontend_path_references_the_projection() -> None:
+def test_projection_query_dependencies_are_confined_to_the_read_only_api() -> None:
+    api_app = SRC / "interfaces" / "api" / "app.py"
+    api_router = SRC / "interfaces" / "api" / "replay_scoring_projections.py"
+    generated_contract = (
+        REPO_ROOT / "frontend" / "src" / "api" / "generated" / "openapi.d.ts"
+    )
     scanned = (
         *(SRC / "interfaces").rglob("*.py"),
-        *(REPO_ROOT / "frontend").rglob("*"),
+        *(REPO_ROOT / "frontend" / "src").rglob("*"),
     )
+    referenced_paths: set[Path] = set()
     for path in scanned:
         if path.is_file():
             text = path.read_text(encoding="utf-8", errors="ignore")
-            assert "replay_scoring_projection" not in text
-            assert "ReplayScoringProjectionRepository" not in text
+            if any(
+                token in text
+                for token in ("replay_scoring_projection", "ReplayScoringProjection")
+            ):
+                referenced_paths.add(path)
+
+    assert referenced_paths == {api_app, api_router}
+
+    router_imports = _imports(api_router)
+    assert "lottolab.application.ports" in router_imports
+    assert (
+        "lottolab.application.use_cases.query_replay_scoring_projection"
+        in router_imports
+    )
+    assert not any(module.startswith("lottolab.infrastructure") for module in router_imports)
+
+    query_surface = "\n".join(
+        (
+            api_app.read_text(encoding="utf-8"),
+            api_router.read_text(encoding="utf-8"),
+        )
+    )
+    forbidden_dependencies = (
+        "SQLiteReplayScoringProjectionRepository",
+        "ReplayScoringProjectionWriter",
+        "persist_replay_scoring_artifact",
+        "initialize_schema",
+        "replay_scoring_schema",
+        "sqlite3",
+        "MIGRATION",
+        "SELECT ",
+        "INSERT ",
+        "UPDATE ",
+        "DELETE ",
+        "recompute_",
+    )
+    assert not any(token in query_surface for token in forbidden_dependencies)
+
+    from lottolab.interfaces.api.app import create_app
+
+    factory_calls = 0
+
+    def forbidden_factory() -> ReplayScoringProjectionReader:
+        nonlocal factory_calls
+        factory_calls += 1
+        raise AssertionError("reader factory must stay lazy")
+
+    schema = create_app(
+        replay_scoring_projection_reader_factory=forbidden_factory
+    ).openapi()
+    assert factory_calls == 0
+
+    declaration = generated_contract.read_text(encoding="utf-8")
+    paths = (
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+    )
+    assert set(paths) <= set(schema["paths"])
+    for path in paths:
+        marker = f'  "{path}": {{'
+        start = declaration.index(marker)
+        next_path = declaration.find('\n  "/api/', start + len(marker))
+        paths_end = declaration.index("\n}\n\nexport interface components", start)
+        end = paths_end if next_path == -1 else min(next_path, paths_end)
+        path_block = declaration[start:end]
+        assert path_block.count("get: {") == 1
+        assert not any(
+            f"{method}: {{" in path_block
+            for method in ("post", "put", "patch", "delete")
+        )
 
 
 def test_new_modules_do_not_import_the_historical_query_domain() -> None:

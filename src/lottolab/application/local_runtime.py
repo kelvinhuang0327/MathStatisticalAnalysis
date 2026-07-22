@@ -57,12 +57,26 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
     "/api/v1/replay-rankings/optimal": frozenset({"get"}),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": frozenset({"get"}),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset(
+        {"get"}
+    ),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": (
+        frozenset({"get"})
+    ),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": frozenset(
+        {"get"}
+    ),
 }
 _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
     {
         "/api/v1/generate-bet",
         "/api/v1/historical-results/runs/{run_id}/replay",
         "/api/v1/replay-rankings/optimal",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
     }
 )
 """The narrow, approved paths exempt from the forbidden-word screen.
@@ -75,8 +89,12 @@ strategy, but its path segment happens to contain the forbidden word
 "replay". ``/api/v1/replay-rankings/optimal`` is a read-only, strictly
 post-hoc ranking over an already-validated ``ReplayScoringArtifact`` — it
 generates no numbers, executes no strategy, and persists nothing, but its
-path segment likewise contains "replay". Only these three exact paths are
-exempted; every other path containing a forbidden word (including
+path segment likewise contains "replay". The four exact
+``/api/v1/replay-scoring/{scoring_artifact_payload_sha256}`` paths are GET-only
+queries over saved Replay-scoring projections. They execute no strategy,
+generate no numbers, perform no rescoring, write no database state, and offer
+no latest or fallback selection. Only these seven exact paths are exempted;
+every other path containing a forbidden word (including
 "/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",
 and "/api/v1/replay-rankings/optimize") is still rejected, and the
 exact-operation-set check below still fails closed on method or path drift.

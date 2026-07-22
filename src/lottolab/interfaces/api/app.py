@@ -15,7 +15,10 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from lottolab.application.ports import HistoricalResultQueryRepositoryFactory
+from lottolab.application.ports import (
+    HistoricalResultQueryRepositoryFactory,
+    ReplayScoringProjectionReaderFactory,
+)
 from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
     build_production_generate_one_bet,
@@ -41,6 +44,9 @@ from lottolab.interfaces.api.replay_portfolio_rankings import (
     ReplayScoringArtifactProvider,
     create_replay_portfolio_rankings_router,
 )
+from lottolab.interfaces.api.replay_scoring_projections import (
+    create_replay_scoring_projections_router,
+)
 from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
     create_strategy_catalog_router,
@@ -57,6 +63,9 @@ def create_app(
     generate_live_zone_split_bets: GenerateLiveZoneSplitBets | None = None,
     historical_query_repository_factory: HistoricalResultQueryRepositoryFactory | None = None,
     scoring_artifact_provider: ReplayScoringArtifactProvider | None = None,
+    replay_scoring_projection_reader_factory: (
+        ReplayScoringProjectionReaderFactory | None
+    ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -108,6 +117,11 @@ def create_app(
     app.include_router(create_historical_results_router(historical_query_repository_factory))
     app.include_router(
         create_replay_portfolio_rankings_router(scoring_artifact_provider)
+    )
+    app.include_router(
+        create_replay_scoring_projections_router(
+            replay_scoring_projection_reader_factory
+        )
     )
 
     return app

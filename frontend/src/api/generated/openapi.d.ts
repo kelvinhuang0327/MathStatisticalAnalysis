@@ -328,6 +328,110 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayScoringRunResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": Array<components['schemas']["ReplayScoredPredictionView"]>
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": Array<components['schemas']["ReplayStrategyAggregateView"]>
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {
+      get: {
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayOverallAggregateResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -595,6 +699,25 @@ export interface components {
           "source_reference": string | null
           "normalized_record_hash": string
         }
+    "ReplayOverallAggregateResponse": {
+          "run_payload_sha256": string
+          "source_snapshot_count": number
+          "scored_count": number
+          "history_closed_count": number
+          "prediction_closed_count": number
+          "target_outcome_not_found_count": number
+          "target_identity_mismatch_count": number
+          "first_prize_count": number
+          "second_prize_count": number
+          "third_prize_count": number
+          "fourth_prize_count": number
+          "fifth_prize_count": number
+          "sixth_prize_count": number
+          "seventh_prize_count": number
+          "general_prize_count": number
+          "no_prize_count": number
+          "aggregate_sha256": string
+        }
     "ReplayPortfolioRankingCandidateView": {
           "rank": number
           "ticket_count": number
@@ -642,6 +765,63 @@ export interface components {
           "top_k": number
           "groups": Array<components['schemas']["ReplayPortfolioRankingGroupView"]>
           "artifact_sha256": string
+        }
+    "ReplayScoredPredictionView": {
+          "run_payload_sha256": string
+          "ordinal": number
+          "source_snapshot_result_sha256": string
+          "scored_result_sha256": string
+          "target_draw_number": string
+          "target_draw_date": string
+          "strategy_id": string
+          "strategy_version"?: string | null
+          "source_history_status": string
+          "source_history_reason_code"?: string | null
+          "source_prediction_status"?: string | null
+          "source_prediction_reason_code"?: string | null
+          "scoring_status": string
+          "scoring_reason_code"?: string | null
+          "predicted_main_numbers"?: Array<number> | null
+          "target_outcome_sha256"?: string | null
+          "main_number_hit_count"?: number | null
+          "special_number_hit"?: boolean | null
+          "prize_tier_id"?: string | null
+          "prize_official_label"?: string | null
+          "no_prize_result"?: string | null
+        }
+    "ReplayScoringRunResponse": {
+          "scoring_artifact_schema_version": string
+          "scoring_artifact_payload_sha256": string
+          "source_replay_artifact_payload_sha256": string
+          "dataset_id": string
+          "dataset_version": string
+          "lottery_type": string
+          "target_count": number
+          "strategy_count": number
+          "scored_record_count": number
+          "overall_aggregate_sha256": string
+        }
+    "ReplayStrategyAggregateView": {
+          "run_payload_sha256": string
+          "ordinal": number
+          "strategy_id": string
+          "strategy_version"?: string | null
+          "source_snapshot_count": number
+          "scored_count": number
+          "history_closed_count": number
+          "prediction_closed_count": number
+          "target_outcome_not_found_count": number
+          "target_identity_mismatch_count": number
+          "first_prize_count": number
+          "second_prize_count": number
+          "third_prize_count": number
+          "fourth_prize_count": number
+          "fifth_prize_count": number
+          "sixth_prize_count": number
+          "seventh_prize_count": number
+          "general_prize_count": number
+          "no_prize_count": number
+          "aggregate_sha256": string
         }
     "RequestValidationIssueView": {
           "location": string

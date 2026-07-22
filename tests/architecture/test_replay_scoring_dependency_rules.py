@@ -157,11 +157,66 @@ def test_scoring_contains_no_duplicate_prize_signature_mapping() -> None:
         assert signature not in domain_source
 
 
-def test_no_cli_router_or_frontend_path_references_scoring() -> None:
+def test_scoring_references_are_confined_to_the_authorized_read_only_api() -> None:
+    api_app = SRC / "interfaces" / "api" / "app.py"
+    api_router = SRC / "interfaces" / "api" / "replay_scoring_projections.py"
+    generated_contract = (
+        REPO_ROOT / "frontend" / "src" / "api" / "generated" / "openapi.d.ts"
+    )
+    authorized_paths = {api_app, api_router, generated_contract}
     scanned = (
         *(SRC / "interfaces").rglob("*.py"),
-        *(REPO_ROOT / "frontend").rglob("*"),
+        *(REPO_ROOT / "frontend" / "src").rglob("*"),
     )
+    query_tokens = (
+        "query_replay_scoring_projection",
+        "replay_scoring_projections",
+        "ReplayScoringProjection",
+        "/api/v1/replay-scoring",
+    )
+    referenced_paths: set[Path] = set()
     for path in scanned:
         if path.is_file():
-            assert "replay_scoring" not in path.read_text(encoding="utf-8", errors="ignore")
+            source = path.read_text(encoding="utf-8", errors="ignore")
+            if any(token in source for token in query_tokens):
+                referenced_paths.add(path)
+
+    assert referenced_paths == authorized_paths
+
+    for interface_path in (SRC / "interfaces").rglob("*.py"):
+        interface_imports = _imports(interface_path)
+        assert "lottolab.domain.replay_scoring" not in interface_imports
+        assert not any(
+            module.endswith("score_replay_artifact") for module in interface_imports
+        )
+
+    router_source = api_router.read_text(encoding="utf-8")
+    forbidden_logic = (
+        "SQLiteReplayScoringProjectionRepository",
+        "ReplayScoringProjectionWriter",
+        "persist_replay_scoring_artifact",
+        "initialize_schema",
+        "resolve_big_lotto_prize",
+        "recompute_",
+        "SELECT ",
+        "INSERT ",
+        "UPDATE ",
+        "DELETE ",
+    )
+    assert not any(token in router_source for token in forbidden_logic)
+    assert {
+        line.strip().split("(", maxsplit=1)[0]
+        for line in router_source.splitlines()
+        if line.strip().startswith("@router.")
+    } == {"@router.get"}
+
+    lowered_router = router_source.casefold()
+    forbidden_selection = (
+        "latest",
+        "newest",
+        "timestamp",
+        "fallback",
+        "default_run",
+        "select_default",
+    )
+    assert not any(token in lowered_router for token in forbidden_selection)

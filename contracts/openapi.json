@@ -1085,6 +1085,345 @@
           }
         }
       }
+    },
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {
+      "get": {
+        "tags": [
+          "replay-scoring"
+        ],
+        "summary": "Get Replay Scoring Run",
+        "operationId": "getReplayScoringRun",
+        "parameters": [
+          {
+            "name": "scoring_artifact_payload_sha256",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact.",
+              "title": "Scoring Artifact Payload Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayScoringRunResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
+      "get": {
+        "tags": [
+          "replay-scoring"
+        ],
+        "summary": "List Replay Scoring Predictions",
+        "operationId": "listReplayScoringPredictions",
+        "parameters": [
+          {
+            "name": "scoring_artifact_payload_sha256",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact.",
+              "title": "Scoring Artifact Payload Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact."
+          },
+          {
+            "name": "target_draw",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9]{1,32}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Target Draw"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "tier",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tier"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReplayScoredPredictionView"
+                  },
+                  "title": "Response Listreplayscoringpredictions"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {
+      "get": {
+        "tags": [
+          "replay-scoring"
+        ],
+        "summary": "List Replay Scoring Strategy Aggregates",
+        "operationId": "listReplayScoringStrategyAggregates",
+        "parameters": [
+          {
+            "name": "scoring_artifact_payload_sha256",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact.",
+              "title": "Scoring Artifact Payload Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReplayStrategyAggregateView"
+                  },
+                  "title": "Response Listreplayscoringstrategyaggregates"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {
+      "get": {
+        "tags": [
+          "replay-scoring"
+        ],
+        "summary": "Get Replay Scoring Overall Aggregate",
+        "operationId": "getReplayScoringOverallAggregate",
+        "parameters": [
+          {
+            "name": "scoring_artifact_payload_sha256",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact.",
+              "title": "Scoring Artifact Payload Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayOverallAggregateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2734,6 +3073,99 @@
         ],
         "title": "NormalizedDrawPreviewView"
       },
+      "ReplayOverallAggregateResponse": {
+        "properties": {
+          "run_payload_sha256": {
+            "type": "string",
+            "title": "Run Payload Sha256"
+          },
+          "source_snapshot_count": {
+            "type": "integer",
+            "title": "Source Snapshot Count"
+          },
+          "scored_count": {
+            "type": "integer",
+            "title": "Scored Count"
+          },
+          "history_closed_count": {
+            "type": "integer",
+            "title": "History Closed Count"
+          },
+          "prediction_closed_count": {
+            "type": "integer",
+            "title": "Prediction Closed Count"
+          },
+          "target_outcome_not_found_count": {
+            "type": "integer",
+            "title": "Target Outcome Not Found Count"
+          },
+          "target_identity_mismatch_count": {
+            "type": "integer",
+            "title": "Target Identity Mismatch Count"
+          },
+          "first_prize_count": {
+            "type": "integer",
+            "title": "First Prize Count"
+          },
+          "second_prize_count": {
+            "type": "integer",
+            "title": "Second Prize Count"
+          },
+          "third_prize_count": {
+            "type": "integer",
+            "title": "Third Prize Count"
+          },
+          "fourth_prize_count": {
+            "type": "integer",
+            "title": "Fourth Prize Count"
+          },
+          "fifth_prize_count": {
+            "type": "integer",
+            "title": "Fifth Prize Count"
+          },
+          "sixth_prize_count": {
+            "type": "integer",
+            "title": "Sixth Prize Count"
+          },
+          "seventh_prize_count": {
+            "type": "integer",
+            "title": "Seventh Prize Count"
+          },
+          "general_prize_count": {
+            "type": "integer",
+            "title": "General Prize Count"
+          },
+          "no_prize_count": {
+            "type": "integer",
+            "title": "No Prize Count"
+          },
+          "aggregate_sha256": {
+            "type": "string",
+            "title": "Aggregate Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_payload_sha256",
+          "source_snapshot_count",
+          "scored_count",
+          "history_closed_count",
+          "prediction_closed_count",
+          "target_outcome_not_found_count",
+          "target_identity_mismatch_count",
+          "first_prize_count",
+          "second_prize_count",
+          "third_prize_count",
+          "fourth_prize_count",
+          "fifth_prize_count",
+          "sixth_prize_count",
+          "seventh_prize_count",
+          "general_prize_count",
+          "no_prize_count",
+          "aggregate_sha256"
+        ],
+        "title": "ReplayOverallAggregateResponse"
+      },
       "ReplayPortfolioRankingCandidateView": {
         "properties": {
           "rank": {
@@ -2980,6 +3412,366 @@
           "artifact_sha256"
         ],
         "title": "ReplayPortfolioRankingResponse"
+      },
+      "ReplayScoredPredictionView": {
+        "properties": {
+          "run_payload_sha256": {
+            "type": "string",
+            "title": "Run Payload Sha256"
+          },
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal"
+          },
+          "source_snapshot_result_sha256": {
+            "type": "string",
+            "title": "Source Snapshot Result Sha256"
+          },
+          "scored_result_sha256": {
+            "type": "string",
+            "title": "Scored Result Sha256"
+          },
+          "target_draw_number": {
+            "type": "string",
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "type": "string",
+            "title": "Target Draw Date"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Version"
+          },
+          "source_history_status": {
+            "type": "string",
+            "title": "Source History Status"
+          },
+          "source_history_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source History Reason Code"
+          },
+          "source_prediction_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Prediction Status"
+          },
+          "source_prediction_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Prediction Reason Code"
+          },
+          "scoring_status": {
+            "type": "string",
+            "title": "Scoring Status"
+          },
+          "scoring_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scoring Reason Code"
+          },
+          "predicted_main_numbers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Main Numbers"
+          },
+          "target_outcome_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Outcome Sha256"
+          },
+          "main_number_hit_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Number Hit Count"
+          },
+          "special_number_hit": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Special Number Hit"
+          },
+          "prize_tier_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Tier Id"
+          },
+          "prize_official_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Official Label"
+          },
+          "no_prize_result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Prize Result"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_payload_sha256",
+          "ordinal",
+          "source_snapshot_result_sha256",
+          "scored_result_sha256",
+          "target_draw_number",
+          "target_draw_date",
+          "strategy_id",
+          "source_history_status",
+          "scoring_status"
+        ],
+        "title": "ReplayScoredPredictionView"
+      },
+      "ReplayScoringRunResponse": {
+        "properties": {
+          "scoring_artifact_schema_version": {
+            "type": "string",
+            "title": "Scoring Artifact Schema Version"
+          },
+          "scoring_artifact_payload_sha256": {
+            "type": "string",
+            "title": "Scoring Artifact Payload Sha256"
+          },
+          "source_replay_artifact_payload_sha256": {
+            "type": "string",
+            "title": "Source Replay Artifact Payload Sha256"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "scored_record_count": {
+            "type": "integer",
+            "title": "Scored Record Count"
+          },
+          "overall_aggregate_sha256": {
+            "type": "string",
+            "title": "Overall Aggregate Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "scoring_artifact_schema_version",
+          "scoring_artifact_payload_sha256",
+          "source_replay_artifact_payload_sha256",
+          "dataset_id",
+          "dataset_version",
+          "lottery_type",
+          "target_count",
+          "strategy_count",
+          "scored_record_count",
+          "overall_aggregate_sha256"
+        ],
+        "title": "ReplayScoringRunResponse"
+      },
+      "ReplayStrategyAggregateView": {
+        "properties": {
+          "run_payload_sha256": {
+            "type": "string",
+            "title": "Run Payload Sha256"
+          },
+          "ordinal": {
+            "type": "integer",
+            "title": "Ordinal"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Version"
+          },
+          "source_snapshot_count": {
+            "type": "integer",
+            "title": "Source Snapshot Count"
+          },
+          "scored_count": {
+            "type": "integer",
+            "title": "Scored Count"
+          },
+          "history_closed_count": {
+            "type": "integer",
+            "title": "History Closed Count"
+          },
+          "prediction_closed_count": {
+            "type": "integer",
+            "title": "Prediction Closed Count"
+          },
+          "target_outcome_not_found_count": {
+            "type": "integer",
+            "title": "Target Outcome Not Found Count"
+          },
+          "target_identity_mismatch_count": {
+            "type": "integer",
+            "title": "Target Identity Mismatch Count"
+          },
+          "first_prize_count": {
+            "type": "integer",
+            "title": "First Prize Count"
+          },
+          "second_prize_count": {
+            "type": "integer",
+            "title": "Second Prize Count"
+          },
+          "third_prize_count": {
+            "type": "integer",
+            "title": "Third Prize Count"
+          },
+          "fourth_prize_count": {
+            "type": "integer",
+            "title": "Fourth Prize Count"
+          },
+          "fifth_prize_count": {
+            "type": "integer",
+            "title": "Fifth Prize Count"
+          },
+          "sixth_prize_count": {
+            "type": "integer",
+            "title": "Sixth Prize Count"
+          },
+          "seventh_prize_count": {
+            "type": "integer",
+            "title": "Seventh Prize Count"
+          },
+          "general_prize_count": {
+            "type": "integer",
+            "title": "General Prize Count"
+          },
+          "no_prize_count": {
+            "type": "integer",
+            "title": "No Prize Count"
+          },
+          "aggregate_sha256": {
+            "type": "string",
+            "title": "Aggregate Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_payload_sha256",
+          "ordinal",
+          "strategy_id",
+          "source_snapshot_count",
+          "scored_count",
+          "history_closed_count",
+          "prediction_closed_count",
+          "target_outcome_not_found_count",
+          "target_identity_mismatch_count",
+          "first_prize_count",
+          "second_prize_count",
+          "third_prize_count",
+          "fourth_prize_count",
+          "fifth_prize_count",
+          "sixth_prize_count",
+          "seventh_prize_count",
+          "general_prize_count",
+          "no_prize_count",
+          "aggregate_sha256"
+        ],
+        "title": "ReplayStrategyAggregateView"
       },
       "RequestValidationIssueView": {
         "properties": {

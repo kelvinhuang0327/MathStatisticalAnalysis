@@ -300,6 +300,16 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
         "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
+            "get": {}
+        },
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {
+            "get": {}
+        },
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {
+            "get": {}
+        },
     }
 
 
@@ -357,6 +367,19 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/historical-results/runs/{run_id}/replay", "get"),
         ("/api/v1/historical-results/portfolios/{portfolio_id}", "get"),
         ("/api/v1/replay-rankings/optimal", "get"),
+        ("/api/v1/replay-scoring/{scoring_artifact_payload_sha256}", "get"),
+        (
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+            "get",
+        ),
+        (
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+            "get",
+        ),
+        (
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+            "get",
+        ),
     ],
 )
 def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:
@@ -507,6 +530,60 @@ def test_smoke_rejects_replay_portfolio_ranking_near_miss_paths(path: str) -> No
     """Only the exact approved path bypasses the forbidden-word screen; near
     misses -- wrong verb, wrong singular/plural, an extra path segment -- still
     fail closed, with no prefix or wildcard exception."""
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
+
+
+def test_smoke_accepts_all_exact_replay_scoring_get_operations_together() -> None:
+    paths = authorized_openapi_paths()
+    replay_scoring_paths = {
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+    }
+
+    assert {path for path in paths if path.startswith("/api/v1/replay-scoring/")} == (
+        replay_scoring_paths
+    )
+    assert all(paths[path] == {"get": {}} for path in replay_scoring_paths)
+    validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+    ],
+)
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_mutating_methods_on_each_replay_scoring_path(
+    path: str, method: str
+) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-scoring",
+        "/api/v1/replay-scoring/latest",
+        "/api/v1/replay-scoring/{sha}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/execute",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/prediction",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregate",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions/",
+    ],
+)
+def test_smoke_rejects_replay_scoring_near_miss_paths(path: str) -> None:
     with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
         validate_openapi_payload({"paths": {path: {"get": {}}}})
 

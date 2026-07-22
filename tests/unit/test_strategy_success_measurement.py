@@ -9,6 +9,7 @@ from lottolab.domain.strategy_success_measurement import (
     DEFAULT_WINDOW_POLICY,
     DEFAULT_WINDOW_POLICY_VERSION,
     BigLottoOutcomeSignature,
+    BigLottoPortfolioOutcomeSignature,
     Daily539OutcomeSignature,
     EvidenceStatus,
     MeasurementMode,
@@ -51,16 +52,25 @@ def _measurement(
     *,
     mode: MeasurementMode = MeasurementMode.CANDIDATE_COVERAGE,
     selection: SelectionIdentity | None = None,
-    outcome: BigLottoOutcomeSignature | PowerLottoOutcomeSignature | Daily539OutcomeSignature
+    outcome: BigLottoOutcomeSignature
+    | BigLottoPortfolioOutcomeSignature
+    | PowerLottoOutcomeSignature
+    | Daily539OutcomeSignature
     | None = None,
     status: EvidenceStatus = EvidenceStatus.DESCRIPTIVE_ONLY,
     provenance: MeasurementProvenance | None = None,
     official_prize_tier_id: str | None = None,
 ) -> StrategySuccessMeasurement:
+    if outcome is None:
+        outcome = (
+            BigLottoPortfolioOutcomeSignature((BigLottoOutcomeSignature(2, True),))
+            if mode is MeasurementMode.LEGAL_TICKET_PRIZE
+            else BigLottoOutcomeSignature(2, True)
+        )
     return StrategySuccessMeasurement(
         mode=mode,
         selection=selection or _big_selection(candidate_k=6),
-        outcome_signature=outcome or BigLottoOutcomeSignature(2, True),
+        outcome_signature=outcome,
         evidence_status=status,
         provenance=provenance or _provenance(),
         official_prize_tier_id=official_prize_tier_id,
@@ -177,6 +187,66 @@ def test_big_lotto_outcome_represents_m2_special_without_claiming_a_tier() -> No
 
     assert signature.diagnostic_signature == "M2+SPECIAL"
     assert measurement.official_prize_tier_id is None
+
+
+def test_big_lotto_portfolio_preserves_source_order_duplicates_and_derived_identity() -> None:
+    first = BigLottoOutcomeSignature(main_hits=1, special_hit=True)
+    second = BigLottoOutcomeSignature(main_hits=4, special_hit=False)
+    portfolio = BigLottoPortfolioOutcomeSignature((first, second, first))
+
+    assert portfolio.tickets == (first, second, first)
+    assert portfolio.ticket_count == 3
+    assert portfolio.maximum_main_hits == 4
+    assert not hasattr(portfolio, "special_hit")
+    assert not hasattr(portfolio, "diagnostic_signature")
+    assert portfolio.canonical_json() == (
+        '{"maximum_main_hits":4,"ticket_count":3,"tickets":['
+        '{"diagnostic_signature":"M1+SPECIAL","main_hits":1,"special_hit":true},'
+        '{"diagnostic_signature":"M4","main_hits":4,"special_hit":false},'
+        '{"diagnostic_signature":"M1+SPECIAL","main_hits":1,"special_hit":true}]}'
+    )
+    assert portfolio.canonical_json() == portfolio.canonical_json()
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        portfolio.tickets = (second,)  # type: ignore[misc]
+
+
+def test_big_lotto_portfolio_requires_a_nonempty_exact_tuple_of_atomic_outcomes() -> None:
+    ticket = BigLottoOutcomeSignature(2, False)
+
+    assert BigLottoPortfolioOutcomeSignature((ticket,)).ticket_count == 1
+    with pytest.raises(ValueError, match="immutable tuple"):
+        BigLottoPortfolioOutcomeSignature([ticket])  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="must not be empty"):
+        BigLottoPortfolioOutcomeSignature(())
+    with pytest.raises(ValueError, match="only BigLottoOutcomeSignature"):
+        BigLottoPortfolioOutcomeSignature((object(),))  # type: ignore[arg-type]
+
+
+def test_big_lotto_measurement_modes_require_their_exact_outcome_contracts() -> None:
+    atomic = BigLottoOutcomeSignature(2, True)
+    portfolio = BigLottoPortfolioOutcomeSignature((atomic,))
+
+    with pytest.raises(ValueError, match="does not match"):
+        _measurement(outcome=portfolio)
+    with pytest.raises(ValueError, match="does not match"):
+        _measurement(
+            mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+            selection=_big_selection(ticket_count=1),
+            outcome=atomic,
+        )
+    with pytest.raises(ValueError, match="ticket_count must match"):
+        _measurement(
+            mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+            selection=_big_selection(ticket_count=2),
+            outcome=portfolio,
+        )
+    with pytest.raises(ValueError, match="does not match"):
+        _measurement(
+            mode=MeasurementMode.OFFICIAL_PRIZE_TIER,
+            selection=_big_selection(ticket_count=1),
+            outcome=portfolio,
+            official_prize_tier_id="GENERAL",
+        )
 
 
 @pytest.mark.parametrize("main_hits", [-1, 7])

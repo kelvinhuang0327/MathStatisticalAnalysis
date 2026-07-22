@@ -64,6 +64,16 @@ class QueryReplayScoringProjection:
             )
         return run
 
+    def get_artifact(self, scoring_artifact_payload_sha256: str) -> ReplayScoringArtifact:
+        """Load one exact, integrity-checked persisted scoring artifact."""
+
+        _validate_sha256(scoring_artifact_payload_sha256)
+        reader = self._reader_factory()
+        artifact = reader.get_replay_scoring_artifact(scoring_artifact_payload_sha256)
+        if artifact is None:
+            raise ReplayScoringRunNotFoundError(scoring_artifact_payload_sha256)
+        return artifact
+
     def list_predictions(
         self,
         scoring_artifact_payload_sha256: str,

@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0",
+  "document_status": "DRAFT_FOR_OWNER_REVIEW",
+  "task": {
+    "id": "EXAMPLE_MEDIUM_FIX",
+    "title": "Repair deterministic catalog ordering",
+    "goal": "Make catalog responses preserve the documented stable ordering without changing the public shape.",
+    "steps": [
+      "Verify the documented ordering contract and reproduce the mismatch.",
+      "Make the smallest allowlisted implementation and test change.",
+      "Run focused and surrounding checks, then prepare exact-head review evidence."
+    ]
+  },
+  "project": {
+    "identity": "Neutral Catalog Service",
+    "canonical_repo": "https://example.invalid/neutral/catalog-service",
+    "canonical_branch": "main",
+    "profile_path": ".ai/agent-profile.yaml"
+  },
+  "context": {
+    "base_sha": "1111111",
+    "head_sha": "1111111",
+    "worktree": {
+      "mode": "REUSABLE_AGENT_WORKTREE",
+      "path": "/workspace/neutral-catalog-agent"
+    }
+  },
+  "scope": {
+    "allowed_reads": ["README.md", "src/catalog/", "tests/catalog/"],
+    "allowed_writes": ["src/catalog/order.py", "tests/catalog/test_order.py"],
+    "protected_paths": ["data/", ".env", "deploy/"],
+    "forbidden_actions": ["dependency changes", "production activation", "force operations"]
+  },
+  "risk": {"level": "MEDIUM", "triggers": [], "overrides": []},
+  "authorization": {
+    "class": "SINGLE_PROMPT",
+    "state": "PRESENT",
+    "owner_statement_ref": "<OWNER_MESSAGE_REFERENCE>"
+  },
+  "routing": {
+    "path": "MEDIUM_IMPLEMENTATION",
+    "stages": [
+      "PLANNER",
+      "WORKER",
+      "INDEPENDENT_FIXED_HEAD_REVIEW",
+      "INTEGRATION",
+      "STANDARD_LIFECYCLE_CLEANUP"
+    ]
+  },
+  "verification": {
+    "commands": ["project-test tests/catalog/test_order.py", "project-test", "project-lint"],
+    "expected_observations": [
+      "The focused ordering regression passes.",
+      "The surrounding suite and lint remain green.",
+      "Independent review is bound to the exact implementation head."
+    ]
+  },
+  "lifecycle": {
+    "integration": "Integrate only after exact-head independent review passes.",
+    "cleanup": "Restore the approved reusable worktree after integration gates pass."
+  },
+  "memory": {"read": "BOUNDED", "write": "FORBIDDEN"},
+  "handoff": {
+    "required_fields": [
+      "exact base and head",
+      "changed paths",
+      "actual test counts",
+      "review result",
+      "workspace lifecycle result"
+    ]
+  }
+}

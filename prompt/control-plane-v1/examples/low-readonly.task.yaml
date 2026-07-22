@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "document_status": "DRAFT_FOR_OWNER_REVIEW",
+  "task": {
+    "id": "EXAMPLE_LOW_REVIEW",
+    "title": "Review the public API contract",
+    "goal": "Assess the supplied API contract and report evidence-backed compatibility risks.",
+    "steps": [
+      "Read the supplied contract and task-relevant current implementation.",
+      "Compare observable behavior with the contract without changing files.",
+      "Report findings, unknowns, and one recommendation."
+    ]
+  },
+  "project": {
+    "identity": "Neutral Catalog Service",
+    "canonical_repo": "https://example.invalid/neutral/catalog-service",
+    "canonical_branch": "main",
+    "profile_path": ".ai/agent-profile.yaml"
+  },
+  "context": {
+    "base_sha": "UNKNOWN",
+    "head_sha": "UNKNOWN",
+    "worktree": {"mode": "NOT_APPLICABLE", "path": "NOT_APPLICABLE"}
+  },
+  "scope": {
+    "allowed_reads": ["contracts/", "src/interfaces/", "tests/contract/"],
+    "allowed_writes": [],
+    "protected_paths": ["data/", ".env"],
+    "forbidden_actions": ["repository writes", "external publication", "secret access"]
+  },
+  "risk": {"level": "LOW", "triggers": [], "overrides": []},
+  "authorization": {
+    "class": "NONE",
+    "state": "NOT_REQUIRED",
+    "owner_statement_ref": "NOT_APPLICABLE"
+  },
+  "routing": {
+    "path": "LOW_READ_ONLY",
+    "stages": ["PLANNER", "WORKER", "HANDOFF"]
+  },
+  "verification": {
+    "commands": ["git status --short", "project-contract-check --read-only"],
+    "expected_observations": ["Every finding cites an opened source or observed command output."]
+  },
+  "lifecycle": {
+    "integration": "NOT_APPLICABLE",
+    "cleanup": "Confirm no files or external state changed."
+  },
+  "memory": {"read": "BOUNDED", "write": "FORBIDDEN"},
+  "handoff": {
+    "required_fields": ["evidence scope", "findings", "NOT_RUN checks", "remaining risks"]
+  }
+}

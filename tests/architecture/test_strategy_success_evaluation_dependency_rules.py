@@ -52,7 +52,7 @@ def test_evaluation_imports_no_upper_persistence_api_or_legacy_layer() -> None:
         "number_pattern_research",
     )
     assert not any(module.startswith(forbidden_prefixes) for module in imports)
-    assert "lottolab.domain.historical_prefix_analytics" not in imports
+    assert not any(module.startswith("lottolab.domain.historical_") for module in imports)
 
 
 def test_evaluation_imports_no_database_transport_or_runtime_library() -> None:

@@ -151,14 +151,17 @@ class _Reader:
         self.found = found
         self.fail = fail
         self.calls: Counter[str] = Counter()
+        self.requested_artifact_shas: list[str] = []
+        self.artifact = cast(ReplayScoringArtifact, object())
 
     def get_replay_scoring_artifact(self, scoring_artifact_payload_sha256: str):
         self.calls["get_artifact"] += 1
+        self.requested_artifact_shas.append(scoring_artifact_payload_sha256)
         if self.fail:
             raise RuntimeError("private storage path /tmp/secret.db")
         if not self.found:
             return None
-        return cast(ReplayScoringArtifact, object())
+        return self.artifact
 
     def get_run(self, scoring_artifact_payload_sha256: str):
         self.calls["get_run"] += 1
@@ -221,15 +224,31 @@ def _get_overall_aggregate(query: QueryReplayScoringProjection) -> object:
     return query.get_overall_aggregate(_SHA)
 
 
-@pytest.mark.parametrize("invalid_sha", ["short", "A" * 64, "g" * 64, "a" * 63])
+@pytest.mark.parametrize(
+    "invalid_sha",
+    ["short", "A" * 64, "g" * 64, "a" * 63, "a" * 65, f"{'a' * 64} "],
+)
 def test_sha_validation_precedes_factory_call(invalid_sha: str) -> None:
     factory = _Factory(_Reader())
     query = QueryReplayScoringProjection(factory)
 
-    with pytest.raises(ValueError, match="lowercase SHA-256"):
-        query.get_run(invalid_sha)
+    for operation in (query.get_run, query.get_artifact):
+        with pytest.raises(ValueError, match="lowercase SHA-256"):
+            operation(invalid_sha)
 
     assert factory.calls == 0
+
+
+def test_get_artifact_loads_only_the_exact_requested_sha_with_one_reader() -> None:
+    reader = _Reader()
+    factory = _Factory(reader)
+
+    artifact = QueryReplayScoringProjection(factory).get_artifact(_OTHER_SHA)
+
+    assert artifact is reader.artifact
+    assert factory.calls == 1
+    assert reader.calls == Counter({"get_artifact": 1})
+    assert reader.requested_artifact_shas == [_OTHER_SHA]
 
 
 @pytest.mark.parametrize(

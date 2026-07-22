@@ -6,9 +6,8 @@ Ranks 1-5-strategy portfolios drawn from one already-validated
 rank 1 under that frozen policy only: this is a historical, descriptive
 result. It carries no payout, probability, EV, ROI, recommendation, or
 future-performance claim, generates no numbers, executes no strategy, and
-persists nothing. The injected reader factory and exact artifact read are each
-called exactly once per valid request and never at app construction or
-OpenAPI-generation time.
+persists nothing. The injected persisted-reader factory is called at most once
+per request and never at app construction or OpenAPI-generation time.
 """
 
 # pyright: reportUnusedFunction=false
@@ -16,7 +15,7 @@ OpenAPI-generation time.
 
 from __future__ import annotations
 
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -118,7 +117,7 @@ class ReplayPortfolioRankingResponse(BaseModel):
 def create_replay_portfolio_rankings_router(
     reader_factory: ReplayScoringProjectionReaderFactory | None,
 ) -> APIRouter:
-    """Expose the route without invoking the optional factory at construction."""
+    """Always expose the route without creating a persisted reader eagerly."""
 
     router = APIRouter(prefix=API_PREFIX, tags=["replay-rankings"])
     query = QueryReplayScoringProjection(reader_factory) if reader_factory is not None else None
@@ -129,19 +128,19 @@ def create_replay_portfolio_rankings_router(
         response_model=ReplayPortfolioRankingResponse,
         responses={
             404: {"model": ApiErrorResponse},
-            422: {"model": ApiErrorResponse | ApiValidationErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
             503: {"model": ApiErrorResponse},
         },
         operation_id="getOptimalReplayPortfolioRankings",
     )
     def get_optimal_replay_portfolio_rankings(
-        scoring_artifact_payload_sha256: ScoringArtifactSha256,
+        scoring_artifact_sha256: ScoringArtifactSha256,
         top_k: TopK = DEFAULT_TOP_K,
     ) -> ReplayPortfolioRankingResponse | JSONResponse:
         if query is None:
             return _not_configured_error()
         try:
-            artifact = query.get_artifact(scoring_artifact_payload_sha256)
+            artifact = query.get_artifact(scoring_artifact_sha256)
         except ReplayScoringRunNotFoundError:
             return _not_found_error()
         except Exception:
@@ -191,8 +190,8 @@ def _not_found_error() -> JSONResponse:
     return _json_response(
         404,
         ApiErrorResponse(
-            error_code="REPLAY_RANKING_SOURCE_NOT_FOUND",
-            message="Replay portfolio ranking source was not found.",
+            error_code="REPLAY_RANKING_ARTIFACT_NOT_FOUND",
+            message="The requested Replay-scoring artifact was not found.",
         ),
     )
 

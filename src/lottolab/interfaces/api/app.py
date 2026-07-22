@@ -114,9 +114,7 @@ def create_app(
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))
     app.include_router(
-        create_replay_portfolio_rankings_router(
-            replay_scoring_projection_reader_factory
-        )
+        create_replay_portfolio_rankings_router(replay_scoring_projection_reader_factory)
     )
     app.include_router(
         create_replay_scoring_projections_router(

@@ -1040,6 +1040,18 @@
         "operationId": "getOptimalReplayPortfolioRankings",
         "parameters": [
           {
+            "name": "scoring_artifact_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact.",
+              "title": "Scoring Artifact Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of the persisted Replay-scoring artifact."
+          },
+          {
             "name": "top_k",
             "in": "query",
             "required": false,
@@ -1063,11 +1075,21 @@
               }
             }
           },
-          "422": {
+          "404": {
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
                 }
               }
             },

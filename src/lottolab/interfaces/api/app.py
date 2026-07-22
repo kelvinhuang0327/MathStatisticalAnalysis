@@ -38,6 +38,10 @@ from lottolab.interfaces.api.draw_data import (
     create_draw_data_router,
 )
 from lottolab.interfaces.api.generate_bet import create_generate_bet_router
+from lottolab.interfaces.api.historical_prefix_analytics import (
+    HistoricalPrefixAnalyticsResultProvider,
+    create_historical_prefix_analytics_router,
+)
 from lottolab.interfaces.api.historical_results import create_historical_results_router
 from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
 from lottolab.interfaces.api.replay_portfolio_rankings import (
@@ -61,6 +65,9 @@ def create_app(
     generate_one_bet: GenerateOneBet | None = None,
     generate_live_zone_split_bets: GenerateLiveZoneSplitBets | None = None,
     historical_query_repository_factory: HistoricalResultQueryRepositoryFactory | None = None,
+    historical_prefix_analytics_result_provider: (
+        HistoricalPrefixAnalyticsResultProvider | None
+    ) = None,
     replay_scoring_projection_reader_factory: (
         ReplayScoringProjectionReaderFactory | None
     ) = None,
@@ -113,6 +120,11 @@ def create_app(
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))
+    app.include_router(
+        create_historical_prefix_analytics_router(
+            historical_prefix_analytics_result_provider
+        )
+    )
     app.include_router(
         create_replay_portfolio_rankings_router(replay_scoring_projection_reader_factory)
     )

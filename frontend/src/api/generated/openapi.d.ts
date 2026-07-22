@@ -384,6 +384,96 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-analytics/rankings": {
+      get: {
+          parameters: {
+            "query": {
+              "top_k"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixRankingsResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-prefix-analytics/strategies": {
+      get: {
+          parameters: {
+            "query": {
+              "prefix_count": components['schemas']["OverviewPrefixCount"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixStrategyOverviewResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-prefix-analytics/strategies/{strategy_id}/{strategy_version}/{replicate}/replay": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "prefix_count": components['schemas']["ReplayPrefixCount"]
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixReplayPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-rankings/optimal": {
       get: {
           parameters: {
@@ -622,6 +712,11 @@ export interface components {
           "created_at": string
           "updated_at": string
         }
+    "ExactRatioView": {
+          "numerator": number
+          "denominator": number
+          "is_available": boolean
+        }
     "GenerateBetHistoryRow": {
           "draw": string
           "date": string
@@ -651,6 +746,35 @@ export interface components {
           "special_numbers": Array<number>
           "draw_sha256": string
         }
+    "HistoricalPerDrawPrefixMetricsView": {
+          "identity": components['schemas']["HistoricalPrefixStrategyIdentityView"]
+          "prefix_count": number
+          "prefix_ticket_count": number
+          "included_ticket_positions": Array<number>
+          "best_single_main_hit_count": number
+          "best_single_ticket_position": number
+          "total_main_hit_count": number
+          "portfolio_success": boolean
+          "m3plus": boolean
+          "m4plus": boolean
+          "m5plus": boolean
+          "m6": boolean
+          "special_hit": boolean
+          "special_hit_ticket_count": number
+          "winning_ticket_count": number
+          "no_prize_ticket_count": number
+          "first_prize_ticket_count": number
+          "second_prize_ticket_count": number
+          "third_prize_ticket_count": number
+          "fourth_prize_ticket_count": number
+          "fifth_prize_ticket_count": number
+          "sixth_prize_ticket_count": number
+          "seventh_prize_ticket_count": number
+          "general_prize_ticket_count": number
+          "strongest_winning_tier": string
+          "target": components['schemas']["HistoricalPrefixDrawIdentityView"]
+          "cutoff": components['schemas']["HistoricalPrefixDrawIdentityView"]
+        }
     "HistoricalPortfolioView": {
           "portfolio_id": string
           "run_id": string
@@ -669,6 +793,101 @@ export interface components {
           "requested_ticket_count": number
           "m4plus": boolean
           "tickets": Array<components['schemas']["HistoricalTicketView"]>
+        }
+    "HistoricalPrefixDrawIdentityView": {
+          "draw_number": number
+          "draw_date": string
+          "draw_sha256": string
+        }
+    "HistoricalPrefixMetadataView": {
+          "result_schema_version": string
+          "source_import_identity_sha256": string
+          "source_manifest_sha256": string
+          "source_artifact_sha256": string
+          "dataset_identity": string
+          "dataset_sha256": string
+          "lottery_type": string
+          "ranking_policy_id": string
+          "historical_only_disclaimer_id": string
+        }
+    "HistoricalPrefixRankingCandidateView": {
+          "rank": number
+          "identity": components['schemas']["HistoricalPrefixStrategyIdentityView"]
+          "summary": components['schemas']["HistoricalPrefixStrategySummaryView"]
+          "tie_break_provenance": Array<string>
+        }
+    "HistoricalPrefixRankingGroupView": {
+          "prefix_count": number
+          "status": string
+          "total_candidate_count": number
+          "requested_top_k": number
+          "candidates": Array<components['schemas']["HistoricalPrefixRankingCandidateView"]>
+        }
+    "HistoricalPrefixRankingsResponse": {
+          "metadata": components['schemas']["HistoricalPrefixMetadataView"]
+          "top_k": number
+          "groups": Array<components['schemas']["HistoricalPrefixRankingGroupView"]>
+        }
+    "HistoricalPrefixReplayPageResponse": {
+          "metadata": components['schemas']["HistoricalPrefixMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixStrategyIdentityView"]
+          "prefix_count": number
+          "items": Array<components['schemas']["HistoricalPerDrawPrefixMetricsView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "HistoricalPrefixStrategyIdentityView": {
+          "strategy_id": string
+          "effective_strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "identity_kind": string
+          "governance_status": string
+          "alias_of_strategy_id": string | null
+          "equivalence_group": string | null
+          "nested_prefix_supported": boolean
+        }
+    "HistoricalPrefixStrategyOverviewResponse": {
+          "metadata": components['schemas']["HistoricalPrefixMetadataView"]
+          "prefix_count": number
+          "summaries": Array<components['schemas']["HistoricalPrefixStrategySummaryView"]>
+          "total_count": number
+        }
+    "HistoricalPrefixStrategySummaryView": {
+          "identity": components['schemas']["HistoricalPrefixStrategyIdentityView"]
+          "prefix_count": number
+          "status": string
+          "distinct_draw_count": number
+          "replay_ticket_count": number
+          "portfolio_success_count": number
+          "portfolio_success_rate": components['schemas']["ExactRatioView"]
+          "sum_best_main_hit_count": number
+          "average_best_main_hit_count": components['schemas']["ExactRatioView"]
+          "sum_total_main_hit_count": number
+          "average_total_main_hit_count": components['schemas']["ExactRatioView"]
+          "max_single_main_hit_count": number
+          "max_portfolio_total_main_hit_count": number
+          "max_hit_target": components['schemas']["HistoricalPrefixDrawIdentityView"] | null
+          "m3plus_draw_count": number
+          "m4plus_draw_count": number
+          "m5plus_draw_count": number
+          "m6_draw_count": number
+          "special_hit_draw_count": number
+          "special_hit_ticket_count": number
+          "winning_draw_count": number
+          "winning_ticket_count": number
+          "no_prize_ticket_count": number
+          "first_prize_ticket_count": number
+          "second_prize_ticket_count": number
+          "third_prize_ticket_count": number
+          "fourth_prize_ticket_count": number
+          "fifth_prize_ticket_count": number
+          "sixth_prize_ticket_count": number
+          "seventh_prize_ticket_count": number
+          "general_prize_ticket_count": number
+          "ranking_eligible": boolean
+          "ranking_exclusion_reason": string | null
         }
     "HistoricalReplayPageResponse": {
           "run_id": string
@@ -813,6 +1032,7 @@ export interface components {
           "source_reference": string | null
           "normalized_record_hash": string
         }
+    "OverviewPrefixCount": 10 | 15 | 20
     "ReplayOverallAggregateResponse": {
           "run_payload_sha256": string
           "source_snapshot_count": number
@@ -880,6 +1100,7 @@ export interface components {
           "groups": Array<components['schemas']["ReplayPortfolioRankingGroupView"]>
           "artifact_sha256": string
         }
+    "ReplayPrefixCount": 1 | 2 | 3 | 4 | 5 | 10 | 15 | 20
     "ReplayScoredPredictionView": {
           "run_payload_sha256": string
           "ordinal": number

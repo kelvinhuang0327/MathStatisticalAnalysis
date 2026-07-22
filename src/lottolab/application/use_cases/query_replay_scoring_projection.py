@@ -43,18 +43,6 @@ class QueryReplayScoringProjection:
     def __init__(self, reader_factory: ReplayScoringProjectionReaderFactory) -> None:
         self._reader_factory = reader_factory
 
-    def get_artifact(
-        self, scoring_artifact_payload_sha256: str
-    ) -> ReplayScoringArtifact:
-        """Return one exact validated persisted scoring artifact."""
-
-        _validate_sha256(scoring_artifact_payload_sha256)
-        reader = self._reader_factory()
-        artifact = reader.get_replay_scoring_artifact(scoring_artifact_payload_sha256)
-        if artifact is None:
-            raise ReplayScoringRunNotFoundError(scoring_artifact_payload_sha256)
-        return artifact
-
     def get_run(self, scoring_artifact_payload_sha256: str) -> ReplayScoringRunProjection:
         reader = self._verified_reader(scoring_artifact_payload_sha256)
         run = reader.get_run(scoring_artifact_payload_sha256)

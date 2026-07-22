@@ -1031,6 +1031,230 @@
         }
       }
     },
+    "/api/v1/historical-prefix-analytics/rankings": {
+      "get": {
+        "tags": [
+          "historical-prefix-analytics"
+        ],
+        "summary": "Get Historical Prefix Rankings",
+        "operationId": "getHistoricalPrefixRankings",
+        "parameters": [
+          {
+            "name": "top_k",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 5,
+              "title": "Top K"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixRankingsResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/historical-prefix-analytics/strategies": {
+      "get": {
+        "tags": [
+          "historical-prefix-analytics"
+        ],
+        "summary": "List Historical Prefix Strategies",
+        "operationId": "listHistoricalPrefixStrategies",
+        "parameters": [
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OverviewPrefixCount"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixStrategyOverviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/historical-prefix-analytics/strategies/{strategy_id}/{strategy_version}/{replicate}/replay": {
+      "get": {
+        "tags": [
+          "historical-prefix-analytics"
+        ],
+        "summary": "List Historical Prefix Strategy Replay",
+        "operationId": "listHistoricalPrefixStrategyReplay",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReplayPrefixCount"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixReplayPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/replay-rankings/optimal": {
       "get": {
         "tags": [
@@ -1878,6 +2102,29 @@
         ],
         "title": "DrawRecordView"
       },
+      "ExactRatioView": {
+        "properties": {
+          "numerator": {
+            "type": "integer",
+            "title": "Numerator"
+          },
+          "denominator": {
+            "type": "integer",
+            "title": "Denominator"
+          },
+          "is_available": {
+            "type": "boolean",
+            "title": "Is Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "numerator",
+          "denominator",
+          "is_available"
+        ],
+        "title": "ExactRatioView"
+      },
       "GenerateBetHistoryRow": {
         "properties": {
           "draw": {
@@ -2076,6 +2323,149 @@
         ],
         "title": "HistoricalDrawIdentityView"
       },
+      "HistoricalPerDrawPrefixMetricsView": {
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/HistoricalPrefixStrategyIdentityView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "prefix_ticket_count": {
+            "type": "integer",
+            "title": "Prefix Ticket Count"
+          },
+          "included_ticket_positions": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Included Ticket Positions"
+          },
+          "best_single_main_hit_count": {
+            "type": "integer",
+            "title": "Best Single Main Hit Count"
+          },
+          "best_single_ticket_position": {
+            "type": "integer",
+            "title": "Best Single Ticket Position"
+          },
+          "total_main_hit_count": {
+            "type": "integer",
+            "title": "Total Main Hit Count"
+          },
+          "portfolio_success": {
+            "type": "boolean",
+            "title": "Portfolio Success"
+          },
+          "m3plus": {
+            "type": "boolean",
+            "title": "M3Plus"
+          },
+          "m4plus": {
+            "type": "boolean",
+            "title": "M4Plus"
+          },
+          "m5plus": {
+            "type": "boolean",
+            "title": "M5Plus"
+          },
+          "m6": {
+            "type": "boolean",
+            "title": "M6"
+          },
+          "special_hit": {
+            "type": "boolean",
+            "title": "Special Hit"
+          },
+          "special_hit_ticket_count": {
+            "type": "integer",
+            "title": "Special Hit Ticket Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "no_prize_ticket_count": {
+            "type": "integer",
+            "title": "No Prize Ticket Count"
+          },
+          "first_prize_ticket_count": {
+            "type": "integer",
+            "title": "First Prize Ticket Count"
+          },
+          "second_prize_ticket_count": {
+            "type": "integer",
+            "title": "Second Prize Ticket Count"
+          },
+          "third_prize_ticket_count": {
+            "type": "integer",
+            "title": "Third Prize Ticket Count"
+          },
+          "fourth_prize_ticket_count": {
+            "type": "integer",
+            "title": "Fourth Prize Ticket Count"
+          },
+          "fifth_prize_ticket_count": {
+            "type": "integer",
+            "title": "Fifth Prize Ticket Count"
+          },
+          "sixth_prize_ticket_count": {
+            "type": "integer",
+            "title": "Sixth Prize Ticket Count"
+          },
+          "seventh_prize_ticket_count": {
+            "type": "integer",
+            "title": "Seventh Prize Ticket Count"
+          },
+          "general_prize_ticket_count": {
+            "type": "integer",
+            "title": "General Prize Ticket Count"
+          },
+          "strongest_winning_tier": {
+            "type": "string",
+            "title": "Strongest Winning Tier"
+          },
+          "target": {
+            "$ref": "#/components/schemas/HistoricalPrefixDrawIdentityView"
+          },
+          "cutoff": {
+            "$ref": "#/components/schemas/HistoricalPrefixDrawIdentityView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identity",
+          "prefix_count",
+          "prefix_ticket_count",
+          "included_ticket_positions",
+          "best_single_main_hit_count",
+          "best_single_ticket_position",
+          "total_main_hit_count",
+          "portfolio_success",
+          "m3plus",
+          "m4plus",
+          "m5plus",
+          "m6",
+          "special_hit",
+          "special_hit_ticket_count",
+          "winning_ticket_count",
+          "no_prize_ticket_count",
+          "first_prize_ticket_count",
+          "second_prize_ticket_count",
+          "third_prize_ticket_count",
+          "fourth_prize_ticket_count",
+          "fifth_prize_ticket_count",
+          "sixth_prize_ticket_count",
+          "seventh_prize_ticket_count",
+          "general_prize_ticket_count",
+          "strongest_winning_tier",
+          "target",
+          "cutoff"
+        ],
+        "title": "HistoricalPerDrawPrefixMetricsView"
+      },
       "HistoricalPortfolioView": {
         "properties": {
           "portfolio_id": {
@@ -2176,6 +2566,495 @@
           "tickets"
         ],
         "title": "HistoricalPortfolioView"
+      },
+      "HistoricalPrefixDrawIdentityView": {
+        "properties": {
+          "draw_number": {
+            "type": "integer",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          },
+          "draw_sha256": {
+            "type": "string",
+            "title": "Draw Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draw_number",
+          "draw_date",
+          "draw_sha256"
+        ],
+        "title": "HistoricalPrefixDrawIdentityView"
+      },
+      "HistoricalPrefixMetadataView": {
+        "properties": {
+          "result_schema_version": {
+            "type": "string",
+            "title": "Result Schema Version"
+          },
+          "source_import_identity_sha256": {
+            "type": "string",
+            "title": "Source Import Identity Sha256"
+          },
+          "source_manifest_sha256": {
+            "type": "string",
+            "title": "Source Manifest Sha256"
+          },
+          "source_artifact_sha256": {
+            "type": "string",
+            "title": "Source Artifact Sha256"
+          },
+          "dataset_identity": {
+            "type": "string",
+            "title": "Dataset Identity"
+          },
+          "dataset_sha256": {
+            "type": "string",
+            "title": "Dataset Sha256"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "ranking_policy_id": {
+            "type": "string",
+            "title": "Ranking Policy Id"
+          },
+          "historical_only_disclaimer_id": {
+            "type": "string",
+            "title": "Historical Only Disclaimer Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "result_schema_version",
+          "source_import_identity_sha256",
+          "source_manifest_sha256",
+          "source_artifact_sha256",
+          "dataset_identity",
+          "dataset_sha256",
+          "lottery_type",
+          "ranking_policy_id",
+          "historical_only_disclaimer_id"
+        ],
+        "title": "HistoricalPrefixMetadataView"
+      },
+      "HistoricalPrefixRankingCandidateView": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "identity": {
+            "$ref": "#/components/schemas/HistoricalPrefixStrategyIdentityView"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/HistoricalPrefixStrategySummaryView"
+          },
+          "tie_break_provenance": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tie Break Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "identity",
+          "summary",
+          "tie_break_provenance"
+        ],
+        "title": "HistoricalPrefixRankingCandidateView"
+      },
+      "HistoricalPrefixRankingGroupView": {
+        "properties": {
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "total_candidate_count": {
+            "type": "integer",
+            "title": "Total Candidate Count"
+          },
+          "requested_top_k": {
+            "type": "integer",
+            "title": "Requested Top K"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixRankingCandidateView"
+            },
+            "type": "array",
+            "title": "Candidates"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prefix_count",
+          "status",
+          "total_candidate_count",
+          "requested_top_k",
+          "candidates"
+        ],
+        "title": "HistoricalPrefixRankingGroupView"
+      },
+      "HistoricalPrefixRankingsResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixMetadataView"
+          },
+          "top_k": {
+            "type": "integer",
+            "title": "Top K"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixRankingGroupView"
+            },
+            "type": "array",
+            "title": "Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "top_k",
+          "groups"
+        ],
+        "title": "HistoricalPrefixRankingsResponse"
+      },
+      "HistoricalPrefixReplayPageResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixMetadataView"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/HistoricalPrefixStrategyIdentityView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPerDrawPrefixMetricsView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "strategy",
+          "prefix_count",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "HistoricalPrefixReplayPageResponse"
+      },
+      "HistoricalPrefixStrategyIdentityView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "effective_strategy_id": {
+            "type": "string",
+            "title": "Effective Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "replicate": {
+            "type": "integer",
+            "title": "Replicate"
+          },
+          "identity_kind": {
+            "type": "string",
+            "title": "Identity Kind"
+          },
+          "governance_status": {
+            "type": "string",
+            "title": "Governance Status"
+          },
+          "alias_of_strategy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alias Of Strategy Id"
+          },
+          "equivalence_group": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Equivalence Group"
+          },
+          "nested_prefix_supported": {
+            "type": "boolean",
+            "title": "Nested Prefix Supported"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "effective_strategy_id",
+          "strategy_version",
+          "replicate",
+          "identity_kind",
+          "governance_status",
+          "alias_of_strategy_id",
+          "equivalence_group",
+          "nested_prefix_supported"
+        ],
+        "title": "HistoricalPrefixStrategyIdentityView"
+      },
+      "HistoricalPrefixStrategyOverviewResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixMetadataView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixStrategySummaryView"
+            },
+            "type": "array",
+            "title": "Summaries"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "prefix_count",
+          "summaries",
+          "total_count"
+        ],
+        "title": "HistoricalPrefixStrategyOverviewResponse"
+      },
+      "HistoricalPrefixStrategySummaryView": {
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/HistoricalPrefixStrategyIdentityView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "distinct_draw_count": {
+            "type": "integer",
+            "title": "Distinct Draw Count"
+          },
+          "replay_ticket_count": {
+            "type": "integer",
+            "title": "Replay Ticket Count"
+          },
+          "portfolio_success_count": {
+            "type": "integer",
+            "title": "Portfolio Success Count"
+          },
+          "portfolio_success_rate": {
+            "$ref": "#/components/schemas/ExactRatioView"
+          },
+          "sum_best_main_hit_count": {
+            "type": "integer",
+            "title": "Sum Best Main Hit Count"
+          },
+          "average_best_main_hit_count": {
+            "$ref": "#/components/schemas/ExactRatioView"
+          },
+          "sum_total_main_hit_count": {
+            "type": "integer",
+            "title": "Sum Total Main Hit Count"
+          },
+          "average_total_main_hit_count": {
+            "$ref": "#/components/schemas/ExactRatioView"
+          },
+          "max_single_main_hit_count": {
+            "type": "integer",
+            "title": "Max Single Main Hit Count"
+          },
+          "max_portfolio_total_main_hit_count": {
+            "type": "integer",
+            "title": "Max Portfolio Total Main Hit Count"
+          },
+          "max_hit_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "m3plus_draw_count": {
+            "type": "integer",
+            "title": "M3Plus Draw Count"
+          },
+          "m4plus_draw_count": {
+            "type": "integer",
+            "title": "M4Plus Draw Count"
+          },
+          "m5plus_draw_count": {
+            "type": "integer",
+            "title": "M5Plus Draw Count"
+          },
+          "m6_draw_count": {
+            "type": "integer",
+            "title": "M6 Draw Count"
+          },
+          "special_hit_draw_count": {
+            "type": "integer",
+            "title": "Special Hit Draw Count"
+          },
+          "special_hit_ticket_count": {
+            "type": "integer",
+            "title": "Special Hit Ticket Count"
+          },
+          "winning_draw_count": {
+            "type": "integer",
+            "title": "Winning Draw Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "no_prize_ticket_count": {
+            "type": "integer",
+            "title": "No Prize Ticket Count"
+          },
+          "first_prize_ticket_count": {
+            "type": "integer",
+            "title": "First Prize Ticket Count"
+          },
+          "second_prize_ticket_count": {
+            "type": "integer",
+            "title": "Second Prize Ticket Count"
+          },
+          "third_prize_ticket_count": {
+            "type": "integer",
+            "title": "Third Prize Ticket Count"
+          },
+          "fourth_prize_ticket_count": {
+            "type": "integer",
+            "title": "Fourth Prize Ticket Count"
+          },
+          "fifth_prize_ticket_count": {
+            "type": "integer",
+            "title": "Fifth Prize Ticket Count"
+          },
+          "sixth_prize_ticket_count": {
+            "type": "integer",
+            "title": "Sixth Prize Ticket Count"
+          },
+          "seventh_prize_ticket_count": {
+            "type": "integer",
+            "title": "Seventh Prize Ticket Count"
+          },
+          "general_prize_ticket_count": {
+            "type": "integer",
+            "title": "General Prize Ticket Count"
+          },
+          "ranking_eligible": {
+            "type": "boolean",
+            "title": "Ranking Eligible"
+          },
+          "ranking_exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ranking Exclusion Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "identity",
+          "prefix_count",
+          "status",
+          "distinct_draw_count",
+          "replay_ticket_count",
+          "portfolio_success_count",
+          "portfolio_success_rate",
+          "sum_best_main_hit_count",
+          "average_best_main_hit_count",
+          "sum_total_main_hit_count",
+          "average_total_main_hit_count",
+          "max_single_main_hit_count",
+          "max_portfolio_total_main_hit_count",
+          "max_hit_target",
+          "m3plus_draw_count",
+          "m4plus_draw_count",
+          "m5plus_draw_count",
+          "m6_draw_count",
+          "special_hit_draw_count",
+          "special_hit_ticket_count",
+          "winning_draw_count",
+          "winning_ticket_count",
+          "no_prize_ticket_count",
+          "first_prize_ticket_count",
+          "second_prize_ticket_count",
+          "third_prize_ticket_count",
+          "fourth_prize_ticket_count",
+          "fifth_prize_ticket_count",
+          "sixth_prize_ticket_count",
+          "seventh_prize_ticket_count",
+          "general_prize_ticket_count",
+          "ranking_eligible",
+          "ranking_exclusion_reason"
+        ],
+        "title": "HistoricalPrefixStrategySummaryView"
       },
       "HistoricalReplayPageResponse": {
         "properties": {
@@ -3095,6 +3974,15 @@
         ],
         "title": "NormalizedDrawPreviewView"
       },
+      "OverviewPrefixCount": {
+        "type": "integer",
+        "enum": [
+          10,
+          15,
+          20
+        ],
+        "title": "OverviewPrefixCount"
+      },
       "ReplayOverallAggregateResponse": {
         "properties": {
           "run_payload_sha256": {
@@ -3434,6 +4322,20 @@
           "artifact_sha256"
         ],
         "title": "ReplayPortfolioRankingResponse"
+      },
+      "ReplayPrefixCount": {
+        "type": "integer",
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          10,
+          15,
+          20
+        ],
+        "title": "ReplayPrefixCount"
       },
       "ReplayScoredPredictionView": {
         "properties": {

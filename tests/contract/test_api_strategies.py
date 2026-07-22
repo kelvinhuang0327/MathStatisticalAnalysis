@@ -308,6 +308,13 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/historical-results/runs/{run_id}/strategies"),
         ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
         ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
+        ("get", "/api/v1/historical-prefix-analytics/rankings"),
+        ("get", "/api/v1/historical-prefix-analytics/strategies"),
+        (
+            "get",
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay",
+        ),
         ("get", "/api/v1/replay-rankings/optimal"),
         ("get", "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}"),
         (
@@ -323,7 +330,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 20
+    assert len(operations) == 23
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:
@@ -370,6 +377,33 @@ def test_generated_types_preserve_operation_parameter_location_and_requiredness(
     assert '"path": {' in draw_block
     assert '"lottery_type": components[\'schemas\']["LotteryType"]' in draw_block
     assert '"draw_number": string' in draw_block
+
+
+def test_historical_prefix_generated_types_preserve_exact_parameters() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    replay_marker = (
+        '"/api/v1/historical-prefix-analytics/strategies/'
+        '{strategy_id}/{strategy_version}/{replicate}/replay": {'
+    )
+    replay_block = declaration.split(replay_marker, 1)[1].split(
+        '"/api/v1/replay-rankings/optimal": {', 1
+    )[0]
+
+    assert '"path": {' in replay_block
+    assert '"strategy_id": string' in replay_block
+    assert '"strategy_version": string' in replay_block
+    assert '"replicate": number' in replay_block
+    assert '"query": {' in replay_block
+    assert '"prefix_count": components[\'schemas\']["ReplayPrefixCount"]' in replay_block
+    assert '"limit"?: number' in replay_block
+    assert '"offset"?: number' in replay_block
+    assert '"strategy_id"?:' not in replay_block
+    assert '"strategy_version"?:' not in replay_block
+    assert '"replicate"?:' not in replay_block
+    assert '"prefix_count"?:' not in replay_block
+    assert '"ReplayPrefixCount": 1 | 2 | 3 | 4 | 5 | 10 | 15 | 20' in declaration
 
 
 def test_openapi_generator_handles_parameters_generically_without_replay_special_cases() -> None:
@@ -420,42 +454,6 @@ def test_replay_scoring_openapi_pins_exact_sha_get_contract_and_sanitized_errors
         assert operation["responses"]["503"]["content"]["application/json"][
             "schema"
         ] == {"$ref": "#/components/schemas/ApiErrorResponse"}
-
-
-def test_replay_ranking_openapi_requires_exact_sha_and_documents_sanitized_errors() -> None:
-    operation = create_app().openapi()["paths"]["/api/v1/replay-rankings/optimal"][
-        "get"
-    ]
-
-    assert operation["operationId"] == "getOptimalReplayPortfolioRankings"
-    selector = next(
-        parameter
-        for parameter in operation["parameters"]
-        if parameter["name"] == "scoring_artifact_payload_sha256"
-    )
-    assert selector["in"] == "query"
-    assert selector["required"] is True
-    assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
-    assert set(operation["responses"]) == {"200", "404", "422", "503"}
-    for status in ("404", "503"):
-        assert operation["responses"][status]["content"]["application/json"][
-            "schema"
-        ] == {"$ref": "#/components/schemas/ApiErrorResponse"}
-
-
-def test_replay_ranking_generated_type_requires_exact_sha_selector() -> None:
-    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
-        encoding="utf-8"
-    )
-    marker = '  "/api/v1/replay-rankings/optimal": {'
-    start = declaration.index(marker)
-    end = declaration.index('\n  "/api/', start + len(marker))
-    path_block = declaration[start:end]
-
-    assert "scoring_artifact_payload_sha256: string" in path_block
-    assert "scoring_artifact_payload_sha256?: string" not in path_block
-    for status in (200, 404, 422, 503):
-        assert f"{status}: {{" in path_block
 
 
 def test_replay_scoring_generated_types_include_all_read_only_operations() -> None:

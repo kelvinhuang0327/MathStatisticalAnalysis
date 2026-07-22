@@ -11,7 +11,8 @@ recompute metrics, rerank candidates, or make predictive claims.
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Annotated, Literal
+from enum import IntEnum
+from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 from fastapi.responses import JSONResponse
@@ -43,7 +44,6 @@ from lottolab.domain.historical_prefix_analytics import (
     HistoricalPerDrawPrefixMetrics,
     HistoricalPrefixAnalyticsResult,
     HistoricalPrefixRankingCandidate,
-    HistoricalPrefixRankingGroup,
     HistoricalStrategyIdentity,
     HistoricalStrategyPrefixSummary,
 )
@@ -56,17 +56,32 @@ from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 HistoricalPrefixAnalyticsResultProvider = Callable[[], HistoricalPrefixAnalyticsResult]
 
 TopK = Annotated[int, Query(ge=MIN_TOP_K, le=MAX_TOP_K)]
-OverviewPrefixCount = Annotated[Literal[10, 15, 20], Query()]
-ReplayPrefixCount = Annotated[Literal[1, 2, 3, 4, 5, 10, 15, 20], Query()]
+
+
+class OverviewPrefixCount(IntEnum):
+    TEN = 10
+    FIFTEEN = 15
+    TWENTY = 20
+
+
+class ReplayPrefixCount(IntEnum):
+    ONE = 1
+    TWO = 2
+    THREE = 3
+    FOUR = 4
+    FIVE = 5
+    TEN = 10
+    FIFTEEN = 15
+    TWENTY = 20
 StrategyId = Annotated[
     str,
     Path(min_length=1, max_length=200, pattern=r"^\S(?:.*\S)?$"),
 ]
 StrategyVersion = Annotated[
     str,
-    Query(min_length=1, max_length=200, pattern=r"^\S(?:.*\S)?$"),
+    Path(min_length=1, max_length=200, pattern=r"^\S(?:.*\S)?$"),
 ]
-Replicate = Annotated[int, Query(ge=1)]
+Replicate = Annotated[int, Path(ge=1)]
 Limit = Annotated[int, Query(ge=MIN_PAGE_LIMIT, le=MAX_PAGE_LIMIT)]
 Offset = Annotated[int, Query(ge=DEFAULT_PAGE_OFFSET)]
 
@@ -405,17 +420,11 @@ class HistoricalPrefixReplayPageResponse(BaseModel):
 
     @classmethod
     def from_page(
-        cls, page: HistoricalPrefixReplayPage
+        cls,
+        page: HistoricalPrefixReplayPage,
+        *,
+        strategy_identity: HistoricalStrategyIdentity,
     ) -> HistoricalPrefixReplayPageResponse:
-        strategy_identity = (
-            page.items[0].identity
-            if page.items
-            else None
-        )
-        if strategy_identity is None:
-            raise HistoricalPrefixQueryContractError(
-                "an empty replay page does not carry the requested strategy identity"
-            )
         return cls(
             metadata=HistoricalPrefixMetadataView.from_metadata(page.metadata),
             strategy=HistoricalPrefixStrategyIdentityView.from_identity(strategy_identity),
@@ -474,22 +483,25 @@ def create_historical_prefix_analytics_router(
             return _not_configured_error()
         try:
             result = result_provider()
-            overview = overview_query.execute(result, prefix_count=prefix_count)
+            overview = overview_query.execute(result, prefix_count=int(prefix_count))
             return HistoricalPrefixStrategyOverviewResponse.from_overview(overview)
         except Exception:
             return _unavailable_error()
 
     @router.get(
-        "/historical-prefix-analytics/strategies/{strategy_id}/draws",
+        (
+            "/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay"
+        ),
         response_model=HistoricalPrefixReplayPageResponse,
         responses={
             404: {"model": ApiErrorResponse},
             422: {"model": ApiValidationErrorResponse},
             503: {"model": ApiErrorResponse},
         },
-        operation_id="listHistoricalPrefixStrategyDraws",
+        operation_id="listHistoricalPrefixStrategyReplay",
     )
-    def list_historical_prefix_strategy_draws(
+    def list_historical_prefix_strategy_replay(
         strategy_id: StrategyId,
         strategy_version: StrategyVersion,
         replicate: Replicate,
@@ -509,15 +521,16 @@ def create_historical_prefix_analytics_router(
             page = replay_query.execute(
                 result,
                 strategy=strategy,
-                prefix_count=prefix_count,
+                prefix_count=int(prefix_count),
                 limit=limit,
                 offset=offset,
             )
             if page is None:
                 return _strategy_not_found_error()
-            if not page.items:
-                return _empty_page_response(result, page)
-            return HistoricalPrefixReplayPageResponse.from_page(page)
+            return HistoricalPrefixReplayPageResponse.from_page(
+                page,
+                strategy_identity=_exact_strategy_identity(result, page.strategy),
+            )
         except HistoricalPrefixQueryContractError:
             return _unavailable_error()
         except Exception:
@@ -526,25 +539,16 @@ def create_historical_prefix_analytics_router(
     return router
 
 
-def _empty_page_response(
+def _exact_strategy_identity(
     result: HistoricalPrefixAnalyticsResult,
-    page: HistoricalPrefixReplayPage,
-) -> HistoricalPrefixReplayPageResponse:
-    identity = next(
+    strategy: HistoricalPrefixStrategyKey,
+) -> HistoricalStrategyIdentity:
+    return next(
         summary.identity
         for summary in result.all_strategy_summaries
-        if summary.identity.strategy_id == page.strategy.strategy_id
-        and summary.identity.strategy_version == page.strategy.strategy_version
-        and summary.identity.replicate == page.strategy.replicate
-    )
-    return HistoricalPrefixReplayPageResponse(
-        metadata=HistoricalPrefixMetadataView.from_metadata(page.metadata),
-        strategy=HistoricalPrefixStrategyIdentityView.from_identity(identity),
-        prefix_count=page.prefix_count,
-        items=[],
-        total_count=page.total_count,
-        limit=page.limit,
-        offset=page.offset,
+        if summary.identity.strategy_id == strategy.strategy_id
+        and summary.identity.strategy_version == strategy.strategy_version
+        and summary.identity.replicate == strategy.replicate
     )
 
 

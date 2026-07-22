@@ -299,6 +299,12 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
         "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
+        "/api/v1/historical-prefix-analytics/rankings": {"get": {}},
+        "/api/v1/historical-prefix-analytics/strategies": {"get": {}},
+        (
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay"
+        ): {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
@@ -366,6 +372,13 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/historical-results/runs/{run_id}/strategies", "get"),
         ("/api/v1/historical-results/runs/{run_id}/replay", "get"),
         ("/api/v1/historical-results/portfolios/{portfolio_id}", "get"),
+        ("/api/v1/historical-prefix-analytics/rankings", "get"),
+        ("/api/v1/historical-prefix-analytics/strategies", "get"),
+        (
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay",
+            "get",
+        ),
         ("/api/v1/replay-rankings/optimal", "get"),
         ("/api/v1/replay-scoring/{scoring_artifact_payload_sha256}", "get"),
         (
@@ -506,6 +519,55 @@ def test_smoke_rejects_unrelated_replay_or_execute_paths(path: str) -> None:
 def test_smoke_accepts_exact_approved_replay_portfolio_ranking_operation() -> None:
     """The read-only /replay-rankings/optimal path is the third narrow exception."""
     validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+def test_smoke_accepts_exact_historical_prefix_operations() -> None:
+    paths = authorized_openapi_paths()
+    historical_prefix_paths = {
+        "/api/v1/historical-prefix-analytics/rankings",
+        "/api/v1/historical-prefix-analytics/strategies",
+        (
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay"
+        ),
+    }
+
+    assert {path for path in paths if path.startswith(
+        "/api/v1/historical-prefix-analytics"
+    )} == historical_prefix_paths
+    assert all(paths[path] == {"get": {}} for path in historical_prefix_paths)
+    validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_mutating_historical_prefix_methods(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/historical-prefix-analytics/rankings"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/historical-prefix-analytics/replay",
+        "/api/v1/historical-prefix-analytics/strategies/latest",
+        "/api/v1/historical-prefix-analytics/strategies/default",
+        "/api/v1/historical-prefix-analytics/strategies/fallback",
+        "/api/v1/historical-prefix-analytics/strategies/{strategy_id}/replay",
+        (
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/execute"
+        ),
+    ],
+)
+def test_smoke_rejects_historical_prefix_near_miss_paths(path: str) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = {"get": {}}
+
+    with pytest.raises(LocalRuntimeSafetyError):
+        validate_openapi_payload({"paths": paths})
 
 
 @pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])

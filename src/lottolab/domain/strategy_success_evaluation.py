@@ -15,6 +15,7 @@ from typing import TypeGuard
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategy_success_measurement import (
     BigLottoOutcomeSignature,
+    BigLottoPortfolioOutcomeSignature,
     Daily539OutcomeSignature,
     EvidenceStatus,
     MeasurementMode,
@@ -371,11 +372,22 @@ def evaluate_observation(
 
     if type(typed_criterion) is BigLottoSuccessCriterion:
         outcome = observation.outcome_signature
-        if type(outcome) is not BigLottoOutcomeSignature:
+        if typed_criterion.expected_mode is MeasurementMode.CANDIDATE_COVERAGE:
+            if type(outcome) is not BigLottoOutcomeSignature:
+                return ObservationEvaluation.EXCLUDED
+            succeeded = outcome.main_hits >= typed_criterion.minimum_main_hits and (
+                not typed_criterion.require_special_hit or outcome.special_hit
+            )
+        elif typed_criterion.expected_mode is MeasurementMode.LEGAL_TICKET_PRIZE:
+            if type(outcome) is not BigLottoPortfolioOutcomeSignature:
+                return ObservationEvaluation.EXCLUDED
+            succeeded = any(
+                ticket.main_hits >= typed_criterion.minimum_main_hits
+                and (not typed_criterion.require_special_hit or ticket.special_hit)
+                for ticket in outcome.tickets
+            )
+        else:
             return ObservationEvaluation.EXCLUDED
-        succeeded = outcome.main_hits >= typed_criterion.minimum_main_hits and (
-            not typed_criterion.require_special_hit or outcome.special_hit
-        )
     elif type(typed_criterion) is PowerLottoSuccessCriterion:
         outcome = observation.outcome_signature
         if type(outcome) is not PowerLottoOutcomeSignature:

@@ -18,11 +18,13 @@ from lottolab.application.local_runtime import (
 )
 from lottolab.application.use_cases.generate_bet import HistoryParseError, run_cli_generate_bet
 from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
+from lottolab.interfaces.cli.replay_predictions import replay_predictions_command
 from lottolab.strategies.catalog import production_catalog
 
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
+app.command("replay-predictions")(replay_predictions_command)
 
 
 @app.callback()

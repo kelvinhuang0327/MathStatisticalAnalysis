@@ -1378,6 +1378,24 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
                         "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
                         "/api/v1/replay-rankings/optimal": {"get": {}},
+                        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {
+                            "get": {}
+                        },
+                        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
+                            "get": {}
+                        },
+                        (
+                            "/api/v1/replay-scoring/"
+                            "{scoring_artifact_payload_sha256}/strategy-aggregates"
+                        ): {
+                            "get": {}
+                        },
+                        (
+                            "/api/v1/replay-scoring/"
+                            "{scoring_artifact_payload_sha256}/overall-aggregate"
+                        ): {
+                            "get": {}
+                        },
                     }
                 }
             ).encode(),

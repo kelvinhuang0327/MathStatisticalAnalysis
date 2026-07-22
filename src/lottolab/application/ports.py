@@ -214,6 +214,9 @@ class ReplayScoringProjectionReader(Protocol):
         ...
 
 
+type ReplayScoringProjectionReaderFactory = Callable[[], ReplayScoringProjectionReader]
+
+
 type DrawHistoryReaderFactory = Callable[[], DrawHistoryReader]
 
 

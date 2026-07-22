@@ -208,6 +208,10 @@ def _get_run(query: QueryReplayScoringProjection) -> object:
     return query.get_run(_SHA)
 
 
+def _get_artifact(query: QueryReplayScoringProjection) -> object:
+    return query.get_artifact(_SHA)
+
+
 def _list_predictions(query: QueryReplayScoringProjection) -> object:
     return query.list_predictions(_SHA)
 
@@ -271,6 +275,7 @@ def test_invalid_prediction_filters_precede_factory_call(
 @pytest.mark.parametrize(
     ("operation", "reader_call"),
     [
+        (_get_artifact, "get_artifact"),
         (_get_run, "get_run"),
         (_list_predictions, "list_predictions"),
         (_list_strategy_aggregates, "list_strategy_aggregates"),
@@ -286,7 +291,10 @@ def test_each_operation_creates_and_integrity_checks_exactly_one_reader(
     operation(QueryReplayScoringProjection(factory))
 
     assert factory.calls == 1
-    assert reader.calls == Counter({"get_artifact": 1, reader_call: 1})
+    expected_calls = Counter({"get_artifact": 1, reader_call: 1})
+    if reader_call == "get_artifact":
+        expected_calls = Counter({"get_artifact": 1})
+    assert reader.calls == expected_calls
 
 
 def test_missing_exact_run_raises_without_fallback() -> None:
@@ -298,6 +306,18 @@ def test_missing_exact_run_raises_without_fallback() -> None:
 
     assert factory.calls == 1
     assert reader.calls == Counter({"get_artifact": 1})
+
+
+def test_get_artifact_returns_the_exact_typed_reader_result() -> None:
+    artifact = cast(ReplayScoringArtifact, object())
+    reader = _Reader()
+    reader.get_replay_scoring_artifact = lambda sha: artifact  # type: ignore[method-assign]
+    factory = _Factory(reader)
+
+    result = QueryReplayScoringProjection(factory).get_artifact(_SHA)
+
+    assert result is artifact
+    assert factory.calls == 1
 
 
 def test_prediction_filters_preserve_stored_order_and_exact_semantics() -> None:

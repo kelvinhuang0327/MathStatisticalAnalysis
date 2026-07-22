@@ -308,6 +308,13 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/historical-results/runs/{run_id}/strategies"),
         ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
         ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
+        ("get", "/api/v1/historical-prefix-analytics/rankings"),
+        ("get", "/api/v1/historical-prefix-analytics/strategies"),
+        (
+            "get",
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay",
+        ),
         ("get", "/api/v1/replay-rankings/optimal"),
         ("get", "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}"),
         (
@@ -323,7 +330,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 20
+    assert len(operations) == 23
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:
@@ -370,6 +377,33 @@ def test_generated_types_preserve_operation_parameter_location_and_requiredness(
     assert '"path": {' in draw_block
     assert '"lottery_type": components[\'schemas\']["LotteryType"]' in draw_block
     assert '"draw_number": string' in draw_block
+
+
+def test_historical_prefix_generated_types_preserve_exact_parameters() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    replay_marker = (
+        '"/api/v1/historical-prefix-analytics/strategies/'
+        '{strategy_id}/{strategy_version}/{replicate}/replay": {'
+    )
+    replay_block = declaration.split(replay_marker, 1)[1].split(
+        '"/api/v1/replay-rankings/optimal": {', 1
+    )[0]
+
+    assert '"path": {' in replay_block
+    assert '"strategy_id": string' in replay_block
+    assert '"strategy_version": string' in replay_block
+    assert '"replicate": number' in replay_block
+    assert '"query": {' in replay_block
+    assert '"prefix_count": components[\'schemas\']["ReplayPrefixCount"]' in replay_block
+    assert '"limit"?: number' in replay_block
+    assert '"offset"?: number' in replay_block
+    assert '"strategy_id"?:' not in replay_block
+    assert '"strategy_version"?:' not in replay_block
+    assert '"replicate"?:' not in replay_block
+    assert '"prefix_count"?:' not in replay_block
+    assert '"ReplayPrefixCount": 1 | 2 | 3 | 4 | 5 | 10 | 15 | 20' in declaration
 
 
 def test_openapi_generator_handles_parameters_generically_without_replay_special_cases() -> None:

@@ -56,6 +56,12 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/historical-results/runs/{run_id}/strategies": frozenset({"get"}),
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
+    "/api/v1/historical-prefix-analytics/rankings": frozenset({"get"}),
+    "/api/v1/historical-prefix-analytics/strategies": frozenset({"get"}),
+    (
+        "/api/v1/historical-prefix-analytics/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/replay"
+    ): frozenset({"get"}),
     "/api/v1/replay-rankings/optimal": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset(
@@ -72,6 +78,10 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
     {
         "/api/v1/generate-bet",
         "/api/v1/historical-results/runs/{run_id}/replay",
+        (
+            "/api/v1/historical-prefix-analytics/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/replay"
+        ),
         "/api/v1/replay-rankings/optimal",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
@@ -93,7 +103,9 @@ path segment likewise contains "replay". The four exact
 ``/api/v1/replay-scoring/{scoring_artifact_payload_sha256}`` paths are GET-only
 queries over saved Replay-scoring projections. They execute no strategy,
 generate no numbers, perform no rescoring, write no database state, and offer
-no latest or fallback selection. Only these seven exact paths are exempted;
+no latest or fallback selection. The Historical Prefix strategy replay path is
+also a GET-only projection over one exact strategy identity. Only the exact
+paths above are exempted;
 every other path containing a forbidden word (including
 "/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",
 and "/api/v1/replay-rankings/optimize") is still rejected, and the

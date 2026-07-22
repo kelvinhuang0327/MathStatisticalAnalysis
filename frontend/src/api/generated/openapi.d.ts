@@ -4,6 +4,7 @@
 export interface paths {
   "/api/health": {
       get: {
+          parameters: Record<string, never>
           responses: {
                   200: {
                           content: {
@@ -15,6 +16,7 @@ export interface paths {
     }
   "/api/v1/strategies": {
       get: {
+          parameters: Record<string, never>
           responses: {
                   200: {
                           content: {
@@ -26,6 +28,14 @@ export interface paths {
     }
   "/api/v1/strategy-overview": {
       get: {
+          parameters: {
+            "query": {
+              "q"?: string | null
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "lifecycle_status"?: components['schemas']["LifecycleStatus"] | null
+              "executable"?: boolean | null
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -42,6 +52,7 @@ export interface paths {
     }
   "/api/v1/draw-imports/preview": {
       post: {
+          parameters: Record<string, never>
           responses: {
                   200: {
                           content: {
@@ -58,6 +69,7 @@ export interface paths {
     }
   "/api/v1/draw-imports/commit": {
       post: {
+          parameters: Record<string, never>
           responses: {
                   200: {
                           content: {
@@ -84,6 +96,16 @@ export interface paths {
     }
   "/api/v1/draws": {
       get: {
+          parameters: {
+            "query": {
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "draw_number"?: string | null
+              "date_from"?: string | null
+              "date_to"?: string | null
+              "page"?: number
+              "page_size"?: number
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -105,6 +127,12 @@ export interface paths {
     }
   "/api/v1/draws/{lottery_type}/{draw_number}": {
       get: {
+          parameters: {
+            "path": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "draw_number": string
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -131,6 +159,14 @@ export interface paths {
     }
   "/api/v1/ingestion-runs": {
       get: {
+          parameters: {
+            "query": {
+              "status"?: components['schemas']["IngestionRunStatus"] | null
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "page"?: number
+              "page_size"?: number
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -152,6 +188,11 @@ export interface paths {
     }
   "/api/v1/ingestion-runs/{run_id}": {
       get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -178,6 +219,7 @@ export interface paths {
     }
   "/api/v1/generate-bet": {
       post: {
+          parameters: Record<string, never>
           responses: {
                   200: {
                           content: {
@@ -194,6 +236,7 @@ export interface paths {
     }
   "/api/v1/live-zone-split-bets": {
       post: {
+          parameters: Record<string, never>
           responses: {
                   200: {
                           content: {
@@ -210,6 +253,12 @@ export interface paths {
     }
   "/api/v1/historical-results/runs": {
       get: {
+          parameters: {
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -231,6 +280,14 @@ export interface paths {
     }
   "/api/v1/historical-results/runs/{run_id}/strategies": {
       get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "ticket_count": components['schemas']["TicketCount"]
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -257,6 +314,18 @@ export interface paths {
     }
   "/api/v1/historical-results/runs/{run_id}/replay": {
       get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "strategy_id": string
+              "ticket_count": components['schemas']["TicketCount"]
+              "m4plus_only"?: boolean
+              "limit"?: number
+              "offset"?: number
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -283,6 +352,14 @@ export interface paths {
     }
   "/api/v1/historical-results/portfolios/{portfolio_id}": {
       get: {
+          parameters: {
+            "path": {
+              "portfolio_id": string
+            }
+            "query": {
+              "ticket_count": components['schemas']["TicketCount"]
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -309,15 +386,26 @@ export interface paths {
     }
   "/api/v1/replay-rankings/optimal": {
       get: {
+          parameters: {
+            "query": {
+              "scoring_artifact_sha256": string
+              "top_k"?: number
+            }
+          }
           responses: {
                   200: {
                           content: {
                                     "application/json": components['schemas']["ReplayPortfolioRankingResponse"]
                                   }
                         }
-                  422: {
+                  404: {
                           content: {
                                     "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
                                   }
                         }
                   503: {
@@ -330,6 +418,11 @@ export interface paths {
     }
   "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {
       get: {
+          parameters: {
+            "path": {
+              "scoring_artifact_payload_sha256": string
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -356,6 +449,17 @@ export interface paths {
     }
   "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
       get: {
+          parameters: {
+            "path": {
+              "scoring_artifact_payload_sha256": string
+            }
+            "query": {
+              "target_draw"?: string | null
+              "strategy_id"?: string | null
+              "status"?: string | null
+              "tier"?: string | null
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -382,6 +486,11 @@ export interface paths {
     }
   "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {
       get: {
+          parameters: {
+            "path": {
+              "scoring_artifact_payload_sha256": string
+            }
+          }
           responses: {
                   200: {
                           content: {
@@ -408,6 +517,11 @@ export interface paths {
     }
   "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {
       get: {
+          parameters: {
+            "path": {
+              "scoring_artifact_payload_sha256": string
+            }
+          }
           responses: {
                   200: {
                           content: {

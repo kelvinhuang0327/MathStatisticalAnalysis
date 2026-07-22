@@ -160,10 +160,11 @@ def test_scoring_contains_no_duplicate_prize_signature_mapping() -> None:
 def test_scoring_references_are_confined_to_the_authorized_read_only_api() -> None:
     api_app = SRC / "interfaces" / "api" / "app.py"
     api_router = SRC / "interfaces" / "api" / "replay_scoring_projections.py"
+    ranking_router = SRC / "interfaces" / "api" / "replay_portfolio_rankings.py"
     generated_contract = (
         REPO_ROOT / "frontend" / "src" / "api" / "generated" / "openapi.d.ts"
     )
-    authorized_paths = {api_app, api_router, generated_contract}
+    authorized_paths = {api_app, api_router, ranking_router, generated_contract}
     scanned = (
         *(SRC / "interfaces").rglob("*.py"),
         *(REPO_ROOT / "frontend" / "src").rglob("*"),

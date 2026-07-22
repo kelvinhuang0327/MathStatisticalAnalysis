@@ -14,6 +14,8 @@ PATHS = {
     "artifact": SRC / "evidence" / "replay_portfolio_ranking_artifact.py",
     "api": SRC / "interfaces" / "api" / "replay_portfolio_rankings.py",
 }
+APP = SRC / "interfaces" / "api" / "app.py"
+QUERY = SRC / "application" / "use_cases" / "query_replay_scoring_projection.py"
 
 
 def _imports(path: Path) -> set[str]:
@@ -83,6 +85,38 @@ def test_ranking_api_declares_no_default_production_provider() -> None:
     source = PATHS["api"].read_text(encoding="utf-8")
     assert "sqlite3" not in source
     assert "Repository" not in source
+
+
+def test_ranking_api_uses_only_the_persisted_exact_artifact_query_bridge() -> None:
+    source = PATHS["api"].read_text(encoding="utf-8")
+    assert "scoring_artifact_provider" not in source
+    assert "ReplayScoringArtifactProvider" not in source
+    assert "QueryReplayScoringProjection" in source
+    assert "query.get_artifact(scoring_artifact_sha256)" in source
+    assert "scoring_artifact_sha256: ScoringArtifactSha256" in source
+    assert ".sort(" not in source
+    assert "sorted(" not in source
+
+
+def test_app_wires_one_shared_reader_factory_to_scoring_and_ranking_routes() -> None:
+    source = APP.read_text(encoding="utf-8")
+    assert "scoring_artifact_provider" not in source
+    assert source.count("replay_scoring_projection_reader_factory") == 3
+    assert (
+        "create_replay_portfolio_rankings_router(replay_scoring_projection_reader_factory)"
+        in source
+    )
+
+
+def test_query_bridge_validates_before_factory_and_returns_the_loaded_artifact() -> None:
+    source = QUERY.read_text(encoding="utf-8")
+    start = source.index("    def get_artifact(")
+    end = source.index("\n    def ", start + 1)
+    method = source[start:end]
+    assert method.index("_validate_sha256(") < method.index("self._reader_factory()")
+    assert method.count("self._reader_factory()") == 1
+    assert method.count("reader.get_replay_scoring_artifact(") == 1
+    assert "return artifact" in method
 
 
 def test_protected_ranking_domain_shapes_are_unchanged() -> None:

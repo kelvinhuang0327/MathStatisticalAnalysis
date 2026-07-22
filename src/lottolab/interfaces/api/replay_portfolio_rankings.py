@@ -6,8 +6,8 @@ Ranks 1-5-strategy portfolios drawn from one already-validated
 rank 1 under that frozen policy only: this is a historical, descriptive
 result. It carries no payout, probability, EV, ROI, recommendation, or
 future-performance claim, generates no numbers, executes no strategy, and
-persists nothing. The injected provider is called exactly once per request
-and never at app construction or OpenAPI-generation time.
+persists nothing. The injected persisted-reader factory is called at most once
+per request and never at app construction or OpenAPI-generation time.
 """
 
 # pyright: reportUnusedFunction=false
@@ -15,13 +15,17 @@ and never at app construction or OpenAPI-generation time.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from lottolab.application.ports import ReplayScoringProjectionReaderFactory
+from lottolab.application.use_cases.query_replay_scoring_projection import (
+    QueryReplayScoringProjection,
+    ReplayScoringRunNotFoundError,
+)
 from lottolab.application.use_cases.rank_replay_strategy_portfolios import (
     RankReplayStrategyPortfolios,
 )
@@ -35,16 +39,17 @@ from lottolab.evidence.replay_portfolio_ranking_artifact import (
     build_replay_portfolio_ranking_artifact,
     portfolio_ranking_artifact_view,
 )
-from lottolab.interfaces.api.draw_data import ApiErrorResponse
+from lottolab.interfaces.api.draw_data import ApiErrorResponse, ApiValidationErrorResponse
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
-# The concrete artifact type lives in the evidence layer's scoring module; the
-# interfaces layer only calls the injected provider and forwards its result to
-# the use case (which imports and type-checks the real artifact type), so it
-# never needs an import of that module by name here.
-ReplayScoringArtifactProvider = Callable[[], Any]
-
 TopK = Annotated[int, Query(ge=MIN_TOP_K, le=MAX_TOP_K)]
+ScoringArtifactSha256 = Annotated[
+    str,
+    Query(
+        pattern=r"^[0-9a-f]{64}$",
+        description="Exact lowercase SHA-256 of the persisted Replay-scoring artifact.",
+    ),
+]
 
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
 
@@ -110,29 +115,34 @@ class ReplayPortfolioRankingResponse(BaseModel):
 
 
 def create_replay_portfolio_rankings_router(
-    scoring_artifact_provider: ReplayScoringArtifactProvider | None,
+    reader_factory: ReplayScoringProjectionReaderFactory | None,
 ) -> APIRouter:
-    """Always exposes the one route; ``scoring_artifact_provider=None`` -> 503 NOT_CONFIGURED."""
+    """Always expose the route without creating a persisted reader eagerly."""
 
     router = APIRouter(prefix=API_PREFIX, tags=["replay-rankings"])
+    query = QueryReplayScoringProjection(reader_factory) if reader_factory is not None else None
     use_case = RankReplayStrategyPortfolios()
 
     @router.get(
         "/replay-rankings/optimal",
         response_model=ReplayPortfolioRankingResponse,
         responses={
-            422: {"model": ApiErrorResponse},
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
             503: {"model": ApiErrorResponse},
         },
         operation_id="getOptimalReplayPortfolioRankings",
     )
     def get_optimal_replay_portfolio_rankings(
+        scoring_artifact_sha256: ScoringArtifactSha256,
         top_k: TopK = DEFAULT_TOP_K,
     ) -> ReplayPortfolioRankingResponse | JSONResponse:
-        if scoring_artifact_provider is None:
+        if query is None:
             return _not_configured_error()
         try:
-            artifact = scoring_artifact_provider()
+            artifact = query.get_artifact(scoring_artifact_sha256)
+        except ReplayScoringRunNotFoundError:
+            return _not_found_error()
         except Exception:
             return _unavailable_error()
         try:
@@ -176,6 +186,16 @@ def _unavailable_error() -> JSONResponse:
     )
 
 
+def _not_found_error() -> JSONResponse:
+    return _json_response(
+        404,
+        ApiErrorResponse(
+            error_code="REPLAY_RANKING_ARTIFACT_NOT_FOUND",
+            message="The requested Replay-scoring artifact was not found.",
+        ),
+    )
+
+
 def _search_space_exceeded_error() -> JSONResponse:
     return _json_response(
         422,
@@ -195,6 +215,5 @@ __all__ = [
     "ReplayPortfolioRankingGroupView",
     "ReplayPortfolioRankingMemberView",
     "ReplayPortfolioRankingResponse",
-    "ReplayScoringArtifactProvider",
     "create_replay_portfolio_rankings_router",
 ]

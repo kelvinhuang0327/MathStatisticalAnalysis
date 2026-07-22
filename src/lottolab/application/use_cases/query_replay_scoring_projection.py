@@ -19,6 +19,7 @@ from lottolab.domain.replay_scoring_projection import (
     ReplayScoringRunProjection,
     ReplayStrategyAggregateProjection,
 )
+from lottolab.evidence.replay_scoring_artifact import ReplayScoringArtifact
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 _MAX_STRATEGY_ID_LENGTH = 100
@@ -50,6 +51,16 @@ class QueryReplayScoringProjection:
                 "verified Replay-scoring artifact is missing its run projection"
             )
         return run
+
+    def get_artifact(self, scoring_artifact_payload_sha256: str) -> ReplayScoringArtifact:
+        """Load one exact, integrity-checked persisted scoring artifact."""
+
+        _validate_sha256(scoring_artifact_payload_sha256)
+        reader = self._reader_factory()
+        artifact = reader.get_replay_scoring_artifact(scoring_artifact_payload_sha256)
+        if artifact is None:
+            raise ReplayScoringRunNotFoundError(scoring_artifact_payload_sha256)
+        return artifact
 
     def list_predictions(
         self,

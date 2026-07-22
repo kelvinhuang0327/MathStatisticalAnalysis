@@ -78,13 +78,56 @@ function renderResponses(responses, level) {
     .join('\n')
 }
 
+export function renderParameters(parameters) {
+  if (!Array.isArray(parameters)) {
+    throw new Error('Unsupported OpenAPI operation parameters: expected an array')
+  }
+  if (parameters.length === 0) return 'parameters: Record<string, never>'
+
+  const grouped = new Map()
+  for (const parameter of parameters) {
+    if (!parameter || typeof parameter !== 'object' || Array.isArray(parameter)) {
+      throw new Error('Unsupported OpenAPI operation parameter: expected an object')
+    }
+    if ('$ref' in parameter) {
+      throw new Error(`Unsupported OpenAPI operation parameter reference: ${parameter.$ref}`)
+    }
+    const { name, in: location, required = false, schema } = parameter
+    if (typeof name !== 'string' || name.length === 0) {
+      throw new Error('Unsupported OpenAPI operation parameter: missing name')
+    }
+    if (!['query', 'path', 'header', 'cookie'].includes(location)) {
+      throw new Error(`Unsupported OpenAPI operation parameter location: ${location}`)
+    }
+    if (typeof required !== 'boolean') {
+      throw new Error(`Unsupported OpenAPI operation parameter required flag: ${name}`)
+    }
+    if (!schema || typeof schema !== 'object' || Array.isArray(schema)) {
+      throw new Error(`Unsupported OpenAPI operation parameter schema: ${name}`)
+    }
+    if (!grouped.has(location)) grouped.set(location, [])
+    grouped.get(location).push({ name, required, schema })
+  }
+
+  const locationEntries = Array.from(grouped, ([location, entries]) => {
+    const fields = entries.map(({ name, required, schema }) => {
+      const optional = required ? '' : '?'
+      return `${quote(name)}${optional}: ${schemaType(schema)}`
+    })
+    return `${quote(location)}: {\n${indent(fields.join('\n'), 2)}\n}`
+  })
+  return `parameters: {\n${indent(locationEntries.join('\n'), 2)}\n}`
+}
+
 function renderPaths(paths) {
   const pathEntries = Object.entries(paths).map(([path, pathItem]) => {
     const methods = Object.entries(pathItem)
       .filter(([method]) => ['get', 'post', 'put', 'patch', 'delete'].includes(method))
       .map(([method, operation]) => {
+        const parameters = renderParameters(operation.parameters ?? [])
         const responses = renderResponses(operation.responses ?? {}, 3)
-        return `${method}: {\n${indent(`responses: {\n${indent(responses, 8)}\n      }`, 4)}\n  }`
+        const operationMembers = `${parameters}\nresponses: {\n${indent(responses, 8)}\n      }`
+        return `${method}: {\n${indent(operationMembers, 4)}\n  }`
       })
       .join('\n')
     return `${quote(path)}: {\n${indent(methods, 4)}\n  }`

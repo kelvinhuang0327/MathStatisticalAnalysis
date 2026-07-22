@@ -326,6 +326,65 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
     assert len(operations) == 20
 
 
+def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:
+    operation = create_app().openapi()["paths"]["/api/v1/replay-rankings/optimal"][
+        "get"
+    ]
+
+    assert operation["operationId"] == "getOptimalReplayPortfolioRankings"
+    assert [parameter["name"] for parameter in operation["parameters"]] == [
+        "scoring_artifact_sha256",
+        "top_k",
+    ]
+    selector = operation["parameters"][0]
+    assert selector["in"] == "query"
+    assert selector["required"] is True
+    assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
+    assert "default" not in selector["schema"]
+    for status, schema_name in {
+        "404": "ApiErrorResponse",
+        "422": "ApiValidationErrorResponse",
+        "503": "ApiErrorResponse",
+    }.items():
+        assert operation["responses"][status]["content"]["application/json"]["schema"] == {
+            "$ref": f"#/components/schemas/{schema_name}"
+        }
+
+
+def test_generated_types_preserve_operation_parameter_location_and_requiredness() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    ranking_block = declaration.split('"/api/v1/replay-rankings/optimal": {', 1)[1].split(
+        '"/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {', 1
+    )[0]
+
+    assert '"query": {' in ranking_block
+    assert '"scoring_artifact_sha256": string' in ranking_block
+    assert '"scoring_artifact_sha256"?:' not in ranking_block
+    assert '"top_k"?: number' in ranking_block
+
+    draw_block = declaration.split('"/api/v1/draws/{lottery_type}/{draw_number}": {', 1)[
+        1
+    ].split('"/api/v1/ingestion-runs": {', 1)[0]
+    assert '"path": {' in draw_block
+    assert '"lottery_type": components[\'schemas\']["LotteryType"]' in draw_block
+    assert '"draw_number": string' in draw_block
+
+
+def test_openapi_generator_handles_parameters_generically_without_replay_special_cases() -> None:
+    source = (ROOT / "frontend/scripts/generate-openapi-types.mjs").read_text(
+        encoding="utf-8"
+    )
+
+    assert "operation.parameters ?? []" in source
+    assert "schemaType(schema)" in source
+    assert "['query', 'path', 'header', 'cookie']" in source
+    assert "scoring_artifact_sha256" not in source
+    assert "/api/v1/replay-rankings/optimal" not in source
+    assert "Unsupported OpenAPI operation parameter" in source
+
+
 def test_replay_scoring_openapi_pins_exact_sha_get_contract_and_sanitized_errors() -> None:
     document = create_app().openapi()
     paths = document["paths"]

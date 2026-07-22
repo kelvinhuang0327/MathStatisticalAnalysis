@@ -22,7 +22,9 @@ OPENAPI_PATH = "/openapi.json"
 EXPECTED_STRATEGY_IDS = (
     "biglotto_social_wisdom_anti_popularity",
     "biglotto_zone_split_3bet_bet1",
+    "biglotto_deviation_2bet",
 )
+EXECUTABLE_STRATEGY_IDS = frozenset(EXPECTED_STRATEGY_IDS)
 STATE_VERSION = 2
 _TOKEN_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 _GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
@@ -48,7 +50,55 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/draws/{lottery_type}/{draw_number}": frozenset({"get"}),
     "/api/v1/ingestion-runs": frozenset({"get"}),
     "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
+    "/api/v1/generate-bet": frozenset({"post"}),
+    "/api/v1/live-zone-split-bets": frozenset({"post"}),
+    "/api/v1/historical-results/runs": frozenset({"get"}),
+    "/api/v1/historical-results/runs/{run_id}/strategies": frozenset({"get"}),
+    "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
+    "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
+    "/api/v1/replay-rankings/optimal": frozenset({"get"}),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": frozenset({"get"}),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset(
+        {"get"}
+    ),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": (
+        frozenset({"get"})
+    ),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": frozenset(
+        {"get"}
+    ),
 }
+_FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
+    {
+        "/api/v1/generate-bet",
+        "/api/v1/historical-results/runs/{run_id}/replay",
+        "/api/v1/replay-rankings/optimal",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+    }
+)
+"""The narrow, approved paths exempt from the forbidden-word screen.
+
+``/api/v1/generate-bet`` is the one approved execution path.
+``/api/v1/historical-results/runs/{run_id}/replay`` is a read-only projection
+view over an already-committed historical-results portfolio (BLHQ R2) — it
+never consumes or modifies Replay's ``DrawHistoryReader`` and executes no
+strategy, but its path segment happens to contain the forbidden word
+"replay". ``/api/v1/replay-rankings/optimal`` is a read-only, strictly
+post-hoc ranking over an already-validated ``ReplayScoringArtifact`` — it
+generates no numbers, executes no strategy, and persists nothing, but its
+path segment likewise contains "replay". The four exact
+``/api/v1/replay-scoring/{scoring_artifact_payload_sha256}`` paths are GET-only
+queries over saved Replay-scoring projections. They execute no strategy,
+generate no numbers, perform no rescoring, write no database state, and offer
+no latest or fallback selection. Only these seven exact paths are exempted;
+every other path containing a forbidden word (including
+"/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",
+and "/api/v1/replay-rankings/optimize") is still rejected, and the
+exact-operation-set check below still fails closed on method or path drift.
+"""
 _ALLOWED_OPENAPI_OPERATION_SET = frozenset(
     (method, path) for path, methods in _ALLOWED_OPENAPI_OPERATIONS.items() for method in methods
 )
@@ -398,10 +448,15 @@ def validate_strategy_payloads(direct: object, proxied: object) -> tuple[str, ..
     if ids != EXPECTED_STRATEGY_IDS:
         raise LocalRuntimeSafetyError("Strategy Catalog IDs or deterministic order changed")
     for record in records:
-        if record.get("lifecycle_status") != "OBSERVATION":
-            raise LocalRuntimeSafetyError("every expected strategy must remain OBSERVATION")
-        if record.get("executable") is not False:
-            raise LocalRuntimeSafetyError("every expected strategy must remain non-executable")
+        strategy_id = _required_string(record, "strategy_id")
+        executable = strategy_id in EXECUTABLE_STRATEGY_IDS
+        expected_status = "ONLINE" if executable else "OBSERVATION"
+        if record.get("lifecycle_status") != expected_status:
+            raise LocalRuntimeSafetyError(
+                f"{strategy_id} must report lifecycle_status={expected_status}"
+            )
+        if record.get("executable") is not executable:
+            raise LocalRuntimeSafetyError(f"{strategy_id} must report executable={executable}")
         if any(word in str(key).lower() for key in record for word in _FORBIDDEN_ROUTE_WORDS):
             raise LocalRuntimeSafetyError("Strategy Catalog exposed an execution control field")
     return ids
@@ -416,7 +471,9 @@ def validate_openapi_payload(payload: object) -> None:
         if "$ref" in operations:
             raise LocalRuntimeSafetyError("OpenAPI Path Item references are not supported")
         lowered_path = path.lower()
-        if any(word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS):
+        if path not in _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS and any(
+            word in lowered_path for word in _FORBIDDEN_ROUTE_WORDS
+        ):
             raise LocalRuntimeSafetyError("OpenAPI exposes a generation or execution path")
         allowed_methods = _ALLOWED_OPENAPI_OPERATIONS.get(path)
         if allowed_methods is None:

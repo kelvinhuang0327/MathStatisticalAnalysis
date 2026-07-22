@@ -768,6 +768,70 @@ def test_cli_start_defensively_rejects_non_running_result(
     assert failure.value.exit_code == 1
 
 
+def _write_history_file(tmp_path: Path) -> Path:
+    history_file = tmp_path / "history.json"
+    history_file.write_text(
+        json.dumps([{"draw": "114000001", "date": "2026-01-01", "numbers": [1, 2, 3, 4, 5, 6]}]),
+        encoding="utf-8",
+    )
+    return history_file
+
+
+def test_generate_bet_command_prints_ok_result_and_exits_cleanly(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    history_file = _write_history_file(tmp_path)
+
+    cli_main.generate_bet_command(
+        strategy_id=EXPECTED_STRATEGY_IDS[0],
+        seed=7,
+        history_file=history_file,
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "OK"
+    assert payload["strategy_id"] == EXPECTED_STRATEGY_IDS[0]
+    assert payload["seed"] == 7
+    assert len(payload["numbers"]) == 6
+
+
+def test_generate_bet_command_exits_one_for_unknown_strategy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    history_file = _write_history_file(tmp_path)
+
+    with pytest.raises(typer.Exit) as failure:
+        cli_main.generate_bet_command(
+            strategy_id="not-a-real-strategy",
+            seed=1,
+            history_file=history_file,
+        )
+
+    assert failure.value.exit_code == 1
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["status"] == "STRATEGY_UNAVAILABLE"
+    assert payload["reason_code"] == "UNKNOWN_STRATEGY"
+
+
+def test_generate_bet_command_reports_malformed_history_on_stderr(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    history_file = tmp_path / "history.json"
+    history_file.write_text("not json", encoding="utf-8")
+
+    with pytest.raises(typer.Exit) as failure:
+        cli_main.generate_bet_command(
+            strategy_id=EXPECTED_STRATEGY_IDS[0],
+            seed=1,
+            history_file=history_file,
+        )
+
+    assert failure.value.exit_code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "generate-bet input error" in captured.err
+
+
 @pytest.mark.parametrize(
     ("scenario", "expected_terminated", "state_preserved"),
     [
@@ -1274,8 +1338,8 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
     catalog = [
         {
             "strategy_id": strategy_id,
-            "lifecycle_status": "OBSERVATION",
-            "executable": False,
+            "lifecycle_status": "ONLINE",
+            "executable": True,
         }
         for strategy_id in EXPECTED_STRATEGY_IDS
     ]
@@ -1307,6 +1371,31 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/draws/{lottery_type}/{draw_number}": {"get": {}},
                         "/api/v1/ingestion-runs": {"get": {}},
                         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
+                        "/api/v1/generate-bet": {"post": {}},
+                        "/api/v1/live-zone-split-bets": {"post": {}},
+                        "/api/v1/historical-results/runs": {"get": {}},
+                        "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
+                        "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
+                        "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
+                        "/api/v1/replay-rankings/optimal": {"get": {}},
+                        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {
+                            "get": {}
+                        },
+                        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
+                            "get": {}
+                        },
+                        (
+                            "/api/v1/replay-scoring/"
+                            "{scoring_artifact_payload_sha256}/strategy-aggregates"
+                        ): {
+                            "get": {}
+                        },
+                        (
+                            "/api/v1/replay-scoring/"
+                            "{scoring_artifact_payload_sha256}/overall-aggregate"
+                        ): {
+                            "get": {}
+                        },
                     }
                 }
             ).encode(),

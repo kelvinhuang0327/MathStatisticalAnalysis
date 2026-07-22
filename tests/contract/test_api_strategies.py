@@ -197,6 +197,22 @@ def test_strategy_overview_generated_declaration_uses_sanitized_response() -> No
     assert "HTTPValidationError" not in overview_declaration
 
 
+def test_generate_bet_generated_declaration_documents_operation_and_sanitized_response() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+    generate_bet_declaration = declaration.split('"/api/v1/generate-bet": {', 1)[
+        1
+    ].split("export interface components", 1)[0]
+
+    assert "post:" in generate_bet_declaration
+    assert (
+        '"application/json": components[\'schemas\']["ApiValidationErrorResponse"]'
+        in generate_bet_declaration
+    )
+    assert "HTTPValidationError" not in generate_bet_declaration
+
+
 def test_strategy_overview_is_db_and_data_path_free(tmp_path: Path) -> None:
     forbidden_data_path = tmp_path / "must-not-exist"
 
@@ -260,10 +276,9 @@ def test_default_strategy_endpoint_is_db_free(monkeypatch: MonkeyPatch) -> None:
         record["strategy_id"] for record in records if record["strategy_id"] in target_ids
     ] == target_ids
     assert all(
-        records_by_id[strategy_id]["lifecycle_status"] == "OBSERVATION"
-        for strategy_id in target_ids
+        records_by_id[strategy_id]["lifecycle_status"] == "ONLINE" for strategy_id in target_ids
     )
-    assert all(records_by_id[strategy_id]["executable"] is False for strategy_id in target_ids)
+    assert all(records_by_id[strategy_id]["executable"] is True for strategy_id in target_ids)
 
 
 def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
@@ -287,8 +302,118 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/draws/{lottery_type}/{draw_number}"),
         ("get", "/api/v1/ingestion-runs"),
         ("get", "/api/v1/ingestion-runs/{run_id}"),
+        ("post", "/api/v1/generate-bet"),
+        ("post", "/api/v1/live-zone-split-bets"),
+        ("get", "/api/v1/historical-results/runs"),
+        ("get", "/api/v1/historical-results/runs/{run_id}/strategies"),
+        ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
+        ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
+        ("get", "/api/v1/replay-rankings/optimal"),
+        ("get", "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}"),
+        (
+            "get",
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        ),
+        (
+            "get",
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        ),
+        (
+            "get",
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+        ),
     }
-    assert len(operations) == 9
+    assert len(operations) == 20
+
+
+def test_replay_scoring_openapi_pins_exact_sha_get_contract_and_sanitized_errors() -> None:
+    document = create_app().openapi()
+    paths = document["paths"]
+    run_path = paths["/api/v1/replay-scoring/{scoring_artifact_payload_sha256}"]
+
+    assert set(run_path) == {"get"}
+    assert run_path["get"]["operationId"] == "getReplayScoringRun"
+    selector = next(
+        parameter
+        for parameter in run_path["get"]["parameters"]
+        if parameter["name"] == "scoring_artifact_payload_sha256"
+    )
+    assert selector["required"] is True
+    assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
+
+    expected_operations = {
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": (
+            "listReplayScoringPredictions"
+        ),
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": (
+            "listReplayScoringStrategyAggregates"
+        ),
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": (
+            "getReplayScoringOverallAggregate"
+        ),
+    }
+    for path, operation_id in expected_operations.items():
+        operation = paths[path]["get"]
+        assert operation["operationId"] == operation_id
+        assert operation["responses"]["422"]["content"]["application/json"][
+            "schema"
+        ] == {"$ref": "#/components/schemas/ApiValidationErrorResponse"}
+        assert operation["responses"]["503"]["content"]["application/json"][
+            "schema"
+        ] == {"$ref": "#/components/schemas/ApiErrorResponse"}
+
+
+def test_replay_scoring_generated_types_include_all_read_only_operations() -> None:
+    declaration = (ROOT / "frontend/src/api/generated/openapi.d.ts").read_text(
+        encoding="utf-8"
+    )
+
+    expected_success_types = {
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": (
+            "components['schemas'][\"ReplayScoringRunResponse\"]"
+        ),
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": (
+            "Array<components['schemas'][\"ReplayScoredPredictionView\"]>"
+        ),
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": (
+            "Array<components['schemas'][\"ReplayStrategyAggregateView\"]>"
+        ),
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": (
+            "components['schemas'][\"ReplayOverallAggregateResponse\"]"
+        ),
+    }
+    expected_response_types = {
+        404: "components['schemas'][\"ApiErrorResponse\"]",
+        422: "components['schemas'][\"ApiValidationErrorResponse\"]",
+        503: "components['schemas'][\"ApiErrorResponse\"]",
+    }
+
+    for path, success_type in expected_success_types.items():
+        marker = f'  "{path}": {{'
+        start = declaration.index(marker)
+        next_path = declaration.find('\n  "/api/', start + len(marker))
+        paths_end = declaration.index("\n}\n\nexport interface components", start)
+        end = paths_end if next_path == -1 else min(next_path, paths_end)
+        path_block = declaration[start:end]
+
+        assert path_block.count("get: {") == 1
+        assert not any(
+            f"{method}: {{" in path_block
+            for method in ("post", "put", "patch", "delete")
+        )
+        for status, response_type in {200: success_type, **expected_response_types}.items():
+            lines = path_block.splitlines()
+            response_start = next(
+                index for index, line in enumerate(lines) if line.strip() == f"{status}: {{"
+            )
+            response_lines: list[str] = []
+            for line in lines[response_start + 1 :]:
+                stripped = line.strip()
+                if stripped[:3].isdigit() and stripped[3:] == ": {":
+                    break
+                response_lines.append(line)
+            response_block = "\n".join(response_lines)
+            assert f'"application/json": {response_type}' in response_block
 
 
 def test_committed_openapi_contract_is_current() -> None:

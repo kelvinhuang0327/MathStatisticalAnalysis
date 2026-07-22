@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from lottolab.application.draw_data import (
     DrawHistoryPage,
@@ -14,8 +14,29 @@ from lottolab.application.draw_data import (
     IngestionRunPage,
     IngestionRunQuery,
 )
+from lottolab.application.historical_queries import (
+    HistoricalPortfolioRecord,
+    HistoricalReplayPage,
+    HistoricalReplayQuery,
+    HistoricalRunPage,
+    HistoricalRunQuery,
+    HistoricalStrategySummaryList,
+)
 from lottolab.domain.draws import LotteryType
+from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
+from lottolab.domain.replay_history import ReplayCausalDrawRow
+from lottolab.domain.replay_scoring import (
+    ReplayTargetOutcomeReadResult,
+)
+from lottolab.domain.replay_scoring_projection import (
+    ReplayOverallAggregateProjection,
+    ReplayScoredPredictionProjection,
+    ReplayScoringPersistResult,
+    ReplayScoringRunProjection,
+    ReplayStrategyAggregateProjection,
+)
+from lottolab.evidence.replay_scoring_artifact import ReplayScoringArtifact
 
 
 class DrawRepository(Protocol):
@@ -53,3 +74,160 @@ class DrawCsvParser(Protocol):
 
 
 type DrawDataRepositoryFactory = Callable[[], DrawDataRepository]
+
+
+class HistoricalResultRepository(Protocol):
+    def commit_import(self, run_import: HistoricalRunImport) -> HistoricalImportCommitResult:
+        """Atomically commit one validated historical import.
+
+        Returns the existing COMPLETED result as an idempotent no-op when a run
+        with the same ``import_identity_sha256`` already completed; otherwise
+        commits a fresh COMPLETED run, or, on a mid-transaction persistence
+        failure, records a FAILED audit run with zero child rows and returns
+        that FAILED result.
+        """
+        ...
+
+
+class HistoricalResultQueryRepository(Protocol):
+    """Read-only query port over the already-committed historical-results projection.
+
+    Distinct from ``HistoricalResultRepository`` (write-side ``commit_import``):
+    this port never mutates storage. Every method treats a run whose
+    ``status`` is not ``COMPLETED`` as though it does not exist.
+    """
+
+    def list_runs(self, query: HistoricalRunQuery) -> HistoricalRunPage:
+        """Return one deterministic page of COMPLETED runs, newest first."""
+        ...
+
+    def list_strategies(
+        self, run_id: str, *, ticket_count: int
+    ) -> HistoricalStrategySummaryList | None:
+        """Return per-strategy summaries for a COMPLETED run, or None if not found."""
+        ...
+
+    def list_replay_portfolios(
+        self, run_id: str, query: HistoricalReplayQuery
+    ) -> HistoricalReplayPage | None:
+        """Return one page of portfolios for a COMPLETED run, or None if not found."""
+        ...
+
+    def get_portfolio(
+        self, portfolio_id: str, *, ticket_count: int
+    ) -> HistoricalPortfolioRecord | None:
+        """Return one portfolio's committed detail, or None if not found."""
+        ...
+
+
+type HistoricalResultQueryRepositoryFactory = Callable[[], HistoricalResultQueryRepository]
+
+
+class TargetDrawNotFoundError(LookupError):
+    """No draw matches ``(lottery_type, target_draw_number)`` exactly."""
+
+
+@runtime_checkable
+class DrawHistoryReader(Protocol):
+    """Replay's narrow, read-only causal Big Lotto history boundary.
+
+    Returns/raises in terms of domain types only — never sqlite3 rows, SQL
+    strings, or any UI/HTTP concept.
+    """
+
+    def read_causal_history(
+        self,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+        *,
+        maximum_history_draws: int | None = None,
+    ) -> tuple[ReplayCausalDrawRow, ...]:
+        """Return draws strictly before ``target_draw_number``, ascending.
+
+        Ordering is by ``draw_date`` then by the numeric ``draw_number`` —
+        never lexicographic (see :attr:`lottolab.domain.draws.Draw.sort_key`
+        for why). When ``maximum_history_draws`` is given, only the most
+        recent N draws before the target are returned (still ascending).
+        Raises :class:`TargetDrawNotFoundError` when the target does not
+        exist for ``lottery_type``.
+        """
+        ...
+
+
+class ReplayScoringProjectionWriter(Protocol):
+    """Narrow, transactional writer for one whole Replay-scoring run."""
+
+    def persist_replay_scoring_artifact(
+        self,
+        artifact: ReplayScoringArtifact,
+        canonical_bytes: bytes,
+    ) -> ReplayScoringPersistResult:
+        """Persist one already-validated artifact transactionally, or fail closed.
+
+        Returns ``INSERTED`` for a fresh run, ``ALREADY_PRESENT`` for an exact
+        idempotent re-import (identical ``canonical_bytes``), or ``CONFLICT``
+        when the same run identity already exists with different content —
+        never overwriting, merging, or partially persisting a run.
+        """
+        ...
+
+
+class ReplayScoringProjectionReader(Protocol):
+    """Narrow, read-only boundary over the persisted Replay-scoring projection.
+
+    Every method treats an absent run as ``None`` rather than raising. Reads
+    never mutate storage.
+    """
+
+    def get_run(
+        self, scoring_artifact_payload_sha256: str
+    ) -> ReplayScoringRunProjection | None:
+        """Return the stored run identity, or ``None`` if not found."""
+        ...
+
+    def get_replay_scoring_artifact(
+        self, scoring_artifact_payload_sha256: str
+    ) -> ReplayScoringArtifact | None:
+        """Reconstruct the exact original typed artifact, or ``None`` if not found."""
+        ...
+
+    def list_scored_predictions(
+        self,
+        scoring_artifact_payload_sha256: str,
+        *,
+        target_draw_number: str | None = None,
+        strategy_id: str | None = None,
+    ) -> tuple[ReplayScoredPredictionProjection, ...]:
+        """Return scored records in stored ordinal order, optionally filtered."""
+        ...
+
+    def list_strategy_aggregates(
+        self, scoring_artifact_payload_sha256: str
+    ) -> tuple[ReplayStrategyAggregateProjection, ...]:
+        """Return per-strategy aggregates in stored ordinal order."""
+        ...
+
+    def get_overall_aggregate(
+        self, scoring_artifact_payload_sha256: str
+    ) -> ReplayOverallAggregateProjection | None:
+        """Return the run's single overall aggregate, or ``None`` if not found."""
+        ...
+
+
+type ReplayScoringProjectionReaderFactory = Callable[[], ReplayScoringProjectionReader]
+
+
+type DrawHistoryReaderFactory = Callable[[], DrawHistoryReader]
+
+
+@runtime_checkable
+class ReplayTargetOutcomeReader(Protocol):
+    """Narrow, read-only boundary for one exact Replay target outcome."""
+
+    def load_target_outcome(
+        self,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+    ) -> ReplayTargetOutcomeReadResult:
+        """Return a typed found/not-found result without leaking storage errors."""
+        ...

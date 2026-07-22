@@ -101,6 +101,7 @@ describe('App navigation', () => {
       'Strategy Overview',
       'Data Center',
       'Draw History',
+      'Live Zone Split Bets',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
 

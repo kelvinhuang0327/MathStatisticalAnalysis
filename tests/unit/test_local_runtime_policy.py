@@ -66,8 +66,8 @@ def expected_catalog() -> list[dict[str, object]]:
             "version": "v0.1",
             "supported_lottery_types": ["BIG_LOTTO"],
             "minimum_history": 1,
-            "lifecycle_status": "OBSERVATION",
-            "executable": False,
+            "lifecycle_status": "ONLINE",
+            "executable": True,
         }
         for strategy_id in EXPECTED_STRATEGY_IDS
     ]
@@ -256,11 +256,11 @@ def test_smoke_rejects_catalog_contract_drift(mutation: str) -> None:
         direct.reverse()
         proxied.reverse()
     elif mutation == "lifecycle":
-        direct[0]["lifecycle_status"] = "ONLINE"
-        proxied[0]["lifecycle_status"] = "ONLINE"
+        direct[0]["lifecycle_status"] = "OBSERVATION"
+        proxied[0]["lifecycle_status"] = "OBSERVATION"
     elif mutation == "executable":
-        direct[0]["executable"] = True
-        proxied[0]["executable"] = True
+        direct[0]["executable"] = False
+        proxied[0]["executable"] = False
     else:
         proxied[0]["version"] = "different"
     with pytest.raises(LocalRuntimeSafetyError):
@@ -293,6 +293,23 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/draws/{lottery_type}/{draw_number}": {"get": {}},
         "/api/v1/ingestion-runs": {"get": {}},
         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
+        "/api/v1/generate-bet": {"post": {}},
+        "/api/v1/live-zone-split-bets": {"post": {}},
+        "/api/v1/historical-results/runs": {"get": {}},
+        "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
+        "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
+        "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
+        "/api/v1/replay-rankings/optimal": {"get": {}},
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
+            "get": {}
+        },
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {
+            "get": {}
+        },
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {
+            "get": {}
+        },
     }
 
 
@@ -343,6 +360,26 @@ def test_smoke_rejects_path_item_references(
         ("/api/v1/draws/{lottery_type}/{draw_number}", "get"),
         ("/api/v1/ingestion-runs", "get"),
         ("/api/v1/ingestion-runs/{run_id}", "get"),
+        ("/api/v1/generate-bet", "post"),
+        ("/api/v1/live-zone-split-bets", "post"),
+        ("/api/v1/historical-results/runs", "get"),
+        ("/api/v1/historical-results/runs/{run_id}/strategies", "get"),
+        ("/api/v1/historical-results/runs/{run_id}/replay", "get"),
+        ("/api/v1/historical-results/portfolios/{portfolio_id}", "get"),
+        ("/api/v1/replay-rankings/optimal", "get"),
+        ("/api/v1/replay-scoring/{scoring_artifact_payload_sha256}", "get"),
+        (
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+            "get",
+        ),
+        (
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+            "get",
+        ),
+        (
+            "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+            "get",
+        ),
     ],
 )
 def test_smoke_rejects_each_missing_required_openapi_operation(path: str, method: str) -> None:
@@ -413,6 +450,142 @@ def test_smoke_rejects_generation_or_mutating_openapi_paths() -> None:
         validate_openapi_payload({"paths": {"/api/v1/generate": {"get": {}}}})
     with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
         validate_openapi_payload({"paths": {"/api/v1/strategies": {"post": {}}}})
+
+
+def test_smoke_accepts_exact_approved_generate_bet_operation() -> None:
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+@pytest.mark.parametrize("method", ["get", "put", "patch", "delete"])
+def test_smoke_rejects_non_post_methods_on_generate_bet(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/generate-bet"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+def test_smoke_rejects_other_paths_containing_generate_word() -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/generate-bet-extra"] = {"post": {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": paths})
+
+
+def test_smoke_accepts_exact_approved_historical_results_replay_operation() -> None:
+    """BLHQ R2: the read-only /replay projection path is the second narrow exception."""
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_non_get_methods_on_historical_results_replay(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/historical-results/runs/{run_id}/replay"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay",
+        "/api/v1/replay/execute",
+        "/api/v1/historical-results/replay/execute",
+    ],
+)
+def test_smoke_rejects_unrelated_replay_or_execute_paths(path: str) -> None:
+    """Only the two named exceptions bypass the forbidden-word screen; every other
+    path containing "replay" or "execute" -- including near-miss historical-results
+    paths -- must still fail closed."""
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
+
+
+def test_smoke_accepts_exact_approved_replay_portfolio_ranking_operation() -> None:
+    """The read-only /replay-rankings/optimal path is the third narrow exception."""
+    validate_openapi_payload({"paths": authorized_openapi_paths()})
+
+
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_non_get_methods_on_replay_portfolio_ranking(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/replay-rankings/optimal"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-rankings/execute",
+        "/api/v1/replay-rankings/optimize",
+        "/api/v1/replay-ranking/optimal",
+        "/api/v1/replay-rankings/optimal/run",
+    ],
+)
+def test_smoke_rejects_replay_portfolio_ranking_near_miss_paths(path: str) -> None:
+    """Only the exact approved path bypasses the forbidden-word screen; near
+    misses -- wrong verb, wrong singular/plural, an extra path segment -- still
+    fail closed, with no prefix or wildcard exception."""
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
+
+
+def test_smoke_accepts_all_exact_replay_scoring_get_operations_together() -> None:
+    paths = authorized_openapi_paths()
+    replay_scoring_paths = {
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+    }
+
+    assert {path for path in paths if path.startswith("/api/v1/replay-scoring/")} == (
+        replay_scoring_paths
+    )
+    assert all(paths[path] == {"get": {}} for path in replay_scoring_paths)
+    validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
+    ],
+)
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+def test_smoke_rejects_mutating_methods_on_each_replay_scoring_path(
+    path: str, method: str
+) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-scoring",
+        "/api/v1/replay-scoring/latest",
+        "/api/v1/replay-scoring/{sha}",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/execute",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/prediction",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregate",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall",
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions/",
+    ],
+)
+def test_smoke_rejects_replay_scoring_near_miss_paths(path: str) -> None:
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": {path: {"get": {}}}})
 
 
 def test_listener_value_is_plain_identity_data() -> None:

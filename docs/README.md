@@ -17,6 +17,7 @@
 | 遷移計畫 P600 | [migration/p600-plan.md](migration/p600-plan.md) | CURRENT |
 | 遷移帳本（哪些 capability 已遷/退役） | [migration/migration-ledger.yaml](migration/migration-ledger.yaml) | P600A INVENTORIED · P600B MIGRATING |
 | API 契約 | [../contracts/](../contracts/) | CURRENT |
+| AI agent context（repo-local Worker context、安全邊界、runbook） | [../.ai/ai-context/PROJECT_PROFILE.md](../.ai/ai-context/PROJECT_PROFILE.md) | CURRENT |
 
 ## 治理規則
 

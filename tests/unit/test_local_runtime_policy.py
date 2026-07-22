@@ -305,6 +305,11 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
             "/api/v1/historical-prefix-analytics/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/replay"
         ): {"get": {}},
+        "/api/v1/historical-prefix-success-windows": {"get": {}},
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}"
+        ): {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
@@ -377,6 +382,12 @@ def test_smoke_rejects_path_item_references(
         (
             "/api/v1/historical-prefix-analytics/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/replay",
+            "get",
+        ),
+        ("/api/v1/historical-prefix-success-windows", "get"),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}",
             "get",
         ),
         ("/api/v1/replay-rankings/optimal", "get"),
@@ -563,6 +574,66 @@ def test_smoke_rejects_mutating_historical_prefix_methods(method: str) -> None:
     ],
 )
 def test_smoke_rejects_historical_prefix_near_miss_paths(path: str) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = {"get": {}}
+
+    with pytest.raises(LocalRuntimeSafetyError):
+        validate_openapi_payload({"paths": paths})
+
+
+def test_smoke_admits_exactly_two_historical_prefix_success_window_gets() -> None:
+    paths = authorized_openapi_paths()
+    expected = {
+        "/api/v1/historical-prefix-success-windows",
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}"
+        ),
+    }
+
+    assert {
+        path
+        for path in paths
+        if path.startswith("/api/v1/historical-prefix-success-windows")
+    } == expected
+    assert all(paths[path] == {"get": {}} for path in expected)
+    validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/historical-prefix-success-windows",
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}"
+        ),
+    ],
+)
+def test_smoke_rejects_mutating_historical_prefix_success_window_methods(
+    path: str, method: str
+) -> None:
+    paths = authorized_openapi_paths()
+    paths[path] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/historical-prefix-success-windows/latest",
+        "/api/v1/historical-prefix-success-windows/default",
+        "/api/v1/historical-prefix-success-windows/fallback",
+        "/api/v1/historical-prefix-success-windows/strategies/latest",
+        "/api/v1/historical-prefix-success-windows/strategies/default",
+        "/api/v1/historical-prefix-success-windows/execute",
+        "/api/v1/historical-prefix-success-windows/promote",
+    ],
+)
+def test_smoke_rejects_historical_prefix_success_window_near_misses(path: str) -> None:
     paths = authorized_openapi_paths()
     paths[path] = {"get": {}}
 

@@ -33,7 +33,7 @@ def _args(*extra: str) -> list[str]:
 
 
 def test_replay_predictions_command_is_registered() -> None:
-    result = runner.invoke(app, ["--help"])
+    result = runner.invoke(app, ["--help"], terminal_width=240)
 
     assert result.exit_code == 0
     assert "replay-predictions" in result.stdout
@@ -93,7 +93,7 @@ def test_replay_predictions_command_is_registered() -> None:
     ],
 )
 def test_required_options_fail_closed(args: list[str], missing_option: str) -> None:
-    result = runner.invoke(app, args)
+    result = runner.invoke(app, args, terminal_width=240)
 
     assert result.exit_code != 0
     assert missing_option in result.stderr
@@ -116,7 +116,7 @@ def test_required_options_fail_closed(args: list[str], missing_option: str) -> N
     ],
 )
 def test_semantically_invalid_inputs_are_sanitized(args: list[str], message: str) -> None:
-    result = runner.invoke(app, args)
+    result = runner.invoke(app, args, terminal_width=240)
 
     assert result.exit_code == 1
     assert result.stdout == ""
@@ -134,7 +134,7 @@ def test_semantically_invalid_inputs_are_sanitized(args: list[str], message: str
     ],
 )
 def test_nonpositive_history_bounds_are_rejected(option: str, value: str) -> None:
-    result = runner.invoke(app, _args(option, value))
+    result = runner.invoke(app, _args(option, value), terminal_width=240)
 
     assert result.exit_code != 0
     assert result.stdout == ""
@@ -148,6 +148,7 @@ def test_unknown_strategy_fails_before_database_access(tmp_path: Path) -> None:
         app,
         _args("--strategy-id", "unknown-strategy"),
         env={"LOTTOLAB_DATA_DIR": str(data_directory)},
+        terminal_width=240,
     )
 
     assert result.exit_code == 1
@@ -188,6 +189,7 @@ def test_unavailable_strategy_fails_before_database_access(
             unavailable.strategy_id,
         ],
         env={"LOTTOLAB_DATA_DIR": str(data_directory)},
+        terminal_width=240,
     )
 
     assert result.exit_code == 1
@@ -204,7 +206,7 @@ def test_unexpected_failure_is_sanitized_without_internal_details(
 
     monkeypatch.setattr(replay_cli, "build_replay_predictions_cli_artifact", explode)
 
-    result = runner.invoke(app, _args())
+    result = runner.invoke(app, _args(), terminal_width=240)
 
     assert result.exit_code == 1
     assert result.stdout == ""
@@ -217,7 +219,11 @@ def test_unexpected_failure_is_sanitized_without_internal_details(
 def test_output_file_option_is_absent_and_creates_nothing(tmp_path: Path) -> None:
     output_path = tmp_path / "forbidden-artifact.json"
 
-    result = runner.invoke(app, _args("--output-file", str(output_path)))
+    result = runner.invoke(
+        app,
+        _args("--output-file", str(output_path)),
+        terminal_width=240,
+    )
 
     assert result.exit_code != 0
     assert result.stdout == ""

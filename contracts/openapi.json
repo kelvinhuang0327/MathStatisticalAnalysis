@@ -1359,6 +1359,133 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Cross Import Concordance",
+        "operationId": "getHistoricalPrefixStrategyCrossImportConcordance",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "left_import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of one persisted Historical Results import.",
+              "title": "Left Import Identity Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of one persisted Historical Results import."
+          },
+          {
+            "name": "right_import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of one persisted Historical Results import.",
+              "title": "Right Import Identity Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of one persisted Historical Results import."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixCrossImportConcordanceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout": {
       "get": {
         "tags": [
@@ -3243,6 +3370,185 @@
           "tickets"
         ],
         "title": "HistoricalPortfolioView"
+      },
+      "HistoricalPrefixConfirmationOverlapRelation": {
+        "type": "string",
+        "enum": [
+          "DISJOINT",
+          "PARTIAL_OVERLAP",
+          "IDENTICAL"
+        ],
+        "title": "HistoricalPrefixConfirmationOverlapRelation"
+      },
+      "HistoricalPrefixConfirmationTargetOverlapView": {
+        "properties": {
+          "left_confirmation_target_count": {
+            "type": "integer",
+            "const": 300,
+            "title": "Left Confirmation Target Count"
+          },
+          "right_confirmation_target_count": {
+            "type": "integer",
+            "const": 300,
+            "title": "Right Confirmation Target Count"
+          },
+          "overlap_count": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": 0.0,
+            "title": "Overlap Count"
+          },
+          "left_only_count": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": 0.0,
+            "title": "Left Only Count"
+          },
+          "right_only_count": {
+            "type": "integer",
+            "maximum": 300.0,
+            "minimum": 0.0,
+            "title": "Right Only Count"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/HistoricalPrefixConfirmationOverlapRelation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "left_confirmation_target_count",
+          "right_confirmation_target_count",
+          "overlap_count",
+          "left_only_count",
+          "right_only_count",
+          "relation"
+        ],
+        "title": "HistoricalPrefixConfirmationTargetOverlapView"
+      },
+      "HistoricalPrefixCrossImportCohortComparisonView": {
+        "properties": {
+          "cohort_index": {
+            "type": "integer",
+            "title": "Cohort Index"
+          },
+          "feature_key": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureRelationTripleView"
+          },
+          "left_confirmation_diagnostic": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortDiagnosticView"
+          },
+          "right_confirmation_diagnostic": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortDiagnosticView"
+          },
+          "effect_change": {
+            "$ref": "#/components/schemas/HistoricalPrefixSignedRateDeltaView"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutRelationship"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cohort_index",
+          "feature_key",
+          "left_confirmation_diagnostic",
+          "right_confirmation_diagnostic",
+          "effect_change",
+          "relationship"
+        ],
+        "title": "HistoricalPrefixCrossImportCohortComparisonView"
+      },
+      "HistoricalPrefixCrossImportConcordanceResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixCrossImportMetadataView"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessStrategyIdentityView"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterionView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "pair_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixCrossImportPairStatus"
+          },
+          "left_holdout_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutStatus"
+          },
+          "right_holdout_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutStatus"
+          },
+          "confirmation_target_overlap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixConfirmationTargetOverlapView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixCrossImportCohortComparisonView"
+            },
+            "type": "array",
+            "title": "Comparisons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "strategy",
+          "criterion",
+          "prefix_count",
+          "pair_status",
+          "left_holdout_status",
+          "right_holdout_status",
+          "confirmation_target_overlap",
+          "comparisons"
+        ],
+        "title": "HistoricalPrefixCrossImportConcordanceResponse"
+      },
+      "HistoricalPrefixCrossImportMetadataView": {
+        "properties": {
+          "left": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSourceMetadataView"
+          },
+          "right": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSourceMetadataView"
+          },
+          "same_dataset_sha256": {
+            "type": "boolean",
+            "title": "Same Dataset Sha256"
+          },
+          "same_source_artifact_sha256": {
+            "type": "boolean",
+            "title": "Same Source Artifact Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "left",
+          "right",
+          "same_dataset_sha256",
+          "same_source_artifact_sha256"
+        ],
+        "title": "HistoricalPrefixCrossImportMetadataView"
+      },
+      "HistoricalPrefixCrossImportPairStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "LEFT_NOT_READY",
+          "RIGHT_NOT_READY",
+          "BOTH_NOT_READY"
+        ],
+        "title": "HistoricalPrefixCrossImportPairStatus"
       },
       "HistoricalPrefixDrawIdentityView": {
         "properties": {

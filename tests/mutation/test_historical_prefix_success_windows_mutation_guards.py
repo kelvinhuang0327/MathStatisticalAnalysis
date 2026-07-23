@@ -346,9 +346,20 @@ def test_guard_reader_factory_is_called_once() -> None:
 
 def test_guard_reader_operation_is_called_once() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
+    load_with_reader_method = use_case.split("def _load_with_reader(", 1)[1].split(
+        "def _load(", 1
+    )[0]
     load_method = use_case.split("def _load(", 1)[1].split("def list_strategies(", 1)[0]
 
-    assert load_method.count("reader.load_source(import_identity_sha256)") == 1
+    assert load_with_reader_method.count(
+        "reader.load_source(import_identity_sha256)"
+    ) == 1
+    assert (
+        load_method.count(
+            "self._load_with_reader(self._reader_factory(), import_identity_sha256)"
+        )
+        == 1
+    )
 
 
 def test_guard_absent_exact_run_never_falls_back_to_latest() -> None:

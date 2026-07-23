@@ -14,6 +14,8 @@ export type HistoricalSuccessFeatureCohortDiagnostics =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessTemporalHoldout =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessCrossImportConcordance =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -118,6 +120,16 @@ export interface HistoricalSuccessFeatureCohortDiagnosticsQuery
 
 export interface HistoricalSuccessTemporalHoldoutQuery
   extends HistoricalSuccessExactQuery {}
+
+export interface HistoricalSuccessCrossImportConcordanceQuery {
+  left_import_identity_sha256: string
+  right_import_identity_sha256: string
+  strategy_id: string
+  strategy_version: string
+  replicate: number
+  prefix_count: HistoricalSuccessPrefixCount
+  criterion: HistoricalSuccessCriterion
+}
 
 export type HistoricalSuccessErrorKind =
   | 'NOT_CONFIGURED'
@@ -1047,6 +1059,137 @@ function isTemporalHoldout(
   })
 }
 
+function isCrossImportConcordance(
+  value: unknown,
+  query: HistoricalSuccessCrossImportConcordanceQuery,
+): value is HistoricalSuccessCrossImportConcordance {
+  if (
+    !isRecord(value) ||
+    !isRecord(value.metadata) ||
+    !isMetadata(value.metadata.left, query.left_import_identity_sha256) ||
+    !isMetadata(value.metadata.right, query.right_import_identity_sha256) ||
+    query.left_import_identity_sha256 === query.right_import_identity_sha256 ||
+    !isStrategyIdentity(value.strategy) ||
+    !isCriterion(value.criterion, query.criterion) ||
+    value.prefix_count !== query.prefix_count ||
+    !Array.isArray(value.comparisons)
+  ) {
+    return false
+  }
+  const metadata = value.metadata
+  const leftMetadata = metadata.left as Record<string, unknown>
+  const rightMetadata = metadata.right as Record<string, unknown>
+  const strategy = value.strategy as Record<string, unknown>
+  if (
+    metadata.same_dataset_sha256 !==
+      (leftMetadata.dataset_sha256 === rightMetadata.dataset_sha256) ||
+    metadata.same_source_artifact_sha256 !==
+      (leftMetadata.source_artifact_sha256 === rightMetadata.source_artifact_sha256) ||
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate
+  ) {
+    return false
+  }
+  const leftReady = value.left_holdout_status === 'COMPLETE'
+  const rightReady = value.right_holdout_status === 'COMPLETE'
+  const expectedPairStatus =
+    leftReady && rightReady
+      ? 'COMPLETE'
+      : !leftReady && !rightReady
+        ? 'BOTH_NOT_READY'
+        : !leftReady
+          ? 'LEFT_NOT_READY'
+          : 'RIGHT_NOT_READY'
+  if (
+    !['COMPLETE', 'NOT_READY_INSUFFICIENT_HISTORY'].includes(
+      String(value.left_holdout_status),
+    ) ||
+    !['COMPLETE', 'NOT_READY_INSUFFICIENT_HISTORY'].includes(
+      String(value.right_holdout_status),
+    ) ||
+    value.pair_status !== expectedPairStatus
+  ) {
+    return false
+  }
+  if (!leftReady || !rightReady) {
+    return value.confirmation_target_overlap === null && value.comparisons.length === 0
+  }
+  const overlap = value.confirmation_target_overlap
+  if (
+    !isRecord(overlap) ||
+    overlap.left_confirmation_target_count !== 300 ||
+    overlap.right_confirmation_target_count !== 300 ||
+    !isNonNegativeInteger(overlap.overlap_count) ||
+    !isNonNegativeInteger(overlap.left_only_count) ||
+    !isNonNegativeInteger(overlap.right_only_count) ||
+    overlap.left_only_count + overlap.overlap_count !== 300 ||
+    overlap.right_only_count + overlap.overlap_count !== 300 ||
+    overlap.relation !==
+      (overlap.overlap_count === 0
+        ? 'DISJOINT'
+        : overlap.overlap_count === 300
+          ? 'IDENTICAL'
+          : 'PARTIAL_OVERLAP') ||
+    value.comparisons.length !== 64
+  ) {
+    return false
+  }
+  return value.comparisons.every((comparison, index) => {
+    if (
+      !isRecord(comparison) ||
+      comparison.cohort_index !== index ||
+      !isFeatureKey(comparison.feature_key, index) ||
+      !isRecord(comparison.left_confirmation_diagnostic) ||
+      !isRecord(comparison.right_confirmation_diagnostic)
+    ) {
+      return false
+    }
+    const left = comparison.left_confirmation_diagnostic
+    const right = comparison.right_confirmation_diagnostic
+    if (
+      !isOutcomeCounts(left.cohort_counts) ||
+      !isOutcomeCounts(left.outside_counts) ||
+      !isOutcomeCounts(right.cohort_counts) ||
+      !isOutcomeCounts(right.outside_counts)
+    ) {
+      return false
+    }
+    const leftBaseline = {
+      observation_count:
+        left.cohort_counts.observation_count + left.outside_counts.observation_count,
+      success_count: left.cohort_counts.success_count + left.outside_counts.success_count,
+      failure_count: left.cohort_counts.failure_count + left.outside_counts.failure_count,
+    }
+    const rightBaseline = {
+      observation_count:
+        right.cohort_counts.observation_count + right.outside_counts.observation_count,
+      success_count:
+        right.cohort_counts.success_count + right.outside_counts.success_count,
+      failure_count:
+        right.cohort_counts.failure_count + right.outside_counts.failure_count,
+    }
+    return (
+      leftBaseline.observation_count === 300 &&
+      rightBaseline.observation_count === 300 &&
+      isFeatureCohortDiagnostic(left, index, leftBaseline) &&
+      isFeatureCohortDiagnostic(right, index, rightBaseline) &&
+      isRecord(left.risk_difference) &&
+      isRecord(right.risk_difference) &&
+      isExactEffectChange(
+        comparison.effect_change,
+        left.risk_difference,
+        right.risk_difference,
+      ) &&
+      comparison.relationship ===
+        expectedTemporalRelationship(
+          left.relation_vs_outside,
+          right.relation_vs_outside,
+        )
+    )
+  })
+}
+
 function isSuccessPage(
   value: unknown,
   query: HistoricalSuccessWindowQuery,
@@ -1280,5 +1423,33 @@ export async function getHistoricalSuccessTemporalHoldout(
     signal,
   )
   if (!isTemporalHoldout(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessCrossImportConcordance(
+  query: HistoricalSuccessCrossImportConcordanceQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessCrossImportConcordance> {
+  if (query.left_import_identity_sha256 === query.right_import_identity_sha256) {
+    throw new HistoricalSuccessWindowsRequestError(
+      'Select two distinct historical imports.',
+      422,
+      'INVALID_REQUEST',
+      'REQUEST_VALIDATION_FAILED',
+    )
+  }
+  const parameters = new URLSearchParams()
+  parameters.set('left_import_identity_sha256', query.left_import_identity_sha256)
+  parameters.set('right_import_identity_sha256', query.right_import_identity_sha256)
+  parameters.set('prefix_count', String(query.prefix_count))
+  parameters.set('criterion', query.criterion)
+  const identity = [query.strategy_id, query.strategy_version, String(query.replicate)]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/feature-cohorts/cross-import-concordance?${parameters.toString()}`,
+    signal,
+  )
+  if (!isCrossImportConcordance(payload, query)) throw malformedResponse()
   return payload
 }

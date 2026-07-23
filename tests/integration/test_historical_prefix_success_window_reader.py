@@ -26,6 +26,7 @@ from tests.fixtures.historical.builder import (
     build_strategy_descriptor,
     build_tickets,
     envelope_bytes,
+    recompute_envelope_hashes,
 )
 
 from lottolab.application.historical_prefix_success_windows import (
@@ -198,6 +199,44 @@ def test_read_is_byte_schema_row_and_sidecar_invariant(tmp_path: Path) -> None:
 
     after = _database_inventory(database)
     assert first == second
+    assert after[:2] == before[:2]
+    assert hashlib.sha256(after[2]).hexdigest() == before_digest
+    assert after[2] == before[2]
+    assert not list(tmp_path.glob("historical.db-*"))
+    assert not list(tmp_path.glob("historical.db-journal"))
+
+
+def test_one_reader_isolates_two_ordered_exact_import_loads_without_writes(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "historical.db"
+    left_import = _persist(database)
+    right_envelope = _success_window_envelope()
+    right_envelope["source"]["source_commit_oid"] = "d" * 40
+    right_envelope["source"]["source_artifact_sha256"] = "e" * 64
+    right_envelope["dataset"]["dataset_sha256"] = "f" * 64
+    right_import = _persist(
+        database,
+        _normalized(recompute_envelope_hashes(right_envelope)),
+    )
+    assert left_import.import_identity_sha256 != right_import.import_identity_sha256
+    before = _database_inventory(database)
+    before_digest = hashlib.sha256(before[2]).hexdigest()
+    reader = SQLiteHistoricalPrefixSuccessWindowSourceReader(database)
+
+    right = reader.load_source(right_import.import_identity_sha256)
+    left = reader.load_source(left_import.import_identity_sha256)
+    absent = reader.load_source("9" * 64)
+
+    assert right is not None
+    assert left is not None
+    assert right.metadata.import_identity_sha256 == right_import.import_identity_sha256
+    assert left.metadata.import_identity_sha256 == left_import.import_identity_sha256
+    assert right.metadata.dataset_sha256 == "f" * 64
+    assert left.metadata.dataset_sha256 != right.metadata.dataset_sha256
+    assert right.strategies == left.strategies
+    assert absent is None
+    after = _database_inventory(database)
     assert after[:2] == before[:2]
     assert hashlib.sha256(after[2]).hexdigest() == before_digest
     assert after[2] == before[2]

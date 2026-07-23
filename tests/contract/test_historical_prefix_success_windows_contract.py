@@ -16,9 +16,10 @@ MATRIX_PATH = f"{EXACT_PATH}/matrix"
 FEATURE_COHORT_PATH = f"{EXACT_PATH}/feature-cohorts"
 DIAGNOSTICS_PATH = f"{FEATURE_COHORT_PATH}/diagnostics"
 TEMPORAL_HOLDOUT_PATH = f"{FEATURE_COHORT_PATH}/temporal-holdout"
+CROSS_IMPORT_CONCORDANCE_PATH = f"{FEATURE_COHORT_PATH}/cross-import-concordance"
 
 
-def test_openapi_exposes_exactly_six_get_operations_with_required_selectors() -> None:
+def test_openapi_exposes_exactly_seven_get_operations_with_required_selectors() -> None:
     paths = create_app().openapi()["paths"]
 
     assert set(paths[LIST_PATH]) == {"get"}
@@ -27,12 +28,14 @@ def test_openapi_exposes_exactly_six_get_operations_with_required_selectors() ->
     assert set(paths[FEATURE_COHORT_PATH]) == {"get"}
     assert set(paths[DIAGNOSTICS_PATH]) == {"get"}
     assert set(paths[TEMPORAL_HOLDOUT_PATH]) == {"get"}
+    assert set(paths[CROSS_IMPORT_CONCORDANCE_PATH]) == {"get"}
     list_operation = paths[LIST_PATH]["get"]
     exact_operation = paths[EXACT_PATH]["get"]
     matrix_operation = paths[MATRIX_PATH]["get"]
     feature_cohort_operation = paths[FEATURE_COHORT_PATH]["get"]
     diagnostics_operation = paths[DIAGNOSTICS_PATH]["get"]
     temporal_holdout_operation = paths[TEMPORAL_HOLDOUT_PATH]["get"]
+    cross_import_operation = paths[CROSS_IMPORT_CONCORDANCE_PATH]["get"]
     assert list_operation["operationId"] == "listHistoricalPrefixStrategySuccessWindows"
     assert exact_operation["operationId"] == "getHistoricalPrefixStrategySuccessWindows"
     assert matrix_operation["operationId"] == "getHistoricalPrefixStrategySuccessMatrix"
@@ -45,6 +48,9 @@ def test_openapi_exposes_exactly_six_get_operations_with_required_selectors() ->
     )
     assert temporal_holdout_operation["operationId"] == (
         "getHistoricalPrefixStrategyFeatureCohortTemporalHoldout"
+    )
+    assert cross_import_operation["operationId"] == (
+        "getHistoricalPrefixStrategyCrossImportConcordance"
     )
     assert [item["name"] for item in list_operation["parameters"]] == [
         "import_identity_sha256",
@@ -112,6 +118,18 @@ def test_openapi_exposes_exactly_six_get_operations_with_required_selectors() ->
         item["required"] is True
         for item in temporal_holdout_operation["parameters"]
     )
+    assert [item["name"] for item in cross_import_operation["parameters"]] == [
+        "strategy_id",
+        "strategy_version",
+        "replicate",
+        "left_import_identity_sha256",
+        "right_import_identity_sha256",
+        "prefix_count",
+        "criterion",
+    ]
+    assert all(
+        item["required"] is True for item in cross_import_operation["parameters"]
+    )
     selector = list_operation["parameters"][0]
     assert selector["in"] == "query"
     assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
@@ -141,6 +159,17 @@ def test_openapi_pins_closed_prefix_criterion_and_nullable_rate_contract() -> No
         "M3_PLUS_SPECIAL",
         "M4_PLUS_SPECIAL",
         "M5_PLUS_SPECIAL",
+    ]
+    assert schemas["HistoricalPrefixCrossImportPairStatus"]["enum"] == [
+        "COMPLETE",
+        "LEFT_NOT_READY",
+        "RIGHT_NOT_READY",
+        "BOTH_NOT_READY",
+    ]
+    assert schemas["HistoricalPrefixConfirmationOverlapRelation"]["enum"] == [
+        "DISJOINT",
+        "PARTIAL_OVERLAP",
+        "IDENTICAL",
     ]
     rate = schemas["HistoricalPrefixExactSuccessRateView"]
     assert rate["required"] == ["numerator", "denominator", "available"]

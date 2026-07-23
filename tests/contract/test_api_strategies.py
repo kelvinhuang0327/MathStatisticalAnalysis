@@ -343,6 +343,12 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "{strategy_id}/{strategy_version}/{replicate}/"
             "feature-cohorts/temporal-holdout",
         ),
+        (
+            "get",
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/"
+            "feature-cohorts/cross-import-concordance",
+        ),
         ("get", "/api/v1/replay-rankings/optimal"),
         ("get", "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}"),
         (
@@ -358,7 +364,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 29
+    assert len(operations) == 30
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

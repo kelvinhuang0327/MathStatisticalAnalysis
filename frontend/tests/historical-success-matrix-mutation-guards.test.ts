@@ -264,3 +264,89 @@ describe('Historical Success 750/300 temporal holdout mutation guards', () => {
     )
   })
 })
+
+describe('Historical Success cross-import concordance mutation guards', () => {
+  it('pins ordered distinct selectors, exact metadata, overlap arithmetic, and 64 rows', () => {
+    const validator = clientSource.split('function isCrossImportConcordance(')[1]!.split(
+      'function isSuccessPage(',
+      1,
+    )[0]!
+    expect(validator).toContain(
+      'query.left_import_identity_sha256 === query.right_import_identity_sha256',
+    )
+    expect(validator).toContain(
+      'isMetadata(value.metadata.left, query.left_import_identity_sha256)',
+    )
+    expect(validator).toContain(
+      'isMetadata(value.metadata.right, query.right_import_identity_sha256)',
+    )
+    expect(validator).toContain('overlap.left_only_count + overlap.overlap_count !== 300')
+    expect(validator).toContain('overlap.right_only_count + overlap.overlap_count !== 300')
+    expect(validator).toContain('value.comparisons.length !== 64')
+    expect(validator).toContain('comparison.cohort_index !== index')
+    expect(validator).not.toContain('.sort(')
+  })
+
+  it('keeps source probabilities as canonical strings and validates with BigInt', () => {
+    const validator = clientSource.split('function isCrossImportConcordance(')[1]!.split(
+      'function isSuccessPage(',
+      1,
+    )[0]!
+    const probability = clientSource.split('function isExactProbability(')[1]!.split(
+      'function compareExactProbabilities(',
+      1,
+    )[0]!
+    expect(validator).toContain(
+      'isFeatureCohortDiagnostic(left, index, leftBaseline)',
+    )
+    expect(validator).toContain(
+      'isFeatureCohortDiagnostic(right, index, rightBaseline)',
+    )
+    expect(probability).toContain('BigInt(value.numerator)')
+    expect(probability).toContain('BigInt(value.denominator)')
+    expect(probability).not.toContain('Number(')
+  })
+
+  it('requires explicit action, caps selections at four, and never auto-selects right', () => {
+    const evaluate = pageSource.split(
+      'async function evaluateCrossImportConcordance(',
+    )[1]!.split('async function loadResults(', 1)[0]!
+    const chooseRight = pageSource.split('function chooseComparisonRun(')[1]!.split(
+      'function controlsChanged(',
+      1,
+    )[0]!
+    expect(pageSource).toContain('Evaluate cross-import temporal concordance')
+    expect(pageSource).toContain("const comparisonRun = ref<HistoricalRun | null>(null)")
+    expect(chooseRight).not.toContain('runsPage.value?.items[0]')
+    expect(evaluate).toContain('selections.length > 4')
+    expect(evaluate).toContain('selections.map(async (selection)')
+    expect(evaluate).not.toContain('.sort(')
+  })
+
+  it('pins abort and generation guards for reevaluation and every lifecycle change', () => {
+    expect(pageSource).toContain(
+      'const generation = ++crossImportConcordanceGeneration',
+    )
+    expect(pageSource).toContain('crossImportConcordanceController?.abort()')
+    expect(pageSource).toContain('generation !== crossImportConcordanceGeneration')
+    expect(pageSource).toContain('clearCrossImportConcordance()')
+  })
+
+  it('renders confirmation-only evidence without decision wording or sorting', () => {
+    const section = pageSource.split(
+      'class="research-results cross-import-concordance-panel"',
+    )[1]!.split('<aside ', 1)[0]!
+    expect(section).toContain('v-for="comparison in outcome.result.comparisons"')
+    expect(section).toContain(
+      'comparison.left_confirmation_diagnostic.raw_p_value',
+    )
+    expect(section).toContain(
+      'comparison.right_confirmation_diagnostic.adjusted_p_value',
+    )
+    expect(section).toContain('comparison.relationship')
+    expect(section).not.toContain('.sort(')
+    expect(section).not.toMatch(
+      /independent|replicated|confirmed|significant|rank|winner|promotion|rejection|prediction/i,
+    )
+  })
+})

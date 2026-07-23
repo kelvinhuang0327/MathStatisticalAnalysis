@@ -121,6 +121,19 @@ class HistoricalPrefixTemporalHoldoutRelationship(StrEnum):
     UNAVAILABLE = "UNAVAILABLE"
 
 
+class HistoricalPrefixCrossImportPairStatus(StrEnum):
+    COMPLETE = "COMPLETE"
+    LEFT_NOT_READY = "LEFT_NOT_READY"
+    RIGHT_NOT_READY = "RIGHT_NOT_READY"
+    BOTH_NOT_READY = "BOTH_NOT_READY"
+
+
+class HistoricalPrefixConfirmationOverlapRelation(StrEnum):
+    DISJOINT = "DISJOINT"
+    PARTIAL_OVERLAP = "PARTIAL_OVERLAP"
+    IDENTICAL = "IDENTICAL"
+
+
 def _require_canonical_text(value: str, name: str) -> None:
     if type(value) is not str or not value or value != value.strip():
         raise HistoricalPrefixSuccessWindowsContractError(
@@ -523,6 +536,47 @@ class HistoricalPrefixTemporalHoldoutResult:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalPrefixCrossImportMetadata:
+    left: HistoricalPrefixSuccessWindowSourceMetadata
+    right: HistoricalPrefixSuccessWindowSourceMetadata
+    same_dataset_sha256: bool
+    same_source_artifact_sha256: bool
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixConfirmationTargetOverlap:
+    left_confirmation_target_count: int
+    right_confirmation_target_count: int
+    overlap_count: int
+    left_only_count: int
+    right_only_count: int
+    relation: HistoricalPrefixConfirmationOverlapRelation
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixCrossImportCohortComparison:
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    left_confirmation_diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    right_confirmation_diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    effect_change: HistoricalPrefixSignedRateDelta
+    relationship: HistoricalPrefixTemporalHoldoutRelationship
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixCrossImportConcordanceResult:
+    metadata: HistoricalPrefixCrossImportMetadata
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    pair_status: HistoricalPrefixCrossImportPairStatus
+    left_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    right_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    confirmation_target_overlap: HistoricalPrefixConfirmationTargetOverlap | None
+    comparisons: tuple[HistoricalPrefixCrossImportCohortComparison, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalPrefixWindowRateComparison:
     comparison_kind: HistoricalPrefixWindowRateComparisonKind
     from_window_kind: WindowKind
@@ -569,6 +623,12 @@ __all__ = [
     "SUPPORTED_PREFIX_COUNTS",
     "SUPPORTED_SUCCESS_CRITERIA",
     "TEMPORAL_HOLDOUT_SPLIT_METHOD",
+    "HistoricalPrefixConfirmationOverlapRelation",
+    "HistoricalPrefixConfirmationTargetOverlap",
+    "HistoricalPrefixCrossImportCohortComparison",
+    "HistoricalPrefixCrossImportConcordanceResult",
+    "HistoricalPrefixCrossImportMetadata",
+    "HistoricalPrefixCrossImportPairStatus",
     "HistoricalPrefixExactProbability",
     "HistoricalPrefixExactSuccessRate",
     "HistoricalPrefixFeatureCohortDiagnostic",

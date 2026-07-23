@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
+  getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -15,11 +16,14 @@ import {
   IMPORT_SHA,
   makeFeatureCohortDiagnostics,
   makeFeatureCohorts,
+  makeCrossImportConcordance,
   makeAllRelationsMatrix,
   makeMatrix,
   makeResult,
   makeRunPage,
   makeNotReadyTemporalHoldout,
+  makeNotReadyCrossImportConcordance,
+  RIGHT_IMPORT_SHA,
   makeTemporalHoldout,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
@@ -289,6 +293,161 @@ describe('Historical Success Windows API client', () => {
     expect(result.discovery).toBeNull()
     expect(result.confirmation).toBeNull()
     expect(result.comparisons).toEqual([])
+  })
+
+  it('fetches ordered cross-import concordance and preserves BigInt probabilities', async () => {
+    const controller = new AbortController()
+    const concordance = makeCrossImportConcordance()
+    concordance.comparisons[0]!.left_confirmation_diagnostic.raw_p_value = {
+      numerator: '9007199254740993',
+      denominator: '90071992547409931',
+    }
+    concordance.comparisons[0]!.left_confirmation_diagnostic.adjusted_p_value = {
+      ...concordance.comparisons[0]!.left_confirmation_diagnostic.raw_p_value,
+    }
+    fetchMock.mockResolvedValue(apiResponse(concordance))
+
+    const result = await getHistoricalSuccessCrossImportConcordance(
+      {
+        left_import_identity_sha256: IMPORT_SHA,
+        right_import_identity_sha256: RIGHT_IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/cross-import-concordance',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      left_import_identity_sha256: IMPORT_SHA,
+      right_import_identity_sha256: RIGHT_IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.metadata.left.import_identity_sha256).toBe(IMPORT_SHA)
+    expect(result.metadata.right.import_identity_sha256).toBe(RIGHT_IMPORT_SHA)
+    expect(result.comparisons).toHaveLength(64)
+    expect(
+      BigInt(
+        result.comparisons[0]!.left_confirmation_diagnostic.raw_p_value.numerator,
+      ),
+    ).toBeGreaterThan(BigInt(Number.MAX_SAFE_INTEGER))
+  })
+
+  it('rejects identical cross-import selectors without issuing a request', async () => {
+    await expect(
+      getHistoricalSuccessCrossImportConcordance({
+        left_import_identity_sha256: IMPORT_SHA,
+        right_import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'INVALID_REQUEST', status: 422 })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts every not-ready cross-import pair status only without a family', async () => {
+    for (const [pair_status, left_holdout_status, right_holdout_status] of [
+      ['LEFT_NOT_READY', 'NOT_READY_INSUFFICIENT_HISTORY', 'COMPLETE'],
+      ['RIGHT_NOT_READY', 'COMPLETE', 'NOT_READY_INSUFFICIENT_HISTORY'],
+      [
+        'BOTH_NOT_READY',
+        'NOT_READY_INSUFFICIENT_HISTORY',
+        'NOT_READY_INSUFFICIENT_HISTORY',
+      ],
+    ] as const) {
+      fetchMock.mockResolvedValueOnce(
+        apiResponse(
+          makeNotReadyCrossImportConcordance({
+            pair_status,
+            left_holdout_status,
+            right_holdout_status,
+          }),
+        ),
+      )
+      const result = await getHistoricalSuccessCrossImportConcordance({
+        left_import_identity_sha256: IMPORT_SHA,
+        right_import_identity_sha256: RIGHT_IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      })
+      expect(result.pair_status).toBe(pair_status)
+      expect(result.confirmation_target_overlap).toBeNull()
+      expect(result.comparisons).toEqual([])
+    }
+  })
+
+  it.each([
+    [
+      'malformed overlap arithmetic',
+      (result: ReturnType<typeof makeCrossImportConcordance>) => {
+        result.confirmation_target_overlap!.overlap_count = 299
+      },
+    ],
+    [
+      'missing comparison',
+      (result: ReturnType<typeof makeCrossImportConcordance>) => {
+        result.comparisons.pop()
+      },
+    ],
+    [
+      'duplicate comparison',
+      (result: ReturnType<typeof makeCrossImportConcordance>) => {
+        result.comparisons[1] = result.comparisons[0]!
+      },
+    ],
+    [
+      'wrong order',
+      (result: ReturnType<typeof makeCrossImportConcordance>) => {
+        ;[result.comparisons[0], result.comparisons[1]] = [
+          result.comparisons[1]!,
+          result.comparisons[0]!,
+        ]
+      },
+    ],
+    [
+      'identity mismatch',
+      (result: ReturnType<typeof makeCrossImportConcordance>) => {
+        result.metadata.right.import_identity_sha256 = 'c'.repeat(64)
+      },
+    ],
+    [
+      'numeric probability',
+      (result: ReturnType<typeof makeCrossImportConcordance>) => {
+        result.comparisons[0]!.right_confirmation_diagnostic.raw_p_value.numerator =
+          1 as unknown as string
+      },
+    ],
+  ])('rejects cross-import concordance with %s', async (_label, mutate) => {
+    const concordance = makeCrossImportConcordance()
+    mutate(concordance)
+    fetchMock.mockResolvedValue(apiResponse(concordance))
+
+    await expect(
+      getHistoricalSuccessCrossImportConcordance({
+        left_import_identity_sha256: IMPORT_SHA,
+        right_import_identity_sha256: RIGHT_IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })
 
   it.each([

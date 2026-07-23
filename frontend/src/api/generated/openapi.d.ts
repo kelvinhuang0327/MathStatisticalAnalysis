@@ -509,6 +509,45 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "left_import_identity_sha256": string
+              "right_import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixCrossImportConcordanceResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout": {
       get: {
           parameters: {
@@ -1018,6 +1057,41 @@ export interface components {
           "m4plus": boolean
           "tickets": Array<components['schemas']["HistoricalTicketView"]>
         }
+    "HistoricalPrefixConfirmationOverlapRelation": "DISJOINT" | "PARTIAL_OVERLAP" | "IDENTICAL"
+    "HistoricalPrefixConfirmationTargetOverlapView": {
+          "left_confirmation_target_count": number
+          "right_confirmation_target_count": number
+          "overlap_count": number
+          "left_only_count": number
+          "right_only_count": number
+          "relation": components['schemas']["HistoricalPrefixConfirmationOverlapRelation"]
+        }
+    "HistoricalPrefixCrossImportCohortComparisonView": {
+          "cohort_index": number
+          "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
+          "left_confirmation_diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+          "right_confirmation_diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+          "effect_change": components['schemas']["HistoricalPrefixSignedRateDeltaView"]
+          "relationship": components['schemas']["HistoricalPrefixTemporalHoldoutRelationship"]
+        }
+    "HistoricalPrefixCrossImportConcordanceResponse": {
+          "metadata": components['schemas']["HistoricalPrefixCrossImportMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "pair_status": components['schemas']["HistoricalPrefixCrossImportPairStatus"]
+          "left_holdout_status": components['schemas']["HistoricalPrefixTemporalHoldoutStatus"]
+          "right_holdout_status": components['schemas']["HistoricalPrefixTemporalHoldoutStatus"]
+          "confirmation_target_overlap": components['schemas']["HistoricalPrefixConfirmationTargetOverlapView"] | null
+          "comparisons": Array<components['schemas']["HistoricalPrefixCrossImportCohortComparisonView"]>
+        }
+    "HistoricalPrefixCrossImportMetadataView": {
+          "left": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "right": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "same_dataset_sha256": boolean
+          "same_source_artifact_sha256": boolean
+        }
+    "HistoricalPrefixCrossImportPairStatus": "COMPLETE" | "LEFT_NOT_READY" | "RIGHT_NOT_READY" | "BOTH_NOT_READY"
     "HistoricalPrefixDrawIdentityView": {
           "draw_number": number
           "draw_date": string

@@ -1359,6 +1359,121 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Feature Cohort Diagnostics",
+        "operationId": "getHistoricalPrefixStrategyFeatureCohortDiagnostics",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of one persisted Historical Results import.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of one persisted Historical Results import."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts": {
       "get": {
         "tags": [
@@ -3037,6 +3152,26 @@
         ],
         "title": "HistoricalPrefixDrawIdentityView"
       },
+      "HistoricalPrefixExactProbabilityView": {
+        "properties": {
+          "numerator": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]*)$",
+            "title": "Numerator"
+          },
+          "denominator": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]*)$",
+            "title": "Denominator"
+          }
+        },
+        "type": "object",
+        "required": [
+          "numerator",
+          "denominator"
+        ],
+        "title": "HistoricalPrefixExactProbabilityView"
+      },
       "HistoricalPrefixExactSuccessRateView": {
         "properties": {
           "numerator": {
@@ -3059,6 +3194,91 @@
           "available"
         ],
         "title": "HistoricalPrefixExactSuccessRateView"
+      },
+      "HistoricalPrefixFeatureCohortDiagnosticView": {
+        "properties": {
+          "cohort_index": {
+            "type": "integer",
+            "title": "Cohort Index"
+          },
+          "feature_key": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureRelationTripleView"
+          },
+          "test_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortTestStatus"
+          },
+          "cohort_counts": {
+            "$ref": "#/components/schemas/HistoricalPrefixOutcomeCountsView"
+          },
+          "outside_counts": {
+            "$ref": "#/components/schemas/HistoricalPrefixOutcomeCountsView"
+          },
+          "cohort_success_rate": {
+            "$ref": "#/components/schemas/HistoricalPrefixExactSuccessRateView"
+          },
+          "outside_success_rate": {
+            "$ref": "#/components/schemas/HistoricalPrefixExactSuccessRateView"
+          },
+          "risk_difference": {
+            "$ref": "#/components/schemas/HistoricalPrefixSignedRateDeltaView"
+          },
+          "relation_vs_outside": {
+            "$ref": "#/components/schemas/HistoricalPrefixRateRelation"
+          },
+          "raw_p_value": {
+            "$ref": "#/components/schemas/HistoricalPrefixExactProbabilityView"
+          },
+          "adjusted_p_value": {
+            "$ref": "#/components/schemas/HistoricalPrefixExactProbabilityView"
+          },
+          "first_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixSuccessDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "last_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixSuccessDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "cohort_index",
+          "feature_key",
+          "test_status",
+          "cohort_counts",
+          "outside_counts",
+          "cohort_success_rate",
+          "outside_success_rate",
+          "risk_difference",
+          "relation_vs_outside",
+          "raw_p_value",
+          "adjusted_p_value",
+          "first_target",
+          "last_target"
+        ],
+        "title": "HistoricalPrefixFeatureCohortDiagnosticView"
+      },
+      "HistoricalPrefixFeatureCohortTestStatus": {
+        "type": "string",
+        "enum": [
+          "TESTED",
+          "NOT_TESTABLE_EMPTY_COHORT",
+          "NOT_TESTABLE_EMPTY_COMPLEMENT",
+          "NOT_TESTABLE_NO_OUTCOME_VARIATION"
+        ],
+        "title": "HistoricalPrefixFeatureCohortTestStatus"
       },
       "HistoricalPrefixFeatureCohortView": {
         "properties": {
@@ -3193,6 +3413,29 @@
           "historical_only_disclaimer_id"
         ],
         "title": "HistoricalPrefixMetadataView"
+      },
+      "HistoricalPrefixOutcomeCountsView": {
+        "properties": {
+          "observation_count": {
+            "type": "integer",
+            "title": "Observation Count"
+          },
+          "success_count": {
+            "type": "integer",
+            "title": "Success Count"
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "observation_count",
+          "success_count",
+          "failure_count"
+        ],
+        "title": "HistoricalPrefixOutcomeCountsView"
       },
       "HistoricalPrefixRankingCandidateView": {
         "properties": {
@@ -3360,6 +3603,61 @@
           "available"
         ],
         "title": "HistoricalPrefixSignedRateDeltaView"
+      },
+      "HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSourceMetadataView"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessStrategyIdentityView"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterionView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "baseline": {
+            "$ref": "#/components/schemas/HistoricalPrefixWalkForwardBaselineView"
+          },
+          "family_size": {
+            "type": "integer",
+            "const": 64,
+            "title": "Family Size"
+          },
+          "raw_test_method": {
+            "type": "string",
+            "const": "FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING",
+            "title": "Raw Test Method"
+          },
+          "adjustment_method": {
+            "type": "string",
+            "const": "BENJAMINI_YEKUTIELI",
+            "title": "Adjustment Method"
+          },
+          "diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortDiagnosticView"
+            },
+            "type": "array",
+            "title": "Diagnostics"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "strategy",
+          "criterion",
+          "prefix_count",
+          "baseline",
+          "family_size",
+          "raw_test_method",
+          "adjustment_method",
+          "diagnostics"
+        ],
+        "title": "HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"
       },
       "HistoricalPrefixStrategyFeatureCohortResponse": {
         "properties": {

@@ -93,6 +93,16 @@ FEATURE_COHORT_RELATION_ORDER = (
     HistoricalPrefixRateRelation.UNAVAILABLE,
 )
 
+FISHER_EXACT_TWO_SIDED_METHOD = "FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING"
+BENJAMINI_YEKUTIELI_METHOD = "BENJAMINI_YEKUTIELI"
+
+
+class HistoricalPrefixFeatureCohortTestStatus(StrEnum):
+    TESTED = "TESTED"
+    NOT_TESTABLE_EMPTY_COHORT = "NOT_TESTABLE_EMPTY_COHORT"
+    NOT_TESTABLE_EMPTY_COMPLEMENT = "NOT_TESTABLE_EMPTY_COMPLEMENT"
+    NOT_TESTABLE_NO_OUTCOME_VARIATION = "NOT_TESTABLE_NO_OUTCOME_VARIATION"
+
 
 def _require_canonical_text(value: str, name: str) -> None:
     if type(value) is not str or not value or value != value.strip():
@@ -418,6 +428,49 @@ class HistoricalPrefixStrategyFeatureCohortResult:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalPrefixExactProbability:
+    numerator: int
+    denominator: int
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixOutcomeCounts:
+    observation_count: int
+    success_count: int
+    failure_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixFeatureCohortDiagnostic:
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    test_status: HistoricalPrefixFeatureCohortTestStatus
+    cohort_counts: HistoricalPrefixOutcomeCounts
+    outside_counts: HistoricalPrefixOutcomeCounts
+    cohort_success_rate: HistoricalPrefixExactSuccessRate
+    outside_success_rate: HistoricalPrefixExactSuccessRate
+    risk_difference: HistoricalPrefixSignedRateDelta
+    relation_vs_outside: HistoricalPrefixRateRelation
+    raw_p_value: HistoricalPrefixExactProbability
+    adjusted_p_value: HistoricalPrefixExactProbability
+    first_target: HistoricalPrefixSuccessDrawIdentity | None
+    last_target: HistoricalPrefixSuccessDrawIdentity | None
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixStrategyFeatureCohortDiagnostics:
+    metadata: HistoricalPrefixSuccessWindowSourceMetadata
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    baseline: HistoricalPrefixWalkForwardBaseline
+    family_size: int
+    raw_test_method: str
+    adjustment_method: str
+    diagnostics: tuple[HistoricalPrefixFeatureCohortDiagnostic, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalPrefixWindowRateComparison:
     comparison_kind: HistoricalPrefixWindowRateComparisonKind
     from_window_kind: WindowKind
@@ -451,18 +504,25 @@ class HistoricalPrefixStrategySuccessMatrix:
 
 
 __all__ = [
+    "BENJAMINI_YEKUTIELI_METHOD",
     "DEFAULT_PAGE_LIMIT",
     "DEFAULT_PAGE_OFFSET",
     "FEATURE_COHORT_RELATION_ORDER",
+    "FISHER_EXACT_TWO_SIDED_METHOD",
     "MAX_PAGE_LIMIT",
     "MIN_PAGE_LIMIT",
     "SUPPORTED_PREFIX_COUNTS",
     "SUPPORTED_SUCCESS_CRITERIA",
+    "HistoricalPrefixExactProbability",
     "HistoricalPrefixExactSuccessRate",
+    "HistoricalPrefixFeatureCohortDiagnostic",
     "HistoricalPrefixFeatureCohortSummary",
+    "HistoricalPrefixFeatureCohortTestStatus",
     "HistoricalPrefixFeatureRelationTriple",
+    "HistoricalPrefixOutcomeCounts",
     "HistoricalPrefixRateRelation",
     "HistoricalPrefixSignedRateDelta",
+    "HistoricalPrefixStrategyFeatureCohortDiagnostics",
     "HistoricalPrefixStrategyFeatureCohortResult",
     "HistoricalPrefixStrategySuccessMatrix",
     "HistoricalPrefixStrategySuccessMatrixCell",

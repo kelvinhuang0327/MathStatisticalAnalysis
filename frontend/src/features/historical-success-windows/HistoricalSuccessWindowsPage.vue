@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
+  getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessWindows,
@@ -13,6 +14,7 @@ import {
   type HistoricalRun,
   type HistoricalRunPage,
   type HistoricalSuccessCriterion,
+  type HistoricalSuccessFeatureCohortDiagnostics,
   type HistoricalSuccessFeatureCohorts,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessStabilityMatrix,
@@ -47,6 +49,13 @@ type FeatureCohortOutcome = {
   error: string
 }
 type FeatureCohort = HistoricalSuccessFeatureCohorts['cohorts'][number]
+type FeatureCohortDiagnosticOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessFeatureCohortDiagnostics | null
+  error: string
+}
+type FeatureCohortDiagnostic =
+  HistoricalSuccessFeatureCohortDiagnostics['diagnostics'][number]
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -70,6 +79,8 @@ const matrixState = ref<MatrixState>('idle')
 const matrixResults = ref<MatrixOutcome[]>([])
 const featureCohortState = ref<MatrixState>('idle')
 const featureCohortResults = ref<FeatureCohortOutcome[]>([])
+const featureCohortDiagnosticsState = ref<MatrixState>('idle')
+const featureCohortDiagnosticsResults = ref<FeatureCohortDiagnosticOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
@@ -77,11 +88,13 @@ let analysisGeneration = 0
 let detailGeneration = 0
 let matrixGeneration = 0
 let featureCohortGeneration = 0
+let featureCohortDiagnosticsGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
 let matrixController: AbortController | undefined
 let featureCohortController: AbortController | undefined
+let featureCohortDiagnosticsController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -199,6 +212,14 @@ function clearFeatureCohorts(): void {
     matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearFeatureCohortDiagnostics(): void {
+  featureCohortDiagnosticsGeneration += 1
+  featureCohortDiagnosticsController?.abort()
+  featureCohortDiagnosticsResults.value = []
+  featureCohortDiagnosticsState.value =
+    matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
 function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   const checked = (event.target as HTMLInputElement).checked
   const identity = matrixIdentity(item)
@@ -218,6 +239,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   }
   clearMatrix(false)
   clearFeatureCohorts()
+  clearFeatureCohortDiagnostics()
 }
 
 function chooseRun(): void {
@@ -230,11 +252,13 @@ function chooseRun(): void {
   clearAnalysis()
   clearMatrix(true)
   clearFeatureCohorts()
+  clearFeatureCohortDiagnostics()
 }
 
 function controlsChanged(): void {
   clearAnalysis()
   clearFeatureCohorts()
+  clearFeatureCohortDiagnostics()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -314,6 +338,51 @@ async function evaluateSelectedFeatureCohorts(): Promise<void> {
   featureCohortResults.value = outcomes
   const successes = outcomes.filter((outcome) => outcome.result !== null).length
   featureCohortState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
+}
+
+async function evaluateSelectedFeatureCohortDiagnostics(): Promise<void> {
+  const run = selectedRun.value
+  const selections = [...matrixSelections.value]
+  if (run === null || selections.length < 1 || selections.length > 4) return
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++featureCohortDiagnosticsGeneration
+  featureCohortDiagnosticsController?.abort()
+  const controller = new AbortController()
+  featureCohortDiagnosticsController = controller
+  featureCohortDiagnosticsResults.value = []
+  featureCohortDiagnosticsState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<FeatureCohortDiagnosticOutcome> => {
+      try {
+        const result = await getHistoricalSuccessFeatureCohortDiagnostics(
+          {
+            import_identity_sha256: run.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+            prefix_count: selectedPrefix,
+            criterion: selectedCriterion,
+          },
+          controller.signal,
+        )
+        return { selection, result, error: '' }
+      } catch (error: unknown) {
+        return { selection, result: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (
+    !mounted ||
+    generation !== featureCohortDiagnosticsGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  featureCohortDiagnosticsResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.result !== null).length
+  featureCohortDiagnosticsState.value =
     successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
@@ -455,6 +524,26 @@ function optionalTarget(target: FeatureCohort['first_target']): string {
   return target === null ? 'None' : `${target.draw_date} · #${target.draw_number}`
 }
 
+function diagnosticKey(diagnostic: FeatureCohortDiagnostic): string {
+  return `${diagnostic.cohort_index}:${[
+    diagnostic.feature_key.long_to_medium,
+    diagnostic.feature_key.medium_to_short,
+    diagnostic.feature_key.long_to_short,
+  ].join(':')}`
+}
+
+function exactProbability(
+  probability: FeatureCohortDiagnostic['raw_p_value'],
+): string {
+  return `${probability.numerator} / ${probability.denominator}`
+}
+
+function diagnosticEffect(diagnostic: FeatureCohortDiagnostic): string {
+  return diagnostic.risk_difference.available
+    ? `${diagnostic.risk_difference.numerator} / ${diagnostic.risk_difference.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
 onMounted(() => {
   mounted = true
   void loadRuns()
@@ -466,11 +555,13 @@ onBeforeUnmount(() => {
   detailGeneration += 1
   matrixGeneration += 1
   featureCohortGeneration += 1
+  featureCohortDiagnosticsGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
   matrixController?.abort()
   featureCohortController?.abort()
+  featureCohortDiagnosticsController?.abort()
 })
 </script>
 
@@ -954,6 +1045,167 @@ onBeforeUnmount(() => {
       </ol>
     </section>
 
+    <section
+      class="research-results feature-cohort-diagnostics"
+      aria-labelledby="feature-cohort-diagnostics-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">6 · Cohort inferential diagnostics</p>
+          <h2 id="feature-cohort-diagnostics-title">Exact disjoint cohort diagnostics</h2>
+        </div>
+        <button
+          class="button button--primary feature-cohort-diagnostics-evaluate"
+          type="button"
+          :disabled="selectedRun === null || matrixSelections.length === 0"
+          @click="evaluateSelectedFeatureCohortDiagnostics"
+        >
+          Evaluate cohort inferential diagnostics
+        </button>
+      </div>
+
+      <p v-if="selectedRun === null" class="research-state">
+        Select a run before evaluating cohort inferential diagnostics.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities above. No diagnostics request runs on selection.
+      </p>
+      <p v-else-if="featureCohortDiagnosticsState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact {{ matrixSelections.length === 1 ? 'identity' : 'identities' }}
+        selected in manual order. Diagnostics run only from the explicit action.
+      </p>
+      <p v-if="featureCohortDiagnosticsState === 'loading'" class="research-state">
+        Evaluating exact disjoint cohort diagnostics…
+      </p>
+      <div
+        v-if="featureCohortDiagnosticsState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>Some exact diagnostics requests are unavailable; successful results remain visible.</strong>
+        <button
+          class="button button--quiet feature-cohort-diagnostics-retry"
+          type="button"
+          @click="evaluateSelectedFeatureCohortDiagnostics"
+        >
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="featureCohortDiagnosticsState === 'error'"
+        class="research-state research-state--error"
+      >
+        <strong>All selected diagnostics requests failed with sanitized errors.</strong>
+        <button
+          class="button button--quiet feature-cohort-diagnostics-retry"
+          type="button"
+          @click="evaluateSelectedFeatureCohortDiagnostics"
+        >
+          Retry all
+        </button>
+      </div>
+
+      <ol
+        v-if="featureCohortDiagnosticsResults.length > 0"
+        class="feature-cohort-diagnostics-result-list"
+      >
+        <li
+          v-for="outcome in featureCohortDiagnosticsResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="feature-cohort-diagnostics-result-card"
+        >
+          <header>
+            <div>
+              <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+              <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+              <code>
+                {{ outcome.selection.strategy.strategy_version }} · replicate
+                {{ outcome.selection.strategy.replicate }}
+              </code>
+            </div>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts feature-cohort-diagnostics-facts">
+              <div><dt>Prefix</dt><dd>{{ outcome.result.prefix_count }}</dd></div>
+              <div><dt>Criterion</dt><dd>{{ outcome.result.criterion.criterion }}</dd></div>
+              <div><dt>Family size</dt><dd>{{ outcome.result.family_size }}</dd></div>
+              <div><dt>Raw test</dt><dd>{{ outcome.result.raw_test_method }}</dd></div>
+              <div><dt>Adjustment</dt><dd>{{ outcome.result.adjustment_method }}</dd></div>
+              <div><dt>Baseline observations</dt><dd>{{ outcome.result.baseline.observation_count }}</dd></div>
+              <div><dt>Baseline successes</dt><dd>{{ outcome.result.baseline.success_count }}</dd></div>
+              <div><dt>Baseline failures</dt><dd>{{ outcome.result.baseline.failure_count }}</dd></div>
+            </dl>
+            <div class="feature-cohort-diagnostics-table-scroll">
+              <table class="feature-cohort-diagnostics-table">
+                <caption>
+                  All 64 hypotheses remain in canonical server order. Cohort and outside counts are
+                  disjoint; probabilities and effects are neutral diagnostics only.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Index</th>
+                    <th scope="col">Long→Medium</th>
+                    <th scope="col">Medium→Short</th>
+                    <th scope="col">Long→Short</th>
+                    <th scope="col">Test status</th>
+                    <th scope="col">Cohort S/F/N</th>
+                    <th scope="col">Outside S/F/N</th>
+                    <th scope="col">Cohort rate</th>
+                    <th scope="col">Outside rate</th>
+                    <th scope="col">Risk difference</th>
+                    <th scope="col">Relation</th>
+                    <th scope="col">Raw exact p</th>
+                    <th scope="col">BY-adjusted exact p</th>
+                    <th scope="col">First target</th>
+                    <th scope="col">Last target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="diagnostic in outcome.result.diagnostics"
+                    :key="diagnosticKey(diagnostic)"
+                    :class="{
+                      'feature-cohort-row--empty':
+                        diagnostic.cohort_counts.observation_count === 0,
+                    }"
+                  >
+                    <td>{{ diagnostic.cohort_index }}</td>
+                    <td>{{ diagnostic.feature_key.long_to_medium }}</td>
+                    <td>{{ diagnostic.feature_key.medium_to_short }}</td>
+                    <td>{{ diagnostic.feature_key.long_to_short }}</td>
+                    <td>{{ diagnostic.test_status }}</td>
+                    <td>
+                      {{ diagnostic.cohort_counts.success_count }} /
+                      {{ diagnostic.cohort_counts.failure_count }} /
+                      {{ diagnostic.cohort_counts.observation_count }}
+                    </td>
+                    <td>
+                      {{ diagnostic.outside_counts.success_count }} /
+                      {{ diagnostic.outside_counts.failure_count }} /
+                      {{ diagnostic.outside_counts.observation_count }}
+                    </td>
+                    <td>{{ featureRate(diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(diagnostic) }}</td>
+                    <td>{{ diagnostic.relation_vs_outside }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(diagnostic.adjusted_p_value) }}</code></td>
+                    <td>{{ optionalTarget(diagnostic.first_target) }}</td>
+                    <td>{{ optionalTarget(diagnostic.last_target) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div
+            v-else
+            class="research-state research-state--error feature-cohort-diagnostics-item-error"
+          >
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
     <aside v-if="detailState !== 'closed'" class="detail-panel" aria-labelledby="exact-detail-title">
       <div class="panel-heading">
         <div>
@@ -1057,6 +1309,17 @@ onBeforeUnmount(() => {
 .feature-cohort-table td { font-family: 'SFMono-Regular', Consolas, monospace; }
 .feature-cohort-row--empty { color: var(--muted); }
 .feature-cohort-item-error { margin-top: 16px; }
+.feature-cohort-diagnostics-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.feature-cohort-diagnostics-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.feature-cohort-diagnostics-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.feature-cohort-diagnostics-table-scroll { overflow-x: auto; margin-top: 18px; }
+.feature-cohort-diagnostics-table { width: 100%; min-width: 2100px; border-collapse: collapse; color: var(--ink); font-size: 10px; }
+.feature-cohort-diagnostics-table caption { padding: 0 0 12px; color: var(--muted); text-align: left; }
+.feature-cohort-diagnostics-table th, .feature-cohort-diagnostics-table td { padding: 9px; border: 1px solid var(--line); vertical-align: top; }
+.feature-cohort-diagnostics-table th { background: #0a1714; color: var(--mint); text-align: left; }
+.feature-cohort-diagnostics-table td { font-family: 'SFMono-Regular', Consolas, monospace; }
+.exact-probability { display: block; max-width: 36rem; overflow-x: auto; white-space: pre; user-select: all; }
+.feature-cohort-diagnostics-item-error { margin-top: 16px; }
 .detail-panel { border-color: rgb(121 227 178 / 38%); }
 .detail-content h3 { margin-bottom: 6px; color: var(--ink); }
 .detail-content { color: var(--muted); }

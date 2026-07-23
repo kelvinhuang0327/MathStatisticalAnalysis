@@ -4,21 +4,29 @@ from __future__ import annotations
 
 import re
 from datetime import date
-from math import gcd
+from fractions import Fraction
+from math import comb, gcd
 
 from lottolab.application.historical_prefix_success_windows import (
+    BENJAMINI_YEKUTIELI_METHOD,
     DEFAULT_PAGE_LIMIT,
     DEFAULT_PAGE_OFFSET,
     FEATURE_COHORT_RELATION_ORDER,
+    FISHER_EXACT_TWO_SIDED_METHOD,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
     SUPPORTED_PREFIX_COUNTS,
     SUPPORTED_SUCCESS_CRITERIA,
+    HistoricalPrefixExactProbability,
     HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixFeatureCohortDiagnostic,
     HistoricalPrefixFeatureCohortSummary,
+    HistoricalPrefixFeatureCohortTestStatus,
     HistoricalPrefixFeatureRelationTriple,
+    HistoricalPrefixOutcomeCounts,
     HistoricalPrefixRateRelation,
     HistoricalPrefixSignedRateDelta,
+    HistoricalPrefixStrategyFeatureCohortDiagnostics,
     HistoricalPrefixStrategyFeatureCohortResult,
     HistoricalPrefixStrategySuccessMatrix,
     HistoricalPrefixStrategySuccessMatrixCell,
@@ -638,6 +646,222 @@ def _feature_cohorts(
     )
 
 
+def _exact_probability(value: Fraction) -> HistoricalPrefixExactProbability:
+    if value < 0 or value > 1:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "exact probability must be between zero and one"
+        )
+    return HistoricalPrefixExactProbability(
+        numerator=value.numerator,
+        denominator=value.denominator,
+    )
+
+
+def _fisher_exact_two_sided(
+    cohort: HistoricalPrefixOutcomeCounts,
+    outside: HistoricalPrefixOutcomeCounts,
+) -> HistoricalPrefixExactProbability:
+    total_observations = cohort.observation_count + outside.observation_count
+    total_successes = cohort.success_count + outside.success_count
+    cohort_observations = cohort.observation_count
+    observed_successes = cohort.success_count
+    lower = max(0, cohort_observations - (total_observations - total_successes))
+    upper = min(cohort_observations, total_successes)
+    if not lower <= observed_successes <= upper:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "observed cohort successes fall outside the exact Fisher support"
+        )
+    denominator = comb(total_observations, cohort_observations)
+    if denominator <= 0:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "exact Fisher denominator must be positive"
+        )
+
+    def weight(successes: int) -> int:
+        return comb(total_successes, successes) * comb(
+            total_observations - total_successes,
+            cohort_observations - successes,
+        )
+
+    observed_weight = weight(observed_successes)
+    numerator = sum(
+        candidate_weight
+        for successes in range(lower, upper + 1)
+        if (candidate_weight := weight(successes)) <= observed_weight
+    )
+    return _exact_probability(Fraction(numerator, denominator))
+
+
+def _diagnostic_test_status(
+    cohort: HistoricalPrefixOutcomeCounts,
+    outside: HistoricalPrefixOutcomeCounts,
+) -> HistoricalPrefixFeatureCohortTestStatus:
+    if cohort.observation_count == 0:
+        return HistoricalPrefixFeatureCohortTestStatus.NOT_TESTABLE_EMPTY_COHORT
+    if outside.observation_count == 0:
+        return HistoricalPrefixFeatureCohortTestStatus.NOT_TESTABLE_EMPTY_COMPLEMENT
+    total_successes = cohort.success_count + outside.success_count
+    total_observations = cohort.observation_count + outside.observation_count
+    if total_successes == 0 or total_successes == total_observations:
+        return HistoricalPrefixFeatureCohortTestStatus.NOT_TESTABLE_NO_OUTCOME_VARIATION
+    return HistoricalPrefixFeatureCohortTestStatus.TESTED
+
+
+def _adjust_benjamini_yekutieli(
+    raw_probabilities: tuple[HistoricalPrefixExactProbability, ...],
+) -> tuple[HistoricalPrefixExactProbability, ...]:
+    family_size = len(raw_probabilities)
+    if family_size != 64:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "feature-cohort diagnostics require the fixed family size of 64"
+        )
+    harmonic_factor = sum(
+        (Fraction(1, rank) for rank in range(1, family_size + 1)),
+        start=Fraction(0, 1),
+    )
+    ordered = sorted(
+        enumerate(raw_probabilities),
+        key=lambda item: (
+            Fraction(item[1].numerator, item[1].denominator),
+            item[0],
+        ),
+    )
+    candidates = [
+        min(
+            Fraction(1, 1),
+            Fraction(probability.numerator, probability.denominator)
+            * family_size
+            * harmonic_factor
+            / rank,
+        )
+        for rank, (_, probability) in enumerate(ordered, start=1)
+    ]
+    adjusted_sorted = [Fraction(1, 1)] * family_size
+    running_minimum = Fraction(1, 1)
+    for index in range(family_size - 1, -1, -1):
+        running_minimum = min(running_minimum, candidates[index])
+        adjusted_sorted[index] = running_minimum
+    adjusted = [HistoricalPrefixExactProbability(1, 1)] * family_size
+    for (canonical_index, _), probability in zip(
+        ordered, adjusted_sorted, strict=True
+    ):
+        adjusted[canonical_index] = _exact_probability(probability)
+    return tuple(adjusted)
+
+
+def _feature_cohort_diagnostics(
+    result: HistoricalPrefixStrategyFeatureCohortResult,
+) -> HistoricalPrefixStrategyFeatureCohortDiagnostics:
+    if result.cohort_count != 64 or len(result.cohorts) != 64:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "feature-cohort diagnostics require all 64 canonical cohorts"
+        )
+    baseline = result.baseline
+    raw_probabilities: list[HistoricalPrefixExactProbability] = []
+    unadjusted: list[
+        tuple[
+            HistoricalPrefixFeatureCohortTestStatus,
+            HistoricalPrefixOutcomeCounts,
+            HistoricalPrefixOutcomeCounts,
+            HistoricalPrefixExactSuccessRate,
+            HistoricalPrefixSignedRateDelta,
+            HistoricalPrefixRateRelation,
+        ]
+    ] = []
+    for cohort in result.cohorts:
+        cohort_counts = HistoricalPrefixOutcomeCounts(
+            observation_count=cohort.observation_count,
+            success_count=cohort.success_count,
+            failure_count=cohort.failure_count,
+        )
+        outside_counts = HistoricalPrefixOutcomeCounts(
+            observation_count=baseline.observation_count - cohort.observation_count,
+            success_count=baseline.success_count - cohort.success_count,
+            failure_count=baseline.failure_count - cohort.failure_count,
+        )
+        for counts in (cohort_counts, outside_counts):
+            if (
+                min(
+                    counts.observation_count,
+                    counts.success_count,
+                    counts.failure_count,
+                )
+                < 0
+                or counts.success_count + counts.failure_count
+                != counts.observation_count
+            ):
+                raise HistoricalPrefixSuccessWindowsUnavailableError(
+                    "feature-cohort complement arithmetic is inconsistent"
+                )
+        status = _diagnostic_test_status(cohort_counts, outside_counts)
+        outside_rate = _success_rate(
+            outside_counts.success_count,
+            outside_counts.observation_count,
+        )
+        risk_difference, relation = _signed_rate_delta(
+            outside_rate,
+            cohort.success_rate,
+        )
+        raw_probability = (
+            _fisher_exact_two_sided(cohort_counts, outside_counts)
+            if status is HistoricalPrefixFeatureCohortTestStatus.TESTED
+            else HistoricalPrefixExactProbability(1, 1)
+        )
+        raw_probabilities.append(raw_probability)
+        unadjusted.append(
+            (
+                status,
+                cohort_counts,
+                outside_counts,
+                outside_rate,
+                risk_difference,
+                relation,
+            )
+        )
+    adjusted_probabilities = _adjust_benjamini_yekutieli(
+        tuple(raw_probabilities)
+    )
+    diagnostics = tuple(
+        HistoricalPrefixFeatureCohortDiagnostic(
+            cohort_index=index,
+            feature_key=cohort.feature_key,
+            test_status=status,
+            cohort_counts=cohort_counts,
+            outside_counts=outside_counts,
+            cohort_success_rate=cohort.success_rate,
+            outside_success_rate=outside_rate,
+            risk_difference=risk_difference,
+            relation_vs_outside=relation,
+            raw_p_value=raw_probabilities[index],
+            adjusted_p_value=adjusted_probabilities[index],
+            first_target=cohort.first_target,
+            last_target=cohort.last_target,
+        )
+        for index, (cohort, details) in enumerate(
+            zip(result.cohorts, unadjusted, strict=True)
+        )
+        for (
+            status,
+            cohort_counts,
+            outside_counts,
+            outside_rate,
+            risk_difference,
+            relation,
+        ) in (details,)
+    )
+    return HistoricalPrefixStrategyFeatureCohortDiagnostics(
+        metadata=result.metadata,
+        strategy=result.strategy,
+        criterion=result.criterion,
+        prefix_count=result.prefix_count,
+        baseline=result.baseline,
+        family_size=64,
+        raw_test_method=FISHER_EXACT_TWO_SIDED_METHOD,
+        adjustment_method=BENJAMINI_YEKUTIELI_METHOD,
+        diagnostics=diagnostics,
+    )
+
+
 def _matrix_cell(
     result: HistoricalPrefixStrategySuccessWindowResult,
 ) -> HistoricalPrefixStrategySuccessMatrixCell:
@@ -838,6 +1062,38 @@ class EvaluateHistoricalPrefixSuccessWindows:
             prefix_count=prefix_count,
             criterion=criterion,
         )
+
+    def get_feature_cohort_diagnostics(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixStrategyFeatureCohortDiagnostics:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+        source = self._load(import_identity_sha256)
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        cohorts = _feature_cohorts(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        return _feature_cohort_diagnostics(cohorts)
 
 
 __all__ = ["EvaluateHistoricalPrefixSuccessWindows"]

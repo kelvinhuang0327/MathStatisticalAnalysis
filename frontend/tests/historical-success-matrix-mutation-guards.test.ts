@@ -61,12 +61,90 @@ describe('Historical Success stability-matrix mutation guards', () => {
   })
 
   it('keeps comparison language neutral and prohibits performance sorting', () => {
+    const matrixValidator = clientSource.split('function isStabilityMatrix(')[1]!.split(
+      'function isFeatureKey(',
+    )[0]!
     expect(pageSource).toContain('comparison.relation')
     expect(pageSource).not.toMatch(/\bwinner\b/i)
     expect(pageSource).not.toMatch(/\bbest strategy\b/i)
     expect(pageSource).not.toContain('.sort(')
-    expect(clientSource).not.toContain('.sort(')
+    expect(matrixValidator).not.toContain('.sort(')
     expect(clientSource).not.toMatch(/IMPROVED|DEGRADED/)
+  })
+})
+
+describe('Historical Success feature-cohort inferential diagnostics mutation guards', () => {
+  it('pins exact BigInt probability validation and fixed method identities', () => {
+    const validator = clientSource.split('function isExactProbability(')[1]!.split(
+      'function compareExactProbabilities(',
+    )[0]!
+    expect(validator).toContain('BigInt(value.numerator)')
+    expect(validator).toContain('BigInt(value.denominator)')
+    expect(validator).toContain('greatestCommonDivisorBigInt')
+    expect(clientSource).toContain('value.family_size !== 64')
+    expect(clientSource).toContain(
+      "value.raw_test_method !== 'FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING'",
+    )
+    expect(clientSource).toContain(
+      "value.adjustment_method !== 'BENJAMINI_YEKUTIELI'",
+    )
+  })
+
+  it('pins canonical order, disjoint counts, test status, and monotone adjustment', () => {
+    expect(clientSource).toContain('value.cohort_index !== index')
+    expect(clientSource).toContain(
+      'cohort.observation_count + outside.observation_count !==',
+    )
+    expect(clientSource).toContain('expectedDiagnosticStatus(cohort, outside)')
+    expect(clientSource).toContain(
+      "raw.numerator === '1' && raw.denominator === '1'",
+    )
+    expect(clientSource).toContain(
+      'left.cohort_index - right.cohort_index',
+    )
+    expect(clientSource).toContain(
+      'sorted[index - 1]!.adjusted_p_value',
+    )
+  })
+
+  it('keeps diagnostics separate, explicit, ordered, and capped at four', () => {
+    const toggle = pageSource.split('function toggleMatrixSelection(')[1]!.split(
+      'function chooseRun(',
+    )[0]!
+    const evaluate = pageSource.split(
+      'async function evaluateSelectedFeatureCohortDiagnostics(',
+    )[1]!.split('async function loadResults(', 1)[0]!
+    expect(pageSource).toContain('Evaluate cohort inferential diagnostics')
+    expect(toggle).not.toContain('evaluateSelectedFeatureCohortDiagnostics')
+    expect(evaluate).toContain('selections.length > 4')
+    expect(evaluate).toContain('selections.map(async (selection)')
+    expect(evaluate).not.toContain('.sort(')
+  })
+
+  it('pins abort and stale-generation guards across reevaluation and lifecycle changes', () => {
+    expect(pageSource).toContain(
+      'const generation = ++featureCohortDiagnosticsGeneration',
+    )
+    expect(pageSource).toContain('featureCohortDiagnosticsController?.abort()')
+    expect(pageSource).toContain(
+      'generation !== featureCohortDiagnosticsGeneration',
+    )
+    expect(pageSource).toContain('clearFeatureCohortDiagnostics()')
+  })
+
+  it('renders all diagnostics in server order without decision semantics', () => {
+    const section = pageSource.split(
+      'class="research-results feature-cohort-diagnostics"',
+    )[1]!.split('<aside ', 1)[0]!
+    expect(section).toContain(
+      'v-for="diagnostic in outcome.result.diagnostics"',
+    )
+    expect(section).toContain('diagnostic.raw_p_value')
+    expect(section).toContain('diagnostic.adjusted_p_value')
+    expect(section).not.toContain('.sort(')
+    expect(section).not.toMatch(
+      /significant|winner|best pattern|promotion|prediction/i,
+    )
   })
 })
 

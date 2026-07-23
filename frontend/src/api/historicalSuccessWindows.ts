@@ -10,6 +10,8 @@ export type HistoricalSuccessStabilityMatrix =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/matrix']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessFeatureCohorts =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessFeatureCohortDiagnostics =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -107,6 +109,9 @@ export interface HistoricalSuccessMatrixQuery {
 }
 
 export interface HistoricalSuccessFeatureCohortQuery
+  extends HistoricalSuccessExactQuery {}
+
+export interface HistoricalSuccessFeatureCohortDiagnosticsQuery
   extends HistoricalSuccessExactQuery {}
 
 export type HistoricalSuccessErrorKind =
@@ -681,6 +686,203 @@ function isFeatureCohorts(
   return assigned === baseline.observation_count
 }
 
+const CANONICAL_UNSIGNED_DECIMAL = /^(?:0|[1-9][0-9]*)$/
+
+function greatestCommonDivisorBigInt(left: bigint, right: bigint): bigint {
+  let a = left < 0n ? -left : left
+  let b = right < 0n ? -right : right
+  while (b !== 0n) {
+    const remainder = a % b
+    a = b
+    b = remainder
+  }
+  return a
+}
+
+function isExactProbability(value: unknown): boolean {
+  if (
+    !isRecord(value) ||
+    !isString(value.numerator) ||
+    !isString(value.denominator) ||
+    !CANONICAL_UNSIGNED_DECIMAL.test(value.numerator) ||
+    !CANONICAL_UNSIGNED_DECIMAL.test(value.denominator)
+  ) {
+    return false
+  }
+  const numerator = BigInt(value.numerator)
+  const denominator = BigInt(value.denominator)
+  return (
+    denominator > 0n &&
+    numerator <= denominator &&
+    greatestCommonDivisorBigInt(numerator, denominator) === 1n
+  )
+}
+
+function compareExactProbabilities(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+): number {
+  const leftNumerator = BigInt(left.numerator as string)
+  const leftDenominator = BigInt(left.denominator as string)
+  const rightNumerator = BigInt(right.numerator as string)
+  const rightDenominator = BigInt(right.denominator as string)
+  const difference =
+    leftNumerator * rightDenominator - rightNumerator * leftDenominator
+  return difference < 0n ? -1 : difference > 0n ? 1 : 0
+}
+
+function isOutcomeCounts(value: unknown): value is Record<string, number> {
+  return (
+    isRecord(value) &&
+    isNonNegativeInteger(value.observation_count) &&
+    isNonNegativeInteger(value.success_count) &&
+    isNonNegativeInteger(value.failure_count) &&
+    value.success_count + value.failure_count === value.observation_count
+  )
+}
+
+function expectedDiagnosticStatus(
+  cohort: Record<string, number>,
+  outside: Record<string, number>,
+): string {
+  if (cohort.observation_count === 0) return 'NOT_TESTABLE_EMPTY_COHORT'
+  if (outside.observation_count === 0) return 'NOT_TESTABLE_EMPTY_COMPLEMENT'
+  const successes = cohort.success_count + outside.success_count
+  const observations = cohort.observation_count + outside.observation_count
+  return successes === 0 || successes === observations
+    ? 'NOT_TESTABLE_NO_OUTCOME_VARIATION'
+    : 'TESTED'
+}
+
+function isDiagnosticRate(
+  value: unknown,
+  counts: Record<string, number>,
+): value is Record<string, unknown> {
+  return (
+    isExactRate(value) &&
+    isRecord(value) &&
+    value.numerator === counts.success_count &&
+    value.denominator ===
+      (counts.observation_count === 0 ? 0 : counts.observation_count) &&
+    value.available === (counts.observation_count > 0)
+  )
+}
+
+function isFeatureCohortDiagnostic(
+  value: unknown,
+  index: number,
+  baseline: Record<string, number>,
+): boolean {
+  if (
+    !isRecord(value) ||
+    value.cohort_index !== index ||
+    !isFeatureKey(value.feature_key, index) ||
+    !isOutcomeCounts(value.cohort_counts) ||
+    !isOutcomeCounts(value.outside_counts) ||
+    !isRecord(value.risk_difference) ||
+    !isExactProbability(value.raw_p_value) ||
+    !isExactProbability(value.adjusted_p_value)
+  ) {
+    return false
+  }
+  const cohort = value.cohort_counts
+  const outside = value.outside_counts
+  if (
+    cohort.observation_count + outside.observation_count !==
+      baseline.observation_count ||
+    cohort.success_count + outside.success_count !== baseline.success_count ||
+    cohort.failure_count + outside.failure_count !== baseline.failure_count ||
+    !isDiagnosticRate(value.cohort_success_rate, cohort) ||
+    !isDiagnosticRate(value.outside_success_rate, outside)
+  ) {
+    return false
+  }
+  const expectedStatus = expectedDiagnosticStatus(cohort, outside)
+  if (value.test_status !== expectedStatus) return false
+  const expectedEffect = expectedSignedDelta(
+    value.outside_success_rate as Record<string, unknown>,
+    value.cohort_success_rate as Record<string, unknown>,
+  )
+  if (expectedEffect === null) return false
+  const [numerator, denominator, available, relation] = expectedEffect
+  const raw = value.raw_p_value as Record<string, unknown>
+  const adjusted = value.adjusted_p_value as Record<string, unknown>
+  return (
+    value.risk_difference.numerator === numerator &&
+    value.risk_difference.denominator === denominator &&
+    value.risk_difference.available === available &&
+    value.relation_vs_outside === relation &&
+    (expectedStatus === 'TESTED' ||
+      (raw.numerator === '1' && raw.denominator === '1')) &&
+    compareExactProbabilities(raw, adjusted) <= 0 &&
+    (cohort.observation_count === 0
+      ? value.first_target === null && value.last_target === null
+      : isDrawIdentity(value.first_target) && isDrawIdentity(value.last_target))
+  )
+}
+
+function isFeatureCohortDiagnostics(
+  value: unknown,
+  query: HistoricalSuccessFeatureCohortDiagnosticsQuery,
+): value is HistoricalSuccessFeatureCohortDiagnostics {
+  if (
+    !isRecord(value) ||
+    !isMetadata(value.metadata, query.import_identity_sha256) ||
+    !isStrategyIdentity(value.strategy) ||
+    !isCriterion(value.criterion, query.criterion) ||
+    value.prefix_count !== query.prefix_count ||
+    !isRecord(value.baseline) ||
+    !isNonNegativeInteger(value.baseline.observation_count) ||
+    !isNonNegativeInteger(value.baseline.success_count) ||
+    !isNonNegativeInteger(value.baseline.failure_count) ||
+    !isExactRate(value.baseline.success_rate) ||
+    value.family_size !== 64 ||
+    value.raw_test_method !== 'FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING' ||
+    value.adjustment_method !== 'BENJAMINI_YEKUTIELI' ||
+    !Array.isArray(value.diagnostics) ||
+    value.diagnostics.length !== 64
+  ) {
+    return false
+  }
+  const strategy = value.strategy as Record<string, unknown>
+  const baseline = value.baseline as Record<string, number>
+  const baselineRate = value.baseline.success_rate as Record<string, unknown>
+  if (
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate ||
+    baseline.success_count + baseline.failure_count !==
+      baseline.observation_count ||
+    baselineRate.numerator !== baseline.success_count ||
+    baselineRate.denominator !==
+      (baseline.observation_count === 0 ? 0 : baseline.observation_count) ||
+    baselineRate.available !== (baseline.observation_count > 0)
+  ) {
+    return false
+  }
+  let assigned = 0
+  for (const [index, diagnostic] of value.diagnostics.entries()) {
+    if (!isFeatureCohortDiagnostic(diagnostic, index, baseline)) return false
+    assigned += diagnostic.cohort_counts.observation_count
+  }
+  if (assigned !== baseline.observation_count) return false
+  const sorted = [...value.diagnostics].sort((left, right) => {
+    const comparison = compareExactProbabilities(
+      left.raw_p_value as Record<string, unknown>,
+      right.raw_p_value as Record<string, unknown>,
+    )
+    return comparison === 0 ? left.cohort_index - right.cohort_index : comparison
+  })
+  return sorted.every(
+    (diagnostic, index) =>
+      index === 0 ||
+      compareExactProbabilities(
+        sorted[index - 1]!.adjusted_p_value as Record<string, unknown>,
+        diagnostic.adjusted_p_value as Record<string, unknown>,
+      ) <= 0,
+  )
+}
+
 function isSuccessPage(
   value: unknown,
   query: HistoricalSuccessWindowQuery,
@@ -882,5 +1084,21 @@ export async function getHistoricalSuccessFeatureCohorts(
     signal,
   )
   if (!isFeatureCohorts(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessFeatureCohortDiagnostics(
+  query: HistoricalSuccessFeatureCohortDiagnosticsQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessFeatureCohortDiagnostics> {
+  const parameters = successQueryParameters(query)
+  const identity = [query.strategy_id, query.strategy_version, String(query.replicate)]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/feature-cohorts/diagnostics?${parameters.toString()}`,
+    signal,
+  )
+  if (!isFeatureCohortDiagnostics(payload, query)) throw malformedResponse()
   return payload
 }

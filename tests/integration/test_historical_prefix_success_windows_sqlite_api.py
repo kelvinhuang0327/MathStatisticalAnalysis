@@ -115,10 +115,18 @@ def test_exact_persisted_import_flows_read_only_from_sqlite_to_all_http_routes(
         f"{LIST_PATH}/strategies/SYNTHETIC_ALIAS_B/v1/1/matrix",
         params={"import_identity_sha256": run_import.import_identity_sha256},
     )
+    diagnostics_response = client.get(
+        (
+            f"{LIST_PATH}/strategies/SYNTHETIC_ALIAS_B/v1/1/"
+            "feature-cohorts/diagnostics"
+        ),
+        params=_params(run_import.import_identity_sha256),
+    )
 
     assert page_response.status_code == 200
     assert exact_response.status_code == 200
     assert matrix_response.status_code == 200
+    assert diagnostics_response.status_code == 200
     assert page_response.json()["total_count"] == len(run_import.strategy_descriptors)
     assert [
         item["strategy"]["strategy_id"] for item in page_response.json()["items"]
@@ -130,6 +138,16 @@ def test_exact_persisted_import_flows_read_only_from_sqlite_to_all_http_routes(
     assert matrix["strategy"]["strategy_id"] == "SYNTHETIC_ALIAS_B"
     assert matrix["cell_count"] == len(matrix["cells"]) == 64
     assert matrix["source_observation_count"] == 1
+    diagnostics = diagnostics_response.json()
+    assert diagnostics["strategy"]["strategy_id"] == "SYNTHETIC_ALIAS_B"
+    assert diagnostics["family_size"] == len(diagnostics["diagnostics"]) == 64
+    assert diagnostics["raw_test_method"] == (
+        "FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING"
+    )
+    assert all(
+        isinstance(item["raw_p_value"]["numerator"], str)
+        for item in diagnostics["diagnostics"]
+    )
     assert database.read_bytes() == before
     assert not list(tmp_path.glob("historical.db-*"))
     assert not list(tmp_path.glob("historical.db-journal"))

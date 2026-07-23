@@ -1,6 +1,7 @@
 import type {
   HistoricalRun,
   HistoricalRunPage,
+  HistoricalSuccessFeatureCohortDiagnostics,
   HistoricalSuccessFeatureCohorts,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessWindowPage,
@@ -476,6 +477,128 @@ export function makeZeroObservationFeatureCohorts(): HistoricalSuccessFeatureCoh
       last_target: null,
     })),
   }
+}
+
+export function makeFeatureCohortDiagnostics(
+  overrides: Partial<HistoricalSuccessFeatureCohortDiagnostics> = {},
+): HistoricalSuccessFeatureCohortDiagnostics {
+  const cohorts = makeFeatureCohorts()
+  const diagnostics = cohorts.cohorts.map((cohort, cohort_index) => {
+    const outside = {
+      observation_count:
+        cohorts.baseline.observation_count - cohort.observation_count,
+      success_count: cohorts.baseline.success_count - cohort.success_count,
+      failure_count: cohorts.baseline.failure_count - cohort.failure_count,
+    }
+    const effect = featureDelta(
+      cohort.success_count,
+      cohort.observation_count,
+      outside.success_count,
+      outside.observation_count,
+    )
+    const status =
+      cohort.observation_count === 0
+        ? 'NOT_TESTABLE_EMPTY_COHORT'
+        : outside.observation_count === 0
+          ? 'NOT_TESTABLE_EMPTY_COMPLEMENT'
+          : cohorts.baseline.success_count === 0 ||
+              cohorts.baseline.success_count === cohorts.baseline.observation_count
+            ? 'NOT_TESTABLE_NO_OUTCOME_VARIATION'
+            : 'TESTED'
+    return {
+      cohort_index,
+      feature_key: cohort.feature_key,
+      test_status: status,
+      cohort_counts: {
+        observation_count: cohort.observation_count,
+        success_count: cohort.success_count,
+        failure_count: cohort.failure_count,
+      },
+      outside_counts: outside,
+      cohort_success_rate: cohort.success_rate,
+      outside_success_rate:
+        outside.observation_count === 0
+          ? { numerator: 0, denominator: 0, available: false }
+          : {
+              numerator: outside.success_count,
+              denominator: outside.observation_count,
+              available: true,
+            },
+      risk_difference: {
+        numerator: effect.numerator,
+        denominator: effect.denominator,
+        available: effect.available,
+      },
+      relation_vs_outside: effect.relation,
+      raw_p_value: { numerator: '1', denominator: '1' },
+      adjusted_p_value: { numerator: '1', denominator: '1' },
+      first_target: cohort.first_target,
+      last_target: cohort.last_target,
+    }
+  })
+  return {
+    metadata: cohorts.metadata,
+    strategy: cohorts.strategy,
+    criterion: cohorts.criterion,
+    prefix_count: cohorts.prefix_count,
+    baseline: cohorts.baseline,
+    family_size: 64,
+    raw_test_method: 'FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING',
+    adjustment_method: 'BENJAMINI_YEKUTIELI',
+    diagnostics,
+    ...overrides,
+  } as HistoricalSuccessFeatureCohortDiagnostics
+}
+
+export function makeFeatureCohortDiagnosticsForResult(
+  result: HistoricalSuccessWindowResult,
+): HistoricalSuccessFeatureCohortDiagnostics {
+  return makeFeatureCohortDiagnostics({ strategy: result.strategy })
+}
+
+export function makeZeroObservationFeatureCohortDiagnostics():
+  HistoricalSuccessFeatureCohortDiagnostics {
+  const zero = makeZeroObservationResult()
+  const cohorts = makeZeroObservationFeatureCohorts()
+  return makeFeatureCohortDiagnostics({
+    strategy: zero.strategy,
+    baseline: cohorts.baseline,
+    diagnostics: cohorts.cohorts.map((cohort, cohort_index) => ({
+      cohort_index,
+      feature_key: cohort.feature_key,
+      test_status: 'NOT_TESTABLE_EMPTY_COHORT',
+      cohort_counts: {
+        observation_count: 0,
+        success_count: 0,
+        failure_count: 0,
+      },
+      outside_counts: {
+        observation_count: 0,
+        success_count: 0,
+        failure_count: 0,
+      },
+      cohort_success_rate: {
+        numerator: 0,
+        denominator: 0,
+        available: false,
+      },
+      outside_success_rate: {
+        numerator: 0,
+        denominator: 0,
+        available: false,
+      },
+      risk_difference: {
+        numerator: 0,
+        denominator: 0,
+        available: false,
+      },
+      relation_vs_outside: 'UNAVAILABLE',
+      raw_p_value: { numerator: '1', denominator: '1' },
+      adjusted_p_value: { numerator: '1', denominator: '1' },
+      first_target: null,
+      last_target: null,
+    })),
+  })
 }
 
 function rebuildComparisons(

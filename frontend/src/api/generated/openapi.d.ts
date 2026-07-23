@@ -509,6 +509,44 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixTemporalHoldoutResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics": {
       get: {
           parameters: {
@@ -1246,6 +1284,39 @@ export interface components {
           "evaluation_status": components['schemas']["WindowEvaluationStatus"]
           "evidence_status": components['schemas']["EvidenceStatus"]
         }
+    "HistoricalPrefixTemporalHoldoutCohortComparisonView": {
+          "cohort_index": number
+          "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
+          "discovery_diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+          "confirmation_diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+          "effect_change": components['schemas']["HistoricalPrefixSignedRateDeltaView"]
+          "relationship": components['schemas']["HistoricalPrefixTemporalHoldoutRelationship"]
+        }
+    "HistoricalPrefixTemporalHoldoutRelationship": "SAME_HIGHER" | "SAME_EQUAL" | "SAME_LOWER" | "DIFFERENT" | "UNAVAILABLE"
+    "HistoricalPrefixTemporalHoldoutResponse": {
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "split": components['schemas']["HistoricalPrefixTemporalHoldoutSplitView"]
+          "evaluation_status": components['schemas']["HistoricalPrefixTemporalHoldoutStatus"]
+          "family_size": number
+          "discovery": components['schemas']["HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"] | null
+          "confirmation": components['schemas']["HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"] | null
+          "comparisons": Array<components['schemas']["HistoricalPrefixTemporalHoldoutCohortComparisonView"]>
+        }
+    "HistoricalPrefixTemporalHoldoutSplitView": {
+          "split_method": string
+          "total_assignment_count": number
+          "warmup_count": number
+          "discovery_count": number
+          "confirmation_count": number
+          "discovery_first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "discovery_last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "confirmation_first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "confirmation_last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+        }
+    "HistoricalPrefixTemporalHoldoutStatus": "COMPLETE" | "NOT_READY_INSUFFICIENT_HISTORY"
     "HistoricalPrefixWalkForwardBaselineView": {
           "observation_count": number
           "success_count": number

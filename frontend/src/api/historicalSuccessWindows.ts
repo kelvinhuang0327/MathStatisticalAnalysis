@@ -12,6 +12,8 @@ export type HistoricalSuccessFeatureCohorts =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessFeatureCohortDiagnostics =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessTemporalHoldout =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -112,6 +114,9 @@ export interface HistoricalSuccessFeatureCohortQuery
   extends HistoricalSuccessExactQuery {}
 
 export interface HistoricalSuccessFeatureCohortDiagnosticsQuery
+  extends HistoricalSuccessExactQuery {}
+
+export interface HistoricalSuccessTemporalHoldoutQuery
   extends HistoricalSuccessExactQuery {}
 
 export type HistoricalSuccessErrorKind =
@@ -883,6 +888,165 @@ function isFeatureCohortDiagnostics(
   )
 }
 
+function isExactEffectChange(
+  value: unknown,
+  discovery: Record<string, unknown>,
+  confirmation: Record<string, unknown>,
+): boolean {
+  if (
+    !isRecord(value) ||
+    !Number.isSafeInteger(value.numerator) ||
+    !Number.isSafeInteger(value.denominator) ||
+    typeof value.available !== 'boolean'
+  ) {
+    return false
+  }
+  if (discovery.available !== true || confirmation.available !== true) {
+    return value.numerator === 0 && value.denominator === 0 && value.available === false
+  }
+  if (
+    !Number.isSafeInteger(discovery.numerator) ||
+    !Number.isSafeInteger(discovery.denominator) ||
+    !Number.isSafeInteger(confirmation.numerator) ||
+    !Number.isSafeInteger(confirmation.denominator) ||
+    (discovery.denominator as number) <= 0 ||
+    (confirmation.denominator as number) <= 0
+  ) {
+    return false
+  }
+  let expectedNumerator =
+    BigInt(confirmation.numerator as number) *
+      BigInt(discovery.denominator as number) -
+    BigInt(discovery.numerator as number) *
+      BigInt(confirmation.denominator as number)
+  let expectedDenominator =
+    BigInt(confirmation.denominator as number) *
+    BigInt(discovery.denominator as number)
+  const divisor = greatestCommonDivisorBigInt(expectedNumerator, expectedDenominator)
+  expectedNumerator /= divisor
+  expectedDenominator /= divisor
+  return (
+    value.available === true &&
+    BigInt(value.numerator as number) === expectedNumerator &&
+    BigInt(value.denominator as number) === expectedDenominator
+  )
+}
+
+function expectedTemporalRelationship(
+  discovery: unknown,
+  confirmation: unknown,
+): string {
+  if (discovery === 'UNAVAILABLE' || confirmation === 'UNAVAILABLE') {
+    return 'UNAVAILABLE'
+  }
+  if (discovery !== confirmation) return 'DIFFERENT'
+  if (discovery === 'HIGHER') return 'SAME_HIGHER'
+  if (discovery === 'EQUAL') return 'SAME_EQUAL'
+  return discovery === 'LOWER' ? 'SAME_LOWER' : ''
+}
+
+function isTemporalHoldout(
+  value: unknown,
+  query: HistoricalSuccessTemporalHoldoutQuery,
+): value is HistoricalSuccessTemporalHoldout {
+  if (
+    !isRecord(value) ||
+    !isMetadata(value.metadata, query.import_identity_sha256) ||
+    !isStrategyIdentity(value.strategy) ||
+    !isCriterion(value.criterion, query.criterion) ||
+    value.prefix_count !== query.prefix_count ||
+    value.family_size !== 64 ||
+    !isRecord(value.split) ||
+    value.split.split_method !==
+      'FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION' ||
+    !isNonNegativeInteger(value.split.total_assignment_count) ||
+    !isNonNegativeInteger(value.split.warmup_count) ||
+    !isNonNegativeInteger(value.split.discovery_count) ||
+    !isNonNegativeInteger(value.split.confirmation_count) ||
+    !Array.isArray(value.comparisons)
+  ) {
+    return false
+  }
+  const strategy = value.strategy as Record<string, unknown>
+  const split = value.split as Record<string, unknown> & {
+    total_assignment_count: number
+    warmup_count: number
+    discovery_count: number
+    confirmation_count: number
+  }
+  if (
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate ||
+    split.total_assignment_count !==
+      split.warmup_count + split.discovery_count + split.confirmation_count
+  ) {
+    return false
+  }
+  if (value.evaluation_status === 'NOT_READY_INSUFFICIENT_HISTORY') {
+    return (
+      split.total_assignment_count < 1050 &&
+      split.warmup_count === split.total_assignment_count &&
+      split.discovery_count === 0 &&
+      split.confirmation_count === 0 &&
+      split.discovery_first_target === null &&
+      split.discovery_last_target === null &&
+      split.confirmation_first_target === null &&
+      split.confirmation_last_target === null &&
+      value.discovery === null &&
+      value.confirmation === null &&
+      value.comparisons.length === 0
+    )
+  }
+  if (
+    value.evaluation_status !== 'COMPLETE' ||
+    split.discovery_count !== 750 ||
+    split.confirmation_count !== 300 ||
+    !isDrawIdentity(split.discovery_first_target) ||
+    !isDrawIdentity(split.discovery_last_target) ||
+    !isDrawIdentity(split.confirmation_first_target) ||
+    !isDrawIdentity(split.confirmation_last_target) ||
+    !isFeatureCohortDiagnostics(value.discovery, query) ||
+    !isFeatureCohortDiagnostics(value.confirmation, query) ||
+    value.discovery.baseline.observation_count !== 750 ||
+    value.confirmation.baseline.observation_count !== 300 ||
+    value.comparisons.length !== 64
+  ) {
+    return false
+  }
+  const discovery = value.discovery
+  const confirmation = value.confirmation
+  return value.comparisons.every((comparison, index) => {
+    if (
+      !isRecord(comparison) ||
+      comparison.cohort_index !== index ||
+      !isFeatureKey(comparison.feature_key, index) ||
+      !isRecord(comparison.discovery_diagnostic) ||
+      !isRecord(comparison.confirmation_diagnostic) ||
+      !isRecord(comparison.discovery_diagnostic.risk_difference) ||
+      !isRecord(comparison.confirmation_diagnostic.risk_difference) ||
+      JSON.stringify(comparison.discovery_diagnostic) !==
+        JSON.stringify(discovery.diagnostics[index]) ||
+      JSON.stringify(comparison.confirmation_diagnostic) !==
+        JSON.stringify(confirmation.diagnostics[index])
+    ) {
+      return false
+    }
+    return (
+      isExactEffectChange(
+        comparison.effect_change,
+        comparison.discovery_diagnostic.risk_difference,
+        comparison.confirmation_diagnostic.risk_difference,
+      ) &&
+      comparison.relationship ===
+        expectedTemporalRelationship(
+          comparison.discovery_diagnostic.relation_vs_outside,
+          comparison.confirmation_diagnostic.relation_vs_outside,
+        )
+    )
+  })
+}
+
 function isSuccessPage(
   value: unknown,
   query: HistoricalSuccessWindowQuery,
@@ -1100,5 +1264,21 @@ export async function getHistoricalSuccessFeatureCohortDiagnostics(
     signal,
   )
   if (!isFeatureCohortDiagnostics(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessTemporalHoldout(
+  query: HistoricalSuccessTemporalHoldoutQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessTemporalHoldout> {
+  const parameters = successQueryParameters(query)
+  const identity = [query.strategy_id, query.strategy_version, String(query.replicate)]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/feature-cohorts/temporal-holdout?${parameters.toString()}`,
+    signal,
+  )
+  if (!isTemporalHoldout(payload, query)) throw malformedResponse()
   return payload
 }

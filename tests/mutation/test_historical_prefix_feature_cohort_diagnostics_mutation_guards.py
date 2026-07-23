@@ -78,7 +78,7 @@ def test_guard_test_status_precedence_and_effect_direction() -> None:
 def test_guard_one_load_derivation_and_exact_method_identity() -> None:
     source = USE_CASE.read_text(encoding="utf-8")
     method = source.split("def get_feature_cohort_diagnostics(", 1)[1].split(
-        "\n\n__all__", 1
+        "def get_feature_cohort_temporal_holdout(", 1
     )[0]
     models = MODELS.read_text(encoding="utf-8")
 

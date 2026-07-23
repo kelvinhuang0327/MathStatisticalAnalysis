@@ -5,6 +5,7 @@ import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessStabilityMatrix,
+  getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
   HISTORICAL_SUCCESS_CRITERIA,
   HISTORICAL_SUCCESS_PREFIX_COUNTS,
@@ -18,6 +19,7 @@ import {
   type HistoricalSuccessFeatureCohorts,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessStabilityMatrix,
+  type HistoricalSuccessTemporalHoldout,
   type HistoricalSuccessWindowPage,
   type HistoricalSuccessWindowResult,
 } from '../../api/historicalSuccessWindows'
@@ -56,6 +58,13 @@ type FeatureCohortDiagnosticOutcome = {
 }
 type FeatureCohortDiagnostic =
   HistoricalSuccessFeatureCohortDiagnostics['diagnostics'][number]
+type TemporalHoldoutOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessTemporalHoldout | null
+  error: string
+}
+type TemporalHoldoutComparison =
+  HistoricalSuccessTemporalHoldout['comparisons'][number]
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -81,6 +90,8 @@ const featureCohortState = ref<MatrixState>('idle')
 const featureCohortResults = ref<FeatureCohortOutcome[]>([])
 const featureCohortDiagnosticsState = ref<MatrixState>('idle')
 const featureCohortDiagnosticsResults = ref<FeatureCohortDiagnosticOutcome[]>([])
+const temporalHoldoutState = ref<MatrixState>('idle')
+const temporalHoldoutResults = ref<TemporalHoldoutOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
@@ -89,12 +100,14 @@ let detailGeneration = 0
 let matrixGeneration = 0
 let featureCohortGeneration = 0
 let featureCohortDiagnosticsGeneration = 0
+let temporalHoldoutGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
 let matrixController: AbortController | undefined
 let featureCohortController: AbortController | undefined
 let featureCohortDiagnosticsController: AbortController | undefined
+let temporalHoldoutController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -220,6 +233,14 @@ function clearFeatureCohortDiagnostics(): void {
     matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearTemporalHoldout(): void {
+  temporalHoldoutGeneration += 1
+  temporalHoldoutController?.abort()
+  temporalHoldoutResults.value = []
+  temporalHoldoutState.value =
+    matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
 function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   const checked = (event.target as HTMLInputElement).checked
   const identity = matrixIdentity(item)
@@ -240,6 +261,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   clearMatrix(false)
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
+  clearTemporalHoldout()
 }
 
 function chooseRun(): void {
@@ -253,12 +275,14 @@ function chooseRun(): void {
   clearMatrix(true)
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
+  clearTemporalHoldout()
 }
 
 function controlsChanged(): void {
   clearAnalysis()
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
+  clearTemporalHoldout()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -383,6 +407,51 @@ async function evaluateSelectedFeatureCohortDiagnostics(): Promise<void> {
   featureCohortDiagnosticsResults.value = outcomes
   const successes = outcomes.filter((outcome) => outcome.result !== null).length
   featureCohortDiagnosticsState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
+}
+
+async function evaluateSelectedTemporalHoldout(): Promise<void> {
+  const run = selectedRun.value
+  const selections = [...matrixSelections.value]
+  if (run === null || selections.length < 1 || selections.length > 4) return
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++temporalHoldoutGeneration
+  temporalHoldoutController?.abort()
+  const controller = new AbortController()
+  temporalHoldoutController = controller
+  temporalHoldoutResults.value = []
+  temporalHoldoutState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<TemporalHoldoutOutcome> => {
+      try {
+        const result = await getHistoricalSuccessTemporalHoldout(
+          {
+            import_identity_sha256: run.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+            prefix_count: selectedPrefix,
+            criterion: selectedCriterion,
+          },
+          controller.signal,
+        )
+        return { selection, result, error: '' }
+      } catch (error: unknown) {
+        return { selection, result: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (
+    !mounted ||
+    generation !== temporalHoldoutGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  temporalHoldoutResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.result !== null).length
+  temporalHoldoutState.value =
     successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
@@ -544,6 +613,12 @@ function diagnosticEffect(diagnostic: FeatureCohortDiagnostic): string {
     : 'Unavailable (0 / 0)'
 }
 
+function temporalEffectChange(comparison: TemporalHoldoutComparison): string {
+  return comparison.effect_change.available
+    ? `${comparison.effect_change.numerator} / ${comparison.effect_change.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
 onMounted(() => {
   mounted = true
   void loadRuns()
@@ -556,12 +631,14 @@ onBeforeUnmount(() => {
   matrixGeneration += 1
   featureCohortGeneration += 1
   featureCohortDiagnosticsGeneration += 1
+  temporalHoldoutGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
   matrixController?.abort()
   featureCohortController?.abort()
   featureCohortDiagnosticsController?.abort()
+  temporalHoldoutController?.abort()
 })
 </script>
 
@@ -1206,6 +1283,168 @@ onBeforeUnmount(() => {
       </ol>
     </section>
 
+    <section class="research-results temporal-holdout-panel" aria-labelledby="temporal-holdout-title">
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">Fixed chronological diagnostic split</p>
+          <h2 id="temporal-holdout-title">750/300 temporal holdout</h2>
+        </div>
+        <button
+          class="button temporal-holdout-action"
+          type="button"
+          :disabled="selectedRun === null || matrixSelections.length === 0"
+          @click="evaluateSelectedTemporalHoldout"
+        >
+          Evaluate 750/300 temporal holdout
+        </button>
+      </div>
+
+      <p v-if="selectedRun === null" class="research-state">
+        Select a run before evaluating the temporal holdout.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities above. No holdout request runs on selection.
+      </p>
+      <p v-else-if="temporalHoldoutState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact {{ matrixSelections.length === 1 ? 'identity' : 'identities' }}
+        selected in manual order. The holdout runs only from the explicit action.
+      </p>
+      <p v-if="temporalHoldoutState === 'loading'" class="research-state">
+        Evaluating the fixed 750-target discovery and 300-target confirmation phases…
+      </p>
+      <div
+        v-if="temporalHoldoutState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>Some temporal holdout requests are unavailable; successful results remain visible.</strong>
+        <button class="button button--quiet temporal-holdout-retry" type="button" @click="evaluateSelectedTemporalHoldout">
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="temporalHoldoutState === 'error'"
+        class="research-state research-state--error"
+      >
+        <strong>All selected temporal holdout requests failed with sanitized errors.</strong>
+        <button class="button button--quiet temporal-holdout-retry" type="button" @click="evaluateSelectedTemporalHoldout">
+          Retry all
+        </button>
+      </div>
+
+      <ol v-if="temporalHoldoutResults.length > 0" class="temporal-holdout-result-list">
+        <li
+          v-for="outcome in temporalHoldoutResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="temporal-holdout-result-card"
+        >
+          <header>
+            <div>
+              <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+              <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+              <code>
+                {{ outcome.selection.strategy.strategy_version }} · replicate
+                {{ outcome.selection.strategy.replicate }}
+              </code>
+            </div>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts temporal-holdout-facts">
+              <div class="source-facts__identity">
+                <dt>Import identity</dt>
+                <dd><code>{{ outcome.result.metadata.import_identity_sha256 }}</code></dd>
+              </div>
+              <div><dt>Prefix</dt><dd>{{ outcome.result.prefix_count }}</dd></div>
+              <div><dt>Criterion</dt><dd>{{ outcome.result.criterion.criterion }}</dd></div>
+              <div><dt>Status</dt><dd>{{ outcome.result.evaluation_status }}</dd></div>
+              <div><dt>Split method</dt><dd>{{ outcome.result.split.split_method }}</dd></div>
+              <div><dt>Total assignments</dt><dd>{{ outcome.result.split.total_assignment_count }}</dd></div>
+              <div><dt>Warmup</dt><dd>{{ outcome.result.split.warmup_count }}</dd></div>
+              <div><dt>Discovery</dt><dd>{{ outcome.result.split.discovery_count }}</dd></div>
+              <div><dt>Confirmation</dt><dd>{{ outcome.result.split.confirmation_count }}</dd></div>
+              <div><dt>Discovery first</dt><dd>{{ optionalTarget(outcome.result.split.discovery_first_target) }}</dd></div>
+              <div><dt>Discovery last</dt><dd>{{ optionalTarget(outcome.result.split.discovery_last_target) }}</dd></div>
+              <div><dt>Confirmation first</dt><dd>{{ optionalTarget(outcome.result.split.confirmation_first_target) }}</dd></div>
+              <div><dt>Confirmation last</dt><dd>{{ optionalTarget(outcome.result.split.confirmation_last_target) }}</dd></div>
+              <div><dt>Family size</dt><dd>{{ outcome.result.family_size }}</dd></div>
+            </dl>
+            <p
+              v-if="outcome.result.evaluation_status === 'NOT_READY_INSUFFICIENT_HISTORY'"
+              class="research-state temporal-holdout-not-ready"
+            >
+              Insufficient labeled history. Neither phase was shortened and no partial diagnostics were produced.
+            </p>
+            <div v-else class="feature-cohort-diagnostics-table-scroll temporal-holdout-table-scroll">
+              <table class="feature-cohort-diagnostics-table temporal-holdout-table">
+                <caption>
+                  All 64 canonical cohorts in server order. Discovery and confirmation are separate
+                  fixed families; relationship labels are neutral descriptive comparisons.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Index</th>
+                    <th scope="col">Long→Medium</th>
+                    <th scope="col">Medium→Short</th>
+                    <th scope="col">Long→Short</th>
+                    <th scope="col">Discovery S/F/N</th>
+                    <th scope="col">Discovery cohort rate</th>
+                    <th scope="col">Discovery outside rate</th>
+                    <th scope="col">Discovery risk difference</th>
+                    <th scope="col">Discovery raw exact p</th>
+                    <th scope="col">Discovery BY exact p</th>
+                    <th scope="col">Confirmation S/F/N</th>
+                    <th scope="col">Confirmation cohort rate</th>
+                    <th scope="col">Confirmation outside rate</th>
+                    <th scope="col">Confirmation risk difference</th>
+                    <th scope="col">Confirmation raw exact p</th>
+                    <th scope="col">Confirmation BY exact p</th>
+                    <th scope="col">Effect change</th>
+                    <th scope="col">Relationship</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="comparison in outcome.result.comparisons"
+                    :key="comparison.cohort_index"
+                    class="temporal-holdout-comparison"
+                  >
+                    <td>{{ comparison.cohort_index }}</td>
+                    <td>{{ comparison.feature_key.long_to_medium }}</td>
+                    <td>{{ comparison.feature_key.medium_to_short }}</td>
+                    <td>{{ comparison.feature_key.long_to_short }}</td>
+                    <td>
+                      {{ comparison.discovery_diagnostic.cohort_counts.success_count }} /
+                      {{ comparison.discovery_diagnostic.cohort_counts.failure_count }} /
+                      {{ comparison.discovery_diagnostic.cohort_counts.observation_count }}
+                    </td>
+                    <td>{{ featureRate(comparison.discovery_diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(comparison.discovery_diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(comparison.discovery_diagnostic) }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.discovery_diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.discovery_diagnostic.adjusted_p_value) }}</code></td>
+                    <td>
+                      {{ comparison.confirmation_diagnostic.cohort_counts.success_count }} /
+                      {{ comparison.confirmation_diagnostic.cohort_counts.failure_count }} /
+                      {{ comparison.confirmation_diagnostic.cohort_counts.observation_count }}
+                    </td>
+                    <td>{{ featureRate(comparison.confirmation_diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(comparison.confirmation_diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(comparison.confirmation_diagnostic) }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.confirmation_diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.confirmation_diagnostic.adjusted_p_value) }}</code></td>
+                    <td>{{ temporalEffectChange(comparison) }}</td>
+                    <td>{{ comparison.relationship }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="research-state research-state--error temporal-holdout-item-error">
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
     <aside v-if="detailState !== 'closed'" class="detail-panel" aria-labelledby="exact-detail-title">
       <div class="panel-heading">
         <div>
@@ -1320,6 +1559,11 @@ onBeforeUnmount(() => {
 .feature-cohort-diagnostics-table td { font-family: 'SFMono-Regular', Consolas, monospace; }
 .exact-probability { display: block; max-width: 36rem; overflow-x: auto; white-space: pre; user-select: all; }
 .feature-cohort-diagnostics-item-error { margin-top: 16px; }
+.temporal-holdout-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.temporal-holdout-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.temporal-holdout-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.temporal-holdout-table { min-width: 2800px; }
+.temporal-holdout-not-ready, .temporal-holdout-item-error { margin-top: 18px; }
 .detail-panel { border-color: rgb(121 227 178 / 38%); }
 .detail-content h3 { margin-bottom: 6px; color: var(--ink); }
 .detail-content { color: var(--muted); }

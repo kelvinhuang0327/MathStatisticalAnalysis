@@ -515,36 +515,41 @@ def test_guard_matrix_relation_vocabulary_stays_neutral() -> None:
 
 def test_guard_walk_forward_snapshot_excludes_current_and_future_targets_before_label() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
-    cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
-        "def _exact_probability(", 1
+    assignments = use_case.split("def _build_walk_forward_assignments(", 1)[1].split(
+        "def _feature_cohorts_from_assignments(", 1
     )[0]
 
-    assert "prior_observations=observations[:index]" in cohorts
-    assert "prior_observations=observations[: index + 1]" not in cohorts
-    assert "prior_observations=observations[index:]" not in cohorts
-    assert cohorts.index("feature_key = _snapshot_feature_key(") < cohorts.index(
+    assert "prior_observations=observations[:index]" in assignments
+    assert "prior_observations=observations[: index + 1]" not in assignments
+    assert "prior_observations=observations[index:]" not in assignments
+    assert assignments.index("feature_key = _snapshot_feature_key(") < assignments.index(
         "succeeded = _current_target_succeeded("
     )
 
 
 def test_guard_walk_forward_assigns_each_target_once_without_rate_sorting() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
-    cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
-        "def _exact_probability(", 1
+    assignments = use_case.split("def _build_walk_forward_assignments(", 1)[1].split(
+        "def _feature_cohorts_from_assignments(", 1
+    )[0]
+    cohorts = use_case.split("def _feature_cohorts_from_assignments(", 1)[1].split(
+        "def _feature_cohorts(", 1
     )[0]
 
-    assert cohorts.count("assignments.setdefault(feature_key, []).append(") == 1
+    assert assignments.count("assignments.append(") == 1
+    assert "chronological_index=index" in assignments
     assert (
         "sum(cohort.observation_count for cohort in cohorts) != baseline_count"
         in cohorts
     )
+    assert "sorted(" not in assignments
     assert "sorted(" not in cohorts
 
 
 def test_guard_walk_forward_canonical_relation_order_and_exact_delta_direction() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
-    cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
-        "def _exact_probability(", 1
+    cohorts = use_case.split("def _feature_cohorts_from_assignments(", 1)[1].split(
+        "def _feature_cohorts(", 1
     )[0]
 
     long_loop = cohorts.index(

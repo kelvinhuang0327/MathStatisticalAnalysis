@@ -1359,6 +1359,121 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Feature Cohort Temporal Holdout",
+        "operationId": "getHistoricalPrefixStrategyFeatureCohortTemporalHoldout",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of one persisted Historical Results import.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of one persisted Historical Results import."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics": {
       "get": {
         "tags": [
@@ -4493,6 +4608,209 @@
           "evidence_status"
         ],
         "title": "HistoricalPrefixSuccessWindowSummaryView"
+      },
+      "HistoricalPrefixTemporalHoldoutCohortComparisonView": {
+        "properties": {
+          "cohort_index": {
+            "type": "integer",
+            "title": "Cohort Index"
+          },
+          "feature_key": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureRelationTripleView"
+          },
+          "discovery_diagnostic": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortDiagnosticView"
+          },
+          "confirmation_diagnostic": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortDiagnosticView"
+          },
+          "effect_change": {
+            "$ref": "#/components/schemas/HistoricalPrefixSignedRateDeltaView"
+          },
+          "relationship": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutRelationship"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cohort_index",
+          "feature_key",
+          "discovery_diagnostic",
+          "confirmation_diagnostic",
+          "effect_change",
+          "relationship"
+        ],
+        "title": "HistoricalPrefixTemporalHoldoutCohortComparisonView"
+      },
+      "HistoricalPrefixTemporalHoldoutRelationship": {
+        "type": "string",
+        "enum": [
+          "SAME_HIGHER",
+          "SAME_EQUAL",
+          "SAME_LOWER",
+          "DIFFERENT",
+          "UNAVAILABLE"
+        ],
+        "title": "HistoricalPrefixTemporalHoldoutRelationship"
+      },
+      "HistoricalPrefixTemporalHoldoutResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSourceMetadataView"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessStrategyIdentityView"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterionView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "split": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutSplitView"
+          },
+          "evaluation_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutStatus"
+          },
+          "family_size": {
+            "type": "integer",
+            "const": 64,
+            "title": "Family Size"
+          },
+          "discovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutCohortComparisonView"
+            },
+            "type": "array",
+            "title": "Comparisons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "strategy",
+          "criterion",
+          "prefix_count",
+          "split",
+          "evaluation_status",
+          "family_size",
+          "discovery",
+          "confirmation",
+          "comparisons"
+        ],
+        "title": "HistoricalPrefixTemporalHoldoutResponse"
+      },
+      "HistoricalPrefixTemporalHoldoutSplitView": {
+        "properties": {
+          "split_method": {
+            "type": "string",
+            "const": "FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION",
+            "title": "Split Method"
+          },
+          "total_assignment_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Total Assignment Count"
+          },
+          "warmup_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Warmup Count"
+          },
+          "discovery_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Discovery Count"
+          },
+          "confirmation_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Confirmation Count"
+          },
+          "discovery_first_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixSuccessDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discovery_last_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixSuccessDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmation_first_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixSuccessDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "confirmation_last_target": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixSuccessDrawIdentityView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "split_method",
+          "total_assignment_count",
+          "warmup_count",
+          "discovery_count",
+          "confirmation_count",
+          "discovery_first_target",
+          "discovery_last_target",
+          "confirmation_first_target",
+          "confirmation_last_target"
+        ],
+        "title": "HistoricalPrefixTemporalHoldoutSplitView"
+      },
+      "HistoricalPrefixTemporalHoldoutStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "NOT_READY_INSUFFICIENT_HISTORY"
+        ],
+        "title": "HistoricalPrefixTemporalHoldoutStatus"
       },
       "HistoricalPrefixWalkForwardBaselineView": {
         "properties": {

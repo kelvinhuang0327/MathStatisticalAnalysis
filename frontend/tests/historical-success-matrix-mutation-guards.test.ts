@@ -200,3 +200,67 @@ describe('Historical Success walk-forward feature-cohort mutation guards', () =>
     )
   })
 })
+
+describe('Historical Success 750/300 temporal holdout mutation guards', () => {
+  it('pins fixed split counts, not-ready behavior, and all 64 comparisons', () => {
+    const validator = clientSource.split('function isTemporalHoldout(')[1]!.split(
+      'function isSuccessPage(',
+    )[0]!
+    expect(validator).toContain(
+      "'FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION'",
+    )
+    expect(validator).toContain('split.discovery_count !== 750')
+    expect(validator).toContain('split.confirmation_count !== 300')
+    expect(validator).toContain('split.total_assignment_count < 1050')
+    expect(validator).toContain('value.comparisons.length !== 64')
+    expect(validator).not.toMatch(/percentage|fallback/i)
+  })
+
+  it('preserves exact probability strings and computes effect change with BigInt', () => {
+    const effect = clientSource.split('function isExactEffectChange(')[1]!.split(
+      'function expectedTemporalRelationship(',
+    )[0]!
+    expect(effect).toContain('BigInt(confirmation.numerator as number)')
+    expect(effect).toContain('BigInt(discovery.numerator as number)')
+    expect(effect).toContain('greatestCommonDivisorBigInt')
+    expect(effect).not.toContain('Number(')
+    expect(clientSource).toContain('isExactProbability(value.raw_p_value)')
+  })
+
+  it('keeps holdout requests explicit, ordered, capped at four, and unsorted', () => {
+    const toggle = pageSource.split('function toggleMatrixSelection(')[1]!.split(
+      'function chooseRun(',
+    )[0]!
+    const evaluate = pageSource.split(
+      'async function evaluateSelectedTemporalHoldout(',
+    )[1]!.split('async function loadResults(', 1)[0]!
+    expect(pageSource).toContain('Evaluate 750/300 temporal holdout')
+    expect(toggle).not.toContain('evaluateSelectedTemporalHoldout')
+    expect(evaluate).toContain('selections.length > 4')
+    expect(evaluate).toContain('selections.map(async (selection)')
+    expect(evaluate).not.toContain('.sort(')
+  })
+
+  it('pins abort and stale-response guards for reevaluation and lifecycle changes', () => {
+    expect(pageSource).toContain('const generation = ++temporalHoldoutGeneration')
+    expect(pageSource).toContain('temporalHoldoutController?.abort()')
+    expect(pageSource).toContain('generation !== temporalHoldoutGeneration')
+    expect(pageSource).toContain('clearTemporalHoldout()')
+  })
+
+  it('renders every canonical comparison without decision or sorting semantics', () => {
+    const section = pageSource.split(
+      '<section class="research-results temporal-holdout-panel"',
+    )[1]!.split('<aside ', 1)[0]!
+    expect(section).toContain(
+      'v-for="comparison in outcome.result.comparisons"',
+    )
+    expect(section).toContain('comparison.discovery_diagnostic.raw_p_value')
+    expect(section).toContain('comparison.confirmation_diagnostic.adjusted_p_value')
+    expect(section).toContain('comparison.relationship')
+    expect(section).not.toContain('.sort(')
+    expect(section).not.toMatch(
+      /replicated|failed replication|significant|winner|promotion|rejection|prediction/i,
+    )
+  })
+})

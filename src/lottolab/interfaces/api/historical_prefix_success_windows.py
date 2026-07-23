@@ -5,7 +5,9 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from enum import IntEnum
+from fractions import Fraction
 from math import gcd
 from typing import Annotated, Any, Literal, Self
 
@@ -15,12 +17,16 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lottolab.application.historical_prefix_success_windows import (
     BENJAMINI_YEKUTIELI_METHOD,
+    CONFIRMATION_TARGET_COUNT,
     DEFAULT_PAGE_LIMIT,
     DEFAULT_PAGE_OFFSET,
+    DISCOVERY_TARGET_COUNT,
     FEATURE_COHORT_RELATION_ORDER,
     FISHER_EXACT_TWO_SIDED_METHOD,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
+    REQUIRED_LABELED_TARGET_COUNT,
+    TEMPORAL_HOLDOUT_SPLIT_METHOD,
     HistoricalPrefixExactProbability,
     HistoricalPrefixExactSuccessRate,
     HistoricalPrefixFeatureCohortDiagnostic,
@@ -45,6 +51,11 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessStrategyNotFoundError,
     HistoricalPrefixSuccessWindowSourceMetadata,
     HistoricalPrefixSuccessWindowSummary,
+    HistoricalPrefixTemporalHoldoutCohortComparison,
+    HistoricalPrefixTemporalHoldoutRelationship,
+    HistoricalPrefixTemporalHoldoutResult,
+    HistoricalPrefixTemporalHoldoutSplit,
+    HistoricalPrefixTemporalHoldoutStatus,
     HistoricalPrefixWalkForwardBaseline,
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
@@ -263,21 +274,15 @@ class HistoricalPrefixSuccessWindowSummaryView(BaseModel):
             excluded_draw_count=summary.excluded_draw_count,
             success_count=summary.success_count,
             failure_count=summary.failure_count,
-            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
-                summary.success_rate
-            ),
+            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(summary.success_rate),
             first_target=HistoricalPrefixSuccessDrawIdentityView.from_identity(
                 summary.first_target
             ),
-            last_target=HistoricalPrefixSuccessDrawIdentityView.from_identity(
-                summary.last_target
-            ),
+            last_target=HistoricalPrefixSuccessDrawIdentityView.from_identity(summary.last_target),
             first_cutoff=HistoricalPrefixSuccessDrawIdentityView.from_identity(
                 summary.first_cutoff
             ),
-            last_cutoff=HistoricalPrefixSuccessDrawIdentityView.from_identity(
-                summary.last_cutoff
-            ),
+            last_cutoff=HistoricalPrefixSuccessDrawIdentityView.from_identity(summary.last_cutoff),
             nested_windows_independent=summary.nested_windows_independent,
             evaluation_status=summary.evaluation_status,
             evidence_status=summary.evidence_status,
@@ -300,16 +305,10 @@ class HistoricalPrefixStrategySuccessWindowResponse(BaseModel):
         cls, result: HistoricalPrefixStrategySuccessWindowResult
     ) -> HistoricalPrefixStrategySuccessWindowResponse:
         return cls(
-            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
-                result.strategy
-            ),
-            criterion=HistoricalPrefixSuccessCriterionView.from_identity(
-                result.criterion
-            ),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(result.strategy),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(result.criterion),
             prefix_count=result.prefix_count,
-            selection=HistoricalPrefixSuccessSelectionIdentityView.from_identity(
-                result.selection
-            ),
+            selection=HistoricalPrefixSuccessSelectionIdentityView.from_identity(result.selection),
             status=result.status.value,
             source_observation_count=result.source_observation_count,
             windows=tuple(
@@ -335,9 +334,7 @@ class HistoricalPrefixStrategySuccessWindowPageResponse(BaseModel):
         cls, page: HistoricalPrefixStrategySuccessWindowPage
     ) -> HistoricalPrefixStrategySuccessWindowPageResponse:
         return cls(
-            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
-                page.metadata
-            ),
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(page.metadata),
             criterion=HistoricalPrefixSuccessCriterionView.from_identity(page.criterion),
             prefix_count=page.prefix_count,
             total_count=page.total_count,
@@ -383,9 +380,7 @@ class HistoricalPrefixWindowRateComparisonView(BaseModel):
             comparison_kind=comparison.comparison_kind,
             from_window_kind=comparison.from_window_kind,
             to_window_kind=comparison.to_window_kind,
-            from_rate=HistoricalPrefixExactSuccessRateView.from_rate(
-                comparison.from_rate
-            ),
+            from_rate=HistoricalPrefixExactSuccessRateView.from_rate(comparison.from_rate),
             to_rate=HistoricalPrefixExactSuccessRateView.from_rate(comparison.to_rate),
             delta=HistoricalPrefixSignedRateDeltaView.from_delta(comparison.delta),
             relation=comparison.relation,
@@ -410,14 +405,11 @@ class HistoricalPrefixStrategySuccessMatrixCellView(BaseModel):
         return cls(
             criterion=HistoricalPrefixSuccessCriterionView.from_identity(cell.criterion),
             prefix_count=cell.prefix_count,
-            selection=HistoricalPrefixSuccessSelectionIdentityView.from_identity(
-                cell.selection
-            ),
+            selection=HistoricalPrefixSuccessSelectionIdentityView.from_identity(cell.selection),
             status=cell.status.value,
             source_observation_count=cell.source_observation_count,
             windows=tuple(
-                HistoricalPrefixSuccessWindowSummaryView.from_summary(item)
-                for item in cell.windows
+                HistoricalPrefixSuccessWindowSummaryView.from_summary(item) for item in cell.windows
             ),
             comparisons=tuple(
                 HistoricalPrefixWindowRateComparisonView.from_comparison(item)
@@ -442,17 +434,12 @@ class HistoricalPrefixStrategySuccessMatrixResponse(BaseModel):
         cls, matrix: HistoricalPrefixStrategySuccessMatrix
     ) -> HistoricalPrefixStrategySuccessMatrixResponse:
         return cls(
-            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
-                matrix.metadata
-            ),
-            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
-                matrix.strategy
-            ),
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(matrix.metadata),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(matrix.strategy),
             source_observation_count=matrix.source_observation_count,
             prefix_counts=matrix.prefix_counts,
             criteria=tuple(
-                HistoricalPrefixSuccessCriterionView.from_identity(item)
-                for item in matrix.criteria
+                HistoricalPrefixSuccessCriterionView.from_identity(item) for item in matrix.criteria
             ),
             cell_count=matrix.cell_count,
             cells=tuple(
@@ -492,9 +479,7 @@ class HistoricalPrefixWalkForwardBaselineView(BaseModel):
             observation_count=baseline.observation_count,
             success_count=baseline.success_count,
             failure_count=baseline.failure_count,
-            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
-                baseline.success_rate
-            ),
+            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(baseline.success_rate),
         )
 
 
@@ -522,24 +507,18 @@ class HistoricalPrefixFeatureCohortView(BaseModel):
             observation_count=cohort.observation_count,
             success_count=cohort.success_count,
             failure_count=cohort.failure_count,
-            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
-                cohort.success_rate
-            ),
+            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(cohort.success_rate),
             delta_vs_baseline=HistoricalPrefixSignedRateDeltaView.from_delta(
                 cohort.delta_vs_baseline
             ),
             relation_vs_baseline=cohort.relation_vs_baseline,
             first_target=(
-                HistoricalPrefixSuccessDrawIdentityView.from_identity(
-                    cohort.first_target
-                )
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(cohort.first_target)
                 if cohort.first_target is not None
                 else None
             ),
             last_target=(
-                HistoricalPrefixSuccessDrawIdentityView.from_identity(
-                    cohort.last_target
-                )
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(cohort.last_target)
                 if cohort.last_target is not None
                 else None
             ),
@@ -562,23 +541,14 @@ class HistoricalPrefixStrategyFeatureCohortResponse(BaseModel):
         cls, result: HistoricalPrefixStrategyFeatureCohortResult
     ) -> HistoricalPrefixStrategyFeatureCohortResponse:
         return cls(
-            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
-                result.metadata
-            ),
-            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
-                result.strategy
-            ),
-            criterion=HistoricalPrefixSuccessCriterionView.from_identity(
-                result.criterion
-            ),
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(result.metadata),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(result.strategy),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(result.criterion),
             prefix_count=result.prefix_count,
-            baseline=HistoricalPrefixWalkForwardBaselineView.from_baseline(
-                result.baseline
-            ),
+            baseline=HistoricalPrefixWalkForwardBaselineView.from_baseline(result.baseline),
             cohort_count=result.cohort_count,
             cohorts=tuple(
-                HistoricalPrefixFeatureCohortView.from_cohort(cohort)
-                for cohort in result.cohorts
+                HistoricalPrefixFeatureCohortView.from_cohort(cohort) for cohort in result.cohorts
             ),
         )
 
@@ -664,12 +634,8 @@ class HistoricalPrefixFeatureCohortDiagnosticView(BaseModel):
                 diagnostic.feature_key
             ),
             test_status=diagnostic.test_status,
-            cohort_counts=HistoricalPrefixOutcomeCountsView.from_counts(
-                diagnostic.cohort_counts
-            ),
-            outside_counts=HistoricalPrefixOutcomeCountsView.from_counts(
-                diagnostic.outside_counts
-            ),
+            cohort_counts=HistoricalPrefixOutcomeCountsView.from_counts(diagnostic.cohort_counts),
+            outside_counts=HistoricalPrefixOutcomeCountsView.from_counts(diagnostic.outside_counts),
             cohort_success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
                 diagnostic.cohort_success_rate
             ),
@@ -687,16 +653,12 @@ class HistoricalPrefixFeatureCohortDiagnosticView(BaseModel):
                 diagnostic.adjusted_p_value
             ),
             first_target=(
-                HistoricalPrefixSuccessDrawIdentityView.from_identity(
-                    diagnostic.first_target
-                )
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(diagnostic.first_target)
                 if diagnostic.first_target is not None
                 else None
             ),
             last_target=(
-                HistoricalPrefixSuccessDrawIdentityView.from_identity(
-                    diagnostic.last_target
-                )
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(diagnostic.last_target)
                 if diagnostic.last_target is not None
                 else None
             ),
@@ -732,21 +694,22 @@ class HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse(BaseModel):
                 FEATURE_COHORT_RELATION_ORDER[index % 4],
             )
             actual_key = diagnostic.feature_key
-            if diagnostic.cohort_index != index or (
-                actual_key.long_to_medium,
-                actual_key.medium_to_short,
-                actual_key.long_to_short,
-            ) != expected_key:
+            if (
+                diagnostic.cohort_index != index
+                or (
+                    actual_key.long_to_medium,
+                    actual_key.medium_to_short,
+                    actual_key.long_to_short,
+                )
+                != expected_key
+            ):
                 raise ValueError("diagnostics must preserve canonical cohort order")
             cohort = diagnostic.cohort_counts
             outside = diagnostic.outside_counts
             if (
-                cohort.observation_count + outside.observation_count
-                != baseline.observation_count
-                or cohort.success_count + outside.success_count
-                != baseline.success_count
-                or cohort.failure_count + outside.failure_count
-                != baseline.failure_count
+                cohort.observation_count + outside.observation_count != baseline.observation_count
+                or cohort.success_count + outside.success_count != baseline.success_count
+                or cohort.failure_count + outside.failure_count != baseline.failure_count
             ):
                 raise ValueError("diagnostic cohort and complement must partition baseline")
         return self
@@ -762,25 +725,309 @@ class HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse(BaseModel):
         ):
             raise ValueError("application diagnostics family identity is inconsistent")
         return cls(
-            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
-                result.metadata
-            ),
-            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
-                result.strategy
-            ),
-            criterion=HistoricalPrefixSuccessCriterionView.from_identity(
-                result.criterion
-            ),
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(result.metadata),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(result.strategy),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(result.criterion),
             prefix_count=result.prefix_count,
-            baseline=HistoricalPrefixWalkForwardBaselineView.from_baseline(
-                result.baseline
-            ),
+            baseline=HistoricalPrefixWalkForwardBaselineView.from_baseline(result.baseline),
             family_size=64,
             raw_test_method="FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING",
             adjustment_method="BENJAMINI_YEKUTIELI",
             diagnostics=tuple(
                 HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(diagnostic)
                 for diagnostic in result.diagnostics
+            ),
+        )
+
+
+class HistoricalPrefixTemporalHoldoutSplitView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    split_method: Literal["FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION"]
+    total_assignment_count: Annotated[int, Field(ge=0)]
+    warmup_count: Annotated[int, Field(ge=0)]
+    discovery_count: Annotated[int, Field(ge=0)]
+    confirmation_count: Annotated[int, Field(ge=0)]
+    discovery_first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    discovery_last_target: HistoricalPrefixSuccessDrawIdentityView | None
+    confirmation_first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    confirmation_last_target: HistoricalPrefixSuccessDrawIdentityView | None
+
+    @classmethod
+    def from_split(
+        cls, split: HistoricalPrefixTemporalHoldoutSplit
+    ) -> HistoricalPrefixTemporalHoldoutSplitView:
+        return cls(
+            split_method="FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION",
+            total_assignment_count=split.total_assignment_count,
+            warmup_count=split.warmup_count,
+            discovery_count=split.discovery_count,
+            confirmation_count=split.confirmation_count,
+            discovery_first_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(split.discovery_first_target)
+                if split.discovery_first_target is not None
+                else None
+            ),
+            discovery_last_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(split.discovery_last_target)
+                if split.discovery_last_target is not None
+                else None
+            ),
+            confirmation_first_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(
+                    split.confirmation_first_target
+                )
+                if split.confirmation_first_target is not None
+                else None
+            ),
+            confirmation_last_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(
+                    split.confirmation_last_target
+                )
+                if split.confirmation_last_target is not None
+                else None
+            ),
+        )
+
+
+class HistoricalPrefixTemporalHoldoutCohortComparisonView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTripleView
+    discovery_diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+    confirmation_diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+    effect_change: HistoricalPrefixSignedRateDeltaView
+    relationship: HistoricalPrefixTemporalHoldoutRelationship
+
+    @model_validator(mode="after")
+    def validate_comparison(self) -> Self:
+        discovery = self.discovery_diagnostic
+        confirmation = self.confirmation_diagnostic
+        if (
+            discovery.cohort_index != self.cohort_index
+            or confirmation.cohort_index != self.cohort_index
+            or discovery.feature_key != self.feature_key
+            or confirmation.feature_key != self.feature_key
+        ):
+            raise ValueError("temporal comparison identity is inconsistent")
+        discovery_effect = discovery.risk_difference
+        confirmation_effect = confirmation.risk_difference
+        if discovery_effect.available and confirmation_effect.available:
+            expected = Fraction(
+                confirmation_effect.numerator,
+                confirmation_effect.denominator,
+            ) - Fraction(
+                discovery_effect.numerator,
+                discovery_effect.denominator,
+            )
+            if (
+                not self.effect_change.available
+                or self.effect_change.numerator != expected.numerator
+                or self.effect_change.denominator != expected.denominator
+            ):
+                raise ValueError("temporal effect change is inconsistent")
+        elif (
+            self.effect_change.available
+            or self.effect_change.numerator != 0
+            or self.effect_change.denominator != 0
+        ):
+            raise ValueError("unavailable temporal effect change is inconsistent")
+        relationship = (
+            HistoricalPrefixTemporalHoldoutRelationship.UNAVAILABLE
+            if (
+                discovery.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+                or confirmation.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+            )
+            else (
+                HistoricalPrefixTemporalHoldoutRelationship.DIFFERENT
+                if discovery.relation_vs_outside is not confirmation.relation_vs_outside
+                else {
+                    HistoricalPrefixRateRelation.HIGHER: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_HIGHER
+                    ),
+                    HistoricalPrefixRateRelation.EQUAL: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_EQUAL
+                    ),
+                    HistoricalPrefixRateRelation.LOWER: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_LOWER
+                    ),
+                }[discovery.relation_vs_outside]
+            )
+        )
+        if self.relationship is not relationship:
+            raise ValueError("temporal relationship is inconsistent")
+        return self
+
+    @classmethod
+    def from_comparison(
+        cls, comparison: HistoricalPrefixTemporalHoldoutCohortComparison
+    ) -> HistoricalPrefixTemporalHoldoutCohortComparisonView:
+        return cls(
+            cohort_index=comparison.cohort_index,
+            feature_key=HistoricalPrefixFeatureRelationTripleView.from_feature_key(
+                comparison.feature_key
+            ),
+            discovery_diagnostic=(
+                HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                    comparison.discovery_diagnostic
+                )
+            ),
+            confirmation_diagnostic=(
+                HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                    comparison.confirmation_diagnostic
+                )
+            ),
+            effect_change=HistoricalPrefixSignedRateDeltaView.from_delta(comparison.effect_change),
+            relationship=comparison.relationship,
+        )
+
+
+class HistoricalPrefixTemporalHoldoutResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    metadata: HistoricalPrefixSuccessSourceMetadataView
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    split: HistoricalPrefixTemporalHoldoutSplitView
+    evaluation_status: HistoricalPrefixTemporalHoldoutStatus
+    family_size: Literal[64]
+    discovery: HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse | None
+    confirmation: HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse | None
+    comparisons: tuple[HistoricalPrefixTemporalHoldoutCohortComparisonView, ...]
+
+    @model_validator(mode="after")
+    def validate_holdout(self) -> Self:
+        split = self.split
+        if (
+            split.split_method != TEMPORAL_HOLDOUT_SPLIT_METHOD
+            or split.total_assignment_count
+            != split.warmup_count + split.discovery_count + split.confirmation_count
+        ):
+            raise ValueError("temporal split arithmetic is inconsistent")
+        boundaries = (
+            split.discovery_first_target,
+            split.discovery_last_target,
+            split.confirmation_first_target,
+            split.confirmation_last_target,
+        )
+        if (
+            self.evaluation_status
+            is HistoricalPrefixTemporalHoldoutStatus.NOT_READY_INSUFFICIENT_HISTORY
+        ):
+            if (
+                split.total_assignment_count >= REQUIRED_LABELED_TARGET_COUNT
+                or split.warmup_count != split.total_assignment_count
+                or split.discovery_count != 0
+                or split.confirmation_count != 0
+                or any(boundary is not None for boundary in boundaries)
+                or self.discovery is not None
+                or self.confirmation is not None
+                or self.comparisons
+            ):
+                raise ValueError("not-ready temporal holdout is inconsistent")
+            return self
+        if (
+            split.total_assignment_count < REQUIRED_LABELED_TARGET_COUNT
+            or split.discovery_count != DISCOVERY_TARGET_COUNT
+            or split.confirmation_count != CONFIRMATION_TARGET_COUNT
+            or any(boundary is None for boundary in boundaries)
+            or self.discovery is None
+            or self.confirmation is None
+            or len(self.comparisons) != self.family_size
+        ):
+            raise ValueError("complete temporal holdout is inconsistent")
+        discovery_first = split.discovery_first_target
+        discovery_last = split.discovery_last_target
+        confirmation_first = split.confirmation_first_target
+        confirmation_last = split.confirmation_last_target
+        if (
+            discovery_first is None
+            or discovery_last is None
+            or confirmation_first is None
+            or confirmation_last is None
+        ):
+            raise ValueError("complete temporal holdout boundaries are required")
+        try:
+            discovery_first_order = (
+                date.fromisoformat(discovery_first.draw_date),
+                discovery_first.draw_number,
+            )
+            discovery_last_order = (
+                date.fromisoformat(discovery_last.draw_date),
+                discovery_last.draw_number,
+            )
+            confirmation_first_order = (
+                date.fromisoformat(confirmation_first.draw_date),
+                confirmation_first.draw_number,
+            )
+            confirmation_last_order = (
+                date.fromisoformat(confirmation_last.draw_date),
+                confirmation_last.draw_number,
+            )
+        except ValueError as exc:
+            raise ValueError("temporal holdout boundary dates must be ISO dates") from exc
+        if not (
+            discovery_first_order
+            <= discovery_last_order
+            < confirmation_first_order
+            <= confirmation_last_order
+        ):
+            raise ValueError("temporal holdout phase boundaries are out of order")
+        discovery = self.discovery
+        confirmation = self.confirmation
+        if (
+            discovery.metadata != self.metadata
+            or confirmation.metadata != self.metadata
+            or discovery.strategy != self.strategy
+            or confirmation.strategy != self.strategy
+            or discovery.criterion != self.criterion
+            or confirmation.criterion != self.criterion
+            or discovery.prefix_count != self.prefix_count
+            or confirmation.prefix_count != self.prefix_count
+            or discovery.baseline.observation_count != DISCOVERY_TARGET_COUNT
+            or confirmation.baseline.observation_count != CONFIRMATION_TARGET_COUNT
+        ):
+            raise ValueError("temporal phase identity is inconsistent")
+        for index, comparison in enumerate(self.comparisons):
+            if (
+                comparison.cohort_index != index
+                or comparison.discovery_diagnostic != discovery.diagnostics[index]
+                or comparison.confirmation_diagnostic != confirmation.diagnostics[index]
+            ):
+                raise ValueError("temporal comparisons must preserve canonical order")
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalPrefixTemporalHoldoutResult
+    ) -> HistoricalPrefixTemporalHoldoutResponse:
+        return cls(
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(result.metadata),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(result.strategy),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(result.criterion),
+            prefix_count=result.prefix_count,
+            split=HistoricalPrefixTemporalHoldoutSplitView.from_split(result.split),
+            evaluation_status=result.evaluation_status,
+            family_size=64,
+            discovery=(
+                HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(
+                    result.discovery
+                )
+                if result.discovery is not None
+                else None
+            ),
+            confirmation=(
+                HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(
+                    result.confirmation
+                )
+                if result.confirmation is not None
+                else None
+            ),
+            comparisons=tuple(
+                HistoricalPrefixTemporalHoldoutCohortComparisonView.from_comparison(comparison)
+                for comparison in result.comparisons
             ),
         )
 
@@ -834,6 +1081,49 @@ def create_historical_prefix_success_windows_router(
     @router.get(
         (
             "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout"
+        ),
+        response_model=HistoricalPrefixTemporalHoldoutResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyFeatureCohortTemporalHoldout",
+    )
+    def get_historical_prefix_strategy_feature_cohort_temporal_holdout(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: ImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixTemporalHoldoutResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_feature_cohort_temporal_holdout(
+                import_identity_sha256=import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixTemporalHoldoutResponse.from_result(result)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics"
         ),
         response_model=HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse,
@@ -872,9 +1162,7 @@ def create_historical_prefix_success_windows_router(
             return _strategy_not_found_error()
         except Exception:
             return _unavailable_error()
-        return HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(
-            result
-        )
+        return HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(result)
 
     @router.get(
         (
@@ -971,9 +1259,7 @@ def create_historical_prefix_success_windows_router(
         replicate: Replicate,
         import_identity_sha256: ImportIdentitySha256,
     ) -> HistoricalPrefixStrategySuccessMatrixResponse | JSONResponse:
-        unexpected = sorted(
-            set(request.query_params.keys()) - {"import_identity_sha256"}
-        )
+        unexpected = sorted(set(request.query_params.keys()) - {"import_identity_sha256"})
         if unexpected:
             return _invalid_matrix_query_error(unexpected)
         if evaluator is None:
@@ -1070,6 +1356,9 @@ __all__ = [
     "HistoricalPrefixSuccessSourceMetadataView",
     "HistoricalPrefixSuccessStrategyIdentityView",
     "HistoricalPrefixSuccessWindowSummaryView",
+    "HistoricalPrefixTemporalHoldoutCohortComparisonView",
+    "HistoricalPrefixTemporalHoldoutResponse",
+    "HistoricalPrefixTemporalHoldoutSplitView",
     "HistoricalPrefixWalkForwardBaselineView",
     "HistoricalPrefixWindowRateComparisonView",
     "create_historical_prefix_success_windows_router",

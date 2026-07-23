@@ -167,6 +167,8 @@ def test_commands_pin_localhost_ports_and_never_install(tmp_path: Path) -> None:
     )
 
     assert backend[:3] == ("/opt/bin/uv", "run", "--no-sync")
+    assert "lottolab.interfaces.api.local_app:create_local_app" in backend
+    assert "lottolab.interfaces.api.app:create_app" not in backend
     assert backend[backend.index("--host") + 1] == LOCAL_HOST
     assert backend[backend.index("--port") + 1] == str(BACKEND_PORT)
     assert frontend[frontend.index("--host") + 1] == LOCAL_HOST

@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
 )
@@ -41,6 +42,9 @@ from lottolab.interfaces.api.generate_bet import create_generate_bet_router
 from lottolab.interfaces.api.historical_prefix_analytics import (
     HistoricalPrefixAnalyticsResultProvider,
     create_historical_prefix_analytics_router,
+)
+from lottolab.interfaces.api.historical_prefix_success_windows import (
+    create_historical_prefix_success_windows_router,
 )
 from lottolab.interfaces.api.historical_results import create_historical_results_router
 from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
@@ -70,6 +74,9 @@ def create_app(
     ) = None,
     replay_scoring_projection_reader_factory: (
         ReplayScoringProjectionReaderFactory | None
+    ) = None,
+    historical_prefix_success_window_source_reader_factory: (
+        HistoricalPrefixSuccessWindowSourceReaderFactory | None
     ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
@@ -123,6 +130,11 @@ def create_app(
     app.include_router(
         create_historical_prefix_analytics_router(
             historical_prefix_analytics_result_provider
+        )
+    )
+    app.include_router(
+        create_historical_prefix_success_windows_router(
+            historical_prefix_success_window_source_reader_factory
         )
     )
     app.include_router(

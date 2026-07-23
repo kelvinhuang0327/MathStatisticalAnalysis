@@ -1,0 +1,400 @@
+"""Evaluate exact persisted Historical Prefix portfolios as success windows."""
+
+from __future__ import annotations
+
+import re
+
+from lottolab.application.historical_prefix_success_windows import (
+    DEFAULT_PAGE_LIMIT,
+    DEFAULT_PAGE_OFFSET,
+    MAX_PAGE_LIMIT,
+    MIN_PAGE_LIMIT,
+    SUPPORTED_PREFIX_COUNTS,
+    HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixStrategySuccessWindowPage,
+    HistoricalPrefixStrategySuccessWindowResult,
+    HistoricalPrefixSuccessCriterion,
+    HistoricalPrefixSuccessCriterionIdentity,
+    HistoricalPrefixSuccessDrawIdentity,
+    HistoricalPrefixSuccessEvaluationStatus,
+    HistoricalPrefixSuccessImportNotFoundError,
+    HistoricalPrefixSuccessSelectionIdentity,
+    HistoricalPrefixSuccessSourceObservation,
+    HistoricalPrefixSuccessSourceStrategy,
+    HistoricalPrefixSuccessStrategyNotFoundError,
+    HistoricalPrefixSuccessWindowsContractError,
+    HistoricalPrefixSuccessWindowSource,
+    HistoricalPrefixSuccessWindowSummary,
+    HistoricalPrefixSuccessWindowsUnavailableError,
+)
+from lottolab.application.ports import HistoricalPrefixSuccessWindowSourceReaderFactory
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
+from lottolab.domain.strategy_success_evaluation import (
+    BigLottoSuccessCriterion,
+    StrategySuccessEvaluationInputError,
+    WindowSuccessSummary,
+    evaluate_strategy_success_windows,
+)
+from lottolab.domain.strategy_success_measurement import (
+    DEFAULT_WINDOW_POLICY,
+    DEFAULT_WINDOW_POLICY_VERSION,
+    BigLottoOutcomeSignature,
+    BigLottoPortfolioOutcomeSignature,
+    EvidenceStatus,
+    MeasurementMode,
+    MeasurementProvenance,
+    SelectionIdentity,
+    StrategySuccessMeasurement,
+)
+
+_SHA256_PATTERN = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+
+_CRITERION_PARAMETERS = {
+    HistoricalPrefixSuccessCriterion.M3_PLUS: (3, False),
+    HistoricalPrefixSuccessCriterion.M4_PLUS: (4, False),
+    HistoricalPrefixSuccessCriterion.M5_PLUS: (5, False),
+    HistoricalPrefixSuccessCriterion.M6: (6, False),
+    HistoricalPrefixSuccessCriterion.M2_PLUS_SPECIAL: (2, True),
+    HistoricalPrefixSuccessCriterion.M3_PLUS_SPECIAL: (3, True),
+    HistoricalPrefixSuccessCriterion.M4_PLUS_SPECIAL: (4, True),
+    HistoricalPrefixSuccessCriterion.M5_PLUS_SPECIAL: (5, True),
+}
+
+
+def _contract_error(message: str) -> HistoricalPrefixSuccessWindowsContractError:
+    return HistoricalPrefixSuccessWindowsContractError(message)
+
+
+def _validate_import_identity(import_identity_sha256: str) -> None:
+    if (
+        type(import_identity_sha256) is not str
+        or _SHA256_PATTERN.fullmatch(import_identity_sha256) is None
+    ):
+        raise _contract_error("import_identity_sha256 must be an exact lowercase SHA-256")
+
+
+def _validate_prefix_count(prefix_count: int) -> None:
+    if type(prefix_count) is not int or prefix_count not in SUPPORTED_PREFIX_COUNTS:
+        raise _contract_error("prefix_count is outside the closed supported set")
+
+
+def _validate_criterion(criterion: HistoricalPrefixSuccessCriterion) -> None:
+    if type(criterion) is not HistoricalPrefixSuccessCriterion:
+        raise _contract_error("criterion is outside the closed supported set")
+
+
+def _validate_pagination(limit: int, offset: int) -> None:
+    if type(limit) is not int or not MIN_PAGE_LIMIT <= limit <= MAX_PAGE_LIMIT:
+        raise _contract_error("limit must be an integer between 1 and 200")
+    if type(offset) is not int or offset < DEFAULT_PAGE_OFFSET:
+        raise _contract_error("offset must be a non-negative integer")
+
+
+def _validate_strategy_axis(value: str, name: str) -> None:
+    if type(value) is not str or not value or value != value.strip() or len(value) > 200:
+        raise _contract_error(f"{name} must be a non-empty canonical string")
+
+
+def _criterion_identity(
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalPrefixSuccessCriterionIdentity:
+    minimum_main_hits, require_special_hit = _CRITERION_PARAMETERS[criterion]
+    return HistoricalPrefixSuccessCriterionIdentity(
+        criterion=criterion,
+        minimum_main_hits=minimum_main_hits,
+        require_special_hit=require_special_hit,
+        measurement_mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+    )
+
+
+def _domain_criterion(criterion: HistoricalPrefixSuccessCriterion) -> BigLottoSuccessCriterion:
+    identity = _criterion_identity(criterion)
+    return BigLottoSuccessCriterion(
+        minimum_main_hits=identity.minimum_main_hits,
+        require_special_hit=identity.require_special_hit,
+        expected_mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+    )
+
+
+def _draw_token(draw: HistoricalPrefixSuccessDrawIdentity) -> str:
+    return f"{draw.draw_date}#{draw.draw_number}"
+
+
+def _selection(
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+) -> SelectionIdentity:
+    return SelectionIdentity(
+        lottery=LotteryType.BIG_LOTTO,
+        strategy_id=strategy.identity.strategy_id,
+        strategy_version=strategy.identity.strategy_version,
+        max_bet_index=prefix_count,
+        ticket_count=prefix_count,
+    )
+
+
+def _selection_read_model(
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+) -> HistoricalPrefixSuccessSelectionIdentity:
+    return HistoricalPrefixSuccessSelectionIdentity(
+        lottery=LotteryType.BIG_LOTTO,
+        strategy_id=strategy.identity.strategy_id,
+        strategy_version=strategy.identity.strategy_version,
+        replicate=strategy.identity.replicate,
+        ticket_count=prefix_count,
+        max_bet_index=prefix_count,
+    )
+
+
+def _ordered_observations(
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+) -> tuple[HistoricalPrefixSuccessSourceObservation, ...]:
+    observations = tuple(
+        sorted(
+            strategy.observations,
+            key=lambda item: (item.target.draw_date, item.target.draw_number),
+        )
+    )
+    targets = tuple(item.target.draw_number for item in observations)
+    if len(targets) != len(set(targets)):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "persisted source contains a duplicate exact strategy/target observation"
+        )
+    return observations
+
+
+def _measurement(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    observation: HistoricalPrefixSuccessSourceObservation,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> StrategySuccessMeasurement:
+    selected_tickets = observation.tickets[:prefix_count]
+    outcome = BigLottoPortfolioOutcomeSignature(
+        tickets=tuple(
+            BigLottoOutcomeSignature(
+                main_hits=ticket.main_hit_count,
+                special_hit=ticket.special_hit,
+            )
+            for ticket in selected_tickets
+        )
+    )
+    return StrategySuccessMeasurement(
+        mode=MeasurementMode.LEGAL_TICKET_PRIZE,
+        selection=_selection(strategy, prefix_count),
+        outcome_signature=outcome,
+        evidence_status=EvidenceStatus.DESCRIPTIVE_ONLY,
+        provenance=MeasurementProvenance(
+            strategy_version=strategy.identity.strategy_version,
+            parameter_or_config_identity=(
+                f"prefix={prefix_count};criterion={criterion.value}"
+            ),
+            history_cutoff=_draw_token(observation.cutoff),
+            target_draw=_draw_token(observation.target),
+            window_policy_version=DEFAULT_WINDOW_POLICY_VERSION,
+            game_rule_version=BIG_LOTTO_RULE_CONTRACT.contract_version,
+            selection_family_identity=observation.constructor_identifier,
+            source_artifact_identity=(
+                f"{source.metadata.source_artifact_sha256}:"
+                f"{source.metadata.import_identity_sha256}"
+            ),
+        ),
+        window_policy=DEFAULT_WINDOW_POLICY,
+    )
+
+
+def _window_read_model(
+    summary: WindowSuccessSummary,
+    observations_by_target: dict[str, HistoricalPrefixSuccessSourceObservation],
+) -> HistoricalPrefixSuccessWindowSummary:
+    try:
+        first = observations_by_target[summary.first_target_draw]
+        last = observations_by_target[summary.last_target_draw]
+    except KeyError as exc:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "evaluator returned target provenance absent from the persisted source"
+        ) from exc
+    return HistoricalPrefixSuccessWindowSummary(
+        window_kind=summary.window_kind,
+        window_role=summary.window_role,
+        requested_draw_count=summary.requested_draw_count,
+        source_draw_count=summary.source_draw_count,
+        eligible_draw_count=summary.eligible_draw_count,
+        excluded_draw_count=summary.excluded_draw_count,
+        success_count=summary.success_count,
+        failure_count=summary.failure_count,
+        success_rate=HistoricalPrefixExactSuccessRate(
+            numerator=summary.success_rate.numerator,
+            denominator=summary.success_rate.denominator,
+            available=summary.success_rate.is_available,
+        ),
+        first_target=first.target,
+        last_target=last.target,
+        first_cutoff=first.cutoff,
+        last_cutoff=last.cutoff,
+        nested_windows_independent=summary.nested_windows_independent,
+        evaluation_status=summary.evaluation_status,
+        evidence_status=summary.evidence_status,
+    )
+
+
+def _evaluate_strategy(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalPrefixStrategySuccessWindowResult:
+    selection = _selection_read_model(strategy, prefix_count)
+    criterion_identity = _criterion_identity(criterion)
+    observations = _ordered_observations(strategy)
+    if not observations:
+        return HistoricalPrefixStrategySuccessWindowResult(
+            strategy=strategy.identity,
+            criterion=criterion_identity,
+            prefix_count=prefix_count,
+            selection=selection,
+            status=HistoricalPrefixSuccessEvaluationStatus.NO_OBSERVATIONS,
+            source_observation_count=0,
+            windows=(),
+        )
+
+    measurements = tuple(
+        _measurement(
+            source=source,
+            strategy=strategy,
+            observation=observation,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        for observation in observations
+    )
+    observations_by_target = {_draw_token(item.target): item for item in observations}
+    try:
+        evaluated = evaluate_strategy_success_windows(
+            measurements,
+            _domain_criterion(criterion),
+        )
+    except (StrategySuccessEvaluationInputError, TypeError, ValueError) as exc:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "persisted source could not be evaluated under the merged contract"
+        ) from exc
+    windows = tuple(
+        _window_read_model(summary, observations_by_target) for summary in evaluated
+    )
+    if len(windows) != 4:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "merged evaluator did not return the canonical four-window sequence"
+        )
+    return HistoricalPrefixStrategySuccessWindowResult(
+        strategy=strategy.identity,
+        criterion=criterion_identity,
+        prefix_count=prefix_count,
+        selection=selection,
+        status=HistoricalPrefixSuccessEvaluationStatus.EVALUATED,
+        source_observation_count=len(observations),
+        windows=windows,
+    )
+
+
+class EvaluateHistoricalPrefixSuccessWindows:
+    """Load one exact import once and expose descriptive strategy windows."""
+
+    def __init__(self, reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory) -> None:
+        self._reader_factory = reader_factory
+
+    def _load(self, import_identity_sha256: str) -> HistoricalPrefixSuccessWindowSource:
+        reader = self._reader_factory()
+        source = reader.load_source(import_identity_sha256)
+        if source is None:
+            raise HistoricalPrefixSuccessImportNotFoundError(
+                "exact persisted historical import was not found"
+            )
+        if type(source) is not HistoricalPrefixSuccessWindowSource:
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "reader returned a malformed Historical Prefix source"
+            )
+        if source.metadata.import_identity_sha256 != import_identity_sha256:
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "reader returned a different persisted import identity"
+            )
+        return source
+
+    def list_strategies(
+        self,
+        *,
+        import_identity_sha256: str,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = DEFAULT_PAGE_OFFSET,
+    ) -> HistoricalPrefixStrategySuccessWindowPage:
+        _validate_import_identity(import_identity_sha256)
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+        _validate_pagination(limit, offset)
+        source = self._load(import_identity_sha256)
+        selected = source.strategies[offset : offset + limit]
+        return HistoricalPrefixStrategySuccessWindowPage(
+            metadata=source.metadata,
+            criterion=_criterion_identity(criterion),
+            prefix_count=prefix_count,
+            total_count=len(source.strategies),
+            limit=limit,
+            offset=offset,
+            items=tuple(
+                _evaluate_strategy(
+                    source=source,
+                    strategy=strategy,
+                    prefix_count=prefix_count,
+                    criterion=criterion,
+                )
+                for strategy in selected
+            ),
+        )
+
+    def get_strategy(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixStrategySuccessWindowResult:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+        source = self._load(import_identity_sha256)
+        strategy = next(
+            (
+                candidate
+                for candidate in source.strategies
+                if candidate.identity.strategy_id == strategy_id
+                and candidate.identity.strategy_version == strategy_version
+                and candidate.identity.replicate == replicate
+            ),
+            None,
+        )
+        if strategy is None:
+            raise HistoricalPrefixSuccessStrategyNotFoundError(
+                "exact Historical Prefix strategy descriptor was not found"
+            )
+        return _evaluate_strategy(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+
+
+__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]

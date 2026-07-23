@@ -474,6 +474,79 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows": {
+      get: {
+          parameters: {
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixStrategySuccessWindowPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixStrategySuccessWindowResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-rankings/optimal": {
       get: {
           parameters: {
@@ -712,6 +785,7 @@ export interface components {
           "created_at": string
           "updated_at": string
         }
+    "EvidenceStatus": "DESCRIPTIVE_ONLY" | "HISTORICAL_OOS_VERIFIED" | "CROSS_GAME_VERIFIED" | "SHADOW_CAPTURE" | "PRODUCTION_ELIGIBLE" | "REJECTED" | "NOT_READY"
     "ExactRatioView": {
           "numerator": number
           "denominator": number
@@ -799,6 +873,11 @@ export interface components {
           "draw_date": string
           "draw_sha256": string
         }
+    "HistoricalPrefixExactSuccessRateView": {
+          "numerator": number
+          "denominator": number
+          "available": boolean
+        }
     "HistoricalPrefixMetadataView": {
           "result_schema_version": string
           "source_import_identity_sha256": string
@@ -854,6 +933,24 @@ export interface components {
           "summaries": Array<components['schemas']["HistoricalPrefixStrategySummaryView"]>
           "total_count": number
         }
+    "HistoricalPrefixStrategySuccessWindowPageResponse": {
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "total_count": number
+          "limit": number
+          "offset": number
+          "items": Array<components['schemas']["HistoricalPrefixStrategySuccessWindowResponse"]>
+        }
+    "HistoricalPrefixStrategySuccessWindowResponse": {
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "selection": components['schemas']["HistoricalPrefixSuccessSelectionIdentityView"]
+          "status": string
+          "source_observation_count": number
+          "windows": Array<components['schemas']["HistoricalPrefixSuccessWindowSummaryView"]>
+        }
     "HistoricalPrefixStrategySummaryView": {
           "identity": components['schemas']["HistoricalPrefixStrategyIdentityView"]
           "prefix_count": number
@@ -888,6 +985,69 @@ export interface components {
           "general_prize_ticket_count": number
           "ranking_eligible": boolean
           "ranking_exclusion_reason": string | null
+        }
+    "HistoricalPrefixSuccessCriterion": "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
+    "HistoricalPrefixSuccessCriterionView": {
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+          "minimum_main_hits": number
+          "require_special_hit": boolean
+          "measurement_mode": components['schemas']["MeasurementMode"]
+        }
+    "HistoricalPrefixSuccessDrawIdentityView": {
+          "draw_number": number
+          "draw_date": string
+          "draw_sha256": string
+        }
+    "HistoricalPrefixSuccessPrefixCount": 1 | 2 | 3 | 4 | 5 | 10 | 15 | 20
+    "HistoricalPrefixSuccessSelectionIdentityView": {
+          "lottery": components['schemas']["LotteryType"]
+          "strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "ticket_count": number
+          "max_bet_index": number
+        }
+    "HistoricalPrefixSuccessSourceMetadataView": {
+          "run_id": string
+          "contract_version": string
+          "import_identity_sha256": string
+          "source_kind": string
+          "source_repository": string
+          "source_commit_oid": string
+          "source_artifact_sha256": string
+          "dataset_identity": string
+          "dataset_sha256": string
+          "lottery_type": string
+        }
+    "HistoricalPrefixSuccessStrategyIdentityView": {
+          "strategy_id": string
+          "effective_strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "identity_kind": string
+          "governance_status": string
+          "alias_of_strategy_id": string | null
+          "equivalence_group": string | null
+          "nested_prefix_supported": boolean
+          "descriptor_sha256": string
+        }
+    "HistoricalPrefixSuccessWindowSummaryView": {
+          "window_kind": components['schemas']["WindowKind"]
+          "window_role": components['schemas']["WindowRole"]
+          "requested_draw_count": number | null
+          "source_draw_count": number
+          "eligible_draw_count": number
+          "excluded_draw_count": number
+          "success_count": number
+          "failure_count": number
+          "success_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
+          "first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"]
+          "last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"]
+          "first_cutoff": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"]
+          "last_cutoff": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"]
+          "nested_windows_independent": boolean
+          "evaluation_status": components['schemas']["WindowEvaluationStatus"]
+          "evidence_status": components['schemas']["EvidenceStatus"]
         }
     "HistoricalReplayPageResponse": {
           "run_id": string
@@ -1022,6 +1182,7 @@ export interface components {
           "reason_code": components['schemas']["GenerateLiveZoneSplitBetsReason"] | null
         }
     "LotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
+    "MeasurementMode": "CANDIDATE_COVERAGE" | "LEGAL_TICKET_PRIZE" | "OFFICIAL_PRIZE_TIER"
     "NormalizedDrawPreviewView": {
           "source_row_number": number
           "lottery_type": components['schemas']["LotteryType"]
@@ -1200,5 +1361,8 @@ export interface components {
           "executable": boolean
         }
     "TicketCount": 10 | 15 | 20
+    "WindowEvaluationStatus": "COMPLETE" | "INSUFFICIENT_DRAWS" | "NO_ELIGIBLE_DRAWS"
+    "WindowKind": "FULL_HISTORY" | "LONG" | "MEDIUM" | "SHORT"
+    "WindowRole": "REFERENCE_ONLY" | "PRIMARY_EVIDENCE" | "STABILITY_CONFIRMATION" | "DEGRADATION_VETO" | "PROMOTION_FILTER"
   }
 }

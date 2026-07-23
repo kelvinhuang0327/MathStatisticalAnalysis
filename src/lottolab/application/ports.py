@@ -14,6 +14,9 @@ from lottolab.application.draw_data import (
     IngestionRunPage,
     IngestionRunQuery,
 )
+from lottolab.application.historical_prefix_success_windows import (
+    HistoricalPrefixSuccessWindowSource,
+)
 from lottolab.application.historical_queries import (
     HistoricalPortfolioRecord,
     HistoricalReplayPage,
@@ -121,6 +124,22 @@ class HistoricalResultQueryRepository(Protocol):
 
 
 type HistoricalResultQueryRepositoryFactory = Callable[[], HistoricalResultQueryRepository]
+
+
+@runtime_checkable
+class HistoricalPrefixSuccessWindowSourceReader(Protocol):
+    """Narrow read-only boundary for one exact persisted Historical Prefix source."""
+
+    def load_source(
+        self, import_identity_sha256: str
+    ) -> HistoricalPrefixSuccessWindowSource | None:
+        """Return one exact COMPLETED source, or ``None`` when it is absent."""
+        ...
+
+
+type HistoricalPrefixSuccessWindowSourceReaderFactory = Callable[
+    [], HistoricalPrefixSuccessWindowSourceReader
+]
 
 
 class TargetDrawNotFoundError(LookupError):

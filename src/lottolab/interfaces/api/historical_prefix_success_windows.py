@@ -7,7 +7,7 @@ from __future__ import annotations
 from enum import IntEnum
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
@@ -17,6 +17,10 @@ from lottolab.application.historical_prefix_success_windows import (
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
     HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixRateRelation,
+    HistoricalPrefixSignedRateDelta,
+    HistoricalPrefixStrategySuccessMatrix,
+    HistoricalPrefixStrategySuccessMatrixCell,
     HistoricalPrefixStrategySuccessWindowPage,
     HistoricalPrefixStrategySuccessWindowResult,
     HistoricalPrefixSuccessCriterion,
@@ -28,6 +32,8 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessStrategyNotFoundError,
     HistoricalPrefixSuccessWindowSourceMetadata,
     HistoricalPrefixSuccessWindowSummary,
+    HistoricalPrefixWindowRateComparison,
+    HistoricalPrefixWindowRateComparisonKind,
 )
 from lottolab.application.ports import HistoricalPrefixSuccessWindowSourceReaderFactory
 from lottolab.application.use_cases.evaluate_historical_prefix_success_windows import (
@@ -43,7 +49,11 @@ from lottolab.domain.strategy_success_measurement import (
     MeasurementMode,
     WindowRole,
 )
-from lottolab.interfaces.api.draw_data import ApiErrorResponse, ApiValidationErrorResponse
+from lottolab.interfaces.api.draw_data import (
+    ApiErrorResponse,
+    ApiValidationErrorResponse,
+    RequestValidationIssueView,
+)
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
@@ -322,6 +332,118 @@ class HistoricalPrefixStrategySuccessWindowPageResponse(BaseModel):
         )
 
 
+class HistoricalPrefixSignedRateDeltaView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    numerator: int
+    denominator: int
+    available: bool
+
+    @classmethod
+    def from_delta(
+        cls, delta: HistoricalPrefixSignedRateDelta
+    ) -> HistoricalPrefixSignedRateDeltaView:
+        return cls.model_validate(delta, from_attributes=True)
+
+
+class HistoricalPrefixWindowRateComparisonView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    comparison_kind: HistoricalPrefixWindowRateComparisonKind
+    from_window_kind: WindowKind
+    to_window_kind: WindowKind
+    from_rate: HistoricalPrefixExactSuccessRateView
+    to_rate: HistoricalPrefixExactSuccessRateView
+    delta: HistoricalPrefixSignedRateDeltaView
+    relation: HistoricalPrefixRateRelation
+
+    @classmethod
+    def from_comparison(
+        cls, comparison: HistoricalPrefixWindowRateComparison
+    ) -> HistoricalPrefixWindowRateComparisonView:
+        return cls(
+            comparison_kind=comparison.comparison_kind,
+            from_window_kind=comparison.from_window_kind,
+            to_window_kind=comparison.to_window_kind,
+            from_rate=HistoricalPrefixExactSuccessRateView.from_rate(
+                comparison.from_rate
+            ),
+            to_rate=HistoricalPrefixExactSuccessRateView.from_rate(comparison.to_rate),
+            delta=HistoricalPrefixSignedRateDeltaView.from_delta(comparison.delta),
+            relation=comparison.relation,
+        )
+
+
+class HistoricalPrefixStrategySuccessMatrixCellView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    selection: HistoricalPrefixSuccessSelectionIdentityView
+    status: str
+    source_observation_count: int
+    windows: tuple[HistoricalPrefixSuccessWindowSummaryView, ...]
+    comparisons: tuple[HistoricalPrefixWindowRateComparisonView, ...]
+
+    @classmethod
+    def from_cell(
+        cls, cell: HistoricalPrefixStrategySuccessMatrixCell
+    ) -> HistoricalPrefixStrategySuccessMatrixCellView:
+        return cls(
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(cell.criterion),
+            prefix_count=cell.prefix_count,
+            selection=HistoricalPrefixSuccessSelectionIdentityView.from_identity(
+                cell.selection
+            ),
+            status=cell.status.value,
+            source_observation_count=cell.source_observation_count,
+            windows=tuple(
+                HistoricalPrefixSuccessWindowSummaryView.from_summary(item)
+                for item in cell.windows
+            ),
+            comparisons=tuple(
+                HistoricalPrefixWindowRateComparisonView.from_comparison(item)
+                for item in cell.comparisons
+            ),
+        )
+
+
+class HistoricalPrefixStrategySuccessMatrixResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    metadata: HistoricalPrefixSuccessSourceMetadataView
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    source_observation_count: int
+    prefix_counts: tuple[int, ...]
+    criteria: tuple[HistoricalPrefixSuccessCriterionView, ...]
+    cell_count: int
+    cells: tuple[HistoricalPrefixStrategySuccessMatrixCellView, ...]
+
+    @classmethod
+    def from_matrix(
+        cls, matrix: HistoricalPrefixStrategySuccessMatrix
+    ) -> HistoricalPrefixStrategySuccessMatrixResponse:
+        return cls(
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
+                matrix.metadata
+            ),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
+                matrix.strategy
+            ),
+            source_observation_count=matrix.source_observation_count,
+            prefix_counts=matrix.prefix_counts,
+            criteria=tuple(
+                HistoricalPrefixSuccessCriterionView.from_identity(item)
+                for item in matrix.criteria
+            ),
+            cell_count=matrix.cell_count,
+            cells=tuple(
+                HistoricalPrefixStrategySuccessMatrixCellView.from_cell(item)
+                for item in matrix.cells
+            ),
+        )
+
+
 def create_historical_prefix_success_windows_router(
     reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory | None,
 ) -> APIRouter:
@@ -404,6 +526,44 @@ def create_historical_prefix_success_windows_router(
             return _unavailable_error()
         return HistoricalPrefixStrategySuccessWindowResponse.from_result(result)
 
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/matrix"
+        ),
+        response_model=HistoricalPrefixStrategySuccessMatrixResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategySuccessMatrix",
+    )
+    def get_historical_prefix_strategy_success_matrix(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: ImportIdentitySha256,
+    ) -> HistoricalPrefixStrategySuccessMatrixResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys()) - {"import_identity_sha256"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            matrix = evaluator.get_matrix(
+                import_identity_sha256=import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+            )
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixStrategySuccessMatrixResponse.from_matrix(matrix)
+
     return router
 
 
@@ -439,6 +599,21 @@ def _unavailable_error() -> JSONResponse:
     )
 
 
+def _invalid_matrix_query_error(fields: list[str]) -> JSONResponse:
+    model = ApiValidationErrorResponse(
+        error_code="REQUEST_VALIDATION_FAILED",
+        message="Request validation failed.",
+        fields=[
+            RequestValidationIssueView(
+                location=f"query.{field}",
+                type="extra_forbidden",
+            )
+            for field in fields
+        ],
+    )
+    return JSONResponse(status_code=422, content=model.model_dump(mode="json"))
+
+
 def _error_response(status_code: int, error_code: str, message: str) -> JSONResponse:
     model = ApiErrorResponse(error_code=error_code, message=message)
     return JSONResponse(status_code=status_code, content=model.model_dump(mode="json"))
@@ -446,6 +621,9 @@ def _error_response(status_code: int, error_code: str, message: str) -> JSONResp
 
 __all__ = [
     "HistoricalPrefixExactSuccessRateView",
+    "HistoricalPrefixSignedRateDeltaView",
+    "HistoricalPrefixStrategySuccessMatrixCellView",
+    "HistoricalPrefixStrategySuccessMatrixResponse",
     "HistoricalPrefixStrategySuccessWindowPageResponse",
     "HistoricalPrefixStrategySuccessWindowResponse",
     "HistoricalPrefixSuccessCriterionView",
@@ -455,5 +633,6 @@ __all__ = [
     "HistoricalPrefixSuccessSourceMetadataView",
     "HistoricalPrefixSuccessStrategyIdentityView",
     "HistoricalPrefixSuccessWindowSummaryView",
+    "HistoricalPrefixWindowRateComparisonView",
     "create_historical_prefix_success_windows_router",
 ]

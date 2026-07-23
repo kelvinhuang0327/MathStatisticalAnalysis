@@ -1474,6 +1474,105 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/matrix": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Success Matrix",
+        "operationId": "getHistoricalPrefixStrategySuccessMatrix",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of one persisted Historical Results import.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of one persisted Historical Results import."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixStrategySuccessMatrixResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/replay-rankings/optimal": {
       "get": {
         "tags": [
@@ -2989,6 +3088,16 @@
         ],
         "title": "HistoricalPrefixRankingsResponse"
       },
+      "HistoricalPrefixRateRelation": {
+        "type": "string",
+        "enum": [
+          "HIGHER",
+          "EQUAL",
+          "LOWER",
+          "UNAVAILABLE"
+        ],
+        "title": "HistoricalPrefixRateRelation"
+      },
       "HistoricalPrefixReplayPageResponse": {
         "properties": {
           "metadata": {
@@ -3032,6 +3141,29 @@
           "offset"
         ],
         "title": "HistoricalPrefixReplayPageResponse"
+      },
+      "HistoricalPrefixSignedRateDeltaView": {
+        "properties": {
+          "numerator": {
+            "type": "integer",
+            "title": "Numerator"
+          },
+          "denominator": {
+            "type": "integer",
+            "title": "Denominator"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          }
+        },
+        "type": "object",
+        "required": [
+          "numerator",
+          "denominator",
+          "available"
+        ],
+        "title": "HistoricalPrefixSignedRateDeltaView"
       },
       "HistoricalPrefixStrategyIdentityView": {
         "properties": {
@@ -3129,6 +3261,103 @@
           "total_count"
         ],
         "title": "HistoricalPrefixStrategyOverviewResponse"
+      },
+      "HistoricalPrefixStrategySuccessMatrixCellView": {
+        "properties": {
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterionView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSelectionIdentityView"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source_observation_count": {
+            "type": "integer",
+            "title": "Source Observation Count"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessWindowSummaryView"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "comparisons": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixWindowRateComparisonView"
+            },
+            "type": "array",
+            "title": "Comparisons"
+          }
+        },
+        "type": "object",
+        "required": [
+          "criterion",
+          "prefix_count",
+          "selection",
+          "status",
+          "source_observation_count",
+          "windows",
+          "comparisons"
+        ],
+        "title": "HistoricalPrefixStrategySuccessMatrixCellView"
+      },
+      "HistoricalPrefixStrategySuccessMatrixResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSourceMetadataView"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessStrategyIdentityView"
+          },
+          "source_observation_count": {
+            "type": "integer",
+            "title": "Source Observation Count"
+          },
+          "prefix_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Prefix Counts"
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterionView"
+            },
+            "type": "array",
+            "title": "Criteria"
+          },
+          "cell_count": {
+            "type": "integer",
+            "title": "Cell Count"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixStrategySuccessMatrixCellView"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "strategy",
+          "source_observation_count",
+          "prefix_counts",
+          "criteria",
+          "cell_count",
+          "cells"
+        ],
+        "title": "HistoricalPrefixStrategySuccessMatrixResponse"
       },
       "HistoricalPrefixStrategySuccessWindowPageResponse": {
         "properties": {
@@ -3728,6 +3957,52 @@
           "evidence_status"
         ],
         "title": "HistoricalPrefixSuccessWindowSummaryView"
+      },
+      "HistoricalPrefixWindowRateComparisonKind": {
+        "type": "string",
+        "enum": [
+          "FULL_HISTORY_TO_LONG",
+          "LONG_TO_MEDIUM",
+          "MEDIUM_TO_SHORT",
+          "LONG_TO_SHORT"
+        ],
+        "title": "HistoricalPrefixWindowRateComparisonKind"
+      },
+      "HistoricalPrefixWindowRateComparisonView": {
+        "properties": {
+          "comparison_kind": {
+            "$ref": "#/components/schemas/HistoricalPrefixWindowRateComparisonKind"
+          },
+          "from_window_kind": {
+            "$ref": "#/components/schemas/WindowKind"
+          },
+          "to_window_kind": {
+            "$ref": "#/components/schemas/WindowKind"
+          },
+          "from_rate": {
+            "$ref": "#/components/schemas/HistoricalPrefixExactSuccessRateView"
+          },
+          "to_rate": {
+            "$ref": "#/components/schemas/HistoricalPrefixExactSuccessRateView"
+          },
+          "delta": {
+            "$ref": "#/components/schemas/HistoricalPrefixSignedRateDeltaView"
+          },
+          "relation": {
+            "$ref": "#/components/schemas/HistoricalPrefixRateRelation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "comparison_kind",
+          "from_window_kind",
+          "to_window_kind",
+          "from_rate",
+          "to_rate",
+          "delta",
+          "relation"
+        ],
+        "title": "HistoricalPrefixWindowRateComparisonView"
       },
       "HistoricalReplayPageResponse": {
         "properties": {

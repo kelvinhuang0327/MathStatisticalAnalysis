@@ -6,6 +6,8 @@ export type HistoricalRun = HistoricalRunPage['items'][number]
 export type HistoricalSuccessWindowPage =
   paths['/api/v1/historical-prefix-success-windows']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessWindowResult = HistoricalSuccessWindowPage['items'][number]
+export type HistoricalSuccessStabilityMatrix =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/matrix']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -38,6 +40,12 @@ const WINDOW_ROLES = [
   'DEGRADATION_VETO',
 ] as const
 const WINDOW_DRAW_COUNTS = [null, 750, 300, 50] as const
+const COMPARISON_DEFINITIONS = [
+  ['FULL_HISTORY_TO_LONG', 0, 1],
+  ['LONG_TO_MEDIUM', 1, 2],
+  ['MEDIUM_TO_SHORT', 2, 3],
+  ['LONG_TO_SHORT', 1, 3],
+] as const
 const EVALUATION_STATUSES = new Set([
   'COMPLETE',
   'INSUFFICIENT_DRAWS',
@@ -52,6 +60,16 @@ const EVIDENCE_STATUSES = new Set([
   'REJECTED',
   'NOT_READY',
 ])
+const CRITERION_PARAMETERS = {
+  M3_PLUS: [3, false],
+  M4_PLUS: [4, false],
+  M5_PLUS: [5, false],
+  M6: [6, false],
+  M2_PLUS_SPECIAL: [2, true],
+  M3_PLUS_SPECIAL: [3, true],
+  M4_PLUS_SPECIAL: [4, true],
+  M5_PLUS_SPECIAL: [5, true],
+} as const satisfies Record<HistoricalSuccessCriterion, readonly [number, boolean]>
 
 export interface HistoricalRunQuery {
   limit: number
@@ -71,6 +89,13 @@ export interface HistoricalSuccessExactQuery {
   replicate: number
   prefix_count: HistoricalSuccessPrefixCount
   criterion: HistoricalSuccessCriterion
+}
+
+export interface HistoricalSuccessMatrixQuery {
+  import_identity_sha256: string
+  strategy_id: string
+  strategy_version: string
+  replicate: number
 }
 
 export type HistoricalSuccessErrorKind =
@@ -116,8 +141,12 @@ function isNullableString(value: unknown): value is string | null {
   return value === null || isString(value)
 }
 
+function isNullableNonBlankString(value: unknown): value is string | null {
+  return value === null || isNonBlankString(value)
+}
+
 function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 }
 
 function isPositiveInteger(value: unknown): value is number {
@@ -204,20 +233,21 @@ function isStrategyIdentity(value: unknown): boolean {
     isPositiveInteger(value.replicate) &&
     isNonBlankString(value.identity_kind) &&
     isNonBlankString(value.governance_status) &&
-    isNullableString(value.alias_of_strategy_id) &&
-    isNullableString(value.equivalence_group) &&
+    isNullableNonBlankString(value.alias_of_strategy_id) &&
+    isNullableNonBlankString(value.equivalence_group) &&
     typeof value.nested_prefix_supported === 'boolean' &&
     isSha256(value.descriptor_sha256)
   )
 }
 
 function isCriterion(value: unknown, expected: HistoricalSuccessCriterion): boolean {
+  const [minimumMainHits, requireSpecialHit] = CRITERION_PARAMETERS[expected]
   return (
     isRecord(value) &&
     value.criterion === expected &&
-    isNonNegativeInteger(value.minimum_main_hits) &&
-    typeof value.require_special_hit === 'boolean' &&
-    isNonBlankString(value.measurement_mode)
+    value.minimum_main_hits === minimumMainHits &&
+    value.require_special_hit === requireSpecialHit &&
+    value.measurement_mode === 'LEGAL_TICKET_PRIZE'
   )
 }
 
@@ -325,6 +355,189 @@ function isMetadata(value: unknown, importIdentity: string): boolean {
     isSha256(value.dataset_sha256) &&
     isNonBlankString(value.lottery_type)
   )
+}
+
+function exactRateEquals(left: unknown, right: unknown): boolean {
+  return (
+    isRecord(left) &&
+    isRecord(right) &&
+    left.numerator === right.numerator &&
+    left.denominator === right.denominator &&
+    left.available === right.available
+  )
+}
+
+function greatestCommonDivisor(left: number, right: number): number {
+  let a = Math.abs(left)
+  let b = Math.abs(right)
+  while (b !== 0) {
+    const remainder = a % b
+    a = b
+    b = remainder
+  }
+  return a
+}
+
+function expectedSignedDelta(
+  fromRate: Record<string, unknown>,
+  toRate: Record<string, unknown>,
+): readonly [number, number, boolean, string] | null {
+  if (fromRate.available === false || toRate.available === false) {
+    return [0, 0, false, 'UNAVAILABLE']
+  }
+  if (
+    !isNonNegativeInteger(fromRate.numerator) ||
+    !isPositiveInteger(fromRate.denominator) ||
+    !isNonNegativeInteger(toRate.numerator) ||
+    !isPositiveInteger(toRate.denominator)
+  ) {
+    return null
+  }
+  const numerator =
+    toRate.numerator * fromRate.denominator -
+    fromRate.numerator * toRate.denominator
+  const denominator = toRate.denominator * fromRate.denominator
+  if (!Number.isSafeInteger(numerator) || !Number.isSafeInteger(denominator)) return null
+  const divisor = greatestCommonDivisor(numerator, denominator)
+  const reducedNumerator = numerator / divisor
+  const reducedDenominator = reducedNumerator === 0 ? 1 : denominator / divisor
+  const relation =
+    reducedNumerator > 0 ? 'HIGHER' : reducedNumerator < 0 ? 'LOWER' : 'EQUAL'
+  return [reducedNumerator, reducedDenominator, true, relation]
+}
+
+function isMatrixComparison(
+  value: unknown,
+  index: number,
+  windows: unknown[],
+): boolean {
+  const definition = COMPARISON_DEFINITIONS[index]
+  if (definition === undefined || !isRecord(value)) return false
+  const [comparisonKind, fromIndex, toIndex] = definition
+  const fromWindow = windows[fromIndex]
+  const toWindow = windows[toIndex]
+  if (
+    !isRecord(fromWindow) ||
+    !isRecord(toWindow) ||
+    !isRecord(fromWindow.success_rate) ||
+    !isRecord(toWindow.success_rate) ||
+    value.comparison_kind !== comparisonKind ||
+    value.from_window_kind !== WINDOW_KINDS[fromIndex] ||
+    value.to_window_kind !== WINDOW_KINDS[toIndex] ||
+    !exactRateEquals(value.from_rate, fromWindow.success_rate) ||
+    !exactRateEquals(value.to_rate, toWindow.success_rate) ||
+    !isRecord(value.delta)
+  ) {
+    return false
+  }
+  const expected = expectedSignedDelta(fromWindow.success_rate, toWindow.success_rate)
+  if (expected === null) return false
+  const [numerator, denominator, available, relation] = expected
+  return (
+    value.delta.numerator === numerator &&
+    value.delta.denominator === denominator &&
+    value.delta.available === available &&
+    value.relation === relation
+  )
+}
+
+function isMatrixCell(
+  value: unknown,
+  expectedCriterion: HistoricalSuccessCriterion,
+  expectedPrefix: HistoricalSuccessPrefixCount,
+  expectedStrategy: Record<string, unknown>,
+  sourceObservationCount: number,
+): boolean {
+  if (
+    !isRecord(value) ||
+    !isCriterion(value.criterion, expectedCriterion) ||
+    value.prefix_count !== expectedPrefix ||
+    !isRecord(value.selection) ||
+    value.selection.lottery !== 'BIG_LOTTO' ||
+    value.selection.strategy_id !== expectedStrategy.strategy_id ||
+    value.selection.strategy_version !== expectedStrategy.strategy_version ||
+    value.selection.replicate !== expectedStrategy.replicate ||
+    value.selection.ticket_count !== expectedPrefix ||
+    value.selection.max_bet_index !== expectedPrefix ||
+    value.source_observation_count !== sourceObservationCount ||
+    !Array.isArray(value.windows) ||
+    !Array.isArray(value.comparisons)
+  ) {
+    return false
+  }
+  const windows = value.windows
+  const comparisons = value.comparisons
+  if (sourceObservationCount === 0) {
+    return (
+      value.status === 'NO_OBSERVATIONS' &&
+      windows.length === 0 &&
+      comparisons.length === 0
+    )
+  }
+  return (
+    value.status === 'EVALUATED' &&
+    windows.length === 4 &&
+    windows.every(isWindow) &&
+    comparisons.length === 4 &&
+    comparisons.every((item, index) =>
+      isMatrixComparison(item, index, windows),
+    )
+  )
+}
+
+function isStabilityMatrix(
+  value: unknown,
+  query: HistoricalSuccessMatrixQuery,
+): value is HistoricalSuccessStabilityMatrix {
+  if (
+    !isRecord(value) ||
+    !isMetadata(value.metadata, query.import_identity_sha256) ||
+    !isStrategyIdentity(value.strategy) ||
+    !isNonNegativeInteger(value.source_observation_count) ||
+    !Array.isArray(value.prefix_counts) ||
+    !Array.isArray(value.criteria) ||
+    value.cell_count !== 64 ||
+    !Array.isArray(value.cells) ||
+    value.cells.length !== 64
+  ) {
+    return false
+  }
+  const strategy = value.strategy as Record<string, unknown>
+  const sourceObservationCount = value.source_observation_count
+  if (
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate ||
+    value.prefix_counts.length !== HISTORICAL_SUCCESS_PREFIX_COUNTS.length ||
+    !value.prefix_counts.every(
+      (prefix, index) => prefix === HISTORICAL_SUCCESS_PREFIX_COUNTS[index],
+    ) ||
+    value.criteria.length !== HISTORICAL_SUCCESS_CRITERIA.length ||
+    !value.criteria.every((item, index) => {
+      const expected = HISTORICAL_SUCCESS_CRITERIA[index]
+      return expected !== undefined && isCriterion(item, expected)
+    })
+  ) {
+    return false
+  }
+  const seen = new Set<string>()
+  return value.cells.every((cell, index) => {
+    const criterionIndex = Math.floor(index / HISTORICAL_SUCCESS_PREFIX_COUNTS.length)
+    const prefixIndex = index % HISTORICAL_SUCCESS_PREFIX_COUNTS.length
+    const expectedCriterion = HISTORICAL_SUCCESS_CRITERIA[criterionIndex]
+    const expectedPrefix = HISTORICAL_SUCCESS_PREFIX_COUNTS[prefixIndex]
+    if (expectedCriterion === undefined || expectedPrefix === undefined) return false
+    const key = `${expectedCriterion}:${expectedPrefix}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return isMatrixCell(
+      cell,
+      expectedCriterion,
+      expectedPrefix,
+      strategy,
+      sourceObservationCount,
+    )
+  })
 }
 
 function isSuccessPage(
@@ -495,5 +708,22 @@ export async function getHistoricalSuccessWindows(
     signal,
   )
   if (!isSuccessResult(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessStabilityMatrix(
+  query: HistoricalSuccessMatrixQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessStabilityMatrix> {
+  const parameters = new URLSearchParams()
+  parameters.set('import_identity_sha256', query.import_identity_sha256)
+  const identity = [query.strategy_id, query.strategy_version, String(query.replicate)]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/matrix?${parameters.toString()}`,
+    signal,
+  )
+  if (!isStabilityMatrix(payload, query)) throw malformedResponse()
   return payload
 }

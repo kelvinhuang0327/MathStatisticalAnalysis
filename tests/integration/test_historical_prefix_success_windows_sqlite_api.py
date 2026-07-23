@@ -95,7 +95,7 @@ def _params(import_identity_sha256: str) -> dict[str, object]:
     }
 
 
-def test_exact_persisted_import_flows_read_only_from_sqlite_to_both_http_routes(
+def test_exact_persisted_import_flows_read_only_from_sqlite_to_all_http_routes(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "historical.db"
@@ -111,9 +111,14 @@ def test_exact_persisted_import_flows_read_only_from_sqlite_to_both_http_routes(
         f"{LIST_PATH}/strategies/SYNTHETIC_ALIAS_B/v1/1",
         params=_params(run_import.import_identity_sha256),
     )
+    matrix_response = client.get(
+        f"{LIST_PATH}/strategies/SYNTHETIC_ALIAS_B/v1/1/matrix",
+        params={"import_identity_sha256": run_import.import_identity_sha256},
+    )
 
     assert page_response.status_code == 200
     assert exact_response.status_code == 200
+    assert matrix_response.status_code == 200
     assert page_response.json()["total_count"] == len(run_import.strategy_descriptors)
     assert [
         item["strategy"]["strategy_id"] for item in page_response.json()["items"]
@@ -121,6 +126,10 @@ def test_exact_persisted_import_flows_read_only_from_sqlite_to_both_http_routes(
     assert exact_response.json()["strategy"]["strategy_id"] == "SYNTHETIC_ALIAS_B"
     assert exact_response.json()["selection"]["strategy_id"] == "SYNTHETIC_ALIAS_B"
     assert exact_response.json()["source_observation_count"] == 1
+    matrix = matrix_response.json()
+    assert matrix["strategy"]["strategy_id"] == "SYNTHETIC_ALIAS_B"
+    assert matrix["cell_count"] == len(matrix["cells"]) == 64
+    assert matrix["source_observation_count"] == 1
     assert database.read_bytes() == before
     assert not list(tmp_path.glob("historical.db-*"))
     assert not list(tmp_path.glob("historical.db-journal"))

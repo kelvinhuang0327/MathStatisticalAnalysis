@@ -10,7 +10,11 @@ from tests.fixtures.historical.success_window_builder import (
     build_success_strategy,
 )
 
+import lottolab.application.use_cases.evaluate_historical_prefix_success_windows as module
 from lottolab.application.historical_prefix_success_windows import (
+    HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixRateRelation,
+    HistoricalPrefixStrategySuccessMatrix,
     HistoricalPrefixStrategySuccessWindowResult,
     HistoricalPrefixSuccessCriterion,
     HistoricalPrefixSuccessWindowSource,
@@ -66,6 +70,20 @@ def _evaluate(
     )
     assert reader.calls == 1
     return result
+
+
+def _matrix(
+    source: HistoricalPrefixSuccessWindowSource,
+) -> tuple[HistoricalPrefixStrategySuccessMatrix, _Reader]:
+    reader = _Reader(source)
+    strategy = source.strategies[0].identity
+    result = EvaluateHistoricalPrefixSuccessWindows(lambda: reader).get_matrix(
+        import_identity_sha256=IMPORT_IDENTITY,
+        strategy_id=strategy.strategy_id,
+        strategy_version=strategy.strategy_version,
+        replicate=strategy.replicate,
+    )
+    return result, reader
 
 
 def test_guard_first_n_not_last_n_and_special_requirement_not_ignored() -> None:
@@ -381,3 +399,115 @@ def test_guard_reader_uses_all_remaining_exact_constructs() -> None:
     assert "ORDER BY CAST(draw_number AS INTEGER) ASC" in reader
     assert "status = 'COMPLETED'" in reader
     assert "ORDER BY rowid ASC" in reader
+
+
+def test_guard_matrix_cell_order_count_one_load_identity_and_comparison_order() -> None:
+    matrix, reader = _matrix(
+        build_success_source(
+            (
+                build_success_strategy(
+                    "alias",
+                    effective_strategy_id="base",
+                    alias_of_strategy_id="base",
+                    replicate=4,
+                    observations=build_success_observations(1),
+                ),
+            )
+        )
+    )
+
+    assert reader.calls == 1
+    assert matrix.cell_count == len(matrix.cells) == 64
+    assert [
+        (cell.criterion.criterion.value, cell.prefix_count) for cell in matrix.cells
+    ] == [
+        (criterion.value, prefix)
+        for criterion in HistoricalPrefixSuccessCriterion
+        for prefix in (1, 2, 3, 4, 5, 10, 15, 20)
+    ]
+    assert matrix.strategy.strategy_id == "alias"
+    assert matrix.strategy.effective_strategy_id == "base"
+    assert matrix.strategy.alias_of_strategy_id == "base"
+    assert matrix.strategy.replicate == 4
+    assert all(cell.selection.strategy_id == "alias" for cell in matrix.cells)
+    assert all(cell.selection.replicate == 4 for cell in matrix.cells)
+    assert [
+        item.comparison_kind.value for item in matrix.cells[0].comparisons
+    ] == [
+        "FULL_HISTORY_TO_LONG",
+        "LONG_TO_MEDIUM",
+        "MEDIUM_TO_SHORT",
+        "LONG_TO_SHORT",
+    ]
+
+
+def test_guard_signed_deltas_detect_direction_zero_and_unavailable() -> None:
+    higher, higher_relation = module._signed_rate_delta(  # pyright: ignore[reportPrivateUsage]
+        HistoricalPrefixExactSuccessRate(1, 4, True),
+        HistoricalPrefixExactSuccessRate(2, 4, True),
+    )
+    lower, lower_relation = module._signed_rate_delta(  # pyright: ignore[reportPrivateUsage]
+        HistoricalPrefixExactSuccessRate(3, 4, True),
+        HistoricalPrefixExactSuccessRate(1, 2, True),
+    )
+    equal, equal_relation = module._signed_rate_delta(  # pyright: ignore[reportPrivateUsage]
+        HistoricalPrefixExactSuccessRate(1, 2, True),
+        HistoricalPrefixExactSuccessRate(2, 4, True),
+    )
+    unavailable, unavailable_relation = module._signed_rate_delta(  # pyright: ignore[reportPrivateUsage]
+        HistoricalPrefixExactSuccessRate(0, 0, False),
+        HistoricalPrefixExactSuccessRate(1, 2, True),
+    )
+
+    assert (higher.numerator, higher.denominator, higher_relation) == (
+        1,
+        4,
+        HistoricalPrefixRateRelation.HIGHER,
+    )
+    assert (lower.numerator, lower.denominator, lower_relation) == (
+        -1,
+        4,
+        HistoricalPrefixRateRelation.LOWER,
+    )
+    assert (equal.numerator, equal.denominator, equal_relation) == (
+        0,
+        1,
+        HistoricalPrefixRateRelation.EQUAL,
+    )
+    assert (
+        unavailable.numerator,
+        unavailable.denominator,
+        unavailable.available,
+        unavailable_relation,
+    ) == (0, 0, False, HistoricalPrefixRateRelation.UNAVAILABLE)
+
+
+def test_guard_matrix_zero_observation_never_fabricates_rates() -> None:
+    matrix, _ = _matrix(
+        build_success_source((build_success_strategy("zero"),))
+    )
+
+    assert len(matrix.cells) == 64
+    assert all(cell.windows == () and cell.comparisons == () for cell in matrix.cells)
+
+
+def test_guard_matrix_source_has_no_per_cell_reader_or_rate_sorting() -> None:
+    use_case = USE_CASE.read_text(encoding="utf-8")
+    matrix_method = use_case.split("def get_matrix(", 1)[1].split(
+        '__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]', 1
+    )[0]
+
+    assert matrix_method.count("source = self._load(import_identity_sha256)") == 1
+    assert matrix_method.count("_find_exact_strategy(") == 1
+    assert "for criterion in SUPPORTED_SUCCESS_CRITERIA" in matrix_method
+    assert "for prefix_count in SUPPORTED_PREFIX_COUNTS" in matrix_method
+    assert "sorted(" not in matrix_method
+    assert "success_rate" not in matrix_method
+
+
+def test_guard_matrix_relation_vocabulary_stays_neutral() -> None:
+    source = API.read_text(encoding="utf-8")
+    forbidden = ("IMPROVED", "DEGRADED", "WINNER", "PROMOTE", "REJECT")
+
+    assert "HistoricalPrefixRateRelation" in source
+    assert all(word not in source for word in forbidden)

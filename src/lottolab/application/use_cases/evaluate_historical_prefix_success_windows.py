@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from math import gcd
 
 from lottolab.application.historical_prefix_success_windows import (
     DEFAULT_PAGE_LIMIT,
@@ -10,7 +11,12 @@ from lottolab.application.historical_prefix_success_windows import (
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
     SUPPORTED_PREFIX_COUNTS,
+    SUPPORTED_SUCCESS_CRITERIA,
     HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixRateRelation,
+    HistoricalPrefixSignedRateDelta,
+    HistoricalPrefixStrategySuccessMatrix,
+    HistoricalPrefixStrategySuccessMatrixCell,
     HistoricalPrefixStrategySuccessWindowPage,
     HistoricalPrefixStrategySuccessWindowResult,
     HistoricalPrefixSuccessCriterion,
@@ -26,6 +32,8 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessWindowSource,
     HistoricalPrefixSuccessWindowSummary,
     HistoricalPrefixSuccessWindowsUnavailableError,
+    HistoricalPrefixWindowRateComparison,
+    HistoricalPrefixWindowRateComparisonKind,
 )
 from lottolab.application.ports import HistoricalPrefixSuccessWindowSourceReaderFactory
 from lottolab.domain.draws import LotteryType
@@ -33,6 +41,7 @@ from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.strategy_success_evaluation import (
     BigLottoSuccessCriterion,
     StrategySuccessEvaluationInputError,
+    WindowKind,
     WindowSuccessSummary,
     evaluate_strategy_success_windows,
 )
@@ -60,6 +69,28 @@ _CRITERION_PARAMETERS = {
     HistoricalPrefixSuccessCriterion.M4_PLUS_SPECIAL: (4, True),
     HistoricalPrefixSuccessCriterion.M5_PLUS_SPECIAL: (5, True),
 }
+_COMPARISON_DEFINITIONS = (
+    (
+        HistoricalPrefixWindowRateComparisonKind.FULL_HISTORY_TO_LONG,
+        WindowKind.FULL_HISTORY,
+        WindowKind.LONG,
+    ),
+    (
+        HistoricalPrefixWindowRateComparisonKind.LONG_TO_MEDIUM,
+        WindowKind.LONG,
+        WindowKind.MEDIUM,
+    ),
+    (
+        HistoricalPrefixWindowRateComparisonKind.MEDIUM_TO_SHORT,
+        WindowKind.MEDIUM,
+        WindowKind.SHORT,
+    ),
+    (
+        HistoricalPrefixWindowRateComparisonKind.LONG_TO_SHORT,
+        WindowKind.LONG,
+        WindowKind.SHORT,
+    ),
+)
 
 
 def _contract_error(message: str) -> HistoricalPrefixSuccessWindowsContractError:
@@ -301,6 +332,119 @@ def _evaluate_strategy(
     )
 
 
+def _signed_rate_delta(
+    from_rate: HistoricalPrefixExactSuccessRate,
+    to_rate: HistoricalPrefixExactSuccessRate,
+) -> tuple[HistoricalPrefixSignedRateDelta, HistoricalPrefixRateRelation]:
+    if not from_rate.available or not to_rate.available:
+        return (
+            HistoricalPrefixSignedRateDelta(
+                numerator=0,
+                denominator=0,
+                available=False,
+            ),
+            HistoricalPrefixRateRelation.UNAVAILABLE,
+        )
+    if from_rate.denominator <= 0 or to_rate.denominator <= 0:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "available success rates must have positive denominators"
+        )
+    numerator = (
+        to_rate.numerator * from_rate.denominator
+        - from_rate.numerator * to_rate.denominator
+    )
+    denominator = to_rate.denominator * from_rate.denominator
+    divisor = gcd(abs(numerator), denominator)
+    numerator //= divisor
+    denominator //= divisor
+    if numerator == 0:
+        denominator = 1
+        relation = HistoricalPrefixRateRelation.EQUAL
+    elif numerator > 0:
+        relation = HistoricalPrefixRateRelation.HIGHER
+    else:
+        relation = HistoricalPrefixRateRelation.LOWER
+    return (
+        HistoricalPrefixSignedRateDelta(
+            numerator=numerator,
+            denominator=denominator,
+            available=True,
+        ),
+        relation,
+    )
+
+
+def _rate_comparisons(
+    windows: tuple[HistoricalPrefixSuccessWindowSummary, ...],
+) -> tuple[HistoricalPrefixWindowRateComparison, ...]:
+    expected_order = (
+        WindowKind.FULL_HISTORY,
+        WindowKind.LONG,
+        WindowKind.MEDIUM,
+        WindowKind.SHORT,
+    )
+    if tuple(window.window_kind for window in windows) != expected_order:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "merged evaluator did not return the canonical four-window sequence"
+        )
+    by_kind = {window.window_kind: window for window in windows}
+    comparisons: list[HistoricalPrefixWindowRateComparison] = []
+    for comparison_kind, from_kind, to_kind in _COMPARISON_DEFINITIONS:
+        from_rate = by_kind[from_kind].success_rate
+        to_rate = by_kind[to_kind].success_rate
+        delta, relation = _signed_rate_delta(from_rate, to_rate)
+        comparisons.append(
+            HistoricalPrefixWindowRateComparison(
+                comparison_kind=comparison_kind,
+                from_window_kind=from_kind,
+                to_window_kind=to_kind,
+                from_rate=from_rate,
+                to_rate=to_rate,
+                delta=delta,
+                relation=relation,
+            )
+        )
+    return tuple(comparisons)
+
+
+def _matrix_cell(
+    result: HistoricalPrefixStrategySuccessWindowResult,
+) -> HistoricalPrefixStrategySuccessMatrixCell:
+    return HistoricalPrefixStrategySuccessMatrixCell(
+        criterion=result.criterion,
+        prefix_count=result.prefix_count,
+        selection=result.selection,
+        status=result.status,
+        source_observation_count=result.source_observation_count,
+        windows=result.windows,
+        comparisons=_rate_comparisons(result.windows) if result.windows else (),
+    )
+
+
+def _find_exact_strategy(
+    source: HistoricalPrefixSuccessWindowSource,
+    *,
+    strategy_id: str,
+    strategy_version: str,
+    replicate: int,
+) -> HistoricalPrefixSuccessSourceStrategy:
+    strategy = next(
+        (
+            candidate
+            for candidate in source.strategies
+            if candidate.identity.strategy_id == strategy_id
+            and candidate.identity.strategy_version == strategy_version
+            and candidate.identity.replicate == replicate
+        ),
+        None,
+    )
+    if strategy is None:
+        raise HistoricalPrefixSuccessStrategyNotFoundError(
+            "exact Historical Prefix strategy descriptor was not found"
+        )
+    return strategy
+
+
 class EvaluateHistoricalPrefixSuccessWindows:
     """Load one exact import once and expose descriptive strategy windows."""
 
@@ -375,25 +519,62 @@ class EvaluateHistoricalPrefixSuccessWindows:
         _validate_prefix_count(prefix_count)
         _validate_criterion(criterion)
         source = self._load(import_identity_sha256)
-        strategy = next(
-            (
-                candidate
-                for candidate in source.strategies
-                if candidate.identity.strategy_id == strategy_id
-                and candidate.identity.strategy_version == strategy_version
-                and candidate.identity.replicate == replicate
-            ),
-            None,
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
         )
-        if strategy is None:
-            raise HistoricalPrefixSuccessStrategyNotFoundError(
-                "exact Historical Prefix strategy descriptor was not found"
-            )
         return _evaluate_strategy(
             source=source,
             strategy=strategy,
             prefix_count=prefix_count,
             criterion=criterion,
+        )
+
+    def get_matrix(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+    ) -> HistoricalPrefixStrategySuccessMatrix:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        source = self._load(import_identity_sha256)
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        criteria = tuple(
+            _criterion_identity(criterion) for criterion in SUPPORTED_SUCCESS_CRITERIA
+        )
+        cells = tuple(
+            _matrix_cell(
+                _evaluate_strategy(
+                    source=source,
+                    strategy=strategy,
+                    prefix_count=prefix_count,
+                    criterion=criterion,
+                )
+            )
+            for criterion in SUPPORTED_SUCCESS_CRITERIA
+            for prefix_count in SUPPORTED_PREFIX_COUNTS
+        )
+        return HistoricalPrefixStrategySuccessMatrix(
+            metadata=source.metadata,
+            strategy=strategy.identity,
+            source_observation_count=len(strategy.observations),
+            prefix_counts=SUPPORTED_PREFIX_COUNTS,
+            criteria=criteria,
+            cell_count=len(cells),
+            cells=cells,
         )
 
 

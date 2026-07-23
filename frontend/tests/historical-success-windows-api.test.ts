@@ -4,6 +4,7 @@ import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessStabilityMatrix,
+  getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
   HistoricalSuccessWindowsRequestError,
   listHistoricalRuns,
@@ -18,6 +19,8 @@ import {
   makeMatrix,
   makeResult,
   makeRunPage,
+  makeNotReadyTemporalHoldout,
+  makeTemporalHoldout,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
 } from './historical-success-windows-fixtures'
@@ -226,6 +229,139 @@ describe('Historical Success Windows API client', () => {
     expect(BigInt(result.diagnostics[0]!.raw_p_value.numerator)).toBeGreaterThan(
       BigInt(Number.MAX_SAFE_INTEGER),
     )
+  })
+
+  it('fetches the fixed temporal holdout with exact forwarding, GET, and AbortSignal', async () => {
+    const controller = new AbortController()
+    const holdout = makeTemporalHoldout()
+    holdout.discovery!.diagnostics[0]!.raw_p_value = {
+      numerator: '9007199254740993',
+      denominator: '90071992547409931',
+    }
+    holdout.discovery!.diagnostics[0]!.adjusted_p_value = {
+      ...holdout.discovery!.diagnostics[0]!.raw_p_value,
+    }
+    fetchMock.mockResolvedValue(apiResponse(holdout))
+
+    const result = await getHistoricalSuccessTemporalHoldout(
+      {
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/temporal-holdout',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.evaluation_status).toBe('COMPLETE')
+    expect(result.comparisons).toHaveLength(64)
+    expect(
+      BigInt(result.discovery!.diagnostics[0]!.raw_p_value.numerator),
+    ).toBeGreaterThan(BigInt(Number.MAX_SAFE_INTEGER))
+  })
+
+  it('accepts the exact not-ready temporal holdout without partial diagnostics', async () => {
+    fetchMock.mockResolvedValue(apiResponse(makeNotReadyTemporalHoldout()))
+
+    const result = await getHistoricalSuccessTemporalHoldout({
+      import_identity_sha256: IMPORT_SHA,
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+      prefix_count: 1,
+      criterion: 'M3_PLUS',
+    })
+
+    expect(result.evaluation_status).toBe('NOT_READY_INSUFFICIENT_HISTORY')
+    expect(result.discovery).toBeNull()
+    expect(result.confirmation).toBeNull()
+    expect(result.comparisons).toEqual([])
+  })
+
+  it.each([
+    [
+      'wrong split method',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.split.split_method =
+          'PERCENTAGE' as 'FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION'
+      },
+    ],
+    [
+      'wrong discovery count',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.split.discovery_count = 749
+      },
+    ],
+    [
+      'missing cohort comparison',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.comparisons.pop()
+      },
+    ],
+    [
+      'duplicate cohort comparison',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.comparisons[1] = result.comparisons[0]!
+      },
+    ],
+    [
+      'wrong comparison order',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        ;[result.comparisons[0], result.comparisons[1]] = [
+          result.comparisons[1]!,
+          result.comparisons[0]!,
+        ]
+      },
+    ],
+    [
+      'identity mismatch',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.confirmation!.strategy = {
+          ...result.confirmation!.strategy,
+          strategy_id: 'different',
+        }
+      },
+    ],
+    [
+      'malformed exact probability',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.confirmation!.diagnostics[0]!.raw_p_value.numerator = '01'
+      },
+    ],
+    [
+      'malformed effect change',
+      (result: ReturnType<typeof makeTemporalHoldout>) => {
+        result.comparisons[0]!.effect_change.numerator += 1
+      },
+    ],
+  ])('rejects temporal holdout with %s', async (_label, mutate) => {
+    const holdout = makeTemporalHoldout()
+    mutate(holdout)
+    fetchMock.mockResolvedValue(apiResponse(holdout))
+
+    await expect(
+      getHistoricalSuccessTemporalHoldout({
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })
 
   it.each([

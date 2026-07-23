@@ -29,6 +29,10 @@ DEFAULT_PAGE_LIMIT = 50
 DEFAULT_PAGE_OFFSET = 0
 MIN_PAGE_LIMIT = 1
 MAX_PAGE_LIMIT = 200
+DISCOVERY_TARGET_COUNT = 750
+CONFIRMATION_TARGET_COUNT = 300
+REQUIRED_LABELED_TARGET_COUNT = 1050
+TEMPORAL_HOLDOUT_SPLIT_METHOD = "FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION"
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 
@@ -102,6 +106,19 @@ class HistoricalPrefixFeatureCohortTestStatus(StrEnum):
     NOT_TESTABLE_EMPTY_COHORT = "NOT_TESTABLE_EMPTY_COHORT"
     NOT_TESTABLE_EMPTY_COMPLEMENT = "NOT_TESTABLE_EMPTY_COMPLEMENT"
     NOT_TESTABLE_NO_OUTCOME_VARIATION = "NOT_TESTABLE_NO_OUTCOME_VARIATION"
+
+
+class HistoricalPrefixTemporalHoldoutStatus(StrEnum):
+    COMPLETE = "COMPLETE"
+    NOT_READY_INSUFFICIENT_HISTORY = "NOT_READY_INSUFFICIENT_HISTORY"
+
+
+class HistoricalPrefixTemporalHoldoutRelationship(StrEnum):
+    SAME_HIGHER = "SAME_HIGHER"
+    SAME_EQUAL = "SAME_EQUAL"
+    SAME_LOWER = "SAME_LOWER"
+    DIFFERENT = "DIFFERENT"
+    UNAVAILABLE = "UNAVAILABLE"
 
 
 def _require_canonical_text(value: str, name: str) -> None:
@@ -183,9 +200,7 @@ class HistoricalPrefixSuccessStrategyIdentity:
         _require_optional_canonical_text(self.alias_of_strategy_id, "alias_of_strategy_id")
         _require_optional_canonical_text(self.equivalence_group, "equivalence_group")
         if type(self.replicate) is not int or self.replicate < 1:
-            raise HistoricalPrefixSuccessWindowsContractError(
-                "replicate must be an integer >= 1"
-            )
+            raise HistoricalPrefixSuccessWindowsContractError("replicate must be an integer >= 1")
         if type(self.nested_prefix_supported) is not bool:
             raise HistoricalPrefixSuccessWindowsContractError(
                 "nested_prefix_supported must be a boolean"
@@ -225,9 +240,7 @@ class HistoricalPrefixSuccessTicketOutcome:
                 "main_hit_count must be an integer between 0 and 6"
             )
         if type(self.special_hit) is not bool:
-            raise HistoricalPrefixSuccessWindowsContractError(
-                "special_hit must be a boolean"
-            )
+            raise HistoricalPrefixSuccessWindowsContractError("special_hit must be a boolean")
         if self.main_hit_count + int(self.special_hit) > 6:
             raise HistoricalPrefixSuccessWindowsContractError(
                 "ticket hit signature exceeds the six-number selection"
@@ -254,16 +267,11 @@ class HistoricalPrefixSuccessSourceObservation:
             raise HistoricalPrefixSuccessWindowsContractError(
                 "every source observation must carry exactly 20 tickets"
             )
-        if any(
-            type(ticket) is not HistoricalPrefixSuccessTicketOutcome
-            for ticket in self.tickets
-        ):
+        if any(type(ticket) is not HistoricalPrefixSuccessTicketOutcome for ticket in self.tickets):
             raise HistoricalPrefixSuccessWindowsContractError(
                 "source observation contains a malformed ticket"
             )
-        if tuple(ticket.portfolio_position for ticket in self.tickets) != tuple(
-            range(1, 21)
-        ):
+        if tuple(ticket.portfolio_position for ticket in self.tickets) != tuple(range(1, 21)):
             raise HistoricalPrefixSuccessWindowsContractError(
                 "ticket tuple order must match positions 1..20"
             )
@@ -278,8 +286,7 @@ class HistoricalPrefixSuccessSourceStrategy:
         if type(self.identity) is not HistoricalPrefixSuccessStrategyIdentity:
             raise HistoricalPrefixSuccessWindowsContractError("strategy identity is malformed")
         if type(self.observations) is not tuple or any(
-            type(item) is not HistoricalPrefixSuccessSourceObservation
-            for item in self.observations
+            type(item) is not HistoricalPrefixSuccessSourceObservation for item in self.observations
         ):
             raise HistoricalPrefixSuccessWindowsContractError(
                 "strategy observations must be an immutable typed tuple"
@@ -396,6 +403,14 @@ class HistoricalPrefixFeatureRelationTriple:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalPrefixWalkForwardAssignment:
+    chronological_index: int
+    target: HistoricalPrefixSuccessDrawIdentity
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    succeeded: bool
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalPrefixWalkForwardBaseline:
     observation_count: int
     success_count: int
@@ -471,6 +486,43 @@ class HistoricalPrefixStrategyFeatureCohortDiagnostics:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalPrefixTemporalHoldoutSplit:
+    split_method: str
+    total_assignment_count: int
+    warmup_count: int
+    discovery_count: int
+    confirmation_count: int
+    discovery_first_target: HistoricalPrefixSuccessDrawIdentity | None
+    discovery_last_target: HistoricalPrefixSuccessDrawIdentity | None
+    confirmation_first_target: HistoricalPrefixSuccessDrawIdentity | None
+    confirmation_last_target: HistoricalPrefixSuccessDrawIdentity | None
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixTemporalHoldoutCohortComparison:
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    discovery_diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    confirmation_diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    effect_change: HistoricalPrefixSignedRateDelta
+    relationship: HistoricalPrefixTemporalHoldoutRelationship
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixTemporalHoldoutResult:
+    metadata: HistoricalPrefixSuccessWindowSourceMetadata
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    split: HistoricalPrefixTemporalHoldoutSplit
+    evaluation_status: HistoricalPrefixTemporalHoldoutStatus
+    family_size: int
+    discovery: HistoricalPrefixStrategyFeatureCohortDiagnostics | None
+    confirmation: HistoricalPrefixStrategyFeatureCohortDiagnostics | None
+    comparisons: tuple[HistoricalPrefixTemporalHoldoutCohortComparison, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalPrefixWindowRateComparison:
     comparison_kind: HistoricalPrefixWindowRateComparisonKind
     from_window_kind: WindowKind
@@ -505,14 +557,18 @@ class HistoricalPrefixStrategySuccessMatrix:
 
 __all__ = [
     "BENJAMINI_YEKUTIELI_METHOD",
+    "CONFIRMATION_TARGET_COUNT",
     "DEFAULT_PAGE_LIMIT",
     "DEFAULT_PAGE_OFFSET",
+    "DISCOVERY_TARGET_COUNT",
     "FEATURE_COHORT_RELATION_ORDER",
     "FISHER_EXACT_TWO_SIDED_METHOD",
     "MAX_PAGE_LIMIT",
     "MIN_PAGE_LIMIT",
+    "REQUIRED_LABELED_TARGET_COUNT",
     "SUPPORTED_PREFIX_COUNTS",
     "SUPPORTED_SUCCESS_CRITERIA",
+    "TEMPORAL_HOLDOUT_SPLIT_METHOD",
     "HistoricalPrefixExactProbability",
     "HistoricalPrefixExactSuccessRate",
     "HistoricalPrefixFeatureCohortDiagnostic",
@@ -545,6 +601,12 @@ __all__ = [
     "HistoricalPrefixSuccessWindowsContractError",
     "HistoricalPrefixSuccessWindowsError",
     "HistoricalPrefixSuccessWindowsUnavailableError",
+    "HistoricalPrefixTemporalHoldoutCohortComparison",
+    "HistoricalPrefixTemporalHoldoutRelationship",
+    "HistoricalPrefixTemporalHoldoutResult",
+    "HistoricalPrefixTemporalHoldoutSplit",
+    "HistoricalPrefixTemporalHoldoutStatus",
+    "HistoricalPrefixWalkForwardAssignment",
     "HistoricalPrefixWalkForwardBaseline",
     "HistoricalPrefixWindowRateComparison",
     "HistoricalPrefixWindowRateComparisonKind",

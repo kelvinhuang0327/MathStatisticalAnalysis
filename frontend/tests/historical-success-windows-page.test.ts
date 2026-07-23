@@ -17,6 +17,8 @@ import {
   makeResult,
   makeRun,
   makeRunPage,
+  makeNotReadyTemporalHoldout,
+  makeTemporalHoldout,
   makeWindowPage,
   makeZeroObservationFeatureCohortDiagnostics,
   makeZeroObservationFeatureCohorts,
@@ -28,6 +30,9 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/feature-cohorts/temporal-holdout')) {
+    return Promise.resolve(apiResponse(makeTemporalHoldout()))
+  }
   if (url.includes('/feature-cohorts/diagnostics')) {
     return Promise.resolve(apiResponse(makeFeatureCohortDiagnostics()))
   }
@@ -76,6 +81,11 @@ async function evaluateFeatureCohortDiagnostics(
   wrapper: VueWrapper,
 ): Promise<void> {
   await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+  await flushPromises()
+}
+
+async function evaluateTemporalHoldout(wrapper: VueWrapper): Promise<void> {
+  await wrapper.get('button.temporal-holdout-action').trigger('click')
   await flushPromises()
 }
 
@@ -873,6 +883,201 @@ describe('HistoricalSuccessWindowsPage', () => {
     fetchMock.mockReset()
     fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
     await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(unmountSignal.aborted).toBe(true)
+  })
+
+  it('never requests the temporal holdout before its separate explicit action', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    await wrapper.get('select[name="prefix-count"]').setValue('2')
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    await wrapper.get('select[name="prefix-count"]').setValue('1')
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+    await compareMatrices(wrapper)
+    await evaluateFeatureCohorts(wrapper)
+    await evaluateFeatureCohortDiagnostics(wrapper)
+
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/feature-cohorts/temporal-holdout'),
+      ),
+    ).toBe(false)
+
+    await evaluateTemporalHoldout(wrapper)
+
+    const calls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes('/feature-cohorts/temporal-holdout'),
+    )
+    expect(calls).toHaveLength(1)
+    const url = new URL(String(calls[0]![0]), 'http://localhost')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    wrapper.unmount()
+  })
+
+  it('issues exactly N temporal holdout requests in selection order and renders all 64 neutral rows', async () => {
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    const forResult = (result: ReturnType<typeof makeResult>) => {
+      const holdout = makeTemporalHoldout()
+      holdout.strategy = result.strategy
+      holdout.discovery!.strategy = result.strategy
+      holdout.confirmation!.strategy = result.strategy
+      return holdout
+    }
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(apiResponse(makeRunPage()))
+      }
+      if (url.includes('/feature-cohorts/temporal-holdout')) {
+        return Promise.resolve(
+          apiResponse(url.includes('zero-observation') ? forResult(second) : forResult(first)),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage({ items: [first, second] })))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockClear()
+
+    await evaluateTemporalHoldout(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/feature-cohorts/temporal-holdout?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/temporal-holdout?',
+    )
+    const cards = wrapper.findAll('.temporal-holdout-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.text()).toContain('FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION')
+    expect(cards[1]!.text()).toContain('SAME_HIGHER')
+    expect(cards[1]!.text()).toContain('SAME_LOWER')
+    expect(cards[1]!.text()).toContain('UNAVAILABLE')
+    expect(cards[1]!.text()).not.toMatch(
+      /replicated|confirmed|failed replication|significant|winner|promotion|rejection|prediction/i,
+    )
+    wrapper.unmount()
+  })
+
+  it('renders not-ready temporal holdout without fabricated phase rows', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(apiResponse(makeNotReadyTemporalHoldout()))
+
+    await evaluateTemporalHoldout(wrapper)
+
+    expect(wrapper.text()).toContain('NOT_READY_INSUFFICIENT_HISTORY')
+    expect(wrapper.text()).toContain('Neither phase was shortened')
+    expect(wrapper.findAll('.temporal-holdout-comparison')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('keeps successful temporal holdouts on partial failure and retries all selections', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 0)
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) =>
+      String(input).includes('zero-observation')
+        ? Promise.resolve(
+            apiResponse(
+              {
+                error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+                message: '/secret/path',
+              },
+              404,
+            ),
+          )
+        : Promise.resolve(apiResponse(makeTemporalHoldout())),
+    )
+
+    await evaluateTemporalHoldout(wrapper)
+
+    expect(wrapper.text()).toContain('Some temporal holdout requests are unavailable')
+    expect(wrapper.findAll('.temporal-holdout-result-card')).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('/secret/path')
+
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(apiResponse(makeTemporalHoldout()))
+    await wrapper.get('button.temporal-holdout-retry').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('aborts stale temporal holdouts on reevaluation, control/run change, and unmount', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.temporal-holdout-action').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.temporal-holdout-action').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeTemporalHoldout()))
+    await flushPromises()
+    older.resolve(
+      apiResponse(
+        makeTemporalHoldout({
+          strategy: { ...makeTemporalHoldout().strategy, strategy_id: 'stale' },
+        }),
+      ),
+    )
+    await flushPromises()
+    expect(wrapper.findAll('.temporal-holdout-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const controlPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(controlPending.promise)
+    await wrapper.get('button.temporal-holdout-action').trigger('click')
+    const controlSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    expect(controlSignal.aborted).toBe(true)
+    expect(wrapper.findAll('.temporal-holdout-result-card')).toHaveLength(0)
+
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+    const runPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(runPending.promise)
+    await wrapper.get('button.temporal-holdout-action').trigger('click')
+    const runSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="historical-run"]').setValue('')
+    expect(runSignal.aborted).toBe(true)
+
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.temporal-holdout-action').trigger('click')
     const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
     wrapper.unmount()
     expect(unmountSignal.aborted).toBe(true)

@@ -4,6 +4,7 @@ import type {
   HistoricalSuccessFeatureCohortDiagnostics,
   HistoricalSuccessFeatureCohorts,
   HistoricalSuccessStabilityMatrix,
+  HistoricalSuccessTemporalHoldout,
   HistoricalSuccessWindowPage,
   HistoricalSuccessWindowResult,
 } from '../src/api/historicalSuccessWindows'
@@ -599,6 +600,203 @@ export function makeZeroObservationFeatureCohortDiagnostics():
       last_target: null,
     })),
   })
+}
+
+function makeTemporalPhase(
+  observationCount: 750 | 300,
+  successCount: 300 | 120,
+): HistoricalSuccessFeatureCohortDiagnostics {
+  const base = makeFeatureCohortDiagnostics()
+  const firstCount = observationCount / 2
+  const firstSuccesses = successCount * (2 / 3)
+  const observed = new Map<number, readonly [number, number]>([
+    [0, [firstCount, firstSuccesses]],
+    [1, [observationCount - firstCount, successCount - firstSuccesses]],
+  ])
+  const baseline = {
+    observation_count: observationCount,
+    success_count: successCount,
+    failure_count: observationCount - successCount,
+    success_rate: {
+      numerator: successCount,
+      denominator: observationCount,
+      available: true,
+    },
+  }
+  return {
+    ...base,
+    baseline,
+    diagnostics: base.diagnostics.map((diagnostic, cohort_index) => {
+      const [cohortCount, cohortSuccesses] = observed.get(cohort_index) ?? [0, 0]
+      const outsideCount = observationCount - cohortCount
+      const outsideSuccesses = successCount - cohortSuccesses
+      const effect = featureDelta(
+        cohortSuccesses,
+        cohortCount,
+        outsideSuccesses,
+        outsideCount,
+      )
+      return {
+        ...diagnostic,
+        cohort_counts: {
+          observation_count: cohortCount,
+          success_count: cohortSuccesses,
+          failure_count: cohortCount - cohortSuccesses,
+        },
+        outside_counts: {
+          observation_count: outsideCount,
+          success_count: outsideSuccesses,
+          failure_count: outsideCount - outsideSuccesses,
+        },
+        cohort_success_rate:
+          cohortCount === 0
+            ? { numerator: 0, denominator: 0, available: false }
+            : {
+                numerator: cohortSuccesses,
+                denominator: cohortCount,
+                available: true,
+              },
+        outside_success_rate: {
+          numerator: outsideSuccesses,
+          denominator: outsideCount,
+          available: true,
+        },
+        risk_difference: {
+          numerator: effect.numerator,
+          denominator: effect.denominator,
+          available: effect.available,
+        },
+        relation_vs_outside: effect.relation,
+        test_status:
+          cohortCount === 0 ? 'NOT_TESTABLE_EMPTY_COHORT' : 'TESTED',
+        first_target:
+          cohortCount === 0
+            ? null
+            : {
+                draw_number: cohort_index + 1,
+                draw_date: `2025-04-0${cohort_index + 1}`,
+                draw_sha256: String(cohort_index + 1).repeat(64),
+              },
+        last_target:
+          cohortCount === 0
+            ? null
+            : {
+                draw_number: cohort_index + cohortCount,
+                draw_date: `2025-05-0${cohort_index + 1}`,
+                draw_sha256: String(cohort_index + 2).repeat(64),
+              },
+      }
+    }),
+  }
+}
+
+export function makeTemporalHoldout(
+  overrides: Partial<HistoricalSuccessTemporalHoldout> = {},
+): HistoricalSuccessTemporalHoldout {
+  const discovery = makeTemporalPhase(750, 300)
+  const confirmation = makeTemporalPhase(300, 120)
+  const comparisons = discovery.diagnostics.map((discovery_diagnostic, index) => {
+    const confirmation_diagnostic = confirmation.diagnostics[index]!
+    const discoveryEffect = discovery_diagnostic.risk_difference
+    const confirmationEffect = confirmation_diagnostic.risk_difference
+    const bothAvailable = discoveryEffect.available && confirmationEffect.available
+    let effect_change = { numerator: 0, denominator: 0, available: false }
+    if (bothAvailable) {
+      const rawNumerator =
+        confirmationEffect.numerator * discoveryEffect.denominator -
+        discoveryEffect.numerator * confirmationEffect.denominator
+      const rawDenominator =
+        confirmationEffect.denominator * discoveryEffect.denominator
+      const divisor = gcd(rawNumerator, rawDenominator)
+      effect_change = {
+        numerator: rawNumerator / divisor,
+        denominator: rawDenominator / divisor,
+        available: true,
+      }
+    }
+    const discoveryRelation = discovery_diagnostic.relation_vs_outside
+    const confirmationRelation = confirmation_diagnostic.relation_vs_outside
+    const relationship =
+      discoveryRelation === 'UNAVAILABLE' || confirmationRelation === 'UNAVAILABLE'
+        ? 'UNAVAILABLE'
+        : discoveryRelation !== confirmationRelation
+          ? 'DIFFERENT'
+          : discoveryRelation === 'HIGHER'
+            ? 'SAME_HIGHER'
+            : discoveryRelation === 'EQUAL'
+              ? 'SAME_EQUAL'
+              : 'SAME_LOWER'
+    return {
+      cohort_index: index,
+      feature_key: discovery_diagnostic.feature_key,
+      discovery_diagnostic,
+      confirmation_diagnostic,
+      effect_change,
+      relationship,
+    }
+  })
+  return {
+    metadata: discovery.metadata,
+    strategy: discovery.strategy,
+    criterion: discovery.criterion,
+    prefix_count: discovery.prefix_count,
+    split: {
+      split_method: 'FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION',
+      total_assignment_count: 1100,
+      warmup_count: 50,
+      discovery_count: 750,
+      confirmation_count: 300,
+      discovery_first_target: {
+        draw_number: 51,
+        draw_date: '2025-02-20',
+        draw_sha256: '1'.repeat(64),
+      },
+      discovery_last_target: {
+        draw_number: 800,
+        draw_date: '2027-03-10',
+        draw_sha256: '2'.repeat(64),
+      },
+      confirmation_first_target: {
+        draw_number: 801,
+        draw_date: '2027-03-11',
+        draw_sha256: '3'.repeat(64),
+      },
+      confirmation_last_target: {
+        draw_number: 1100,
+        draw_date: '2028-01-04',
+        draw_sha256: '4'.repeat(64),
+      },
+    },
+    evaluation_status: 'COMPLETE',
+    family_size: 64,
+    discovery,
+    confirmation,
+    comparisons,
+    ...overrides,
+  } as HistoricalSuccessTemporalHoldout
+}
+
+export function makeNotReadyTemporalHoldout():
+  HistoricalSuccessTemporalHoldout {
+  const complete = makeTemporalHoldout()
+  return {
+    ...complete,
+    split: {
+      ...complete.split,
+      total_assignment_count: 1049,
+      warmup_count: 1049,
+      discovery_count: 0,
+      confirmation_count: 0,
+      discovery_first_target: null,
+      discovery_last_target: null,
+      confirmation_first_target: null,
+      confirmation_last_target: null,
+    },
+    evaluation_status: 'NOT_READY_INSUFFICIENT_HISTORY',
+    discovery: null,
+    confirmation: null,
+    comparisons: [],
+  }
 }
 
 function rebuildComparisons(

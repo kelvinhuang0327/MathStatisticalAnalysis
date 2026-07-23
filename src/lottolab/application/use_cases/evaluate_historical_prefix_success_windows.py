@@ -9,14 +9,18 @@ from math import comb, gcd
 
 from lottolab.application.historical_prefix_success_windows import (
     BENJAMINI_YEKUTIELI_METHOD,
+    CONFIRMATION_TARGET_COUNT,
     DEFAULT_PAGE_LIMIT,
     DEFAULT_PAGE_OFFSET,
+    DISCOVERY_TARGET_COUNT,
     FEATURE_COHORT_RELATION_ORDER,
     FISHER_EXACT_TWO_SIDED_METHOD,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
+    REQUIRED_LABELED_TARGET_COUNT,
     SUPPORTED_PREFIX_COUNTS,
     SUPPORTED_SUCCESS_CRITERIA,
+    TEMPORAL_HOLDOUT_SPLIT_METHOD,
     HistoricalPrefixExactProbability,
     HistoricalPrefixExactSuccessRate,
     HistoricalPrefixFeatureCohortDiagnostic,
@@ -45,6 +49,12 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessWindowSource,
     HistoricalPrefixSuccessWindowSummary,
     HistoricalPrefixSuccessWindowsUnavailableError,
+    HistoricalPrefixTemporalHoldoutCohortComparison,
+    HistoricalPrefixTemporalHoldoutRelationship,
+    HistoricalPrefixTemporalHoldoutResult,
+    HistoricalPrefixTemporalHoldoutSplit,
+    HistoricalPrefixTemporalHoldoutStatus,
+    HistoricalPrefixWalkForwardAssignment,
     HistoricalPrefixWalkForwardBaseline,
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
@@ -271,17 +281,14 @@ def _measurement(
         evidence_status=EvidenceStatus.DESCRIPTIVE_ONLY,
         provenance=MeasurementProvenance(
             strategy_version=strategy.identity.strategy_version,
-            parameter_or_config_identity=(
-                f"prefix={prefix_count};criterion={criterion.value}"
-            ),
+            parameter_or_config_identity=(f"prefix={prefix_count};criterion={criterion.value}"),
             history_cutoff=_draw_token(observation.cutoff),
             target_draw=_draw_token(observation.target),
             window_policy_version=DEFAULT_WINDOW_POLICY_VERSION,
             game_rule_version=BIG_LOTTO_RULE_CONTRACT.contract_version,
             selection_family_identity=observation.constructor_identifier,
             source_artifact_identity=(
-                f"{source.metadata.source_artifact_sha256}:"
-                f"{source.metadata.import_identity_sha256}"
+                f"{source.metadata.source_artifact_sha256}:{source.metadata.import_identity_sha256}"
             ),
         ),
         window_policy=DEFAULT_WINDOW_POLICY,
@@ -364,9 +371,7 @@ def _evaluate_strategy(
         raise HistoricalPrefixSuccessWindowsUnavailableError(
             "persisted source could not be evaluated under the merged contract"
         ) from exc
-    windows = tuple(
-        _window_read_model(summary, observations_by_target) for summary in evaluated
-    )
+    windows = tuple(_window_read_model(summary, observations_by_target) for summary in evaluated)
     if len(windows) != 4:
         raise HistoricalPrefixSuccessWindowsUnavailableError(
             "merged evaluator did not return the canonical four-window sequence"
@@ -400,8 +405,7 @@ def _signed_rate_delta(
             "available success rates must have positive denominators"
         )
     numerator = (
-        to_rate.numerator * from_rate.denominator
-        - from_rate.numerator * to_rate.denominator
+        to_rate.numerator * from_rate.denominator - from_rate.numerator * to_rate.denominator
     )
     denominator = to_rate.denominator * from_rate.denominator
     divisor = gcd(abs(numerator), denominator)
@@ -481,9 +485,7 @@ def _snapshot_feature_key(
         )
         for observation in prior_observations
     )
-    observations_by_target = {
-        _draw_token(item.target): item for item in prior_observations
-    }
+    observations_by_target = {_draw_token(item.target): item for item in prior_observations}
     try:
         evaluated = evaluate_strategy_success_windows(
             measurements,
@@ -493,24 +495,13 @@ def _snapshot_feature_key(
         raise HistoricalPrefixSuccessWindowsUnavailableError(
             "persisted source could not produce a walk-forward snapshot"
         ) from exc
-    windows = tuple(
-        _window_read_model(summary, observations_by_target) for summary in evaluated
-    )
+    windows = tuple(_window_read_model(summary, observations_by_target) for summary in evaluated)
     comparisons = _rate_comparisons(windows)
-    relations = {
-        comparison.comparison_kind: comparison.relation
-        for comparison in comparisons
-    }
+    relations = {comparison.comparison_kind: comparison.relation for comparison in comparisons}
     return HistoricalPrefixFeatureRelationTriple(
-        long_to_medium=relations[
-            HistoricalPrefixWindowRateComparisonKind.LONG_TO_MEDIUM
-        ],
-        medium_to_short=relations[
-            HistoricalPrefixWindowRateComparisonKind.MEDIUM_TO_SHORT
-        ],
-        long_to_short=relations[
-            HistoricalPrefixWindowRateComparisonKind.LONG_TO_SHORT
-        ],
+        long_to_medium=relations[HistoricalPrefixWindowRateComparisonKind.LONG_TO_MEDIUM],
+        medium_to_short=relations[HistoricalPrefixWindowRateComparisonKind.MEDIUM_TO_SHORT],
+        long_to_short=relations[HistoricalPrefixWindowRateComparisonKind.LONG_TO_SHORT],
     )
 
 
@@ -555,19 +546,15 @@ def _success_rate(success_count: int, observation_count: int) -> HistoricalPrefi
     )
 
 
-def _feature_cohorts(
+def _build_walk_forward_assignments(
     *,
     source: HistoricalPrefixSuccessWindowSource,
     strategy: HistoricalPrefixSuccessSourceStrategy,
     prefix_count: int,
     criterion: HistoricalPrefixSuccessCriterion,
-) -> HistoricalPrefixStrategyFeatureCohortResult:
+) -> tuple[HistoricalPrefixWalkForwardAssignment, ...]:
     observations = _walk_forward_observations(strategy)
-    assignments: dict[
-        HistoricalPrefixFeatureRelationTriple,
-        list[tuple[HistoricalPrefixSuccessDrawIdentity, bool]],
-    ] = {}
-    baseline_successes = 0
+    assignments: list[HistoricalPrefixWalkForwardAssignment] = []
     frozen_source_identity = source.metadata.import_identity_sha256
     for index, current_target in enumerate(observations):
         feature_key = _snapshot_feature_key(
@@ -584,16 +571,37 @@ def _feature_cohorts(
             prefix_count=prefix_count,
             criterion=criterion,
         )
-        assignments.setdefault(feature_key, []).append(
-            (current_target.target, succeeded)
+        assignments.append(
+            HistoricalPrefixWalkForwardAssignment(
+                chronological_index=index,
+                target=current_target.target,
+                feature_key=feature_key,
+                succeeded=succeeded,
+            )
         )
-        baseline_successes += int(succeeded)
     if source.metadata.import_identity_sha256 != frozen_source_identity:
         raise HistoricalPrefixSuccessWindowsUnavailableError(
             "persisted source identity changed during walk-forward reconstruction"
         )
+    return tuple(assignments)
 
-    baseline_count = len(observations)
+
+def _feature_cohorts_from_assignments(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+    assignments: tuple[HistoricalPrefixWalkForwardAssignment, ...],
+) -> HistoricalPrefixStrategyFeatureCohortResult:
+    grouped: dict[
+        HistoricalPrefixFeatureRelationTriple,
+        list[HistoricalPrefixWalkForwardAssignment],
+    ] = {}
+    for assignment in assignments:
+        grouped.setdefault(assignment.feature_key, []).append(assignment)
+    baseline_count = len(assignments)
+    baseline_successes = sum(int(item.succeeded) for item in assignments)
     baseline_rate = _success_rate(baseline_successes, baseline_count)
     baseline = HistoricalPrefixWalkForwardBaseline(
         observation_count=baseline_count,
@@ -610,9 +618,9 @@ def _feature_cohorts(
                     medium_to_short=medium_to_short,
                     long_to_short=long_to_short,
                 )
-                outcomes = assignments.get(feature_key, [])
+                outcomes = grouped.get(feature_key, [])
                 observation_count = len(outcomes)
-                success_count = sum(int(succeeded) for _, succeeded in outcomes)
+                success_count = sum(int(item.succeeded) for item in outcomes)
                 cohort_rate = _success_rate(success_count, observation_count)
                 delta, relation = _signed_rate_delta(baseline_rate, cohort_rate)
                 cohorts.append(
@@ -624,14 +632,11 @@ def _feature_cohorts(
                         success_rate=cohort_rate,
                         delta_vs_baseline=delta,
                         relation_vs_baseline=relation,
-                        first_target=outcomes[0][0] if outcomes else None,
-                        last_target=outcomes[-1][0] if outcomes else None,
+                        first_target=outcomes[0].target if outcomes else None,
+                        last_target=outcomes[-1].target if outcomes else None,
                     )
                 )
-    if (
-        len(cohorts) != 64
-        or sum(cohort.observation_count for cohort in cohorts) != baseline_count
-    ):
+    if len(cohorts) != 64 or sum(cohort.observation_count for cohort in cohorts) != baseline_count:
         raise HistoricalPrefixSuccessWindowsUnavailableError(
             "walk-forward targets were not assigned to the canonical cohorts exactly once"
         )
@@ -643,6 +648,28 @@ def _feature_cohorts(
         baseline=baseline,
         cohort_count=len(cohorts),
         cohorts=tuple(cohorts),
+    )
+
+
+def _feature_cohorts(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalPrefixStrategyFeatureCohortResult:
+    assignments = _build_walk_forward_assignments(
+        source=source,
+        strategy=strategy,
+        prefix_count=prefix_count,
+        criterion=criterion,
+    )
+    return _feature_cohorts_from_assignments(
+        source=source,
+        strategy=strategy,
+        prefix_count=prefix_count,
+        criterion=criterion,
+        assignments=assignments,
     )
 
 
@@ -742,9 +769,7 @@ def _adjust_benjamini_yekutieli(
         running_minimum = min(running_minimum, candidates[index])
         adjusted_sorted[index] = running_minimum
     adjusted = [HistoricalPrefixExactProbability(1, 1)] * family_size
-    for (canonical_index, _), probability in zip(
-        ordered, adjusted_sorted, strict=True
-    ):
+    for (canonical_index, _), probability in zip(ordered, adjusted_sorted, strict=True):
         adjusted[canonical_index] = _exact_probability(probability)
     return tuple(adjusted)
 
@@ -787,8 +812,7 @@ def _feature_cohort_diagnostics(
                     counts.failure_count,
                 )
                 < 0
-                or counts.success_count + counts.failure_count
-                != counts.observation_count
+                or counts.success_count + counts.failure_count != counts.observation_count
             ):
                 raise HistoricalPrefixSuccessWindowsUnavailableError(
                     "feature-cohort complement arithmetic is inconsistent"
@@ -818,9 +842,7 @@ def _feature_cohort_diagnostics(
                 relation,
             )
         )
-    adjusted_probabilities = _adjust_benjamini_yekutieli(
-        tuple(raw_probabilities)
-    )
+    adjusted_probabilities = _adjust_benjamini_yekutieli(tuple(raw_probabilities))
     diagnostics = tuple(
         HistoricalPrefixFeatureCohortDiagnostic(
             cohort_index=index,
@@ -837,9 +859,7 @@ def _feature_cohort_diagnostics(
             first_target=cohort.first_target,
             last_target=cohort.last_target,
         )
-        for index, (cohort, details) in enumerate(
-            zip(result.cohorts, unadjusted, strict=True)
-        )
+        for index, (cohort, details) in enumerate(zip(result.cohorts, unadjusted, strict=True))
         for (
             status,
             cohort_counts,
@@ -859,6 +879,174 @@ def _feature_cohort_diagnostics(
         raw_test_method=FISHER_EXACT_TWO_SIDED_METHOD,
         adjustment_method=BENJAMINI_YEKUTIELI_METHOD,
         diagnostics=diagnostics,
+    )
+
+
+def _effect_change(
+    discovery: HistoricalPrefixSignedRateDelta,
+    confirmation: HistoricalPrefixSignedRateDelta,
+) -> HistoricalPrefixSignedRateDelta:
+    if not discovery.available or not confirmation.available:
+        return HistoricalPrefixSignedRateDelta(
+            numerator=0,
+            denominator=0,
+            available=False,
+        )
+    change = Fraction(
+        confirmation.numerator,
+        confirmation.denominator,
+    ) - Fraction(discovery.numerator, discovery.denominator)
+    return HistoricalPrefixSignedRateDelta(
+        numerator=change.numerator,
+        denominator=change.denominator,
+        available=True,
+    )
+
+
+def _temporal_relationship(
+    discovery: HistoricalPrefixRateRelation,
+    confirmation: HistoricalPrefixRateRelation,
+) -> HistoricalPrefixTemporalHoldoutRelationship:
+    if (
+        discovery is HistoricalPrefixRateRelation.UNAVAILABLE
+        or confirmation is HistoricalPrefixRateRelation.UNAVAILABLE
+    ):
+        return HistoricalPrefixTemporalHoldoutRelationship.UNAVAILABLE
+    if discovery is not confirmation:
+        return HistoricalPrefixTemporalHoldoutRelationship.DIFFERENT
+    return {
+        HistoricalPrefixRateRelation.HIGHER: (
+            HistoricalPrefixTemporalHoldoutRelationship.SAME_HIGHER
+        ),
+        HistoricalPrefixRateRelation.EQUAL: (
+            HistoricalPrefixTemporalHoldoutRelationship.SAME_EQUAL
+        ),
+        HistoricalPrefixRateRelation.LOWER: (
+            HistoricalPrefixTemporalHoldoutRelationship.SAME_LOWER
+        ),
+    }[discovery]
+
+
+def _temporal_holdout(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalPrefixTemporalHoldoutResult:
+    assignments = _build_walk_forward_assignments(
+        source=source,
+        strategy=strategy,
+        prefix_count=prefix_count,
+        criterion=criterion,
+    )
+    total_count = len(assignments)
+    if total_count < REQUIRED_LABELED_TARGET_COUNT:
+        return HistoricalPrefixTemporalHoldoutResult(
+            metadata=source.metadata,
+            strategy=strategy.identity,
+            criterion=_criterion_identity(criterion),
+            prefix_count=prefix_count,
+            split=HistoricalPrefixTemporalHoldoutSplit(
+                split_method=TEMPORAL_HOLDOUT_SPLIT_METHOD,
+                total_assignment_count=total_count,
+                warmup_count=total_count,
+                discovery_count=0,
+                confirmation_count=0,
+                discovery_first_target=None,
+                discovery_last_target=None,
+                confirmation_first_target=None,
+                confirmation_last_target=None,
+            ),
+            evaluation_status=(
+                HistoricalPrefixTemporalHoldoutStatus.NOT_READY_INSUFFICIENT_HISTORY
+            ),
+            family_size=64,
+            discovery=None,
+            confirmation=None,
+            comparisons=(),
+        )
+
+    warmup_count = total_count - REQUIRED_LABELED_TARGET_COUNT
+    discovery_end = total_count - CONFIRMATION_TARGET_COUNT
+    discovery_assignments = assignments[warmup_count:discovery_end]
+    confirmation_assignments = assignments[discovery_end:]
+    if (
+        len(discovery_assignments) != DISCOVERY_TARGET_COUNT
+        or len(confirmation_assignments) != CONFIRMATION_TARGET_COUNT
+        or discovery_assignments[-1].chronological_index
+        >= confirmation_assignments[0].chronological_index
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "fixed temporal holdout partition is inconsistent"
+        )
+    discovery = _feature_cohort_diagnostics(
+        _feature_cohorts_from_assignments(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=discovery_assignments,
+        )
+    )
+    confirmation = _feature_cohort_diagnostics(
+        _feature_cohorts_from_assignments(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=confirmation_assignments,
+        )
+    )
+    comparisons = tuple(
+        HistoricalPrefixTemporalHoldoutCohortComparison(
+            cohort_index=index,
+            feature_key=discovery_diagnostic.feature_key,
+            discovery_diagnostic=discovery_diagnostic,
+            confirmation_diagnostic=confirmation_diagnostic,
+            effect_change=_effect_change(
+                discovery_diagnostic.risk_difference,
+                confirmation_diagnostic.risk_difference,
+            ),
+            relationship=_temporal_relationship(
+                discovery_diagnostic.relation_vs_outside,
+                confirmation_diagnostic.relation_vs_outside,
+            ),
+        )
+        for index, (discovery_diagnostic, confirmation_diagnostic) in enumerate(
+            zip(discovery.diagnostics, confirmation.diagnostics, strict=True)
+        )
+    )
+    if len(comparisons) != 64 or any(
+        comparison.cohort_index != index
+        or comparison.feature_key != comparison.discovery_diagnostic.feature_key
+        or comparison.feature_key != comparison.confirmation_diagnostic.feature_key
+        for index, comparison in enumerate(comparisons)
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "temporal holdout comparison family is inconsistent"
+        )
+    return HistoricalPrefixTemporalHoldoutResult(
+        metadata=source.metadata,
+        strategy=strategy.identity,
+        criterion=_criterion_identity(criterion),
+        prefix_count=prefix_count,
+        split=HistoricalPrefixTemporalHoldoutSplit(
+            split_method=TEMPORAL_HOLDOUT_SPLIT_METHOD,
+            total_assignment_count=total_count,
+            warmup_count=warmup_count,
+            discovery_count=len(discovery_assignments),
+            confirmation_count=len(confirmation_assignments),
+            discovery_first_target=discovery_assignments[0].target,
+            discovery_last_target=discovery_assignments[-1].target,
+            confirmation_first_target=confirmation_assignments[0].target,
+            confirmation_last_target=confirmation_assignments[-1].target,
+        ),
+        evaluation_status=HistoricalPrefixTemporalHoldoutStatus.COMPLETE,
+        family_size=64,
+        discovery=discovery,
+        confirmation=confirmation,
+        comparisons=comparisons,
     )
 
 
@@ -1007,9 +1195,7 @@ class EvaluateHistoricalPrefixSuccessWindows:
             strategy_version=strategy_version,
             replicate=replicate,
         )
-        criteria = tuple(
-            _criterion_identity(criterion) for criterion in SUPPORTED_SUCCESS_CRITERIA
-        )
+        criteria = tuple(_criterion_identity(criterion) for criterion in SUPPORTED_SUCCESS_CRITERIA)
         cells = tuple(
             _matrix_cell(
                 _evaluate_strategy(
@@ -1094,6 +1280,37 @@ class EvaluateHistoricalPrefixSuccessWindows:
             criterion=criterion,
         )
         return _feature_cohort_diagnostics(cohorts)
+
+    def get_feature_cohort_temporal_holdout(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixTemporalHoldoutResult:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+        source = self._load(import_identity_sha256)
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        return _temporal_holdout(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
 
 
 __all__ = ["EvaluateHistoricalPrefixSuccessWindows"]

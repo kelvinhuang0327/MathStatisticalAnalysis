@@ -15,9 +15,10 @@ EXACT_PATH = (
 MATRIX_PATH = f"{EXACT_PATH}/matrix"
 FEATURE_COHORT_PATH = f"{EXACT_PATH}/feature-cohorts"
 DIAGNOSTICS_PATH = f"{FEATURE_COHORT_PATH}/diagnostics"
+TEMPORAL_HOLDOUT_PATH = f"{FEATURE_COHORT_PATH}/temporal-holdout"
 
 
-def test_openapi_exposes_exactly_five_get_operations_with_required_selectors() -> None:
+def test_openapi_exposes_exactly_six_get_operations_with_required_selectors() -> None:
     paths = create_app().openapi()["paths"]
 
     assert set(paths[LIST_PATH]) == {"get"}
@@ -25,11 +26,13 @@ def test_openapi_exposes_exactly_five_get_operations_with_required_selectors() -
     assert set(paths[MATRIX_PATH]) == {"get"}
     assert set(paths[FEATURE_COHORT_PATH]) == {"get"}
     assert set(paths[DIAGNOSTICS_PATH]) == {"get"}
+    assert set(paths[TEMPORAL_HOLDOUT_PATH]) == {"get"}
     list_operation = paths[LIST_PATH]["get"]
     exact_operation = paths[EXACT_PATH]["get"]
     matrix_operation = paths[MATRIX_PATH]["get"]
     feature_cohort_operation = paths[FEATURE_COHORT_PATH]["get"]
     diagnostics_operation = paths[DIAGNOSTICS_PATH]["get"]
+    temporal_holdout_operation = paths[TEMPORAL_HOLDOUT_PATH]["get"]
     assert list_operation["operationId"] == "listHistoricalPrefixStrategySuccessWindows"
     assert exact_operation["operationId"] == "getHistoricalPrefixStrategySuccessWindows"
     assert matrix_operation["operationId"] == "getHistoricalPrefixStrategySuccessMatrix"
@@ -39,6 +42,9 @@ def test_openapi_exposes_exactly_five_get_operations_with_required_selectors() -
     )
     assert diagnostics_operation["operationId"] == (
         "getHistoricalPrefixStrategyFeatureCohortDiagnostics"
+    )
+    assert temporal_holdout_operation["operationId"] == (
+        "getHistoricalPrefixStrategyFeatureCohortTemporalHoldout"
     )
     assert [item["name"] for item in list_operation["parameters"]] == [
         "import_identity_sha256",
@@ -94,6 +100,18 @@ def test_openapi_exposes_exactly_five_get_operations_with_required_selectors() -
         "criterion",
     ]
     assert all(item["required"] is True for item in diagnostics_operation["parameters"])
+    assert [item["name"] for item in temporal_holdout_operation["parameters"]] == [
+        "strategy_id",
+        "strategy_version",
+        "replicate",
+        "import_identity_sha256",
+        "prefix_count",
+        "criterion",
+    ]
+    assert all(
+        item["required"] is True
+        for item in temporal_holdout_operation["parameters"]
+    )
     selector = list_operation["parameters"][0]
     assert selector["in"] == "query"
     assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
@@ -197,9 +215,26 @@ def test_openapi_pins_closed_prefix_criterion_and_nullable_rate_contract() -> No
     assert diagnostics["properties"]["adjustment_method"]["const"] == (
         "BENJAMINI_YEKUTIELI"
     )
+    holdout = schemas["HistoricalPrefixTemporalHoldoutResponse"]
+    assert holdout["properties"]["family_size"]["const"] == 64
+    split = schemas["HistoricalPrefixTemporalHoldoutSplitView"]
+    assert split["properties"]["split_method"]["const"] == (
+        "FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION"
+    )
+    assert schemas["HistoricalPrefixTemporalHoldoutStatus"]["enum"] == [
+        "COMPLETE",
+        "NOT_READY_INSUFFICIENT_HISTORY",
+    ]
+    assert schemas["HistoricalPrefixTemporalHoldoutRelationship"]["enum"] == [
+        "SAME_HIGHER",
+        "SAME_EQUAL",
+        "SAME_LOWER",
+        "DIFFERENT",
+        "UNAVAILABLE",
+    ]
 
 
-def test_openapi_uses_sanitized_404_422_503_models_for_both_routes() -> None:
+def test_openapi_uses_sanitized_404_422_503_models_for_all_routes() -> None:
     paths = create_app().openapi()["paths"]
 
     for path in (
@@ -208,6 +243,7 @@ def test_openapi_uses_sanitized_404_422_503_models_for_both_routes() -> None:
         MATRIX_PATH,
         FEATURE_COHORT_PATH,
         DIAGNOSTICS_PATH,
+        TEMPORAL_HOLDOUT_PATH,
     ):
         operation = paths[path]["get"]
         for status, schema_name in {
@@ -273,6 +309,7 @@ def test_generated_types_keep_all_success_window_parameters_required() -> None:
         '"M5_PLUS_SPECIAL"'
     ) in declaration
     assert f'"{DIAGNOSTICS_PATH}": {{' in declaration
+    assert f'"{TEMPORAL_HOLDOUT_PATH}": {{' in declaration
     assert (
         '"HistoricalPrefixFeatureCohortTestStatus": "TESTED" | '
         '"NOT_TESTABLE_EMPTY_COHORT" | "NOT_TESTABLE_EMPTY_COMPLEMENT" | '

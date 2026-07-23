@@ -105,6 +105,10 @@ def test_configured_app_construction_and_openapi_do_not_touch_the_filesystem(
         f"{WINDOWS_PATH}/strategies/"
         "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
     ) in document["paths"]
+    assert (
+        f"{WINDOWS_PATH}/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics"
+    ) in document["paths"]
     verifier.assert_not_called()
 
 

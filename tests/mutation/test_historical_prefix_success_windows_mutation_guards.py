@@ -516,7 +516,7 @@ def test_guard_matrix_relation_vocabulary_stays_neutral() -> None:
 def test_guard_walk_forward_snapshot_excludes_current_and_future_targets_before_label() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
     cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _exact_probability(", 1
     )[0]
 
     assert "prior_observations=observations[:index]" in cohorts
@@ -530,7 +530,7 @@ def test_guard_walk_forward_snapshot_excludes_current_and_future_targets_before_
 def test_guard_walk_forward_assigns_each_target_once_without_rate_sorting() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
     cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _exact_probability(", 1
     )[0]
 
     assert cohorts.count("assignments.setdefault(feature_key, []).append(") == 1
@@ -544,7 +544,7 @@ def test_guard_walk_forward_assigns_each_target_once_without_rate_sorting() -> N
 def test_guard_walk_forward_canonical_relation_order_and_exact_delta_direction() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
     cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _exact_probability(", 1
     )[0]
 
     long_loop = cohorts.index(
@@ -564,7 +564,7 @@ def test_guard_walk_forward_canonical_relation_order_and_exact_delta_direction()
 def test_guard_walk_forward_method_has_one_load_and_one_exact_strategy_lookup() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
     method = use_case.split("def get_feature_cohorts(", 1)[1].split(
-        '__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]', 1
+        "def get_feature_cohort_diagnostics(", 1
     )[0]
 
     assert method.count("source = self._load(import_identity_sha256)") == 1
@@ -575,7 +575,7 @@ def test_guard_walk_forward_method_has_one_load_and_one_exact_strategy_lookup() 
 def test_guard_walk_forward_relation_vocabulary_stays_neutral() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
     cohorts = use_case.split("def _snapshot_feature_key(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _exact_probability(", 1
     )[0]
 
     assert "HistoricalPrefixRateRelation" in cohorts

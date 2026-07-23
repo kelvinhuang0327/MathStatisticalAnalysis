@@ -75,6 +75,10 @@ _ALLOWED_OPENAPI_OPERATIONS = {
         "/api/v1/historical-prefix-success-windows/strategies/"
         "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
     ): frozenset({"get"}),
+    (
+        "/api/v1/historical-prefix-success-windows/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics"
+    ): frozenset({"get"}),
     "/api/v1/replay-rankings/optimal": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset(

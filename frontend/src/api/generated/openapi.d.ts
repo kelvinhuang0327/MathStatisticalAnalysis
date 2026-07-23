@@ -509,6 +509,44 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts": {
       get: {
           parameters: {
@@ -947,11 +985,31 @@ export interface components {
           "draw_date": string
           "draw_sha256": string
         }
+    "HistoricalPrefixExactProbabilityView": {
+          "numerator": string
+          "denominator": string
+        }
     "HistoricalPrefixExactSuccessRateView": {
           "numerator": number
           "denominator": number
           "available": boolean
         }
+    "HistoricalPrefixFeatureCohortDiagnosticView": {
+          "cohort_index": number
+          "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
+          "test_status": components['schemas']["HistoricalPrefixFeatureCohortTestStatus"]
+          "cohort_counts": components['schemas']["HistoricalPrefixOutcomeCountsView"]
+          "outside_counts": components['schemas']["HistoricalPrefixOutcomeCountsView"]
+          "cohort_success_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
+          "outside_success_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
+          "risk_difference": components['schemas']["HistoricalPrefixSignedRateDeltaView"]
+          "relation_vs_outside": components['schemas']["HistoricalPrefixRateRelation"]
+          "raw_p_value": components['schemas']["HistoricalPrefixExactProbabilityView"]
+          "adjusted_p_value": components['schemas']["HistoricalPrefixExactProbabilityView"]
+          "first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+        }
+    "HistoricalPrefixFeatureCohortTestStatus": "TESTED" | "NOT_TESTABLE_EMPTY_COHORT" | "NOT_TESTABLE_EMPTY_COMPLEMENT" | "NOT_TESTABLE_NO_OUTCOME_VARIATION"
     "HistoricalPrefixFeatureCohortView": {
           "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
           "observation_count": number
@@ -978,6 +1036,11 @@ export interface components {
           "lottery_type": string
           "ranking_policy_id": string
           "historical_only_disclaimer_id": string
+        }
+    "HistoricalPrefixOutcomeCountsView": {
+          "observation_count": number
+          "success_count": number
+          "failure_count": number
         }
     "HistoricalPrefixRankingCandidateView": {
           "rank": number
@@ -1011,6 +1074,17 @@ export interface components {
           "numerator": number
           "denominator": number
           "available": boolean
+        }
+    "HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse": {
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "baseline": components['schemas']["HistoricalPrefixWalkForwardBaselineView"]
+          "family_size": number
+          "raw_test_method": string
+          "adjustment_method": string
+          "diagnostics": Array<components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]>
         }
     "HistoricalPrefixStrategyFeatureCohortResponse": {
           "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]

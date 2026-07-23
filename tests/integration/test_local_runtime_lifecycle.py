@@ -141,6 +141,17 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
                 "criterion": "M3_PLUS",
             },
         )
+        diagnostics_status, diagnostics_body = json_get(
+            (
+                "/api/v1/historical-prefix-success-windows/strategies/"
+                "strategy-a/v1/1/feature-cohorts/diagnostics"
+            ),
+            {
+                "import_identity_sha256": "a" * 64,
+                "prefix_count": 1,
+                "criterion": "M3_PLUS",
+            },
+        )
         assert runs_status == 503
         assert runs_body["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
         assert windows_status == 503
@@ -153,6 +164,10 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
         )
         assert feature_status == 503
         assert feature_body["error_code"] == (
+            "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
+        )
+        assert diagnostics_status == 503
+        assert diagnostics_body["error_code"] == (
             "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
         )
         _stop_and_assert_safe(policy)
@@ -213,6 +228,24 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
         assert (
             configured_feature["cohort_count"]
             == len(configured_feature["cohorts"])
+            == 64
+        )
+        configured_diagnostics_status, configured_diagnostics = json_get(
+            (
+                "/api/v1/historical-prefix-success-windows/strategies/"
+                f"{first_strategy['strategy_id']}/{first_strategy['strategy_version']}/"
+                f"{first_strategy['replicate']}/feature-cohorts/diagnostics"
+            ),
+            {
+                "import_identity_sha256": run_import.import_identity_sha256,
+                "prefix_count": 1,
+                "criterion": "M3_PLUS",
+            },
+        )
+        assert configured_diagnostics_status == 200
+        assert (
+            configured_diagnostics["family_size"]
+            == len(configured_diagnostics["diagnostics"])
             == 64
         )
         assert database.read_bytes() == database_before

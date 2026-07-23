@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessWindows,
@@ -11,6 +12,7 @@ import {
 import {
   apiResponse,
   IMPORT_SHA,
+  makeFeatureCohortDiagnostics,
   makeFeatureCohorts,
   makeAllRelationsMatrix,
   makeMatrix,
@@ -179,6 +181,141 @@ describe('Historical Success Windows API client', () => {
     expect(result.baseline.observation_count).toBe(0)
     expect(result.cohorts).toHaveLength(64)
     expect(result.cohorts.every((cohort) => cohort.first_target === null)).toBe(true)
+  })
+
+  it('fetches exact cohort diagnostics and preserves integers above 2^53 with BigInt', async () => {
+    const controller = new AbortController()
+    const diagnostics = makeFeatureCohortDiagnostics()
+    diagnostics.diagnostics[0]!.raw_p_value = {
+      numerator: '9007199254740993',
+      denominator: '90071992547409931',
+    }
+    diagnostics.diagnostics[0]!.adjusted_p_value = {
+      ...diagnostics.diagnostics[0]!.raw_p_value,
+    }
+    fetchMock.mockResolvedValue(apiResponse(diagnostics))
+
+    const result = await getHistoricalSuccessFeatureCohortDiagnostics(
+      {
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/diagnostics',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.family_size).toBe(64)
+    expect(result.diagnostics).toHaveLength(64)
+    expect(result.diagnostics[0]!.raw_p_value.numerator).toBe(
+      '9007199254740993',
+    )
+    expect(BigInt(result.diagnostics[0]!.raw_p_value.numerator)).toBeGreaterThan(
+      BigInt(Number.MAX_SAFE_INTEGER),
+    )
+  })
+
+  it.each([
+    [
+      'missing diagnostic',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics.pop()
+      },
+    ],
+    [
+      'duplicate diagnostic',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics[1] = result.diagnostics[0]!
+      },
+    ],
+    [
+      'wrong order',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        ;[result.diagnostics[0], result.diagnostics[1]] = [
+          result.diagnostics[1]!,
+          result.diagnostics[0]!,
+        ]
+      },
+    ],
+    [
+      'identity mismatch',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.strategy = { ...result.strategy, strategy_id: 'different' }
+      },
+    ],
+    [
+      'malformed complement counts',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics[0]!.outside_counts.failure_count += 1
+      },
+    ],
+    [
+      'malformed baseline rate',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.baseline.success_rate.numerator += 1
+      },
+    ],
+    [
+      'numeric p-value integer',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics[0]!.raw_p_value.numerator = 1 as unknown as string
+      },
+    ],
+    [
+      'leading-zero p-value integer',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics[0]!.raw_p_value.numerator = '01'
+      },
+    ],
+    [
+      'zero denominator',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics[0]!.raw_p_value.denominator = '0'
+      },
+    ],
+    [
+      'numerator above denominator',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.diagnostics[0]!.raw_p_value = {
+          numerator: '2',
+          denominator: '1',
+        }
+      },
+    ],
+    [
+      'wrong method identifier',
+      (result: ReturnType<typeof makeFeatureCohortDiagnostics>) => {
+        result.adjustment_method = 'BENJAMINI_HOCHBERG' as 'BENJAMINI_YEKUTIELI'
+      },
+    ],
+  ])('rejects cohort diagnostics with %s', async (_label, mutate) => {
+    const diagnostics = makeFeatureCohortDiagnostics()
+    mutate(diagnostics)
+    fetchMock.mockResolvedValue(apiResponse(diagnostics))
+
+    await expect(
+      getHistoricalSuccessFeatureCohortDiagnostics({
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })
 
   it('accepts canonical HIGHER, EQUAL, LOWER, and UNAVAILABLE arithmetic relations', async () => {

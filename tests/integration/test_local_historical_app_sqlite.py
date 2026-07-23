@@ -122,6 +122,29 @@ def test_one_exact_configured_database_feeds_runs_list_windows_and_exact_strateg
         item["observation_count"] for item in cohort_payload["cohorts"]
     ) == cohort_payload["baseline"]["observation_count"]
 
+    diagnostics = client.get(
+        (
+            f"{WINDOWS_PATH}/strategies/{selected['strategy_id']}/"
+            f"{selected['strategy_version']}/{selected['replicate']}/"
+            "feature-cohorts/diagnostics"
+        ),
+        params=_params(run["import_identity_sha256"]),
+    )
+    assert diagnostics.status_code == 200
+    diagnostics_payload = diagnostics.json()
+    assert diagnostics_payload["strategy"] == selected
+    assert (
+        diagnostics_payload["family_size"]
+        == len(diagnostics_payload["diagnostics"])
+        == 64
+    )
+    assert all(
+        item["cohort_counts"]["observation_count"]
+        + item["outside_counts"]["observation_count"]
+        == diagnostics_payload["baseline"]["observation_count"]
+        for item in diagnostics_payload["diagnostics"]
+    )
+
     after = _database_inventory(database)
     assert after == before
     assert after[2] == set()

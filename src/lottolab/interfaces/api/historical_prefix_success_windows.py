@@ -4,23 +4,33 @@
 
 from __future__ import annotations
 
+import re
 from enum import IntEnum
-from typing import Annotated, Any
+from math import gcd
+from typing import Annotated, Any, Literal, Self
 
 from fastapi import APIRouter, Path, Query, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from lottolab.application.historical_prefix_success_windows import (
+    BENJAMINI_YEKUTIELI_METHOD,
     DEFAULT_PAGE_LIMIT,
     DEFAULT_PAGE_OFFSET,
+    FEATURE_COHORT_RELATION_ORDER,
+    FISHER_EXACT_TWO_SIDED_METHOD,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
+    HistoricalPrefixExactProbability,
     HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixFeatureCohortDiagnostic,
     HistoricalPrefixFeatureCohortSummary,
+    HistoricalPrefixFeatureCohortTestStatus,
     HistoricalPrefixFeatureRelationTriple,
+    HistoricalPrefixOutcomeCounts,
     HistoricalPrefixRateRelation,
     HistoricalPrefixSignedRateDelta,
+    HistoricalPrefixStrategyFeatureCohortDiagnostics,
     HistoricalPrefixStrategyFeatureCohortResult,
     HistoricalPrefixStrategySuccessMatrix,
     HistoricalPrefixStrategySuccessMatrixCell,
@@ -92,6 +102,10 @@ StrategyVersion = Annotated[
 Replicate = Annotated[int, Path(ge=1)]
 Limit = Annotated[int, Query(ge=MIN_PAGE_LIMIT, le=MAX_PAGE_LIMIT)]
 Offset = Annotated[int, Query(ge=DEFAULT_PAGE_OFFSET)]
+CanonicalProbabilityInteger = Annotated[
+    str,
+    Field(pattern=r"^(?:0|[1-9][0-9]*)$"),
+]
 
 
 class HistoricalPrefixSuccessSourceMetadataView(BaseModel):
@@ -569,6 +583,208 @@ class HistoricalPrefixStrategyFeatureCohortResponse(BaseModel):
         )
 
 
+class HistoricalPrefixExactProbabilityView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    numerator: CanonicalProbabilityInteger
+    denominator: CanonicalProbabilityInteger
+
+    @model_validator(mode="after")
+    def validate_canonical_probability(self) -> Self:
+        canonical = re.compile(r"^(?:0|[1-9][0-9]*)$", flags=re.ASCII)
+        if (
+            canonical.fullmatch(self.numerator) is None
+            or canonical.fullmatch(self.denominator) is None
+            or self.denominator == "0"
+        ):
+            raise ValueError("probability integers must be canonical decimal strings")
+        numerator = int(self.numerator)
+        denominator = int(self.denominator)
+        if numerator > denominator or gcd(numerator, denominator) != 1:
+            raise ValueError("probability fraction must be reduced and between zero and one")
+        return self
+
+    @classmethod
+    def from_probability(
+        cls, probability: HistoricalPrefixExactProbability
+    ) -> HistoricalPrefixExactProbabilityView:
+        return cls(
+            numerator=str(probability.numerator),
+            denominator=str(probability.denominator),
+        )
+
+
+class HistoricalPrefixOutcomeCountsView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    observation_count: int
+    success_count: int
+    failure_count: int
+
+    @model_validator(mode="after")
+    def validate_counts(self) -> Self:
+        if (
+            min(self.observation_count, self.success_count, self.failure_count) < 0
+            or self.success_count + self.failure_count != self.observation_count
+        ):
+            raise ValueError("diagnostic outcome counts are inconsistent")
+        return self
+
+    @classmethod
+    def from_counts(
+        cls, counts: HistoricalPrefixOutcomeCounts
+    ) -> HistoricalPrefixOutcomeCountsView:
+        return cls.model_validate(counts, from_attributes=True)
+
+
+class HistoricalPrefixFeatureCohortDiagnosticView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTripleView
+    test_status: HistoricalPrefixFeatureCohortTestStatus
+    cohort_counts: HistoricalPrefixOutcomeCountsView
+    outside_counts: HistoricalPrefixOutcomeCountsView
+    cohort_success_rate: HistoricalPrefixExactSuccessRateView
+    outside_success_rate: HistoricalPrefixExactSuccessRateView
+    risk_difference: HistoricalPrefixSignedRateDeltaView
+    relation_vs_outside: HistoricalPrefixRateRelation
+    raw_p_value: HistoricalPrefixExactProbabilityView
+    adjusted_p_value: HistoricalPrefixExactProbabilityView
+    first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    last_target: HistoricalPrefixSuccessDrawIdentityView | None
+
+    @classmethod
+    def from_diagnostic(
+        cls, diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    ) -> HistoricalPrefixFeatureCohortDiagnosticView:
+        return cls(
+            cohort_index=diagnostic.cohort_index,
+            feature_key=HistoricalPrefixFeatureRelationTripleView.from_feature_key(
+                diagnostic.feature_key
+            ),
+            test_status=diagnostic.test_status,
+            cohort_counts=HistoricalPrefixOutcomeCountsView.from_counts(
+                diagnostic.cohort_counts
+            ),
+            outside_counts=HistoricalPrefixOutcomeCountsView.from_counts(
+                diagnostic.outside_counts
+            ),
+            cohort_success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
+                diagnostic.cohort_success_rate
+            ),
+            outside_success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
+                diagnostic.outside_success_rate
+            ),
+            risk_difference=HistoricalPrefixSignedRateDeltaView.from_delta(
+                diagnostic.risk_difference
+            ),
+            relation_vs_outside=diagnostic.relation_vs_outside,
+            raw_p_value=HistoricalPrefixExactProbabilityView.from_probability(
+                diagnostic.raw_p_value
+            ),
+            adjusted_p_value=HistoricalPrefixExactProbabilityView.from_probability(
+                diagnostic.adjusted_p_value
+            ),
+            first_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(
+                    diagnostic.first_target
+                )
+                if diagnostic.first_target is not None
+                else None
+            ),
+            last_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(
+                    diagnostic.last_target
+                )
+                if diagnostic.last_target is not None
+                else None
+            ),
+        )
+
+
+class HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    metadata: HistoricalPrefixSuccessSourceMetadataView
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    baseline: HistoricalPrefixWalkForwardBaselineView
+    family_size: Literal[64]
+    raw_test_method: Literal["FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING"]
+    adjustment_method: Literal["BENJAMINI_YEKUTIELI"]
+    diagnostics: tuple[HistoricalPrefixFeatureCohortDiagnosticView, ...]
+
+    @model_validator(mode="after")
+    def validate_family(self) -> Self:
+        if (
+            self.raw_test_method != FISHER_EXACT_TWO_SIDED_METHOD
+            or self.adjustment_method != BENJAMINI_YEKUTIELI_METHOD
+            or len(self.diagnostics) != self.family_size
+        ):
+            raise ValueError("diagnostic family identity is inconsistent")
+        baseline = self.baseline
+        for index, diagnostic in enumerate(self.diagnostics):
+            expected_key = (
+                FEATURE_COHORT_RELATION_ORDER[index // 16],
+                FEATURE_COHORT_RELATION_ORDER[(index % 16) // 4],
+                FEATURE_COHORT_RELATION_ORDER[index % 4],
+            )
+            actual_key = diagnostic.feature_key
+            if diagnostic.cohort_index != index or (
+                actual_key.long_to_medium,
+                actual_key.medium_to_short,
+                actual_key.long_to_short,
+            ) != expected_key:
+                raise ValueError("diagnostics must preserve canonical cohort order")
+            cohort = diagnostic.cohort_counts
+            outside = diagnostic.outside_counts
+            if (
+                cohort.observation_count + outside.observation_count
+                != baseline.observation_count
+                or cohort.success_count + outside.success_count
+                != baseline.success_count
+                or cohort.failure_count + outside.failure_count
+                != baseline.failure_count
+            ):
+                raise ValueError("diagnostic cohort and complement must partition baseline")
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalPrefixStrategyFeatureCohortDiagnostics
+    ) -> HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse:
+        if (
+            result.family_size != 64
+            or result.raw_test_method != FISHER_EXACT_TWO_SIDED_METHOD
+            or result.adjustment_method != BENJAMINI_YEKUTIELI_METHOD
+        ):
+            raise ValueError("application diagnostics family identity is inconsistent")
+        return cls(
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
+                result.metadata
+            ),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
+                result.strategy
+            ),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(
+                result.criterion
+            ),
+            prefix_count=result.prefix_count,
+            baseline=HistoricalPrefixWalkForwardBaselineView.from_baseline(
+                result.baseline
+            ),
+            family_size=64,
+            raw_test_method="FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING",
+            adjustment_method="BENJAMINI_YEKUTIELI",
+            diagnostics=tuple(
+                HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(diagnostic)
+                for diagnostic in result.diagnostics
+            ),
+        )
+
+
 def create_historical_prefix_success_windows_router(
     reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory | None,
 ) -> APIRouter:
@@ -614,6 +830,51 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalPrefixStrategySuccessWindowPageResponse.from_page(page)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics"
+        ),
+        response_model=HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyFeatureCohortDiagnostics",
+    )
+    def get_historical_prefix_strategy_feature_cohort_diagnostics(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: ImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_feature_cohort_diagnostics(
+                import_identity_sha256=import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(
+            result
+        )
 
     @router.get(
         (
@@ -788,10 +1049,15 @@ def _error_response(status_code: int, error_code: str, message: str) -> JSONResp
 
 
 __all__ = [
+    "HistoricalPrefixExactProbabilityView",
     "HistoricalPrefixExactSuccessRateView",
+    "HistoricalPrefixFeatureCohortDiagnosticView",
+    "HistoricalPrefixFeatureCohortTestStatus",
     "HistoricalPrefixFeatureCohortView",
     "HistoricalPrefixFeatureRelationTripleView",
+    "HistoricalPrefixOutcomeCountsView",
     "HistoricalPrefixSignedRateDeltaView",
+    "HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse",
     "HistoricalPrefixStrategyFeatureCohortResponse",
     "HistoricalPrefixStrategySuccessMatrixCellView",
     "HistoricalPrefixStrategySuccessMatrixResponse",

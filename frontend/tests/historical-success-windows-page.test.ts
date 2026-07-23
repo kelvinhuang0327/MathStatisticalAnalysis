@@ -9,6 +9,8 @@ import {
   deferred,
   IMPORT_SHA,
   makeAllRelationsMatrix,
+  makeFeatureCohortDiagnostics,
+  makeFeatureCohortDiagnosticsForResult,
   makeFeatureCohorts,
   makeFeatureCohortsForResult,
   makeMatrix,
@@ -16,6 +18,7 @@ import {
   makeRun,
   makeRunPage,
   makeWindowPage,
+  makeZeroObservationFeatureCohortDiagnostics,
   makeZeroObservationFeatureCohorts,
   makeZeroObservationMatrix,
   makeZeroObservationResult,
@@ -25,6 +28,9 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/feature-cohorts/diagnostics')) {
+    return Promise.resolve(apiResponse(makeFeatureCohortDiagnostics()))
+  }
   if (url.includes('/feature-cohorts')) {
     return Promise.resolve(apiResponse(makeFeatureCohorts()))
   }
@@ -63,6 +69,13 @@ async function compareMatrices(wrapper: VueWrapper): Promise<void> {
 
 async function evaluateFeatureCohorts(wrapper: VueWrapper): Promise<void> {
   await wrapper.get('button.feature-cohort-evaluate').trigger('click')
+  await flushPromises()
+}
+
+async function evaluateFeatureCohortDiagnostics(
+  wrapper: VueWrapper,
+): Promise<void> {
+  await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
   await flushPromises()
 }
 
@@ -722,5 +735,146 @@ describe('HistoricalSuccessWindowsPage', () => {
     expect(unmountSignals).toHaveLength(2)
     wrapper.unmount()
     expect(unmountSignals.every((signal) => signal.aborted)).toBe(true)
+  })
+
+  it('never requests inferential diagnostics until its separate explicit action', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    await evaluateFeatureCohorts(wrapper)
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/feature-cohorts/diagnostics'),
+      ),
+    ).toBe(false)
+
+    await evaluateFeatureCohortDiagnostics(wrapper)
+
+    const diagnosticsCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes('/feature-cohorts/diagnostics'),
+    )
+    expect(diagnosticsCalls).toHaveLength(1)
+    const url = new URL(String(diagnosticsCalls[0]![0]), 'http://localhost')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    wrapper.unmount()
+  })
+
+  it('issues exactly N diagnostics requests in selection order and renders all canonical rows', async () => {
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(apiResponse(makeRunPage()))
+      }
+      if (url.includes('/feature-cohorts/diagnostics')) {
+        return Promise.resolve(
+          apiResponse(
+            url.includes('zero-observation')
+              ? makeZeroObservationFeatureCohortDiagnostics()
+              : makeFeatureCohortDiagnosticsForResult(first),
+          ),
+        )
+      }
+      return Promise.resolve(
+        apiResponse(makeWindowPage({ items: [first, second] })),
+      )
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockClear()
+
+    await evaluateFeatureCohortDiagnostics(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/feature-cohorts/diagnostics?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/diagnostics?',
+    )
+    const cards = wrapper.findAll('.feature-cohort-diagnostics-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.text()).toContain(
+      'FISHER_EXACT_TWO_SIDED_PROBABILITY_ORDERING',
+    )
+    expect(cards[1]!.text()).toContain('BENJAMINI_YEKUTIELI')
+    expect(cards[1]!.text()).toContain('TESTED')
+    expect(cards[1]!.text()).toContain('1 / 1')
+    expect(cards[1]!.text()).not.toMatch(
+      /significant|winner|best pattern|promotion|prediction/i,
+    )
+    wrapper.unmount()
+  })
+
+  it('aborts stale diagnostics on reevaluation, control/run change, and unmount', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeFeatureCohortDiagnostics()))
+    await flushPromises()
+    older.resolve(
+      apiResponse(
+        makeFeatureCohortDiagnostics({
+          strategy: {
+            ...makeFeatureCohortDiagnostics().strategy,
+            strategy_id: 'stale',
+          },
+        }),
+      ),
+    )
+    await flushPromises()
+    expect(wrapper.findAll('.feature-cohort-diagnostics-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const controlPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(controlPending.promise)
+    await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+    const controlSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    expect(controlSignal.aborted).toBe(true)
+    expect(wrapper.findAll('.feature-cohort-diagnostics-result-card')).toHaveLength(0)
+
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+    const runPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(runPending.promise)
+    await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+    const runSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="historical-run"]').setValue('')
+    expect(runSignal.aborted).toBe(true)
+
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.feature-cohort-diagnostics-evaluate').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(unmountSignal.aborted).toBe(true)
   })
 })

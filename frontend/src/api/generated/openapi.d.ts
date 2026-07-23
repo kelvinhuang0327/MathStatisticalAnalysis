@@ -509,6 +509,44 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixStrategyFeatureCohortResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}": {
       get: {
           parameters: {
@@ -914,6 +952,22 @@ export interface components {
           "denominator": number
           "available": boolean
         }
+    "HistoricalPrefixFeatureCohortView": {
+          "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
+          "observation_count": number
+          "success_count": number
+          "failure_count": number
+          "success_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
+          "delta_vs_baseline": components['schemas']["HistoricalPrefixSignedRateDeltaView"]
+          "relation_vs_baseline": components['schemas']["HistoricalPrefixRateRelation"]
+          "first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+        }
+    "HistoricalPrefixFeatureRelationTripleView": {
+          "long_to_medium": components['schemas']["HistoricalPrefixRateRelation"]
+          "medium_to_short": components['schemas']["HistoricalPrefixRateRelation"]
+          "long_to_short": components['schemas']["HistoricalPrefixRateRelation"]
+        }
     "HistoricalPrefixMetadataView": {
           "result_schema_version": string
           "source_import_identity_sha256": string
@@ -957,6 +1011,15 @@ export interface components {
           "numerator": number
           "denominator": number
           "available": boolean
+        }
+    "HistoricalPrefixStrategyFeatureCohortResponse": {
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "baseline": components['schemas']["HistoricalPrefixWalkForwardBaselineView"]
+          "cohort_count": number
+          "cohorts": Array<components['schemas']["HistoricalPrefixFeatureCohortView"]>
         }
     "HistoricalPrefixStrategyIdentityView": {
           "strategy_id": string
@@ -1108,6 +1171,12 @@ export interface components {
           "nested_windows_independent": boolean
           "evaluation_status": components['schemas']["WindowEvaluationStatus"]
           "evidence_status": components['schemas']["EvidenceStatus"]
+        }
+    "HistoricalPrefixWalkForwardBaselineView": {
+          "observation_count": number
+          "success_count": number
+          "failure_count": number
+          "success_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
         }
     "HistoricalPrefixWindowRateComparisonKind": "FULL_HISTORY_TO_LONG" | "LONG_TO_MEDIUM" | "MEDIUM_TO_SHORT" | "LONG_TO_SHORT"
     "HistoricalPrefixWindowRateComparisonView": {

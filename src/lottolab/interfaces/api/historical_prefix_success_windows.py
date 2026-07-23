@@ -17,8 +17,11 @@ from lottolab.application.historical_prefix_success_windows import (
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
     HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixFeatureCohortSummary,
+    HistoricalPrefixFeatureRelationTriple,
     HistoricalPrefixRateRelation,
     HistoricalPrefixSignedRateDelta,
+    HistoricalPrefixStrategyFeatureCohortResult,
     HistoricalPrefixStrategySuccessMatrix,
     HistoricalPrefixStrategySuccessMatrixCell,
     HistoricalPrefixStrategySuccessWindowPage,
@@ -32,6 +35,7 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessStrategyNotFoundError,
     HistoricalPrefixSuccessWindowSourceMetadata,
     HistoricalPrefixSuccessWindowSummary,
+    HistoricalPrefixWalkForwardBaseline,
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
 )
@@ -444,6 +448,127 @@ class HistoricalPrefixStrategySuccessMatrixResponse(BaseModel):
         )
 
 
+class HistoricalPrefixFeatureRelationTripleView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    long_to_medium: HistoricalPrefixRateRelation
+    medium_to_short: HistoricalPrefixRateRelation
+    long_to_short: HistoricalPrefixRateRelation
+
+    @classmethod
+    def from_feature_key(
+        cls, feature_key: HistoricalPrefixFeatureRelationTriple
+    ) -> HistoricalPrefixFeatureRelationTripleView:
+        return cls.model_validate(feature_key, from_attributes=True)
+
+
+class HistoricalPrefixWalkForwardBaselineView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    observation_count: int
+    success_count: int
+    failure_count: int
+    success_rate: HistoricalPrefixExactSuccessRateView
+
+    @classmethod
+    def from_baseline(
+        cls, baseline: HistoricalPrefixWalkForwardBaseline
+    ) -> HistoricalPrefixWalkForwardBaselineView:
+        return cls(
+            observation_count=baseline.observation_count,
+            success_count=baseline.success_count,
+            failure_count=baseline.failure_count,
+            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
+                baseline.success_rate
+            ),
+        )
+
+
+class HistoricalPrefixFeatureCohortView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    feature_key: HistoricalPrefixFeatureRelationTripleView
+    observation_count: int
+    success_count: int
+    failure_count: int
+    success_rate: HistoricalPrefixExactSuccessRateView
+    delta_vs_baseline: HistoricalPrefixSignedRateDeltaView
+    relation_vs_baseline: HistoricalPrefixRateRelation
+    first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    last_target: HistoricalPrefixSuccessDrawIdentityView | None
+
+    @classmethod
+    def from_cohort(
+        cls, cohort: HistoricalPrefixFeatureCohortSummary
+    ) -> HistoricalPrefixFeatureCohortView:
+        return cls(
+            feature_key=HistoricalPrefixFeatureRelationTripleView.from_feature_key(
+                cohort.feature_key
+            ),
+            observation_count=cohort.observation_count,
+            success_count=cohort.success_count,
+            failure_count=cohort.failure_count,
+            success_rate=HistoricalPrefixExactSuccessRateView.from_rate(
+                cohort.success_rate
+            ),
+            delta_vs_baseline=HistoricalPrefixSignedRateDeltaView.from_delta(
+                cohort.delta_vs_baseline
+            ),
+            relation_vs_baseline=cohort.relation_vs_baseline,
+            first_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(
+                    cohort.first_target
+                )
+                if cohort.first_target is not None
+                else None
+            ),
+            last_target=(
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(
+                    cohort.last_target
+                )
+                if cohort.last_target is not None
+                else None
+            ),
+        )
+
+
+class HistoricalPrefixStrategyFeatureCohortResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    metadata: HistoricalPrefixSuccessSourceMetadataView
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    baseline: HistoricalPrefixWalkForwardBaselineView
+    cohort_count: int
+    cohorts: tuple[HistoricalPrefixFeatureCohortView, ...]
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalPrefixStrategyFeatureCohortResult
+    ) -> HistoricalPrefixStrategyFeatureCohortResponse:
+        return cls(
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
+                result.metadata
+            ),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
+                result.strategy
+            ),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(
+                result.criterion
+            ),
+            prefix_count=result.prefix_count,
+            baseline=HistoricalPrefixWalkForwardBaselineView.from_baseline(
+                result.baseline
+            ),
+            cohort_count=result.cohort_count,
+            cohorts=tuple(
+                HistoricalPrefixFeatureCohortView.from_cohort(cohort)
+                for cohort in result.cohorts
+            ),
+        )
+
+
 def create_historical_prefix_success_windows_router(
     reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory | None,
 ) -> APIRouter:
@@ -489,6 +614,49 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalPrefixStrategySuccessWindowPageResponse.from_page(page)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
+        ),
+        response_model=HistoricalPrefixStrategyFeatureCohortResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyFeatureCohorts",
+    )
+    def get_historical_prefix_strategy_feature_cohorts(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: ImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixStrategyFeatureCohortResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_feature_cohorts(
+                import_identity_sha256=import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixStrategyFeatureCohortResponse.from_result(result)
 
     @router.get(
         (
@@ -621,7 +789,10 @@ def _error_response(status_code: int, error_code: str, message: str) -> JSONResp
 
 __all__ = [
     "HistoricalPrefixExactSuccessRateView",
+    "HistoricalPrefixFeatureCohortView",
+    "HistoricalPrefixFeatureRelationTripleView",
     "HistoricalPrefixSignedRateDeltaView",
+    "HistoricalPrefixStrategyFeatureCohortResponse",
     "HistoricalPrefixStrategySuccessMatrixCellView",
     "HistoricalPrefixStrategySuccessMatrixResponse",
     "HistoricalPrefixStrategySuccessWindowPageResponse",
@@ -633,6 +804,7 @@ __all__ = [
     "HistoricalPrefixSuccessSourceMetadataView",
     "HistoricalPrefixSuccessStrategyIdentityView",
     "HistoricalPrefixSuccessWindowSummaryView",
+    "HistoricalPrefixWalkForwardBaselineView",
     "HistoricalPrefixWindowRateComparisonView",
     "create_historical_prefix_success_windows_router",
 ]

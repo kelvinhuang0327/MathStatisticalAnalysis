@@ -494,7 +494,7 @@ def test_guard_matrix_zero_observation_never_fabricates_rates() -> None:
 def test_guard_matrix_source_has_no_per_cell_reader_or_rate_sorting() -> None:
     use_case = USE_CASE.read_text(encoding="utf-8")
     matrix_method = use_case.split("def get_matrix(", 1)[1].split(
-        '__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]', 1
+        "def get_feature_cohorts(", 1
     )[0]
 
     assert matrix_method.count("source = self._load(import_identity_sha256)") == 1
@@ -511,3 +511,82 @@ def test_guard_matrix_relation_vocabulary_stays_neutral() -> None:
 
     assert "HistoricalPrefixRateRelation" in source
     assert all(word not in source for word in forbidden)
+
+
+def test_guard_walk_forward_snapshot_excludes_current_and_future_targets_before_label() -> None:
+    use_case = USE_CASE.read_text(encoding="utf-8")
+    cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
+        "def _matrix_cell(", 1
+    )[0]
+
+    assert "prior_observations=observations[:index]" in cohorts
+    assert "prior_observations=observations[: index + 1]" not in cohorts
+    assert "prior_observations=observations[index:]" not in cohorts
+    assert cohorts.index("feature_key = _snapshot_feature_key(") < cohorts.index(
+        "succeeded = _current_target_succeeded("
+    )
+
+
+def test_guard_walk_forward_assigns_each_target_once_without_rate_sorting() -> None:
+    use_case = USE_CASE.read_text(encoding="utf-8")
+    cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
+        "def _matrix_cell(", 1
+    )[0]
+
+    assert cohorts.count("assignments.setdefault(feature_key, []).append(") == 1
+    assert (
+        "sum(cohort.observation_count for cohort in cohorts) != baseline_count"
+        in cohorts
+    )
+    assert "sorted(" not in cohorts
+
+
+def test_guard_walk_forward_canonical_relation_order_and_exact_delta_direction() -> None:
+    use_case = USE_CASE.read_text(encoding="utf-8")
+    cohorts = use_case.split("def _feature_cohorts(", 1)[1].split(
+        "def _matrix_cell(", 1
+    )[0]
+
+    long_loop = cohorts.index(
+        "for long_to_medium in FEATURE_COHORT_RELATION_ORDER:"
+    )
+    medium_loop = cohorts.index(
+        "for medium_to_short in FEATURE_COHORT_RELATION_ORDER:"
+    )
+    short_loop = cohorts.index(
+        "for long_to_short in FEATURE_COHORT_RELATION_ORDER:"
+    )
+    assert long_loop < medium_loop < short_loop
+    assert "_signed_rate_delta(baseline_rate, cohort_rate)" in cohorts
+    assert "_signed_rate_delta(cohort_rate, baseline_rate)" not in cohorts
+
+
+def test_guard_walk_forward_method_has_one_load_and_one_exact_strategy_lookup() -> None:
+    use_case = USE_CASE.read_text(encoding="utf-8")
+    method = use_case.split("def get_feature_cohorts(", 1)[1].split(
+        '__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]', 1
+    )[0]
+
+    assert method.count("source = self._load(import_identity_sha256)") == 1
+    assert method.count("_find_exact_strategy(") == 1
+    assert "for " not in method.split("source = self._load", 1)[0]
+
+
+def test_guard_walk_forward_relation_vocabulary_stays_neutral() -> None:
+    use_case = USE_CASE.read_text(encoding="utf-8")
+    cohorts = use_case.split("def _snapshot_feature_key(", 1)[1].split(
+        "def _matrix_cell(", 1
+    )[0]
+
+    assert "HistoricalPrefixRateRelation" in cohorts
+    assert not any(
+        word in cohorts
+        for word in (
+            "IMPROVED",
+            "DEGRADED",
+            "GOOD",
+            "BAD",
+            "PROMOTE",
+            "REJECT",
+        )
+    )

@@ -8,6 +8,8 @@ export type HistoricalSuccessWindowPage =
 export type HistoricalSuccessWindowResult = HistoricalSuccessWindowPage['items'][number]
 export type HistoricalSuccessStabilityMatrix =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/matrix']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessFeatureCohorts =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -45,6 +47,12 @@ const COMPARISON_DEFINITIONS = [
   ['LONG_TO_MEDIUM', 1, 2],
   ['MEDIUM_TO_SHORT', 2, 3],
   ['LONG_TO_SHORT', 1, 3],
+] as const
+export const HISTORICAL_SUCCESS_FEATURE_RELATIONS = [
+  'HIGHER',
+  'EQUAL',
+  'LOWER',
+  'UNAVAILABLE',
 ] as const
 const EVALUATION_STATUSES = new Set([
   'COMPLETE',
@@ -97,6 +105,9 @@ export interface HistoricalSuccessMatrixQuery {
   strategy_version: string
   replicate: number
 }
+
+export interface HistoricalSuccessFeatureCohortQuery
+  extends HistoricalSuccessExactQuery {}
 
 export type HistoricalSuccessErrorKind =
   | 'NOT_CONFIGURED'
@@ -540,6 +551,136 @@ function isStabilityMatrix(
   })
 }
 
+function isFeatureKey(value: unknown, index: number): boolean {
+  if (!isRecord(value)) return false
+  const longToMedium =
+    HISTORICAL_SUCCESS_FEATURE_RELATIONS[Math.floor(index / 16)]
+  const mediumToShort =
+    HISTORICAL_SUCCESS_FEATURE_RELATIONS[Math.floor((index % 16) / 4)]
+  const longToShort = HISTORICAL_SUCCESS_FEATURE_RELATIONS[index % 4]
+  return (
+    longToMedium !== undefined &&
+    mediumToShort !== undefined &&
+    longToShort !== undefined &&
+    value.long_to_medium === longToMedium &&
+    value.medium_to_short === mediumToShort &&
+    value.long_to_short === longToShort
+  )
+}
+
+function isFeatureCohort(
+  value: unknown,
+  index: number,
+  baselineRate: Record<string, unknown>,
+): boolean {
+  if (
+    !isRecord(value) ||
+    !isFeatureKey(value.feature_key, index) ||
+    !isNonNegativeInteger(value.observation_count) ||
+    !isNonNegativeInteger(value.success_count) ||
+    !isNonNegativeInteger(value.failure_count) ||
+    !isExactRate(value.success_rate) ||
+    !isRecord(value.success_rate) ||
+    !isRecord(value.delta_vs_baseline)
+  ) {
+    return false
+  }
+  if (
+    value.success_count + value.failure_count !== value.observation_count
+  ) {
+    return false
+  }
+  const rate = value.success_rate
+  if (value.observation_count === 0) {
+    return (
+      value.success_count === 0 &&
+      value.failure_count === 0 &&
+      rate.numerator === 0 &&
+      rate.denominator === 0 &&
+      rate.available === false &&
+      value.delta_vs_baseline.numerator === 0 &&
+      value.delta_vs_baseline.denominator === 0 &&
+      value.delta_vs_baseline.available === false &&
+      value.relation_vs_baseline === 'UNAVAILABLE' &&
+      value.first_target === null &&
+      value.last_target === null
+    )
+  }
+  if (
+    rate.numerator !== value.success_count ||
+    rate.denominator !== value.observation_count ||
+    rate.available !== true ||
+    !isDrawIdentity(value.first_target) ||
+    !isDrawIdentity(value.last_target)
+  ) {
+    return false
+  }
+  const expected = expectedSignedDelta(baselineRate, rate)
+  if (expected === null) return false
+  const [numerator, denominator, available, relation] = expected
+  return (
+    value.delta_vs_baseline.numerator === numerator &&
+    value.delta_vs_baseline.denominator === denominator &&
+    value.delta_vs_baseline.available === available &&
+    value.relation_vs_baseline === relation
+  )
+}
+
+function isFeatureCohorts(
+  value: unknown,
+  query: HistoricalSuccessFeatureCohortQuery,
+): value is HistoricalSuccessFeatureCohorts {
+  if (
+    !isRecord(value) ||
+    !isMetadata(value.metadata, query.import_identity_sha256) ||
+    !isStrategyIdentity(value.strategy) ||
+    !isCriterion(value.criterion, query.criterion) ||
+    value.prefix_count !== query.prefix_count ||
+    !isRecord(value.baseline) ||
+    !isNonNegativeInteger(value.baseline.observation_count) ||
+    !isNonNegativeInteger(value.baseline.success_count) ||
+    !isNonNegativeInteger(value.baseline.failure_count) ||
+    !isExactRate(value.baseline.success_rate) ||
+    !isRecord(value.baseline.success_rate) ||
+    value.cohort_count !== 64 ||
+    !Array.isArray(value.cohorts) ||
+    value.cohorts.length !== 64
+  ) {
+    return false
+  }
+  const strategy = value.strategy as Record<string, unknown>
+  const baseline = value.baseline as Record<string, unknown> & {
+    observation_count: number
+    success_count: number
+    failure_count: number
+    success_rate: Record<string, unknown> & {
+      numerator: number
+      denominator: number
+      available: boolean
+    }
+  }
+  const baselineRate = baseline.success_rate
+  if (
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate ||
+    baseline.success_count + baseline.failure_count !==
+      baseline.observation_count ||
+    baselineRate.numerator !== baseline.success_count ||
+    baselineRate.denominator !==
+      (baseline.observation_count === 0 ? 0 : baseline.observation_count) ||
+    baselineRate.available !== (baseline.observation_count > 0)
+  ) {
+    return false
+  }
+  let assigned = 0
+  for (const [index, cohort] of value.cohorts.entries()) {
+    if (!isFeatureCohort(cohort, index, baselineRate)) return false
+    assigned += cohort.observation_count
+  }
+  return assigned === baseline.observation_count
+}
+
 function isSuccessPage(
   value: unknown,
   query: HistoricalSuccessWindowQuery,
@@ -725,5 +866,21 @@ export async function getHistoricalSuccessStabilityMatrix(
     signal,
   )
   if (!isStabilityMatrix(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessFeatureCohorts(
+  query: HistoricalSuccessFeatureCohortQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessFeatureCohorts> {
+  const parameters = successQueryParameters(query)
+  const identity = [query.strategy_id, query.strategy_version, String(query.replicate)]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/feature-cohorts?${parameters.toString()}`,
+    signal,
+  )
+  if (!isFeatureCohorts(payload, query)) throw malformedResponse()
   return payload
 }

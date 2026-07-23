@@ -13,20 +13,27 @@ EXACT_PATH = (
     "{strategy_id}/{strategy_version}/{replicate}"
 )
 MATRIX_PATH = f"{EXACT_PATH}/matrix"
+FEATURE_COHORT_PATH = f"{EXACT_PATH}/feature-cohorts"
 
 
-def test_openapi_exposes_exactly_three_get_operations_with_required_selectors() -> None:
+def test_openapi_exposes_exactly_four_get_operations_with_required_selectors() -> None:
     paths = create_app().openapi()["paths"]
 
     assert set(paths[LIST_PATH]) == {"get"}
     assert set(paths[EXACT_PATH]) == {"get"}
     assert set(paths[MATRIX_PATH]) == {"get"}
+    assert set(paths[FEATURE_COHORT_PATH]) == {"get"}
     list_operation = paths[LIST_PATH]["get"]
     exact_operation = paths[EXACT_PATH]["get"]
     matrix_operation = paths[MATRIX_PATH]["get"]
+    feature_cohort_operation = paths[FEATURE_COHORT_PATH]["get"]
     assert list_operation["operationId"] == "listHistoricalPrefixStrategySuccessWindows"
     assert exact_operation["operationId"] == "getHistoricalPrefixStrategySuccessWindows"
     assert matrix_operation["operationId"] == "getHistoricalPrefixStrategySuccessMatrix"
+    assert (
+        feature_cohort_operation["operationId"]
+        == "getHistoricalPrefixStrategyFeatureCohorts"
+    )
     assert [item["name"] for item in list_operation["parameters"]] == [
         "import_identity_sha256",
         "prefix_count",
@@ -60,6 +67,18 @@ def test_openapi_exposes_exactly_three_get_operations_with_required_selectors() 
         "import_identity_sha256",
     ]
     assert all(item["required"] is True for item in matrix_operation["parameters"])
+    assert [item["name"] for item in feature_cohort_operation["parameters"]] == [
+        "strategy_id",
+        "strategy_version",
+        "replicate",
+        "import_identity_sha256",
+        "prefix_count",
+        "criterion",
+    ]
+    assert all(
+        item["required"] is True
+        for item in feature_cohort_operation["parameters"]
+    )
     selector = list_operation["parameters"][0]
     assert selector["in"] == "query"
     assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
@@ -123,12 +142,32 @@ def test_openapi_pins_closed_prefix_criterion_and_nullable_rate_contract() -> No
         "cell_count",
         "cells",
     ]
+    feature_key = schemas["HistoricalPrefixFeatureRelationTripleView"]
+    assert feature_key["required"] == [
+        "long_to_medium",
+        "medium_to_short",
+        "long_to_short",
+    ]
+    cohort = schemas["HistoricalPrefixFeatureCohortView"]
+    assert cohort["required"] == [
+        "feature_key",
+        "observation_count",
+        "success_count",
+        "failure_count",
+        "success_rate",
+        "delta_vs_baseline",
+        "relation_vs_baseline",
+        "first_target",
+        "last_target",
+    ]
+    assert cohort["properties"]["first_target"]["anyOf"][-1] == {"type": "null"}
+    assert cohort["properties"]["last_target"]["anyOf"][-1] == {"type": "null"}
 
 
 def test_openapi_uses_sanitized_404_422_503_models_for_both_routes() -> None:
     paths = create_app().openapi()["paths"]
 
-    for path in (LIST_PATH, EXACT_PATH, MATRIX_PATH):
+    for path in (LIST_PATH, EXACT_PATH, MATRIX_PATH, FEATURE_COHORT_PATH):
         operation = paths[path]["get"]
         for status, schema_name in {
             "404": "ApiErrorResponse",

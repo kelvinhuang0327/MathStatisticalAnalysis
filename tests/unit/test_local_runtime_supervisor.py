@@ -1392,6 +1392,10 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                                 "/api/v1/historical-prefix-success-windows/strategies/"
                                 "{strategy_id}/{strategy_version}/{replicate}/matrix"
                             ): {"get": {}},
+                            (
+                                "/api/v1/historical-prefix-success-windows/strategies/"
+                                "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
+                            ): {"get": {}},
                             "/api/v1/replay-rankings/optimal": {"get": {}},
                         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {
                             "get": {}

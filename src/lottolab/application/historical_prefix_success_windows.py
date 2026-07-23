@@ -86,6 +86,14 @@ class HistoricalPrefixRateRelation(StrEnum):
     UNAVAILABLE = "UNAVAILABLE"
 
 
+FEATURE_COHORT_RELATION_ORDER = (
+    HistoricalPrefixRateRelation.HIGHER,
+    HistoricalPrefixRateRelation.EQUAL,
+    HistoricalPrefixRateRelation.LOWER,
+    HistoricalPrefixRateRelation.UNAVAILABLE,
+)
+
+
 def _require_canonical_text(value: str, name: str) -> None:
     if type(value) is not str or not value or value != value.strip():
         raise HistoricalPrefixSuccessWindowsContractError(
@@ -371,6 +379,45 @@ class HistoricalPrefixSignedRateDelta:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalPrefixFeatureRelationTriple:
+    long_to_medium: HistoricalPrefixRateRelation
+    medium_to_short: HistoricalPrefixRateRelation
+    long_to_short: HistoricalPrefixRateRelation
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixWalkForwardBaseline:
+    observation_count: int
+    success_count: int
+    failure_count: int
+    success_rate: HistoricalPrefixExactSuccessRate
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixFeatureCohortSummary:
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    observation_count: int
+    success_count: int
+    failure_count: int
+    success_rate: HistoricalPrefixExactSuccessRate
+    delta_vs_baseline: HistoricalPrefixSignedRateDelta
+    relation_vs_baseline: HistoricalPrefixRateRelation
+    first_target: HistoricalPrefixSuccessDrawIdentity | None
+    last_target: HistoricalPrefixSuccessDrawIdentity | None
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixStrategyFeatureCohortResult:
+    metadata: HistoricalPrefixSuccessWindowSourceMetadata
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    baseline: HistoricalPrefixWalkForwardBaseline
+    cohort_count: int
+    cohorts: tuple[HistoricalPrefixFeatureCohortSummary, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalPrefixWindowRateComparison:
     comparison_kind: HistoricalPrefixWindowRateComparisonKind
     from_window_kind: WindowKind
@@ -406,13 +453,17 @@ class HistoricalPrefixStrategySuccessMatrix:
 __all__ = [
     "DEFAULT_PAGE_LIMIT",
     "DEFAULT_PAGE_OFFSET",
+    "FEATURE_COHORT_RELATION_ORDER",
     "MAX_PAGE_LIMIT",
     "MIN_PAGE_LIMIT",
     "SUPPORTED_PREFIX_COUNTS",
     "SUPPORTED_SUCCESS_CRITERIA",
     "HistoricalPrefixExactSuccessRate",
+    "HistoricalPrefixFeatureCohortSummary",
+    "HistoricalPrefixFeatureRelationTriple",
     "HistoricalPrefixRateRelation",
     "HistoricalPrefixSignedRateDelta",
+    "HistoricalPrefixStrategyFeatureCohortResult",
     "HistoricalPrefixStrategySuccessMatrix",
     "HistoricalPrefixStrategySuccessMatrixCell",
     "HistoricalPrefixStrategySuccessWindowPage",
@@ -434,6 +485,7 @@ __all__ = [
     "HistoricalPrefixSuccessWindowsContractError",
     "HistoricalPrefixSuccessWindowsError",
     "HistoricalPrefixSuccessWindowsUnavailableError",
+    "HistoricalPrefixWalkForwardBaseline",
     "HistoricalPrefixWindowRateComparison",
     "HistoricalPrefixWindowRateComparisonKind",
 ]

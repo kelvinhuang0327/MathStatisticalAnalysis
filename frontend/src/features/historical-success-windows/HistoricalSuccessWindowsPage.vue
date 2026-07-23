@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
+  getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessWindows,
   HISTORICAL_SUCCESS_CRITERIA,
@@ -12,6 +13,7 @@ import {
   type HistoricalRun,
   type HistoricalRunPage,
   type HistoricalSuccessCriterion,
+  type HistoricalSuccessFeatureCohorts,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessWindowPage,
@@ -39,6 +41,12 @@ type MatrixOutcome = {
   error: string
 }
 type MatrixCell = HistoricalSuccessStabilityMatrix['cells'][number]
+type FeatureCohortOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessFeatureCohorts | null
+  error: string
+}
+type FeatureCohort = HistoricalSuccessFeatureCohorts['cohorts'][number]
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -60,16 +68,20 @@ const copiedIdentity = ref(false)
 const matrixSelections = ref<MatrixSelection[]>([])
 const matrixState = ref<MatrixState>('idle')
 const matrixResults = ref<MatrixOutcome[]>([])
+const featureCohortState = ref<MatrixState>('idle')
+const featureCohortResults = ref<FeatureCohortOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
 let analysisGeneration = 0
 let detailGeneration = 0
 let matrixGeneration = 0
+let featureCohortGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
 let matrixController: AbortController | undefined
+let featureCohortController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -179,6 +191,14 @@ function clearMatrix(clearSelections: boolean): void {
     !clearSelections && matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearFeatureCohorts(): void {
+  featureCohortGeneration += 1
+  featureCohortController?.abort()
+  featureCohortResults.value = []
+  featureCohortState.value =
+    matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
 function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   const checked = (event.target as HTMLInputElement).checked
   const identity = matrixIdentity(item)
@@ -197,6 +217,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
     )
   }
   clearMatrix(false)
+  clearFeatureCohorts()
 }
 
 function chooseRun(): void {
@@ -208,10 +229,12 @@ function chooseRun(): void {
   copiedIdentity.value = false
   clearAnalysis()
   clearMatrix(true)
+  clearFeatureCohorts()
 }
 
 function controlsChanged(): void {
   clearAnalysis()
+  clearFeatureCohorts()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -246,6 +269,51 @@ async function compareSelectedMatrices(): Promise<void> {
   matrixResults.value = outcomes
   const successes = outcomes.filter((outcome) => outcome.matrix !== null).length
   matrixState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
+}
+
+async function evaluateSelectedFeatureCohorts(): Promise<void> {
+  const run = selectedRun.value
+  const selections = [...matrixSelections.value]
+  if (run === null || selections.length < 1 || selections.length > 4) return
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++featureCohortGeneration
+  featureCohortController?.abort()
+  const controller = new AbortController()
+  featureCohortController = controller
+  featureCohortResults.value = []
+  featureCohortState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<FeatureCohortOutcome> => {
+      try {
+        const result = await getHistoricalSuccessFeatureCohorts(
+          {
+            import_identity_sha256: run.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+            prefix_count: selectedPrefix,
+            criterion: selectedCriterion,
+          },
+          controller.signal,
+        )
+        return { selection, result, error: '' }
+      } catch (error: unknown) {
+        return { selection, result: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (
+    !mounted ||
+    generation !== featureCohortGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  featureCohortResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.result !== null).length
+  featureCohortState.value =
     successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
@@ -361,6 +429,32 @@ function matrixDelta(
     : 'Unavailable (0 / 0)'
 }
 
+function featureCohortKey(cohort: FeatureCohort): string {
+  return [
+    cohort.feature_key.long_to_medium,
+    cohort.feature_key.medium_to_short,
+    cohort.feature_key.long_to_short,
+  ].join(':')
+}
+
+function featureRate(
+  rate: HistoricalSuccessFeatureCohorts['baseline']['success_rate'],
+): string {
+  return rate.available
+    ? `${rate.numerator} / ${rate.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
+function featureDelta(cohort: FeatureCohort): string {
+  return cohort.delta_vs_baseline.available
+    ? `${cohort.delta_vs_baseline.numerator} / ${cohort.delta_vs_baseline.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
+function optionalTarget(target: FeatureCohort['first_target']): string {
+  return target === null ? 'None' : `${target.draw_date} · #${target.draw_number}`
+}
+
 onMounted(() => {
   mounted = true
   void loadRuns()
@@ -371,10 +465,12 @@ onBeforeUnmount(() => {
   analysisGeneration += 1
   detailGeneration += 1
   matrixGeneration += 1
+  featureCohortGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
   matrixController?.abort()
+  featureCohortController?.abort()
 })
 </script>
 
@@ -744,6 +840,120 @@ onBeforeUnmount(() => {
       </ol>
     </section>
 
+    <section class="research-results feature-cohort-comparison" aria-labelledby="feature-cohort-comparison-title">
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">5 · Walk-forward feature cohorts</p>
+          <h2 id="feature-cohort-comparison-title">Exact next-target cohort comparison</h2>
+        </div>
+        <button
+          class="button button--primary feature-cohort-evaluate"
+          type="button"
+          :disabled="selectedRun === null || matrixSelections.length === 0"
+          @click="evaluateSelectedFeatureCohorts"
+        >
+          Evaluate walk-forward feature cohorts
+        </button>
+      </div>
+
+      <p v-if="selectedRun === null" class="research-state">
+        Select a run before evaluating walk-forward feature cohorts.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities above. No feature-cohort request runs on selection.
+      </p>
+      <p v-else-if="featureCohortState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact {{ matrixSelections.length === 1 ? 'identity' : 'identities' }}
+        selected in manual order. Prefix {{ prefixCount }} · criterion {{ criterion }}.
+      </p>
+      <p v-if="featureCohortState === 'loading'" class="research-state">
+        Evaluating {{ matrixSelections.length }} exact walk-forward
+        {{ matrixSelections.length === 1 ? 'cohort grid' : 'cohort grids' }}…
+      </p>
+      <div v-if="featureCohortState === 'partial'" class="research-state research-state--notice">
+        <strong>Some exact feature-cohort requests are unavailable; successful results remain visible.</strong>
+        <button class="button button--quiet feature-cohort-retry" type="button" @click="evaluateSelectedFeatureCohorts">Retry all</button>
+      </div>
+      <div v-if="featureCohortState === 'error'" class="research-state research-state--error">
+        <strong>All selected feature-cohort requests failed with sanitized errors.</strong>
+        <button class="button button--quiet feature-cohort-retry" type="button" @click="evaluateSelectedFeatureCohorts">Retry all</button>
+      </div>
+
+      <ol v-if="featureCohortResults.length > 0" class="feature-cohort-result-list">
+        <li
+          v-for="outcome in featureCohortResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="feature-cohort-result-card"
+        >
+          <header>
+            <div>
+              <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+              <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+              <code>
+                {{ outcome.selection.strategy.strategy_version }} · replicate
+                {{ outcome.selection.strategy.replicate }}
+              </code>
+            </div>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts feature-cohort-facts">
+              <div><dt>Prefix</dt><dd>{{ outcome.result.prefix_count }}</dd></div>
+              <div><dt>Criterion</dt><dd>{{ outcome.result.criterion.criterion }}</dd></div>
+              <div><dt>Baseline observations</dt><dd>{{ outcome.result.baseline.observation_count }}</dd></div>
+              <div><dt>Baseline successes</dt><dd>{{ outcome.result.baseline.success_count }}</dd></div>
+              <div><dt>Baseline failures</dt><dd>{{ outcome.result.baseline.failure_count }}</dd></div>
+              <div><dt>Baseline exact rate</dt><dd>{{ featureRate(outcome.result.baseline.success_rate) }}</dd></div>
+            </dl>
+            <div class="feature-cohort-table-scroll">
+              <table class="feature-cohort-table">
+                <caption>
+                  Canonical 64-cohort walk-forward observations for
+                  {{ outcome.result.strategy.strategy_id }}. Feature snapshots use prior targets only.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Long→Medium</th>
+                    <th scope="col">Medium→Short</th>
+                    <th scope="col">Long→Short</th>
+                    <th scope="col">Observations</th>
+                    <th scope="col">Successes</th>
+                    <th scope="col">Failures</th>
+                    <th scope="col">Exact cohort rate</th>
+                    <th scope="col">Delta vs baseline</th>
+                    <th scope="col">Relation</th>
+                    <th scope="col">First target</th>
+                    <th scope="col">Last target</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="cohort in outcome.result.cohorts"
+                    :key="featureCohortKey(cohort)"
+                    :class="{ 'feature-cohort-row--empty': cohort.observation_count === 0 }"
+                  >
+                    <td>{{ cohort.feature_key.long_to_medium }}</td>
+                    <td>{{ cohort.feature_key.medium_to_short }}</td>
+                    <td>{{ cohort.feature_key.long_to_short }}</td>
+                    <td>{{ cohort.observation_count }}</td>
+                    <td>{{ cohort.success_count }}</td>
+                    <td>{{ cohort.failure_count }}</td>
+                    <td>{{ featureRate(cohort.success_rate) }}</td>
+                    <td>{{ featureDelta(cohort) }}</td>
+                    <td>{{ cohort.relation_vs_baseline }}</td>
+                    <td>{{ optionalTarget(cohort.first_target) }}</td>
+                    <td>{{ optionalTarget(cohort.last_target) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="research-state research-state--error feature-cohort-item-error">
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
     <aside v-if="detailState !== 'closed'" class="detail-panel" aria-labelledby="exact-detail-title">
       <div class="panel-heading">
         <div>
@@ -836,6 +1046,17 @@ onBeforeUnmount(() => {
 .matrix-cell-detail dd { margin: 0; color: var(--ink); font: 500 10px/1.3 'SFMono-Regular', Consolas, monospace; }
 .matrix-unavailable { color: var(--muted); font-size: 9px; line-height: 1.4; }
 .matrix-item-error { margin-top: 16px; }
+.feature-cohort-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.feature-cohort-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.feature-cohort-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.feature-cohort-table-scroll { overflow-x: auto; margin-top: 18px; }
+.feature-cohort-table { width: 100%; min-width: 1500px; border-collapse: collapse; color: var(--ink); font-size: 10px; }
+.feature-cohort-table caption { padding: 0 0 12px; color: var(--muted); text-align: left; }
+.feature-cohort-table th, .feature-cohort-table td { padding: 9px; border: 1px solid var(--line); vertical-align: top; }
+.feature-cohort-table th { background: #0a1714; color: var(--mint); text-align: left; }
+.feature-cohort-table td { font-family: 'SFMono-Regular', Consolas, monospace; }
+.feature-cohort-row--empty { color: var(--muted); }
+.feature-cohort-item-error { margin-top: 16px; }
 .detail-panel { border-color: rgb(121 227 178 / 38%); }
 .detail-content h3 { margin-bottom: 6px; color: var(--ink); }
 .detail-content { color: var(--muted); }

@@ -1,6 +1,7 @@
 import type {
   HistoricalRun,
   HistoricalRunPage,
+  HistoricalSuccessFeatureCohorts,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessWindowPage,
   HistoricalSuccessWindowResult,
@@ -98,6 +99,7 @@ const criteria = [
   ['M5_PLUS_SPECIAL', 5, true],
 ] as const
 const prefixes = [1, 2, 3, 4, 5, 10, 15, 20] as const
+const featureRelations = ['HIGHER', 'EQUAL', 'LOWER', 'UNAVAILABLE'] as const
 
 function gcd(left: number, right: number): number {
   let a = Math.abs(left)
@@ -322,6 +324,156 @@ export function makeMatrixForResult(
         replicate: result.strategy.replicate,
       },
       source_observation_count: result.source_observation_count,
+    })),
+  }
+}
+
+function featureDelta(
+  successCount: number,
+  observationCount: number,
+  baselineSuccessCount: number,
+  baselineObservationCount: number,
+): {
+  numerator: number
+  denominator: number
+  available: boolean
+  relation: 'HIGHER' | 'EQUAL' | 'LOWER' | 'UNAVAILABLE'
+} {
+  if (observationCount === 0 || baselineObservationCount === 0) {
+    return {
+      numerator: 0,
+      denominator: 0,
+      available: false,
+      relation: 'UNAVAILABLE',
+    }
+  }
+  const rawNumerator =
+    successCount * baselineObservationCount -
+    baselineSuccessCount * observationCount
+  const rawDenominator = observationCount * baselineObservationCount
+  const divisor = gcd(rawNumerator, rawDenominator)
+  const numerator = rawNumerator / divisor
+  return {
+    numerator,
+    denominator: numerator === 0 ? 1 : rawDenominator / divisor,
+    available: true,
+    relation: numerator > 0 ? 'HIGHER' : numerator < 0 ? 'LOWER' : 'EQUAL',
+  }
+}
+
+export function makeFeatureCohorts(
+  overrides: Partial<HistoricalSuccessFeatureCohorts> = {},
+): HistoricalSuccessFeatureCohorts {
+  const result = makeResult()
+  const baseline = {
+    observation_count: 5,
+    success_count: 2,
+    failure_count: 3,
+    success_rate: { numerator: 2, denominator: 5, available: true },
+  }
+  const observed = new Map<number, readonly [number, number]>([
+    [0, [1, 1]],
+    [1, [1, 0]],
+    [63, [3, 1]],
+  ])
+  const cohorts = featureRelations.flatMap((long_to_medium) =>
+    featureRelations.flatMap((medium_to_short) =>
+      featureRelations.map((long_to_short) => ({
+        feature_key: {
+          long_to_medium,
+          medium_to_short,
+          long_to_short,
+        },
+      })),
+    ),
+  ).map((item, index) => {
+    const [observation_count, success_count] = observed.get(index) ?? [0, 0]
+    const delta = featureDelta(
+      success_count,
+      observation_count,
+      baseline.success_count,
+      baseline.observation_count,
+    )
+    const first_target =
+      observation_count === 0
+        ? null
+        : {
+            draw_number: index + 1,
+            draw_date: `2025-02-${String(index + 1).padStart(2, '0')}`,
+            draw_sha256: String((index % 9) + 1).repeat(64),
+          }
+    const last_target =
+      observation_count === 0
+        ? null
+        : {
+            draw_number: index + observation_count,
+            draw_date: `2025-03-${String(index + 1).padStart(2, '0')}`,
+            draw_sha256: String(((index + 1) % 9) + 1).repeat(64),
+          }
+    return {
+      ...item,
+      observation_count,
+      success_count,
+      failure_count: observation_count - success_count,
+      success_rate:
+        observation_count === 0
+          ? { numerator: 0, denominator: 0, available: false }
+          : {
+              numerator: success_count,
+              denominator: observation_count,
+              available: true,
+            },
+      delta_vs_baseline: {
+        numerator: delta.numerator,
+        denominator: delta.denominator,
+        available: delta.available,
+      },
+      relation_vs_baseline: delta.relation,
+      first_target,
+      last_target,
+    }
+  })
+  return {
+    metadata: makeWindowPage().metadata,
+    strategy: result.strategy,
+    criterion: result.criterion,
+    prefix_count: result.prefix_count,
+    baseline,
+    cohort_count: 64,
+    cohorts,
+    ...overrides,
+  } as HistoricalSuccessFeatureCohorts
+}
+
+export function makeFeatureCohortsForResult(
+  result: HistoricalSuccessWindowResult,
+): HistoricalSuccessFeatureCohorts {
+  return makeFeatureCohorts({
+    strategy: result.strategy,
+  })
+}
+
+export function makeZeroObservationFeatureCohorts(): HistoricalSuccessFeatureCohorts {
+  const zero = makeZeroObservationResult()
+  const cohorts = makeFeatureCohortsForResult(zero)
+  return {
+    ...cohorts,
+    baseline: {
+      observation_count: 0,
+      success_count: 0,
+      failure_count: 0,
+      success_rate: { numerator: 0, denominator: 0, available: false },
+    },
+    cohorts: cohorts.cohorts.map((cohort) => ({
+      ...cohort,
+      observation_count: 0,
+      success_count: 0,
+      failure_count: 0,
+      success_rate: { numerator: 0, denominator: 0, available: false },
+      delta_vs_baseline: { numerator: 0, denominator: 0, available: false },
+      relation_vs_baseline: 'UNAVAILABLE',
+      first_target: null,
+      last_target: null,
     })),
   }
 }

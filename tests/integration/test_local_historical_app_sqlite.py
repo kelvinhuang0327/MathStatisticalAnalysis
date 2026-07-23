@@ -104,6 +104,24 @@ def test_one_exact_configured_database_feeds_runs_list_windows_and_exact_strateg
     assert exact.json()["prefix_count"] == 1
     assert exact.json()["criterion"]["criterion"] == "M3_PLUS"
 
+    cohorts = client.get(
+        (
+            f"{WINDOWS_PATH}/strategies/{selected['strategy_id']}/"
+            f"{selected['strategy_version']}/{selected['replicate']}/feature-cohorts"
+        ),
+        params=_params(run["import_identity_sha256"]),
+    )
+    assert cohorts.status_code == 200
+    cohort_payload = cohorts.json()
+    assert cohort_payload["strategy"] == selected
+    assert cohort_payload["baseline"]["observation_count"] == (
+        exact.json()["source_observation_count"]
+    )
+    assert cohort_payload["cohort_count"] == len(cohort_payload["cohorts"]) == 64
+    assert sum(
+        item["observation_count"] for item in cohort_payload["cohorts"]
+    ) == cohort_payload["baseline"]["observation_count"]
+
     after = _database_inventory(database)
     assert after == before
     assert after[2] == set()

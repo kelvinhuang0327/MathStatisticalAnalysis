@@ -130,6 +130,17 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
             ),
             {"import_identity_sha256": "a" * 64},
         )
+        feature_status, feature_body = json_get(
+            (
+                "/api/v1/historical-prefix-success-windows/strategies/"
+                "strategy-a/v1/1/feature-cohorts"
+            ),
+            {
+                "import_identity_sha256": "a" * 64,
+                "prefix_count": 1,
+                "criterion": "M3_PLUS",
+            },
+        )
         assert runs_status == 503
         assert runs_body["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
         assert windows_status == 503
@@ -138,6 +149,10 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
         )
         assert matrix_status == 503
         assert matrix_body["error_code"] == (
+            "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
+        )
+        assert feature_status == 503
+        assert feature_body["error_code"] == (
             "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
         )
         _stop_and_assert_safe(policy)
@@ -182,6 +197,24 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
         )
         assert configured_matrix_status == 200
         assert configured_matrix["cell_count"] == len(configured_matrix["cells"]) == 64
+        configured_feature_status, configured_feature = json_get(
+            (
+                "/api/v1/historical-prefix-success-windows/strategies/"
+                f"{first_strategy['strategy_id']}/{first_strategy['strategy_version']}/"
+                f"{first_strategy['replicate']}/feature-cohorts"
+            ),
+            {
+                "import_identity_sha256": run_import.import_identity_sha256,
+                "prefix_count": 1,
+                "criterion": "M3_PLUS",
+            },
+        )
+        assert configured_feature_status == 200
+        assert (
+            configured_feature["cohort_count"]
+            == len(configured_feature["cohorts"])
+            == 64
+        )
         assert database.read_bytes() == database_before
         assert {path.name for path in tmp_path.glob("historical.db-*")} == sidecars_before
         _stop_and_assert_safe(policy)

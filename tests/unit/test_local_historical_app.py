@@ -23,6 +23,9 @@ from lottolab.interfaces.api.local_app import (
 
 RUNS_PATH = "/api/v1/historical-results/runs"
 WINDOWS_PATH = "/api/v1/historical-prefix-success-windows"
+FEATURE_PATH = (
+    f"{WINDOWS_PATH}/strategies/strategy-a/v1/1/feature-cohorts"
+)
 WINDOW_PARAMS = {
     "import_identity_sha256": "a" * 64,
     "prefix_count": 1,
@@ -40,10 +43,15 @@ def _client(monkeypatch: MonkeyPatch, configured: str | None) -> TestClient:
 def _assert_not_configured(client: TestClient) -> None:
     runs = client.get(RUNS_PATH)
     windows = client.get(WINDOWS_PATH, params=WINDOW_PARAMS)
+    feature = client.get(FEATURE_PATH, params=WINDOW_PARAMS)
     assert runs.status_code == 503
     assert runs.json()["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
     assert windows.status_code == 503
     assert windows.json()["error_code"] == (
+        "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
+    )
+    assert feature.status_code == 503
+    assert feature.json()["error_code"] == (
         "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
     )
 
@@ -93,6 +101,10 @@ def test_configured_app_construction_and_openapi_do_not_touch_the_filesystem(
 
     assert RUNS_PATH in document["paths"]
     assert WINDOWS_PATH in document["paths"]
+    assert (
+        f"{WINDOWS_PATH}/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
+    ) in document["paths"]
     verifier.assert_not_called()
 
 

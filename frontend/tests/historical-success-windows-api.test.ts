@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessWindows,
   HistoricalSuccessWindowsRequestError,
@@ -10,11 +11,13 @@ import {
 import {
   apiResponse,
   IMPORT_SHA,
+  makeFeatureCohorts,
   makeAllRelationsMatrix,
   makeMatrix,
   makeResult,
   makeRunPage,
   makeWindowPage,
+  makeZeroObservationFeatureCohorts,
 } from './historical-success-windows-fixtures'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
@@ -125,6 +128,59 @@ describe('Historical Success Windows API client', () => {
     expect(matrix.cells).toHaveLength(64)
   })
 
+  it('fetches exact walk-forward cohorts with encoded identity, selectors, GET, and AbortSignal', async () => {
+    const controller = new AbortController()
+    fetchMock.mockResolvedValue(apiResponse(makeFeatureCohorts()))
+
+    const result = await getHistoricalSuccessFeatureCohorts(
+      {
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.cohort_count).toBe(64)
+    expect(result.cohorts).toHaveLength(64)
+    expect(result.baseline.success_rate).toEqual({
+      numerator: 2,
+      denominator: 5,
+      available: true,
+    })
+  })
+
+  it('accepts the canonical zero-observation feature cohort grid', async () => {
+    fetchMock.mockResolvedValue(apiResponse(makeZeroObservationFeatureCohorts()))
+
+    const result = await getHistoricalSuccessFeatureCohorts({
+      import_identity_sha256: IMPORT_SHA,
+      strategy_id: 'zero-observation',
+      strategy_version: 'v2',
+      replicate: 2,
+      prefix_count: 1,
+      criterion: 'M3_PLUS',
+    })
+
+    expect(result.baseline.observation_count).toBe(0)
+    expect(result.cohorts).toHaveLength(64)
+    expect(result.cohorts.every((cohort) => cohort.first_target === null)).toBe(true)
+  })
+
   it('accepts canonical HIGHER, EQUAL, LOWER, and UNAVAILABLE arithmetic relations', async () => {
     fetchMock.mockResolvedValue(apiResponse(makeAllRelationsMatrix()))
 
@@ -189,6 +245,73 @@ describe('Historical Success Windows API client', () => {
         strategy_id: 'alias strategy/one',
         strategy_version: 'v1 beta',
         replicate: 1,
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
+  })
+
+  it.each([
+    [
+      'missing cohort',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        result.cohorts.pop()
+      },
+    ],
+    [
+      'duplicate cohort',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        result.cohorts[1] = result.cohorts[0]!
+      },
+    ],
+    [
+      'wrong cohort order',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        ;[result.cohorts[0], result.cohorts[1]] = [
+          result.cohorts[1]!,
+          result.cohorts[0]!,
+        ]
+      },
+    ],
+    [
+      'identity mismatch',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        result.strategy = { ...result.strategy, strategy_id: 'different' }
+      },
+    ],
+    [
+      'malformed counts',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        result.cohorts[0]!.failure_count += 1
+      },
+    ],
+    [
+      'malformed delta',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        result.cohorts[0]!.delta_vs_baseline.numerator *= -1
+      },
+    ],
+    [
+      'unavailable treated as zero',
+      (result: ReturnType<typeof makeFeatureCohorts>) => {
+        result.cohorts[2]!.success_rate = {
+          numerator: 0,
+          denominator: 1,
+          available: true,
+        }
+      },
+    ],
+  ])('rejects feature cohorts with %s', async (_label, mutate) => {
+    const result = makeFeatureCohorts()
+    mutate(result)
+    fetchMock.mockResolvedValue(apiResponse(result))
+
+    await expect(
+      getHistoricalSuccessFeatureCohorts({
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
       }),
     ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })

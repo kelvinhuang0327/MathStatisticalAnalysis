@@ -9,11 +9,14 @@ import {
   deferred,
   IMPORT_SHA,
   makeAllRelationsMatrix,
+  makeFeatureCohorts,
+  makeFeatureCohortsForResult,
   makeMatrix,
   makeResult,
   makeRun,
   makeRunPage,
   makeWindowPage,
+  makeZeroObservationFeatureCohorts,
   makeZeroObservationMatrix,
   makeZeroObservationResult,
 } from './historical-success-windows-fixtures'
@@ -22,6 +25,9 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/feature-cohorts')) {
+    return Promise.resolve(apiResponse(makeFeatureCohorts()))
+  }
   if (url.includes('/matrix')) return Promise.resolve(apiResponse(makeMatrix()))
   if (url.includes('/strategies/')) return Promise.resolve(apiResponse(makeResult()))
   if (url.includes('/historical-prefix-success-windows')) {
@@ -52,6 +58,11 @@ async function selectMatrix(wrapper: VueWrapper, index = 0): Promise<void> {
 
 async function compareMatrices(wrapper: VueWrapper): Promise<void> {
   await wrapper.get('button.matrix-compare').trigger('click')
+  await flushPromises()
+}
+
+async function evaluateFeatureCohorts(wrapper: VueWrapper): Promise<void> {
+  await wrapper.get('button.feature-cohort-evaluate').trigger('click')
   await flushPromises()
 }
 
@@ -519,5 +530,197 @@ describe('HistoricalSuccessWindowsPage', () => {
     wrapper.unmount()
     expect(unmountSignal.aborted).toBe(true)
     expect(secondSignal.aborted).toBe(true)
+  })
+
+  it('never requests feature cohorts until the separate explicit action', async () => {
+    const wrapper = await mountWithRuns()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await selectRun(wrapper)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await wrapper.get('select[name="prefix-count"]').setValue('2')
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await wrapper.get('select[name="prefix-count"]').setValue('1')
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+    await analyze(wrapper)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    await selectMatrix(wrapper)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.text()).toContain('1 exact identity selected in manual order.')
+
+    await evaluateFeatureCohorts(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    const url = new URL(String(fetchMock.mock.calls[2]?.[0]), 'http://localhost')
+    expect(url.pathname).toContain('/feature-cohorts')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    wrapper.unmount()
+  })
+
+  it('issues exactly N feature-cohort requests in selection order and renders all canonical rows', async () => {
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(apiResponse(makeRunPage()))
+      }
+      if (url.includes('/feature-cohorts')) {
+        return Promise.resolve(
+          apiResponse(
+            url.includes('zero-observation')
+              ? makeZeroObservationFeatureCohorts()
+              : makeFeatureCohortsForResult(first),
+          ),
+        )
+      }
+      return Promise.resolve(
+        apiResponse(makeWindowPage({ items: [first, second] })),
+      )
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockClear()
+
+    await evaluateFeatureCohorts(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/feature-cohorts?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts?',
+    )
+    const cards = wrapper.findAll('.feature-cohort-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[0]!.text()).toContain('Unavailable (0 / 0)')
+    expect(cards[1]!.text()).toContain('Baseline exact rate2 / 5')
+    expect(cards[1]!.text()).toContain('3 / 5')
+    expect(cards[1]!.text()).toContain('-2 / 5')
+    expect(cards[1]!.text()).toContain('-1 / 15')
+    expect(cards[1]!.text()).toContain('HIGHER')
+    expect(cards[1]!.text()).toContain('LOWER')
+    expect(cards[1]!.text()).not.toMatch(
+      /best feature|winning pattern|recommendation|promotion|rejection/i,
+    )
+    wrapper.unmount()
+  })
+
+  it('keeps successful feature cohorts on partial failure and retries all selections', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 0)
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) =>
+      String(input).includes('zero-observation')
+        ? Promise.resolve(
+            apiResponse(
+              {
+                error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+                message: '/secret/path',
+              },
+              404,
+            ),
+          )
+        : Promise.resolve(apiResponse(makeFeatureCohorts())),
+    )
+
+    await evaluateFeatureCohorts(wrapper)
+
+    expect(wrapper.text()).toContain('Some exact feature-cohort requests are unavailable')
+    expect(wrapper.findAll('.feature-cohort-result-card')).toHaveLength(2)
+    expect(wrapper.text()).toContain('no longer exists')
+    expect(wrapper.text()).not.toContain('/secret/path')
+
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) =>
+      Promise.resolve(
+        apiResponse(
+          String(input).includes('zero-observation')
+            ? makeZeroObservationFeatureCohorts()
+            : makeFeatureCohorts(),
+        ),
+      ),
+    )
+    await wrapper.get('button.feature-cohort-retry').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.feature-cohort-result-card')).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('Some exact feature-cohort requests are unavailable')
+    wrapper.unmount()
+  })
+
+  it('aborts stale feature cohorts on reevaluation, control/run change, and unmount', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.feature-cohort-evaluate').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.feature-cohort-evaluate').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeFeatureCohorts()))
+    await flushPromises()
+    older.resolve(apiResponse(makeFeatureCohorts({
+      strategy: { ...makeFeatureCohorts().strategy, strategy_id: 'stale' },
+    })))
+    await flushPromises()
+    expect(wrapper.findAll('.feature-cohort-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const controlPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(controlPending.promise)
+    await wrapper.get('button.feature-cohort-evaluate').trigger('click')
+    const controlSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="prefix-count"]').setValue('2')
+    expect(controlSignal.aborted).toBe(true)
+    expect(wrapper.findAll('.feature-cohort-result-card')).toHaveLength(0)
+    controlPending.resolve(apiResponse(makeFeatureCohorts()))
+    await flushPromises()
+    expect(wrapper.findAll('.feature-cohort-result-card')).toHaveLength(0)
+
+    await wrapper.get('select[name="prefix-count"]').setValue('1')
+    const runPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(runPending.promise)
+    await wrapper.get('button.feature-cohort-evaluate').trigger('click')
+    const runSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="historical-run"]').setValue('')
+    expect(runSignal.aborted).toBe(true)
+    runPending.resolve(apiResponse(makeFeatureCohorts()))
+    await flushPromises()
+    expect(wrapper.findAll('.feature-cohort-result-card')).toHaveLength(0)
+
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 0)
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.feature-cohort-evaluate').trigger('click')
+    const unmountSignals = fetchMock.mock.calls.map(
+      (call) => call[1]?.signal as AbortSignal,
+    )
+    expect(unmountSignals).toHaveLength(2)
+    wrapper.unmount()
+    expect(unmountSignals.every((signal) => signal.aborted)).toBe(true)
   })
 })

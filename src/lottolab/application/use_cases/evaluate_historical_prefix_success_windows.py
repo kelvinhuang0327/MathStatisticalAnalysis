@@ -3,18 +3,23 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from math import gcd
 
 from lottolab.application.historical_prefix_success_windows import (
     DEFAULT_PAGE_LIMIT,
     DEFAULT_PAGE_OFFSET,
+    FEATURE_COHORT_RELATION_ORDER,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
     SUPPORTED_PREFIX_COUNTS,
     SUPPORTED_SUCCESS_CRITERIA,
     HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixFeatureCohortSummary,
+    HistoricalPrefixFeatureRelationTriple,
     HistoricalPrefixRateRelation,
     HistoricalPrefixSignedRateDelta,
+    HistoricalPrefixStrategyFeatureCohortResult,
     HistoricalPrefixStrategySuccessMatrix,
     HistoricalPrefixStrategySuccessMatrixCell,
     HistoricalPrefixStrategySuccessWindowPage,
@@ -32,6 +37,7 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessWindowSource,
     HistoricalPrefixSuccessWindowSummary,
     HistoricalPrefixSuccessWindowsUnavailableError,
+    HistoricalPrefixWalkForwardBaseline,
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
 )
@@ -40,9 +46,11 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.strategy_success_evaluation import (
     BigLottoSuccessCriterion,
+    ObservationEvaluation,
     StrategySuccessEvaluationInputError,
     WindowKind,
     WindowSuccessSummary,
+    evaluate_observation,
     evaluate_strategy_success_windows,
 )
 from lottolab.domain.strategy_success_measurement import (
@@ -193,6 +201,40 @@ def _ordered_observations(
         raise HistoricalPrefixSuccessWindowsUnavailableError(
             "persisted source contains a duplicate exact strategy/target observation"
         )
+    return observations
+
+
+def _walk_forward_observations(
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+) -> tuple[HistoricalPrefixSuccessSourceObservation, ...]:
+    observations = _ordered_observations(strategy)
+    previous_target_number: int | None = None
+    for observation in observations:
+        try:
+            target_date = date.fromisoformat(observation.target.draw_date)
+            cutoff_date = date.fromisoformat(observation.cutoff.draw_date)
+        except ValueError as exc:
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "persisted source contains malformed target/cutoff chronology"
+            ) from exc
+        if (
+            target_date.isoformat() != observation.target.draw_date
+            or cutoff_date.isoformat() != observation.cutoff.draw_date
+            or (cutoff_date, observation.cutoff.draw_number)
+            >= (target_date, observation.target.draw_number)
+            or observation.cutoff.draw_number > observation.target.draw_number
+        ):
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "persisted source contains malformed target/cutoff chronology"
+            )
+        if (
+            previous_target_number is not None
+            and observation.target.draw_number <= previous_target_number
+        ):
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "persisted source contains inconsistent target chronology"
+            )
+        previous_target_number = observation.target.draw_number
     return observations
 
 
@@ -407,6 +449,195 @@ def _rate_comparisons(
     return tuple(comparisons)
 
 
+def _snapshot_feature_key(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prior_observations: tuple[HistoricalPrefixSuccessSourceObservation, ...],
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalPrefixFeatureRelationTriple:
+    if not prior_observations:
+        return HistoricalPrefixFeatureRelationTriple(
+            long_to_medium=HistoricalPrefixRateRelation.UNAVAILABLE,
+            medium_to_short=HistoricalPrefixRateRelation.UNAVAILABLE,
+            long_to_short=HistoricalPrefixRateRelation.UNAVAILABLE,
+        )
+    measurements = tuple(
+        _measurement(
+            source=source,
+            strategy=strategy,
+            observation=observation,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        for observation in prior_observations
+    )
+    observations_by_target = {
+        _draw_token(item.target): item for item in prior_observations
+    }
+    try:
+        evaluated = evaluate_strategy_success_windows(
+            measurements,
+            _domain_criterion(criterion),
+        )
+    except (StrategySuccessEvaluationInputError, TypeError, ValueError) as exc:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "persisted source could not produce a walk-forward snapshot"
+        ) from exc
+    windows = tuple(
+        _window_read_model(summary, observations_by_target) for summary in evaluated
+    )
+    comparisons = _rate_comparisons(windows)
+    relations = {
+        comparison.comparison_kind: comparison.relation
+        for comparison in comparisons
+    }
+    return HistoricalPrefixFeatureRelationTriple(
+        long_to_medium=relations[
+            HistoricalPrefixWindowRateComparisonKind.LONG_TO_MEDIUM
+        ],
+        medium_to_short=relations[
+            HistoricalPrefixWindowRateComparisonKind.MEDIUM_TO_SHORT
+        ],
+        long_to_short=relations[
+            HistoricalPrefixWindowRateComparisonKind.LONG_TO_SHORT
+        ],
+    )
+
+
+def _current_target_succeeded(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    current_target: HistoricalPrefixSuccessSourceObservation,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> bool:
+    result = evaluate_observation(
+        _measurement(
+            source=source,
+            strategy=strategy,
+            observation=current_target,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        ),
+        _domain_criterion(criterion),
+    )
+    if result is ObservationEvaluation.SUCCESS:
+        return True
+    if result is ObservationEvaluation.FAILURE:
+        return False
+    raise HistoricalPrefixSuccessWindowsUnavailableError(
+        "current target could not be labeled under the exact criterion"
+    )
+
+
+def _success_rate(success_count: int, observation_count: int) -> HistoricalPrefixExactSuccessRate:
+    if observation_count == 0:
+        return HistoricalPrefixExactSuccessRate(
+            numerator=0,
+            denominator=0,
+            available=False,
+        )
+    return HistoricalPrefixExactSuccessRate(
+        numerator=success_count,
+        denominator=observation_count,
+        available=True,
+    )
+
+
+def _feature_cohorts(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalPrefixStrategyFeatureCohortResult:
+    observations = _walk_forward_observations(strategy)
+    assignments: dict[
+        HistoricalPrefixFeatureRelationTriple,
+        list[tuple[HistoricalPrefixSuccessDrawIdentity, bool]],
+    ] = {}
+    baseline_successes = 0
+    frozen_source_identity = source.metadata.import_identity_sha256
+    for index, current_target in enumerate(observations):
+        feature_key = _snapshot_feature_key(
+            source=source,
+            strategy=strategy,
+            prior_observations=observations[:index],
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        succeeded = _current_target_succeeded(
+            source=source,
+            strategy=strategy,
+            current_target=current_target,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        assignments.setdefault(feature_key, []).append(
+            (current_target.target, succeeded)
+        )
+        baseline_successes += int(succeeded)
+    if source.metadata.import_identity_sha256 != frozen_source_identity:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "persisted source identity changed during walk-forward reconstruction"
+        )
+
+    baseline_count = len(observations)
+    baseline_rate = _success_rate(baseline_successes, baseline_count)
+    baseline = HistoricalPrefixWalkForwardBaseline(
+        observation_count=baseline_count,
+        success_count=baseline_successes,
+        failure_count=baseline_count - baseline_successes,
+        success_rate=baseline_rate,
+    )
+    cohorts: list[HistoricalPrefixFeatureCohortSummary] = []
+    for long_to_medium in FEATURE_COHORT_RELATION_ORDER:
+        for medium_to_short in FEATURE_COHORT_RELATION_ORDER:
+            for long_to_short in FEATURE_COHORT_RELATION_ORDER:
+                feature_key = HistoricalPrefixFeatureRelationTriple(
+                    long_to_medium=long_to_medium,
+                    medium_to_short=medium_to_short,
+                    long_to_short=long_to_short,
+                )
+                outcomes = assignments.get(feature_key, [])
+                observation_count = len(outcomes)
+                success_count = sum(int(succeeded) for _, succeeded in outcomes)
+                cohort_rate = _success_rate(success_count, observation_count)
+                delta, relation = _signed_rate_delta(baseline_rate, cohort_rate)
+                cohorts.append(
+                    HistoricalPrefixFeatureCohortSummary(
+                        feature_key=feature_key,
+                        observation_count=observation_count,
+                        success_count=success_count,
+                        failure_count=observation_count - success_count,
+                        success_rate=cohort_rate,
+                        delta_vs_baseline=delta,
+                        relation_vs_baseline=relation,
+                        first_target=outcomes[0][0] if outcomes else None,
+                        last_target=outcomes[-1][0] if outcomes else None,
+                    )
+                )
+    if (
+        len(cohorts) != 64
+        or sum(cohort.observation_count for cohort in cohorts) != baseline_count
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "walk-forward targets were not assigned to the canonical cohorts exactly once"
+        )
+    return HistoricalPrefixStrategyFeatureCohortResult(
+        metadata=source.metadata,
+        strategy=strategy.identity,
+        criterion=_criterion_identity(criterion),
+        prefix_count=prefix_count,
+        baseline=baseline,
+        cohort_count=len(cohorts),
+        cohorts=tuple(cohorts),
+    )
+
+
 def _matrix_cell(
     result: HistoricalPrefixStrategySuccessWindowResult,
 ) -> HistoricalPrefixStrategySuccessMatrixCell:
@@ -575,6 +806,37 @@ class EvaluateHistoricalPrefixSuccessWindows:
             criteria=criteria,
             cell_count=len(cells),
             cells=cells,
+        )
+
+    def get_feature_cohorts(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixStrategyFeatureCohortResult:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+        source = self._load(import_identity_sha256)
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        return _feature_cohorts(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
         )
 
 

@@ -21,6 +21,12 @@ from lottolab.application.historical_prefix_success_windows import (
     SUPPORTED_PREFIX_COUNTS,
     SUPPORTED_SUCCESS_CRITERIA,
     TEMPORAL_HOLDOUT_SPLIT_METHOD,
+    HistoricalPrefixConfirmationOverlapRelation,
+    HistoricalPrefixConfirmationTargetOverlap,
+    HistoricalPrefixCrossImportCohortComparison,
+    HistoricalPrefixCrossImportConcordanceResult,
+    HistoricalPrefixCrossImportMetadata,
+    HistoricalPrefixCrossImportPairStatus,
     HistoricalPrefixExactProbability,
     HistoricalPrefixExactSuccessRate,
     HistoricalPrefixFeatureCohortDiagnostic,
@@ -59,7 +65,10 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
 )
-from lottolab.application.ports import HistoricalPrefixSuccessWindowSourceReaderFactory
+from lottolab.application.ports import (
+    HistoricalPrefixSuccessWindowSourceReader,
+    HistoricalPrefixSuccessWindowSourceReaderFactory,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.strategy_success_evaluation import (
@@ -933,13 +942,15 @@ def _temporal_holdout(
     strategy: HistoricalPrefixSuccessSourceStrategy,
     prefix_count: int,
     criterion: HistoricalPrefixSuccessCriterion,
+    assignments: tuple[HistoricalPrefixWalkForwardAssignment, ...] | None = None,
 ) -> HistoricalPrefixTemporalHoldoutResult:
-    assignments = _build_walk_forward_assignments(
-        source=source,
-        strategy=strategy,
-        prefix_count=prefix_count,
-        criterion=criterion,
-    )
+    if assignments is None:
+        assignments = _build_walk_forward_assignments(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
     total_count = len(assignments)
     if total_count < REQUIRED_LABELED_TARGET_COUNT:
         return HistoricalPrefixTemporalHoldoutResult(
@@ -1050,6 +1061,104 @@ def _temporal_holdout(
     )
 
 
+def _cross_import_pair_status(
+    left: HistoricalPrefixTemporalHoldoutStatus,
+    right: HistoricalPrefixTemporalHoldoutStatus,
+) -> HistoricalPrefixCrossImportPairStatus:
+    left_ready = left is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+    right_ready = right is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+    if left_ready and right_ready:
+        return HistoricalPrefixCrossImportPairStatus.COMPLETE
+    if not left_ready and not right_ready:
+        return HistoricalPrefixCrossImportPairStatus.BOTH_NOT_READY
+    if not left_ready:
+        return HistoricalPrefixCrossImportPairStatus.LEFT_NOT_READY
+    return HistoricalPrefixCrossImportPairStatus.RIGHT_NOT_READY
+
+
+def _confirmation_target_overlap(
+    left_assignments: tuple[HistoricalPrefixWalkForwardAssignment, ...],
+    right_assignments: tuple[HistoricalPrefixWalkForwardAssignment, ...],
+) -> HistoricalPrefixConfirmationTargetOverlap:
+    left_targets = tuple(
+        assignment.target.draw_sha256
+        for assignment in left_assignments[-CONFIRMATION_TARGET_COUNT:]
+    )
+    right_targets = tuple(
+        assignment.target.draw_sha256
+        for assignment in right_assignments[-CONFIRMATION_TARGET_COUNT:]
+    )
+    if (
+        len(left_targets) != CONFIRMATION_TARGET_COUNT
+        or len(right_targets) != CONFIRMATION_TARGET_COUNT
+        or len(set(left_targets)) != CONFIRMATION_TARGET_COUNT
+        or len(set(right_targets)) != CONFIRMATION_TARGET_COUNT
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "confirmation targets must contain 300 distinct exact draw identities per import"
+        )
+    left_set = set(left_targets)
+    right_set = set(right_targets)
+    overlap_count = len(left_set & right_set)
+    if overlap_count == 0:
+        relation = HistoricalPrefixConfirmationOverlapRelation.DISJOINT
+    elif left_set == right_set:
+        relation = HistoricalPrefixConfirmationOverlapRelation.IDENTICAL
+    else:
+        relation = HistoricalPrefixConfirmationOverlapRelation.PARTIAL_OVERLAP
+    return HistoricalPrefixConfirmationTargetOverlap(
+        left_confirmation_target_count=len(left_set),
+        right_confirmation_target_count=len(right_set),
+        overlap_count=overlap_count,
+        left_only_count=len(left_set - right_set),
+        right_only_count=len(right_set - left_set),
+        relation=relation,
+    )
+
+
+def _cross_import_comparisons(
+    left: HistoricalPrefixTemporalHoldoutResult,
+    right: HistoricalPrefixTemporalHoldoutResult,
+) -> tuple[HistoricalPrefixCrossImportCohortComparison, ...]:
+    if left.confirmation is None or right.confirmation is None:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "complete cross-import concordance requires both confirmation families"
+        )
+    comparisons = tuple(
+        HistoricalPrefixCrossImportCohortComparison(
+            cohort_index=index,
+            feature_key=left_diagnostic.feature_key,
+            left_confirmation_diagnostic=left_diagnostic,
+            right_confirmation_diagnostic=right_diagnostic,
+            effect_change=_effect_change(
+                left_diagnostic.risk_difference,
+                right_diagnostic.risk_difference,
+            ),
+            relationship=_temporal_relationship(
+                left_diagnostic.relation_vs_outside,
+                right_diagnostic.relation_vs_outside,
+            ),
+        )
+        for index, (left_diagnostic, right_diagnostic) in enumerate(
+            zip(
+                left.confirmation.diagnostics,
+                right.confirmation.diagnostics,
+                strict=True,
+            )
+        )
+    )
+    if len(comparisons) != 64 or any(
+        comparison.cohort_index != index
+        or comparison.feature_key != comparison.left_confirmation_diagnostic.feature_key
+        or comparison.feature_key != comparison.right_confirmation_diagnostic.feature_key
+        for index, comparison in enumerate(comparisons)
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "cross-import confirmation comparison family is inconsistent"
+        )
+    return comparisons
+
+
 def _matrix_cell(
     result: HistoricalPrefixStrategySuccessWindowResult,
 ) -> HistoricalPrefixStrategySuccessMatrixCell:
@@ -1094,8 +1203,11 @@ class EvaluateHistoricalPrefixSuccessWindows:
     def __init__(self, reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory) -> None:
         self._reader_factory = reader_factory
 
-    def _load(self, import_identity_sha256: str) -> HistoricalPrefixSuccessWindowSource:
-        reader = self._reader_factory()
+    @staticmethod
+    def _load_with_reader(
+        reader: HistoricalPrefixSuccessWindowSourceReader,
+        import_identity_sha256: str,
+    ) -> HistoricalPrefixSuccessWindowSource:
         source = reader.load_source(import_identity_sha256)
         if source is None:
             raise HistoricalPrefixSuccessImportNotFoundError(
@@ -1110,6 +1222,9 @@ class EvaluateHistoricalPrefixSuccessWindows:
                 "reader returned a different persisted import identity"
             )
         return source
+
+    def _load(self, import_identity_sha256: str) -> HistoricalPrefixSuccessWindowSource:
+        return self._load_with_reader(self._reader_factory(), import_identity_sha256)
 
     def list_strategies(
         self,
@@ -1310,6 +1425,110 @@ class EvaluateHistoricalPrefixSuccessWindows:
             strategy=strategy,
             prefix_count=prefix_count,
             criterion=criterion,
+        )
+
+    def get_cross_import_concordance(
+        self,
+        *,
+        left_import_identity_sha256: str,
+        right_import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixCrossImportConcordanceResult:
+        _validate_import_identity(left_import_identity_sha256)
+        _validate_import_identity(right_import_identity_sha256)
+        if left_import_identity_sha256 == right_import_identity_sha256:
+            raise _contract_error("left and right import identities must be distinct")
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+
+        reader = self._reader_factory()
+        left_source = self._load_with_reader(reader, left_import_identity_sha256)
+        right_source = self._load_with_reader(reader, right_import_identity_sha256)
+        left_strategy = _find_exact_strategy(
+            left_source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        right_strategy = _find_exact_strategy(
+            right_source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        if left_strategy.identity != right_strategy.identity:
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "cross-import exact strategy identities do not match"
+            )
+
+        left_assignments = _build_walk_forward_assignments(
+            source=left_source,
+            strategy=left_strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        right_assignments = _build_walk_forward_assignments(
+            source=right_source,
+            strategy=right_strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        left_holdout = _temporal_holdout(
+            source=left_source,
+            strategy=left_strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=left_assignments,
+        )
+        right_holdout = _temporal_holdout(
+            source=right_source,
+            strategy=right_strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=right_assignments,
+        )
+        pair_status = _cross_import_pair_status(
+            left_holdout.evaluation_status,
+            right_holdout.evaluation_status,
+        )
+        complete = pair_status is HistoricalPrefixCrossImportPairStatus.COMPLETE
+        return HistoricalPrefixCrossImportConcordanceResult(
+            metadata=HistoricalPrefixCrossImportMetadata(
+                left=left_source.metadata,
+                right=right_source.metadata,
+                same_dataset_sha256=(
+                    left_source.metadata.dataset_sha256
+                    == right_source.metadata.dataset_sha256
+                ),
+                same_source_artifact_sha256=(
+                    left_source.metadata.source_artifact_sha256
+                    == right_source.metadata.source_artifact_sha256
+                ),
+            ),
+            strategy=left_strategy.identity,
+            criterion=_criterion_identity(criterion),
+            prefix_count=prefix_count,
+            pair_status=pair_status,
+            left_holdout_status=left_holdout.evaluation_status,
+            right_holdout_status=right_holdout.evaluation_status,
+            confirmation_target_overlap=(
+                _confirmation_target_overlap(left_assignments, right_assignments)
+                if complete
+                else None
+            ),
+            comparisons=(
+                _cross_import_comparisons(left_holdout, right_holdout)
+                if complete
+                else ()
+            ),
         )
 
 

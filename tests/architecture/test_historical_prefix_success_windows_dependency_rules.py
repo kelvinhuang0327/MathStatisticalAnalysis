@@ -134,6 +134,11 @@ def test_app_and_openapi_keep_optional_reader_factory_lazy() -> None:
         "/api/v1/historical-prefix-success-windows/strategies/"
         "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics"
     ) in paths
+    assert (
+        "/api/v1/historical-prefix-success-windows/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+        "cross-import-concordance"
+    ) in paths
 
 
 def test_vertical_does_not_change_existing_historical_prefix_provider_contract() -> None:

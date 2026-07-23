@@ -27,6 +27,12 @@ from lottolab.application.historical_prefix_success_windows import (
     MIN_PAGE_LIMIT,
     REQUIRED_LABELED_TARGET_COUNT,
     TEMPORAL_HOLDOUT_SPLIT_METHOD,
+    HistoricalPrefixConfirmationOverlapRelation,
+    HistoricalPrefixConfirmationTargetOverlap,
+    HistoricalPrefixCrossImportCohortComparison,
+    HistoricalPrefixCrossImportConcordanceResult,
+    HistoricalPrefixCrossImportMetadata,
+    HistoricalPrefixCrossImportPairStatus,
     HistoricalPrefixExactProbability,
     HistoricalPrefixExactSuccessRate,
     HistoricalPrefixFeatureCohortDiagnostic,
@@ -49,6 +55,7 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessSelectionIdentity,
     HistoricalPrefixSuccessStrategyIdentity,
     HistoricalPrefixSuccessStrategyNotFoundError,
+    HistoricalPrefixSuccessWindowsContractError,
     HistoricalPrefixSuccessWindowSourceMetadata,
     HistoricalPrefixSuccessWindowSummary,
     HistoricalPrefixTemporalHoldoutCohortComparison,
@@ -1032,6 +1039,270 @@ class HistoricalPrefixTemporalHoldoutResponse(BaseModel):
         )
 
 
+class HistoricalPrefixCrossImportMetadataView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    left: HistoricalPrefixSuccessSourceMetadataView
+    right: HistoricalPrefixSuccessSourceMetadataView
+    same_dataset_sha256: bool
+    same_source_artifact_sha256: bool
+
+    @model_validator(mode="after")
+    def validate_pair(self) -> Self:
+        if self.left.import_identity_sha256 == self.right.import_identity_sha256:
+            raise ValueError("cross-import identities must be distinct")
+        if self.same_dataset_sha256 != (
+            self.left.dataset_sha256 == self.right.dataset_sha256
+        ):
+            raise ValueError("dataset equality disclosure is inconsistent")
+        if self.same_source_artifact_sha256 != (
+            self.left.source_artifact_sha256 == self.right.source_artifact_sha256
+        ):
+            raise ValueError("source-artifact equality disclosure is inconsistent")
+        return self
+
+    @classmethod
+    def from_metadata(
+        cls, metadata: HistoricalPrefixCrossImportMetadata
+    ) -> HistoricalPrefixCrossImportMetadataView:
+        return cls(
+            left=HistoricalPrefixSuccessSourceMetadataView.from_metadata(metadata.left),
+            right=HistoricalPrefixSuccessSourceMetadataView.from_metadata(metadata.right),
+            same_dataset_sha256=metadata.same_dataset_sha256,
+            same_source_artifact_sha256=metadata.same_source_artifact_sha256,
+        )
+
+
+class HistoricalPrefixConfirmationTargetOverlapView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    left_confirmation_target_count: Literal[300]
+    right_confirmation_target_count: Literal[300]
+    overlap_count: Annotated[int, Field(ge=0, le=300)]
+    left_only_count: Annotated[int, Field(ge=0, le=300)]
+    right_only_count: Annotated[int, Field(ge=0, le=300)]
+    relation: HistoricalPrefixConfirmationOverlapRelation
+
+    @model_validator(mode="after")
+    def validate_overlap(self) -> Self:
+        if (
+            self.left_only_count + self.overlap_count
+            != self.left_confirmation_target_count
+            or self.right_only_count + self.overlap_count
+            != self.right_confirmation_target_count
+        ):
+            raise ValueError("confirmation overlap arithmetic is inconsistent")
+        expected = (
+            HistoricalPrefixConfirmationOverlapRelation.DISJOINT
+            if self.overlap_count == 0
+            else (
+                HistoricalPrefixConfirmationOverlapRelation.IDENTICAL
+                if (
+                    self.overlap_count == self.left_confirmation_target_count
+                    == self.right_confirmation_target_count
+                    and self.left_only_count == self.right_only_count == 0
+                )
+                else HistoricalPrefixConfirmationOverlapRelation.PARTIAL_OVERLAP
+            )
+        )
+        if self.relation is not expected:
+            raise ValueError("confirmation overlap relation is inconsistent")
+        return self
+
+    @classmethod
+    def from_overlap(
+        cls, overlap: HistoricalPrefixConfirmationTargetOverlap
+    ) -> HistoricalPrefixConfirmationTargetOverlapView:
+        return cls(
+            left_confirmation_target_count=300,
+            right_confirmation_target_count=300,
+            overlap_count=overlap.overlap_count,
+            left_only_count=overlap.left_only_count,
+            right_only_count=overlap.right_only_count,
+            relation=overlap.relation,
+        )
+
+
+class HistoricalPrefixCrossImportCohortComparisonView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTripleView
+    left_confirmation_diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+    right_confirmation_diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+    effect_change: HistoricalPrefixSignedRateDeltaView
+    relationship: HistoricalPrefixTemporalHoldoutRelationship
+
+    @model_validator(mode="after")
+    def validate_comparison(self) -> Self:
+        left = self.left_confirmation_diagnostic
+        right = self.right_confirmation_diagnostic
+        if (
+            left.cohort_index != self.cohort_index
+            or right.cohort_index != self.cohort_index
+            or left.feature_key != self.feature_key
+            or right.feature_key != self.feature_key
+        ):
+            raise ValueError("cross-import comparison identity is inconsistent")
+        left_effect = left.risk_difference
+        right_effect = right.risk_difference
+        if left_effect.available and right_effect.available:
+            expected_effect = Fraction(
+                right_effect.numerator,
+                right_effect.denominator,
+            ) - Fraction(
+                left_effect.numerator,
+                left_effect.denominator,
+            )
+            if (
+                not self.effect_change.available
+                or self.effect_change.numerator != expected_effect.numerator
+                or self.effect_change.denominator != expected_effect.denominator
+            ):
+                raise ValueError("cross-import effect change is inconsistent")
+        elif (
+            self.effect_change.available
+            or self.effect_change.numerator != 0
+            or self.effect_change.denominator != 0
+        ):
+            raise ValueError("unavailable cross-import effect change is inconsistent")
+        expected_relationship = (
+            HistoricalPrefixTemporalHoldoutRelationship.UNAVAILABLE
+            if (
+                left.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+                or right.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+            )
+            else (
+                HistoricalPrefixTemporalHoldoutRelationship.DIFFERENT
+                if left.relation_vs_outside is not right.relation_vs_outside
+                else {
+                    HistoricalPrefixRateRelation.HIGHER: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_HIGHER
+                    ),
+                    HistoricalPrefixRateRelation.EQUAL: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_EQUAL
+                    ),
+                    HistoricalPrefixRateRelation.LOWER: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_LOWER
+                    ),
+                }[left.relation_vs_outside]
+            )
+        )
+        if self.relationship is not expected_relationship:
+            raise ValueError("cross-import relationship is inconsistent")
+        return self
+
+    @classmethod
+    def from_comparison(
+        cls, comparison: HistoricalPrefixCrossImportCohortComparison
+    ) -> HistoricalPrefixCrossImportCohortComparisonView:
+        return cls(
+            cohort_index=comparison.cohort_index,
+            feature_key=HistoricalPrefixFeatureRelationTripleView.from_feature_key(
+                comparison.feature_key
+            ),
+            left_confirmation_diagnostic=(
+                HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                    comparison.left_confirmation_diagnostic
+                )
+            ),
+            right_confirmation_diagnostic=(
+                HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                    comparison.right_confirmation_diagnostic
+                )
+            ),
+            effect_change=HistoricalPrefixSignedRateDeltaView.from_delta(comparison.effect_change),
+            relationship=comparison.relationship,
+        )
+
+
+class HistoricalPrefixCrossImportConcordanceResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    metadata: HistoricalPrefixCrossImportMetadataView
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    pair_status: HistoricalPrefixCrossImportPairStatus
+    left_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    right_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    confirmation_target_overlap: HistoricalPrefixConfirmationTargetOverlapView | None
+    comparisons: tuple[HistoricalPrefixCrossImportCohortComparisonView, ...]
+
+    @model_validator(mode="after")
+    def validate_concordance(self) -> Self:
+        left_ready = (
+            self.left_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        )
+        right_ready = (
+            self.right_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        )
+        expected_status = (
+            HistoricalPrefixCrossImportPairStatus.COMPLETE
+            if left_ready and right_ready
+            else (
+                HistoricalPrefixCrossImportPairStatus.BOTH_NOT_READY
+                if not left_ready and not right_ready
+                else (
+                    HistoricalPrefixCrossImportPairStatus.LEFT_NOT_READY
+                    if not left_ready
+                    else HistoricalPrefixCrossImportPairStatus.RIGHT_NOT_READY
+                )
+            )
+        )
+        if self.pair_status is not expected_status:
+            raise ValueError("cross-import pair status is inconsistent")
+        if self.pair_status is not HistoricalPrefixCrossImportPairStatus.COMPLETE:
+            if self.confirmation_target_overlap is not None or self.comparisons:
+                raise ValueError("not-ready concordance cannot contain comparisons")
+            return self
+        if self.confirmation_target_overlap is None or len(self.comparisons) != 64:
+            raise ValueError("complete concordance requires overlap and 64 comparisons")
+        for index, comparison in enumerate(self.comparisons):
+            expected_key = (
+                FEATURE_COHORT_RELATION_ORDER[index // 16],
+                FEATURE_COHORT_RELATION_ORDER[(index % 16) // 4],
+                FEATURE_COHORT_RELATION_ORDER[index % 4],
+            )
+            feature_key = comparison.feature_key
+            if (
+                comparison.cohort_index != index
+                or (
+                    feature_key.long_to_medium,
+                    feature_key.medium_to_short,
+                    feature_key.long_to_short,
+                )
+                != expected_key
+            ):
+                raise ValueError("concordance comparisons must preserve canonical order")
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalPrefixCrossImportConcordanceResult
+    ) -> HistoricalPrefixCrossImportConcordanceResponse:
+        return cls(
+            metadata=HistoricalPrefixCrossImportMetadataView.from_metadata(result.metadata),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(result.strategy),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(result.criterion),
+            prefix_count=result.prefix_count,
+            pair_status=result.pair_status,
+            left_holdout_status=result.left_holdout_status,
+            right_holdout_status=result.right_holdout_status,
+            confirmation_target_overlap=(
+                HistoricalPrefixConfirmationTargetOverlapView.from_overlap(
+                    result.confirmation_target_overlap
+                )
+                if result.confirmation_target_overlap is not None
+                else None
+            ),
+            comparisons=tuple(
+                HistoricalPrefixCrossImportCohortComparisonView.from_comparison(comparison)
+                for comparison in result.comparisons
+            ),
+        )
+
+
 def create_historical_prefix_success_windows_router(
     reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory | None,
 ) -> APIRouter:
@@ -1077,6 +1348,59 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalPrefixStrategySuccessWindowPageResponse.from_page(page)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "cross-import-concordance"
+        ),
+        response_model=HistoricalPrefixCrossImportConcordanceResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyCrossImportConcordance",
+    )
+    def get_historical_prefix_strategy_cross_import_concordance(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        left_import_identity_sha256: ImportIdentitySha256,
+        right_import_identity_sha256: ImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixCrossImportConcordanceResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {
+                "left_import_identity_sha256",
+                "right_import_identity_sha256",
+                "prefix_count",
+                "criterion",
+            }
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_cross_import_concordance(
+                left_import_identity_sha256=left_import_identity_sha256,
+                right_import_identity_sha256=right_import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessWindowsContractError:
+            return _identical_imports_error()
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixCrossImportConcordanceResponse.from_result(result)
 
     @router.get(
         (
@@ -1329,12 +1653,30 @@ def _invalid_matrix_query_error(fields: list[str]) -> JSONResponse:
     return JSONResponse(status_code=422, content=model.model_dump(mode="json"))
 
 
+def _identical_imports_error() -> JSONResponse:
+    model = ApiValidationErrorResponse(
+        error_code="REQUEST_VALIDATION_FAILED",
+        message="Request validation failed.",
+        fields=[
+            RequestValidationIssueView(
+                location="query.right_import_identity_sha256",
+                type="value_error",
+            )
+        ],
+    )
+    return JSONResponse(status_code=422, content=model.model_dump(mode="json"))
+
+
 def _error_response(status_code: int, error_code: str, message: str) -> JSONResponse:
     model = ApiErrorResponse(error_code=error_code, message=message)
     return JSONResponse(status_code=status_code, content=model.model_dump(mode="json"))
 
 
 __all__ = [
+    "HistoricalPrefixConfirmationTargetOverlapView",
+    "HistoricalPrefixCrossImportCohortComparisonView",
+    "HistoricalPrefixCrossImportConcordanceResponse",
+    "HistoricalPrefixCrossImportMetadataView",
     "HistoricalPrefixExactProbabilityView",
     "HistoricalPrefixExactSuccessRateView",
     "HistoricalPrefixFeatureCohortDiagnosticView",

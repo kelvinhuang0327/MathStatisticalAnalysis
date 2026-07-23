@@ -3,6 +3,7 @@ import type {
   HistoricalRunPage,
   HistoricalSuccessFeatureCohortDiagnostics,
   HistoricalSuccessFeatureCohorts,
+  HistoricalSuccessCrossImportConcordance,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessTemporalHoldout,
   HistoricalSuccessWindowPage,
@@ -11,6 +12,7 @@ import type {
 import { vi } from 'vitest'
 
 export const IMPORT_SHA = 'a'.repeat(64)
+export const RIGHT_IMPORT_SHA = 'b'.repeat(64)
 
 export function makeRun(overrides: Partial<HistoricalRun> = {}): HistoricalRun {
   return {
@@ -796,6 +798,71 @@ export function makeNotReadyTemporalHoldout():
     discovery: null,
     confirmation: null,
     comparisons: [],
+  }
+}
+
+export function makeCrossImportConcordance(
+  overrides: Partial<HistoricalSuccessCrossImportConcordance> = {},
+): HistoricalSuccessCrossImportConcordance {
+  const holdout = makeTemporalHoldout()
+  const confirmation = holdout.confirmation!
+  return {
+    metadata: {
+      left: holdout.metadata,
+      right: {
+        ...holdout.metadata,
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      },
+      same_dataset_sha256: true,
+      same_source_artifact_sha256: true,
+    },
+    strategy: holdout.strategy,
+    criterion: holdout.criterion,
+    prefix_count: holdout.prefix_count,
+    pair_status: 'COMPLETE',
+    left_holdout_status: 'COMPLETE',
+    right_holdout_status: 'COMPLETE',
+    confirmation_target_overlap: {
+      left_confirmation_target_count: 300,
+      right_confirmation_target_count: 300,
+      overlap_count: 300,
+      left_only_count: 0,
+      right_only_count: 0,
+      relation: 'IDENTICAL',
+    },
+    comparisons: confirmation.diagnostics.map((diagnostic, cohort_index) => ({
+      cohort_index,
+      feature_key: diagnostic.feature_key,
+      left_confirmation_diagnostic: diagnostic,
+      right_confirmation_diagnostic: structuredClone(diagnostic),
+      effect_change: diagnostic.risk_difference.available
+        ? { numerator: 0, denominator: 1, available: true }
+        : { numerator: 0, denominator: 0, available: false },
+      relationship:
+        diagnostic.relation_vs_outside === 'UNAVAILABLE'
+          ? 'UNAVAILABLE'
+          : diagnostic.relation_vs_outside === 'HIGHER'
+            ? 'SAME_HIGHER'
+            : diagnostic.relation_vs_outside === 'EQUAL'
+              ? 'SAME_EQUAL'
+              : 'SAME_LOWER',
+    })),
+    ...overrides,
+  } as HistoricalSuccessCrossImportConcordance
+}
+
+export function makeNotReadyCrossImportConcordance(
+  overrides: Partial<HistoricalSuccessCrossImportConcordance> = {},
+): HistoricalSuccessCrossImportConcordance {
+  const complete = makeCrossImportConcordance()
+  return {
+    ...complete,
+    pair_status: 'LEFT_NOT_READY',
+    left_holdout_status: 'NOT_READY_INSUFFICIENT_HISTORY',
+    confirmation_target_overlap: null,
+    comparisons: [],
+    ...overrides,
   }
 }
 

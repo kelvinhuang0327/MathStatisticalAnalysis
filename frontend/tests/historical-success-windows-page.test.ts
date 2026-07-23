@@ -8,16 +8,19 @@ import {
   apiResponse,
   deferred,
   IMPORT_SHA,
+  RIGHT_IMPORT_SHA,
   makeAllRelationsMatrix,
   makeFeatureCohortDiagnostics,
   makeFeatureCohortDiagnosticsForResult,
   makeFeatureCohorts,
   makeFeatureCohortsForResult,
+  makeCrossImportConcordance,
   makeMatrix,
   makeResult,
   makeRun,
   makeRunPage,
   makeNotReadyTemporalHoldout,
+  makeNotReadyCrossImportConcordance,
   makeTemporalHoldout,
   makeWindowPage,
   makeZeroObservationFeatureCohortDiagnostics,
@@ -30,6 +33,9 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/feature-cohorts/cross-import-concordance')) {
+    return Promise.resolve(apiResponse(makeCrossImportConcordance()))
+  }
   if (url.includes('/feature-cohorts/temporal-holdout')) {
     return Promise.resolve(apiResponse(makeTemporalHoldout()))
   }
@@ -89,6 +95,11 @@ async function evaluateTemporalHoldout(wrapper: VueWrapper): Promise<void> {
   await flushPromises()
 }
 
+async function evaluateCrossImportConcordance(wrapper: VueWrapper): Promise<void> {
+  await wrapper.get('button.cross-import-concordance-action').trigger('click')
+  await flushPromises()
+}
+
 beforeEach(() => {
   fetchMock = vi.fn<typeof fetch>()
   vi.stubGlobal('fetch', fetchMock)
@@ -107,6 +118,7 @@ describe('HistoricalSuccessWindowsPage', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain('/historical-results/runs')
     expect((wrapper.get('select[name="historical-run"]').element as HTMLSelectElement).value).toBe('')
+    expect((wrapper.get('select[name="comparison-run"]').element as HTMLSelectElement).value).toBe('')
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     expect(wrapper.text()).toContain('Results remain empty until Analyze is activated.')
     wrapper.unmount()
@@ -1078,6 +1090,317 @@ describe('HistoricalSuccessWindowsPage', () => {
     fetchMock.mockReset()
     fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
     await wrapper.get('button.temporal-holdout-action').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(unmountSignal.aborted).toBe(true)
+  })
+
+  it('keeps both run selections explicit and preserves them across run pagination', async () => {
+    const primary = makeRun()
+    const comparison = makeRun({
+      run_id: 'run-explicit-2',
+      import_identity_sha256: RIGHT_IMPORT_SHA,
+    })
+    const other = makeRun({
+      run_id: 'run-explicit-3',
+      import_identity_sha256: 'c'.repeat(64),
+    })
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname === '/api/v1/historical-results/runs') {
+        return Promise.resolve(
+          apiResponse(
+            url.searchParams.get('offset') === '10'
+              ? makeRunPage({ items: [other], total_count: 11, offset: 10 })
+              : makeRunPage({
+                  items: [primary, comparison],
+                  total_count: 11,
+                  limit: 10,
+                }),
+          ),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+
+    expect((wrapper.get('select[name="comparison-run"]').element as HTMLSelectElement).value).toBe('')
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await wrapper.get('select[name="comparison-run"]').setValue(RIGHT_IMPORT_SHA)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await wrapper
+      .get('nav[aria-label="Historical run pages"] button:last-child')
+      .trigger('click')
+    await flushPromises()
+
+    expect((wrapper.get('select[name="historical-run"]').element as HTMLSelectElement).value).toBe(
+      IMPORT_SHA,
+    )
+    expect((wrapper.get('select[name="comparison-run"]').element as HTMLSelectElement).value).toBe(
+      RIGHT_IMPORT_SHA,
+    )
+    expect(wrapper.get('select[name="historical-run"]').findAll('option')).toHaveLength(3)
+    expect(wrapper.get('select[name="comparison-run"]').findAll('option')).toHaveLength(3)
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/cross-import-concordance'),
+      ),
+    ).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('rejects identical runs and requires the separate concordance action', async () => {
+    const comparison = makeRun({
+      run_id: 'run-explicit-2',
+      import_identity_sha256: RIGHT_IMPORT_SHA,
+    })
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: [makeRun(), comparison], total_count: 2 })),
+        )
+      }
+      if (url.includes('/feature-cohorts/cross-import-concordance')) {
+        return Promise.resolve(apiResponse(makeCrossImportConcordance()))
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await wrapper.get('select[name="comparison-run"]').setValue(IMPORT_SHA)
+
+    expect(wrapper.text()).toContain('Choose two distinct imports')
+    expect(
+      wrapper.get('button.cross-import-concordance-action').attributes('disabled'),
+    ).toBeDefined()
+
+    await wrapper.get('select[name="comparison-run"]').setValue(RIGHT_IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    await wrapper.get('select[name="prefix-count"]').setValue('2')
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/cross-import-concordance'),
+      ),
+    ).toBe(false)
+    await wrapper.get('select[name="prefix-count"]').setValue('1')
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+
+    await evaluateCrossImportConcordance(wrapper)
+
+    const calls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes('/cross-import-concordance'),
+    )
+    expect(calls).toHaveLength(1)
+    const url = new URL(String(calls[0]![0]), 'http://localhost')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      left_import_identity_sha256: IMPORT_SHA,
+      right_import_identity_sha256: RIGHT_IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    wrapper.unmount()
+  })
+
+  it('issues exactly N ordered concordance requests and renders neutral confirmation rows', async () => {
+    const primary = makeRun()
+    const comparisonRun = makeRun({
+      run_id: 'run-explicit-2',
+      import_identity_sha256: RIGHT_IMPORT_SHA,
+    })
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    const forResult = (result: ReturnType<typeof makeResult>) =>
+      makeCrossImportConcordance({ strategy: result.strategy })
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(
+            makeRunPage({ items: [primary, comparisonRun], total_count: 2 }),
+          ),
+        )
+      }
+      if (url.includes('/feature-cohorts/cross-import-concordance')) {
+        return Promise.resolve(
+          apiResponse(url.includes('zero-observation') ? forResult(second) : forResult(first)),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage({ items: [first, second] })))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await wrapper.get('select[name="comparison-run"]').setValue(RIGHT_IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockClear()
+
+    await evaluateCrossImportConcordance(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/feature-cohorts/cross-import-concordance?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/cross-import-concordance?',
+    )
+    const cards = wrapper.findAll('.cross-import-concordance-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.findAll('tbody tr')).toHaveLength(64)
+    expect(cards[1]!.text()).toContain('Same dataset SHAYES')
+    expect(cards[1]!.text()).toContain('Target overlap300')
+    expect(cards[1]!.text()).toContain('SAME_HIGHER')
+    expect(cards[1]!.text()).not.toMatch(
+      /independent|replicated|confirmed|significant|rank|winner|promotion|rejection|prediction/i,
+    )
+    wrapper.unmount()
+  })
+
+  it('handles partial concordance failure, retries, and renders not-ready without rows', async () => {
+    const comparisonRun = makeRun({
+      run_id: 'run-explicit-2',
+      import_identity_sha256: RIGHT_IMPORT_SHA,
+    })
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(
+            makeRunPage({ items: [makeRun(), comparisonRun], total_count: 2 }),
+          ),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const active = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(active)
+    await active.get('select[name="comparison-run"]').setValue(RIGHT_IMPORT_SHA)
+    await analyze(active)
+    await selectMatrix(active, 0)
+    await selectMatrix(active, 1)
+    fetchMock.mockReset()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(makeCrossImportConcordance()))
+      .mockResolvedValueOnce(
+        apiResponse(
+          {
+            error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+            message: '/secret/path',
+          },
+          404,
+        ),
+      )
+
+    await evaluateCrossImportConcordance(active)
+
+    expect(active.text()).toContain('Some concordance requests are unavailable')
+    expect(active.findAll('.cross-import-concordance-result-card')).toHaveLength(2)
+    expect(active.text()).not.toContain('/secret/path')
+
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) =>
+      Promise.resolve(
+        apiResponse(
+          makeNotReadyCrossImportConcordance({
+            strategy: String(input).includes('zero-observation')
+              ? makeZeroObservationResult().strategy
+              : makeResult().strategy,
+          }),
+        ),
+      ),
+    )
+    await active.get('button.cross-import-concordance-retry').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(active.text()).toContain('LEFT_NOT_READY')
+    expect(active.findAll('.cross-import-concordance-comparison')).toHaveLength(0)
+    active.unmount()
+  })
+
+  it('aborts stale concordance on reevaluation, either run change, controls, and unmount', async () => {
+    const comparison = makeRun({
+      run_id: 'run-explicit-2',
+      import_identity_sha256: RIGHT_IMPORT_SHA,
+    })
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: [makeRun(), comparison], total_count: 2 })),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await wrapper.get('select[name="comparison-run"]').setValue(RIGHT_IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.cross-import-concordance-action').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.cross-import-concordance-action').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeCrossImportConcordance()))
+    await flushPromises()
+    older.resolve(
+      apiResponse(
+        makeCrossImportConcordance({
+          strategy: { ...makeCrossImportConcordance().strategy, strategy_id: 'stale' },
+        }),
+      ),
+    )
+    await flushPromises()
+    expect(wrapper.findAll('.cross-import-concordance-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const rightPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(rightPending.promise)
+    await wrapper.get('button.cross-import-concordance-action').trigger('click')
+    const rightSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="comparison-run"]').setValue('')
+    expect(rightSignal.aborted).toBe(true)
+
+    await wrapper.get('select[name="comparison-run"]').setValue(RIGHT_IMPORT_SHA)
+    const controlPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(controlPending.promise)
+    await wrapper.get('button.cross-import-concordance-action').trigger('click')
+    const controlSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    expect(controlSignal.aborted).toBe(true)
+
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+    const leftPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(leftPending.promise)
+    await wrapper.get('button.cross-import-concordance-action').trigger('click')
+    const leftSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="historical-run"]').setValue('')
+    expect(leftSignal.aborted).toBe(true)
+
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.cross-import-concordance-action').trigger('click')
     const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
     wrapper.unmount()
     expect(unmountSignal.aborted).toBe(true)

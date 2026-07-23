@@ -327,6 +327,11 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "cross-import-concordance"
+        ): {"get": {}},
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
             "temporal-holdout"
         ): {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
@@ -610,7 +615,7 @@ def test_smoke_rejects_historical_prefix_near_miss_paths(path: str) -> None:
         validate_openapi_payload({"paths": paths})
 
 
-def test_smoke_admits_exactly_six_historical_prefix_success_window_gets() -> None:
+def test_smoke_admits_exactly_seven_historical_prefix_success_window_gets() -> None:
     paths = authorized_openapi_paths()
     expected = {
         "/api/v1/historical-prefix-success-windows",
@@ -629,6 +634,11 @@ def test_smoke_admits_exactly_six_historical_prefix_success_window_gets() -> Non
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "cross-import-concordance"
         ),
         (
             "/api/v1/historical-prefix-success-windows/strategies/"

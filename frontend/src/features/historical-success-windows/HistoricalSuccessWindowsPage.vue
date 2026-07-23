@@ -4,6 +4,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
+  getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -17,6 +18,7 @@ import {
   type HistoricalSuccessCriterion,
   type HistoricalSuccessFeatureCohortDiagnostics,
   type HistoricalSuccessFeatureCohorts,
+  type HistoricalSuccessCrossImportConcordance,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessTemporalHoldout,
@@ -65,6 +67,13 @@ type TemporalHoldoutOutcome = {
 }
 type TemporalHoldoutComparison =
   HistoricalSuccessTemporalHoldout['comparisons'][number]
+type CrossImportConcordanceOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessCrossImportConcordance | null
+  error: string
+}
+type CrossImportConcordanceComparison =
+  HistoricalSuccessCrossImportConcordance['comparisons'][number]
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -74,6 +83,8 @@ const runsPage = ref<HistoricalRunPage | null>(null)
 const runsError = ref('')
 const selectedImportIdentity = ref('')
 const selectedRun = ref<HistoricalRun | null>(null)
+const comparisonImportIdentity = ref('')
+const comparisonRun = ref<HistoricalRun | null>(null)
 const prefixCount = ref<HistoricalSuccessPrefixCount>(1)
 const criterion = ref<HistoricalSuccessCriterion>('M3_PLUS')
 const analysisState = ref<AnalysisState>('idle')
@@ -92,6 +103,8 @@ const featureCohortDiagnosticsState = ref<MatrixState>('idle')
 const featureCohortDiagnosticsResults = ref<FeatureCohortDiagnosticOutcome[]>([])
 const temporalHoldoutState = ref<MatrixState>('idle')
 const temporalHoldoutResults = ref<TemporalHoldoutOutcome[]>([])
+const crossImportConcordanceState = ref<MatrixState>('idle')
+const crossImportConcordanceResults = ref<CrossImportConcordanceOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
@@ -101,6 +114,7 @@ let matrixGeneration = 0
 let featureCohortGeneration = 0
 let featureCohortDiagnosticsGeneration = 0
 let temporalHoldoutGeneration = 0
+let crossImportConcordanceGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
@@ -108,6 +122,7 @@ let matrixController: AbortController | undefined
 let featureCohortController: AbortController | undefined
 let featureCohortDiagnosticsController: AbortController | undefined
 let temporalHoldoutController: AbortController | undefined
+let crossImportConcordanceController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -115,6 +130,20 @@ const selectedRunMissingFromPage = computed(
     !runsPage.value?.items.some(
       (run) => run.import_identity_sha256 === selectedRun.value?.import_identity_sha256,
     ),
+)
+const comparisonRunMissingFromPage = computed(
+  () =>
+    comparisonRun.value !== null &&
+    !runsPage.value?.items.some(
+      (run) => run.import_identity_sha256 === comparisonRun.value?.import_identity_sha256,
+    ),
+)
+const distinctComparisonRuns = computed(
+  () =>
+    selectedRun.value !== null &&
+    comparisonRun.value !== null &&
+    selectedRun.value.import_identity_sha256 !==
+      comparisonRun.value.import_identity_sha256,
 )
 const canRunPrevious = computed(() => (runsPage.value?.offset ?? 0) > 0)
 const canRunNext = computed(() => {
@@ -241,6 +270,14 @@ function clearTemporalHoldout(): void {
     matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearCrossImportConcordance(): void {
+  crossImportConcordanceGeneration += 1
+  crossImportConcordanceController?.abort()
+  crossImportConcordanceResults.value = []
+  crossImportConcordanceState.value =
+    matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
 function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   const checked = (event.target as HTMLInputElement).checked
   const identity = matrixIdentity(item)
@@ -262,6 +299,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
+  clearCrossImportConcordance()
 }
 
 function chooseRun(): void {
@@ -276,6 +314,16 @@ function chooseRun(): void {
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
+  clearCrossImportConcordance()
+}
+
+function chooseComparisonRun(): void {
+  const selected = runsPage.value?.items.find(
+    (run) => run.import_identity_sha256 === comparisonImportIdentity.value,
+  )
+  if (selected !== undefined) comparisonRun.value = selected
+  if (comparisonImportIdentity.value === '') comparisonRun.value = null
+  clearCrossImportConcordance()
 }
 
 function controlsChanged(): void {
@@ -283,6 +331,7 @@ function controlsChanged(): void {
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
+  clearCrossImportConcordance()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -455,6 +504,61 @@ async function evaluateSelectedTemporalHoldout(): Promise<void> {
     successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
+async function evaluateCrossImportConcordance(): Promise<void> {
+  const leftRun = selectedRun.value
+  const rightRun = comparisonRun.value
+  const selections = [...matrixSelections.value]
+  if (
+    leftRun === null ||
+    rightRun === null ||
+    leftRun.import_identity_sha256 === rightRun.import_identity_sha256 ||
+    selections.length < 1 ||
+    selections.length > 4
+  ) {
+    return
+  }
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++crossImportConcordanceGeneration
+  crossImportConcordanceController?.abort()
+  const controller = new AbortController()
+  crossImportConcordanceController = controller
+  crossImportConcordanceResults.value = []
+  crossImportConcordanceState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<CrossImportConcordanceOutcome> => {
+      try {
+        const result = await getHistoricalSuccessCrossImportConcordance(
+          {
+            left_import_identity_sha256: leftRun.import_identity_sha256,
+            right_import_identity_sha256: rightRun.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+            prefix_count: selectedPrefix,
+            criterion: selectedCriterion,
+          },
+          controller.signal,
+        )
+        return { selection, result, error: '' }
+      } catch (error: unknown) {
+        return { selection, result: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (
+    !mounted ||
+    generation !== crossImportConcordanceGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  crossImportConcordanceResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.result !== null).length
+  crossImportConcordanceState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
+}
+
 async function loadResults(offset: number): Promise<void> {
   const run = selectedRun.value
   if (run === null) return
@@ -619,6 +723,14 @@ function temporalEffectChange(comparison: TemporalHoldoutComparison): string {
     : 'Unavailable (0 / 0)'
 }
 
+function crossImportEffectChange(
+  comparison: CrossImportConcordanceComparison,
+): string {
+  return comparison.effect_change.available
+    ? `${comparison.effect_change.numerator} / ${comparison.effect_change.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
 onMounted(() => {
   mounted = true
   void loadRuns()
@@ -632,6 +744,7 @@ onBeforeUnmount(() => {
   featureCohortGeneration += 1
   featureCohortDiagnosticsGeneration += 1
   temporalHoldoutGeneration += 1
+  crossImportConcordanceGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
@@ -639,6 +752,7 @@ onBeforeUnmount(() => {
   featureCohortController?.abort()
   featureCohortDiagnosticsController?.abort()
   temporalHoldoutController?.abort()
+  crossImportConcordanceController?.abort()
 })
 </script>
 
@@ -694,7 +808,7 @@ onBeforeUnmount(() => {
 
       <template v-if="runsState === 'ready' && runsPage">
         <label class="source-selector">
-          <span>Completed run — no run is selected automatically</span>
+          <span>Primary run — no run is selected automatically</span>
           <select v-model="selectedImportIdentity" name="historical-run" @change="chooseRun">
             <option value="">Select an exact persisted run</option>
             <option
@@ -712,6 +826,35 @@ onBeforeUnmount(() => {
             </option>
           </select>
         </label>
+        <label class="source-selector comparison-run-selector">
+          <span>Comparison run — selected separately and never chosen automatically</span>
+          <select
+            v-model="comparisonImportIdentity"
+            name="comparison-run"
+            @change="chooseComparisonRun"
+          >
+            <option value="">Select a second exact persisted run</option>
+            <option
+              v-if="comparisonRunMissingFromPage && comparisonRun"
+              :value="comparisonRun.import_identity_sha256"
+            >
+              {{ comparisonRun.dataset_identity }} · {{ comparisonRun.completed_at }}
+            </option>
+            <option
+              v-for="run in runsPage.items"
+              :key="`comparison:${run.import_identity_sha256}`"
+              :value="run.import_identity_sha256"
+            >
+              {{ run.dataset_identity }} · {{ run.lottery_type }} · {{ run.completed_at }}
+            </option>
+          </select>
+        </label>
+        <p
+          v-if="selectedRun && comparisonRun && !distinctComparisonRuns"
+          class="research-state research-state--notice identical-run-notice"
+        >
+          Choose two distinct imports for cross-import concordance.
+        </p>
 
         <nav class="research-pagination" aria-label="Historical run pages">
           <button
@@ -1445,6 +1588,193 @@ onBeforeUnmount(() => {
       </ol>
     </section>
 
+    <section
+      class="research-results cross-import-concordance-panel"
+      aria-labelledby="cross-import-concordance-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">Ordered two-import diagnostic comparison</p>
+          <h2 id="cross-import-concordance-title">Cross-import temporal concordance</h2>
+        </div>
+        <button
+          class="button cross-import-concordance-action"
+          type="button"
+          :disabled="!distinctComparisonRuns || matrixSelections.length === 0"
+          @click="evaluateCrossImportConcordance"
+        >
+          Evaluate cross-import temporal concordance
+        </button>
+      </div>
+
+      <p v-if="selectedRun === null" class="research-state">
+        Select the primary run before evaluating cross-import concordance.
+      </p>
+      <p v-else-if="comparisonRun === null" class="research-state">
+        Select a separate comparison run. No comparison run is chosen automatically.
+      </p>
+      <p v-else-if="!distinctComparisonRuns" class="research-state research-state--notice">
+        The primary and comparison runs must be distinct.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities from the primary run. No concordance
+        request runs on selection.
+      </p>
+      <p v-else-if="crossImportConcordanceState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact
+        {{ matrixSelections.length === 1 ? 'identity' : 'identities' }} selected in manual
+        order. Evaluation runs only from the explicit action.
+      </p>
+      <p v-if="crossImportConcordanceState === 'loading'" class="research-state">
+        Comparing the two source-specific confirmation families…
+      </p>
+      <div
+        v-if="crossImportConcordanceState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>Some concordance requests are unavailable; successful results remain visible.</strong>
+        <button
+          class="button button--quiet cross-import-concordance-retry"
+          type="button"
+          @click="evaluateCrossImportConcordance"
+        >
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="crossImportConcordanceState === 'error'"
+        class="research-state research-state--error"
+      >
+        <strong>All selected concordance requests failed with sanitized errors.</strong>
+        <button
+          class="button button--quiet cross-import-concordance-retry"
+          type="button"
+          @click="evaluateCrossImportConcordance"
+        >
+          Retry all
+        </button>
+      </div>
+
+      <ol
+        v-if="crossImportConcordanceResults.length > 0"
+        class="cross-import-concordance-result-list"
+      >
+        <li
+          v-for="outcome in crossImportConcordanceResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="cross-import-concordance-result-card"
+        >
+          <header>
+            <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+            <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+            <code>
+              {{ outcome.selection.strategy.strategy_version }} · replicate
+              {{ outcome.selection.strategy.replicate }}
+            </code>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts cross-import-concordance-facts">
+              <div><dt>Pair status</dt><dd>{{ outcome.result.pair_status }}</dd></div>
+              <div><dt>Primary holdout</dt><dd>{{ outcome.result.left_holdout_status }}</dd></div>
+              <div><dt>Comparison holdout</dt><dd>{{ outcome.result.right_holdout_status }}</dd></div>
+              <div><dt>Same dataset SHA</dt><dd>{{ outcome.result.metadata.same_dataset_sha256 ? 'YES' : 'NO' }}</dd></div>
+              <div><dt>Same source artifact SHA</dt><dd>{{ outcome.result.metadata.same_source_artifact_sha256 ? 'YES' : 'NO' }}</dd></div>
+              <div><dt>Prefix</dt><dd>{{ outcome.result.prefix_count }}</dd></div>
+              <div><dt>Criterion</dt><dd>{{ outcome.result.criterion.criterion }}</dd></div>
+              <div><dt>Primary run ID</dt><dd>{{ outcome.result.metadata.left.run_id }}</dd></div>
+              <div class="source-facts__identity"><dt>Primary import SHA</dt><dd><code>{{ outcome.result.metadata.left.import_identity_sha256 }}</code></dd></div>
+              <div><dt>Primary source</dt><dd>{{ outcome.result.metadata.left.source_repository }} · {{ outcome.result.metadata.left.source_commit_oid }}</dd></div>
+              <div class="source-facts__identity"><dt>Primary source artifact SHA</dt><dd><code>{{ outcome.result.metadata.left.source_artifact_sha256 }}</code></dd></div>
+              <div><dt>Primary dataset</dt><dd>{{ outcome.result.metadata.left.dataset_identity }} · {{ outcome.result.metadata.left.lottery_type }}</dd></div>
+              <div class="source-facts__identity"><dt>Primary dataset SHA</dt><dd><code>{{ outcome.result.metadata.left.dataset_sha256 }}</code></dd></div>
+              <div><dt>Comparison run ID</dt><dd>{{ outcome.result.metadata.right.run_id }}</dd></div>
+              <div class="source-facts__identity"><dt>Comparison import SHA</dt><dd><code>{{ outcome.result.metadata.right.import_identity_sha256 }}</code></dd></div>
+              <div><dt>Comparison source</dt><dd>{{ outcome.result.metadata.right.source_repository }} · {{ outcome.result.metadata.right.source_commit_oid }}</dd></div>
+              <div class="source-facts__identity"><dt>Comparison source artifact SHA</dt><dd><code>{{ outcome.result.metadata.right.source_artifact_sha256 }}</code></dd></div>
+              <div><dt>Comparison dataset</dt><dd>{{ outcome.result.metadata.right.dataset_identity }} · {{ outcome.result.metadata.right.lottery_type }}</dd></div>
+              <div class="source-facts__identity"><dt>Comparison dataset SHA</dt><dd><code>{{ outcome.result.metadata.right.dataset_sha256 }}</code></dd></div>
+            </dl>
+            <dl
+              v-if="outcome.result.confirmation_target_overlap"
+              class="identity-facts confirmation-overlap-facts"
+            >
+              <div><dt>Primary confirmation targets</dt><dd>{{ outcome.result.confirmation_target_overlap.left_confirmation_target_count }}</dd></div>
+              <div><dt>Comparison confirmation targets</dt><dd>{{ outcome.result.confirmation_target_overlap.right_confirmation_target_count }}</dd></div>
+              <div><dt>Target overlap</dt><dd>{{ outcome.result.confirmation_target_overlap.overlap_count }}</dd></div>
+              <div><dt>Primary only</dt><dd>{{ outcome.result.confirmation_target_overlap.left_only_count }}</dd></div>
+              <div><dt>Comparison only</dt><dd>{{ outcome.result.confirmation_target_overlap.right_only_count }}</dd></div>
+              <div><dt>Target relation</dt><dd>{{ outcome.result.confirmation_target_overlap.relation }}</dd></div>
+            </dl>
+            <p
+              v-if="outcome.result.pair_status !== 'COMPLETE'"
+              class="research-state cross-import-concordance-not-ready"
+            >
+              At least one temporal holdout is not ready. No partial comparison family was produced.
+            </p>
+            <div v-else class="feature-cohort-diagnostics-table-scroll cross-import-concordance-table-scroll">
+              <table class="feature-cohort-diagnostics-table cross-import-concordance-table">
+                <caption>
+                  All 64 confirmation-phase cohorts in canonical server order. Each import retains
+                  its own raw and BY-adjusted exact probability.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Index</th>
+                    <th scope="col">Long→Medium</th>
+                    <th scope="col">Medium→Short</th>
+                    <th scope="col">Long→Short</th>
+                    <th scope="col">Primary S/F/N</th>
+                    <th scope="col">Primary cohort rate</th>
+                    <th scope="col">Primary outside rate</th>
+                    <th scope="col">Primary risk difference</th>
+                    <th scope="col">Primary raw exact p</th>
+                    <th scope="col">Primary BY exact p</th>
+                    <th scope="col">Comparison S/F/N</th>
+                    <th scope="col">Comparison cohort rate</th>
+                    <th scope="col">Comparison outside rate</th>
+                    <th scope="col">Comparison risk difference</th>
+                    <th scope="col">Comparison raw exact p</th>
+                    <th scope="col">Comparison BY exact p</th>
+                    <th scope="col">Effect change</th>
+                    <th scope="col">Relationship</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="comparison in outcome.result.comparisons"
+                    :key="comparison.cohort_index"
+                    class="cross-import-concordance-comparison"
+                  >
+                    <td>{{ comparison.cohort_index }}</td>
+                    <td>{{ comparison.feature_key.long_to_medium }}</td>
+                    <td>{{ comparison.feature_key.medium_to_short }}</td>
+                    <td>{{ comparison.feature_key.long_to_short }}</td>
+                    <td>{{ comparison.left_confirmation_diagnostic.cohort_counts.success_count }} / {{ comparison.left_confirmation_diagnostic.cohort_counts.failure_count }} / {{ comparison.left_confirmation_diagnostic.cohort_counts.observation_count }}</td>
+                    <td>{{ featureRate(comparison.left_confirmation_diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(comparison.left_confirmation_diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(comparison.left_confirmation_diagnostic) }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.left_confirmation_diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.left_confirmation_diagnostic.adjusted_p_value) }}</code></td>
+                    <td>{{ comparison.right_confirmation_diagnostic.cohort_counts.success_count }} / {{ comparison.right_confirmation_diagnostic.cohort_counts.failure_count }} / {{ comparison.right_confirmation_diagnostic.cohort_counts.observation_count }}</td>
+                    <td>{{ featureRate(comparison.right_confirmation_diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(comparison.right_confirmation_diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(comparison.right_confirmation_diagnostic) }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.right_confirmation_diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.right_confirmation_diagnostic.adjusted_p_value) }}</code></td>
+                    <td>{{ crossImportEffectChange(comparison) }}</td>
+                    <td>{{ comparison.relationship }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="research-state research-state--error cross-import-concordance-item-error">
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
     <aside v-if="detailState !== 'closed'" class="detail-panel" aria-labelledby="exact-detail-title">
       <div class="panel-heading">
         <div>
@@ -1564,6 +1894,12 @@ onBeforeUnmount(() => {
 .temporal-holdout-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
 .temporal-holdout-table { min-width: 2800px; }
 .temporal-holdout-not-ready, .temporal-holdout-item-error { margin-top: 18px; }
+.comparison-run-selector { margin-top: 14px; }
+.cross-import-concordance-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.cross-import-concordance-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.cross-import-concordance-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.cross-import-concordance-table { min-width: 2800px; }
+.cross-import-concordance-not-ready, .cross-import-concordance-item-error { margin-top: 18px; }
 .detail-panel { border-color: rgb(121 227 178 / 38%); }
 .detail-content h3 { margin-bottom: 6px; color: var(--ink); }
 .detail-content { color: var(--muted); }

@@ -4,6 +4,7 @@ import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessCrossImportConcordance,
+  getHistoricalSuccessMultiImportConcordanceCensus,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -17,6 +18,7 @@ import {
   makeFeatureCohortDiagnostics,
   makeFeatureCohorts,
   makeCrossImportConcordance,
+  makeMultiImportConcordanceCensus,
   makeAllRelationsMatrix,
   makeMatrix,
   makeResult,
@@ -24,6 +26,7 @@ import {
   makeNotReadyTemporalHoldout,
   makeNotReadyCrossImportConcordance,
   RIGHT_IMPORT_SHA,
+  THIRD_IMPORT_SHA,
   makeTemporalHoldout,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
@@ -355,6 +358,155 @@ describe('Historical Success Windows API client', () => {
       }),
     ).rejects.toMatchObject({ kind: 'INVALID_REQUEST', status: 422 })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('fetches an ordered repeated-query multi-import census and preserves BigInt probabilities', async () => {
+    const controller = new AbortController()
+    const census = makeMultiImportConcordanceCensus()
+    census.cohort_census[0]!.confirmation_diagnostics[0]!.diagnostic.raw_p_value = {
+      numerator: '9007199254740993',
+      denominator: '90071992547409931',
+    }
+    census.cohort_census[0]!.confirmation_diagnostics[0]!.diagnostic.adjusted_p_value = {
+      ...census.cohort_census[0]!.confirmation_diagnostics[0]!.diagnostic
+        .raw_p_value,
+    }
+    fetchMock.mockResolvedValue(apiResponse(census))
+
+    const result = await getHistoricalSuccessMultiImportConcordanceCensus(
+      {
+        import_identity_sha256: [
+          IMPORT_SHA,
+          RIGHT_IMPORT_SHA,
+          THIRD_IMPORT_SHA,
+        ],
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/multi-import-concordance-census',
+    )
+    expect(url.searchParams.getAll('import_identity_sha256')).toEqual([
+      IMPORT_SHA,
+      RIGHT_IMPORT_SHA,
+      THIRD_IMPORT_SHA,
+    ])
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.pair_count).toBe(3)
+    expect(result.cohort_census).toHaveLength(64)
+    expect(
+      BigInt(
+        result.cohort_census[0]!.confirmation_diagnostics[0]!.diagnostic
+          .raw_p_value.numerator,
+      ),
+    ).toBeGreaterThan(BigInt(Number.MAX_SAFE_INTEGER))
+  })
+
+  it.each([
+    [[IMPORT_SHA]],
+    [[IMPORT_SHA, IMPORT_SHA]],
+    [[IMPORT_SHA, RIGHT_IMPORT_SHA, THIRD_IMPORT_SHA, 'd'.repeat(64), 'e'.repeat(64)]],
+    [[IMPORT_SHA, 'BAD']],
+  ])('rejects invalid multi-import selectors before fetch', async (identities) => {
+    await expect(
+      getHistoricalSuccessMultiImportConcordanceCensus({
+        import_identity_sha256: identities,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'INVALID_REQUEST', status: 422 })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts partial readiness only without census rows', async () => {
+    const census = makeMultiImportConcordanceCensus()
+    census.imports[0]!.holdout_status = 'NOT_READY_INSUFFICIENT_HISTORY'
+    census.census_status = 'PARTIAL_NOT_READY'
+    census.cohort_census_count = 0
+    census.cohort_census = []
+    for (const pair of census.pairs) {
+      if (pair.left_import_index === 0) {
+        pair.left_holdout_status = 'NOT_READY_INSUFFICIENT_HISTORY'
+        pair.pair_status = 'LEFT_NOT_READY'
+        pair.confirmation_target_overlap = null
+      }
+    }
+    fetchMock.mockResolvedValue(apiResponse(census))
+
+    const result = await getHistoricalSuccessMultiImportConcordanceCensus({
+      import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA, THIRD_IMPORT_SHA],
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+      prefix_count: 1,
+      criterion: 'M3_PLUS',
+    })
+
+    expect(result.census_status).toBe('PARTIAL_NOT_READY')
+    expect(result.cohort_census).toEqual([])
+  })
+
+  it.each([
+    [
+      'pair order',
+      (result: ReturnType<typeof makeMultiImportConcordanceCensus>) => {
+        ;[result.pairs[0], result.pairs[1]] = [
+          result.pairs[1]!,
+          result.pairs[0]!,
+        ]
+      },
+    ],
+    [
+      'direction count',
+      (result: ReturnType<typeof makeMultiImportConcordanceCensus>) => {
+        result.cohort_census[0]!.higher_count += 1
+      },
+    ],
+    [
+      'summary',
+      (result: ReturnType<typeof makeMultiImportConcordanceCensus>) => {
+        result.cohort_census[0]!.summary = 'MIXED_AVAILABLE'
+      },
+    ],
+    [
+      'diagnostic import order',
+      (result: ReturnType<typeof makeMultiImportConcordanceCensus>) => {
+        result.cohort_census[0]!.confirmation_diagnostics[0]!.import_index = 1
+      },
+    ],
+    [
+      'numeric probability',
+      (result: ReturnType<typeof makeMultiImportConcordanceCensus>) => {
+        result.cohort_census[0]!.confirmation_diagnostics[0]!.diagnostic.raw_p_value.numerator =
+          1 as unknown as string
+      },
+    ],
+  ])('rejects malformed multi-import census %s', async (_label, mutate) => {
+    const census = makeMultiImportConcordanceCensus()
+    mutate(census)
+    fetchMock.mockResolvedValue(apiResponse(census))
+
+    await expect(
+      getHistoricalSuccessMultiImportConcordanceCensus({
+        import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA, THIRD_IMPORT_SHA],
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })
 
   it('accepts every not-ready cross-import pair status only without a family', async () => {

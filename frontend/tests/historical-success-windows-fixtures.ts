@@ -4,6 +4,7 @@ import type {
   HistoricalSuccessFeatureCohortDiagnostics,
   HistoricalSuccessFeatureCohorts,
   HistoricalSuccessCrossImportConcordance,
+  HistoricalSuccessMultiImportConcordanceCensus,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessTemporalHoldout,
   HistoricalSuccessWindowPage,
@@ -13,6 +14,8 @@ import { vi } from 'vitest'
 
 export const IMPORT_SHA = 'a'.repeat(64)
 export const RIGHT_IMPORT_SHA = 'b'.repeat(64)
+export const THIRD_IMPORT_SHA = 'c'.repeat(64)
+export const FOURTH_IMPORT_SHA = 'd'.repeat(64)
 
 export function makeRun(overrides: Partial<HistoricalRun> = {}): HistoricalRun {
   return {
@@ -864,6 +867,100 @@ export function makeNotReadyCrossImportConcordance(
     comparisons: [],
     ...overrides,
   }
+}
+
+export function makeMultiImportConcordanceCensus(
+  importCount = 3,
+  overrides: Partial<HistoricalSuccessMultiImportConcordanceCensus> = {},
+  selectedIdentities?: readonly string[],
+): HistoricalSuccessMultiImportConcordanceCensus {
+  const identities = [
+    ...(selectedIdentities ?? [
+      IMPORT_SHA,
+      RIGHT_IMPORT_SHA,
+      THIRD_IMPORT_SHA,
+      FOURTH_IMPORT_SHA,
+    ]),
+  ].slice(0, importCount)
+  const holdout = makeTemporalHoldout()
+  const diagnostics = holdout.confirmation!.diagnostics
+  const imports = identities.map((identity, import_index) => ({
+    import_index,
+    metadata: {
+      ...holdout.metadata,
+      run_id: `run-explicit-${import_index + 1}`,
+      import_identity_sha256: identity,
+    },
+    holdout_status: 'COMPLETE' as const,
+  }))
+  const pairs = identities.flatMap((_, left_import_index) =>
+    identities.slice(left_import_index + 1).map((__, offset) => {
+      const right_import_index = left_import_index + offset + 1
+      return {
+        left_import_index,
+        right_import_index,
+        metadata: {
+          left: imports[left_import_index]!.metadata,
+          right: imports[right_import_index]!.metadata,
+          same_dataset_sha256: true,
+          same_source_artifact_sha256: true,
+        },
+        pair_status: 'COMPLETE' as const,
+        left_holdout_status: 'COMPLETE' as const,
+        right_holdout_status: 'COMPLETE' as const,
+        confirmation_target_overlap: {
+          left_confirmation_target_count: 300 as const,
+          right_confirmation_target_count: 300 as const,
+          overlap_count: 300,
+          left_only_count: 0,
+          right_only_count: 0,
+          relation: 'IDENTICAL' as const,
+        },
+      }
+    }),
+  )
+  const cohort_census = diagnostics.map((diagnostic, cohort_index) => {
+    const relation = diagnostic.relation_vs_outside
+    const higher_count = relation === 'HIGHER' ? importCount : 0
+    const equal_count = relation === 'EQUAL' ? importCount : 0
+    const lower_count = relation === 'LOWER' ? importCount : 0
+    const unavailable_count = relation === 'UNAVAILABLE' ? importCount : 0
+    return {
+      cohort_index,
+      feature_key: diagnostic.feature_key,
+      confirmation_diagnostics: identities.map(
+        (import_identity_sha256, import_index) => ({
+          import_index,
+          import_identity_sha256,
+          diagnostic: structuredClone(diagnostic),
+        }),
+      ),
+      higher_count,
+      equal_count,
+      lower_count,
+      unavailable_count,
+      summary:
+        unavailable_count === importCount
+          ? ('NO_AVAILABLE_EFFECT' as const)
+          : higher_count === importCount
+            ? ('ALL_AVAILABLE_HIGHER' as const)
+            : equal_count === importCount
+              ? ('ALL_AVAILABLE_EQUAL' as const)
+              : ('ALL_AVAILABLE_LOWER' as const),
+    }
+  })
+  return {
+    imports,
+    strategy: holdout.strategy,
+    criterion: holdout.criterion,
+    prefix_count: holdout.prefix_count,
+    census_status: 'COMPLETE',
+    pair_count: pairs.length,
+    pairs,
+    cohort_census_count: cohort_census.length,
+    cohort_census,
+    ...overrides,
+  } as HistoricalSuccessMultiImportConcordanceCensus
 }
 
 function rebuildComparisons(

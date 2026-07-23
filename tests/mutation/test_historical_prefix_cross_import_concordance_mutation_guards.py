@@ -16,7 +16,7 @@ def _cross_import_method() -> str:
     return USE_CASE.read_text(encoding="utf-8").split(
         "def get_cross_import_concordance(",
         1,
-    )[1].split('__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]', 1)[0]
+    )[1].split("def get_multi_import_concordance_census(", 1)[0]
 
 
 def test_guard_validation_one_factory_two_ordered_exact_loads() -> None:

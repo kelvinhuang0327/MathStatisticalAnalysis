@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
+  getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessWindows,
   HistoricalSuccessWindowsRequestError,
   listHistoricalRuns,
@@ -9,6 +10,8 @@ import {
 import {
   apiResponse,
   IMPORT_SHA,
+  makeAllRelationsMatrix,
+  makeMatrix,
   makeResult,
   makeRunPage,
   makeWindowPage,
@@ -93,6 +96,101 @@ describe('Historical Success Windows API client', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
       '/strategies/alias%20strategy%2Fone/v1%20beta/1?',
     )
+  })
+
+  it('fetches one complete matrix with encoded identity, exact SHA, GET, and AbortSignal', async () => {
+    const controller = new AbortController()
+    fetchMock.mockResolvedValue(apiResponse(makeMatrix()))
+
+    const matrix = await getHistoricalSuccessStabilityMatrix(
+      {
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/matrix',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(matrix.cell_count).toBe(64)
+    expect(matrix.cells).toHaveLength(64)
+  })
+
+  it('accepts canonical HIGHER, EQUAL, LOWER, and UNAVAILABLE arithmetic relations', async () => {
+    fetchMock.mockResolvedValue(apiResponse(makeAllRelationsMatrix()))
+
+    const matrix = await getHistoricalSuccessStabilityMatrix({
+      import_identity_sha256: IMPORT_SHA,
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+    })
+
+    const relations = new Set(
+      matrix.cells.flatMap((cell) => cell.comparisons.map((item) => item.relation)),
+    )
+    expect(relations).toEqual(new Set(['HIGHER', 'EQUAL', 'LOWER', 'UNAVAILABLE']))
+  })
+
+  it.each([
+    [
+      'missing cell',
+      (matrix: ReturnType<typeof makeMatrix>) => {
+        matrix.cells.pop()
+      },
+    ],
+    [
+      'duplicate cell',
+      (matrix: ReturnType<typeof makeMatrix>) => {
+        matrix.cells[1] = matrix.cells[0]!
+      },
+    ],
+    [
+      'incorrect order',
+      (matrix: ReturnType<typeof makeMatrix>) => {
+        ;[matrix.cells[0], matrix.cells[1]] = [matrix.cells[1]!, matrix.cells[0]!]
+      },
+    ],
+    [
+      'identity mismatch',
+      (matrix: ReturnType<typeof makeMatrix>) => {
+        matrix.strategy = { ...matrix.strategy, strategy_id: 'different' }
+      },
+    ],
+    [
+      'malformed signed delta',
+      (matrix: ReturnType<typeof makeMatrix>) => {
+        matrix.cells[0]!.comparisons[0]!.delta.numerator = -1
+      },
+    ],
+    [
+      'float rate',
+      (matrix: ReturnType<typeof makeMatrix>) => {
+        matrix.cells[0]!.windows[0]!.success_rate.numerator = 0.5
+      },
+    ],
+  ])('rejects a matrix with %s', async (_label, mutate) => {
+    const matrix = makeMatrix()
+    mutate(matrix)
+    fetchMock.mockResolvedValue(apiResponse(matrix))
+
+    await expect(
+      getHistoricalSuccessStabilityMatrix({
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })
 
   it('fails closed when exact detail returns a different identity', async () => {

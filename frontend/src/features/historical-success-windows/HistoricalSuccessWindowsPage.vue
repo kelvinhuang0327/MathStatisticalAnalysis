@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
+  getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessWindows,
   HISTORICAL_SUCCESS_CRITERIA,
   HISTORICAL_SUCCESS_PREFIX_COUNTS,
@@ -12,6 +13,7 @@ import {
   type HistoricalRunPage,
   type HistoricalSuccessCriterion,
   type HistoricalSuccessPrefixCount,
+  type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessWindowPage,
   type HistoricalSuccessWindowResult,
 } from '../../api/historicalSuccessWindows'
@@ -29,6 +31,14 @@ type AnalysisState =
   | 'malformed'
   | 'error'
 type DetailState = 'closed' | 'loading' | 'ready' | 'not-found' | 'invalid' | 'unavailable' | 'malformed' | 'error'
+type MatrixState = 'idle' | 'selected' | 'loading' | 'ready' | 'partial' | 'error'
+type MatrixSelection = HistoricalSuccessWindowResult
+type MatrixOutcome = {
+  selection: MatrixSelection
+  matrix: HistoricalSuccessStabilityMatrix | null
+  error: string
+}
+type MatrixCell = HistoricalSuccessStabilityMatrix['cells'][number]
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -47,14 +57,19 @@ const detailState = ref<DetailState>('closed')
 const detail = ref<HistoricalSuccessWindowResult | null>(null)
 const detailError = ref('')
 const copiedIdentity = ref(false)
+const matrixSelections = ref<MatrixSelection[]>([])
+const matrixState = ref<MatrixState>('idle')
+const matrixResults = ref<MatrixOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
 let analysisGeneration = 0
 let detailGeneration = 0
+let matrixGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
+let matrixController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -73,6 +88,7 @@ const canResultNext = computed(() => {
   const page = resultPage.value
   return page !== null && page.offset + page.items.length < page.total_count
 })
+const matrixSelectionLimitReached = computed(() => matrixSelections.value.length >= 4)
 
 function errorMessage(error: unknown): string {
   return error instanceof HistoricalSuccessWindowsRequestError
@@ -141,6 +157,48 @@ function clearAnalysis(): void {
   analysisState.value = selectedRun.value === null ? 'idle' : 'selected'
 }
 
+function matrixIdentity(item: MatrixSelection): string {
+  return [
+    item.strategy.strategy_id,
+    item.strategy.strategy_version,
+    String(item.strategy.replicate),
+  ].join('\u0000')
+}
+
+function isMatrixSelected(item: MatrixSelection): boolean {
+  const identity = matrixIdentity(item)
+  return matrixSelections.value.some((selected) => matrixIdentity(selected) === identity)
+}
+
+function clearMatrix(clearSelections: boolean): void {
+  matrixGeneration += 1
+  matrixController?.abort()
+  matrixResults.value = []
+  if (clearSelections) matrixSelections.value = []
+  matrixState.value =
+    !clearSelections && matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
+function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
+  const checked = (event.target as HTMLInputElement).checked
+  const identity = matrixIdentity(item)
+  if (checked) {
+    if (
+      matrixSelections.value.length >= 4 ||
+      matrixSelections.value.some((selected) => matrixIdentity(selected) === identity)
+    ) {
+      ;(event.target as HTMLInputElement).checked = isMatrixSelected(item)
+      return
+    }
+    matrixSelections.value = [...matrixSelections.value, item]
+  } else {
+    matrixSelections.value = matrixSelections.value.filter(
+      (selected) => matrixIdentity(selected) !== identity,
+    )
+  }
+  clearMatrix(false)
+}
+
 function chooseRun(): void {
   const selected = runsPage.value?.items.find(
     (run) => run.import_identity_sha256 === selectedImportIdentity.value,
@@ -149,10 +207,46 @@ function chooseRun(): void {
   if (selectedImportIdentity.value === '') selectedRun.value = null
   copiedIdentity.value = false
   clearAnalysis()
+  clearMatrix(true)
 }
 
 function controlsChanged(): void {
   clearAnalysis()
+}
+
+async function compareSelectedMatrices(): Promise<void> {
+  const run = selectedRun.value
+  const selections = [...matrixSelections.value]
+  if (run === null || selections.length < 1 || selections.length > 4) return
+  const generation = ++matrixGeneration
+  matrixController?.abort()
+  const controller = new AbortController()
+  matrixController = controller
+  matrixResults.value = []
+  matrixState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<MatrixOutcome> => {
+      try {
+        const matrix = await getHistoricalSuccessStabilityMatrix(
+          {
+            import_identity_sha256: run.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+          },
+          controller.signal,
+        )
+        return { selection, matrix, error: '' }
+      } catch (error: unknown) {
+        return { selection, matrix: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (!mounted || generation !== matrixGeneration || controller.signal.aborted) return
+  matrixResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.matrix !== null).length
+  matrixState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
 async function loadResults(offset: number): Promise<void> {
@@ -241,6 +335,32 @@ function targetLabel(target: HistoricalSuccessWindowResult['windows'][number]['f
   return `${target.draw_date} · #${target.draw_number}`
 }
 
+function matrixCell(
+  matrix: HistoricalSuccessStabilityMatrix,
+  criterionIdentity: HistoricalSuccessCriterion,
+  prefix: HistoricalSuccessPrefixCount,
+): MatrixCell {
+  const criterionIndex = HISTORICAL_SUCCESS_CRITERIA.indexOf(criterionIdentity)
+  const prefixIndex = HISTORICAL_SUCCESS_PREFIX_COUNTS.indexOf(prefix)
+  return matrix.cells[criterionIndex * HISTORICAL_SUCCESS_PREFIX_COUNTS.length + prefixIndex]!
+}
+
+function matrixRate(
+  rate: MatrixCell['windows'][number]['success_rate'],
+): string {
+  return rate.available
+    ? `${rate.numerator} / ${rate.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
+function matrixDelta(
+  comparison: MatrixCell['comparisons'][number],
+): string {
+  return comparison.delta.available
+    ? `${comparison.delta.numerator} / ${comparison.delta.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
 onMounted(() => {
   mounted = true
   void loadRuns()
@@ -250,9 +370,11 @@ onBeforeUnmount(() => {
   runsGeneration += 1
   analysisGeneration += 1
   detailGeneration += 1
+  matrixGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
+  matrixController?.abort()
 })
 </script>
 
@@ -436,9 +558,22 @@ onBeforeUnmount(() => {
               <h3>{{ item.strategy.strategy_id }}</h3>
               <code>{{ item.strategy.strategy_version }} · replicate {{ item.strategy.replicate }}</code>
             </div>
-            <button class="button button--quiet inspect-button" type="button" @click="inspectStrategy(item)">
-              Inspect exact identity
-            </button>
+            <div class="strategy-window-card__actions">
+              <label class="matrix-selector">
+                <input
+                  class="matrix-select"
+                  type="checkbox"
+                  :checked="isMatrixSelected(item)"
+                  :disabled="!isMatrixSelected(item) && matrixSelectionLimitReached"
+                  :aria-label="`Select ${item.strategy.strategy_id} ${item.strategy.strategy_version} replicate ${item.strategy.replicate} for stability matrix comparison`"
+                  @change="toggleMatrixSelection(item, $event)"
+                >
+                Select matrix
+              </label>
+              <button class="button button--quiet inspect-button" type="button" @click="inspectStrategy(item)">
+                Inspect exact identity
+              </button>
+            </div>
           </header>
 
           <dl class="identity-facts">
@@ -484,6 +619,129 @@ onBeforeUnmount(() => {
         <span>Offset {{ resultPage.offset }} · limit {{ resultPage.limit }}</span>
         <button class="button button--quiet" type="button" :disabled="!canResultNext" @click="loadResults(resultPage.offset + RESULT_LIMIT)">Next</button>
       </nav>
+    </section>
+
+    <section class="research-results matrix-comparison" aria-labelledby="matrix-comparison-title">
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">4 · Manual stability comparison</p>
+          <h2 id="matrix-comparison-title">Exact strategy stability matrices</h2>
+        </div>
+        <button
+          class="button button--primary matrix-compare"
+          type="button"
+          :disabled="selectedRun === null || matrixSelections.length === 0"
+          @click="compareSelectedMatrices"
+        >
+          Compare selected stability matrices
+        </button>
+      </div>
+
+      <p v-if="selectedRun === null" class="research-state">
+        Select a run before choosing stability matrices.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities. No matrix request runs on selection.
+      </p>
+      <p v-else-if="matrixState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact {{ matrixSelections.length === 1 ? 'identity' : 'identities' }} selected in manual order.
+      </p>
+      <p v-if="matrixSelectionLimitReached" class="research-state research-state--notice selection-limit">
+        Selection limit reached: four exact identities.
+      </p>
+      <p v-if="matrixState === 'loading'" class="research-state">
+        Loading {{ matrixSelections.length }} exact stability {{ matrixSelections.length === 1 ? 'matrix' : 'matrices' }}…
+      </p>
+      <div v-if="matrixState === 'partial'" class="research-state research-state--notice">
+        <strong>Some exact matrices are unavailable; successful results remain visible.</strong>
+        <button class="button button--quiet matrix-retry" type="button" @click="compareSelectedMatrices">Retry all</button>
+      </div>
+      <div v-if="matrixState === 'error'" class="research-state research-state--error">
+        <strong>All selected matrix requests failed with sanitized errors.</strong>
+        <button class="button button--quiet matrix-retry" type="button" @click="compareSelectedMatrices">Retry all</button>
+      </div>
+
+      <ol v-if="matrixResults.length > 0" class="matrix-result-list">
+        <li
+          v-for="outcome in matrixResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="matrix-result-card"
+        >
+          <header>
+            <div>
+              <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+              <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+              <code>
+                {{ outcome.selection.strategy.strategy_version }} · replicate
+                {{ outcome.selection.strategy.replicate }}
+              </code>
+            </div>
+          </header>
+          <div v-if="outcome.matrix">
+            <dl class="identity-facts matrix-identity-facts">
+              <div><dt>Effective ID</dt><dd>{{ outcome.matrix.strategy.effective_strategy_id }}</dd></div>
+              <div><dt>Identity kind</dt><dd>{{ outcome.matrix.strategy.identity_kind }}</dd></div>
+              <div><dt>Governance</dt><dd>{{ outcome.matrix.strategy.governance_status }}</dd></div>
+              <div><dt>Alias target</dt><dd>{{ outcome.matrix.strategy.alias_of_strategy_id ?? 'None' }}</dd></div>
+              <div><dt>Equivalence group</dt><dd>{{ outcome.matrix.strategy.equivalence_group ?? 'None' }}</dd></div>
+              <div><dt>Source observations</dt><dd>{{ outcome.matrix.source_observation_count }}</dd></div>
+            </dl>
+            <p v-if="outcome.matrix.source_observation_count === 0" class="zero-observation">
+              Zero-observation matrix: all 64 canonical cells remain visible without fabricated rates.
+            </p>
+            <div class="matrix-table-scroll">
+              <table class="stability-matrix">
+                <caption>
+                  Exact descriptive rates and signed arithmetic deltas for
+                  {{ outcome.matrix.strategy.strategy_id }}
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Criterion</th>
+                    <th v-for="prefix in HISTORICAL_SUCCESS_PREFIX_COUNTS" :key="prefix" scope="col">
+                      Prefix {{ prefix }}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="criterionIdentity in HISTORICAL_SUCCESS_CRITERIA" :key="criterionIdentity">
+                    <th scope="row">{{ criterionIdentity }}</th>
+                    <td v-for="prefix in HISTORICAL_SUCCESS_PREFIX_COUNTS" :key="prefix">
+                      <template v-if="matrixCell(outcome.matrix, criterionIdentity, prefix).windows.length === 0">
+                        <span class="matrix-unavailable">NO_OBSERVATIONS · rates unavailable</span>
+                      </template>
+                      <details v-else class="matrix-cell-detail">
+                        <summary>Exact values</summary>
+                        <dl>
+                          <div
+                            v-for="window in matrixCell(outcome.matrix, criterionIdentity, prefix).windows"
+                            :key="window.window_kind"
+                          >
+                            <dt>{{ window.window_kind }}</dt>
+                            <dd>{{ matrixRate(window.success_rate) }}</dd>
+                          </div>
+                          <div
+                            v-for="comparison in matrixCell(outcome.matrix, criterionIdentity, prefix).comparisons"
+                            :key="comparison.comparison_kind"
+                          >
+                            <dt>{{ comparison.comparison_kind }}</dt>
+                            <dd>
+                              {{ matrixDelta(comparison) }} · {{ comparison.relation }}
+                            </dd>
+                          </div>
+                        </dl>
+                      </details>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div v-else class="research-state research-state--error matrix-item-error">
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
     </section>
 
     <aside v-if="detailState !== 'closed'" class="detail-panel" aria-labelledby="exact-detail-title">
@@ -543,6 +801,9 @@ onBeforeUnmount(() => {
 .strategy-window-list { display: grid; gap: 18px; margin: 0; padding: 0; list-style: none; }
 .strategy-window-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
 .strategy-window-card__header, .window-card header, .window-card footer { display: flex; gap: 14px; align-items: center; justify-content: space-between; }
+.strategy-window-card__actions { display: flex; gap: 10px; align-items: center; }
+.matrix-selector { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 11px; }
+.matrix-selector input { accent-color: var(--mint); }
 .strategy-window-card h3 { margin: 7px 0; color: var(--ink); font-size: 20px; overflow-wrap: anywhere; }
 .identity-kind { color: var(--amber); font: 500 9px/1 'SFMono-Regular', Consolas, monospace; letter-spacing: .08em; }
 .inspect-button { flex: 0 0 auto; }
@@ -560,6 +821,21 @@ onBeforeUnmount(() => {
 .window-card dd { margin-top: 5px; color: var(--ink); font: 500 10px/1.3 'SFMono-Regular', Consolas, monospace; overflow-wrap: anywhere; }
 .window-card footer { align-items: flex-start; flex-direction: column; margin-top: 14px; color: var(--muted); font-size: 10px; }
 .zero-observation { margin: 18px 0 0; padding: 14px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); }
+.matrix-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.matrix-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.matrix-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.matrix-table-scroll { overflow-x: auto; margin-top: 18px; }
+.stability-matrix { width: 100%; min-width: 1120px; border-collapse: collapse; color: var(--ink); font-size: 11px; }
+.stability-matrix caption { padding: 0 0 12px; color: var(--muted); text-align: left; }
+.stability-matrix th, .stability-matrix td { padding: 10px; border: 1px solid var(--line); vertical-align: top; }
+.stability-matrix th { background: #0a1714; color: var(--mint); text-align: left; }
+.matrix-cell-detail summary { color: var(--muted); cursor: pointer; }
+.matrix-cell-detail dl { display: grid; gap: 7px; margin: 10px 0 0; }
+.matrix-cell-detail dl div { display: grid; gap: 2px; }
+.matrix-cell-detail dt { color: var(--muted); font-size: 8px; overflow-wrap: anywhere; }
+.matrix-cell-detail dd { margin: 0; color: var(--ink); font: 500 10px/1.3 'SFMono-Regular', Consolas, monospace; }
+.matrix-unavailable { color: var(--muted); font-size: 9px; line-height: 1.4; }
+.matrix-item-error { margin-top: 16px; }
 .detail-panel { border-color: rgb(121 227 178 / 38%); }
 .detail-content h3 { margin-bottom: 6px; color: var(--ink); }
 .detail-content { color: var(--muted); }
@@ -573,7 +849,7 @@ onBeforeUnmount(() => {
 }
 @media (max-width: 620px) {
   .source-facts, .identity-facts, .window-grid, .window-card dl { grid-template-columns: 1fr; }
-  .panel-heading, .strategy-window-card__header, .research-state { align-items: flex-start; flex-direction: column; }
+  .panel-heading, .strategy-window-card__header, .strategy-window-card__actions, .research-state { align-items: flex-start; flex-direction: column; }
   .source-facts__identity { grid-column: auto; }
   .source-facts__identity dd { align-items: flex-start; flex-direction: column; }
 }

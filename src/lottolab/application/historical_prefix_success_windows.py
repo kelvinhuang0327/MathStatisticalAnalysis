@@ -64,9 +64,26 @@ class HistoricalPrefixSuccessCriterion(StrEnum):
     M5_PLUS_SPECIAL = "M5_PLUS_SPECIAL"
 
 
+SUPPORTED_SUCCESS_CRITERIA = tuple(HistoricalPrefixSuccessCriterion)
+
+
 class HistoricalPrefixSuccessEvaluationStatus(StrEnum):
     EVALUATED = "EVALUATED"
     NO_OBSERVATIONS = "NO_OBSERVATIONS"
+
+
+class HistoricalPrefixWindowRateComparisonKind(StrEnum):
+    FULL_HISTORY_TO_LONG = "FULL_HISTORY_TO_LONG"
+    LONG_TO_MEDIUM = "LONG_TO_MEDIUM"
+    MEDIUM_TO_SHORT = "MEDIUM_TO_SHORT"
+    LONG_TO_SHORT = "LONG_TO_SHORT"
+
+
+class HistoricalPrefixRateRelation(StrEnum):
+    HIGHER = "HIGHER"
+    EQUAL = "EQUAL"
+    LOWER = "LOWER"
+    UNAVAILABLE = "UNAVAILABLE"
 
 
 def _require_canonical_text(value: str, name: str) -> None:
@@ -346,13 +363,58 @@ class HistoricalPrefixStrategySuccessWindowPage:
     items: tuple[HistoricalPrefixStrategySuccessWindowResult, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixSignedRateDelta:
+    numerator: int
+    denominator: int
+    available: bool
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixWindowRateComparison:
+    comparison_kind: HistoricalPrefixWindowRateComparisonKind
+    from_window_kind: WindowKind
+    to_window_kind: WindowKind
+    from_rate: HistoricalPrefixExactSuccessRate
+    to_rate: HistoricalPrefixExactSuccessRate
+    delta: HistoricalPrefixSignedRateDelta
+    relation: HistoricalPrefixRateRelation
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixStrategySuccessMatrixCell:
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    selection: HistoricalPrefixSuccessSelectionIdentity
+    status: HistoricalPrefixSuccessEvaluationStatus
+    source_observation_count: int
+    windows: tuple[HistoricalPrefixSuccessWindowSummary, ...]
+    comparisons: tuple[HistoricalPrefixWindowRateComparison, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixStrategySuccessMatrix:
+    metadata: HistoricalPrefixSuccessWindowSourceMetadata
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    source_observation_count: int
+    prefix_counts: tuple[int, ...]
+    criteria: tuple[HistoricalPrefixSuccessCriterionIdentity, ...]
+    cell_count: int
+    cells: tuple[HistoricalPrefixStrategySuccessMatrixCell, ...]
+
+
 __all__ = [
     "DEFAULT_PAGE_LIMIT",
     "DEFAULT_PAGE_OFFSET",
     "MAX_PAGE_LIMIT",
     "MIN_PAGE_LIMIT",
     "SUPPORTED_PREFIX_COUNTS",
+    "SUPPORTED_SUCCESS_CRITERIA",
     "HistoricalPrefixExactSuccessRate",
+    "HistoricalPrefixRateRelation",
+    "HistoricalPrefixSignedRateDelta",
+    "HistoricalPrefixStrategySuccessMatrix",
+    "HistoricalPrefixStrategySuccessMatrixCell",
     "HistoricalPrefixStrategySuccessWindowPage",
     "HistoricalPrefixStrategySuccessWindowResult",
     "HistoricalPrefixSuccessCriterion",
@@ -372,4 +434,6 @@ __all__ = [
     "HistoricalPrefixSuccessWindowsContractError",
     "HistoricalPrefixSuccessWindowsError",
     "HistoricalPrefixSuccessWindowsUnavailableError",
+    "HistoricalPrefixWindowRateComparison",
+    "HistoricalPrefixWindowRateComparisonKind",
 ]

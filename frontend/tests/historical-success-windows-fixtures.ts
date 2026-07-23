@@ -1,6 +1,7 @@
 import type {
   HistoricalRun,
   HistoricalRunPage,
+  HistoricalSuccessStabilityMatrix,
   HistoricalSuccessWindowPage,
   HistoricalSuccessWindowResult,
 } from '../src/api/historicalSuccessWindows'
@@ -84,6 +85,29 @@ function makeWindows(): HistoricalSuccessWindowResult['windows'] {
     evaluation_status: 'INSUFFICIENT_DRAWS',
     evidence_status: 'DESCRIPTIVE_ONLY',
   }))
+}
+
+const criteria = [
+  ['M3_PLUS', 3, false],
+  ['M4_PLUS', 4, false],
+  ['M5_PLUS', 5, false],
+  ['M6', 6, false],
+  ['M2_PLUS_SPECIAL', 2, true],
+  ['M3_PLUS_SPECIAL', 3, true],
+  ['M4_PLUS_SPECIAL', 4, true],
+  ['M5_PLUS_SPECIAL', 5, true],
+] as const
+const prefixes = [1, 2, 3, 4, 5, 10, 15, 20] as const
+
+function gcd(left: number, right: number): number {
+  let a = Math.abs(left)
+  let b = Math.abs(right)
+  while (b !== 0) {
+    const remainder = a % b
+    a = b
+    b = remainder
+  }
+  return a
 }
 
 export function makeResult(
@@ -181,6 +205,206 @@ export function makeWindowPage(
     items,
     ...overrides,
   }
+}
+
+export function makeMatrix(
+  overrides: Partial<HistoricalSuccessStabilityMatrix> = {},
+): HistoricalSuccessStabilityMatrix {
+  const result = makeResult()
+  const criterionViews = criteria.map(
+    ([criterion, minimum_main_hits, require_special_hit]) => ({
+      criterion,
+      minimum_main_hits,
+      require_special_hit,
+      measurement_mode: 'LEGAL_TICKET_PRIZE' as const,
+    }),
+  )
+  const cells = criterionViews.flatMap((criterion) =>
+    prefixes.map((prefix_count) => {
+      const windows = makeWindows()
+      const comparisons = [
+        ['FULL_HISTORY_TO_LONG', 0, 1],
+        ['LONG_TO_MEDIUM', 1, 2],
+        ['MEDIUM_TO_SHORT', 2, 3],
+        ['LONG_TO_SHORT', 1, 3],
+      ].map(([comparison_kind, fromIndex, toIndex]) => {
+        const from = windows[Number(fromIndex)]!
+        const to = windows[Number(toIndex)]!
+        const rawNumerator =
+          to.success_rate.numerator * from.success_rate.denominator -
+          from.success_rate.numerator * to.success_rate.denominator
+        const denominator = to.success_rate.denominator * from.success_rate.denominator
+        const divisor = gcd(rawNumerator, denominator)
+        const numerator = rawNumerator / divisor
+        return {
+          comparison_kind,
+          from_window_kind: from.window_kind,
+          to_window_kind: to.window_kind,
+          from_rate: { ...from.success_rate },
+          to_rate: { ...to.success_rate },
+          delta: {
+            numerator,
+            denominator: numerator === 0 ? 1 : denominator / divisor,
+            available: true,
+          },
+          relation: numerator > 0 ? 'HIGHER' : numerator < 0 ? 'LOWER' : 'EQUAL',
+        }
+      })
+      return {
+        criterion,
+        prefix_count,
+        selection: {
+          lottery: 'BIG_LOTTO',
+          strategy_id: result.strategy.strategy_id,
+          strategy_version: result.strategy.strategy_version,
+          replicate: result.strategy.replicate,
+          ticket_count: prefix_count,
+          max_bet_index: prefix_count,
+        },
+        status: 'EVALUATED',
+        source_observation_count: 5,
+        windows,
+        comparisons,
+      }
+    }),
+  )
+  return {
+    metadata: makeWindowPage().metadata,
+    strategy: result.strategy,
+    source_observation_count: 5,
+    prefix_counts: [...prefixes],
+    criteria: criterionViews,
+    cell_count: 64,
+    cells,
+    ...overrides,
+  } as HistoricalSuccessStabilityMatrix
+}
+
+export function makeZeroObservationMatrix(): HistoricalSuccessStabilityMatrix {
+  const zero = makeZeroObservationResult()
+  const matrix = makeMatrix({
+    strategy: zero.strategy,
+    source_observation_count: 0,
+  })
+  return {
+    ...matrix,
+    cells: matrix.cells.map((cell) => ({
+      ...cell,
+      selection: {
+        ...cell.selection,
+        strategy_id: zero.strategy.strategy_id,
+        strategy_version: zero.strategy.strategy_version,
+        replicate: zero.strategy.replicate,
+      },
+      status: 'NO_OBSERVATIONS',
+      source_observation_count: 0,
+      windows: [],
+      comparisons: [],
+    })),
+  }
+}
+
+export function makeMatrixForResult(
+  result: HistoricalSuccessWindowResult,
+): HistoricalSuccessStabilityMatrix {
+  const matrix = makeMatrix({
+    strategy: result.strategy,
+    source_observation_count: result.source_observation_count,
+  })
+  return {
+    ...matrix,
+    cells: matrix.cells.map((cell) => ({
+      ...cell,
+      selection: {
+        ...cell.selection,
+        strategy_id: result.strategy.strategy_id,
+        strategy_version: result.strategy.strategy_version,
+        replicate: result.strategy.replicate,
+      },
+      source_observation_count: result.source_observation_count,
+    })),
+  }
+}
+
+function rebuildComparisons(
+  cell: HistoricalSuccessStabilityMatrix['cells'][number],
+): void {
+  const definitions = [
+    ['FULL_HISTORY_TO_LONG', 0, 1],
+    ['LONG_TO_MEDIUM', 1, 2],
+    ['MEDIUM_TO_SHORT', 2, 3],
+    ['LONG_TO_SHORT', 1, 3],
+  ] as const
+  cell.comparisons = definitions.map(([comparison_kind, fromIndex, toIndex]) => {
+    const from = cell.windows[fromIndex]!
+    const to = cell.windows[toIndex]!
+    if (!from.success_rate.available || !to.success_rate.available) {
+      return {
+        comparison_kind,
+        from_window_kind: from.window_kind,
+        to_window_kind: to.window_kind,
+        from_rate: { ...from.success_rate },
+        to_rate: { ...to.success_rate },
+        delta: { numerator: 0, denominator: 0, available: false },
+        relation: 'UNAVAILABLE',
+      }
+    }
+    const rawNumerator =
+      to.success_rate.numerator * from.success_rate.denominator -
+      from.success_rate.numerator * to.success_rate.denominator
+    const rawDenominator =
+      to.success_rate.denominator * from.success_rate.denominator
+    const divisor = gcd(rawNumerator, rawDenominator)
+    const numerator = rawNumerator / divisor
+    return {
+      comparison_kind,
+      from_window_kind: from.window_kind,
+      to_window_kind: to.window_kind,
+      from_rate: { ...from.success_rate },
+      to_rate: { ...to.success_rate },
+      delta: {
+        numerator,
+        denominator: numerator === 0 ? 1 : rawDenominator / divisor,
+        available: true,
+      },
+      relation: numerator > 0 ? 'HIGHER' : numerator < 0 ? 'LOWER' : 'EQUAL',
+    }
+  })
+}
+
+export function makeAllRelationsMatrix(): HistoricalSuccessStabilityMatrix {
+  const matrix = makeMatrix()
+  for (const [cellIndex, numerators] of [
+    [0, [1, 2, 3, 4]],
+    [1, [4, 3, 2, 1]],
+    [2, [2, 2, 2, 2]],
+  ] as const) {
+    const cell = matrix.cells[cellIndex]!
+    cell.windows = cell.windows.map((window, index) => ({
+      ...window,
+      success_count: numerators[index]!,
+      failure_count: 4 - numerators[index]!,
+      success_rate: {
+        numerator: numerators[index]!,
+        denominator: 4,
+        available: true,
+      },
+    }))
+    rebuildComparisons(cell)
+  }
+  const unavailable = matrix.cells[3]!
+  unavailable.windows = unavailable.windows.map((window) => ({
+    ...window,
+    eligible_draw_count: 0,
+    excluded_draw_count: 5,
+    success_count: 0,
+    failure_count: 0,
+    success_rate: { numerator: 0, denominator: 0, available: false },
+    evaluation_status: 'NO_ELIGIBLE_DRAWS',
+    evidence_status: 'NOT_READY',
+  }))
+  rebuildComparisons(unavailable)
+  return matrix
 }
 
 export function apiResponse(payload: unknown, status = 200): Response {

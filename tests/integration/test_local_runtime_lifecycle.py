@@ -123,10 +123,21 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
                 "criterion": "M3_PLUS",
             },
         )
+        matrix_status, matrix_body = json_get(
+            (
+                "/api/v1/historical-prefix-success-windows/strategies/"
+                "strategy-a/v1/1/matrix"
+            ),
+            {"import_identity_sha256": "a" * 64},
+        )
         assert runs_status == 503
         assert runs_body["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
         assert windows_status == 503
         assert windows_body["error_code"] == (
+            "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
+        )
+        assert matrix_status == 503
+        assert matrix_body["error_code"] == (
             "HISTORICAL_PREFIX_SUCCESS_WINDOWS_NOT_CONFIGURED"
         )
         _stop_and_assert_safe(policy)
@@ -160,6 +171,17 @@ def test_real_unconfigured_and_configured_start_status_smoke_stop_lifecycle(
         assert configured_windows["metadata"]["import_identity_sha256"] == (
             run_import.import_identity_sha256
         )
+        first_strategy = configured_windows["items"][0]["strategy"]
+        configured_matrix_status, configured_matrix = json_get(
+            (
+                "/api/v1/historical-prefix-success-windows/strategies/"
+                f"{first_strategy['strategy_id']}/{first_strategy['strategy_version']}/"
+                f"{first_strategy['replicate']}/matrix"
+            ),
+            {"import_identity_sha256": run_import.import_identity_sha256},
+        )
+        assert configured_matrix_status == 200
+        assert configured_matrix["cell_count"] == len(configured_matrix["cells"]) == 64
         assert database.read_bytes() == database_before
         assert {path.name for path in tmp_path.glob("historical.db-*")} == sidecars_before
         _stop_and_assert_safe(policy)

@@ -13,6 +13,10 @@ from tests.fixtures.historical.success_window_builder import (
 
 import lottolab.application.use_cases.evaluate_historical_prefix_success_windows as module
 from lottolab.application.historical_prefix_success_windows import (
+    HistoricalPrefixExactSuccessRate,
+    HistoricalPrefixRateRelation,
+    HistoricalPrefixStrategySuccessMatrix,
+    HistoricalPrefixStrategySuccessMatrixCell,
     HistoricalPrefixStrategySuccessWindowResult,
     HistoricalPrefixSuccessCriterion,
     HistoricalPrefixSuccessEvaluationStatus,
@@ -20,6 +24,7 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessStrategyNotFoundError,
     HistoricalPrefixSuccessWindowsContractError,
     HistoricalPrefixSuccessWindowSource,
+    HistoricalPrefixWindowRateComparisonKind,
 )
 from lottolab.application.use_cases.evaluate_historical_prefix_success_windows import (
     EvaluateHistoricalPrefixSuccessWindows,
@@ -27,6 +32,7 @@ from lottolab.application.use_cases.evaluate_historical_prefix_success_windows i
 from lottolab.domain.strategy_success_evaluation import (
     SuccessCriterion,
     WindowEvaluationStatus,
+    WindowKind,
     WindowSuccessSummary,
 )
 from lottolab.domain.strategy_success_measurement import (
@@ -472,6 +478,186 @@ def test_result_model_contains_no_ranking_promotion_or_float_rate_fields() -> No
     names = {
         field.name
         for model in (HistoricalPrefixStrategySuccessWindowResult,)
+        for field in fields(model)
+    }
+
+    assert names.isdisjoint(forbidden)
+
+
+def test_matrix_loads_once_preserves_exact_alias_and_emits_canonical_64_cells() -> None:
+    source = build_success_source(
+        (
+            build_success_strategy(
+                "alias",
+                effective_strategy_id="base",
+                alias_of_strategy_id="base",
+                replicate=3,
+                observations=build_success_observations(1),
+            ),
+        )
+    )
+    evaluator, factory = _evaluator(source)
+
+    matrix = evaluator.get_matrix(
+        import_identity_sha256=IMPORT_IDENTITY,
+        strategy_id="alias",
+        strategy_version="v1",
+        replicate=3,
+    )
+
+    assert factory.calls == 1
+    assert factory.reader.calls == [IMPORT_IDENTITY]
+    assert matrix.strategy.strategy_id == "alias"
+    assert matrix.strategy.effective_strategy_id == "base"
+    assert matrix.strategy.alias_of_strategy_id == "base"
+    assert matrix.strategy.replicate == 3
+    assert matrix.source_observation_count == 1
+    assert matrix.prefix_counts == (1, 2, 3, 4, 5, 10, 15, 20)
+    assert tuple(item.criterion for item in matrix.criteria) == tuple(
+        HistoricalPrefixSuccessCriterion
+    )
+    assert matrix.cell_count == len(matrix.cells) == 64
+    assert [
+        (cell.criterion.criterion, cell.prefix_count) for cell in matrix.cells
+    ] == [
+        (criterion, prefix)
+        for criterion in HistoricalPrefixSuccessCriterion
+        for prefix in (1, 2, 3, 4, 5, 10, 15, 20)
+    ]
+    assert all(cell.selection.strategy_id == "alias" for cell in matrix.cells)
+    assert all(cell.selection.replicate == 3 for cell in matrix.cells)
+    assert all(
+        tuple(window.window_kind for window in cell.windows)
+        == (
+            WindowKind.FULL_HISTORY,
+            WindowKind.LONG,
+            WindowKind.MEDIUM,
+            WindowKind.SHORT,
+        )
+        for cell in matrix.cells
+    )
+    assert all(
+        tuple(item.comparison_kind for item in cell.comparisons)
+        == tuple(HistoricalPrefixWindowRateComparisonKind)
+        for cell in matrix.cells
+    )
+
+
+@pytest.mark.parametrize(
+    ("from_rate", "to_rate", "expected"),
+    [
+        (
+            HistoricalPrefixExactSuccessRate(1, 4, True),
+            HistoricalPrefixExactSuccessRate(1, 2, True),
+            (1, 4, True, HistoricalPrefixRateRelation.HIGHER),
+        ),
+        (
+            HistoricalPrefixExactSuccessRate(3, 4, True),
+            HistoricalPrefixExactSuccessRate(1, 2, True),
+            (-1, 4, True, HistoricalPrefixRateRelation.LOWER),
+        ),
+        (
+            HistoricalPrefixExactSuccessRate(1, 2, True),
+            HistoricalPrefixExactSuccessRate(2, 4, True),
+            (0, 1, True, HistoricalPrefixRateRelation.EQUAL),
+        ),
+        (
+            HistoricalPrefixExactSuccessRate(0, 0, False),
+            HistoricalPrefixExactSuccessRate(1, 2, True),
+            (0, 0, False, HistoricalPrefixRateRelation.UNAVAILABLE),
+        ),
+    ],
+)
+def test_signed_rate_delta_is_exact_canonical_and_neutral(
+    from_rate: HistoricalPrefixExactSuccessRate,
+    to_rate: HistoricalPrefixExactSuccessRate,
+    expected: tuple[int, int, bool, HistoricalPrefixRateRelation],
+) -> None:
+    delta, relation = module._signed_rate_delta(  # pyright: ignore[reportPrivateUsage]
+        from_rate, to_rate
+    )
+
+    assert (delta.numerator, delta.denominator, delta.available, relation) == expected
+
+
+def test_zero_observation_matrix_retains_all_cells_without_windows_or_comparisons() -> None:
+    evaluator, _ = _evaluator(
+        build_success_source((build_success_strategy("zero"),))
+    )
+
+    matrix = evaluator.get_matrix(
+        import_identity_sha256=IMPORT_IDENTITY,
+        strategy_id="zero",
+        strategy_version="v1",
+        replicate=1,
+    )
+
+    assert matrix.cell_count == len(matrix.cells) == 64
+    assert matrix.source_observation_count == 0
+    assert all(
+        cell.status is HistoricalPrefixSuccessEvaluationStatus.NO_OBSERVATIONS
+        and cell.source_observation_count == 0
+        and cell.windows == ()
+        and cell.comparisons == ()
+        for cell in matrix.cells
+    )
+
+
+def test_matrix_is_deterministic_and_invalid_identity_is_rejected_before_factory() -> None:
+    evaluator, factory = _evaluator(
+        build_success_source(
+            (
+                build_success_strategy(
+                    observations=build_success_observations(2),
+                ),
+            )
+        )
+    )
+    first = evaluator.get_matrix(
+        import_identity_sha256=IMPORT_IDENTITY,
+        strategy_id="strategy-a",
+        strategy_version="v1",
+        replicate=1,
+    )
+    second = evaluator.get_matrix(
+        import_identity_sha256=IMPORT_IDENTITY,
+        strategy_id="strategy-a",
+        strategy_version="v1",
+        replicate=1,
+    )
+
+    assert first == second
+    assert factory.calls == 2
+    invalid_evaluator, invalid_factory = _evaluator(
+        build_success_source((build_success_strategy(),))
+    )
+    with pytest.raises(HistoricalPrefixSuccessWindowsContractError):
+        invalid_evaluator.get_matrix(
+            import_identity_sha256=IMPORT_IDENTITY,
+            strategy_id=" padded ",
+            strategy_version="v1",
+            replicate=1,
+        )
+    assert invalid_factory.calls == 0
+
+
+def test_matrix_models_contain_no_ranking_promotion_prediction_or_float_fields() -> None:
+    forbidden = {
+        "rank",
+        "ranking",
+        "promotion",
+        "score",
+        "prediction",
+        "recommendation",
+        "threshold",
+        "confidence",
+    }
+    names = {
+        field.name
+        for model in (
+            HistoricalPrefixStrategySuccessMatrix,
+            HistoricalPrefixStrategySuccessMatrixCell,
+        )
         for field in fields(model)
     }
 

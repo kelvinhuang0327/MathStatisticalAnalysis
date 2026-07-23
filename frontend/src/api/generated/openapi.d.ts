@@ -547,6 +547,42 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/matrix": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixStrategySuccessMatrixResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/replay-rankings/optimal": {
       get: {
           parameters: {
@@ -907,6 +943,7 @@ export interface components {
           "top_k": number
           "groups": Array<components['schemas']["HistoricalPrefixRankingGroupView"]>
         }
+    "HistoricalPrefixRateRelation": "HIGHER" | "EQUAL" | "LOWER" | "UNAVAILABLE"
     "HistoricalPrefixReplayPageResponse": {
           "metadata": components['schemas']["HistoricalPrefixMetadataView"]
           "strategy": components['schemas']["HistoricalPrefixStrategyIdentityView"]
@@ -915,6 +952,11 @@ export interface components {
           "total_count": number
           "limit": number
           "offset": number
+        }
+    "HistoricalPrefixSignedRateDeltaView": {
+          "numerator": number
+          "denominator": number
+          "available": boolean
         }
     "HistoricalPrefixStrategyIdentityView": {
           "strategy_id": string
@@ -932,6 +974,24 @@ export interface components {
           "prefix_count": number
           "summaries": Array<components['schemas']["HistoricalPrefixStrategySummaryView"]>
           "total_count": number
+        }
+    "HistoricalPrefixStrategySuccessMatrixCellView": {
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "selection": components['schemas']["HistoricalPrefixSuccessSelectionIdentityView"]
+          "status": string
+          "source_observation_count": number
+          "windows": Array<components['schemas']["HistoricalPrefixSuccessWindowSummaryView"]>
+          "comparisons": Array<components['schemas']["HistoricalPrefixWindowRateComparisonView"]>
+        }
+    "HistoricalPrefixStrategySuccessMatrixResponse": {
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "source_observation_count": number
+          "prefix_counts": Array<number>
+          "criteria": Array<components['schemas']["HistoricalPrefixSuccessCriterionView"]>
+          "cell_count": number
+          "cells": Array<components['schemas']["HistoricalPrefixStrategySuccessMatrixCellView"]>
         }
     "HistoricalPrefixStrategySuccessWindowPageResponse": {
           "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
@@ -1048,6 +1108,16 @@ export interface components {
           "nested_windows_independent": boolean
           "evaluation_status": components['schemas']["WindowEvaluationStatus"]
           "evidence_status": components['schemas']["EvidenceStatus"]
+        }
+    "HistoricalPrefixWindowRateComparisonKind": "FULL_HISTORY_TO_LONG" | "LONG_TO_MEDIUM" | "MEDIUM_TO_SHORT" | "LONG_TO_SHORT"
+    "HistoricalPrefixWindowRateComparisonView": {
+          "comparison_kind": components['schemas']["HistoricalPrefixWindowRateComparisonKind"]
+          "from_window_kind": components['schemas']["WindowKind"]
+          "to_window_kind": components['schemas']["WindowKind"]
+          "from_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
+          "to_rate": components['schemas']["HistoricalPrefixExactSuccessRateView"]
+          "delta": components['schemas']["HistoricalPrefixSignedRateDeltaView"]
+          "relation": components['schemas']["HistoricalPrefixRateRelation"]
         }
     "HistoricalReplayPageResponse": {
           "run_id": string

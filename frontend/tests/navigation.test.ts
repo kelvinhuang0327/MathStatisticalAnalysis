@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import App from '../src/App.vue'
+import { makeRunPage } from './historical-success-windows-fixtures'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
@@ -60,6 +61,9 @@ beforeEach(() => {
         }),
       )
     }
+    if (url.includes('/api/v1/historical-results/runs')) {
+      return Promise.resolve(apiResponse(makeRunPage()))
+    }
     if (url.includes('/api/v1/ingestion-runs')) {
       return Promise.resolve(
         apiResponse({
@@ -92,18 +96,29 @@ afterEach(() => {
 })
 
 describe('App navigation', () => {
-  it('navigates among Strategy Overview, Data Center, and Draw History without a router', async () => {
+  it('navigates among every local workspace without a router', async () => {
     const wrapper = mount(App)
     await flushPromises()
 
     const navigation = wrapper.get('nav[aria-label="Primary navigation"]')
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
       'Strategy Overview',
+      'Success Windows',
       'Data Center',
       'Draw History',
       'Live Zone Split Bets',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
+
+    window.location.hash = '#/historical-success-windows'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#historical-success-title').exists()).toBe(true)
+    expect(
+      navigation
+        .find('a[href="#/historical-success-windows"]')
+        .attributes('aria-current'),
+    ).toBe('page')
 
     window.location.hash = '#/data-center'
     window.dispatchEvent(new HashChangeEvent('hashchange'))

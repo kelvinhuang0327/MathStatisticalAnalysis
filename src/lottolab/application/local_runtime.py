@@ -363,7 +363,7 @@ class LocalRuntimePolicy:
             "--no-sync",
             "uvicorn",
             "--factory",
-            "lottolab.interfaces.api.app:create_app",
+            "lottolab.interfaces.api.local_app:create_local_app",
             "--app-dir",
             str(self.repository_root / "src"),
             "--host",

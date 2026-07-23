@@ -33,6 +33,9 @@ DISCOVERY_TARGET_COUNT = 750
 CONFIRMATION_TARGET_COUNT = 300
 REQUIRED_LABELED_TARGET_COUNT = 1050
 TEMPORAL_HOLDOUT_SPLIT_METHOD = "FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION"
+RECENT_REFERENCE_TARGET_COUNT = 250
+RECENT_AUDIT_TARGET_COUNT = 50
+RECENT_AUDIT_SPLIT_METHOD = "FIXED_CONFIRMATION_FIRST_250_REFERENCE_LAST_50_RECENT"
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 
@@ -109,6 +112,11 @@ class HistoricalPrefixFeatureCohortTestStatus(StrEnum):
 
 
 class HistoricalPrefixTemporalHoldoutStatus(StrEnum):
+    COMPLETE = "COMPLETE"
+    NOT_READY_INSUFFICIENT_HISTORY = "NOT_READY_INSUFFICIENT_HISTORY"
+
+
+class HistoricalPrefixRecentStabilityAuditStatus(StrEnum):
     COMPLETE = "COMPLETE"
     NOT_READY_INSUFFICIENT_HISTORY = "NOT_READY_INSUFFICIENT_HISTORY"
 
@@ -551,6 +559,50 @@ class HistoricalPrefixTemporalHoldoutResult:
 
 
 @dataclass(frozen=True, slots=True)
+class HistoricalPrefixRecentStabilityAuditSplit:
+    source_temporal_split_method: str
+    audit_split_method: str
+    total_assignment_count: int
+    warmup_count: int
+    discovery_count: int
+    confirmation_count: int
+    reference_count: int
+    recent_count: int
+    discovery_first_target: HistoricalPrefixSuccessDrawIdentity | None
+    discovery_last_target: HistoricalPrefixSuccessDrawIdentity | None
+    confirmation_first_target: HistoricalPrefixSuccessDrawIdentity | None
+    confirmation_last_target: HistoricalPrefixSuccessDrawIdentity | None
+    reference_first_target: HistoricalPrefixSuccessDrawIdentity | None
+    reference_last_target: HistoricalPrefixSuccessDrawIdentity | None
+    recent_first_target: HistoricalPrefixSuccessDrawIdentity | None
+    recent_last_target: HistoricalPrefixSuccessDrawIdentity | None
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixRecentStabilityAuditCohortComparison:
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    reference_diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    recent_diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+    effect_change: HistoricalPrefixSignedRateDelta
+    relationship: HistoricalPrefixTemporalHoldoutRelationship
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixRecentStabilityAuditResult:
+    metadata: HistoricalPrefixSuccessWindowSourceMetadata
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    split: HistoricalPrefixRecentStabilityAuditSplit
+    audit_status: HistoricalPrefixRecentStabilityAuditStatus
+    family_size: int
+    reference: HistoricalPrefixStrategyFeatureCohortDiagnostics | None
+    recent: HistoricalPrefixStrategyFeatureCohortDiagnostics | None
+    comparisons: tuple[HistoricalPrefixRecentStabilityAuditCohortComparison, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class HistoricalPrefixCrossImportMetadata:
     left: HistoricalPrefixSuccessWindowSourceMetadata
     right: HistoricalPrefixSuccessWindowSourceMetadata
@@ -685,6 +737,9 @@ __all__ = [
     "FISHER_EXACT_TWO_SIDED_METHOD",
     "MAX_PAGE_LIMIT",
     "MIN_PAGE_LIMIT",
+    "RECENT_AUDIT_SPLIT_METHOD",
+    "RECENT_AUDIT_TARGET_COUNT",
+    "RECENT_REFERENCE_TARGET_COUNT",
     "REQUIRED_LABELED_TARGET_COUNT",
     "SUPPORTED_PREFIX_COUNTS",
     "SUPPORTED_SUCCESS_CRITERIA",
@@ -703,6 +758,10 @@ __all__ = [
     "HistoricalPrefixFeatureRelationTriple",
     "HistoricalPrefixOutcomeCounts",
     "HistoricalPrefixRateRelation",
+    "HistoricalPrefixRecentStabilityAuditCohortComparison",
+    "HistoricalPrefixRecentStabilityAuditResult",
+    "HistoricalPrefixRecentStabilityAuditSplit",
+    "HistoricalPrefixRecentStabilityAuditStatus",
     "HistoricalPrefixSignedRateDelta",
     "HistoricalPrefixStrategyFeatureCohortDiagnostics",
     "HistoricalPrefixStrategyFeatureCohortResult",

@@ -14,6 +14,8 @@ export type HistoricalSuccessFeatureCohortDiagnostics =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/diagnostics']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessTemporalHoldout =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessRecent50StabilityAudit =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/recent-50-stability-audit']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessCrossImportConcordance =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessMultiImportConcordanceCensus =
@@ -121,6 +123,9 @@ export interface HistoricalSuccessFeatureCohortDiagnosticsQuery
   extends HistoricalSuccessExactQuery {}
 
 export interface HistoricalSuccessTemporalHoldoutQuery
+  extends HistoricalSuccessExactQuery {}
+
+export interface HistoricalSuccessRecent50StabilityAuditQuery
   extends HistoricalSuccessExactQuery {}
 
 export interface HistoricalSuccessCrossImportConcordanceQuery {
@@ -1070,6 +1075,184 @@ function isTemporalHoldout(
   })
 }
 
+function compareDrawIdentities(left: unknown, right: unknown): number | null {
+  if (!isRecord(left) || !isRecord(right) || !isDrawIdentity(left) || !isDrawIdentity(right)) {
+    return null
+  }
+  const isoDate = /^\d{4}-\d{2}-\d{2}$/
+  if (
+    !isString(left.draw_date) ||
+    !isString(right.draw_date) ||
+    !isoDate.test(left.draw_date) ||
+    !isoDate.test(right.draw_date)
+  ) {
+    return null
+  }
+  const leftParsed = new Date(`${left.draw_date}T00:00:00Z`)
+  const rightParsed = new Date(`${right.draw_date}T00:00:00Z`)
+  if (
+    Number.isNaN(leftParsed.getTime()) ||
+    Number.isNaN(rightParsed.getTime()) ||
+    leftParsed.toISOString().slice(0, 10) !== left.draw_date ||
+    rightParsed.toISOString().slice(0, 10) !== right.draw_date
+  ) {
+    return null
+  }
+  if (left.draw_date !== right.draw_date) {
+    return left.draw_date < right.draw_date ? -1 : 1
+  }
+  return (left.draw_number as number) - (right.draw_number as number)
+}
+
+function isRecent50StabilityAudit(
+  value: unknown,
+  query: HistoricalSuccessRecent50StabilityAuditQuery,
+): value is HistoricalSuccessRecent50StabilityAudit {
+  if (
+    !isRecord(value) ||
+    !isMetadata(value.metadata, query.import_identity_sha256) ||
+    !isStrategyIdentity(value.strategy) ||
+    !isCriterion(value.criterion, query.criterion) ||
+    value.prefix_count !== query.prefix_count ||
+    value.family_size !== 64 ||
+    !isRecord(value.split) ||
+    value.split.source_temporal_split_method !==
+      'FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION' ||
+    value.split.audit_split_method !==
+      'FIXED_CONFIRMATION_FIRST_250_REFERENCE_LAST_50_RECENT' ||
+    !isNonNegativeInteger(value.split.total_assignment_count) ||
+    !isNonNegativeInteger(value.split.warmup_count) ||
+    !isNonNegativeInteger(value.split.discovery_count) ||
+    !isNonNegativeInteger(value.split.confirmation_count) ||
+    !isNonNegativeInteger(value.split.reference_count) ||
+    !isNonNegativeInteger(value.split.recent_count) ||
+    !Array.isArray(value.comparisons)
+  ) {
+    return false
+  }
+  const strategy = value.strategy as Record<string, unknown>
+  const split = value.split as Record<string, unknown> & {
+    total_assignment_count: number
+    warmup_count: number
+    discovery_count: number
+    confirmation_count: number
+    reference_count: number
+    recent_count: number
+  }
+  if (
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate ||
+    split.total_assignment_count !==
+      split.warmup_count + split.discovery_count + split.confirmation_count ||
+    split.confirmation_count !== split.reference_count + split.recent_count
+  ) {
+    return false
+  }
+  const boundaries = [
+    split.discovery_first_target,
+    split.discovery_last_target,
+    split.confirmation_first_target,
+    split.confirmation_last_target,
+    split.reference_first_target,
+    split.reference_last_target,
+    split.recent_first_target,
+    split.recent_last_target,
+  ]
+  if (value.audit_status === 'NOT_READY_INSUFFICIENT_HISTORY') {
+    return (
+      split.total_assignment_count < 1050 &&
+      split.warmup_count === split.total_assignment_count &&
+      split.discovery_count === 0 &&
+      split.confirmation_count === 0 &&
+      split.reference_count === 0 &&
+      split.recent_count === 0 &&
+      boundaries.every((boundary) => boundary === null) &&
+      value.reference === null &&
+      value.recent === null &&
+      value.comparisons.length === 0
+    )
+  }
+  if (
+    value.audit_status !== 'COMPLETE' ||
+    split.total_assignment_count < 1050 ||
+    split.discovery_count !== 750 ||
+    split.confirmation_count !== 300 ||
+    split.reference_count !== 250 ||
+    split.recent_count !== 50 ||
+    !boundaries.every(isDrawIdentity) ||
+    !isFeatureCohortDiagnostics(value.reference, query) ||
+    !isFeatureCohortDiagnostics(value.recent, query) ||
+    value.reference.baseline.observation_count !== 250 ||
+    value.recent.baseline.observation_count !== 50 ||
+    value.comparisons.length !== 64
+  ) {
+    return false
+  }
+  const [
+    discoveryFirst,
+    discoveryLast,
+    confirmationFirst,
+    confirmationLast,
+    referenceFirst,
+    referenceLast,
+    recentFirst,
+    recentLast,
+  ] = boundaries
+  const boundaryComparisons = [
+    compareDrawIdentities(discoveryFirst, discoveryLast),
+    compareDrawIdentities(discoveryLast, confirmationFirst),
+    compareDrawIdentities(confirmationFirst, referenceFirst),
+    compareDrawIdentities(referenceFirst, referenceLast),
+    compareDrawIdentities(referenceLast, recentFirst),
+    compareDrawIdentities(recentFirst, recentLast),
+    compareDrawIdentities(recentLast, confirmationLast),
+  ]
+  if (
+    boundaryComparisons.some((comparison) => comparison === null) ||
+    (boundaryComparisons[0] as number) > 0 ||
+    (boundaryComparisons[1] as number) >= 0 ||
+    boundaryComparisons[2] !== 0 ||
+    (boundaryComparisons[3] as number) > 0 ||
+    (boundaryComparisons[4] as number) >= 0 ||
+    (boundaryComparisons[5] as number) > 0 ||
+    boundaryComparisons[6] !== 0
+  ) {
+    return false
+  }
+  const reference = value.reference
+  const recent = value.recent
+  return value.comparisons.every((comparison, index) => {
+    if (
+      !isRecord(comparison) ||
+      comparison.cohort_index !== index ||
+      !isFeatureKey(comparison.feature_key, index) ||
+      !isRecord(comparison.reference_diagnostic) ||
+      !isRecord(comparison.recent_diagnostic) ||
+      !isRecord(comparison.reference_diagnostic.risk_difference) ||
+      !isRecord(comparison.recent_diagnostic.risk_difference) ||
+      JSON.stringify(comparison.reference_diagnostic) !==
+        JSON.stringify(reference.diagnostics[index]) ||
+      JSON.stringify(comparison.recent_diagnostic) !==
+        JSON.stringify(recent.diagnostics[index])
+    ) {
+      return false
+    }
+    return (
+      isExactEffectChange(
+        comparison.effect_change,
+        comparison.reference_diagnostic.risk_difference,
+        comparison.recent_diagnostic.risk_difference,
+      ) &&
+      comparison.relationship ===
+        expectedTemporalRelationship(
+          comparison.reference_diagnostic.relation_vs_outside,
+          comparison.recent_diagnostic.relation_vs_outside,
+        )
+    )
+  })
+}
+
 function isCrossImportConcordance(
   value: unknown,
   query: HistoricalSuccessCrossImportConcordanceQuery,
@@ -1627,6 +1810,22 @@ export async function getHistoricalSuccessTemporalHoldout(
     signal,
   )
   if (!isTemporalHoldout(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessRecent50StabilityAudit(
+  query: HistoricalSuccessRecent50StabilityAuditQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessRecent50StabilityAudit> {
+  const parameters = successQueryParameters(query)
+  const identity = [query.strategy_id, query.strategy_version, String(query.replicate)]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/feature-cohorts/recent-50-stability-audit?${parameters.toString()}`,
+    signal,
+  )
+  if (!isRecent50StabilityAudit(payload, query)) throw malformedResponse()
   return payload
 }
 

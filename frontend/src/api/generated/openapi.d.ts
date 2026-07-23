@@ -586,6 +586,44 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/recent-50-stability-audit": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixRecentStabilityAuditResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout": {
       get: {
           parameters: {
@@ -1253,6 +1291,45 @@ export interface components {
           "groups": Array<components['schemas']["HistoricalPrefixRankingGroupView"]>
         }
     "HistoricalPrefixRateRelation": "HIGHER" | "EQUAL" | "LOWER" | "UNAVAILABLE"
+    "HistoricalPrefixRecentStabilityAuditCohortComparisonView": {
+          "cohort_index": number
+          "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
+          "reference_diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+          "recent_diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+          "effect_change": components['schemas']["HistoricalPrefixSignedRateDeltaView"]
+          "relationship": components['schemas']["HistoricalPrefixTemporalHoldoutRelationship"]
+        }
+    "HistoricalPrefixRecentStabilityAuditResponse": {
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "split": components['schemas']["HistoricalPrefixRecentStabilityAuditSplitView"]
+          "audit_status": components['schemas']["HistoricalPrefixRecentStabilityAuditStatus"]
+          "family_size": number
+          "reference": components['schemas']["HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"] | null
+          "recent": components['schemas']["HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse"] | null
+          "comparisons": Array<components['schemas']["HistoricalPrefixRecentStabilityAuditCohortComparisonView"]>
+        }
+    "HistoricalPrefixRecentStabilityAuditSplitView": {
+          "source_temporal_split_method": string
+          "audit_split_method": string
+          "total_assignment_count": number
+          "warmup_count": number
+          "discovery_count": number
+          "confirmation_count": number
+          "reference_count": 0 | 250
+          "recent_count": 0 | 50
+          "discovery_first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "discovery_last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "confirmation_first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "confirmation_last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "reference_first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "reference_last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "recent_first_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+          "recent_last_target": components['schemas']["HistoricalPrefixSuccessDrawIdentityView"] | null
+        }
+    "HistoricalPrefixRecentStabilityAuditStatus": "COMPLETE" | "NOT_READY_INSUFFICIENT_HISTORY"
     "HistoricalPrefixReplayPageResponse": {
           "metadata": components['schemas']["HistoricalPrefixMetadataView"]
           "strategy": components['schemas']["HistoricalPrefixStrategyIdentityView"]

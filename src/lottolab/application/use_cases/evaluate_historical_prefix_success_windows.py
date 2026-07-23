@@ -17,6 +17,9 @@ from lottolab.application.historical_prefix_success_windows import (
     FISHER_EXACT_TWO_SIDED_METHOD,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
+    RECENT_AUDIT_SPLIT_METHOD,
+    RECENT_AUDIT_TARGET_COUNT,
+    RECENT_REFERENCE_TARGET_COUNT,
     REQUIRED_LABELED_TARGET_COUNT,
     SUPPORTED_PREFIX_COUNTS,
     SUPPORTED_SUCCESS_CRITERIA,
@@ -42,6 +45,10 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixMultiImportSourceResult,
     HistoricalPrefixOutcomeCounts,
     HistoricalPrefixRateRelation,
+    HistoricalPrefixRecentStabilityAuditCohortComparison,
+    HistoricalPrefixRecentStabilityAuditResult,
+    HistoricalPrefixRecentStabilityAuditSplit,
+    HistoricalPrefixRecentStabilityAuditStatus,
     HistoricalPrefixSignedRateDelta,
     HistoricalPrefixStrategyFeatureCohortDiagnostics,
     HistoricalPrefixStrategyFeatureCohortResult,
@@ -1077,6 +1084,159 @@ def _temporal_holdout(
     )
 
 
+def _recent_50_stability_audit(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+    assignments: tuple[HistoricalPrefixWalkForwardAssignment, ...],
+) -> HistoricalPrefixRecentStabilityAuditResult:
+    temporal_holdout = _temporal_holdout(
+        source=source,
+        strategy=strategy,
+        prefix_count=prefix_count,
+        criterion=criterion,
+        assignments=assignments,
+    )
+    temporal_split = temporal_holdout.split
+    if (
+        temporal_holdout.evaluation_status
+        is HistoricalPrefixTemporalHoldoutStatus.NOT_READY_INSUFFICIENT_HISTORY
+    ):
+        return HistoricalPrefixRecentStabilityAuditResult(
+            metadata=source.metadata,
+            strategy=strategy.identity,
+            criterion=_criterion_identity(criterion),
+            prefix_count=prefix_count,
+            split=HistoricalPrefixRecentStabilityAuditSplit(
+                source_temporal_split_method=TEMPORAL_HOLDOUT_SPLIT_METHOD,
+                audit_split_method=RECENT_AUDIT_SPLIT_METHOD,
+                total_assignment_count=temporal_split.total_assignment_count,
+                warmup_count=temporal_split.warmup_count,
+                discovery_count=0,
+                confirmation_count=0,
+                reference_count=0,
+                recent_count=0,
+                discovery_first_target=None,
+                discovery_last_target=None,
+                confirmation_first_target=None,
+                confirmation_last_target=None,
+                reference_first_target=None,
+                reference_last_target=None,
+                recent_first_target=None,
+                recent_last_target=None,
+            ),
+            audit_status=HistoricalPrefixRecentStabilityAuditStatus.NOT_READY_INSUFFICIENT_HISTORY,
+            family_size=64,
+            reference=None,
+            recent=None,
+            comparisons=(),
+        )
+
+    total_count = len(assignments)
+    confirmation_start = total_count - CONFIRMATION_TARGET_COUNT
+    recent_start = total_count - RECENT_AUDIT_TARGET_COUNT
+    confirmation_assignments = assignments[confirmation_start:]
+    reference_assignments = assignments[confirmation_start:recent_start]
+    recent_assignments = assignments[recent_start:]
+    if (
+        len(confirmation_assignments) != CONFIRMATION_TARGET_COUNT
+        or len(reference_assignments) != RECENT_REFERENCE_TARGET_COUNT
+        or len(recent_assignments) != RECENT_AUDIT_TARGET_COUNT
+        or reference_assignments + recent_assignments != confirmation_assignments
+        or reference_assignments[-1].chronological_index
+        >= recent_assignments[0].chronological_index
+        or set(reference_assignments).intersection(recent_assignments)
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "fixed recent stability audit partition is inconsistent"
+        )
+
+    reference = _feature_cohort_diagnostics(
+        _feature_cohorts_from_assignments(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=reference_assignments,
+        )
+    )
+    recent = _feature_cohort_diagnostics(
+        _feature_cohorts_from_assignments(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=recent_assignments,
+        )
+    )
+    comparisons = tuple(
+        HistoricalPrefixRecentStabilityAuditCohortComparison(
+            cohort_index=index,
+            feature_key=reference_diagnostic.feature_key,
+            reference_diagnostic=reference_diagnostic,
+            recent_diagnostic=recent_diagnostic,
+            effect_change=_effect_change(
+                reference_diagnostic.risk_difference,
+                recent_diagnostic.risk_difference,
+            ),
+            relationship=_temporal_relationship(
+                reference_diagnostic.relation_vs_outside,
+                recent_diagnostic.relation_vs_outside,
+            ),
+        )
+        for index, (reference_diagnostic, recent_diagnostic) in enumerate(
+            zip(reference.diagnostics, recent.diagnostics, strict=True)
+        )
+    )
+    if (
+        len(comparisons) != 64
+        or any(
+            comparison.cohort_index != index
+            or comparison.feature_key != comparison.reference_diagnostic.feature_key
+            or comparison.feature_key != comparison.recent_diagnostic.feature_key
+            for index, comparison in enumerate(comparisons)
+        )
+        or temporal_split.discovery_first_target is None
+        or temporal_split.discovery_last_target is None
+        or temporal_split.confirmation_first_target is None
+        or temporal_split.confirmation_last_target is None
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "recent stability audit comparison family is inconsistent"
+        )
+    return HistoricalPrefixRecentStabilityAuditResult(
+        metadata=source.metadata,
+        strategy=strategy.identity,
+        criterion=_criterion_identity(criterion),
+        prefix_count=prefix_count,
+        split=HistoricalPrefixRecentStabilityAuditSplit(
+            source_temporal_split_method=temporal_split.split_method,
+            audit_split_method=RECENT_AUDIT_SPLIT_METHOD,
+            total_assignment_count=total_count,
+            warmup_count=temporal_split.warmup_count,
+            discovery_count=temporal_split.discovery_count,
+            confirmation_count=temporal_split.confirmation_count,
+            reference_count=len(reference_assignments),
+            recent_count=len(recent_assignments),
+            discovery_first_target=temporal_split.discovery_first_target,
+            discovery_last_target=temporal_split.discovery_last_target,
+            confirmation_first_target=temporal_split.confirmation_first_target,
+            confirmation_last_target=temporal_split.confirmation_last_target,
+            reference_first_target=reference_assignments[0].target,
+            reference_last_target=reference_assignments[-1].target,
+            recent_first_target=recent_assignments[0].target,
+            recent_last_target=recent_assignments[-1].target,
+        ),
+        audit_status=HistoricalPrefixRecentStabilityAuditStatus.COMPLETE,
+        family_size=64,
+        reference=reference,
+        recent=recent,
+        comparisons=comparisons,
+    )
+
+
 def _cross_import_pair_status(
     left: HistoricalPrefixTemporalHoldoutStatus,
     right: HistoricalPrefixTemporalHoldoutStatus,
@@ -1613,6 +1773,44 @@ class EvaluateHistoricalPrefixSuccessWindows:
             strategy=strategy,
             prefix_count=prefix_count,
             criterion=criterion,
+        )
+
+    def get_feature_cohort_recent_50_stability_audit(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixRecentStabilityAuditResult:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+        source = self._load(import_identity_sha256)
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        assignments = _build_walk_forward_assignments(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        return _recent_50_stability_audit(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=assignments,
         )
 
     def get_cross_import_concordance(

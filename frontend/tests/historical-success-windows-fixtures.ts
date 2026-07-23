@@ -5,6 +5,7 @@ import type {
   HistoricalSuccessFeatureCohorts,
   HistoricalSuccessCrossImportConcordance,
   HistoricalSuccessMultiImportConcordanceCensus,
+  HistoricalSuccessRecent50StabilityAudit,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessTemporalHoldout,
   HistoricalSuccessWindowPage,
@@ -608,8 +609,8 @@ export function makeZeroObservationFeatureCohortDiagnostics():
 }
 
 function makeTemporalPhase(
-  observationCount: 750 | 300,
-  successCount: 300 | 120,
+  observationCount: 750 | 300 | 250 | 50,
+  successCount: 300 | 120 | 99 | 18,
 ): HistoricalSuccessFeatureCohortDiagnostics {
   const base = makeFeatureCohortDiagnostics()
   const firstCount = observationCount / 2
@@ -800,6 +801,146 @@ export function makeNotReadyTemporalHoldout():
     evaluation_status: 'NOT_READY_INSUFFICIENT_HISTORY',
     discovery: null,
     confirmation: null,
+    comparisons: [],
+  }
+}
+
+export function makeRecent50StabilityAudit(
+  overrides: Partial<HistoricalSuccessRecent50StabilityAudit> = {},
+): HistoricalSuccessRecent50StabilityAudit {
+  const reference = makeTemporalPhase(250, 99)
+  const recent = makeTemporalPhase(50, 18)
+  const comparisons = reference.diagnostics.map((reference_diagnostic, index) => {
+    const recent_diagnostic = recent.diagnostics[index]!
+    const referenceEffect = reference_diagnostic.risk_difference
+    const recentEffect = recent_diagnostic.risk_difference
+    const bothAvailable = referenceEffect.available && recentEffect.available
+    let effect_change = { numerator: 0, denominator: 0, available: false }
+    if (bothAvailable) {
+      const rawNumerator =
+        recentEffect.numerator * referenceEffect.denominator -
+        referenceEffect.numerator * recentEffect.denominator
+      const rawDenominator =
+        recentEffect.denominator * referenceEffect.denominator
+      const divisor = gcd(rawNumerator, rawDenominator)
+      effect_change = {
+        numerator: rawNumerator / divisor,
+        denominator: rawDenominator / divisor,
+        available: true,
+      }
+    }
+    const referenceRelation = reference_diagnostic.relation_vs_outside
+    const recentRelation = recent_diagnostic.relation_vs_outside
+    const relationship =
+      referenceRelation === 'UNAVAILABLE' || recentRelation === 'UNAVAILABLE'
+        ? 'UNAVAILABLE'
+        : referenceRelation !== recentRelation
+          ? 'DIFFERENT'
+          : referenceRelation === 'HIGHER'
+            ? 'SAME_HIGHER'
+            : referenceRelation === 'EQUAL'
+              ? 'SAME_EQUAL'
+              : 'SAME_LOWER'
+    return {
+      cohort_index: index,
+      feature_key: reference_diagnostic.feature_key,
+      reference_diagnostic,
+      recent_diagnostic,
+      effect_change,
+      relationship,
+    }
+  })
+  return {
+    metadata: reference.metadata,
+    strategy: reference.strategy,
+    criterion: reference.criterion,
+    prefix_count: reference.prefix_count,
+    split: {
+      source_temporal_split_method:
+        'FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION',
+      audit_split_method:
+        'FIXED_CONFIRMATION_FIRST_250_REFERENCE_LAST_50_RECENT',
+      total_assignment_count: 1100,
+      warmup_count: 50,
+      discovery_count: 750,
+      confirmation_count: 300,
+      reference_count: 250,
+      recent_count: 50,
+      discovery_first_target: {
+        draw_number: 51,
+        draw_date: '2025-02-20',
+        draw_sha256: '1'.repeat(64),
+      },
+      discovery_last_target: {
+        draw_number: 800,
+        draw_date: '2027-03-10',
+        draw_sha256: '2'.repeat(64),
+      },
+      confirmation_first_target: {
+        draw_number: 801,
+        draw_date: '2027-03-11',
+        draw_sha256: '3'.repeat(64),
+      },
+      confirmation_last_target: {
+        draw_number: 1100,
+        draw_date: '2028-01-04',
+        draw_sha256: '4'.repeat(64),
+      },
+      reference_first_target: {
+        draw_number: 801,
+        draw_date: '2027-03-11',
+        draw_sha256: '3'.repeat(64),
+      },
+      reference_last_target: {
+        draw_number: 1050,
+        draw_date: '2027-11-15',
+        draw_sha256: '5'.repeat(64),
+      },
+      recent_first_target: {
+        draw_number: 1051,
+        draw_date: '2027-11-16',
+        draw_sha256: '6'.repeat(64),
+      },
+      recent_last_target: {
+        draw_number: 1100,
+        draw_date: '2028-01-04',
+        draw_sha256: '4'.repeat(64),
+      },
+    },
+    audit_status: 'COMPLETE',
+    family_size: 64,
+    reference,
+    recent,
+    comparisons,
+    ...overrides,
+  }
+}
+
+export function makeNotReadyRecent50StabilityAudit():
+  HistoricalSuccessRecent50StabilityAudit {
+  const complete = makeRecent50StabilityAudit()
+  return {
+    ...complete,
+    split: {
+      ...complete.split,
+      total_assignment_count: 1049,
+      warmup_count: 1049,
+      discovery_count: 0,
+      confirmation_count: 0,
+      reference_count: 0,
+      recent_count: 0,
+      discovery_first_target: null,
+      discovery_last_target: null,
+      confirmation_first_target: null,
+      confirmation_last_target: null,
+      reference_first_target: null,
+      reference_last_target: null,
+      recent_first_target: null,
+      recent_last_target: null,
+    },
+    audit_status: 'NOT_READY_INSUFFICIENT_HISTORY',
+    reference: null,
+    recent: null,
     comparisons: [],
   }
 }

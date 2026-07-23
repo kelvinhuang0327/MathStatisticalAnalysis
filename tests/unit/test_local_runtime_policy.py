@@ -339,6 +339,11 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
             "temporal-holdout"
         ): {"get": {}},
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "recent-50-stability-audit"
+        ): {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
@@ -620,7 +625,7 @@ def test_smoke_rejects_historical_prefix_near_miss_paths(path: str) -> None:
         validate_openapi_payload({"paths": paths})
 
 
-def test_smoke_admits_exactly_eight_historical_prefix_success_window_gets() -> None:
+def test_smoke_admits_exactly_nine_historical_prefix_success_window_gets() -> None:
     paths = authorized_openapi_paths()
     expected = {
         "/api/v1/historical-prefix-success-windows",
@@ -654,6 +659,11 @@ def test_smoke_admits_exactly_eight_historical_prefix_success_window_gets() -> N
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
             "multi-import-concordance-census"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "recent-50-stability-audit"
         ),
     }
 
@@ -691,6 +701,11 @@ def test_smoke_admits_exactly_eight_historical_prefix_success_window_gets() -> N
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
             "temporal-holdout"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "recent-50-stability-audit"
         ),
     ],
 )

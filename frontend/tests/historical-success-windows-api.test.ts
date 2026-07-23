@@ -5,6 +5,7 @@ import {
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
+  getHistoricalSuccessRecent50StabilityAudit,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -24,10 +25,12 @@ import {
   makeResult,
   makeRunPage,
   makeNotReadyTemporalHoldout,
+  makeNotReadyRecent50StabilityAudit,
   makeNotReadyCrossImportConcordance,
   RIGHT_IMPORT_SHA,
   THIRD_IMPORT_SHA,
   makeTemporalHoldout,
+  makeRecent50StabilityAudit,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
 } from './historical-success-windows-fixtures'
@@ -295,6 +298,68 @@ describe('Historical Success Windows API client', () => {
     expect(result.evaluation_status).toBe('NOT_READY_INSUFFICIENT_HISTORY')
     expect(result.discovery).toBeNull()
     expect(result.confirmation).toBeNull()
+    expect(result.comparisons).toEqual([])
+  })
+
+  it('fetches the recent-50 stability audit with lossless probabilities and exact forwarding', async () => {
+    const controller = new AbortController()
+    const audit = makeRecent50StabilityAudit()
+    audit.recent!.diagnostics[0]!.raw_p_value = {
+      numerator: '9007199254740993',
+      denominator: '90071992547409931',
+    }
+    audit.recent!.diagnostics[0]!.adjusted_p_value = {
+      ...audit.recent!.diagnostics[0]!.raw_p_value,
+    }
+    fetchMock.mockResolvedValue(apiResponse(audit))
+
+    const result = await getHistoricalSuccessRecent50StabilityAudit(
+      {
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/recent-50-stability-audit',
+    )
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.audit_status).toBe('COMPLETE')
+    expect(result.reference!.diagnostics).toHaveLength(64)
+    expect(result.recent!.diagnostics).toHaveLength(64)
+    expect(result.comparisons).toHaveLength(64)
+    expect(
+      BigInt(result.recent!.diagnostics[0]!.raw_p_value.numerator),
+    ).toBeGreaterThan(BigInt(Number.MAX_SAFE_INTEGER))
+  })
+
+  it('accepts not-ready recent-50 audit without partial families', async () => {
+    fetchMock.mockResolvedValue(apiResponse(makeNotReadyRecent50StabilityAudit()))
+
+    const result = await getHistoricalSuccessRecent50StabilityAudit({
+      import_identity_sha256: IMPORT_SHA,
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+      prefix_count: 1,
+      criterion: 'M3_PLUS',
+    })
+
+    expect(result.audit_status).toBe('NOT_READY_INSUFFICIENT_HISTORY')
+    expect(result.reference).toBeNull()
+    expect(result.recent).toBeNull()
     expect(result.comparisons).toEqual([])
   })
 
@@ -665,6 +730,73 @@ describe('Historical Success Windows API client', () => {
 
     await expect(
       getHistoricalSuccessTemporalHoldout({
+        import_identity_sha256: IMPORT_SHA,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
+  })
+
+  it.each([
+    [
+      'wrong reference count',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.split.reference_count = 249 as 250
+      },
+    ],
+    [
+      'overlapping boundary',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.split.recent_first_target = result.split.reference_last_target
+      },
+    ],
+    [
+      'missing reference diagnostic',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.reference!.diagnostics.pop()
+      },
+    ],
+    [
+      'missing recent diagnostic',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.recent!.diagnostics.pop()
+      },
+    ],
+    [
+      'missing comparison',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.comparisons.pop()
+      },
+    ],
+    [
+      'duplicate comparison',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.comparisons[1] = result.comparisons[0]!
+      },
+    ],
+    [
+      'numeric probability',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.recent!.diagnostics[0]!.raw_p_value.numerator =
+          1 as unknown as string
+      },
+    ],
+    [
+      'reversed effect subtraction',
+      (result: ReturnType<typeof makeRecent50StabilityAudit>) => {
+        result.comparisons[0]!.effect_change.numerator += 1
+      },
+    ],
+  ])('rejects recent-50 stability audit with %s', async (_label, mutate) => {
+    const audit = makeRecent50StabilityAudit()
+    mutate(audit)
+    fetchMock.mockResolvedValue(apiResponse(audit))
+
+    await expect(
+      getHistoricalSuccessRecent50StabilityAudit({
         import_identity_sha256: IMPORT_SHA,
         strategy_id: 'alias strategy/one',
         strategy_version: 'v1 beta',

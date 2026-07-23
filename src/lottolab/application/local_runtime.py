@@ -86,6 +86,11 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     ): frozenset({"get"}),
     (
         "/api/v1/historical-prefix-success-windows/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+        "multi-import-concordance-census"
+    ): frozenset({"get"}),
+    (
+        "/api/v1/historical-prefix-success-windows/strategies/"
         "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout"
     ): frozenset({"get"}),
     "/api/v1/replay-rankings/optimal": frozenset({"get"}),

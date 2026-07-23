@@ -1359,6 +1359,126 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Multi Import Concordance Census",
+        "operationId": "getHistoricalPrefixStrategyMultiImportConcordanceCensus",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "minItems": 2,
+              "maxItems": 4,
+              "description": "Two to four distinct exact Historical Results import SHA-256 values; repeat this query parameter in caller order.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Two to four distinct exact Historical Results import SHA-256 values; repeat this query parameter in caller order."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalPrefixMultiImportConcordanceCensusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance": {
       "get": {
         "tags": [
@@ -3834,6 +3954,246 @@
           "historical_only_disclaimer_id"
         ],
         "title": "HistoricalPrefixMetadataView"
+      },
+      "HistoricalPrefixMultiImportCensusStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "PARTIAL_NOT_READY",
+          "ALL_NOT_READY"
+        ],
+        "title": "HistoricalPrefixMultiImportCensusStatus"
+      },
+      "HistoricalPrefixMultiImportCensusSummary": {
+        "type": "string",
+        "enum": [
+          "ALL_AVAILABLE_HIGHER",
+          "ALL_AVAILABLE_EQUAL",
+          "ALL_AVAILABLE_LOWER",
+          "MIXED_AVAILABLE",
+          "PARTIAL_AVAILABILITY",
+          "NO_AVAILABLE_EFFECT"
+        ],
+        "title": "HistoricalPrefixMultiImportCensusSummary"
+      },
+      "HistoricalPrefixMultiImportCohortCensusRowView": {
+        "properties": {
+          "cohort_index": {
+            "type": "integer",
+            "maximum": 63.0,
+            "minimum": 0.0,
+            "title": "Cohort Index"
+          },
+          "feature_key": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureRelationTripleView"
+          },
+          "confirmation_diagnostics": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixMultiImportConfirmationDiagnosticView"
+            },
+            "type": "array",
+            "title": "Confirmation Diagnostics"
+          },
+          "higher_count": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Higher Count"
+          },
+          "equal_count": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Equal Count"
+          },
+          "lower_count": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Lower Count"
+          },
+          "unavailable_count": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Unavailable Count"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/HistoricalPrefixMultiImportCensusSummary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "cohort_index",
+          "feature_key",
+          "confirmation_diagnostics",
+          "higher_count",
+          "equal_count",
+          "lower_count",
+          "unavailable_count",
+          "summary"
+        ],
+        "title": "HistoricalPrefixMultiImportCohortCensusRowView"
+      },
+      "HistoricalPrefixMultiImportConcordanceCensusResponse": {
+        "properties": {
+          "imports": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixMultiImportSourceView"
+            },
+            "type": "array",
+            "title": "Imports"
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessStrategyIdentityView"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterionView"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "census_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixMultiImportCensusStatus"
+          },
+          "pair_count": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Pair Count"
+          },
+          "pairs": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixMultiImportPairView"
+            },
+            "type": "array",
+            "title": "Pairs"
+          },
+          "cohort_census_count": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 0.0,
+            "title": "Cohort Census Count"
+          },
+          "cohort_census": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalPrefixMultiImportCohortCensusRowView"
+            },
+            "type": "array",
+            "title": "Cohort Census"
+          }
+        },
+        "type": "object",
+        "required": [
+          "imports",
+          "strategy",
+          "criterion",
+          "prefix_count",
+          "census_status",
+          "pair_count",
+          "pairs",
+          "cohort_census_count",
+          "cohort_census"
+        ],
+        "title": "HistoricalPrefixMultiImportConcordanceCensusResponse"
+      },
+      "HistoricalPrefixMultiImportConfirmationDiagnosticView": {
+        "properties": {
+          "import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Import Index"
+          },
+          "import_identity_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Import Identity Sha256"
+          },
+          "diagnostic": {
+            "$ref": "#/components/schemas/HistoricalPrefixFeatureCohortDiagnosticView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "import_index",
+          "import_identity_sha256",
+          "diagnostic"
+        ],
+        "title": "HistoricalPrefixMultiImportConfirmationDiagnosticView"
+      },
+      "HistoricalPrefixMultiImportPairView": {
+        "properties": {
+          "left_import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Left Import Index"
+          },
+          "right_import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Right Import Index"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixCrossImportMetadataView"
+          },
+          "pair_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixCrossImportPairStatus"
+          },
+          "left_holdout_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutStatus"
+          },
+          "right_holdout_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutStatus"
+          },
+          "confirmation_target_overlap": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalPrefixConfirmationTargetOverlapView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "left_import_index",
+          "right_import_index",
+          "metadata",
+          "pair_status",
+          "left_holdout_status",
+          "right_holdout_status",
+          "confirmation_target_overlap"
+        ],
+        "title": "HistoricalPrefixMultiImportPairView"
+      },
+      "HistoricalPrefixMultiImportSourceView": {
+        "properties": {
+          "import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Import Index"
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessSourceMetadataView"
+          },
+          "holdout_status": {
+            "$ref": "#/components/schemas/HistoricalPrefixTemporalHoldoutStatus"
+          }
+        },
+        "type": "object",
+        "required": [
+          "import_index",
+          "metadata",
+          "holdout_status"
+        ],
+        "title": "HistoricalPrefixMultiImportSourceView"
       },
       "HistoricalPrefixOutcomeCountsView": {
         "properties": {

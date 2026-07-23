@@ -16,6 +16,8 @@ export type HistoricalSuccessTemporalHoldout =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/temporal-holdout']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessCrossImportConcordance =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessMultiImportConcordanceCensus =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -124,6 +126,15 @@ export interface HistoricalSuccessTemporalHoldoutQuery
 export interface HistoricalSuccessCrossImportConcordanceQuery {
   left_import_identity_sha256: string
   right_import_identity_sha256: string
+  strategy_id: string
+  strategy_version: string
+  replicate: number
+  prefix_count: HistoricalSuccessPrefixCount
+  criterion: HistoricalSuccessCriterion
+}
+
+export interface HistoricalSuccessMultiImportConcordanceCensusQuery {
+  import_identity_sha256: readonly string[]
   strategy_id: string
   strategy_version: string
   replicate: number
@@ -1190,6 +1201,199 @@ function isCrossImportConcordance(
   })
 }
 
+function isMultiImportConcordanceCensus(
+  value: unknown,
+  query: HistoricalSuccessMultiImportConcordanceCensusQuery,
+): value is HistoricalSuccessMultiImportConcordanceCensus {
+  const identities = [...query.import_identity_sha256]
+  if (
+    !isRecord(value) ||
+    identities.length < 2 ||
+    identities.length > 4 ||
+    new Set(identities).size !== identities.length ||
+    !identities.every(isSha256) ||
+    !isStrategyIdentity(value.strategy) ||
+    !isCriterion(value.criterion, query.criterion) ||
+    value.prefix_count !== query.prefix_count ||
+    !Array.isArray(value.imports) ||
+    value.imports.length !== identities.length ||
+    !Array.isArray(value.pairs) ||
+    !Array.isArray(value.cohort_census)
+  ) {
+    return false
+  }
+  const strategy = value.strategy as Record<string, unknown>
+  if (
+    strategy.strategy_id !== query.strategy_id ||
+    strategy.strategy_version !== query.strategy_version ||
+    strategy.replicate !== query.replicate
+  ) {
+    return false
+  }
+  const holdoutStatuses: string[] = []
+  for (const [index, item] of value.imports.entries()) {
+    if (
+      !isRecord(item) ||
+      item.import_index !== index ||
+      !isMetadata(item.metadata, identities[index]!) ||
+      !['COMPLETE', 'NOT_READY_INSUFFICIENT_HISTORY'].includes(
+        String(item.holdout_status),
+      )
+    ) {
+      return false
+    }
+    holdoutStatuses.push(String(item.holdout_status))
+  }
+  const readyCount = holdoutStatuses.filter((status) => status === 'COMPLETE').length
+  const expectedCensusStatus =
+    readyCount === identities.length
+      ? 'COMPLETE'
+      : readyCount === 0
+        ? 'ALL_NOT_READY'
+        : 'PARTIAL_NOT_READY'
+  if (value.census_status !== expectedCensusStatus) return false
+
+  const expectedPairs = identities.flatMap((_, left) =>
+    identities.slice(left + 1).map((__, offset) => [left, left + offset + 1] as const),
+  )
+  if (
+    value.pair_count !== expectedPairs.length ||
+    value.pairs.length !== expectedPairs.length
+  ) {
+    return false
+  }
+  for (const [pairIndex, pair] of value.pairs.entries()) {
+    const [leftIndex, rightIndex] = expectedPairs[pairIndex]!
+    if (
+      !isRecord(pair) ||
+      pair.left_import_index !== leftIndex ||
+      pair.right_import_index !== rightIndex ||
+      !isRecord(pair.metadata) ||
+      !isMetadata(pair.metadata.left, identities[leftIndex]!) ||
+      !isMetadata(pair.metadata.right, identities[rightIndex]!) ||
+      pair.left_holdout_status !== holdoutStatuses[leftIndex] ||
+      pair.right_holdout_status !== holdoutStatuses[rightIndex]
+    ) {
+      return false
+    }
+    const leftMetadata = pair.metadata.left as Record<string, unknown>
+    const rightMetadata = pair.metadata.right as Record<string, unknown>
+    if (
+      pair.metadata.same_dataset_sha256 !==
+        (leftMetadata.dataset_sha256 === rightMetadata.dataset_sha256) ||
+      pair.metadata.same_source_artifact_sha256 !==
+        (leftMetadata.source_artifact_sha256 ===
+          rightMetadata.source_artifact_sha256)
+    ) {
+      return false
+    }
+    const leftReady = holdoutStatuses[leftIndex] === 'COMPLETE'
+    const rightReady = holdoutStatuses[rightIndex] === 'COMPLETE'
+    const expectedPairStatus =
+      leftReady && rightReady
+        ? 'COMPLETE'
+        : !leftReady && !rightReady
+          ? 'BOTH_NOT_READY'
+          : !leftReady
+            ? 'LEFT_NOT_READY'
+            : 'RIGHT_NOT_READY'
+    if (pair.pair_status !== expectedPairStatus) return false
+    if (!leftReady || !rightReady) {
+      if (pair.confirmation_target_overlap !== null) return false
+      continue
+    }
+    const overlap = pair.confirmation_target_overlap
+    if (
+      !isRecord(overlap) ||
+      overlap.left_confirmation_target_count !== 300 ||
+      overlap.right_confirmation_target_count !== 300 ||
+      !isNonNegativeInteger(overlap.overlap_count) ||
+      !isNonNegativeInteger(overlap.left_only_count) ||
+      !isNonNegativeInteger(overlap.right_only_count) ||
+      overlap.left_only_count + overlap.overlap_count !== 300 ||
+      overlap.right_only_count + overlap.overlap_count !== 300 ||
+      overlap.relation !==
+        (overlap.overlap_count === 0
+          ? 'DISJOINT'
+          : overlap.overlap_count === 300
+            ? 'IDENTICAL'
+            : 'PARTIAL_OVERLAP')
+    ) {
+      return false
+    }
+  }
+
+  if (expectedCensusStatus !== 'COMPLETE') {
+    return value.cohort_census_count === 0 && value.cohort_census.length === 0
+  }
+  if (
+    value.cohort_census_count !== 64 ||
+    value.cohort_census.length !== 64
+  ) {
+    return false
+  }
+  return value.cohort_census.every((row, cohortIndex) => {
+    if (
+      !isRecord(row) ||
+      row.cohort_index !== cohortIndex ||
+      !isFeatureKey(row.feature_key, cohortIndex) ||
+      !Array.isArray(row.confirmation_diagnostics) ||
+      row.confirmation_diagnostics.length !== identities.length ||
+      !isNonNegativeInteger(row.higher_count) ||
+      !isNonNegativeInteger(row.equal_count) ||
+      !isNonNegativeInteger(row.lower_count) ||
+      !isNonNegativeInteger(row.unavailable_count) ||
+      row.higher_count +
+        row.equal_count +
+        row.lower_count +
+        row.unavailable_count !==
+        identities.length
+    ) {
+      return false
+    }
+    const expectedSummary =
+      row.unavailable_count === identities.length
+        ? 'NO_AVAILABLE_EFFECT'
+        : row.unavailable_count > 0
+          ? 'PARTIAL_AVAILABILITY'
+          : row.higher_count === identities.length
+            ? 'ALL_AVAILABLE_HIGHER'
+            : row.equal_count === identities.length
+              ? 'ALL_AVAILABLE_EQUAL'
+              : row.lower_count === identities.length
+                ? 'ALL_AVAILABLE_LOWER'
+                : 'MIXED_AVAILABLE'
+    if (row.summary !== expectedSummary) return false
+    return row.confirmation_diagnostics.every((item, importIndex) => {
+      if (
+        !isRecord(item) ||
+        item.import_index !== importIndex ||
+        item.import_identity_sha256 !== identities[importIndex] ||
+        !isRecord(item.diagnostic) ||
+        !isOutcomeCounts(item.diagnostic.cohort_counts) ||
+        !isOutcomeCounts(item.diagnostic.outside_counts)
+      ) {
+        return false
+      }
+      const baseline = {
+        observation_count:
+          item.diagnostic.cohort_counts.observation_count +
+          item.diagnostic.outside_counts.observation_count,
+        success_count:
+          item.diagnostic.cohort_counts.success_count +
+          item.diagnostic.outside_counts.success_count,
+        failure_count:
+          item.diagnostic.cohort_counts.failure_count +
+          item.diagnostic.outside_counts.failure_count,
+      }
+      return (
+        baseline.observation_count === 300 &&
+        isFeatureCohortDiagnostic(item.diagnostic, cohortIndex, baseline)
+      )
+    })
+  })
+}
+
 function isSuccessPage(
   value: unknown,
   query: HistoricalSuccessWindowQuery,
@@ -1451,5 +1655,44 @@ export async function getHistoricalSuccessCrossImportConcordance(
     signal,
   )
   if (!isCrossImportConcordance(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessMultiImportConcordanceCensus(
+  query: HistoricalSuccessMultiImportConcordanceCensusQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessMultiImportConcordanceCensus> {
+  const identities = [...query.import_identity_sha256]
+  if (
+    identities.length < 2 ||
+    identities.length > 4 ||
+    new Set(identities).size !== identities.length ||
+    !identities.every(isSha256)
+  ) {
+    throw new HistoricalSuccessWindowsRequestError(
+      'Select two to four distinct historical imports.',
+      422,
+      'INVALID_REQUEST',
+      'REQUEST_VALIDATION_FAILED',
+    )
+  }
+  const parameters = new URLSearchParams()
+  for (const identity of identities) {
+    parameters.append('import_identity_sha256', identity)
+  }
+  parameters.set('prefix_count', String(query.prefix_count))
+  parameters.set('criterion', query.criterion)
+  const strategyIdentity = [
+    query.strategy_id,
+    query.strategy_version,
+    String(query.replicate),
+  ]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${strategyIdentity}/feature-cohorts/multi-import-concordance-census?${parameters.toString()}`,
+    signal,
+  )
+  if (!isMultiImportConcordanceCensus(payload, query)) throw malformedResponse()
   return payload
 }

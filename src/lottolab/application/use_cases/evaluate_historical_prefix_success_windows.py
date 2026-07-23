@@ -33,6 +33,13 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixFeatureCohortSummary,
     HistoricalPrefixFeatureCohortTestStatus,
     HistoricalPrefixFeatureRelationTriple,
+    HistoricalPrefixMultiImportCensusStatus,
+    HistoricalPrefixMultiImportCensusSummary,
+    HistoricalPrefixMultiImportCohortCensusRow,
+    HistoricalPrefixMultiImportConcordanceCensusResult,
+    HistoricalPrefixMultiImportConfirmationDiagnostic,
+    HistoricalPrefixMultiImportPairResult,
+    HistoricalPrefixMultiImportSourceResult,
     HistoricalPrefixOutcomeCounts,
     HistoricalPrefixRateRelation,
     HistoricalPrefixSignedRateDelta,
@@ -138,6 +145,15 @@ def _validate_import_identity(import_identity_sha256: str) -> None:
         or _SHA256_PATTERN.fullmatch(import_identity_sha256) is None
     ):
         raise _contract_error("import_identity_sha256 must be an exact lowercase SHA-256")
+
+
+def _validate_import_identities(import_identity_sha256s: tuple[str, ...]) -> None:
+    if type(import_identity_sha256s) is not tuple or not 2 <= len(import_identity_sha256s) <= 4:
+        raise _contract_error("import_identity_sha256 must contain exactly 2 to 4 values")
+    for import_identity_sha256 in import_identity_sha256s:
+        _validate_import_identity(import_identity_sha256)
+    if len(set(import_identity_sha256s)) != len(import_identity_sha256s):
+        raise _contract_error("import identities must be distinct")
 
 
 def _validate_prefix_count(prefix_count: int) -> None:
@@ -1159,6 +1175,178 @@ def _cross_import_comparisons(
     return comparisons
 
 
+def _multi_import_census_status(
+    holdouts: tuple[HistoricalPrefixTemporalHoldoutResult, ...],
+) -> HistoricalPrefixMultiImportCensusStatus:
+    ready_count = sum(
+        holdout.evaluation_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        for holdout in holdouts
+    )
+    if ready_count == len(holdouts):
+        return HistoricalPrefixMultiImportCensusStatus.COMPLETE
+    if ready_count == 0:
+        return HistoricalPrefixMultiImportCensusStatus.ALL_NOT_READY
+    return HistoricalPrefixMultiImportCensusStatus.PARTIAL_NOT_READY
+
+
+def _multi_import_census_summary(
+    *,
+    import_count: int,
+    higher_count: int,
+    equal_count: int,
+    lower_count: int,
+    unavailable_count: int,
+) -> HistoricalPrefixMultiImportCensusSummary:
+    if higher_count + equal_count + lower_count + unavailable_count != import_count:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "multi-import census direction counts are inconsistent"
+        )
+    if unavailable_count == import_count:
+        return HistoricalPrefixMultiImportCensusSummary.NO_AVAILABLE_EFFECT
+    if unavailable_count > 0:
+        return HistoricalPrefixMultiImportCensusSummary.PARTIAL_AVAILABILITY
+    if higher_count == import_count:
+        return HistoricalPrefixMultiImportCensusSummary.ALL_AVAILABLE_HIGHER
+    if equal_count == import_count:
+        return HistoricalPrefixMultiImportCensusSummary.ALL_AVAILABLE_EQUAL
+    if lower_count == import_count:
+        return HistoricalPrefixMultiImportCensusSummary.ALL_AVAILABLE_LOWER
+    return HistoricalPrefixMultiImportCensusSummary.MIXED_AVAILABLE
+
+
+def _multi_import_pairs(
+    *,
+    sources: tuple[HistoricalPrefixSuccessWindowSource, ...],
+    assignments: tuple[tuple[HistoricalPrefixWalkForwardAssignment, ...], ...],
+    holdouts: tuple[HistoricalPrefixTemporalHoldoutResult, ...],
+) -> tuple[HistoricalPrefixMultiImportPairResult, ...]:
+    pairs = tuple(
+        HistoricalPrefixMultiImportPairResult(
+            left_import_index=left_index,
+            right_import_index=right_index,
+            metadata=HistoricalPrefixCrossImportMetadata(
+                left=sources[left_index].metadata,
+                right=sources[right_index].metadata,
+                same_dataset_sha256=(
+                    sources[left_index].metadata.dataset_sha256
+                    == sources[right_index].metadata.dataset_sha256
+                ),
+                same_source_artifact_sha256=(
+                    sources[left_index].metadata.source_artifact_sha256
+                    == sources[right_index].metadata.source_artifact_sha256
+                ),
+            ),
+            pair_status=_cross_import_pair_status(
+                holdouts[left_index].evaluation_status,
+                holdouts[right_index].evaluation_status,
+            ),
+            left_holdout_status=holdouts[left_index].evaluation_status,
+            right_holdout_status=holdouts[right_index].evaluation_status,
+            confirmation_target_overlap=(
+                _confirmation_target_overlap(
+                    assignments[left_index],
+                    assignments[right_index],
+                )
+                if (
+                    holdouts[left_index].evaluation_status
+                    is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+                    and holdouts[right_index].evaluation_status
+                    is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+                )
+                else None
+            ),
+        )
+        for left_index in range(len(sources))
+        for right_index in range(left_index + 1, len(sources))
+    )
+    expected_count = len(sources) * (len(sources) - 1) // 2
+    if len(pairs) != expected_count:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "multi-import pair matrix cardinality is inconsistent"
+        )
+    return pairs
+
+
+def _multi_import_cohort_census(
+    sources: tuple[HistoricalPrefixSuccessWindowSource, ...],
+    holdouts: tuple[HistoricalPrefixTemporalHoldoutResult, ...],
+) -> tuple[HistoricalPrefixMultiImportCohortCensusRow, ...]:
+    confirmations = tuple(holdout.confirmation for holdout in holdouts)
+    if any(confirmation is None for confirmation in confirmations):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "complete multi-import census requires every confirmation family"
+        )
+    diagnostics_by_import = tuple(
+        confirmation.diagnostics
+        for confirmation in confirmations
+        if confirmation is not None
+    )
+    if len(diagnostics_by_import) != len(holdouts) or any(
+        len(diagnostics) != 64 for diagnostics in diagnostics_by_import
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "multi-import confirmation families are inconsistent"
+        )
+
+    rows: list[HistoricalPrefixMultiImportCohortCensusRow] = []
+    for cohort_index in range(64):
+        diagnostics = tuple(
+            HistoricalPrefixMultiImportConfirmationDiagnostic(
+                import_index=import_index,
+                import_identity_sha256=sources[import_index].metadata.import_identity_sha256,
+                diagnostic=import_diagnostics[cohort_index],
+            )
+            for import_index, import_diagnostics in enumerate(diagnostics_by_import)
+        )
+        feature_key = diagnostics[0].diagnostic.feature_key
+        if any(
+            item.import_index != import_index
+            or item.import_identity_sha256
+            != sources[import_index].metadata.import_identity_sha256
+            or item.diagnostic.cohort_index != cohort_index
+            or item.diagnostic.feature_key != feature_key
+            for import_index, item in enumerate(diagnostics)
+        ):
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "multi-import confirmation cohort identity is inconsistent"
+            )
+        higher_count = sum(
+            item.diagnostic.relation_vs_outside is HistoricalPrefixRateRelation.HIGHER
+            for item in diagnostics
+        )
+        equal_count = sum(
+            item.diagnostic.relation_vs_outside is HistoricalPrefixRateRelation.EQUAL
+            for item in diagnostics
+        )
+        lower_count = sum(
+            item.diagnostic.relation_vs_outside is HistoricalPrefixRateRelation.LOWER
+            for item in diagnostics
+        )
+        unavailable_count = sum(
+            item.diagnostic.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+            for item in diagnostics
+        )
+        rows.append(
+            HistoricalPrefixMultiImportCohortCensusRow(
+                cohort_index=cohort_index,
+                feature_key=feature_key,
+                confirmation_diagnostics=diagnostics,
+                higher_count=higher_count,
+                equal_count=equal_count,
+                lower_count=lower_count,
+                unavailable_count=unavailable_count,
+                summary=_multi_import_census_summary(
+                    import_count=len(diagnostics),
+                    higher_count=higher_count,
+                    equal_count=equal_count,
+                    lower_count=lower_count,
+                    unavailable_count=unavailable_count,
+                ),
+            )
+        )
+    return tuple(rows)
+
+
 def _matrix_cell(
     result: HistoricalPrefixStrategySuccessWindowResult,
 ) -> HistoricalPrefixStrategySuccessMatrixCell:
@@ -1529,6 +1717,95 @@ class EvaluateHistoricalPrefixSuccessWindows:
                 if complete
                 else ()
             ),
+        )
+
+    def get_multi_import_concordance_census(
+        self,
+        *,
+        import_identity_sha256s: tuple[str, ...],
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixMultiImportConcordanceCensusResult:
+        _validate_import_identities(import_identity_sha256s)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+
+        reader = self._reader_factory()
+        sources = tuple(
+            self._load_with_reader(reader, import_identity_sha256)
+            for import_identity_sha256 in import_identity_sha256s
+        )
+        strategies = tuple(
+            _find_exact_strategy(
+                source,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+            )
+            for source in sources
+        )
+        if any(strategy.identity != strategies[0].identity for strategy in strategies[1:]):
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "multi-import exact strategy identities do not match"
+            )
+        assignments = tuple(
+            _build_walk_forward_assignments(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+            )
+            for source, strategy in zip(sources, strategies, strict=True)
+        )
+        holdouts = tuple(
+            _temporal_holdout(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+                assignments=source_assignments,
+            )
+            for source, strategy, source_assignments in zip(
+                sources,
+                strategies,
+                assignments,
+                strict=True,
+            )
+        )
+        census_status = _multi_import_census_status(holdouts)
+        pairs = _multi_import_pairs(
+            sources=sources,
+            assignments=assignments,
+            holdouts=holdouts,
+        )
+        cohort_census = (
+            _multi_import_cohort_census(sources, holdouts)
+            if census_status is HistoricalPrefixMultiImportCensusStatus.COMPLETE
+            else ()
+        )
+        return HistoricalPrefixMultiImportConcordanceCensusResult(
+            imports=tuple(
+                HistoricalPrefixMultiImportSourceResult(
+                    metadata=source.metadata,
+                    holdout_status=holdout.evaluation_status,
+                )
+                for source, holdout in zip(sources, holdouts, strict=True)
+            ),
+            strategy=strategies[0].identity,
+            criterion=_criterion_identity(criterion),
+            prefix_count=prefix_count,
+            census_status=census_status,
+            pair_count=len(pairs),
+            pairs=pairs,
+            cohort_census_count=len(cohort_census),
+            cohort_census=cohort_census,
         )
 
 

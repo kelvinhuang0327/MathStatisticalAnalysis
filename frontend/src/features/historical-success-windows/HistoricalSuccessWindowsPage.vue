@@ -5,6 +5,7 @@ import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessCrossImportConcordance,
+  getHistoricalSuccessMultiImportConcordanceCensus,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -19,6 +20,7 @@ import {
   type HistoricalSuccessFeatureCohortDiagnostics,
   type HistoricalSuccessFeatureCohorts,
   type HistoricalSuccessCrossImportConcordance,
+  type HistoricalSuccessMultiImportConcordanceCensus,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessTemporalHoldout,
@@ -74,6 +76,11 @@ type CrossImportConcordanceOutcome = {
 }
 type CrossImportConcordanceComparison =
   HistoricalSuccessCrossImportConcordance['comparisons'][number]
+type MultiImportConcordanceCensusOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessMultiImportConcordanceCensus | null
+  error: string
+}
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -105,6 +112,9 @@ const temporalHoldoutState = ref<MatrixState>('idle')
 const temporalHoldoutResults = ref<TemporalHoldoutOutcome[]>([])
 const crossImportConcordanceState = ref<MatrixState>('idle')
 const crossImportConcordanceResults = ref<CrossImportConcordanceOutcome[]>([])
+const censusImportSelections = ref<HistoricalRun[]>([])
+const multiImportCensusState = ref<MatrixState>('idle')
+const multiImportCensusResults = ref<MultiImportConcordanceCensusOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
@@ -115,6 +125,7 @@ let featureCohortGeneration = 0
 let featureCohortDiagnosticsGeneration = 0
 let temporalHoldoutGeneration = 0
 let crossImportConcordanceGeneration = 0
+let multiImportCensusGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
@@ -123,6 +134,7 @@ let featureCohortController: AbortController | undefined
 let featureCohortDiagnosticsController: AbortController | undefined
 let temporalHoldoutController: AbortController | undefined
 let crossImportConcordanceController: AbortController | undefined
+let multiImportCensusController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -156,6 +168,9 @@ const canResultNext = computed(() => {
   return page !== null && page.offset + page.items.length < page.total_count
 })
 const matrixSelectionLimitReached = computed(() => matrixSelections.value.length >= 4)
+const censusImportSelectionLimitReached = computed(
+  () => censusImportSelections.value.length >= 4,
+)
 
 function errorMessage(error: unknown): string {
   return error instanceof HistoricalSuccessWindowsRequestError
@@ -278,6 +293,53 @@ function clearCrossImportConcordance(): void {
     matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearMultiImportCensus(): void {
+  multiImportCensusGeneration += 1
+  multiImportCensusController?.abort()
+  multiImportCensusResults.value = []
+  multiImportCensusState.value =
+    censusImportSelections.value.length >= 2 &&
+    matrixSelections.value.length > 0
+      ? 'selected'
+      : 'idle'
+}
+
+function isCensusImportSelected(run: HistoricalRun): boolean {
+  return censusImportSelections.value.some(
+    (selected) =>
+      selected.import_identity_sha256 === run.import_identity_sha256,
+  )
+}
+
+function toggleCensusImportSelection(run: HistoricalRun, event: Event): void {
+  const checked = (event.target as HTMLInputElement).checked
+  if (checked) {
+    if (
+      censusImportSelections.value.length >= 4 ||
+      isCensusImportSelected(run)
+    ) {
+      ;(event.target as HTMLInputElement).checked =
+        isCensusImportSelected(run)
+      return
+    }
+    censusImportSelections.value = [...censusImportSelections.value, run]
+  } else {
+    censusImportSelections.value = censusImportSelections.value.filter(
+      (selected) =>
+        selected.import_identity_sha256 !== run.import_identity_sha256,
+    )
+  }
+  clearMultiImportCensus()
+}
+
+function removeCensusImport(run: HistoricalRun): void {
+  censusImportSelections.value = censusImportSelections.value.filter(
+    (selected) =>
+      selected.import_identity_sha256 !== run.import_identity_sha256,
+  )
+  clearMultiImportCensus()
+}
+
 function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   const checked = (event.target as HTMLInputElement).checked
   const identity = matrixIdentity(item)
@@ -300,6 +362,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
   clearCrossImportConcordance()
+  clearMultiImportCensus()
 }
 
 function chooseRun(): void {
@@ -315,6 +378,7 @@ function chooseRun(): void {
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
   clearCrossImportConcordance()
+  clearMultiImportCensus()
 }
 
 function chooseComparisonRun(): void {
@@ -332,6 +396,7 @@ function controlsChanged(): void {
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
   clearCrossImportConcordance()
+  clearMultiImportCensus()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -559,6 +624,76 @@ async function evaluateCrossImportConcordance(): Promise<void> {
     successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
+async function evaluateMultiImportCensus(): Promise<void> {
+  const imports = [...censusImportSelections.value]
+  const selections = [...matrixSelections.value]
+  if (
+    imports.length < 2 ||
+    imports.length > 4 ||
+    selections.length < 1 ||
+    selections.length > 4
+  ) {
+    return
+  }
+  const importIdentities = imports.map(
+    (run) => run.import_identity_sha256,
+  )
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++multiImportCensusGeneration
+  multiImportCensusController?.abort()
+  const controller = new AbortController()
+  multiImportCensusController = controller
+  multiImportCensusResults.value = []
+  multiImportCensusState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(
+      async (
+        selection,
+      ): Promise<MultiImportConcordanceCensusOutcome> => {
+        try {
+          const result =
+            await getHistoricalSuccessMultiImportConcordanceCensus(
+              {
+                import_identity_sha256: importIdentities,
+                strategy_id: selection.strategy.strategy_id,
+                strategy_version: selection.strategy.strategy_version,
+                replicate: selection.strategy.replicate,
+                prefix_count: selectedPrefix,
+                criterion: selectedCriterion,
+              },
+              controller.signal,
+            )
+          return { selection, result, error: '' }
+        } catch (error: unknown) {
+          return {
+            selection,
+            result: null,
+            error: errorMessage(error),
+          }
+        }
+      },
+    ),
+  )
+  if (
+    !mounted ||
+    generation !== multiImportCensusGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  multiImportCensusResults.value = outcomes
+  const successes = outcomes.filter(
+    (outcome) => outcome.result !== null,
+  ).length
+  multiImportCensusState.value =
+    successes === outcomes.length
+      ? 'ready'
+      : successes > 0
+        ? 'partial'
+        : 'error'
+}
+
 async function loadResults(offset: number): Promise<void> {
   const run = selectedRun.value
   if (run === null) return
@@ -745,6 +880,7 @@ onBeforeUnmount(() => {
   featureCohortDiagnosticsGeneration += 1
   temporalHoldoutGeneration += 1
   crossImportConcordanceGeneration += 1
+  multiImportCensusGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
@@ -753,6 +889,7 @@ onBeforeUnmount(() => {
   featureCohortDiagnosticsController?.abort()
   temporalHoldoutController?.abort()
   crossImportConcordanceController?.abort()
+  multiImportCensusController?.abort()
 })
 </script>
 
@@ -855,6 +992,54 @@ onBeforeUnmount(() => {
         >
           Choose two distinct imports for cross-import concordance.
         </p>
+        <fieldset class="census-import-selector">
+          <legend>
+            Multi-import census runs — choose 2–4 explicitly; selection order is
+            preserved across pages
+          </legend>
+          <label
+            v-for="run in runsPage.items"
+            :key="`census:${run.import_identity_sha256}`"
+            class="census-import-option"
+          >
+            <input
+              type="checkbox"
+              :checked="isCensusImportSelected(run)"
+              :disabled="
+                censusImportSelectionLimitReached &&
+                !isCensusImportSelected(run)
+              "
+              @change="toggleCensusImportSelection(run, $event)"
+            />
+            <span>
+              {{ run.dataset_identity }} · {{ run.completed_at }} ·
+              <code>{{ run.import_identity_sha256 }}</code>
+            </span>
+          </label>
+          <p v-if="censusImportSelections.length === 0" class="explicit-action-note">
+            No census import is selected automatically.
+          </p>
+          <ol
+            v-else
+            class="census-import-selection-order"
+            aria-label="Ordered multi-import census selection"
+          >
+            <li
+              v-for="(run, index) in censusImportSelections"
+              :key="`selected-census:${run.import_identity_sha256}`"
+            >
+              <span>{{ index + 1 }} · {{ run.dataset_identity }}</span>
+              <code>{{ run.import_identity_sha256 }}</code>
+              <button
+                class="button button--quiet census-import-remove"
+                type="button"
+                @click="removeCensusImport(run)"
+              >
+                Remove
+              </button>
+            </li>
+          </ol>
+        </fieldset>
 
         <nav class="research-pagination" aria-label="Historical run pages">
           <button
@@ -1775,6 +1960,278 @@ onBeforeUnmount(() => {
       </ol>
     </section>
 
+    <section
+      class="research-results multi-import-census-panel"
+      aria-labelledby="multi-import-census-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">Ordered 2–4 import confirmation census</p>
+          <h2 id="multi-import-census-title">
+            Multi-import concordance census
+          </h2>
+        </div>
+        <button
+          class="button multi-import-census-action"
+          type="button"
+          :disabled="
+            censusImportSelections.length < 2 ||
+            censusImportSelections.length > 4 ||
+            matrixSelections.length === 0
+          "
+          @click="evaluateMultiImportCensus"
+        >
+          Evaluate multi-import concordance census
+        </button>
+      </div>
+
+      <p
+        v-if="censusImportSelections.length < 2"
+        class="research-state"
+      >
+        Select two to four distinct imports in the source panel. No import is
+        selected and no request is issued automatically.
+      </p>
+      <p
+        v-else-if="matrixSelections.length === 0"
+        class="research-state"
+      >
+        Select one to four exact strategy identities from the primary run.
+      </p>
+      <p
+        v-else-if="multiImportCensusState === 'selected'"
+        class="research-state"
+      >
+        {{ censusImportSelections.length }} imports and
+        {{ matrixSelections.length }} strategies are selected in manual order.
+        Evaluation runs only from the explicit action.
+      </p>
+      <p
+        v-if="multiImportCensusState === 'loading'"
+        class="research-state"
+      >
+        Evaluating {{ matrixSelections.length }} strategy-specific censuses with
+        the same ordered imports…
+      </p>
+      <div
+        v-if="multiImportCensusState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>
+          Some census requests are unavailable; successful results remain
+          visible in strategy order.
+        </strong>
+        <button
+          class="button button--quiet multi-import-census-retry"
+          type="button"
+          @click="evaluateMultiImportCensus"
+        >
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="multiImportCensusState === 'error'"
+        class="research-state research-state--error"
+      >
+        <strong>All selected census requests failed with sanitized errors.</strong>
+        <button
+          class="button button--quiet multi-import-census-retry"
+          type="button"
+          @click="evaluateMultiImportCensus"
+        >
+          Retry all
+        </button>
+      </div>
+
+      <ol
+        v-if="multiImportCensusResults.length > 0"
+        class="multi-import-census-result-list"
+      >
+        <li
+          v-for="outcome in multiImportCensusResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="multi-import-census-result-card"
+        >
+          <header>
+            <span class="identity-kind">
+              {{ outcome.selection.strategy.identity_kind }}
+            </span>
+            <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+            <code>
+              {{ outcome.selection.strategy.strategy_version }} · replicate
+              {{ outcome.selection.strategy.replicate }}
+            </code>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts multi-import-census-facts">
+              <div>
+                <dt>Census status</dt>
+                <dd>{{ outcome.result.census_status }}</dd>
+              </div>
+              <div>
+                <dt>Ordered imports</dt>
+                <dd>{{ outcome.result.imports.length }}</dd>
+              </div>
+              <div><dt>Pair count</dt><dd>{{ outcome.result.pair_count }}</dd></div>
+              <div>
+                <dt>Cohort rows</dt>
+                <dd>{{ outcome.result.cohort_census_count }}</dd>
+              </div>
+              <div>
+                <dt>Prefix</dt>
+                <dd>{{ outcome.result.prefix_count }}</dd>
+              </div>
+              <div>
+                <dt>Criterion</dt>
+                <dd>{{ outcome.result.criterion.criterion }}</dd>
+              </div>
+            </dl>
+
+            <ol
+              class="multi-import-source-order"
+              aria-label="Server import order"
+            >
+              <li
+                v-for="item in outcome.result.imports"
+                :key="item.metadata.import_identity_sha256"
+              >
+                <strong>{{ item.import_index + 1 }}</strong>
+                <code>{{ item.metadata.import_identity_sha256 }}</code>
+                <span>{{ item.holdout_status }}</span>
+              </li>
+            </ol>
+
+            <div class="multi-import-pair-table-scroll">
+              <table class="multi-import-pair-table">
+                <caption>
+                  Canonical pair matrix in caller-order index sequence.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Pair</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Same dataset</th>
+                    <th scope="col">Same artifact</th>
+                    <th scope="col">Overlap</th>
+                    <th scope="col">Relation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="pair in outcome.result.pairs"
+                    :key="`${pair.left_import_index}:${pair.right_import_index}`"
+                    class="multi-import-pair-row"
+                  >
+                    <td>
+                      {{ pair.left_import_index + 1 }} →
+                      {{ pair.right_import_index + 1 }}
+                    </td>
+                    <td>{{ pair.pair_status }}</td>
+                    <td>
+                      {{ pair.metadata.same_dataset_sha256 ? 'YES' : 'NO' }}
+                    </td>
+                    <td>
+                      {{
+                        pair.metadata.same_source_artifact_sha256 ? 'YES' : 'NO'
+                      }}
+                    </td>
+                    <td>
+                      {{
+                        pair.confirmation_target_overlap?.overlap_count ??
+                        'Unavailable'
+                      }}
+                    </td>
+                    <td>
+                      {{
+                        pair.confirmation_target_overlap?.relation ??
+                        'Unavailable'
+                      }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p
+              v-if="outcome.result.census_status !== 'COMPLETE'"
+              class="research-state multi-import-census-not-ready"
+            >
+              At least one temporal holdout is not ready. No partial cohort census
+              was produced.
+            </p>
+            <div v-else class="multi-import-census-table-scroll">
+              <table class="multi-import-census-table">
+                <caption>
+                  All 64 confirmation-only cohort rows in canonical server order.
+                  Rows are presented exactly in that order.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Index</th>
+                    <th scope="col">Long→Medium</th>
+                    <th scope="col">Medium→Short</th>
+                    <th scope="col">Long→Short</th>
+                    <th scope="col">Higher</th>
+                    <th scope="col">Equal</th>
+                    <th scope="col">Lower</th>
+                    <th scope="col">Unavailable</th>
+                    <th scope="col">Neutral summary</th>
+                    <th scope="col">Ordered per-import confirmation diagnostics</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="row in outcome.result.cohort_census"
+                    :key="row.cohort_index"
+                    class="multi-import-census-row"
+                  >
+                    <td>{{ row.cohort_index }}</td>
+                    <td>{{ row.feature_key.long_to_medium }}</td>
+                    <td>{{ row.feature_key.medium_to_short }}</td>
+                    <td>{{ row.feature_key.long_to_short }}</td>
+                    <td>{{ row.higher_count }}</td>
+                    <td>{{ row.equal_count }}</td>
+                    <td>{{ row.lower_count }}</td>
+                    <td>{{ row.unavailable_count }}</td>
+                    <td>{{ row.summary }}</td>
+                    <td>
+                      <ol class="multi-import-diagnostics">
+                        <li
+                          v-for="item in row.confirmation_diagnostics"
+                          :key="item.import_identity_sha256"
+                        >
+                          <strong>{{ item.import_index + 1 }}</strong>
+                          <span>
+                            {{ item.diagnostic.relation_vs_outside }} · effect
+                            {{ diagnosticEffect(item.diagnostic) }}
+                          </span>
+                          <code class="exact-probability">
+                            raw
+                            {{ exactProbability(item.diagnostic.raw_p_value) }} · BY
+                            {{
+                              exactProbability(
+                                item.diagnostic.adjusted_p_value,
+                              )
+                            }}
+                          </code>
+                        </li>
+                      </ol>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div
+            v-else
+            class="research-state research-state--error multi-import-census-item-error"
+          >
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
     <aside v-if="detailState !== 'closed'" class="detail-panel" aria-labelledby="exact-detail-title">
       <div class="panel-heading">
         <div>
@@ -1895,11 +2352,32 @@ onBeforeUnmount(() => {
 .temporal-holdout-table { min-width: 2800px; }
 .temporal-holdout-not-ready, .temporal-holdout-item-error { margin-top: 18px; }
 .comparison-run-selector { margin-top: 14px; }
+.census-import-selector { display: grid; gap: 10px; margin-top: 18px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; }
+.census-import-selector legend { padding: 0 8px; color: var(--mint); font-size: 11px; }
+.census-import-option { display: flex; gap: 10px; align-items: flex-start; color: var(--muted); font-size: 11px; }
+.census-import-option input { margin-top: 2px; accent-color: var(--mint); }
+.census-import-option code { overflow-wrap: anywhere; }
+.census-import-selection-order, .multi-import-source-order, .multi-import-diagnostics { display: grid; gap: 8px; margin: 4px 0 0; padding: 0; list-style: none; }
+.census-import-selection-order li, .multi-import-source-order li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; color: var(--muted); font-size: 10px; }
+.census-import-selection-order code, .multi-import-source-order code { overflow-wrap: anywhere; }
 .cross-import-concordance-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
 .cross-import-concordance-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
 .cross-import-concordance-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
 .cross-import-concordance-table { min-width: 2800px; }
 .cross-import-concordance-not-ready, .cross-import-concordance-item-error { margin-top: 18px; }
+.multi-import-census-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.multi-import-census-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.multi-import-census-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.multi-import-source-order { margin-top: 18px; }
+.multi-import-pair-table-scroll, .multi-import-census-table-scroll { overflow-x: auto; margin-top: 18px; }
+.multi-import-pair-table, .multi-import-census-table { width: 100%; border-collapse: collapse; color: var(--ink); font-size: 10px; }
+.multi-import-pair-table { min-width: 900px; }
+.multi-import-census-table { min-width: 1900px; }
+.multi-import-pair-table caption, .multi-import-census-table caption { padding: 0 0 12px; color: var(--muted); text-align: left; }
+.multi-import-pair-table th, .multi-import-pair-table td, .multi-import-census-table th, .multi-import-census-table td { padding: 9px; border: 1px solid var(--line); vertical-align: top; }
+.multi-import-pair-table th, .multi-import-census-table th { background: #0a1714; color: var(--mint); text-align: left; }
+.multi-import-diagnostics li { display: grid; grid-template-columns: auto minmax(180px, 1fr) minmax(320px, 2fr); gap: 8px; align-items: start; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.multi-import-census-not-ready, .multi-import-census-item-error { margin-top: 18px; }
 .detail-panel { border-color: rgb(121 227 178 / 38%); }
 .detail-content h3 { margin-bottom: 6px; color: var(--ink); }
 .detail-content { color: var(--muted); }

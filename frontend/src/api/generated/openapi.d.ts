@@ -509,6 +509,44 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": Array<string>
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalPrefixMultiImportConcordanceCensusResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance": {
       get: {
           parameters: {
@@ -1148,6 +1186,48 @@ export interface components {
           "lottery_type": string
           "ranking_policy_id": string
           "historical_only_disclaimer_id": string
+        }
+    "HistoricalPrefixMultiImportCensusStatus": "COMPLETE" | "PARTIAL_NOT_READY" | "ALL_NOT_READY"
+    "HistoricalPrefixMultiImportCensusSummary": "ALL_AVAILABLE_HIGHER" | "ALL_AVAILABLE_EQUAL" | "ALL_AVAILABLE_LOWER" | "MIXED_AVAILABLE" | "PARTIAL_AVAILABILITY" | "NO_AVAILABLE_EFFECT"
+    "HistoricalPrefixMultiImportCohortCensusRowView": {
+          "cohort_index": number
+          "feature_key": components['schemas']["HistoricalPrefixFeatureRelationTripleView"]
+          "confirmation_diagnostics": Array<components['schemas']["HistoricalPrefixMultiImportConfirmationDiagnosticView"]>
+          "higher_count": number
+          "equal_count": number
+          "lower_count": number
+          "unavailable_count": number
+          "summary": components['schemas']["HistoricalPrefixMultiImportCensusSummary"]
+        }
+    "HistoricalPrefixMultiImportConcordanceCensusResponse": {
+          "imports": Array<components['schemas']["HistoricalPrefixMultiImportSourceView"]>
+          "strategy": components['schemas']["HistoricalPrefixSuccessStrategyIdentityView"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterionView"]
+          "prefix_count": number
+          "census_status": components['schemas']["HistoricalPrefixMultiImportCensusStatus"]
+          "pair_count": number
+          "pairs": Array<components['schemas']["HistoricalPrefixMultiImportPairView"]>
+          "cohort_census_count": number
+          "cohort_census": Array<components['schemas']["HistoricalPrefixMultiImportCohortCensusRowView"]>
+        }
+    "HistoricalPrefixMultiImportConfirmationDiagnosticView": {
+          "import_index": number
+          "import_identity_sha256": string
+          "diagnostic": components['schemas']["HistoricalPrefixFeatureCohortDiagnosticView"]
+        }
+    "HistoricalPrefixMultiImportPairView": {
+          "left_import_index": number
+          "right_import_index": number
+          "metadata": components['schemas']["HistoricalPrefixCrossImportMetadataView"]
+          "pair_status": components['schemas']["HistoricalPrefixCrossImportPairStatus"]
+          "left_holdout_status": components['schemas']["HistoricalPrefixTemporalHoldoutStatus"]
+          "right_holdout_status": components['schemas']["HistoricalPrefixTemporalHoldoutStatus"]
+          "confirmation_target_overlap": components['schemas']["HistoricalPrefixConfirmationTargetOverlapView"] | null
+        }
+    "HistoricalPrefixMultiImportSourceView": {
+          "import_index": number
+          "metadata": components['schemas']["HistoricalPrefixSuccessSourceMetadataView"]
+          "holdout_status": components['schemas']["HistoricalPrefixTemporalHoldoutStatus"]
         }
     "HistoricalPrefixOutcomeCountsView": {
           "observation_count": number

@@ -134,6 +134,21 @@ class HistoricalPrefixConfirmationOverlapRelation(StrEnum):
     IDENTICAL = "IDENTICAL"
 
 
+class HistoricalPrefixMultiImportCensusStatus(StrEnum):
+    COMPLETE = "COMPLETE"
+    PARTIAL_NOT_READY = "PARTIAL_NOT_READY"
+    ALL_NOT_READY = "ALL_NOT_READY"
+
+
+class HistoricalPrefixMultiImportCensusSummary(StrEnum):
+    ALL_AVAILABLE_HIGHER = "ALL_AVAILABLE_HIGHER"
+    ALL_AVAILABLE_EQUAL = "ALL_AVAILABLE_EQUAL"
+    ALL_AVAILABLE_LOWER = "ALL_AVAILABLE_LOWER"
+    MIXED_AVAILABLE = "MIXED_AVAILABLE"
+    PARTIAL_AVAILABILITY = "PARTIAL_AVAILABILITY"
+    NO_AVAILABLE_EFFECT = "NO_AVAILABLE_EFFECT"
+
+
 def _require_canonical_text(value: str, name: str) -> None:
     if type(value) is not str or not value or value != value.strip():
         raise HistoricalPrefixSuccessWindowsContractError(
@@ -574,6 +589,57 @@ class HistoricalPrefixCrossImportConcordanceResult:
     right_holdout_status: HistoricalPrefixTemporalHoldoutStatus
     confirmation_target_overlap: HistoricalPrefixConfirmationTargetOverlap | None
     comparisons: tuple[HistoricalPrefixCrossImportCohortComparison, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixMultiImportSourceResult:
+    metadata: HistoricalPrefixSuccessWindowSourceMetadata
+    holdout_status: HistoricalPrefixTemporalHoldoutStatus
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixMultiImportPairResult:
+    left_import_index: int
+    right_import_index: int
+    metadata: HistoricalPrefixCrossImportMetadata
+    pair_status: HistoricalPrefixCrossImportPairStatus
+    left_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    right_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    confirmation_target_overlap: HistoricalPrefixConfirmationTargetOverlap | None
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixMultiImportConfirmationDiagnostic:
+    import_index: int
+    import_identity_sha256: str
+    diagnostic: HistoricalPrefixFeatureCohortDiagnostic
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixMultiImportCohortCensusRow:
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTriple
+    confirmation_diagnostics: tuple[
+        HistoricalPrefixMultiImportConfirmationDiagnostic, ...
+    ]
+    higher_count: int
+    equal_count: int
+    lower_count: int
+    unavailable_count: int
+    summary: HistoricalPrefixMultiImportCensusSummary
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalPrefixMultiImportConcordanceCensusResult:
+    imports: tuple[HistoricalPrefixMultiImportSourceResult, ...]
+    strategy: HistoricalPrefixSuccessStrategyIdentity
+    criterion: HistoricalPrefixSuccessCriterionIdentity
+    prefix_count: int
+    census_status: HistoricalPrefixMultiImportCensusStatus
+    pair_count: int
+    pairs: tuple[HistoricalPrefixMultiImportPairResult, ...]
+    cohort_census_count: int
+    cohort_census: tuple[HistoricalPrefixMultiImportCohortCensusRow, ...]
 
 
 @dataclass(frozen=True, slots=True)

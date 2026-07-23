@@ -15,6 +15,7 @@ import {
   makeFeatureCohorts,
   makeFeatureCohortsForResult,
   makeCrossImportConcordance,
+  makeMultiImportConcordanceCensus,
   makeMatrix,
   makeResult,
   makeRun,
@@ -27,12 +28,16 @@ import {
   makeZeroObservationFeatureCohorts,
   makeZeroObservationMatrix,
   makeZeroObservationResult,
+  THIRD_IMPORT_SHA,
 } from './historical-success-windows-fixtures'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/feature-cohorts/multi-import-concordance-census')) {
+    return Promise.resolve(apiResponse(makeMultiImportConcordanceCensus()))
+  }
   if (url.includes('/feature-cohorts/cross-import-concordance')) {
     return Promise.resolve(apiResponse(makeCrossImportConcordance()))
   }
@@ -97,6 +102,11 @@ async function evaluateTemporalHoldout(wrapper: VueWrapper): Promise<void> {
 
 async function evaluateCrossImportConcordance(wrapper: VueWrapper): Promise<void> {
   await wrapper.get('button.cross-import-concordance-action').trigger('click')
+  await flushPromises()
+}
+
+async function evaluateMultiImportCensus(wrapper: VueWrapper): Promise<void> {
+  await wrapper.get('button.multi-import-census-action').trigger('click')
   await flushPromises()
 }
 
@@ -1324,6 +1334,290 @@ describe('HistoricalSuccessWindowsPage', () => {
     expect(active.text()).toContain('LEFT_NOT_READY')
     expect(active.findAll('.cross-import-concordance-comparison')).toHaveLength(0)
     active.unmount()
+  })
+
+  it('preserves explicit ordered census import selections across pagination without requesting', async () => {
+    const first = makeRun()
+    const second = makeRun({
+      run_id: 'run-explicit-2',
+      import_identity_sha256: RIGHT_IMPORT_SHA,
+    })
+    const third = makeRun({
+      run_id: 'run-explicit-3',
+      import_identity_sha256: THIRD_IMPORT_SHA,
+    })
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(
+            url.searchParams.get('offset') === '10'
+              ? makeRunPage({ items: [third], total_count: 11, offset: 10 })
+              : makeRunPage({ items: [first, second], total_count: 11 }),
+          ),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+
+    const firstPageOptions = wrapper.findAll('.census-import-option input')
+    await firstPageOptions[1]!.setValue(true)
+    await firstPageOptions[0]!.setValue(true)
+    expect(
+      wrapper
+        .findAll('.census-import-selection-order li code')
+        .map((item) => item.text()),
+    ).toEqual([RIGHT_IMPORT_SHA, IMPORT_SHA])
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/multi-import-concordance-census'),
+      ),
+    ).toBe(false)
+
+    await wrapper
+      .get('nav[aria-label="Historical run pages"] button:last-child')
+      .trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('.census-import-selection-order li')).toHaveLength(2)
+    await wrapper.get('.census-import-option input').setValue(true)
+    expect(
+      wrapper
+        .findAll('.census-import-selection-order li code')
+        .map((item) => item.text()),
+    ).toEqual([RIGHT_IMPORT_SHA, IMPORT_SHA, THIRD_IMPORT_SHA])
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('issues exactly M census requests with the same ordered imports and renders canonical pairs and 64 rows', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+      makeRun({
+        run_id: 'run-explicit-3',
+        import_identity_sha256: THIRD_IMPORT_SHA,
+      }),
+    ]
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 3 })),
+        )
+      }
+      if (url.pathname.includes('/multi-import-concordance-census')) {
+        const identities = url.searchParams.getAll(
+          'import_identity_sha256',
+        )
+        const strategy = url.pathname.includes('zero-observation')
+          ? second.strategy
+          : first.strategy
+        return Promise.resolve(
+          apiResponse(
+            makeMultiImportConcordanceCensus(
+              identities.length,
+              { strategy },
+              identities,
+            ),
+          ),
+        )
+      }
+      return Promise.resolve(
+        apiResponse(makeWindowPage({ items: [first, second] })),
+      )
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    const importOptions = wrapper.findAll('.census-import-option input')
+    await importOptions[2]!.setValue(true)
+    await importOptions[0]!.setValue(true)
+    await importOptions[1]!.setValue(true)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockClear()
+
+    await evaluateMultiImportCensus(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    for (const call of fetchMock.mock.calls) {
+      const url = new URL(String(call[0]), 'http://localhost')
+      expect(url.searchParams.getAll('import_identity_sha256')).toEqual([
+        THIRD_IMPORT_SHA,
+        IMPORT_SHA,
+        RIGHT_IMPORT_SHA,
+      ])
+    }
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/feature-cohorts/multi-import-concordance-census?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/multi-import-concordance-census?',
+    )
+    const cards = wrapper.findAll('.multi-import-census-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('.multi-import-pair-row')).toHaveLength(3)
+    expect(cards[0]!.findAll('.multi-import-census-row')).toHaveLength(64)
+    expect(cards[1]!.findAll('.multi-import-census-row')).toHaveLength(64)
+    expect(cards[0]!.text()).toContain('NO_AVAILABLE_EFFECT')
+    expect(cards[0]!.text()).not.toMatch(
+      /rank|winner|promotion|rejection|prediction|combined/i,
+    )
+    wrapper.unmount()
+  })
+
+  it('handles partial census failure and retries in strategy order', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+    ]
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 2 })),
+        )
+      }
+      return Promise.resolve(
+        apiResponse(
+          makeWindowPage({
+            items: [makeResult(), makeZeroObservationResult()],
+          }),
+        ),
+      )
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    for (const option of wrapper.findAll('.census-import-option input')) {
+      await option.setValue(true)
+    }
+    await selectMatrix(wrapper, 0)
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockReset()
+    fetchMock
+      .mockResolvedValueOnce(
+        apiResponse(makeMultiImportConcordanceCensus(2)),
+      )
+      .mockResolvedValueOnce(
+        apiResponse(
+          {
+            error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+            message: '/secret/path',
+          },
+          404,
+        ),
+      )
+
+    await evaluateMultiImportCensus(wrapper)
+
+    expect(wrapper.text()).toContain('Some census requests are unavailable')
+    expect(wrapper.findAll('.multi-import-census-result-card')).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('/secret/path')
+
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) => {
+      const strategy = String(input).includes('zero-observation')
+        ? makeZeroObservationResult().strategy
+        : makeResult().strategy
+      return Promise.resolve(
+        apiResponse(makeMultiImportConcordanceCensus(2, { strategy })),
+      )
+    })
+    await wrapper.get('button.multi-import-census-retry').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.findAll('.multi-import-census-row')).toHaveLength(128)
+    wrapper.unmount()
+  })
+
+  it('aborts stale census requests on reevaluation, import change, controls, and unmount', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+    ]
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 2 })),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    for (const option of wrapper.findAll('.census-import-option input')) {
+      await option.setValue(true)
+    }
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.multi-import-census-action').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.multi-import-census-action').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeMultiImportConcordanceCensus(2)))
+    await flushPromises()
+    older.resolve(
+      apiResponse(
+        makeMultiImportConcordanceCensus(2, {
+          strategy: {
+            ...makeMultiImportConcordanceCensus(2).strategy,
+            strategy_id: 'stale',
+          },
+        }),
+      ),
+    )
+    await flushPromises()
+    expect(wrapper.findAll('.multi-import-census-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const importPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(importPending.promise)
+    await wrapper.get('button.multi-import-census-action').trigger('click')
+    const importSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.census-import-remove').trigger('click')
+    expect(importSignal.aborted).toBe(true)
+
+    await wrapper.get('.census-import-option input').setValue(true)
+    const controlPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(controlPending.promise)
+    await wrapper.get('button.multi-import-census-action').trigger('click')
+    const controlSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="criterion"]').setValue('M4_PLUS')
+    expect(controlSignal.aborted).toBe(true)
+
+    await wrapper.get('select[name="criterion"]').setValue('M3_PLUS')
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.multi-import-census-action').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(unmountSignal.aborted).toBe(true)
   })
 
   it('aborts stale concordance on reevaluation, either run change, controls, and unmount', async () => {

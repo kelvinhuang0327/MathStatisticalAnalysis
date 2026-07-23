@@ -39,6 +39,12 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixFeatureCohortSummary,
     HistoricalPrefixFeatureCohortTestStatus,
     HistoricalPrefixFeatureRelationTriple,
+    HistoricalPrefixMultiImportCensusStatus,
+    HistoricalPrefixMultiImportCensusSummary,
+    HistoricalPrefixMultiImportCohortCensusRow,
+    HistoricalPrefixMultiImportConcordanceCensusResult,
+    HistoricalPrefixMultiImportConfirmationDiagnostic,
+    HistoricalPrefixMultiImportPairResult,
     HistoricalPrefixOutcomeCounts,
     HistoricalPrefixRateRelation,
     HistoricalPrefixSignedRateDelta,
@@ -107,6 +113,18 @@ ImportIdentitySha256 = Annotated[
     Query(
         pattern=r"^[0-9a-f]{64}$",
         description="Exact lowercase SHA-256 of one persisted Historical Results import.",
+    ),
+]
+MultiImportIdentitySha256Item = Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+MultiImportIdentitySha256 = Annotated[
+    list[MultiImportIdentitySha256Item],
+    Query(
+        min_length=2,
+        max_length=4,
+        description=(
+            "Two to four distinct exact Historical Results import SHA-256 values; "
+            "repeat this query parameter in caller order."
+        ),
     ),
 ]
 StrategyId = Annotated[
@@ -1303,6 +1321,312 @@ class HistoricalPrefixCrossImportConcordanceResponse(BaseModel):
         )
 
 
+class HistoricalPrefixMultiImportSourceView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    import_index: Annotated[int, Field(ge=0, le=3)]
+    metadata: HistoricalPrefixSuccessSourceMetadataView
+    holdout_status: HistoricalPrefixTemporalHoldoutStatus
+
+
+class HistoricalPrefixMultiImportPairView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    left_import_index: Annotated[int, Field(ge=0, le=3)]
+    right_import_index: Annotated[int, Field(ge=1, le=3)]
+    metadata: HistoricalPrefixCrossImportMetadataView
+    pair_status: HistoricalPrefixCrossImportPairStatus
+    left_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    right_holdout_status: HistoricalPrefixTemporalHoldoutStatus
+    confirmation_target_overlap: HistoricalPrefixConfirmationTargetOverlapView | None
+
+    @model_validator(mode="after")
+    def validate_pair(self) -> Self:
+        if self.left_import_index >= self.right_import_index:
+            raise ValueError("multi-import pair indexes must be canonical")
+        left_ready = (
+            self.left_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        )
+        right_ready = (
+            self.right_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        )
+        expected_status = (
+            HistoricalPrefixCrossImportPairStatus.COMPLETE
+            if left_ready and right_ready
+            else (
+                HistoricalPrefixCrossImportPairStatus.BOTH_NOT_READY
+                if not left_ready and not right_ready
+                else (
+                    HistoricalPrefixCrossImportPairStatus.LEFT_NOT_READY
+                    if not left_ready
+                    else HistoricalPrefixCrossImportPairStatus.RIGHT_NOT_READY
+                )
+            )
+        )
+        if self.pair_status is not expected_status:
+            raise ValueError("multi-import pair status is inconsistent")
+        if left_ready and right_ready:
+            if self.confirmation_target_overlap is None:
+                raise ValueError("ready multi-import pair requires confirmation overlap")
+        elif self.confirmation_target_overlap is not None:
+            raise ValueError("not-ready multi-import pair cannot contain overlap")
+        return self
+
+    @classmethod
+    def from_pair(
+        cls, pair: HistoricalPrefixMultiImportPairResult
+    ) -> HistoricalPrefixMultiImportPairView:
+        return cls(
+            left_import_index=pair.left_import_index,
+            right_import_index=pair.right_import_index,
+            metadata=HistoricalPrefixCrossImportMetadataView.from_metadata(pair.metadata),
+            pair_status=pair.pair_status,
+            left_holdout_status=pair.left_holdout_status,
+            right_holdout_status=pair.right_holdout_status,
+            confirmation_target_overlap=(
+                HistoricalPrefixConfirmationTargetOverlapView.from_overlap(
+                    pair.confirmation_target_overlap
+                )
+                if pair.confirmation_target_overlap is not None
+                else None
+            ),
+        )
+
+
+class HistoricalPrefixMultiImportConfirmationDiagnosticView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    import_index: Annotated[int, Field(ge=0, le=3)]
+    import_identity_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+
+    @classmethod
+    def from_diagnostic(
+        cls, item: HistoricalPrefixMultiImportConfirmationDiagnostic
+    ) -> HistoricalPrefixMultiImportConfirmationDiagnosticView:
+        return cls(
+            import_index=item.import_index,
+            import_identity_sha256=item.import_identity_sha256,
+            diagnostic=HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                item.diagnostic
+            ),
+        )
+
+
+class HistoricalPrefixMultiImportCohortCensusRowView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    cohort_index: Annotated[int, Field(ge=0, le=63)]
+    feature_key: HistoricalPrefixFeatureRelationTripleView
+    confirmation_diagnostics: tuple[
+        HistoricalPrefixMultiImportConfirmationDiagnosticView, ...
+    ]
+    higher_count: Annotated[int, Field(ge=0, le=4)]
+    equal_count: Annotated[int, Field(ge=0, le=4)]
+    lower_count: Annotated[int, Field(ge=0, le=4)]
+    unavailable_count: Annotated[int, Field(ge=0, le=4)]
+    summary: HistoricalPrefixMultiImportCensusSummary
+
+    @model_validator(mode="after")
+    def validate_census_row(self) -> Self:
+        import_count = len(self.confirmation_diagnostics)
+        if not 2 <= import_count <= 4:
+            raise ValueError("census row requires two to four ordered diagnostics")
+        if (
+            self.higher_count
+            + self.equal_count
+            + self.lower_count
+            + self.unavailable_count
+            != import_count
+        ):
+            raise ValueError("census row direction counts are inconsistent")
+        expected = (
+            HistoricalPrefixMultiImportCensusSummary.NO_AVAILABLE_EFFECT
+            if self.unavailable_count == import_count
+            else (
+                HistoricalPrefixMultiImportCensusSummary.PARTIAL_AVAILABILITY
+                if self.unavailable_count > 0
+                else (
+                    HistoricalPrefixMultiImportCensusSummary.ALL_AVAILABLE_HIGHER
+                    if self.higher_count == import_count
+                    else (
+                        HistoricalPrefixMultiImportCensusSummary.ALL_AVAILABLE_EQUAL
+                        if self.equal_count == import_count
+                        else (
+                            HistoricalPrefixMultiImportCensusSummary.ALL_AVAILABLE_LOWER
+                            if self.lower_count == import_count
+                            else HistoricalPrefixMultiImportCensusSummary.MIXED_AVAILABLE
+                        )
+                    )
+                )
+            )
+        )
+        if self.summary is not expected:
+            raise ValueError("census row summary is inconsistent")
+        return self
+
+    @classmethod
+    def from_row(
+        cls, row: HistoricalPrefixMultiImportCohortCensusRow
+    ) -> HistoricalPrefixMultiImportCohortCensusRowView:
+        return cls(
+            cohort_index=row.cohort_index,
+            feature_key=HistoricalPrefixFeatureRelationTripleView.from_feature_key(
+                row.feature_key
+            ),
+            confirmation_diagnostics=tuple(
+                HistoricalPrefixMultiImportConfirmationDiagnosticView.from_diagnostic(item)
+                for item in row.confirmation_diagnostics
+            ),
+            higher_count=row.higher_count,
+            equal_count=row.equal_count,
+            lower_count=row.lower_count,
+            unavailable_count=row.unavailable_count,
+            summary=row.summary,
+        )
+
+
+class HistoricalPrefixMultiImportConcordanceCensusResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    imports: tuple[HistoricalPrefixMultiImportSourceView, ...]
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    census_status: HistoricalPrefixMultiImportCensusStatus
+    pair_count: Annotated[int, Field(ge=1, le=6)]
+    pairs: tuple[HistoricalPrefixMultiImportPairView, ...]
+    cohort_census_count: Annotated[int, Field(ge=0, le=64)]
+    cohort_census: tuple[HistoricalPrefixMultiImportCohortCensusRowView, ...]
+
+    @model_validator(mode="after")
+    def validate_census(self) -> Self:
+        import_count = len(self.imports)
+        if not 2 <= import_count <= 4:
+            raise ValueError("multi-import census requires two to four imports")
+        identities = tuple(
+            item.metadata.import_identity_sha256 for item in self.imports
+        )
+        if len(set(identities)) != import_count or any(
+            item.import_index != index for index, item in enumerate(self.imports)
+        ):
+            raise ValueError("multi-import sources must be distinct and preserve caller order")
+        ready_count = sum(
+            item.holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+            for item in self.imports
+        )
+        expected_census_status = (
+            HistoricalPrefixMultiImportCensusStatus.COMPLETE
+            if ready_count == import_count
+            else (
+                HistoricalPrefixMultiImportCensusStatus.ALL_NOT_READY
+                if ready_count == 0
+                else HistoricalPrefixMultiImportCensusStatus.PARTIAL_NOT_READY
+            )
+        )
+        if self.census_status is not expected_census_status:
+            raise ValueError("multi-import census status is inconsistent")
+
+        expected_pair_indexes = tuple(
+            (left, right)
+            for left in range(import_count)
+            for right in range(left + 1, import_count)
+        )
+        if (
+            self.pair_count != len(expected_pair_indexes)
+            or len(self.pairs) != self.pair_count
+            or tuple(
+                (pair.left_import_index, pair.right_import_index)
+                for pair in self.pairs
+            )
+            != expected_pair_indexes
+        ):
+            raise ValueError("multi-import pair matrix order or cardinality is inconsistent")
+        for pair in self.pairs:
+            left = self.imports[pair.left_import_index]
+            right = self.imports[pair.right_import_index]
+            if (
+                pair.metadata.left.import_identity_sha256
+                != left.metadata.import_identity_sha256
+                or pair.metadata.right.import_identity_sha256
+                != right.metadata.import_identity_sha256
+                or pair.left_holdout_status is not left.holdout_status
+                or pair.right_holdout_status is not right.holdout_status
+            ):
+                raise ValueError("multi-import pair does not match ordered sources")
+
+        if self.census_status is not HistoricalPrefixMultiImportCensusStatus.COMPLETE:
+            if self.cohort_census_count != 0 or self.cohort_census:
+                raise ValueError("not-ready multi-import census cannot contain cohort rows")
+            return self
+        if self.cohort_census_count != 64 or len(self.cohort_census) != 64:
+            raise ValueError("complete multi-import census requires 64 cohort rows")
+        for cohort_index, row in enumerate(self.cohort_census):
+            expected_key = (
+                FEATURE_COHORT_RELATION_ORDER[cohort_index // 16],
+                FEATURE_COHORT_RELATION_ORDER[(cohort_index % 16) // 4],
+                FEATURE_COHORT_RELATION_ORDER[cohort_index % 4],
+            )
+            if (
+                row.cohort_index != cohort_index
+                or (
+                    row.feature_key.long_to_medium,
+                    row.feature_key.medium_to_short,
+                    row.feature_key.long_to_short,
+                )
+                != expected_key
+                or tuple(
+                    (item.import_index, item.import_identity_sha256)
+                    for item in row.confirmation_diagnostics
+                )
+                != tuple(enumerate(identities))
+                or any(
+                    item.diagnostic.cohort_index != cohort_index
+                    or item.diagnostic.feature_key != row.feature_key
+                    for item in row.confirmation_diagnostics
+                )
+            ):
+                raise ValueError(
+                    "multi-import census rows must preserve cohort and import order"
+                )
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalPrefixMultiImportConcordanceCensusResult
+    ) -> HistoricalPrefixMultiImportConcordanceCensusResponse:
+        return cls(
+            imports=tuple(
+                HistoricalPrefixMultiImportSourceView(
+                    import_index=index,
+                    metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(
+                        item.metadata
+                    ),
+                    holdout_status=item.holdout_status,
+                )
+                for index, item in enumerate(result.imports)
+            ),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(
+                result.strategy
+            ),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(
+                result.criterion
+            ),
+            prefix_count=result.prefix_count,
+            census_status=result.census_status,
+            pair_count=result.pair_count,
+            pairs=tuple(
+                HistoricalPrefixMultiImportPairView.from_pair(pair)
+                for pair in result.pairs
+            ),
+            cohort_census_count=result.cohort_census_count,
+            cohort_census=tuple(
+                HistoricalPrefixMultiImportCohortCensusRowView.from_row(row)
+                for row in result.cohort_census
+            ),
+        )
+
+
 def create_historical_prefix_success_windows_router(
     reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory | None,
 ) -> APIRouter:
@@ -1348,6 +1672,52 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalPrefixStrategySuccessWindowPageResponse.from_page(page)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "multi-import-concordance-census"
+        ),
+        response_model=HistoricalPrefixMultiImportConcordanceCensusResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyMultiImportConcordanceCensus",
+    )
+    def get_historical_prefix_strategy_multi_import_concordance_census(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: MultiImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixMultiImportConcordanceCensusResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_multi_import_concordance_census(
+                import_identity_sha256s=tuple(import_identity_sha256),
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessWindowsContractError:
+            return _duplicate_imports_error()
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixMultiImportConcordanceCensusResponse.from_result(result)
 
     @router.get(
         (
@@ -1667,6 +2037,20 @@ def _identical_imports_error() -> JSONResponse:
     return JSONResponse(status_code=422, content=model.model_dump(mode="json"))
 
 
+def _duplicate_imports_error() -> JSONResponse:
+    model = ApiValidationErrorResponse(
+        error_code="REQUEST_VALIDATION_FAILED",
+        message="Request validation failed.",
+        fields=[
+            RequestValidationIssueView(
+                location="query.import_identity_sha256",
+                type="value_error",
+            )
+        ],
+    )
+    return JSONResponse(status_code=422, content=model.model_dump(mode="json"))
+
+
 def _error_response(status_code: int, error_code: str, message: str) -> JSONResponse:
     model = ApiErrorResponse(error_code=error_code, message=message)
     return JSONResponse(status_code=status_code, content=model.model_dump(mode="json"))
@@ -1683,6 +2067,11 @@ __all__ = [
     "HistoricalPrefixFeatureCohortTestStatus",
     "HistoricalPrefixFeatureCohortView",
     "HistoricalPrefixFeatureRelationTripleView",
+    "HistoricalPrefixMultiImportCohortCensusRowView",
+    "HistoricalPrefixMultiImportConcordanceCensusResponse",
+    "HistoricalPrefixMultiImportConfirmationDiagnosticView",
+    "HistoricalPrefixMultiImportPairView",
+    "HistoricalPrefixMultiImportSourceView",
     "HistoricalPrefixOutcomeCountsView",
     "HistoricalPrefixSignedRateDeltaView",
     "HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse",

@@ -335,7 +335,10 @@ describe('Historical Success cross-import concordance mutation guards', () => {
   it('renders confirmation-only evidence without decision wording or sorting', () => {
     const section = pageSource.split(
       'class="research-results cross-import-concordance-panel"',
-    )[1]!.split('<aside ', 1)[0]!
+    )[1]!.split(
+      'class="research-results multi-import-census-panel"',
+      1,
+    )[0]!
     expect(section).toContain('v-for="comparison in outcome.result.comparisons"')
     expect(section).toContain(
       'comparison.left_confirmation_diagnostic.raw_p_value',
@@ -347,6 +350,91 @@ describe('Historical Success cross-import concordance mutation guards', () => {
     expect(section).not.toContain('.sort(')
     expect(section).not.toMatch(
       /independent|replicated|confirmed|significant|rank|winner|promotion|rejection|prediction/i,
+    )
+  })
+})
+
+describe('Historical Success multi-import concordance census mutation guards', () => {
+  it('pins 2–4 unique ordered selectors, canonical pairs, 64 rows, and direction totals', () => {
+    const validator = clientSource.split(
+      'function isMultiImportConcordanceCensus(',
+    )[1]!.split('function isSuccessPage(', 1)[0]!
+    expect(validator).toContain('identities.length < 2')
+    expect(validator).toContain('identities.length > 4')
+    expect(validator).toContain(
+      'new Set(identities).size !== identities.length',
+    )
+    expect(validator).toContain('identities.slice(left + 1)')
+    expect(validator).toContain('value.cohort_census.length !== 64')
+    expect(validator).toContain('row.higher_count +')
+    expect(validator).toContain(
+      'row.confirmation_diagnostics.length !== identities.length',
+    )
+    expect(validator).toContain(
+      'item.import_identity_sha256 !== identities[importIndex]',
+    )
+    expect(validator).not.toContain('.sort(')
+  })
+
+  it('uses repeated query append in caller order without route-specific generation logic', () => {
+    const request = clientSource.split(
+      'export async function getHistoricalSuccessMultiImportConcordanceCensus(',
+    )[1]!
+    expect(request).toContain(
+      "parameters.append('import_identity_sha256', identity)",
+    )
+    expect(request).not.toContain(
+      "parameters.set('import_identity_sha256'",
+    )
+    expect(request).toContain('isMultiImportConcordanceCensus(payload, query)')
+  })
+
+  it('keeps import and strategy selection manual and preserves both orders', () => {
+    const toggle = pageSource.split(
+      'function toggleCensusImportSelection(',
+    )[1]!.split('function removeCensusImport(', 1)[0]!
+    const evaluate = pageSource.split(
+      'async function evaluateMultiImportCensus(',
+    )[1]!.split('async function loadResults(', 1)[0]!
+    expect(pageSource).toContain(
+      'Evaluate multi-import concordance census',
+    )
+    expect(toggle).toContain('censusImportSelections.value.length >= 4')
+    expect(toggle).toContain(
+      'censusImportSelections.value = [...censusImportSelections.value, run]',
+    )
+    expect(toggle).not.toContain('evaluateMultiImportCensus')
+    expect(evaluate).toContain('const imports = [...censusImportSelections.value]')
+    expect(evaluate).toContain('const selections = [...matrixSelections.value]')
+    expect(evaluate).toContain('selections.map(')
+    expect(evaluate).toContain('import_identity_sha256: importIdentities')
+    expect(evaluate).not.toContain('.sort(')
+  })
+
+  it('pins abort and generation guards for reevaluation and selection lifecycle changes', () => {
+    expect(pageSource).toContain(
+      'const generation = ++multiImportCensusGeneration',
+    )
+    expect(pageSource).toContain('multiImportCensusController?.abort()')
+    expect(pageSource).toContain('generation !== multiImportCensusGeneration')
+    expect(pageSource).toContain('clearMultiImportCensus()')
+  })
+
+  it('renders pair and cohort arrays in server order with source probabilities and neutral wording', () => {
+    const section = pageSource.split(
+      'class="research-results multi-import-census-panel"',
+    )[1]!.split('<aside ', 1)[0]!
+    expect(section).toContain('v-for="pair in outcome.result.pairs"')
+    expect(section).toContain('v-for="row in outcome.result.cohort_census"')
+    expect(section).toContain(
+      'v-for="item in row.confirmation_diagnostics"',
+    )
+    expect(section).toContain('item.diagnostic.raw_p_value')
+    expect(section).toContain('item.diagnostic.adjusted_p_value')
+    expect(section).toContain('row.summary')
+    expect(section).not.toContain('.sort(')
+    expect(section).not.toMatch(
+      /independent|replicated|confirmed|significant|rank|winner|promotion|rejection|prediction|combined/i,
     )
   })
 })

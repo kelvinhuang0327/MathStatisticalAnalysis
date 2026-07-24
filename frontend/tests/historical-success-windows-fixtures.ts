@@ -5,6 +5,7 @@ import type {
   HistoricalSuccessFeatureCohorts,
   HistoricalSuccessCrossImportConcordance,
   HistoricalSuccessMultiImportConcordanceCensus,
+  HistoricalSuccessQualificationRandomBaselineEvidence,
   HistoricalSuccessRecent50StabilityAudit,
   HistoricalSuccessRandomBaseline,
   HistoricalSuccessResearchQualification,
@@ -1209,7 +1210,7 @@ export function makeResearchQualification(
     primary_status: 'RESEARCH_CANDIDATE',
     informational_flags: ['HISTORICAL_CONCORDANCE_OBSERVED'],
     random_baseline_caveat:
-      'Random/null benchmark unavailable; random advantage has not been evaluated.',
+      'Exact official-six-number IID random-benchmark cells are available as descriptive evidence when READY; NOT_READY cells expose no observed, expected, or upper-tail result. No significance threshold, random-advantage decision, ranking, promotion, rejection, production-eligibility decision, or monetary-cost equivalence has been authorized.',
     comparable_import_count: 2,
     expected_pair_count: 1,
     actual_pair_count: 1,
@@ -1226,6 +1227,73 @@ export function makeResearchQualification(
         r1_comparable: true,
       },
     ],
+    ...overrides,
+  }
+}
+
+export function makeQualificationRandomBaselineEvidence(
+  overrides: Partial<HistoricalSuccessQualificationRandomBaselineEvidence> = {},
+  selectedIdentities: readonly string[] = [IMPORT_SHA, RIGHT_IMPORT_SHA],
+): HistoricalSuccessQualificationRandomBaselineEvidence {
+  const qualification_identity = overrides.qualification_identity ?? {
+    strategy_id: 'alias strategy/one',
+    strategy_version: 'v1 beta',
+    replicate: 1,
+    prefix_count: 1 as const,
+    criterion: 'M3_PLUS' as const,
+  }
+  const identities =
+    overrides.ordered_import_identity_sha256s ?? selectedIdentities
+  const roles = [
+    ['FULL_HISTORY', 'REFERENCE_ONLY'],
+    ['LONG', 'PRIMARY_DESCRIPTIVE_COMPARISON'],
+    ['MEDIUM', 'CONFIRMATION_DESCRIPTIVE_COMPARISON'],
+    ['SHORT', 'AUDIT_ONLY_NON_BLOCKING'],
+  ] as const
+  const ordered_cells = identities.flatMap(
+    (import_identity_sha256, import_index) =>
+      roles.map(
+        ([window_kind, qualification_random_role], window_index) => {
+          const baseline = makeRandomBaseline()
+          return {
+            import_index,
+            window_index,
+            qualification_random_role,
+            baseline: {
+              ...baseline,
+              cell: {
+                ...baseline.cell,
+                import_identity_sha256,
+                dataset_sha256: String(import_index + 1).repeat(64),
+                source_artifact_sha256: String(import_index + 3).repeat(64),
+                strategy_id: qualification_identity.strategy_id,
+                strategy_version: qualification_identity.strategy_version,
+                replicate: qualification_identity.replicate,
+                window_kind,
+                prefix_count: qualification_identity.prefix_count,
+                criterion: qualification_identity.criterion,
+              },
+            },
+          }
+        },
+      ),
+  )
+  const evaluated_cell_count = ordered_cells.length
+  return {
+    qualification_identity,
+    ordered_import_identity_sha256s: [...identities],
+    availability_summary: {
+      availability_status: 'COMPLETE',
+      evaluated_cell_count,
+      ready_cell_count: evaluated_cell_count,
+      raw_upper_tail_probability_count: evaluated_cell_count,
+      multiple_testing_warning:
+        `This response evaluated ${evaluated_cell_count} import × window cells. ` +
+        'Each READY upper_tail_probability is a raw, unadjusted exact descriptive value. ' +
+        'No multiplicity adjustment, threshold, pooled probability, combined decision, ' +
+        'or random-advantage inference is authorized.',
+    },
+    ordered_cells,
     ...overrides,
   }
 }

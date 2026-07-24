@@ -84,11 +84,19 @@ from lottolab.application.historical_success_qualification import (
     RANDOM_BASELINE_CAVEAT,
     HistoricalSuccessQualificationCensusStatus,
     HistoricalSuccessQualificationEvidenceStatus,
+    HistoricalSuccessQualificationIdentity,
     HistoricalSuccessQualificationInformationalFlag,
     HistoricalSuccessQualificationOverlapRelation,
     HistoricalSuccessQualificationPairStatus,
     HistoricalSuccessQualificationPrimaryStatus,
     HistoricalSuccessResearchQualification,
+)
+from lottolab.application.historical_success_qualification_random_baseline import (
+    HistoricalSuccessQualificationRandomAvailabilityStatus,
+    HistoricalSuccessQualificationRandomBaselineAvailability,
+    HistoricalSuccessQualificationRandomBaselineCell,
+    HistoricalSuccessQualificationRandomBaselineEvidence,
+    HistoricalSuccessQualificationRandomRole,
 )
 from lottolab.application.historical_success_random_baseline import (
     HistoricalSuccessExactRational,
@@ -272,7 +280,11 @@ class HistoricalSuccessRandomBaselineResponse(BaseModel):
 
     @model_validator(mode="after")
     def validate_application_invariants(self) -> Self:
-        HistoricalSuccessRandomBaselineResult(
+        self.to_result()
+        return self
+
+    def to_result(self) -> HistoricalSuccessRandomBaselineResult:
+        return HistoricalSuccessRandomBaselineResult(
             cell=self.cell.to_identity(),
             readiness=self.readiness,
             reason_codes=self.reason_codes,
@@ -298,7 +310,6 @@ class HistoricalSuccessRandomBaselineResponse(BaseModel):
             observation_count_with_duplicates=self.observation_count_with_duplicates,
             interpretation_caveat=self.interpretation_caveat,
         )
-        return self
 
     @classmethod
     def from_result(
@@ -1758,12 +1769,8 @@ class HistoricalPrefixCrossImportConcordanceResponse(BaseModel):
 
     @model_validator(mode="after")
     def validate_concordance(self) -> Self:
-        left_ready = (
-            self.left_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
-        )
-        right_ready = (
-            self.right_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
-        )
+        left_ready = self.left_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        right_ready = self.right_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
         expected_status = (
             HistoricalPrefixCrossImportPairStatus.COMPLETE
             if left_ready and right_ready
@@ -1853,12 +1860,8 @@ class HistoricalPrefixMultiImportPairView(BaseModel):
     def validate_pair(self) -> Self:
         if self.left_import_index >= self.right_import_index:
             raise ValueError("multi-import pair indexes must be canonical")
-        left_ready = (
-            self.left_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
-        )
-        right_ready = (
-            self.right_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
-        )
+        left_ready = self.left_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+        right_ready = self.right_holdout_status is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
         expected_status = (
             HistoricalPrefixCrossImportPairStatus.COMPLETE
             if left_ready and right_ready
@@ -2145,6 +2148,27 @@ class HistoricalSuccessQualificationIdentityView(BaseModel):
     prefix_count: HistoricalPrefixSuccessPrefixCount
     criterion: HistoricalPrefixSuccessCriterion
 
+    @classmethod
+    def from_identity(
+        cls, identity: HistoricalSuccessQualificationIdentity
+    ) -> HistoricalSuccessQualificationIdentityView:
+        return cls(
+            strategy_id=identity.strategy_id,
+            strategy_version=identity.strategy_version,
+            replicate=identity.replicate,
+            prefix_count=HistoricalPrefixSuccessPrefixCount(identity.prefix_count),
+            criterion=HistoricalPrefixSuccessCriterion(identity.criterion),
+        )
+
+    def to_identity(self) -> HistoricalSuccessQualificationIdentity:
+        return HistoricalSuccessQualificationIdentity(
+            strategy_id=self.strategy_id,
+            strategy_version=self.strategy_version,
+            replicate=self.replicate,
+            prefix_count=int(self.prefix_count),
+            criterion=self.criterion.value,
+        )
+
 
 class HistoricalSuccessQualificationImportEvidenceView(BaseModel):
     model_config = _QUALIFICATION_RESPONSE
@@ -2186,9 +2210,7 @@ class HistoricalSuccessQualificationPairEvidenceView(BaseModel):
     pair_status: HistoricalSuccessQualificationPairStatus
     same_dataset_sha256: bool
     same_source_artifact_sha256: bool
-    confirmation_overlap_relation: (
-        HistoricalSuccessQualificationOverlapRelation | None
-    )
+    confirmation_overlap_relation: HistoricalSuccessQualificationOverlapRelation | None
     r1_comparable: bool
 
     @model_validator(mode="after")
@@ -2319,15 +2341,8 @@ class HistoricalSuccessResearchQualificationResponse(BaseModel):
         cls, result: HistoricalSuccessResearchQualification
     ) -> HistoricalSuccessResearchQualificationResponse:
         return cls(
-            identity=HistoricalSuccessQualificationIdentityView(
-                strategy_id=result.identity.strategy_id,
-                strategy_version=result.identity.strategy_version,
-                replicate=result.identity.replicate,
-                prefix_count=HistoricalPrefixSuccessPrefixCount(
-                    result.identity.prefix_count
-                ),
-                criterion=HistoricalPrefixSuccessCriterion(result.identity.criterion),
-            ),
+            identity=HistoricalSuccessQualificationIdentityView.from_identity(
+                    result.identity),
             ordered_import_evidence=tuple(
                 HistoricalSuccessQualificationImportEvidenceView(
                     import_index=item.import_index,
@@ -2367,6 +2382,111 @@ class HistoricalSuccessResearchQualificationResponse(BaseModel):
                     r1_comparable=pair.r1_comparable,
                 )
                 for pair in result.pairs
+            ),
+        )
+
+
+class HistoricalSuccessQualificationRandomBaselineAvailabilityView(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    availability_status: HistoricalSuccessQualificationRandomAvailabilityStatus
+    evaluated_cell_count: Annotated[int, Field(ge=8, le=16)]
+    ready_cell_count: Annotated[int, Field(ge=0, le=16)]
+    raw_upper_tail_probability_count: Annotated[int, Field(ge=0, le=16)]
+    multiple_testing_warning: str
+
+    def to_availability(
+        self,
+    ) -> HistoricalSuccessQualificationRandomBaselineAvailability:
+        return HistoricalSuccessQualificationRandomBaselineAvailability(
+            availability_status=self.availability_status,
+            evaluated_cell_count=self.evaluated_cell_count,
+            ready_cell_count=self.ready_cell_count,
+            raw_upper_tail_probability_count=self.raw_upper_tail_probability_count,
+            multiple_testing_warning=self.multiple_testing_warning,
+        )
+
+    @classmethod
+    def from_availability(
+        cls,
+        availability: HistoricalSuccessQualificationRandomBaselineAvailability,
+    ) -> HistoricalSuccessQualificationRandomBaselineAvailabilityView:
+        return cls.model_validate(availability, from_attributes=True)
+
+
+class HistoricalSuccessQualificationRandomBaselineCellView(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    import_index: Annotated[int, Field(ge=0, le=3)]
+    window_index: Annotated[int, Field(ge=0, le=3)]
+    qualification_random_role: HistoricalSuccessQualificationRandomRole
+    baseline: HistoricalSuccessRandomBaselineResponse
+
+    def to_cell(self) -> HistoricalSuccessQualificationRandomBaselineCell:
+        return HistoricalSuccessQualificationRandomBaselineCell(
+            import_index=self.import_index,
+            window_index=self.window_index,
+            qualification_random_role=self.qualification_random_role,
+            baseline=self.baseline.to_result(),
+        )
+
+    @classmethod
+    def from_cell(
+        cls,
+        cell: HistoricalSuccessQualificationRandomBaselineCell,
+    ) -> HistoricalSuccessQualificationRandomBaselineCellView:
+        return cls(
+            import_index=cell.import_index,
+            window_index=cell.window_index,
+            qualification_random_role=cell.qualification_random_role,
+            baseline=HistoricalSuccessRandomBaselineResponse.from_result(cell.baseline),
+        )
+
+
+class HistoricalSuccessQualificationRandomBaselineEvidenceResponse(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    qualification_identity: HistoricalSuccessQualificationIdentityView
+    ordered_import_identity_sha256s: Annotated[
+        tuple[Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")], ...],
+        Field(min_length=2, max_length=4),
+    ]
+    availability_summary: HistoricalSuccessQualificationRandomBaselineAvailabilityView
+    ordered_cells: Annotated[
+        tuple[HistoricalSuccessQualificationRandomBaselineCellView, ...],
+        Field(min_length=8, max_length=16),
+    ]
+
+    @model_validator(mode="after")
+    def validate_aggregate(self) -> Self:
+        HistoricalSuccessQualificationRandomBaselineEvidence(
+            qualification_identity=self.qualification_identity.to_identity(),
+            ordered_import_identity_sha256s=self.ordered_import_identity_sha256s,
+            availability_summary=self.availability_summary.to_availability(),
+            ordered_cells=tuple(cell.to_cell() for cell in self.ordered_cells),
+        )
+        return self
+
+    @classmethod
+    def from_result(
+        cls,
+        result: HistoricalSuccessQualificationRandomBaselineEvidence,
+    ) -> HistoricalSuccessQualificationRandomBaselineEvidenceResponse:
+        return cls(
+            qualification_identity=(
+                HistoricalSuccessQualificationIdentityView.from_identity(
+                    result.qualification_identity
+                )
+            ),
+            ordered_import_identity_sha256s=(result.ordered_import_identity_sha256s),
+            availability_summary=(
+                HistoricalSuccessQualificationRandomBaselineAvailabilityView.from_availability(
+                    result.availability_summary
+                )
+            ),
+            ordered_cells=tuple(
+                HistoricalSuccessQualificationRandomBaselineCellView.from_cell(cell)
+                for cell in result.ordered_cells
             ),
         )
 
@@ -2511,6 +2631,52 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalSuccessResearchQualificationResponse.from_result(result)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
+            "random-baseline-evidence"
+        ),
+        response_model=HistoricalSuccessQualificationRandomBaselineEvidenceResponse,
+        responses=error_responses,
+        operation_id=("getHistoricalPrefixStrategyResearchQualificationRandomBaselineEvidence"),
+    )
+    def get_historical_prefix_strategy_research_qualification_random_baseline_evidence(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: MultiImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalSuccessQualificationRandomBaselineEvidenceResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_research_qualification_random_baseline_evidence(
+                import_identity_sha256s=tuple(import_identity_sha256),
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessWindowsContractError:
+            return _duplicate_imports_error()
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalSuccessQualificationRandomBaselineEvidenceResponse.from_result(result)
 
     @router.get(
         (

@@ -35,12 +35,34 @@ def test_policy_pins_canonical_flag_order_and_exact_random_baseline_caveat() -> 
         HistoricalSuccessQualificationInformationalFlag.RECENT_RELATIONSHIP_DIFFERENCE,
     )
     assert RANDOM_BASELINE_CAVEAT == (
-        "Random/null benchmark unavailable; random advantage has not been evaluated."
+        "Exact official-six-number IID random-benchmark cells are available as descriptive "
+        "evidence when READY; NOT_READY cells expose no observed, expected, or upper-tail "
+        "result. No significance threshold, random-advantage decision, ranking, promotion, "
+        "rejection, production-eligibility decision, or monetary-cost equivalence has been "
+        "authorized."
     )
 
 
 def test_policy_contains_no_threshold_aggregation_or_superiority_mutation_hook() -> None:
-    source = POLICY.read_text(encoding="utf-8").casefold()
+    source = POLICY.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    caveat_assignments = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "RANDOM_BASELINE_CAVEAT"
+            for target in node.targets
+        )
+    ]
+    assert len(caveat_assignments) == 1
+    assert ast.literal_eval(caveat_assignments[0].value) == RANDOM_BASELINE_CAVEAT
+    source = ast.unparse(
+        ast.Module(
+            body=[node for node in tree.body if node is not caveat_assignments[0]],
+            type_ignores=[],
+        )
+    ).casefold()
 
     for forbidden in (
         "alpha",

@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 RANDOM_BASELINE_CAVEAT = (
-    "Random/null benchmark unavailable; random advantage has not been evaluated."
+    "Exact official-six-number IID random-benchmark cells are available as descriptive "
+    "evidence when READY; NOT_READY cells expose no observed, expected, or upper-tail "
+    "result. No significance threshold, random-advantage decision, ranking, promotion, "
+    "rejection, production-eligibility decision, or monetary-cost equivalence has been "
+    "authorized."
 )
 
 _SHA256_PATTERN = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)

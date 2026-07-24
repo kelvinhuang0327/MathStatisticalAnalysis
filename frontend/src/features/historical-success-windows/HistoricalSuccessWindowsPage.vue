@@ -6,6 +6,7 @@ import {
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
+  getHistoricalSuccessQualificationRandomBaselineEvidence,
   getHistoricalSuccessRecent50StabilityAudit,
   getHistoricalSuccessRandomBaseline,
   getHistoricalSuccessResearchQualification,
@@ -26,6 +27,7 @@ import {
   type HistoricalSuccessFeatureCohorts,
   type HistoricalSuccessCrossImportConcordance,
   type HistoricalSuccessMultiImportConcordanceCensus,
+  type HistoricalSuccessQualificationRandomBaselineEvidence,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessRecent50StabilityAudit,
   type HistoricalSuccessRandomBaseline,
@@ -107,6 +109,11 @@ type ResearchQualificationOutcome = {
   result: HistoricalSuccessResearchQualification | null
   error: string
 }
+type QualificationRandomBaselineOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessQualificationRandomBaselineEvidence | null
+  error: string
+}
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -149,6 +156,9 @@ const multiImportCensusState = ref<MatrixState>('idle')
 const multiImportCensusResults = ref<MultiImportConcordanceCensusOutcome[]>([])
 const researchQualificationState = ref<MatrixState>('idle')
 const researchQualificationResults = ref<ResearchQualificationOutcome[]>([])
+const qualificationRandomBaselineState = ref<MatrixState>('idle')
+const qualificationRandomBaselineResults =
+  ref<QualificationRandomBaselineOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
@@ -163,6 +173,7 @@ let recent50StabilityAuditGeneration = 0
 let crossImportConcordanceGeneration = 0
 let multiImportCensusGeneration = 0
 let researchQualificationGeneration = 0
+let qualificationRandomBaselineGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
@@ -175,6 +186,7 @@ let recent50StabilityAuditController: AbortController | undefined
 let crossImportConcordanceController: AbortController | undefined
 let multiImportCensusController: AbortController | undefined
 let researchQualificationController: AbortController | undefined
+let qualificationRandomBaselineController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -366,6 +378,14 @@ function clearResearchQualification(): void {
   researchQualificationController?.abort()
   researchQualificationResults.value = []
   researchQualificationState.value =
+    censusImportSelections.value.length >= 2 &&
+    matrixSelections.value.length > 0
+      ? 'selected'
+      : 'idle'
+  qualificationRandomBaselineGeneration += 1
+  qualificationRandomBaselineController?.abort()
+  qualificationRandomBaselineResults.value = []
+  qualificationRandomBaselineState.value =
     censusImportSelections.value.length >= 2 &&
     matrixSelections.value.length > 0
       ? 'selected'
@@ -871,7 +891,78 @@ async function evaluateMultiImportCensus(): Promise<void> {
       : 'error'
 }
 
+async function evaluateQualificationRandomBaselineEvidence(): Promise<void> {
+  const imports = [...censusImportSelections.value]
+  const selections = [...matrixSelections.value]
+  if (
+    imports.length < 2 ||
+    imports.length > 4 ||
+    selections.length < 1 ||
+    selections.length > 4
+  ) {
+    return
+  }
+  const importIdentities = imports.map(
+    (run) => run.import_identity_sha256,
+  )
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++qualificationRandomBaselineGeneration
+  qualificationRandomBaselineController?.abort()
+  const controller = new AbortController()
+  qualificationRandomBaselineController = controller
+  qualificationRandomBaselineResults.value = []
+  qualificationRandomBaselineState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(
+      async (
+        selection,
+      ): Promise<QualificationRandomBaselineOutcome> => {
+        try {
+          const result =
+            await getHistoricalSuccessQualificationRandomBaselineEvidence(
+              {
+                import_identity_sha256: importIdentities,
+                strategy_id: selection.strategy.strategy_id,
+                strategy_version: selection.strategy.strategy_version,
+                replicate: selection.strategy.replicate,
+                prefix_count: selectedPrefix,
+                criterion: selectedCriterion,
+              },
+              controller.signal,
+            )
+          return { selection, result, error: '' }
+        } catch (error: unknown) {
+          return {
+            selection,
+            result: null,
+            error: errorMessage(error),
+          }
+        }
+      },
+    ),
+  )
+  if (
+    !mounted ||
+    generation !== qualificationRandomBaselineGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  qualificationRandomBaselineResults.value = outcomes
+  const successes = outcomes.filter(
+    (outcome) => outcome.result !== null,
+  ).length
+  qualificationRandomBaselineState.value =
+    successes === outcomes.length
+      ? 'ready'
+      : successes > 0
+        ? 'partial'
+        : 'error'
+}
+
 async function evaluateResearchQualification(): Promise<void> {
+  void evaluateQualificationRandomBaselineEvidence()
   const imports = [...censusImportSelections.value]
   const selections = [...matrixSelections.value]
   if (
@@ -1149,6 +1240,7 @@ onBeforeUnmount(() => {
   crossImportConcordanceGeneration += 1
   multiImportCensusGeneration += 1
   researchQualificationGeneration += 1
+  qualificationRandomBaselineGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
@@ -1161,6 +1253,7 @@ onBeforeUnmount(() => {
   crossImportConcordanceController?.abort()
   multiImportCensusController?.abort()
   researchQualificationController?.abort()
+  qualificationRandomBaselineController?.abort()
 })
 </script>
 
@@ -3090,6 +3183,182 @@ onBeforeUnmount(() => {
           <div
             v-else
             class="research-state research-state--notice research-qualification-item-error"
+          >
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+
+      <div
+        v-if="qualificationRandomBaselineState === 'loading'"
+        class="research-state qualification-random-baseline-loading"
+      >
+        Loading ordered descriptive random evidence independently from the
+        qualification projections…
+      </div>
+      <div
+        v-if="qualificationRandomBaselineState === 'partial'"
+        class="research-state research-state--notice qualification-random-baseline-partial"
+      >
+        <strong>
+          Some random-evidence aggregates are unavailable; completed aggregates
+          remain visible in strategy order.
+        </strong>
+        <button
+          class="button button--quiet qualification-random-baseline-retry"
+          type="button"
+          @click="evaluateQualificationRandomBaselineEvidence"
+        >
+          Retry random evidence
+        </button>
+      </div>
+      <div
+        v-if="qualificationRandomBaselineState === 'error'"
+        class="research-state research-state--notice qualification-random-baseline-error"
+      >
+        <strong>
+          All random-evidence aggregate requests are unavailable. Qualification
+          projections above remain independent.
+        </strong>
+        <button
+          class="button button--quiet qualification-random-baseline-retry"
+          type="button"
+          @click="evaluateQualificationRandomBaselineEvidence"
+        >
+          Retry random evidence
+        </button>
+      </div>
+
+      <ol
+        v-if="qualificationRandomBaselineResults.length > 0"
+        class="qualification-random-baseline-result-list"
+      >
+        <li
+          v-for="outcome in qualificationRandomBaselineResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="qualification-random-baseline-result-card"
+        >
+          <header>
+            <span class="identity-kind">
+              {{ outcome.selection.strategy.identity_kind }}
+            </span>
+            <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+            <code>
+              {{ outcome.selection.strategy.strategy_version }} · replicate
+              {{ outcome.selection.strategy.replicate }}
+            </code>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts qualification-random-baseline-facts">
+              <div>
+                <dt>Availability</dt>
+                <dd>
+                  {{ outcome.result.availability_summary.availability_status }}
+                </dd>
+              </div>
+              <div>
+                <dt>Evaluated cells</dt>
+                <dd>
+                  {{ outcome.result.availability_summary.evaluated_cell_count }}
+                </dd>
+              </div>
+              <div>
+                <dt>READY cells</dt>
+                <dd>
+                  {{ outcome.result.availability_summary.ready_cell_count }}
+                </dd>
+              </div>
+              <div>
+                <dt>Raw upper tails</dt>
+                <dd>
+                  {{
+                    outcome.result.availability_summary
+                      .raw_upper_tail_probability_count
+                  }}
+                </dd>
+              </div>
+            </dl>
+            <p
+              class="research-state research-state--notice qualification-random-baseline-warning"
+            >
+              {{
+                outcome.result.availability_summary.multiple_testing_warning
+              }}
+            </p>
+            <div class="qualification-random-baseline-table-scroll">
+              <table class="qualification-random-baseline-table">
+                <caption>
+                  Caller-ordered imports, then FULL_HISTORY · LONG · MEDIUM · SHORT.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Import</th>
+                    <th scope="col">Window</th>
+                    <th scope="col">Qualification role</th>
+                    <th scope="col">Readiness / reasons</th>
+                    <th scope="col">Observed / eligible</th>
+                    <th scope="col">Expected successes</th>
+                    <th scope="col">Raw upper tail</th>
+                    <th scope="col">Duplicate disclosure</th>
+                    <th scope="col">Interpretation caveat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="cell in outcome.result.ordered_cells"
+                    :key="`${cell.import_index}:${cell.window_index}`"
+                    class="qualification-random-baseline-cell"
+                  >
+                    <td>
+                      {{ cell.import_index + 1 }} ·
+                      <code>
+                        {{
+                          outcome.result.ordered_import_identity_sha256s[
+                            cell.import_index
+                          ]
+                        }}
+                      </code>
+                    </td>
+                    <td>{{ cell.baseline.cell.window_kind }}</td>
+                    <td>{{ cell.qualification_random_role }}</td>
+                    <td>
+                      {{ cell.baseline.readiness }} ·
+                      {{
+                        cell.baseline.reason_codes.length > 0
+                          ? cell.baseline.reason_codes.join(' · ')
+                          : 'None'
+                      }}
+                    </td>
+                    <td>
+                      {{ cell.baseline.observed_success_count ?? 'Not available' }}
+                      / {{ cell.baseline.eligible_observation_count }}
+                    </td>
+                    <td>
+                      {{ randomBaselineExact(cell.baseline.expected_successes) }}
+                    </td>
+                    <td>
+                      {{
+                        randomBaselineExact(
+                          cell.baseline.upper_tail_probability,
+                        )
+                      }}
+                    </td>
+                    <td>
+                      positions
+                      {{ cell.baseline.observed_ticket_position_count }} · distinct
+                      {{ cell.baseline.observed_distinct_ticket_count }} · duplicates
+                      {{ cell.baseline.observed_duplicate_ticket_count }} · observations
+                      {{ cell.baseline.observation_count_with_duplicates }}
+                    </td>
+                    <td>{{ cell.baseline.interpretation_caveat }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div
+            v-else
+            class="research-state research-state--notice qualification-random-baseline-item-error"
           >
             <strong>{{ outcome.error }}</strong>
           </div>

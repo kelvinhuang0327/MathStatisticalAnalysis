@@ -91,6 +91,14 @@ from lottolab.application.historical_success_qualification import (
     HistoricalSuccessResearchQualification,
     qualify_historical_success,
 )
+from lottolab.application.historical_success_random_baseline import (
+    RANDOM_BASELINE_POLICY_VERSION,
+    HistoricalSuccessRandomBaselineCellIdentity,
+    HistoricalSuccessRandomBaselineObservationOperand,
+    HistoricalSuccessRandomBaselineResult,
+    HistoricalSuccessRandomBaselineTicketOperand,
+    evaluate_historical_success_random_baseline,
+)
 from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
@@ -184,6 +192,11 @@ def _validate_prefix_count(prefix_count: int) -> None:
 def _validate_criterion(criterion: HistoricalPrefixSuccessCriterion) -> None:
     if type(criterion) is not HistoricalPrefixSuccessCriterion:
         raise _contract_error("criterion is outside the closed supported set")
+
+
+def _validate_window_kind(window_kind: WindowKind) -> None:
+    if type(window_kind) is not WindowKind:
+        raise _contract_error("window_kind is outside the closed supported set")
 
 
 def _validate_pagination(limit: int, offset: int) -> None:
@@ -1569,6 +1582,50 @@ def _find_exact_strategy(
     return strategy
 
 
+def _selected_window_observations(
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    window: HistoricalPrefixSuccessWindowSummary,
+) -> tuple[HistoricalPrefixSuccessSourceObservation, ...]:
+    ordered = _ordered_observations(strategy)
+    selected = (
+        ordered
+        if window.requested_draw_count is None
+        else ordered[-window.requested_draw_count :]
+    )
+    if (
+        len(selected) != window.source_draw_count
+        or not selected
+        or selected[0].target != window.first_target
+        or selected[-1].target != window.last_target
+        or selected[0].cutoff != window.first_cutoff
+        or selected[-1].cutoff != window.last_cutoff
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "selected observations do not match the existing window result"
+        )
+    return selected
+
+
+def _random_baseline_observations(
+    observations: tuple[HistoricalPrefixSuccessSourceObservation, ...],
+) -> tuple[HistoricalSuccessRandomBaselineObservationOperand, ...]:
+    return tuple(
+        HistoricalSuccessRandomBaselineObservationOperand(
+            target_main_numbers=observation.target_main_numbers,
+            target_special_number=observation.target_special_number,
+            tickets=tuple(
+                HistoricalSuccessRandomBaselineTicketOperand(
+                    main_numbers=ticket.main_numbers,
+                    persisted_main_hit_count=ticket.main_hit_count,
+                    persisted_legacy_special_hit=ticket.special_hit,
+                )
+                for ticket in observation.tickets
+            ),
+        )
+        for observation in observations
+    )
+
+
 class EvaluateHistoricalPrefixSuccessWindows:
     """Load one exact import once and expose descriptive strategy windows."""
 
@@ -1660,6 +1717,82 @@ class EvaluateHistoricalPrefixSuccessWindows:
             strategy=strategy,
             prefix_count=prefix_count,
             criterion=criterion,
+        )
+
+    def get_random_null_baseline(
+        self,
+        *,
+        import_identity_sha256: str,
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        window_kind: WindowKind,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalSuccessRandomBaselineResult:
+        _validate_import_identity(import_identity_sha256)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_window_kind(window_kind)
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+
+        reader = self._reader_factory()
+        source = self._load_with_reader(reader, import_identity_sha256)
+        strategy = _find_exact_strategy(
+            source,
+            strategy_id=strategy_id,
+            strategy_version=strategy_version,
+            replicate=replicate,
+        )
+        window_result = _evaluate_strategy(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        cell = HistoricalSuccessRandomBaselineCellIdentity(
+            policy_version=RANDOM_BASELINE_POLICY_VERSION,
+            import_identity_sha256=source.metadata.import_identity_sha256,
+            dataset_sha256=source.metadata.dataset_sha256,
+            source_artifact_sha256=source.metadata.source_artifact_sha256,
+            strategy_id=strategy.identity.strategy_id,
+            strategy_version=strategy.identity.strategy_version,
+            replicate=strategy.identity.replicate,
+            window_kind=window_kind,
+            window_policy_version=DEFAULT_WINDOW_POLICY_VERSION,
+            prefix_count=prefix_count,
+            criterion=criterion,
+        )
+        if window_result.status is HistoricalPrefixSuccessEvaluationStatus.NO_OBSERVATIONS:
+            return evaluate_historical_success_random_baseline(
+                cell=cell,
+                observations=(),
+                window_complete=False,
+                eligible_observation_count=0,
+                excluded_observation_count=0,
+                legacy_window_success_count=0,
+            )
+        selected_windows = tuple(
+            window for window in window_result.windows if window.window_kind is window_kind
+        )
+        if len(selected_windows) != 1:
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "existing evaluator did not return the exact selected window"
+            )
+        selected_window = selected_windows[0]
+        selected_observations = _selected_window_observations(strategy, selected_window)
+        return evaluate_historical_success_random_baseline(
+            cell=cell,
+            observations=_random_baseline_observations(selected_observations),
+            window_complete=(
+                selected_window.evaluation_status is WindowEvaluationStatus.COMPLETE
+            ),
+            eligible_observation_count=selected_window.eligible_draw_count,
+            excluded_observation_count=selected_window.excluded_draw_count,
+            legacy_window_success_count=selected_window.success_count,
         )
 
     def get_matrix(

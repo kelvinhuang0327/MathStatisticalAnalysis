@@ -152,6 +152,11 @@ def test_exact_completed_import_reconstructs_source_order_aliases_replicates_and
         (ticket.main_hit_count, ticket.special_hit)
         for ticket in alias.observations[0].tickets
     ] == [(ticket.main_hit_count, ticket.special_hit) for ticket in expected.tickets]
+    assert alias.observations[0].target_main_numbers == TARGET_MAIN_NUMBERS
+    assert alias.observations[0].target_special_number == 49
+    assert [ticket.main_numbers for ticket in alias.observations[0].tickets] == [
+        ticket.main_numbers for ticket in expected.tickets
+    ]
 
 
 def test_absent_database_and_absent_or_non_completed_exact_run_are_not_found(

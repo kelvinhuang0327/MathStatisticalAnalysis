@@ -265,6 +265,7 @@ class HistoricalPrefixSuccessTicketOutcome:
     main_hit_count: int
     special_hit: bool
     ticket_sha256: str
+    main_numbers: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.portfolio_position) is not int or self.portfolio_position < 1:
@@ -282,6 +283,12 @@ class HistoricalPrefixSuccessTicketOutcome:
                 "ticket hit signature exceeds the six-number selection"
             )
         _require_sha256(self.ticket_sha256, "ticket_sha256")
+        if type(self.main_numbers) is not tuple or any(
+            type(value) is not int for value in self.main_numbers
+        ):
+            raise HistoricalPrefixSuccessWindowsContractError(
+                "main_numbers must be an immutable integer tuple"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -291,6 +298,8 @@ class HistoricalPrefixSuccessSourceObservation:
     constructor_identifier: str
     portfolio_sha256: str
     tickets: tuple[HistoricalPrefixSuccessTicketOutcome, ...]
+    target_main_numbers: tuple[int, ...] = ()
+    target_special_number: int = 0
 
     def __post_init__(self) -> None:
         if type(self.target) is not HistoricalPrefixSuccessDrawIdentity:
@@ -310,6 +319,16 @@ class HistoricalPrefixSuccessSourceObservation:
         if tuple(ticket.portfolio_position for ticket in self.tickets) != tuple(range(1, 21)):
             raise HistoricalPrefixSuccessWindowsContractError(
                 "ticket tuple order must match positions 1..20"
+            )
+        if type(self.target_main_numbers) is not tuple or any(
+            type(value) is not int for value in self.target_main_numbers
+        ):
+            raise HistoricalPrefixSuccessWindowsContractError(
+                "target_main_numbers must be an immutable integer tuple"
+            )
+        if type(self.target_special_number) is not int:
+            raise HistoricalPrefixSuccessWindowsContractError(
+                "target_special_number must be an integer"
             )
 
 

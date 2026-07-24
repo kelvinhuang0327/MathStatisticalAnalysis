@@ -9,6 +9,9 @@ from lottolab.interfaces.api.app import create_app
 
 ROOT = Path(__file__).resolve().parents[2]
 READ_MODELS = ROOT / "src/lottolab/application/historical_prefix_success_windows.py"
+RANDOM_BASELINE = (
+    ROOT / "src/lottolab/application/historical_success_random_baseline.py"
+)
 QUALIFICATION = ROOT / "src/lottolab/application/historical_success_qualification.py"
 USE_CASE = (
     ROOT
@@ -37,7 +40,14 @@ def _imports(path: Path) -> set[str]:
 def test_all_vertical_modules_exist() -> None:
     assert all(
         path.is_file()
-        for path in (READ_MODELS, QUALIFICATION, USE_CASE, READER, ROUTER)
+        for path in (
+            READ_MODELS,
+            RANDOM_BASELINE,
+            QUALIFICATION,
+            USE_CASE,
+            READER,
+            ROUTER,
+        )
     )
 
 
@@ -69,6 +79,42 @@ def test_use_case_depends_on_port_and_domain_but_not_interface_or_infrastructure
     assert not any(name.startswith("lottolab.infrastructure") for name in imports)
     assert not any(name.startswith("lottolab.interfaces") for name in imports)
     assert not imports & {"fastapi", "pathlib", "pydantic", "sqlite3"}
+
+
+def test_random_baseline_is_exact_pure_application_owned_and_has_no_forbidden_runtime() -> None:
+    imports = _imports(RANDOM_BASELINE)
+    tree = ast.parse(RANDOM_BASELINE.read_text(encoding="utf-8"))
+    called_names = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+    }
+
+    assert not any(name.startswith("lottolab.infrastructure") for name in imports)
+    assert not any(name.startswith("lottolab.interfaces") for name in imports)
+    assert not imports & {
+        "fastapi",
+        "filesystem",
+        "numpy",
+        "pathlib",
+        "pydantic",
+        "random",
+        "scipy",
+        "sqlite3",
+    }
+    assert "float" not in called_names
+    assert "Fraction" in called_names
+
+
+def test_random_baseline_is_not_exposed_through_api_or_qualification() -> None:
+    router_source = ROUTER.read_text(encoding="utf-8")
+    app_source = APP.read_text(encoding="utf-8")
+    qualification_source = QUALIFICATION.read_text(encoding="utf-8")
+
+    assert "get_random_null_baseline" not in router_source
+    assert "historical_success_random_baseline" not in router_source
+    assert "historical_success_random_baseline" not in app_source
+    assert "historical_success_random_baseline" not in qualification_source
 
 
 def test_research_qualification_is_pure_application_owned_immutable_policy() -> None:

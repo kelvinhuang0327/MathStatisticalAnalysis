@@ -509,6 +509,44 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": Array<string>
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalSuccessResearchQualificationResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census": {
       get: {
           parameters: {
@@ -1615,6 +1653,52 @@ export interface components {
           "evaluated_draws": number
           "complete_portfolios": number
           "m4plus_hit_count": number
+        }
+    "HistoricalSuccessQualificationCensusStatus": "COMPLETE" | "PARTIAL_NOT_READY" | "ALL_NOT_READY"
+    "HistoricalSuccessQualificationEvidenceStatus": "COMPLETE" | "NOT_READY"
+    "HistoricalSuccessQualificationIdentityView": {
+          "strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+        }
+    "HistoricalSuccessQualificationImportEvidenceView": {
+          "import_index": number
+          "import_identity_sha256": string
+          "dataset_sha256": string
+          "source_artifact_sha256": string
+          "source_observation_count": number
+          "strategy_window_status": components['schemas']["HistoricalSuccessQualificationEvidenceStatus"]
+          "temporal_holdout_status": components['schemas']["HistoricalSuccessQualificationEvidenceStatus"]
+          "recent_audit_status": components['schemas']["HistoricalSuccessQualificationEvidenceStatus"]
+          "recent_relationship_difference_count": number
+        }
+    "HistoricalSuccessQualificationInformationalFlag": "CROSS_IMPORT_UNRESOLVED" | "HISTORICAL_CONCORDANCE_OBSERVED" | "RECENT_RELATIONSHIP_DIFFERENCE"
+    "HistoricalSuccessQualificationOverlapRelation": "DISJOINT" | "PARTIAL_OVERLAP" | "IDENTICAL"
+    "HistoricalSuccessQualificationPairEvidenceView": {
+          "left_import_index": number
+          "right_import_index": number
+          "pair_status": components['schemas']["HistoricalSuccessQualificationPairStatus"]
+          "same_dataset_sha256": boolean
+          "same_source_artifact_sha256": boolean
+          "confirmation_overlap_relation": components['schemas']["HistoricalSuccessQualificationOverlapRelation"] | null
+          "r1_comparable": boolean
+        }
+    "HistoricalSuccessQualificationPairStatus": "COMPLETE" | "LEFT_NOT_READY" | "RIGHT_NOT_READY" | "BOTH_NOT_READY"
+    "HistoricalSuccessQualificationPrimaryStatus": "NOT_READY" | "EVIDENCE_INCOMPLETE" | "RESEARCH_CANDIDATE"
+    "HistoricalSuccessResearchQualificationResponse": {
+          "identity": components['schemas']["HistoricalSuccessQualificationIdentityView"]
+          "ordered_import_evidence": Array<components['schemas']["HistoricalSuccessQualificationImportEvidenceView"]>
+          "primary_status": components['schemas']["HistoricalSuccessQualificationPrimaryStatus"]
+          "informational_flags": Array<components['schemas']["HistoricalSuccessQualificationInformationalFlag"]>
+          "random_baseline_caveat": string | null
+          "comparable_import_count": number
+          "expected_pair_count": number
+          "actual_pair_count": number
+          "census_status": components['schemas']["HistoricalSuccessQualificationCensusStatus"]
+          "cohort_census_count": number
+          "pair_evidence": Array<components['schemas']["HistoricalSuccessQualificationPairEvidenceView"]>
         }
     "HistoricalTicketView": {
           "portfolio_position": number

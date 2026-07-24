@@ -79,6 +79,18 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
 )
+from lottolab.application.historical_success_qualification import (
+    HistoricalSuccessQualificationCensusStatus,
+    HistoricalSuccessQualificationCensusSummary,
+    HistoricalSuccessQualificationEvidenceStatus,
+    HistoricalSuccessQualificationIdentity,
+    HistoricalSuccessQualificationImportEvidence,
+    HistoricalSuccessQualificationOverlapRelation,
+    HistoricalSuccessQualificationPairInput,
+    HistoricalSuccessQualificationPairStatus,
+    HistoricalSuccessResearchQualification,
+    qualify_historical_success,
+)
 from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
@@ -89,6 +101,7 @@ from lottolab.domain.strategy_success_evaluation import (
     BigLottoSuccessCriterion,
     ObservationEvaluation,
     StrategySuccessEvaluationInputError,
+    WindowEvaluationStatus,
     WindowKind,
     WindowSuccessSummary,
     evaluate_observation,
@@ -1091,14 +1104,25 @@ def _recent_50_stability_audit(
     prefix_count: int,
     criterion: HistoricalPrefixSuccessCriterion,
     assignments: tuple[HistoricalPrefixWalkForwardAssignment, ...],
+    temporal_holdout: HistoricalPrefixTemporalHoldoutResult | None = None,
 ) -> HistoricalPrefixRecentStabilityAuditResult:
-    temporal_holdout = _temporal_holdout(
-        source=source,
-        strategy=strategy,
-        prefix_count=prefix_count,
-        criterion=criterion,
-        assignments=assignments,
-    )
+    if temporal_holdout is None:
+        temporal_holdout = _temporal_holdout(
+            source=source,
+            strategy=strategy,
+            prefix_count=prefix_count,
+            criterion=criterion,
+            assignments=assignments,
+        )
+    elif (
+        temporal_holdout.metadata != source.metadata
+        or temporal_holdout.strategy != strategy.identity
+        or temporal_holdout.prefix_count != prefix_count
+        or temporal_holdout.criterion != _criterion_identity(criterion)
+    ):
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "supplied temporal holdout does not match recent audit identity"
+        )
     temporal_split = temporal_holdout.split
     if (
         temporal_holdout.evaluation_status
@@ -2004,6 +2028,191 @@ class EvaluateHistoricalPrefixSuccessWindows:
             pairs=pairs,
             cohort_census_count=len(cohort_census),
             cohort_census=cohort_census,
+        )
+
+    def get_research_qualification(
+        self,
+        *,
+        import_identity_sha256s: tuple[str, ...],
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalSuccessResearchQualification:
+        _validate_import_identities(import_identity_sha256s)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+
+        reader = self._reader_factory()
+        sources = tuple(
+            self._load_with_reader(reader, import_identity_sha256)
+            for import_identity_sha256 in import_identity_sha256s
+        )
+        strategies = tuple(
+            _find_exact_strategy(
+                source,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+            )
+            for source in sources
+        )
+        if any(strategy.identity != strategies[0].identity for strategy in strategies[1:]):
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "multi-import exact strategy identities do not match"
+            )
+        window_results = tuple(
+            _evaluate_strategy(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+            )
+            for source, strategy in zip(sources, strategies, strict=True)
+        )
+        assignments = tuple(
+            _build_walk_forward_assignments(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+            )
+            for source, strategy in zip(sources, strategies, strict=True)
+        )
+        holdouts = tuple(
+            _temporal_holdout(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+                assignments=source_assignments,
+            )
+            for source, strategy, source_assignments in zip(
+                sources,
+                strategies,
+                assignments,
+                strict=True,
+            )
+        )
+        recent_audits = tuple(
+            _recent_50_stability_audit(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+                assignments=source_assignments,
+                temporal_holdout=holdout,
+            )
+            for source, strategy, source_assignments, holdout in zip(
+                sources,
+                strategies,
+                assignments,
+                holdouts,
+                strict=True,
+            )
+        )
+        census_status = _multi_import_census_status(holdouts)
+        pairs = _multi_import_pairs(
+            sources=sources,
+            assignments=assignments,
+            holdouts=holdouts,
+        )
+        cohort_census = (
+            _multi_import_cohort_census(sources, holdouts)
+            if census_status is HistoricalPrefixMultiImportCensusStatus.COMPLETE
+            else ()
+        )
+
+        import_evidence = tuple(
+            HistoricalSuccessQualificationImportEvidence(
+                import_index=index,
+                import_identity_sha256=source.metadata.import_identity_sha256,
+                dataset_sha256=source.metadata.dataset_sha256,
+                source_artifact_sha256=source.metadata.source_artifact_sha256,
+                source_observation_count=len(strategy.observations),
+                strategy_window_status=(
+                    HistoricalSuccessQualificationEvidenceStatus.COMPLETE
+                    if (
+                        window_result.status
+                        is HistoricalPrefixSuccessEvaluationStatus.EVALUATED
+                        and all(
+                            window.evaluation_status
+                            is WindowEvaluationStatus.COMPLETE
+                            for window in window_result.windows
+                        )
+                    )
+                    else HistoricalSuccessQualificationEvidenceStatus.NOT_READY
+                ),
+                temporal_holdout_status=(
+                    HistoricalSuccessQualificationEvidenceStatus.COMPLETE
+                    if holdout.evaluation_status
+                    is HistoricalPrefixTemporalHoldoutStatus.COMPLETE
+                    else HistoricalSuccessQualificationEvidenceStatus.NOT_READY
+                ),
+                recent_audit_status=(
+                    HistoricalSuccessQualificationEvidenceStatus.COMPLETE
+                    if recent.audit_status
+                    is HistoricalPrefixRecentStabilityAuditStatus.COMPLETE
+                    else HistoricalSuccessQualificationEvidenceStatus.NOT_READY
+                ),
+                recent_relationship_difference_count=sum(
+                    comparison.relationship
+                    is HistoricalPrefixTemporalHoldoutRelationship.DIFFERENT
+                    for comparison in recent.comparisons
+                ),
+            )
+            for index, (source, strategy, window_result, holdout, recent) in enumerate(
+                zip(
+                    sources,
+                    strategies,
+                    window_results,
+                    holdouts,
+                    recent_audits,
+                    strict=True,
+                )
+            )
+        )
+        pair_inputs = tuple(
+            HistoricalSuccessQualificationPairInput(
+                left_import_index=pair.left_import_index,
+                right_import_index=pair.right_import_index,
+                pair_status=HistoricalSuccessQualificationPairStatus(
+                    pair.pair_status.value
+                ),
+                confirmation_overlap_relation=(
+                    HistoricalSuccessQualificationOverlapRelation(
+                        pair.confirmation_target_overlap.relation.value
+                    )
+                    if pair.confirmation_target_overlap is not None
+                    else None
+                ),
+            )
+            for pair in pairs
+        )
+        strategy = strategies[0].identity
+        return qualify_historical_success(
+            identity=HistoricalSuccessQualificationIdentity(
+                strategy_id=strategy.strategy_id,
+                strategy_version=strategy.strategy_version,
+                replicate=strategy.replicate,
+                prefix_count=prefix_count,
+                criterion=criterion.value,
+            ),
+            imports=import_evidence,
+            pairs=pair_inputs,
+            census_status=HistoricalSuccessQualificationCensusStatus(
+                census_status.value
+            ),
+            cohort_census_count=len(cohort_census),
+            cohort_summaries=tuple(
+                HistoricalSuccessQualificationCensusSummary(row.summary.value)
+                for row in cohort_census
+            ),
         )
 
 

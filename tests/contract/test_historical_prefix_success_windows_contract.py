@@ -16,13 +16,15 @@ MATRIX_PATH = f"{EXACT_PATH}/matrix"
 FEATURE_COHORT_PATH = f"{EXACT_PATH}/feature-cohorts"
 DIAGNOSTICS_PATH = f"{FEATURE_COHORT_PATH}/diagnostics"
 TEMPORAL_HOLDOUT_PATH = f"{FEATURE_COHORT_PATH}/temporal-holdout"
+RECENT_AUDIT_PATH = f"{FEATURE_COHORT_PATH}/recent-50-stability-audit"
 CROSS_IMPORT_CONCORDANCE_PATH = f"{FEATURE_COHORT_PATH}/cross-import-concordance"
 MULTI_IMPORT_CENSUS_PATH = (
     f"{FEATURE_COHORT_PATH}/multi-import-concordance-census"
 )
+RESEARCH_QUALIFICATION_PATH = f"{EXACT_PATH}/research-qualification"
 
 
-def test_openapi_exposes_exactly_eight_get_operations_with_required_selectors() -> None:
+def test_openapi_exposes_exactly_ten_get_operations_with_required_selectors() -> None:
     paths = create_app().openapi()["paths"]
 
     assert set(paths[LIST_PATH]) == {"get"}
@@ -31,16 +33,20 @@ def test_openapi_exposes_exactly_eight_get_operations_with_required_selectors() 
     assert set(paths[FEATURE_COHORT_PATH]) == {"get"}
     assert set(paths[DIAGNOSTICS_PATH]) == {"get"}
     assert set(paths[TEMPORAL_HOLDOUT_PATH]) == {"get"}
+    assert set(paths[RECENT_AUDIT_PATH]) == {"get"}
     assert set(paths[CROSS_IMPORT_CONCORDANCE_PATH]) == {"get"}
     assert set(paths[MULTI_IMPORT_CENSUS_PATH]) == {"get"}
+    assert set(paths[RESEARCH_QUALIFICATION_PATH]) == {"get"}
     list_operation = paths[LIST_PATH]["get"]
     exact_operation = paths[EXACT_PATH]["get"]
     matrix_operation = paths[MATRIX_PATH]["get"]
     feature_cohort_operation = paths[FEATURE_COHORT_PATH]["get"]
     diagnostics_operation = paths[DIAGNOSTICS_PATH]["get"]
     temporal_holdout_operation = paths[TEMPORAL_HOLDOUT_PATH]["get"]
+    recent_audit_operation = paths[RECENT_AUDIT_PATH]["get"]
     cross_import_operation = paths[CROSS_IMPORT_CONCORDANCE_PATH]["get"]
     multi_import_operation = paths[MULTI_IMPORT_CENSUS_PATH]["get"]
+    qualification_operation = paths[RESEARCH_QUALIFICATION_PATH]["get"]
     assert list_operation["operationId"] == "listHistoricalPrefixStrategySuccessWindows"
     assert exact_operation["operationId"] == "getHistoricalPrefixStrategySuccessWindows"
     assert matrix_operation["operationId"] == "getHistoricalPrefixStrategySuccessMatrix"
@@ -54,11 +60,17 @@ def test_openapi_exposes_exactly_eight_get_operations_with_required_selectors() 
     assert temporal_holdout_operation["operationId"] == (
         "getHistoricalPrefixStrategyFeatureCohortTemporalHoldout"
     )
+    assert recent_audit_operation["operationId"] == (
+        "getHistoricalPrefixStrategyFeatureCohortRecent50StabilityAudit"
+    )
     assert cross_import_operation["operationId"] == (
         "getHistoricalPrefixStrategyCrossImportConcordance"
     )
     assert multi_import_operation["operationId"] == (
         "getHistoricalPrefixStrategyMultiImportConcordanceCensus"
+    )
+    assert qualification_operation["operationId"] == (
+        "getHistoricalPrefixStrategyResearchQualification"
     )
     assert [item["name"] for item in list_operation["parameters"]] == [
         "import_identity_sha256",
@@ -126,6 +138,17 @@ def test_openapi_exposes_exactly_eight_get_operations_with_required_selectors() 
         item["required"] is True
         for item in temporal_holdout_operation["parameters"]
     )
+    assert [item["name"] for item in recent_audit_operation["parameters"]] == [
+        "strategy_id",
+        "strategy_version",
+        "replicate",
+        "import_identity_sha256",
+        "prefix_count",
+        "criterion",
+    ]
+    assert all(
+        item["required"] is True for item in recent_audit_operation["parameters"]
+    )
     assert [item["name"] for item in cross_import_operation["parameters"]] == [
         "strategy_id",
         "strategy_version",
@@ -157,6 +180,18 @@ def test_openapi_exposes_exactly_eight_get_operations_with_required_selectors() 
         "type": "string",
         "pattern": "^[0-9a-f]{64}$",
     }
+    assert [item["name"] for item in qualification_operation["parameters"]] == [
+        "strategy_id",
+        "strategy_version",
+        "replicate",
+        "import_identity_sha256",
+        "prefix_count",
+        "criterion",
+    ]
+    assert all(
+        item["required"] is True for item in qualification_operation["parameters"]
+    )
+    assert qualification_operation["parameters"][3]["schema"] == multi_selector
     selector = list_operation["parameters"][0]
     assert selector["in"] == "query"
     assert selector["schema"]["pattern"] == "^[0-9a-f]{64}$"
@@ -288,6 +323,20 @@ def test_openapi_pins_closed_prefix_criterion_and_nullable_rate_contract() -> No
         "DIFFERENT",
         "UNAVAILABLE",
     ]
+    assert schemas["HistoricalSuccessQualificationPrimaryStatus"]["enum"] == [
+        "NOT_READY",
+        "EVIDENCE_INCOMPLETE",
+        "RESEARCH_CANDIDATE",
+    ]
+    assert schemas["HistoricalSuccessQualificationInformationalFlag"]["enum"] == [
+        "CROSS_IMPORT_UNRESOLVED",
+        "HISTORICAL_CONCORDANCE_OBSERVED",
+        "RECENT_RELATIONSHIP_DIFFERENCE",
+    ]
+    assert schemas["HistoricalSuccessQualificationEvidenceStatus"]["enum"] == [
+        "COMPLETE",
+        "NOT_READY",
+    ]
 
 
 def test_openapi_uses_sanitized_404_422_503_models_for_all_routes() -> None:
@@ -300,8 +349,10 @@ def test_openapi_uses_sanitized_404_422_503_models_for_all_routes() -> None:
         FEATURE_COHORT_PATH,
         DIAGNOSTICS_PATH,
         TEMPORAL_HOLDOUT_PATH,
+        RECENT_AUDIT_PATH,
         CROSS_IMPORT_CONCORDANCE_PATH,
         MULTI_IMPORT_CENSUS_PATH,
+        RESEARCH_QUALIFICATION_PATH,
     ):
         operation = paths[path]["get"]
         for status, schema_name in {
@@ -368,6 +419,17 @@ def test_generated_types_keep_all_success_window_parameters_required() -> None:
     ) in declaration
     assert f'"{DIAGNOSTICS_PATH}": {{' in declaration
     assert f'"{TEMPORAL_HOLDOUT_PATH}": {{' in declaration
+    assert f'"{RECENT_AUDIT_PATH}": {{' in declaration
+    assert f'"{RESEARCH_QUALIFICATION_PATH}": {{' in declaration
+    assert (
+        '"HistoricalSuccessQualificationPrimaryStatus": "NOT_READY" | '
+        '"EVIDENCE_INCOMPLETE" | "RESEARCH_CANDIDATE"'
+    ) in declaration
+    assert (
+        '"HistoricalSuccessQualificationInformationalFlag": '
+        '"CROSS_IMPORT_UNRESOLVED" | "HISTORICAL_CONCORDANCE_OBSERVED" | '
+        '"RECENT_RELATIONSHIP_DIFFERENCE"'
+    ) in declaration
     assert f'"{MULTI_IMPORT_CENSUS_PATH}": {{' in declaration
     multi_import_block = declaration.split(
         f'"{MULTI_IMPORT_CENSUS_PATH}": {{', 1

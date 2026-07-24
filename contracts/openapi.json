@@ -1359,6 +1359,126 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Research Qualification",
+        "operationId": "getHistoricalPrefixStrategyResearchQualification",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "minItems": 2,
+              "maxItems": 4,
+              "description": "Two to four distinct exact Historical Results import SHA-256 values; repeat this query parameter in caller order.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Two to four distinct exact Historical Results import SHA-256 values; repeat this query parameter in caller order."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalSuccessResearchQualificationResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census": {
       "get": {
         "tags": [
@@ -6205,6 +6325,290 @@
           "m4plus_hit_count"
         ],
         "title": "HistoricalStrategySummaryView"
+      },
+      "HistoricalSuccessQualificationCensusStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "PARTIAL_NOT_READY",
+          "ALL_NOT_READY"
+        ],
+        "title": "HistoricalSuccessQualificationCensusStatus"
+      },
+      "HistoricalSuccessQualificationEvidenceStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "NOT_READY"
+        ],
+        "title": "HistoricalSuccessQualificationEvidenceStatus"
+      },
+      "HistoricalSuccessQualificationIdentityView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "replicate": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Replicate"
+          },
+          "prefix_count": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "replicate",
+          "prefix_count",
+          "criterion"
+        ],
+        "title": "HistoricalSuccessQualificationIdentityView"
+      },
+      "HistoricalSuccessQualificationImportEvidenceView": {
+        "properties": {
+          "import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Import Index"
+          },
+          "import_identity_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Import Identity Sha256"
+          },
+          "dataset_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Dataset Sha256"
+          },
+          "source_artifact_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Source Artifact Sha256"
+          },
+          "source_observation_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Source Observation Count"
+          },
+          "strategy_window_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationEvidenceStatus"
+          },
+          "temporal_holdout_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationEvidenceStatus"
+          },
+          "recent_audit_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationEvidenceStatus"
+          },
+          "recent_relationship_difference_count": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 0.0,
+            "title": "Recent Relationship Difference Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "import_index",
+          "import_identity_sha256",
+          "dataset_sha256",
+          "source_artifact_sha256",
+          "source_observation_count",
+          "strategy_window_status",
+          "temporal_holdout_status",
+          "recent_audit_status",
+          "recent_relationship_difference_count"
+        ],
+        "title": "HistoricalSuccessQualificationImportEvidenceView"
+      },
+      "HistoricalSuccessQualificationInformationalFlag": {
+        "type": "string",
+        "enum": [
+          "CROSS_IMPORT_UNRESOLVED",
+          "HISTORICAL_CONCORDANCE_OBSERVED",
+          "RECENT_RELATIONSHIP_DIFFERENCE"
+        ],
+        "title": "HistoricalSuccessQualificationInformationalFlag"
+      },
+      "HistoricalSuccessQualificationOverlapRelation": {
+        "type": "string",
+        "enum": [
+          "DISJOINT",
+          "PARTIAL_OVERLAP",
+          "IDENTICAL"
+        ],
+        "title": "HistoricalSuccessQualificationOverlapRelation"
+      },
+      "HistoricalSuccessQualificationPairEvidenceView": {
+        "properties": {
+          "left_import_index": {
+            "type": "integer",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Left Import Index"
+          },
+          "right_import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 1.0,
+            "title": "Right Import Index"
+          },
+          "pair_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationPairStatus"
+          },
+          "same_dataset_sha256": {
+            "type": "boolean",
+            "title": "Same Dataset Sha256"
+          },
+          "same_source_artifact_sha256": {
+            "type": "boolean",
+            "title": "Same Source Artifact Sha256"
+          },
+          "confirmation_overlap_relation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalSuccessQualificationOverlapRelation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "r1_comparable": {
+            "type": "boolean",
+            "title": "R1 Comparable"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "left_import_index",
+          "right_import_index",
+          "pair_status",
+          "same_dataset_sha256",
+          "same_source_artifact_sha256",
+          "confirmation_overlap_relation",
+          "r1_comparable"
+        ],
+        "title": "HistoricalSuccessQualificationPairEvidenceView"
+      },
+      "HistoricalSuccessQualificationPairStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "LEFT_NOT_READY",
+          "RIGHT_NOT_READY",
+          "BOTH_NOT_READY"
+        ],
+        "title": "HistoricalSuccessQualificationPairStatus"
+      },
+      "HistoricalSuccessQualificationPrimaryStatus": {
+        "type": "string",
+        "enum": [
+          "NOT_READY",
+          "EVIDENCE_INCOMPLETE",
+          "RESEARCH_CANDIDATE"
+        ],
+        "title": "HistoricalSuccessQualificationPrimaryStatus"
+      },
+      "HistoricalSuccessResearchQualificationResponse": {
+        "properties": {
+          "identity": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationIdentityView"
+          },
+          "ordered_import_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalSuccessQualificationImportEvidenceView"
+            },
+            "type": "array",
+            "title": "Ordered Import Evidence"
+          },
+          "primary_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationPrimaryStatus"
+          },
+          "informational_flags": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalSuccessQualificationInformationalFlag"
+            },
+            "type": "array",
+            "title": "Informational Flags"
+          },
+          "random_baseline_caveat": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Baseline Caveat"
+          },
+          "comparable_import_count": {
+            "type": "integer",
+            "maximum": 4.0,
+            "minimum": 0.0,
+            "title": "Comparable Import Count"
+          },
+          "expected_pair_count": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 1.0,
+            "title": "Expected Pair Count"
+          },
+          "actual_pair_count": {
+            "type": "integer",
+            "maximum": 6.0,
+            "minimum": 0.0,
+            "title": "Actual Pair Count"
+          },
+          "census_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationCensusStatus"
+          },
+          "cohort_census_count": {
+            "type": "integer",
+            "maximum": 64.0,
+            "minimum": 0.0,
+            "title": "Cohort Census Count"
+          },
+          "pair_evidence": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalSuccessQualificationPairEvidenceView"
+            },
+            "type": "array",
+            "title": "Pair Evidence"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "identity",
+          "ordered_import_evidence",
+          "primary_status",
+          "informational_flags",
+          "random_baseline_caveat",
+          "comparable_import_count",
+          "expected_pair_count",
+          "actual_pair_count",
+          "census_status",
+          "cohort_census_count",
+          "pair_evidence"
+        ],
+        "title": "HistoricalSuccessResearchQualificationResponse"
       },
       "HistoricalTicketView": {
         "properties": {

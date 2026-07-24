@@ -6,6 +6,7 @@ import {
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
   getHistoricalSuccessRecent50StabilityAudit,
+  getHistoricalSuccessResearchQualification,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -31,6 +32,7 @@ import {
   THIRD_IMPORT_SHA,
   makeTemporalHoldout,
   makeRecent50StabilityAudit,
+  makeResearchQualification,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
 } from './historical-success-windows-fixtures'
@@ -565,6 +567,138 @@ describe('Historical Success Windows API client', () => {
     await expect(
       getHistoricalSuccessMultiImportConcordanceCensus({
         import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA, THIRD_IMPORT_SHA],
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
+  })
+
+  it('fetches research qualification with exact import order, selectors, and AbortSignal', async () => {
+    const controller = new AbortController()
+    fetchMock.mockResolvedValue(apiResponse(makeResearchQualification()))
+
+    const result = await getHistoricalSuccessResearchQualification(
+      {
+        import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA],
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      },
+      controller.signal,
+    )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/research-qualification',
+    )
+    expect(url.searchParams.getAll('import_identity_sha256')).toEqual([
+      IMPORT_SHA,
+      RIGHT_IMPORT_SHA,
+    ])
+    expect(Object.fromEntries(url.searchParams)).toMatchObject({
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.primary_status).toBe('RESEARCH_CANDIDATE')
+    expect(result.informational_flags).toEqual([
+      'HISTORICAL_CONCORDANCE_OBSERVED',
+    ])
+    expect(result.ordered_import_evidence.map(
+      (item) => item.import_identity_sha256,
+    )).toEqual([IMPORT_SHA, RIGHT_IMPORT_SHA])
+  })
+
+  it.each([
+    [[IMPORT_SHA]],
+    [[IMPORT_SHA, IMPORT_SHA]],
+    [[IMPORT_SHA, RIGHT_IMPORT_SHA, THIRD_IMPORT_SHA, 'd'.repeat(64), 'e'.repeat(64)]],
+    [[IMPORT_SHA, 'BAD']],
+  ])('rejects invalid qualification selectors before fetch', async (identities) => {
+    await expect(
+      getHistoricalSuccessResearchQualification({
+        import_identity_sha256: identities,
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      }),
+    ).rejects.toMatchObject({ kind: 'INVALID_REQUEST', status: 422 })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      'flag order',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.ordered_import_evidence[0]!.recent_relationship_difference_count = 1
+        result.informational_flags = [
+          'RECENT_RELATIONSHIP_DIFFERENCE',
+          'HISTORICAL_CONCORDANCE_OBSERVED',
+        ]
+      },
+    ],
+    [
+      'contradictory flags',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.informational_flags = [
+          'CROSS_IMPORT_UNRESOLVED',
+          'HISTORICAL_CONCORDANCE_OBSERVED',
+        ]
+      },
+    ],
+    [
+      'candidate caveat',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.random_baseline_caveat = null
+      },
+    ],
+    [
+      'non-candidate caveat',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.primary_status = 'EVIDENCE_INCOMPLETE'
+        result.informational_flags = ['CROSS_IMPORT_UNRESOLVED']
+      },
+    ],
+    [
+      'import order',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.ordered_import_evidence[0]!.import_index = 1
+      },
+    ],
+    [
+      'pair comparability',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.pair_evidence[0]!.r1_comparable = false
+      },
+    ],
+    [
+      'pair count',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.actual_pair_count = 0
+      },
+    ],
+    [
+      'recent flag omission',
+      (result: ReturnType<typeof makeResearchQualification>) => {
+        result.ordered_import_evidence[0]!.recent_relationship_difference_count = 1
+      },
+    ],
+  ])('rejects malformed research qualification %s', async (_label, mutate) => {
+    const qualification = makeResearchQualification()
+    mutate(qualification)
+    fetchMock.mockResolvedValue(apiResponse(qualification))
+
+    await expect(
+      getHistoricalSuccessResearchQualification({
+        import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA],
         strategy_id: 'alias strategy/one',
         strategy_version: 'v1 beta',
         replicate: 1,

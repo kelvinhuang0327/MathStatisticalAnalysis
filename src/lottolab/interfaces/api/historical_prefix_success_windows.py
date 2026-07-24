@@ -80,6 +80,16 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixWindowRateComparison,
     HistoricalPrefixWindowRateComparisonKind,
 )
+from lottolab.application.historical_success_qualification import (
+    RANDOM_BASELINE_CAVEAT,
+    HistoricalSuccessQualificationCensusStatus,
+    HistoricalSuccessQualificationEvidenceStatus,
+    HistoricalSuccessQualificationInformationalFlag,
+    HistoricalSuccessQualificationOverlapRelation,
+    HistoricalSuccessQualificationPairStatus,
+    HistoricalSuccessQualificationPrimaryStatus,
+    HistoricalSuccessResearchQualification,
+)
 from lottolab.application.ports import HistoricalPrefixSuccessWindowSourceReaderFactory
 from lottolab.application.use_cases.evaluate_historical_prefix_success_windows import (
     EvaluateHistoricalPrefixSuccessWindows,
@@ -102,6 +112,7 @@ from lottolab.interfaces.api.draw_data import (
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
+_QUALIFICATION_RESPONSE = ConfigDict(frozen=True, extra="forbid")
 
 
 class HistoricalPrefixSuccessPrefixCount(IntEnum):
@@ -1945,6 +1956,241 @@ class HistoricalPrefixMultiImportConcordanceCensusResponse(BaseModel):
         )
 
 
+class HistoricalSuccessQualificationIdentityView(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    strategy_id: str
+    strategy_version: str
+    replicate: Annotated[int, Field(ge=1)]
+    prefix_count: HistoricalPrefixSuccessPrefixCount
+    criterion: HistoricalPrefixSuccessCriterion
+
+
+class HistoricalSuccessQualificationImportEvidenceView(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    import_index: Annotated[int, Field(ge=0, le=3)]
+    import_identity_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    dataset_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    source_artifact_sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}$")]
+    source_observation_count: Annotated[int, Field(ge=0)]
+    strategy_window_status: HistoricalSuccessQualificationEvidenceStatus
+    temporal_holdout_status: HistoricalSuccessQualificationEvidenceStatus
+    recent_audit_status: HistoricalSuccessQualificationEvidenceStatus
+    recent_relationship_difference_count: Annotated[int, Field(ge=0, le=64)]
+
+    @model_validator(mode="after")
+    def validate_readiness(self) -> Self:
+        if (
+            self.temporal_holdout_status
+            is HistoricalSuccessQualificationEvidenceStatus.COMPLETE
+        ) != (
+            self.recent_audit_status
+            is HistoricalSuccessQualificationEvidenceStatus.COMPLETE
+        ):
+            raise ValueError("temporal holdout and recent audit readiness must agree")
+        if (
+            self.recent_audit_status
+            is HistoricalSuccessQualificationEvidenceStatus.NOT_READY
+            and self.recent_relationship_difference_count != 0
+        ):
+            raise ValueError("not-ready recent evidence cannot contain differences")
+        return self
+
+
+class HistoricalSuccessQualificationPairEvidenceView(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    left_import_index: Annotated[int, Field(ge=0, le=2)]
+    right_import_index: Annotated[int, Field(ge=1, le=3)]
+    pair_status: HistoricalSuccessQualificationPairStatus
+    same_dataset_sha256: bool
+    same_source_artifact_sha256: bool
+    confirmation_overlap_relation: (
+        HistoricalSuccessQualificationOverlapRelation | None
+    )
+    r1_comparable: bool
+
+    @model_validator(mode="after")
+    def validate_comparability(self) -> Self:
+        if self.left_import_index >= self.right_import_index:
+            raise ValueError("qualification pair indexes must be canonical")
+        expected = (
+            self.pair_status is HistoricalSuccessQualificationPairStatus.COMPLETE
+            and not self.same_dataset_sha256
+            and not self.same_source_artifact_sha256
+            and self.confirmation_overlap_relation
+            in {
+                HistoricalSuccessQualificationOverlapRelation.PARTIAL_OVERLAP,
+                HistoricalSuccessQualificationOverlapRelation.DISJOINT,
+            }
+        )
+        if self.r1_comparable is not expected:
+            raise ValueError("qualification pair comparability is inconsistent")
+        if (
+            self.pair_status is HistoricalSuccessQualificationPairStatus.COMPLETE
+        ) != (self.confirmation_overlap_relation is not None):
+            raise ValueError("qualification pair overlap readiness is inconsistent")
+        return self
+
+
+class HistoricalSuccessResearchQualificationResponse(BaseModel):
+    model_config = _QUALIFICATION_RESPONSE
+
+    identity: HistoricalSuccessQualificationIdentityView
+    ordered_import_evidence: tuple[
+        HistoricalSuccessQualificationImportEvidenceView, ...
+    ]
+    primary_status: HistoricalSuccessQualificationPrimaryStatus
+    informational_flags: tuple[
+        HistoricalSuccessQualificationInformationalFlag, ...
+    ]
+    random_baseline_caveat: str | None
+    comparable_import_count: Annotated[int, Field(ge=0, le=4)]
+    expected_pair_count: Annotated[int, Field(ge=1, le=6)]
+    actual_pair_count: Annotated[int, Field(ge=0, le=6)]
+    census_status: HistoricalSuccessQualificationCensusStatus
+    cohort_census_count: Annotated[int, Field(ge=0, le=64)]
+    pair_evidence: tuple[HistoricalSuccessQualificationPairEvidenceView, ...]
+
+    @model_validator(mode="after")
+    def validate_qualification(self) -> Self:
+        imports = self.ordered_import_evidence
+        import_count = len(imports)
+        if (
+            not 2 <= import_count <= 4
+            or tuple(item.import_index for item in imports)
+            != tuple(range(import_count))
+            or len({item.import_identity_sha256 for item in imports}) != import_count
+        ):
+            raise ValueError(
+                "qualification imports must be two to four distinct ordered identities"
+            )
+        expected_pair_count = import_count * (import_count - 1) // 2
+        if self.expected_pair_count != expected_pair_count:
+            raise ValueError("qualification expected pair count is inconsistent")
+        if self.actual_pair_count != len(self.pair_evidence):
+            raise ValueError("qualification actual pair count is inconsistent")
+        pair_indexes = tuple(
+            (pair.left_import_index, pair.right_import_index)
+            for pair in self.pair_evidence
+        )
+        if (
+            pair_indexes != tuple(sorted(pair_indexes))
+            or len(set(pair_indexes)) != len(pair_indexes)
+            or any(right >= import_count for _, right in pair_indexes)
+        ):
+            raise ValueError("qualification pairs must preserve canonical import order")
+        comparable_indexes = {
+            index
+            for pair in self.pair_evidence
+            if pair.r1_comparable
+            for index in (pair.left_import_index, pair.right_import_index)
+        }
+        if self.comparable_import_count != len(comparable_indexes):
+            raise ValueError("qualification comparable import count is inconsistent")
+        canonical_flags = tuple(
+            flag
+            for flag in (
+                HistoricalSuccessQualificationInformationalFlag.CROSS_IMPORT_UNRESOLVED,
+                HistoricalSuccessQualificationInformationalFlag.HISTORICAL_CONCORDANCE_OBSERVED,
+                HistoricalSuccessQualificationInformationalFlag.RECENT_RELATIONSHIP_DIFFERENCE,
+            )
+            if flag in self.informational_flags
+        )
+        if (
+            len(set(self.informational_flags)) != len(self.informational_flags)
+            or self.informational_flags != canonical_flags
+        ):
+            raise ValueError("qualification flags must be unique and canonically ordered")
+        unresolved = (
+            HistoricalSuccessQualificationInformationalFlag.CROSS_IMPORT_UNRESOLVED
+            in self.informational_flags
+        )
+        concordant = (
+            HistoricalSuccessQualificationInformationalFlag.HISTORICAL_CONCORDANCE_OBSERVED
+            in self.informational_flags
+        )
+        if unresolved and concordant:
+            raise ValueError("qualification flags are contradictory")
+        candidate = (
+            self.primary_status
+            is HistoricalSuccessQualificationPrimaryStatus.RESEARCH_CANDIDATE
+        )
+        if candidate:
+            if (
+                not concordant
+                or self.random_baseline_caveat != RANDOM_BASELINE_CAVEAT
+                or self.census_status
+                is not HistoricalSuccessQualificationCensusStatus.COMPLETE
+                or self.cohort_census_count != 64
+                or self.actual_pair_count != self.expected_pair_count
+                or any(not pair.r1_comparable for pair in self.pair_evidence)
+            ):
+                raise ValueError("research-candidate qualification is inconsistent")
+        elif self.random_baseline_caveat is not None:
+            raise ValueError("non-candidate qualification cannot carry candidate caveat")
+        if concordant and not candidate:
+            raise ValueError("historical concordance requires research-candidate status")
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalSuccessResearchQualification
+    ) -> HistoricalSuccessResearchQualificationResponse:
+        return cls(
+            identity=HistoricalSuccessQualificationIdentityView(
+                strategy_id=result.identity.strategy_id,
+                strategy_version=result.identity.strategy_version,
+                replicate=result.identity.replicate,
+                prefix_count=HistoricalPrefixSuccessPrefixCount(
+                    result.identity.prefix_count
+                ),
+                criterion=HistoricalPrefixSuccessCriterion(result.identity.criterion),
+            ),
+            ordered_import_evidence=tuple(
+                HistoricalSuccessQualificationImportEvidenceView(
+                    import_index=item.import_index,
+                    import_identity_sha256=item.import_identity_sha256,
+                    dataset_sha256=item.dataset_sha256,
+                    source_artifact_sha256=item.source_artifact_sha256,
+                    source_observation_count=item.source_observation_count,
+                    strategy_window_status=item.strategy_window_status,
+                    temporal_holdout_status=item.temporal_holdout_status,
+                    recent_audit_status=item.recent_audit_status,
+                    recent_relationship_difference_count=(
+                        item.recent_relationship_difference_count
+                    ),
+                )
+                for item in result.imports
+            ),
+            primary_status=result.primary_status,
+            informational_flags=result.informational_flags,
+            random_baseline_caveat=result.random_baseline_caveat,
+            comparable_import_count=result.comparable_import_count,
+            expected_pair_count=result.expected_pair_count,
+            actual_pair_count=result.actual_pair_count,
+            census_status=result.census_status,
+            cohort_census_count=result.cohort_census_count,
+            pair_evidence=tuple(
+                HistoricalSuccessQualificationPairEvidenceView(
+                    left_import_index=pair.left_import_index,
+                    right_import_index=pair.right_import_index,
+                    pair_status=pair.pair_status,
+                    same_dataset_sha256=pair.same_dataset_sha256,
+                    same_source_artifact_sha256=(
+                        pair.same_source_artifact_sha256
+                    ),
+                    confirmation_overlap_relation=(
+                        pair.confirmation_overlap_relation
+                    ),
+                    r1_comparable=pair.r1_comparable,
+                )
+                for pair in result.pairs
+            ),
+        )
+
+
 def create_historical_prefix_success_windows_router(
     reader_factory: HistoricalPrefixSuccessWindowSourceReaderFactory | None,
 ) -> APIRouter:
@@ -1990,6 +2236,51 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalPrefixStrategySuccessWindowPageResponse.from_page(page)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/research-qualification"
+        ),
+        response_model=HistoricalSuccessResearchQualificationResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyResearchQualification",
+    )
+    def get_historical_prefix_strategy_research_qualification(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: MultiImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalSuccessResearchQualificationResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_research_qualification(
+                import_identity_sha256s=tuple(import_identity_sha256),
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessWindowsContractError:
+            return _duplicate_imports_error()
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalSuccessResearchQualificationResponse.from_result(result)
 
     @router.get(
         (

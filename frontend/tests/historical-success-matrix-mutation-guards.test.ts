@@ -423,7 +423,10 @@ describe('Historical Success multi-import concordance census mutation guards', (
   it('renders pair and cohort arrays in server order with source probabilities and neutral wording', () => {
     const section = pageSource.split(
       'class="research-results multi-import-census-panel"',
-    )[1]!.split('<aside ', 1)[0]!
+    )[1]!.split(
+      'class="research-results research-qualification-panel"',
+      1,
+    )[0]!
     expect(section).toContain('v-for="pair in outcome.result.pairs"')
     expect(section).toContain('v-for="row in outcome.result.cohort_census"')
     expect(section).toContain(

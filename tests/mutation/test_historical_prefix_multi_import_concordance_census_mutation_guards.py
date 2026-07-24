@@ -16,7 +16,7 @@ def _method() -> str:
     return USE_CASE.read_text(encoding="utf-8").split(
         "def get_multi_import_concordance_census(",
         1,
-    )[1].split('__all__ = ["EvaluateHistoricalPrefixSuccessWindows"]', 1)[0]
+    )[1].split("def get_research_qualification(", 1)[0]
 
 
 def test_guard_all_input_validation_precedes_one_factory_and_ordered_loads() -> None:

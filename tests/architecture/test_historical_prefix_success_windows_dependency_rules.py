@@ -9,6 +9,7 @@ from lottolab.interfaces.api.app import create_app
 
 ROOT = Path(__file__).resolve().parents[2]
 READ_MODELS = ROOT / "src/lottolab/application/historical_prefix_success_windows.py"
+QUALIFICATION = ROOT / "src/lottolab/application/historical_success_qualification.py"
 USE_CASE = (
     ROOT
     / "src/lottolab/application/use_cases/evaluate_historical_prefix_success_windows.py"
@@ -34,7 +35,10 @@ def _imports(path: Path) -> set[str]:
 
 
 def test_all_vertical_modules_exist() -> None:
-    assert all(path.is_file() for path in (READ_MODELS, USE_CASE, READER, ROUTER))
+    assert all(
+        path.is_file()
+        for path in (READ_MODELS, QUALIFICATION, USE_CASE, READER, ROUTER)
+    )
 
 
 def test_read_models_are_pure_immutable_application_data() -> None:
@@ -65,6 +69,29 @@ def test_use_case_depends_on_port_and_domain_but_not_interface_or_infrastructure
     assert not any(name.startswith("lottolab.infrastructure") for name in imports)
     assert not any(name.startswith("lottolab.interfaces") for name in imports)
     assert not imports & {"fastapi", "pathlib", "pydantic", "sqlite3"}
+
+
+def test_research_qualification_is_pure_application_owned_immutable_policy() -> None:
+    imports = _imports(QUALIFICATION)
+    source = QUALIFICATION.read_text(encoding="utf-8")
+
+    assert imports == {"dataclasses", "enum", "re", "__future__"}
+    assert "@dataclass(frozen=True, slots=True)" in source
+    for forbidden in (
+        "fastapi",
+        "pydantic",
+        "sqlite",
+        "pathlib",
+        "lottolab.domain",
+        "lottolab.evidence",
+        "historical_prefix_analytics",
+        "ranking",
+        "alpha",
+        "p_value",
+        "combined",
+        "production_eligible",
+    ):
+        assert forbidden not in source
 
 
 def test_sqlite_reader_has_no_write_schema_init_strategy_execution_or_analytics_recompute() -> None:
@@ -143,6 +170,10 @@ def test_app_and_openapi_keep_optional_reader_factory_lazy() -> None:
         "/api/v1/historical-prefix-success-windows/strategies/"
         "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
         "multi-import-concordance-census"
+    ) in paths
+    assert (
+        "/api/v1/historical-prefix-success-windows/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/research-qualification"
     ) in paths
 
 

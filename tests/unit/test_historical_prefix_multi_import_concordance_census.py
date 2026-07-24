@@ -63,11 +63,15 @@ def _source(
     *,
     dataset_sha256: str = "e" * 64,
     source_artifact_sha256: str = "f" * 64,
+    draw_number_offset: int = 1,
 ) -> HistoricalPrefixSuccessWindowSource:
     source = build_success_source(
         (
             build_success_strategy(
-                observations=build_success_observations(count),
+                observations=build_success_observations(
+                    count,
+                    draw_number_offset=draw_number_offset,
+                ),
             ),
         ),
         import_identity_sha256=import_identity,
@@ -183,7 +187,119 @@ def test_two_to_four_imports_use_one_reader_and_preserve_canonical_orders(
             + row.lower_count
             + row.unavailable_count
             == import_count
-        )
+    )
+
+
+@pytest.mark.parametrize("import_count", [2, 3, 4])
+def test_research_qualification_composes_each_existing_evidence_once(
+    monkeypatch: pytest.MonkeyPatch,
+    import_count: int,
+) -> None:
+    _install_fast_assignments(monkeypatch)
+    identities = IMPORTS[:import_count]
+    factory = _Factory(
+        {
+            identity: _source(
+                identity,
+                1050,
+                dataset_sha256="ef12"[index] * 64,
+                source_artifact_sha256="3456"[index] * 64,
+                draw_number_offset=1 + (index * 2000),
+            )
+            for index, identity in enumerate(identities)
+        }
+    )
+    counts = {
+        "strategy": 0,
+        "window": 0,
+        "assignment": 0,
+        "holdout": 0,
+        "recent": 0,
+        "census": 0,
+    }
+    assignment_ids: dict[str, int] = {}
+    holdout_assignment_ids: dict[str, int] = {}
+    recent_assignment_ids: dict[str, int] = {}
+    original_strategy = module._find_exact_strategy
+    original_window = module._evaluate_strategy
+    original_assignment = module._build_walk_forward_assignments
+    original_holdout = module._temporal_holdout
+    original_recent = module._recent_50_stability_audit
+    original_census = module._multi_import_cohort_census
+
+    def strategy_spy(*args, **kwargs):
+        counts["strategy"] += 1
+        return original_strategy(*args, **kwargs)
+
+    def window_spy(**kwargs):
+        counts["window"] += 1
+        return original_window(**kwargs)
+
+    def assignment_spy(**kwargs):
+        counts["assignment"] += 1
+        result = original_assignment(**kwargs)
+        assignment_ids[kwargs["source"].metadata.import_identity_sha256] = id(result)
+        return result
+
+    def holdout_spy(**kwargs):
+        counts["holdout"] += 1
+        holdout_assignment_ids[
+            kwargs["source"].metadata.import_identity_sha256
+        ] = id(kwargs["assignments"])
+        return original_holdout(**kwargs)
+
+    def recent_spy(**kwargs):
+        counts["recent"] += 1
+        recent_assignment_ids[
+            kwargs["source"].metadata.import_identity_sha256
+        ] = id(kwargs["assignments"])
+        assert kwargs["temporal_holdout"] is not None
+        return original_recent(**kwargs)
+
+    def census_spy(*args, **kwargs):
+        counts["census"] += 1
+        return original_census(*args, **kwargs)
+
+    monkeypatch.setattr(module, "_find_exact_strategy", strategy_spy)
+    monkeypatch.setattr(module, "_evaluate_strategy", window_spy)
+    monkeypatch.setattr(module, "_build_walk_forward_assignments", assignment_spy)
+    monkeypatch.setattr(module, "_temporal_holdout", holdout_spy)
+    monkeypatch.setattr(module, "_recent_50_stability_audit", recent_spy)
+    monkeypatch.setattr(module, "_multi_import_cohort_census", census_spy)
+
+    result = EvaluateHistoricalPrefixSuccessWindows(
+        factory
+    ).get_research_qualification(
+        import_identity_sha256s=identities,
+        strategy_id="strategy-a",
+        strategy_version="v1",
+        replicate=1,
+        prefix_count=1,
+        criterion=HistoricalPrefixSuccessCriterion.M3_PLUS,
+    )
+
+    assert factory.calls == 1
+    assert factory.reader.calls == list(identities)
+    assert counts == {
+        "strategy": import_count,
+        "window": import_count,
+        "assignment": import_count,
+        "holdout": import_count,
+        "recent": import_count,
+        "census": 1,
+    }
+    assert assignment_ids == holdout_assignment_ids == recent_assignment_ids
+    assert tuple(item.import_identity_sha256 for item in result.imports) == identities
+    assert result.expected_pair_count == result.actual_pair_count == (
+        import_count * (import_count - 1) // 2
+    )
+    assert tuple(
+        (pair.left_import_index, pair.right_import_index) for pair in result.pairs
+    ) == tuple(
+        (left, right)
+        for left in range(import_count)
+        for right in range(left + 1, import_count)
+    )
 
 
 @pytest.mark.parametrize(

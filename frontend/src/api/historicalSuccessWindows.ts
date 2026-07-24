@@ -20,6 +20,8 @@ export type HistoricalSuccessCrossImportConcordance =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/cross-import-concordance']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessMultiImportConcordanceCensus =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessResearchQualification =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -139,6 +141,15 @@ export interface HistoricalSuccessCrossImportConcordanceQuery {
 }
 
 export interface HistoricalSuccessMultiImportConcordanceCensusQuery {
+  import_identity_sha256: readonly string[]
+  strategy_id: string
+  strategy_version: string
+  replicate: number
+  prefix_count: HistoricalSuccessPrefixCount
+  criterion: HistoricalSuccessCriterion
+}
+
+export interface HistoricalSuccessResearchQualificationQuery {
   import_identity_sha256: readonly string[]
   strategy_id: string
   strategy_version: string
@@ -1577,6 +1588,223 @@ function isMultiImportConcordanceCensus(
   })
 }
 
+const QUALIFICATION_PRIMARY_STATUSES = [
+  'NOT_READY',
+  'EVIDENCE_INCOMPLETE',
+  'RESEARCH_CANDIDATE',
+] as const
+const QUALIFICATION_FLAG_ORDER = [
+  'CROSS_IMPORT_UNRESOLVED',
+  'HISTORICAL_CONCORDANCE_OBSERVED',
+  'RECENT_RELATIONSHIP_DIFFERENCE',
+] as const
+const QUALIFICATION_EVIDENCE_STATUSES = ['COMPLETE', 'NOT_READY'] as const
+const QUALIFICATION_PAIR_STATUSES = [
+  'COMPLETE',
+  'LEFT_NOT_READY',
+  'RIGHT_NOT_READY',
+  'BOTH_NOT_READY',
+] as const
+const QUALIFICATION_OVERLAP_RELATIONS = [
+  'DISJOINT',
+  'PARTIAL_OVERLAP',
+  'IDENTICAL',
+] as const
+const QUALIFICATION_CENSUS_STATUSES = [
+  'COMPLETE',
+  'PARTIAL_NOT_READY',
+  'ALL_NOT_READY',
+] as const
+const RANDOM_BASELINE_CAVEAT =
+  'Random/null benchmark unavailable; random advantage has not been evaluated.'
+
+function isResearchQualification(
+  value: unknown,
+  query: HistoricalSuccessResearchQualificationQuery,
+): value is HistoricalSuccessResearchQualification {
+  const identities = [...query.import_identity_sha256]
+  if (
+    !isRecord(value) ||
+    identities.length < 2 ||
+    identities.length > 4 ||
+    new Set(identities).size !== identities.length ||
+    !identities.every(isSha256) ||
+    !isRecord(value.identity) ||
+    value.identity.strategy_id !== query.strategy_id ||
+    value.identity.strategy_version !== query.strategy_version ||
+    value.identity.replicate !== query.replicate ||
+    value.identity.prefix_count !== query.prefix_count ||
+    value.identity.criterion !== query.criterion ||
+    !Array.isArray(value.ordered_import_evidence) ||
+    value.ordered_import_evidence.length !== identities.length ||
+    !QUALIFICATION_PRIMARY_STATUSES.includes(
+      value.primary_status as (typeof QUALIFICATION_PRIMARY_STATUSES)[number],
+    ) ||
+    !Array.isArray(value.informational_flags) ||
+    !QUALIFICATION_CENSUS_STATUSES.includes(
+      value.census_status as (typeof QUALIFICATION_CENSUS_STATUSES)[number],
+    ) ||
+    !isNonNegativeInteger(value.comparable_import_count) ||
+    !isNonNegativeInteger(value.expected_pair_count) ||
+    !isNonNegativeInteger(value.actual_pair_count) ||
+    !isNonNegativeInteger(value.cohort_census_count) ||
+    !Array.isArray(value.pair_evidence)
+  ) {
+    return false
+  }
+
+  const imports = value.ordered_import_evidence
+  for (const [index, item] of imports.entries()) {
+    if (
+      !isRecord(item) ||
+      item.import_index !== index ||
+      item.import_identity_sha256 !== identities[index] ||
+      !isSha256(item.dataset_sha256) ||
+      !isSha256(item.source_artifact_sha256) ||
+      !isNonNegativeInteger(item.source_observation_count) ||
+      !QUALIFICATION_EVIDENCE_STATUSES.includes(
+        item.strategy_window_status as (typeof QUALIFICATION_EVIDENCE_STATUSES)[number],
+      ) ||
+      !QUALIFICATION_EVIDENCE_STATUSES.includes(
+        item.temporal_holdout_status as (typeof QUALIFICATION_EVIDENCE_STATUSES)[number],
+      ) ||
+      !QUALIFICATION_EVIDENCE_STATUSES.includes(
+        item.recent_audit_status as (typeof QUALIFICATION_EVIDENCE_STATUSES)[number],
+      ) ||
+      !isNonNegativeInteger(item.recent_relationship_difference_count) ||
+      item.recent_relationship_difference_count > 64 ||
+      (item.temporal_holdout_status === 'COMPLETE') !==
+        (item.recent_audit_status === 'COMPLETE') ||
+      (item.recent_audit_status === 'NOT_READY' &&
+        item.recent_relationship_difference_count !== 0)
+    ) {
+      return false
+    }
+  }
+
+  const expectedPairCount = identities.length * (identities.length - 1) / 2
+  if (
+    value.expected_pair_count !== expectedPairCount ||
+    value.actual_pair_count !== value.pair_evidence.length ||
+    value.cohort_census_count > 64
+  ) {
+    return false
+  }
+  const pairIndexes: string[] = []
+  const comparableIndexes = new Set<number>()
+  for (const pair of value.pair_evidence) {
+    if (
+      !isRecord(pair) ||
+      !isNonNegativeInteger(pair.left_import_index) ||
+      !isNonNegativeInteger(pair.right_import_index) ||
+      pair.left_import_index >= pair.right_import_index ||
+      pair.right_import_index >= identities.length ||
+      !QUALIFICATION_PAIR_STATUSES.includes(
+        pair.pair_status as (typeof QUALIFICATION_PAIR_STATUSES)[number],
+      ) ||
+      typeof pair.same_dataset_sha256 !== 'boolean' ||
+      typeof pair.same_source_artifact_sha256 !== 'boolean' ||
+      (pair.confirmation_overlap_relation !== null &&
+        !QUALIFICATION_OVERLAP_RELATIONS.includes(
+          pair.confirmation_overlap_relation as (typeof QUALIFICATION_OVERLAP_RELATIONS)[number],
+        )) ||
+      typeof pair.r1_comparable !== 'boolean'
+    ) {
+      return false
+    }
+    const left = imports[pair.left_import_index]!
+    const right = imports[pair.right_import_index]!
+    const expectedComparable =
+      pair.pair_status === 'COMPLETE' &&
+      !pair.same_dataset_sha256 &&
+      !pair.same_source_artifact_sha256 &&
+      ['PARTIAL_OVERLAP', 'DISJOINT'].includes(
+        String(pair.confirmation_overlap_relation),
+      )
+    if (
+      pair.same_dataset_sha256 !==
+        (left.dataset_sha256 === right.dataset_sha256) ||
+      pair.same_source_artifact_sha256 !==
+        (left.source_artifact_sha256 === right.source_artifact_sha256) ||
+      pair.r1_comparable !== expectedComparable ||
+      (pair.pair_status === 'COMPLETE') !==
+        (pair.confirmation_overlap_relation !== null)
+    ) {
+      return false
+    }
+    const indexKey = `${pair.left_import_index}:${pair.right_import_index}`
+    if (
+      pairIndexes.includes(indexKey) ||
+      (pairIndexes.length > 0 && pairIndexes[pairIndexes.length - 1]! >= indexKey)
+    ) {
+      return false
+    }
+    pairIndexes.push(indexKey)
+    if (pair.r1_comparable) {
+      comparableIndexes.add(pair.left_import_index)
+      comparableIndexes.add(pair.right_import_index)
+    }
+  }
+  if (value.comparable_import_count !== comparableIndexes.size) return false
+
+  const flags = value.informational_flags
+  if (
+    flags.some(
+      (flag) =>
+        !QUALIFICATION_FLAG_ORDER.includes(
+          flag as (typeof QUALIFICATION_FLAG_ORDER)[number],
+        ),
+    ) ||
+    new Set(flags).size !== flags.length ||
+    flags.join('\u0000') !==
+      QUALIFICATION_FLAG_ORDER.filter((flag) => flags.includes(flag)).join('\u0000')
+  ) {
+    return false
+  }
+  const unresolved = flags.includes('CROSS_IMPORT_UNRESOLVED')
+  const concordant = flags.includes('HISTORICAL_CONCORDANCE_OBSERVED')
+  const recentDifference =
+    value.primary_status !== 'NOT_READY' &&
+    imports.some(
+      (item) =>
+        item.recent_audit_status === 'COMPLETE' &&
+        item.recent_relationship_difference_count > 0,
+    )
+  if (
+    (unresolved && concordant) ||
+    flags.includes('RECENT_RELATIONSHIP_DIFFERENCE') !== recentDifference
+  ) {
+    return false
+  }
+  const notReady = imports.some(
+    (item) =>
+      item.source_observation_count === 0 ||
+      item.strategy_window_status !== 'COMPLETE' ||
+      item.temporal_holdout_status !== 'COMPLETE',
+  )
+  if (
+    (notReady && value.primary_status !== 'NOT_READY') ||
+    (!notReady && value.primary_status === 'NOT_READY')
+  ) {
+    return false
+  }
+  const candidate = value.primary_status === 'RESEARCH_CANDIDATE'
+  if (
+    candidate !== concordant ||
+    (candidate
+      ? value.random_baseline_caveat !== RANDOM_BASELINE_CAVEAT ||
+        value.census_status !== 'COMPLETE' ||
+        value.cohort_census_count !== 64 ||
+        value.actual_pair_count !== value.expected_pair_count ||
+        value.pair_evidence.some((pair) => !pair.r1_comparable)
+      : value.random_baseline_caveat !== null) ||
+    (value.primary_status === 'EVIDENCE_INCOMPLETE' && !unresolved)
+  ) {
+    return false
+  }
+  return true
+}
+
 function isSuccessPage(
   value: unknown,
   query: HistoricalSuccessWindowQuery,
@@ -1893,5 +2121,44 @@ export async function getHistoricalSuccessMultiImportConcordanceCensus(
     signal,
   )
   if (!isMultiImportConcordanceCensus(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessResearchQualification(
+  query: HistoricalSuccessResearchQualificationQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessResearchQualification> {
+  const identities = [...query.import_identity_sha256]
+  if (
+    identities.length < 2 ||
+    identities.length > 4 ||
+    new Set(identities).size !== identities.length ||
+    !identities.every(isSha256)
+  ) {
+    throw new HistoricalSuccessWindowsRequestError(
+      'Select two to four distinct historical imports.',
+      422,
+      'INVALID_REQUEST',
+      'REQUEST_VALIDATION_FAILED',
+    )
+  }
+  const parameters = new URLSearchParams()
+  for (const identity of identities) {
+    parameters.append('import_identity_sha256', identity)
+  }
+  parameters.set('prefix_count', String(query.prefix_count))
+  parameters.set('criterion', query.criterion)
+  const strategyIdentity = [
+    query.strategy_id,
+    query.strategy_version,
+    String(query.replicate),
+  ]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${strategyIdentity}/research-qualification?${parameters.toString()}`,
+    signal,
+  )
+  if (!isResearchQualification(payload, query)) throw malformedResponse()
   return payload
 }

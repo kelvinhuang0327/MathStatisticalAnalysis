@@ -1,7 +1,7 @@
 # CTO Technical Reviewer — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:c2ce88f98084e0f32731895859370b2b1592e81f2e482abcbb81d26bbd49ccab`
+Durable-source fingerprint: `sha256:91b4db6bba1f39a04fb5e283f3c0be7f54c990d75fa22fa7a566fb740f6235f2`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract

@@ -1,7 +1,7 @@
 # Planner / Task Compiler — Compiled Control Plane v1
 Document status: `DRAFT_FOR_OWNER_REVIEW`
 Generated artifact: do not edit manually.
-Durable-source fingerprint: `sha256:c2ce88f98084e0f32731895859370b2b1592e81f2e482abcbb81d26bbd49ccab`
+Durable-source fingerprint: `sha256:91b4db6bba1f39a04fb5e283f3c0be7f54c990d75fa22fa7a566fb740f6235f2`
 This prompt is standalone; embedded rules require no source-file access.
 <!-- SHARED_CORE:START -->
 ## Operating contract
@@ -253,7 +253,13 @@ STOP. Do not stash, reset, clean, force-remove, or broadly prune to bypass it.
 
 Lint before rendering. Require schema validity, a route whose risk/authorization/stages match the
 route table, an exact allowed scope, verification observations, and safe placeholders rather than
-secrets or real tokens. Render the complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
+secrets or real tokens. Authorization has four exact states: `NOT_REQUIRED`, `MISSING`, `PENDING`,
+and `PRESENT`. `MISSING` means required authorization has not been supplied and a request may not
+yet have been issued; `PENDING` means the Owner decision has been requested but remains unresolved.
+Both unresolved states use `PENDING_OWNER_REFERENCE`, remain lint-valid, and block executable
+rendering. For `SINGLE_PROMPT` and `STANDALONE`, only `PRESENT` with a safe `OWNER_MESSAGE_REF`
+can render; `NONE` remains renderable only through the exact `NOT_REQUIRED` envelope. Render the
+complete Worker Prompt only from `WORKER_TASK_TEMPLATE.md`.
 Generated text must remain byte-reproducible for the same five durable sources and manifest.
 <!-- PLANNER_ROUTING:END -->
 ## Embedded Task Manifest Schema
@@ -318,10 +324,11 @@ The following JSON-compatible YAML schema is normative for compilation.
         "worktree": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["mode", "path"],
+          "required": ["mode", "path", "branch"],
           "properties": {
             "mode": {"enum": ["NOT_APPLICABLE", "REUSABLE_AGENT_WORKTREE", "EPHEMERAL_TASK_WORKTREE", "EXISTING_TASK_WORKTREE"]},
-            "path": {"type": "string", "minLength": 1}
+            "path": {"type": "string", "minLength": 1},
+            "branch": {"type": "string", "minLength": 1}
           }
         }
       }
@@ -353,8 +360,11 @@ The following JSON-compatible YAML schema is normative for compilation.
       "required": ["class", "state", "owner_statement_ref"],
       "properties": {
         "class": {"enum": ["NONE", "SINGLE_PROMPT", "STANDALONE"]},
-        "state": {"enum": ["NOT_REQUIRED", "PRESENT", "MISSING"]},
-        "owner_statement_ref": {"type": "string", "minLength": 3}
+        "state": {"enum": ["NOT_REQUIRED", "MISSING", "PENDING", "PRESENT"]},
+        "owner_statement_ref": {
+          "type": "string",
+          "pattern": "^(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128})$"
+        }
       }
     },
     "routing": {
@@ -411,7 +421,7 @@ The following JSON-compatible YAML schema is normative for compilation.
             "properties": {
               "class": {"const": "NONE"},
               "state": {"const": "NOT_REQUIRED"},
-              "owner_statement_ref": {"const": "NOT_APPLICABLE"}
+              "owner_statement_ref": {"const": "NOT_REQUIRED"}
             }
           },
           "context": {
@@ -419,7 +429,8 @@ The following JSON-compatible YAML schema is normative for compilation.
               "worktree": {
                 "properties": {
                   "mode": {"const": "NOT_APPLICABLE"},
-                  "path": {"const": "NOT_APPLICABLE"}
+                  "path": {"const": "NOT_APPLICABLE"},
+                  "branch": {"const": "NOT_APPLICABLE"}
                 }
               }
             }
@@ -433,10 +444,7 @@ The following JSON-compatible YAML schema is normative for compilation.
       "then": {
         "properties": {
           "authorization": {
-            "properties": {
-              "class": {"const": "SINGLE_PROMPT"},
-              "state": {"const": "PRESENT"}
-            }
+            "properties": {"class": {"const": "SINGLE_PROMPT"}}
           }
         }
       }
@@ -446,10 +454,7 @@ The following JSON-compatible YAML schema is normative for compilation.
       "then": {
         "properties": {
           "authorization": {
-            "properties": {
-              "class": {"const": "STANDALONE"},
-              "state": {"const": "PRESENT"}
-            }
+            "properties": {"class": {"const": "STANDALONE"}}
           }
         }
       }
@@ -473,8 +478,9 @@ Rendered by: Planner / Task Compiler
 - Route: `{{ROUTING_PATH}}`
 - Stages: {{ROUTING_STAGES_INLINE}}
 
-This prompt records but does not create authorization. STOP if the required authorization state is
-not satisfied or if the live task exceeds the authorized scope.
+The Owner statement reference is evidence metadata only; it does not independently authorize
+execution. This prompt records but does not create authorization. STOP if the required authorization
+state is not satisfied or if the live task exceeds the authorized scope.
 
 ## Project context
 
@@ -486,6 +492,7 @@ not satisfied or if the live task exceeds the authorized scope.
 - Project profile: `{{PROFILE_PATH}}`
 - Worktree mode: `{{WORKTREE_MODE}}`
 - Exact worktree path: `{{WORKTREE_PATH}}`
+- Exact task branch: `{{WORKTREE_BRANCH}}`
 
 Read the repo-local project profile when available, then observe the relevant live state. Consumer
 context overrides examples; the manifest does not override contrary live facts.

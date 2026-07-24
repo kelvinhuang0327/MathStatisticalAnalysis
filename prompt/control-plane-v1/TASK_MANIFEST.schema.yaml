@@ -55,10 +55,11 @@
         "worktree": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["mode", "path"],
+          "required": ["mode", "path", "branch"],
           "properties": {
             "mode": {"enum": ["NOT_APPLICABLE", "REUSABLE_AGENT_WORKTREE", "EPHEMERAL_TASK_WORKTREE", "EXISTING_TASK_WORKTREE"]},
-            "path": {"type": "string", "minLength": 1}
+            "path": {"type": "string", "minLength": 1},
+            "branch": {"type": "string", "minLength": 1}
           }
         }
       }
@@ -90,8 +91,11 @@
       "required": ["class", "state", "owner_statement_ref"],
       "properties": {
         "class": {"enum": ["NONE", "SINGLE_PROMPT", "STANDALONE"]},
-        "state": {"enum": ["NOT_REQUIRED", "PRESENT", "MISSING"]},
-        "owner_statement_ref": {"type": "string", "minLength": 3}
+        "state": {"enum": ["NOT_REQUIRED", "MISSING", "PENDING", "PRESENT"]},
+        "owner_statement_ref": {
+          "type": "string",
+          "pattern": "^(?:NOT_REQUIRED|PENDING_OWNER_REFERENCE|OWNER_MESSAGE_REF:[A-Za-z0-9._-]{1,128})$"
+        }
       }
     },
     "routing": {
@@ -148,7 +152,7 @@
             "properties": {
               "class": {"const": "NONE"},
               "state": {"const": "NOT_REQUIRED"},
-              "owner_statement_ref": {"const": "NOT_APPLICABLE"}
+              "owner_statement_ref": {"const": "NOT_REQUIRED"}
             }
           },
           "context": {
@@ -156,7 +160,8 @@
               "worktree": {
                 "properties": {
                   "mode": {"const": "NOT_APPLICABLE"},
-                  "path": {"const": "NOT_APPLICABLE"}
+                  "path": {"const": "NOT_APPLICABLE"},
+                  "branch": {"const": "NOT_APPLICABLE"}
                 }
               }
             }
@@ -170,10 +175,7 @@
       "then": {
         "properties": {
           "authorization": {
-            "properties": {
-              "class": {"const": "SINGLE_PROMPT"},
-              "state": {"const": "PRESENT"}
-            }
+            "properties": {"class": {"const": "SINGLE_PROMPT"}}
           }
         }
       }
@@ -183,10 +185,7 @@
       "then": {
         "properties": {
           "authorization": {
-            "properties": {
-              "class": {"const": "STANDALONE"},
-              "state": {"const": "PRESENT"}
-            }
+            "properties": {"class": {"const": "STANDALONE"}}
           }
         }
       }

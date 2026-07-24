@@ -515,6 +515,7 @@ class SQLiteHistoricalPrefixSuccessWindowSourceReader:
                     main_hit_count=_integer(main_hit_count, "main_hit_count"),
                     special_hit=_boolean(special_hit, "special_hit"),
                     ticket_sha256=_sha256(ticket_sha256, "ticket_sha256"),
+                    main_numbers=main_numbers,
                 ),
                 main_numbers=main_numbers,
                 special_numbers=special_numbers,
@@ -594,6 +595,8 @@ class SQLiteHistoricalPrefixSuccessWindowSourceReader:
                     constructor_identifier=constructor_identifier,
                     portfolio_sha256=portfolio_sha256,
                     tickets=tuple(item.outcome for item in tickets),
+                    target_main_numbers=target.main_numbers,
+                    target_special_number=target.special_numbers[0],
                 )
             )
             portfolio_hashes.append(portfolio_sha256)

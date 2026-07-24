@@ -25,6 +25,7 @@ import {
   makeNotReadyCrossImportConcordance,
   makeTemporalHoldout,
   makeRecent50StabilityAudit,
+  makeResearchQualification,
   makeWindowPage,
   makeZeroObservationFeatureCohortDiagnostics,
   makeZeroObservationFeatureCohorts,
@@ -37,6 +38,9 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/research-qualification')) {
+    return Promise.resolve(apiResponse(makeResearchQualification()))
+  }
   if (url.includes('/feature-cohorts/multi-import-concordance-census')) {
     return Promise.resolve(apiResponse(makeMultiImportConcordanceCensus()))
   }
@@ -117,6 +121,13 @@ async function evaluateCrossImportConcordance(wrapper: VueWrapper): Promise<void
 
 async function evaluateMultiImportCensus(wrapper: VueWrapper): Promise<void> {
   await wrapper.get('button.multi-import-census-action').trigger('click')
+  await flushPromises()
+}
+
+async function evaluateResearchQualification(
+  wrapper: VueWrapper,
+): Promise<void> {
+  await wrapper.get('button.research-qualification-action').trigger('click')
   await flushPromises()
 }
 
@@ -1821,6 +1832,285 @@ describe('HistoricalSuccessWindowsPage', () => {
     fetchMock.mockReset()
     fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
     await wrapper.get('button.multi-import-census-action').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(unmountSignal.aborted).toBe(true)
+  })
+
+  it('requires the explicit qualification action and issues exactly M ordered requests', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+    ]
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 2 })),
+        )
+      }
+      if (url.pathname.includes('/research-qualification')) {
+        const strategy = url.pathname.includes('zero-observation')
+          ? second.strategy
+          : first.strategy
+        return Promise.resolve(
+          apiResponse(
+            makeResearchQualification({
+              identity: {
+                strategy_id: strategy.strategy_id,
+                strategy_version: strategy.strategy_version,
+                replicate: strategy.replicate,
+                prefix_count: 1,
+                criterion: 'M3_PLUS',
+              },
+            }),
+          ),
+        )
+      }
+      if (url.pathname.includes('/multi-import-concordance-census')) {
+        return Promise.resolve(apiResponse(makeMultiImportConcordanceCensus(2)))
+      }
+      return Promise.resolve(
+        apiResponse(makeWindowPage({ items: [first, second] })),
+      )
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    const importOptions = wrapper.findAll('.census-import-option input')
+    await importOptions[0]!.setValue(true)
+    await importOptions[1]!.setValue(true)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/research-qualification'),
+      ),
+    ).toBe(false)
+    await evaluateMultiImportCensus(wrapper)
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/research-qualification'),
+      ),
+    ).toBe(false)
+    fetchMock.mockClear()
+
+    await evaluateResearchQualification(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    for (const call of fetchMock.mock.calls) {
+      const url = new URL(String(call[0]), 'http://localhost')
+      expect(url.searchParams.getAll('import_identity_sha256')).toEqual([
+        IMPORT_SHA,
+        RIGHT_IMPORT_SHA,
+      ])
+      expect(Object.fromEntries(url.searchParams)).toMatchObject({
+        prefix_count: '1',
+        criterion: 'M3_PLUS',
+      })
+    }
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/research-qualification?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/research-qualification?',
+    )
+    const cards = wrapper.findAll('.research-qualification-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('.research-qualification-import-row')).toHaveLength(2)
+    expect(cards[0]!.findAll('.research-qualification-pair-row')).toHaveLength(1)
+    expect(wrapper.text()).toContain(
+      'Research qualification only. This result does not rank, promote, reject, predict, or establish production eligibility.',
+    )
+    expect(cards[0]!.text()).toContain(
+      'Random/null benchmark unavailable; random advantage has not been evaluated.',
+    )
+    expect(cards.map((card) => card.find('h3').text())).toEqual([
+      'zero-observation',
+      'alias strategy/one',
+    ])
+    wrapper.unmount()
+  })
+
+  it('keeps partial qualification results visible and retries in strategy order', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+    ]
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 2 })),
+        )
+      }
+      return Promise.resolve(
+        apiResponse(makeWindowPage({ items: [first, second] })),
+      )
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    for (const option of wrapper.findAll('.census-import-option input')) {
+      await option.setValue(true)
+    }
+    await selectMatrix(wrapper, 0)
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockReset()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(makeResearchQualification()))
+      .mockResolvedValueOnce(
+        apiResponse(
+          {
+            error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+            message: '/secret/path',
+          },
+          404,
+        ),
+      )
+
+    await evaluateResearchQualification(wrapper)
+
+    expect(wrapper.text()).toContain(
+      'Some qualification requests are unavailable',
+    )
+    expect(wrapper.findAll('.research-qualification-result-card')).toHaveLength(2)
+    expect(wrapper.text()).not.toContain('/secret/path')
+
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) => {
+      const strategy = String(input).includes('zero-observation')
+        ? second.strategy
+        : first.strategy
+      return Promise.resolve(
+        apiResponse(
+          makeResearchQualification({
+            identity: {
+              strategy_id: strategy.strategy_id,
+              strategy_version: strategy.strategy_version,
+              replicate: strategy.replicate,
+              prefix_count: 1,
+              criterion: 'M3_PLUS',
+            },
+          }),
+        ),
+      )
+    })
+    await wrapper.get('button.research-qualification-retry').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(wrapper.findAll('.research-qualification-pair-row')).toHaveLength(2)
+    expect(
+      wrapper
+        .findAll('.research-qualification-result-card')
+        .map((card) => card.find('h3').text()),
+    ).toEqual(['alias strategy/one', 'zero-observation'])
+    wrapper.unmount()
+  })
+
+  it('aborts and ignores stale qualification responses on every selection lifecycle change', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+    ]
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 2 })),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    for (const option of wrapper.findAll('.census-import-option input')) {
+      await option.setValue(true)
+    }
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.research-qualification-action').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.research-qualification-action').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeResearchQualification()))
+    await flushPromises()
+    const stale = makeResearchQualification()
+    stale.identity.strategy_id = 'stale'
+    older.resolve(apiResponse(stale))
+    await flushPromises()
+    expect(wrapper.findAll('.research-qualification-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const importPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(importPending.promise)
+    await wrapper.get('button.research-qualification-action').trigger('click')
+    const importSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.census-import-remove').trigger('click')
+    expect(importSignal.aborted).toBe(true)
+    await wrapper.get('.census-import-option input').setValue(true)
+
+    const strategyPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(strategyPending.promise)
+    await wrapper.get('button.research-qualification-action').trigger('click')
+    const strategySignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('input.matrix-select').setValue(false)
+    expect(strategySignal.aborted).toBe(true)
+    await wrapper.get('input.matrix-select').setValue(true)
+
+    for (const [selector, value, reset] of [
+      ['select[name="prefix-count"]', '2', '1'],
+      ['select[name="criterion"]', 'M4_PLUS', 'M3_PLUS'],
+    ] as const) {
+      const pending = deferred<Response>()
+      fetchMock.mockReset()
+      fetchMock.mockReturnValueOnce(pending.promise)
+      await wrapper.get('button.research-qualification-action').trigger('click')
+      const signal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+      await wrapper.get(selector).setValue(value)
+      expect(signal.aborted).toBe(true)
+      await wrapper.get(selector).setValue(reset)
+    }
+
+    const runPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(runPending.promise)
+    await wrapper.get('button.research-qualification-action').trigger('click')
+    const runSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="historical-run"]').setValue('')
+    expect(runSignal.aborted).toBe(true)
+
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.research-qualification-action').trigger('click')
     const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
     wrapper.unmount()
     expect(unmountSignal.aborted).toBe(true)

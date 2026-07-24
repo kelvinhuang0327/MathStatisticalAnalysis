@@ -7,6 +7,7 @@ import {
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
   getHistoricalSuccessRecent50StabilityAudit,
+  getHistoricalSuccessResearchQualification,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -24,6 +25,7 @@ import {
   type HistoricalSuccessMultiImportConcordanceCensus,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessRecent50StabilityAudit,
+  type HistoricalSuccessResearchQualification,
   type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessTemporalHoldout,
   type HistoricalSuccessWindowPage,
@@ -90,6 +92,11 @@ type MultiImportConcordanceCensusOutcome = {
   result: HistoricalSuccessMultiImportConcordanceCensus | null
   error: string
 }
+type ResearchQualificationOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessResearchQualification | null
+  error: string
+}
 
 const RUN_LIMIT = 10
 const RESULT_LIMIT = 20
@@ -126,6 +133,8 @@ const crossImportConcordanceResults = ref<CrossImportConcordanceOutcome[]>([])
 const censusImportSelections = ref<HistoricalRun[]>([])
 const multiImportCensusState = ref<MatrixState>('idle')
 const multiImportCensusResults = ref<MultiImportConcordanceCensusOutcome[]>([])
+const researchQualificationState = ref<MatrixState>('idle')
+const researchQualificationResults = ref<ResearchQualificationOutcome[]>([])
 
 let mounted = false
 let runsGeneration = 0
@@ -138,6 +147,7 @@ let temporalHoldoutGeneration = 0
 let recent50StabilityAuditGeneration = 0
 let crossImportConcordanceGeneration = 0
 let multiImportCensusGeneration = 0
+let researchQualificationGeneration = 0
 let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
@@ -148,6 +158,7 @@ let temporalHoldoutController: AbortController | undefined
 let recent50StabilityAuditController: AbortController | undefined
 let crossImportConcordanceController: AbortController | undefined
 let multiImportCensusController: AbortController | undefined
+let researchQualificationController: AbortController | undefined
 
 const selectedRunMissingFromPage = computed(
   () =>
@@ -326,6 +337,17 @@ function clearMultiImportCensus(): void {
       : 'idle'
 }
 
+function clearResearchQualification(): void {
+  researchQualificationGeneration += 1
+  researchQualificationController?.abort()
+  researchQualificationResults.value = []
+  researchQualificationState.value =
+    censusImportSelections.value.length >= 2 &&
+    matrixSelections.value.length > 0
+      ? 'selected'
+      : 'idle'
+}
+
 function isCensusImportSelected(run: HistoricalRun): boolean {
   return censusImportSelections.value.some(
     (selected) =>
@@ -352,6 +374,7 @@ function toggleCensusImportSelection(run: HistoricalRun, event: Event): void {
     )
   }
   clearMultiImportCensus()
+  clearResearchQualification()
 }
 
 function removeCensusImport(run: HistoricalRun): void {
@@ -360,6 +383,7 @@ function removeCensusImport(run: HistoricalRun): void {
       selected.import_identity_sha256 !== run.import_identity_sha256,
   )
   clearMultiImportCensus()
+  clearResearchQualification()
 }
 
 function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
@@ -386,6 +410,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   clearRecent50StabilityAudit()
   clearCrossImportConcordance()
   clearMultiImportCensus()
+  clearResearchQualification()
 }
 
 function chooseRun(): void {
@@ -403,6 +428,7 @@ function chooseRun(): void {
   clearRecent50StabilityAudit()
   clearCrossImportConcordance()
   clearMultiImportCensus()
+  clearResearchQualification()
 }
 
 function chooseComparisonRun(): void {
@@ -422,6 +448,7 @@ function controlsChanged(): void {
   clearRecent50StabilityAudit()
   clearCrossImportConcordance()
   clearMultiImportCensus()
+  clearResearchQualification()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -767,6 +794,73 @@ async function evaluateMultiImportCensus(): Promise<void> {
       ? 'ready'
       : successes > 0
         ? 'partial'
+      : 'error'
+}
+
+async function evaluateResearchQualification(): Promise<void> {
+  const imports = [...censusImportSelections.value]
+  const selections = [...matrixSelections.value]
+  if (
+    imports.length < 2 ||
+    imports.length > 4 ||
+    selections.length < 1 ||
+    selections.length > 4
+  ) {
+    return
+  }
+  const importIdentities = imports.map(
+    (run) => run.import_identity_sha256,
+  )
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++researchQualificationGeneration
+  researchQualificationController?.abort()
+  const controller = new AbortController()
+  researchQualificationController = controller
+  researchQualificationResults.value = []
+  researchQualificationState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(
+      async (selection): Promise<ResearchQualificationOutcome> => {
+        try {
+          const result = await getHistoricalSuccessResearchQualification(
+            {
+              import_identity_sha256: importIdentities,
+              strategy_id: selection.strategy.strategy_id,
+              strategy_version: selection.strategy.strategy_version,
+              replicate: selection.strategy.replicate,
+              prefix_count: selectedPrefix,
+              criterion: selectedCriterion,
+            },
+            controller.signal,
+          )
+          return { selection, result, error: '' }
+        } catch (error: unknown) {
+          return {
+            selection,
+            result: null,
+            error: errorMessage(error),
+          }
+        }
+      },
+    ),
+  )
+  if (
+    !mounted ||
+    generation !== researchQualificationGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  researchQualificationResults.value = outcomes
+  const successes = outcomes.filter(
+    (outcome) => outcome.result !== null,
+  ).length
+  researchQualificationState.value =
+    successes === outcomes.length
+      ? 'ready'
+      : successes > 0
+        ? 'partial'
         : 'error'
 }
 
@@ -969,6 +1063,7 @@ onBeforeUnmount(() => {
   recent50StabilityAuditGeneration += 1
   crossImportConcordanceGeneration += 1
   multiImportCensusGeneration += 1
+  researchQualificationGeneration += 1
   runsController?.abort()
   analysisController?.abort()
   detailController?.abort()
@@ -979,6 +1074,7 @@ onBeforeUnmount(() => {
   recent50StabilityAuditController?.abort()
   crossImportConcordanceController?.abort()
   multiImportCensusController?.abort()
+  researchQualificationController?.abort()
 })
 </script>
 
@@ -2508,6 +2604,244 @@ onBeforeUnmount(() => {
           <div
             v-else
             class="research-state research-state--error multi-import-census-item-error"
+          >
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section
+      class="research-results research-qualification-panel"
+      aria-labelledby="research-qualification-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">Application-owned evidence projection</p>
+          <h2 id="research-qualification-title">Research qualification</h2>
+        </div>
+        <button
+          class="button research-qualification-action"
+          type="button"
+          :disabled="
+            censusImportSelections.length < 2 ||
+            censusImportSelections.length > 4 ||
+            matrixSelections.length === 0 ||
+            matrixSelections.length > 4
+          "
+          @click="evaluateResearchQualification"
+        >
+          Evaluate research qualification
+        </button>
+      </div>
+
+      <p class="research-state research-state--notice research-qualification-notice">
+        Research qualification only. This result does not rank, promote, reject,
+        predict, or establish production eligibility.
+      </p>
+      <p
+        v-if="censusImportSelections.length < 2"
+        class="research-state"
+      >
+        Select two to four distinct imports in the source panel. No qualification
+        request is issued automatically.
+      </p>
+      <p
+        v-else-if="matrixSelections.length === 0"
+        class="research-state"
+      >
+        Select one to four exact strategy identities from the primary run.
+      </p>
+      <p
+        v-else-if="researchQualificationState === 'selected'"
+        class="research-state"
+      >
+        {{ censusImportSelections.length }} imports and
+        {{ matrixSelections.length }} strategies are selected in manual order.
+        Evaluation runs only from the explicit action.
+      </p>
+      <p
+        v-if="researchQualificationState === 'loading'"
+        class="research-state"
+      >
+        Evaluating {{ matrixSelections.length }} strategy-specific qualification
+        projections with the same ordered imports…
+      </p>
+      <div
+        v-if="researchQualificationState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>
+          Some qualification requests are unavailable; completed projections remain
+          visible in strategy order.
+        </strong>
+        <button
+          class="button button--quiet research-qualification-retry"
+          type="button"
+          @click="evaluateResearchQualification"
+        >
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="researchQualificationState === 'error'"
+        class="research-state research-state--notice"
+      >
+        <strong>All selected qualification requests are unavailable.</strong>
+        <button
+          class="button button--quiet research-qualification-retry"
+          type="button"
+          @click="evaluateResearchQualification"
+        >
+          Retry all
+        </button>
+      </div>
+
+      <ol
+        v-if="researchQualificationResults.length > 0"
+        class="research-qualification-result-list"
+      >
+        <li
+          v-for="outcome in researchQualificationResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="research-qualification-result-card"
+        >
+          <header>
+            <span class="identity-kind">
+              {{ outcome.selection.strategy.identity_kind }}
+            </span>
+            <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+            <code>
+              {{ outcome.selection.strategy.strategy_version }} · replicate
+              {{ outcome.selection.strategy.replicate }}
+            </code>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts research-qualification-facts">
+              <div>
+                <dt>Primary status</dt>
+                <dd>{{ outcome.result.primary_status }}</dd>
+              </div>
+              <div>
+                <dt>Informational flags</dt>
+                <dd>
+                  {{
+                    outcome.result.informational_flags.length > 0
+                      ? outcome.result.informational_flags.join(' · ')
+                      : 'None'
+                  }}
+                </dd>
+              </div>
+              <div>
+                <dt>Comparable imports</dt>
+                <dd>{{ outcome.result.comparable_import_count }}</dd>
+              </div>
+              <div>
+                <dt>Pair evidence</dt>
+                <dd>
+                  {{ outcome.result.actual_pair_count }} /
+                  {{ outcome.result.expected_pair_count }}
+                </dd>
+              </div>
+              <div>
+                <dt>Census status</dt>
+                <dd>{{ outcome.result.census_status }}</dd>
+              </div>
+              <div>
+                <dt>Cohort census count</dt>
+                <dd>{{ outcome.result.cohort_census_count }}</dd>
+              </div>
+              <div>
+                <dt>Prefix</dt>
+                <dd>{{ outcome.result.identity.prefix_count }}</dd>
+              </div>
+              <div>
+                <dt>Criterion</dt>
+                <dd>{{ outcome.result.identity.criterion }}</dd>
+              </div>
+            </dl>
+
+            <p
+              v-if="outcome.result.random_baseline_caveat"
+              class="research-state research-state--notice research-qualification-caveat"
+            >
+              {{ outcome.result.random_baseline_caveat }}
+            </p>
+
+            <div class="research-qualification-table-scroll">
+              <table class="research-qualification-import-table">
+                <caption>Ordered per-import qualification evidence.</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Import</th>
+                    <th scope="col">Identity</th>
+                    <th scope="col">Dataset</th>
+                    <th scope="col">Artifact</th>
+                    <th scope="col">Windows</th>
+                    <th scope="col">Holdout</th>
+                    <th scope="col">Recent audit</th>
+                    <th scope="col">Recent differences</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="item in outcome.result.ordered_import_evidence"
+                    :key="item.import_identity_sha256"
+                    class="research-qualification-import-row"
+                  >
+                    <td>{{ item.import_index + 1 }}</td>
+                    <td><code>{{ item.import_identity_sha256 }}</code></td>
+                    <td><code>{{ item.dataset_sha256 }}</code></td>
+                    <td><code>{{ item.source_artifact_sha256 }}</code></td>
+                    <td>{{ item.strategy_window_status }}</td>
+                    <td>{{ item.temporal_holdout_status }}</td>
+                    <td>{{ item.recent_audit_status }}</td>
+                    <td>{{ item.recent_relationship_difference_count }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="research-qualification-table-scroll">
+              <table class="research-qualification-pair-table">
+                <caption>Pair evidence in caller-order index sequence.</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Pair</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Same dataset</th>
+                    <th scope="col">Same artifact</th>
+                    <th scope="col">Overlap relation</th>
+                    <th scope="col">R1 comparable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="pair in outcome.result.pair_evidence"
+                    :key="`${pair.left_import_index}:${pair.right_import_index}`"
+                    class="research-qualification-pair-row"
+                  >
+                    <td>
+                      {{ pair.left_import_index + 1 }} →
+                      {{ pair.right_import_index + 1 }}
+                    </td>
+                    <td>{{ pair.pair_status }}</td>
+                    <td>{{ pair.same_dataset_sha256 ? 'YES' : 'NO' }}</td>
+                    <td>
+                      {{ pair.same_source_artifact_sha256 ? 'YES' : 'NO' }}
+                    </td>
+                    <td>
+                      {{ pair.confirmation_overlap_relation ?? 'Unavailable' }}
+                    </td>
+                    <td>{{ pair.r1_comparable ? 'YES' : 'NO' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div
+            v-else
+            class="research-state research-state--notice research-qualification-item-error"
           >
             <strong>{{ outcome.error }}</strong>
           </div>

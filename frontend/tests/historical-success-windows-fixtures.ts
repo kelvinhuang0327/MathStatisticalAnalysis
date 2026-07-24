@@ -6,6 +6,7 @@ import type {
   HistoricalSuccessCrossImportConcordance,
   HistoricalSuccessMultiImportConcordanceCensus,
   HistoricalSuccessRecent50StabilityAudit,
+  HistoricalSuccessResearchQualification,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessTemporalHoldout,
   HistoricalSuccessWindowPage,
@@ -1102,6 +1103,65 @@ export function makeMultiImportConcordanceCensus(
     cohort_census,
     ...overrides,
   } as HistoricalSuccessMultiImportConcordanceCensus
+}
+
+export function makeResearchQualification(
+  overrides: Partial<HistoricalSuccessResearchQualification> = {},
+): HistoricalSuccessResearchQualification {
+  return {
+    identity: {
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+      prefix_count: 1,
+      criterion: 'M3_PLUS',
+    },
+    ordered_import_evidence: [
+      {
+        import_index: 0,
+        import_identity_sha256: IMPORT_SHA,
+        dataset_sha256: '1'.repeat(64),
+        source_artifact_sha256: '3'.repeat(64),
+        source_observation_count: 1050,
+        strategy_window_status: 'COMPLETE',
+        temporal_holdout_status: 'COMPLETE',
+        recent_audit_status: 'COMPLETE',
+        recent_relationship_difference_count: 0,
+      },
+      {
+        import_index: 1,
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+        dataset_sha256: '2'.repeat(64),
+        source_artifact_sha256: '4'.repeat(64),
+        source_observation_count: 1050,
+        strategy_window_status: 'COMPLETE',
+        temporal_holdout_status: 'COMPLETE',
+        recent_audit_status: 'COMPLETE',
+        recent_relationship_difference_count: 0,
+      },
+    ],
+    primary_status: 'RESEARCH_CANDIDATE',
+    informational_flags: ['HISTORICAL_CONCORDANCE_OBSERVED'],
+    random_baseline_caveat:
+      'Random/null benchmark unavailable; random advantage has not been evaluated.',
+    comparable_import_count: 2,
+    expected_pair_count: 1,
+    actual_pair_count: 1,
+    census_status: 'COMPLETE',
+    cohort_census_count: 64,
+    pair_evidence: [
+      {
+        left_import_index: 0,
+        right_import_index: 1,
+        pair_status: 'COMPLETE',
+        same_dataset_sha256: false,
+        same_source_artifact_sha256: false,
+        confirmation_overlap_relation: 'DISJOINT',
+        r1_comparable: true,
+      },
+    ],
+    ...overrides,
+  }
 }
 
 function rebuildComparisons(

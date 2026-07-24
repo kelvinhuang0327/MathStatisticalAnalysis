@@ -361,6 +361,12 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "{strategy_id}/{strategy_version}/{replicate}/"
             "feature-cohorts/multi-import-concordance-census",
         ),
+        (
+            "get",
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/"
+            "research-qualification",
+        ),
         ("get", "/api/v1/replay-rankings/optimal"),
         ("get", "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}"),
         (
@@ -376,7 +382,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 32
+    assert len(operations) == 33
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

@@ -8,6 +8,8 @@ export type HistoricalSuccessWindowPage =
 export type HistoricalSuccessWindowResult = HistoricalSuccessWindowPage['items'][number]
 export type HistoricalSuccessStabilityMatrix =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/matrix']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessRandomBaseline =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/random-null-baseline']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessFeatureCohorts =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessFeatureCohortDiagnostics =
@@ -26,6 +28,7 @@ export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
   components['schemas']['HistoricalPrefixSuccessCriterion']
+export type HistoricalSuccessWindowKind = components['schemas']['WindowKind']
 
 export const HISTORICAL_SUCCESS_PREFIX_COUNTS = [
   1, 2, 3, 4, 5, 10, 15, 20,
@@ -40,13 +43,46 @@ export const HISTORICAL_SUCCESS_CRITERIA = [
   'M4_PLUS_SPECIAL',
   'M5_PLUS_SPECIAL',
 ] as const satisfies readonly HistoricalSuccessCriterion[]
+export const HISTORICAL_SUCCESS_WINDOW_KINDS = [
+  'FULL_HISTORY',
+  'LONG',
+  'MEDIUM',
+  'SHORT',
+] as const satisfies readonly HistoricalSuccessWindowKind[]
 
 const RUNS_ENDPOINT = '/api/v1/historical-results/runs'
 const WINDOWS_ENDPOINT = '/api/v1/historical-prefix-success-windows'
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
+const RANDOM_BASELINE_POLICY_VERSION =
+  'HISTORICAL_SUCCESS_RANDOM_NULL_BASELINE_R1_OFFICIAL_SIX_NUMBER_IID'
+const RANDOM_BASELINE_WINDOW_POLICY_VERSION = 'STRATEGY_SUCCESS_WINDOWS_V1'
+const RANDOM_BASELINE_SAMPLING_POLICY =
+  'UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT'
+const RANDOM_BASELINE_TICKET_INTERPRETATION =
+  'nominal-ticket-count equivalent'
+const RANDOM_BASELINE_LEGAL_TICKET_COUNT = '13983816'
+export const HISTORICAL_SUCCESS_RANDOM_BASELINE_CAVEAT =
+  'Descriptive official-six-number IID random benchmark only. This result does not establish statistical significance, ranking, promotion, rejection, prediction quality, production eligibility, or monetary cost equivalence.'
+const RANDOM_BASELINE_SUCCESS_TICKET_COUNTS = {
+  M3_PLUS: '260624',
+  M4_PLUS: '13804',
+  M5_PLUS: '259',
+  M6: '1',
+  M2_PLUS_SPECIAL: '190056',
+  M3_PLUS_SPECIAL: '17856',
+  M4_PLUS_SPECIAL: '636',
+  M5_PLUS_SPECIAL: '6',
+} as const satisfies Record<HistoricalSuccessCriterion, string>
+const RANDOM_BASELINE_NOT_READY_REASONS = [
+  'NO_OBSERVATIONS',
+  'WINDOW_INCOMPLETE',
+  'EXCLUDED_OBSERVATIONS',
+  'SOURCE_TICKET_SEMANTICS_CONFLICT',
+  'EXACT_COMPUTATION_UNAVAILABLE',
+] as const
 const PREFIX_COUNT_SET = new Set<number>(HISTORICAL_SUCCESS_PREFIX_COUNTS)
 const CRITERION_SET = new Set<string>(HISTORICAL_SUCCESS_CRITERIA)
-const WINDOW_KINDS = ['FULL_HISTORY', 'LONG', 'MEDIUM', 'SHORT'] as const
+const WINDOW_KINDS = HISTORICAL_SUCCESS_WINDOW_KINDS
 const WINDOW_ROLES = [
   'REFERENCE_ONLY',
   'PRIMARY_EVIDENCE',
@@ -118,6 +154,11 @@ export interface HistoricalSuccessMatrixQuery {
   replicate: number
 }
 
+export interface HistoricalSuccessRandomBaselineQuery
+  extends HistoricalSuccessExactQuery {
+  window_kind: HistoricalSuccessWindowKind
+}
+
 export interface HistoricalSuccessFeatureCohortQuery
   extends HistoricalSuccessExactQuery {}
 
@@ -187,6 +228,17 @@ export class HistoricalSuccessWindowsRequestError extends Error {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): boolean {
+  const keys = Object.keys(value)
+  return (
+    keys.length === expected.length &&
+    expected.every((key) => Object.hasOwn(value, key))
+  )
 }
 
 function isString(value: unknown): value is string {
@@ -731,6 +783,7 @@ function isFeatureCohorts(
 }
 
 const CANONICAL_UNSIGNED_DECIMAL = /^(?:0|[1-9][0-9]*)$/
+const EXACT_DECIMAL_18 = /^(?:0|[1-9][0-9]*)\.[0-9]{18}$/
 
 function greatestCommonDivisorBigInt(left: bigint, right: bigint): bigint {
   let a = left < 0n ? -left : left
@@ -741,6 +794,265 @@ function greatestCommonDivisorBigInt(left: bigint, right: bigint): bigint {
     b = remainder
   }
   return a
+}
+
+function renderExactDecimal18(numerator: bigint, denominator: bigint): string {
+  const scale = 10n ** 18n
+  const scaled = numerator * scale
+  const quotient = scaled / denominator
+  const remainder = scaled % denominator
+  const doubled = remainder * 2n
+  const rounded =
+    quotient +
+    (doubled > denominator ||
+    (doubled === denominator && quotient % 2n === 1n)
+      ? 1n
+      : 0n)
+  const integerPart = rounded / scale
+  const fractionalPart = String(rounded % scale).padStart(18, '0')
+  return `${integerPart}.${fractionalPart}`
+}
+
+function isRandomBaselineExactRational(
+  value: unknown,
+  probability: boolean,
+): value is Record<string, string> {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, ['numerator', 'denominator', 'decimal_18']) ||
+    !isString(value.numerator) ||
+    !isString(value.denominator) ||
+    !isString(value.decimal_18) ||
+    !CANONICAL_UNSIGNED_DECIMAL.test(value.numerator) ||
+    !/^[1-9][0-9]*$/.test(value.denominator) ||
+    !EXACT_DECIMAL_18.test(value.decimal_18)
+  ) {
+    return false
+  }
+  const numerator = BigInt(value.numerator)
+  const denominator = BigInt(value.denominator)
+  return (
+    (!probability || numerator <= denominator) &&
+    greatestCommonDivisorBigInt(numerator, denominator) === 1n &&
+    value.decimal_18 === renderExactDecimal18(numerator, denominator)
+  )
+}
+
+function exactRationalEquals(
+  value: Record<string, string>,
+  numerator: bigint,
+  denominator: bigint,
+): boolean {
+  const divisor = greatestCommonDivisorBigInt(numerator, denominator)
+  return (
+    BigInt(value.numerator) === numerator / divisor &&
+    BigInt(value.denominator) === denominator / divisor
+  )
+}
+
+function exactBinomialUpperTailEquals(
+  value: Record<string, string>,
+  observationCount: number,
+  observedSuccessCount: number,
+  probability: Record<string, string>,
+): boolean {
+  const success = BigInt(probability.numerator)
+  const total = BigInt(probability.denominator)
+  const failure = total - success
+  if (observedSuccessCount === 0 || failure === 0n) {
+    return exactRationalEquals(value, 1n, 1n)
+  }
+  if (success === 0n) return exactRationalEquals(value, 0n, 1n)
+
+  const denominator = total ** BigInt(observationCount)
+  const lowerTermCount = observedSuccessCount
+  const upperTermCount = observationCount - observedSuccessCount + 1
+  let numerator: bigint
+  if (upperTermCount <= lowerTermCount) {
+    let successes = observationCount
+    let term = success ** BigInt(observationCount)
+    let upper = term
+    while (successes > observedSuccessCount) {
+      term =
+        (term * BigInt(successes) * failure) /
+        (BigInt(observationCount - successes + 1) * success)
+      successes -= 1
+      upper += term
+    }
+    numerator = upper
+  } else {
+    let successes = 0
+    let term = failure ** BigInt(observationCount)
+    let lower = term
+    while (successes + 1 < observedSuccessCount) {
+      term =
+        (term * BigInt(observationCount - successes) * success) /
+        (BigInt(successes + 1) * failure)
+      successes += 1
+      lower += term
+    }
+    numerator = denominator - lower
+  }
+  return (
+    BigInt(value.numerator) * denominator ===
+    numerator * BigInt(value.denominator)
+  )
+}
+
+function isRandomBaselineCell(
+  value: unknown,
+  query: HistoricalSuccessRandomBaselineQuery,
+): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, [
+      'policy_version',
+      'import_identity_sha256',
+      'dataset_sha256',
+      'source_artifact_sha256',
+      'strategy_id',
+      'strategy_version',
+      'replicate',
+      'window_kind',
+      'window_policy_version',
+      'prefix_count',
+      'criterion',
+    ]) &&
+    value.policy_version === RANDOM_BASELINE_POLICY_VERSION &&
+    value.import_identity_sha256 === query.import_identity_sha256 &&
+    isSha256(value.dataset_sha256) &&
+    isSha256(value.source_artifact_sha256) &&
+    value.strategy_id === query.strategy_id &&
+    value.strategy_version === query.strategy_version &&
+    value.replicate === query.replicate &&
+    value.window_kind === query.window_kind &&
+    value.window_policy_version === RANDOM_BASELINE_WINDOW_POLICY_VERSION &&
+    value.prefix_count === query.prefix_count &&
+    value.criterion === query.criterion
+  )
+}
+
+function isRandomBaselineResponse(
+  value: unknown,
+  query: HistoricalSuccessRandomBaselineQuery,
+): value is HistoricalSuccessRandomBaseline {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'cell',
+      'readiness',
+      'reason_codes',
+      'sampling_policy',
+      'ticket_count_interpretation',
+      'legal_ticket_count',
+      'success_ticket_count',
+      'portfolio_success_probability',
+      'eligible_observation_count',
+      'excluded_observation_count',
+      'observed_success_count',
+      'expected_successes',
+      'upper_tail_probability',
+      'observed_ticket_position_count',
+      'observed_distinct_ticket_count',
+      'observed_duplicate_ticket_count',
+      'observation_count_with_duplicates',
+      'interpretation_caveat',
+    ]) ||
+    !isRandomBaselineCell(value.cell, query) ||
+    (value.readiness !== 'READY' && value.readiness !== 'NOT_READY') ||
+    !Array.isArray(value.reason_codes) ||
+    !value.reason_codes.every(
+      (reason) =>
+        typeof reason === 'string' &&
+        RANDOM_BASELINE_NOT_READY_REASONS.includes(
+          reason as (typeof RANDOM_BASELINE_NOT_READY_REASONS)[number],
+        ),
+    ) ||
+    value.reason_codes.some(
+      (reason, index) =>
+        reason !==
+        RANDOM_BASELINE_NOT_READY_REASONS.filter((candidate) =>
+          (value.reason_codes as unknown[]).includes(candidate),
+        )[index],
+    ) ||
+    value.sampling_policy !== RANDOM_BASELINE_SAMPLING_POLICY ||
+    value.ticket_count_interpretation !==
+      RANDOM_BASELINE_TICKET_INTERPRETATION ||
+    value.legal_ticket_count !== RANDOM_BASELINE_LEGAL_TICKET_COUNT ||
+    value.success_ticket_count !==
+      RANDOM_BASELINE_SUCCESS_TICKET_COUNTS[query.criterion] ||
+    !isRandomBaselineExactRational(
+      value.portfolio_success_probability,
+      true,
+    ) ||
+    !isNonNegativeInteger(value.eligible_observation_count) ||
+    !isNonNegativeInteger(value.excluded_observation_count) ||
+    !isNonNegativeInteger(value.observed_ticket_position_count) ||
+    !isNonNegativeInteger(value.observed_distinct_ticket_count) ||
+    !isNonNegativeInteger(value.observed_duplicate_ticket_count) ||
+    !isNonNegativeInteger(value.observation_count_with_duplicates) ||
+    value.observed_ticket_position_count !==
+      value.observed_distinct_ticket_count +
+        value.observed_duplicate_ticket_count ||
+    value.observation_count_with_duplicates >
+      value.eligible_observation_count ||
+    value.interpretation_caveat !==
+      HISTORICAL_SUCCESS_RANDOM_BASELINE_CAVEAT
+  ) {
+    return false
+  }
+
+  const legal = BigInt(RANDOM_BASELINE_LEGAL_TICKET_COUNT)
+  const success = BigInt(
+    RANDOM_BASELINE_SUCCESS_TICKET_COUNTS[query.criterion],
+  )
+  const denominator = legal ** BigInt(query.prefix_count)
+  const numerator =
+    denominator - (legal - success) ** BigInt(query.prefix_count)
+  if (
+    !exactRationalEquals(
+      value.portfolio_success_probability,
+      numerator,
+      denominator,
+    )
+  ) {
+    return false
+  }
+
+  if (value.readiness === 'NOT_READY') {
+    return (
+      value.reason_codes.length > 0 &&
+      value.observed_success_count === null &&
+      value.expected_successes === null &&
+      value.upper_tail_probability === null
+    )
+  }
+  if (
+    value.reason_codes.length !== 0 ||
+    value.eligible_observation_count === 0 ||
+    value.excluded_observation_count !== 0 ||
+    !isNonNegativeInteger(value.observed_success_count) ||
+    value.observed_success_count > value.eligible_observation_count ||
+    !isRandomBaselineExactRational(value.expected_successes, false) ||
+    !isRandomBaselineExactRational(value.upper_tail_probability, true) ||
+    value.observed_ticket_position_count !==
+      value.eligible_observation_count * query.prefix_count
+  ) {
+    return false
+  }
+  return (
+    exactRationalEquals(
+      value.expected_successes,
+      BigInt(value.eligible_observation_count) * numerator,
+      denominator,
+    ) &&
+    exactBinomialUpperTailEquals(
+      value.upper_tail_probability,
+      value.eligible_observation_count,
+      value.observed_success_count,
+      value.portfolio_success_probability,
+    )
+  )
 }
 
 function isExactProbability(value: unknown): boolean {
@@ -1990,6 +2302,27 @@ export async function getHistoricalSuccessStabilityMatrix(
     signal,
   )
   if (!isStabilityMatrix(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessRandomBaseline(
+  query: HistoricalSuccessRandomBaselineQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessRandomBaseline> {
+  const parameters = successQueryParameters(query)
+  parameters.set('window_kind', query.window_kind)
+  const identity = [
+    query.strategy_id,
+    query.strategy_version,
+    String(query.replicate),
+  ]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${identity}/random-null-baseline?${parameters.toString()}`,
+    signal,
+  )
+  if (!isRandomBaselineResponse(payload, query)) throw malformedResponse()
   return payload
 }
 

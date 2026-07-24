@@ -7,12 +7,15 @@ import {
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
   getHistoricalSuccessRecent50StabilityAudit,
+  getHistoricalSuccessRandomBaseline,
   getHistoricalSuccessResearchQualification,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
   HISTORICAL_SUCCESS_CRITERIA,
   HISTORICAL_SUCCESS_PREFIX_COUNTS,
+  HISTORICAL_SUCCESS_RANDOM_BASELINE_CAVEAT,
+  HISTORICAL_SUCCESS_WINDOW_KINDS,
   HistoricalSuccessWindowsRequestError,
   listHistoricalRuns,
   listHistoricalSuccessWindows,
@@ -25,10 +28,12 @@ import {
   type HistoricalSuccessMultiImportConcordanceCensus,
   type HistoricalSuccessPrefixCount,
   type HistoricalSuccessRecent50StabilityAudit,
+  type HistoricalSuccessRandomBaseline,
   type HistoricalSuccessResearchQualification,
   type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessTemporalHoldout,
   type HistoricalSuccessWindowPage,
+  type HistoricalSuccessWindowKind,
   type HistoricalSuccessWindowResult,
 } from '../../api/historicalSuccessWindows'
 
@@ -53,6 +58,11 @@ type MatrixOutcome = {
   error: string
 }
 type MatrixCell = HistoricalSuccessStabilityMatrix['cells'][number]
+type RandomBaselineOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessRandomBaseline | null
+  error: string
+}
 type FeatureCohortOutcome = {
   selection: MatrixSelection
   result: HistoricalSuccessFeatureCohorts | null
@@ -120,6 +130,10 @@ const copiedIdentity = ref(false)
 const matrixSelections = ref<MatrixSelection[]>([])
 const matrixState = ref<MatrixState>('idle')
 const matrixResults = ref<MatrixOutcome[]>([])
+const randomBaselineWindowKind =
+  ref<HistoricalSuccessWindowKind>('LONG')
+const randomBaselineState = ref<MatrixState>('idle')
+const randomBaselineResults = ref<RandomBaselineOutcome[]>([])
 const featureCohortState = ref<MatrixState>('idle')
 const featureCohortResults = ref<FeatureCohortOutcome[]>([])
 const featureCohortDiagnosticsState = ref<MatrixState>('idle')
@@ -141,6 +155,7 @@ let runsGeneration = 0
 let analysisGeneration = 0
 let detailGeneration = 0
 let matrixGeneration = 0
+let randomBaselineGeneration = 0
 let featureCohortGeneration = 0
 let featureCohortDiagnosticsGeneration = 0
 let temporalHoldoutGeneration = 0
@@ -152,6 +167,7 @@ let runsController: AbortController | undefined
 let analysisController: AbortController | undefined
 let detailController: AbortController | undefined
 let matrixController: AbortController | undefined
+let randomBaselineController: AbortController | undefined
 let featureCohortController: AbortController | undefined
 let featureCohortDiagnosticsController: AbortController | undefined
 let temporalHoldoutController: AbortController | undefined
@@ -286,6 +302,14 @@ function clearMatrix(clearSelections: boolean): void {
     !clearSelections && matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearRandomBaselines(): void {
+  randomBaselineGeneration += 1
+  randomBaselineController?.abort()
+  randomBaselineResults.value = []
+  randomBaselineState.value =
+    matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
 function clearFeatureCohorts(): void {
   featureCohortGeneration += 1
   featureCohortController?.abort()
@@ -404,6 +428,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
     )
   }
   clearMatrix(false)
+  clearRandomBaselines()
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
@@ -422,6 +447,7 @@ function chooseRun(): void {
   copiedIdentity.value = false
   clearAnalysis()
   clearMatrix(true)
+  clearRandomBaselines()
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
@@ -442,6 +468,7 @@ function chooseComparisonRun(): void {
 
 function controlsChanged(): void {
   clearAnalysis()
+  clearRandomBaselines()
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
@@ -449,6 +476,53 @@ function controlsChanged(): void {
   clearCrossImportConcordance()
   clearMultiImportCensus()
   clearResearchQualification()
+}
+
+async function loadRandomBaselines(): Promise<void> {
+  const run = selectedRun.value
+  const selections = [...matrixSelections.value]
+  if (run === null || selections.length < 1 || selections.length > 4) return
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const selectedWindowKind = randomBaselineWindowKind.value
+  const generation = ++randomBaselineGeneration
+  randomBaselineController?.abort()
+  const controller = new AbortController()
+  randomBaselineController = controller
+  randomBaselineResults.value = []
+  randomBaselineState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<RandomBaselineOutcome> => {
+      try {
+        const result = await getHistoricalSuccessRandomBaseline(
+          {
+            import_identity_sha256: run.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+            prefix_count: selectedPrefix,
+            criterion: selectedCriterion,
+            window_kind: selectedWindowKind,
+          },
+          controller.signal,
+        )
+        return { selection, result, error: '' }
+      } catch (error: unknown) {
+        return { selection, result: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (
+    !mounted ||
+    generation !== randomBaselineGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  randomBaselineResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.result !== null).length
+  randomBaselineState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
 async function compareSelectedMatrices(): Promise<void> {
@@ -949,6 +1023,16 @@ function exactRate(item: HistoricalSuccessWindowResult['windows'][number]): stri
     : 'Unavailable (0 / 0)'
 }
 
+function randomBaselineExact(
+  value:
+    | HistoricalSuccessRandomBaseline['portfolio_success_probability']
+    | null,
+): string {
+  return value === null
+    ? 'Not available'
+    : `${value.numerator} / ${value.denominator} · ${value.decimal_18}`
+}
+
 function targetLabel(target: HistoricalSuccessWindowResult['windows'][number]['first_target']): string {
   return `${target.draw_date} · #${target.draw_number}`
 }
@@ -1057,6 +1141,7 @@ onBeforeUnmount(() => {
   analysisGeneration += 1
   detailGeneration += 1
   matrixGeneration += 1
+  randomBaselineGeneration += 1
   featureCohortGeneration += 1
   featureCohortDiagnosticsGeneration += 1
   temporalHoldoutGeneration += 1
@@ -1068,6 +1153,7 @@ onBeforeUnmount(() => {
   analysisController?.abort()
   detailController?.abort()
   matrixController?.abort()
+  randomBaselineController?.abort()
   featureCohortController?.abort()
   featureCohortDiagnosticsController?.abort()
   temporalHoldoutController?.abort()
@@ -1515,6 +1601,168 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div v-else class="research-state research-state--error matrix-item-error">
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section
+      class="research-results random-baseline-panel"
+      aria-labelledby="random-baseline-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">Descriptive random reference</p>
+          <h2 id="random-baseline-title">Exact official-ticket random-null baseline</h2>
+        </div>
+        <div class="random-baseline-actions">
+          <label>
+            <span>Window</span>
+            <select
+              v-model="randomBaselineWindowKind"
+              name="random-baseline-window"
+              @change="clearRandomBaselines"
+            >
+              <option
+                v-for="windowKind in HISTORICAL_SUCCESS_WINDOW_KINDS"
+                :key="windowKind"
+                :value="windowKind"
+              >
+                {{ windowKind }}
+              </option>
+            </select>
+          </label>
+          <button
+            class="button button--primary random-baseline-load"
+            type="button"
+            :disabled="
+              selectedRun === null ||
+              matrixSelections.length === 0 ||
+              randomBaselineState === 'loading'
+            "
+            @click="loadRandomBaselines"
+          >
+            Load random baseline
+          </button>
+        </div>
+      </div>
+
+      <p class="research-state research-state--notice random-baseline-caveat">
+        {{ HISTORICAL_SUCCESS_RANDOM_BASELINE_CAVEAT }}
+      </p>
+      <p v-if="selectedRun === null" class="research-state">
+        Select a run before loading the random baseline.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities above. Selection and window
+        changes never load a baseline automatically.
+      </p>
+      <p v-else-if="randomBaselineState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact
+        {{ matrixSelections.length === 1 ? 'identity' : 'identities' }} selected
+        in manual order. Window {{ randomBaselineWindowKind }} · prefix
+        {{ prefixCount }} · criterion {{ criterion }}.
+      </p>
+      <p v-if="randomBaselineState === 'loading'" class="research-state">
+        Loading {{ matrixSelections.length }} exact descriptive random
+        {{ matrixSelections.length === 1 ? 'baseline' : 'baselines' }}…
+      </p>
+      <div
+        v-if="randomBaselineState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>Some random-baseline requests are unavailable; successful results remain visible.</strong>
+        <button
+          class="button button--quiet random-baseline-retry"
+          type="button"
+          @click="loadRandomBaselines"
+        >
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="randomBaselineState === 'error'"
+        class="research-state research-state--error"
+      >
+        <strong>All selected random-baseline requests failed with sanitized errors.</strong>
+        <button
+          class="button button--quiet random-baseline-retry"
+          type="button"
+          @click="loadRandomBaselines"
+        >
+          Retry all
+        </button>
+      </div>
+
+      <ol
+        v-if="randomBaselineResults.length > 0"
+        class="random-baseline-result-list"
+      >
+        <li
+          v-for="outcome in randomBaselineResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="random-baseline-result-card"
+        >
+          <header>
+            <div>
+              <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+              <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+              <code>
+                {{ outcome.selection.strategy.strategy_version }} · replicate
+                {{ outcome.selection.strategy.replicate }}
+              </code>
+            </div>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts random-baseline-facts">
+              <div><dt>Readiness</dt><dd>{{ outcome.result.readiness }}</dd></div>
+              <div><dt>Window</dt><dd>{{ outcome.result.cell.window_kind }}</dd></div>
+              <div><dt>Prefix</dt><dd>{{ outcome.result.cell.prefix_count }}</dd></div>
+              <div><dt>Criterion</dt><dd>{{ outcome.result.cell.criterion }}</dd></div>
+              <div><dt>Eligible observations</dt><dd>{{ outcome.result.eligible_observation_count }}</dd></div>
+              <div><dt>Excluded observations</dt><dd>{{ outcome.result.excluded_observation_count }}</dd></div>
+              <div><dt>Legal ticket count</dt><dd>{{ outcome.result.legal_ticket_count }}</dd></div>
+              <div><dt>Criterion-success tickets</dt><dd>{{ outcome.result.success_ticket_count }}</dd></div>
+              <div><dt>Observed ticket positions</dt><dd>{{ outcome.result.observed_ticket_position_count }}</dd></div>
+              <div><dt>Distinct ticket positions</dt><dd>{{ outcome.result.observed_distinct_ticket_count }}</dd></div>
+              <div><dt>Duplicate ticket positions</dt><dd>{{ outcome.result.observed_duplicate_ticket_count }}</dd></div>
+              <div><dt>Observations with duplicates</dt><dd>{{ outcome.result.observation_count_with_duplicates }}</dd></div>
+            </dl>
+            <div
+              v-if="outcome.result.readiness === 'READY'"
+              class="random-baseline-exact-grid"
+            >
+              <article>
+                <span>Portfolio success probability</span>
+                <strong>{{ randomBaselineExact(outcome.result.portfolio_success_probability) }}</strong>
+              </article>
+              <article>
+                <span>Observed successes</span>
+                <strong>{{ outcome.result.observed_success_count }}</strong>
+              </article>
+              <article>
+                <span>Exact expected successes</span>
+                <strong>{{ randomBaselineExact(outcome.result.expected_successes) }}</strong>
+              </article>
+              <article>
+                <span>Exact upper-tail probability · descriptive</span>
+                <strong>{{ randomBaselineExact(outcome.result.upper_tail_probability) }}</strong>
+              </article>
+            </div>
+            <div
+              v-else
+              class="research-state research-state--notice random-baseline-not-ready"
+            >
+              <strong>NOT_READY</strong>
+              <span>{{ outcome.result.reason_codes.join(' · ') }}</span>
+              <span>No observed, expected, or upper-tail result is exposed.</span>
+            </div>
+          </div>
+          <div
+            v-else
+            class="research-state research-state--error random-baseline-item-error"
+          >
             <strong>{{ outcome.error }}</strong>
           </div>
         </li>
@@ -2941,6 +3189,19 @@ onBeforeUnmount(() => {
 .matrix-cell-detail dd { margin: 0; color: var(--ink); font: 500 10px/1.3 'SFMono-Regular', Consolas, monospace; }
 .matrix-unavailable { color: var(--muted); font-size: 9px; line-height: 1.4; }
 .matrix-item-error { margin-top: 16px; }
+.random-baseline-actions { display: flex; gap: 12px; align-items: end; }
+.random-baseline-actions label { display: grid; gap: 7px; color: var(--muted); font-size: 10px; }
+.random-baseline-actions select { min-width: 170px; }
+.random-baseline-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
+.random-baseline-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
+.random-baseline-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }
+.random-baseline-exact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+.random-baseline-exact-grid article { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.random-baseline-exact-grid span, .random-baseline-exact-grid strong { display: block; }
+.random-baseline-exact-grid span { color: var(--muted); font-size: 9px; text-transform: uppercase; }
+.random-baseline-exact-grid strong { margin-top: 8px; color: var(--ink); font: 500 10px/1.5 'SFMono-Regular', Consolas, monospace; overflow-wrap: anywhere; }
+.random-baseline-not-ready { display: grid; gap: 7px; margin-top: 18px; }
+.random-baseline-item-error { margin-top: 16px; }
 .feature-cohort-result-list { display: grid; gap: 20px; margin: 20px 0 0; padding: 0; list-style: none; }
 .feature-cohort-result-card { padding: 22px; border: 1px solid var(--line); border-radius: 18px; background: rgb(7 18 15 / 62%); }
 .feature-cohort-result-card h3 { margin: 7px 0; color: var(--ink); overflow-wrap: anywhere; }

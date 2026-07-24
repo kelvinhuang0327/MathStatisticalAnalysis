@@ -90,6 +90,15 @@ from lottolab.application.historical_success_qualification import (
     HistoricalSuccessQualificationPrimaryStatus,
     HistoricalSuccessResearchQualification,
 )
+from lottolab.application.historical_success_random_baseline import (
+    HistoricalSuccessExactRational,
+    HistoricalSuccessRandomBaselineCellIdentity,
+    HistoricalSuccessRandomBaselineNotReadyReason,
+    HistoricalSuccessRandomBaselineReadiness,
+    HistoricalSuccessRandomBaselineResult,
+    HistoricalSuccessRandomBaselineSamplingPolicy,
+    render_exact_decimal_18,
+)
 from lottolab.application.ports import HistoricalPrefixSuccessWindowSourceReaderFactory
 from lottolab.application.use_cases.evaluate_historical_prefix_success_windows import (
     EvaluateHistoricalPrefixSuccessWindows,
@@ -113,6 +122,7 @@ from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
 _QUALIFICATION_RESPONSE = ConfigDict(frozen=True, extra="forbid")
+_RANDOM_BASELINE_RESPONSE = ConfigDict(frozen=True, extra="forbid")
 
 
 class HistoricalPrefixSuccessPrefixCount(IntEnum):
@@ -160,6 +170,176 @@ CanonicalProbabilityInteger = Annotated[
     str,
     Field(pattern=r"^(?:0|[1-9][0-9]*)$"),
 ]
+CanonicalPositiveInteger = Annotated[
+    str,
+    Field(pattern=r"^[1-9][0-9]*$"),
+]
+ExactDecimal18 = Annotated[
+    str,
+    Field(pattern=r"^(?:0|[1-9][0-9]*)\.[0-9]{18}$"),
+]
+
+
+class HistoricalSuccessRandomBaselineCellView(BaseModel):
+    model_config = _RANDOM_BASELINE_RESPONSE
+
+    policy_version: str
+    import_identity_sha256: str
+    dataset_sha256: str
+    source_artifact_sha256: str
+    strategy_id: str
+    strategy_version: str
+    replicate: Annotated[int, Field(ge=1)]
+    window_kind: WindowKind
+    window_policy_version: str
+    prefix_count: HistoricalPrefixSuccessPrefixCount
+    criterion: HistoricalPrefixSuccessCriterion
+
+    @classmethod
+    def from_identity(
+        cls, identity: HistoricalSuccessRandomBaselineCellIdentity
+    ) -> HistoricalSuccessRandomBaselineCellView:
+        return cls.model_validate(identity, from_attributes=True)
+
+    def to_identity(self) -> HistoricalSuccessRandomBaselineCellIdentity:
+        return HistoricalSuccessRandomBaselineCellIdentity(
+            policy_version=self.policy_version,
+            import_identity_sha256=self.import_identity_sha256,
+            dataset_sha256=self.dataset_sha256,
+            source_artifact_sha256=self.source_artifact_sha256,
+            strategy_id=self.strategy_id,
+            strategy_version=self.strategy_version,
+            replicate=self.replicate,
+            window_kind=self.window_kind,
+            window_policy_version=self.window_policy_version,
+            prefix_count=int(self.prefix_count),
+            criterion=self.criterion,
+        )
+
+
+class HistoricalSuccessRandomBaselineExactRationalView(BaseModel):
+    model_config = _RANDOM_BASELINE_RESPONSE
+
+    numerator: CanonicalProbabilityInteger
+    denominator: CanonicalPositiveInteger
+    decimal_18: ExactDecimal18
+
+    @model_validator(mode="after")
+    def validate_exact_decimal(self) -> Self:
+        exact = self.to_exact()
+        if self.decimal_18 != render_exact_decimal_18(exact):
+            raise ValueError("decimal_18 must be the exact HALF_EVEN rendering")
+        return self
+
+    @classmethod
+    def from_exact(
+        cls, exact: HistoricalSuccessExactRational
+    ) -> HistoricalSuccessRandomBaselineExactRationalView:
+        return cls(
+            numerator=str(exact.numerator),
+            denominator=str(exact.denominator),
+            decimal_18=render_exact_decimal_18(exact),
+        )
+
+    def to_exact(self) -> HistoricalSuccessExactRational:
+        return HistoricalSuccessExactRational(
+            numerator=int(self.numerator),
+            denominator=int(self.denominator),
+        )
+
+
+class HistoricalSuccessRandomBaselineResponse(BaseModel):
+    model_config = _RANDOM_BASELINE_RESPONSE
+
+    cell: HistoricalSuccessRandomBaselineCellView
+    readiness: HistoricalSuccessRandomBaselineReadiness
+    reason_codes: tuple[HistoricalSuccessRandomBaselineNotReadyReason, ...]
+    sampling_policy: HistoricalSuccessRandomBaselineSamplingPolicy
+    ticket_count_interpretation: str
+    legal_ticket_count: CanonicalPositiveInteger
+    success_ticket_count: CanonicalPositiveInteger
+    portfolio_success_probability: HistoricalSuccessRandomBaselineExactRationalView
+    eligible_observation_count: Annotated[int, Field(ge=0)]
+    excluded_observation_count: Annotated[int, Field(ge=0)]
+    observed_success_count: Annotated[int, Field(ge=0)] | None
+    expected_successes: HistoricalSuccessRandomBaselineExactRationalView | None
+    upper_tail_probability: HistoricalSuccessRandomBaselineExactRationalView | None
+    observed_ticket_position_count: Annotated[int, Field(ge=0)]
+    observed_distinct_ticket_count: Annotated[int, Field(ge=0)]
+    observed_duplicate_ticket_count: Annotated[int, Field(ge=0)]
+    observation_count_with_duplicates: Annotated[int, Field(ge=0)]
+    interpretation_caveat: str
+
+    @model_validator(mode="after")
+    def validate_application_invariants(self) -> Self:
+        HistoricalSuccessRandomBaselineResult(
+            cell=self.cell.to_identity(),
+            readiness=self.readiness,
+            reason_codes=self.reason_codes,
+            sampling_policy=self.sampling_policy,
+            ticket_count_interpretation=self.ticket_count_interpretation,
+            legal_ticket_count=int(self.legal_ticket_count),
+            success_ticket_count=int(self.success_ticket_count),
+            portfolio_success_probability=self.portfolio_success_probability.to_exact(),
+            eligible_observation_count=self.eligible_observation_count,
+            excluded_observation_count=self.excluded_observation_count,
+            observed_success_count=self.observed_success_count,
+            expected_successes=(
+                None if self.expected_successes is None else self.expected_successes.to_exact()
+            ),
+            upper_tail_probability=(
+                None
+                if self.upper_tail_probability is None
+                else self.upper_tail_probability.to_exact()
+            ),
+            observed_ticket_position_count=self.observed_ticket_position_count,
+            observed_distinct_ticket_count=self.observed_distinct_ticket_count,
+            observed_duplicate_ticket_count=self.observed_duplicate_ticket_count,
+            observation_count_with_duplicates=self.observation_count_with_duplicates,
+            interpretation_caveat=self.interpretation_caveat,
+        )
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalSuccessRandomBaselineResult
+    ) -> HistoricalSuccessRandomBaselineResponse:
+        return cls(
+            cell=HistoricalSuccessRandomBaselineCellView.from_identity(result.cell),
+            readiness=result.readiness,
+            reason_codes=result.reason_codes,
+            sampling_policy=result.sampling_policy,
+            ticket_count_interpretation=result.ticket_count_interpretation,
+            legal_ticket_count=str(result.legal_ticket_count),
+            success_ticket_count=str(result.success_ticket_count),
+            portfolio_success_probability=(
+                HistoricalSuccessRandomBaselineExactRationalView.from_exact(
+                    result.portfolio_success_probability
+                )
+            ),
+            eligible_observation_count=result.eligible_observation_count,
+            excluded_observation_count=result.excluded_observation_count,
+            observed_success_count=result.observed_success_count,
+            expected_successes=(
+                None
+                if result.expected_successes is None
+                else HistoricalSuccessRandomBaselineExactRationalView.from_exact(
+                    result.expected_successes
+                )
+            ),
+            upper_tail_probability=(
+                None
+                if result.upper_tail_probability is None
+                else HistoricalSuccessRandomBaselineExactRationalView.from_exact(
+                    result.upper_tail_probability
+                )
+            ),
+            observed_ticket_position_count=result.observed_ticket_position_count,
+            observed_distinct_ticket_count=result.observed_distinct_ticket_count,
+            observed_duplicate_ticket_count=result.observed_duplicate_ticket_count,
+            observation_count_with_duplicates=result.observation_count_with_duplicates,
+            interpretation_caveat=result.interpretation_caveat,
+        )
 
 
 class HistoricalPrefixSuccessSourceMetadataView(BaseModel):
@@ -2240,6 +2420,56 @@ def create_historical_prefix_success_windows_router(
     @router.get(
         (
             "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/random-null-baseline"
+        ),
+        response_model=HistoricalSuccessRandomBaselineResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyRandomNullBaseline",
+    )
+    def get_historical_prefix_strategy_random_null_baseline(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: ImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+        window_kind: WindowKind,
+    ) -> HistoricalSuccessRandomBaselineResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {
+                "import_identity_sha256",
+                "prefix_count",
+                "criterion",
+                "window_kind",
+            }
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_random_null_baseline(
+                import_identity_sha256=import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                window_kind=window_kind,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalSuccessRandomBaselineResponse.from_result(result)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/research-qualification"
         ),
         response_model=HistoricalSuccessResearchQualificationResponse,
@@ -2745,5 +2975,8 @@ __all__ = [
     "HistoricalPrefixTemporalHoldoutSplitView",
     "HistoricalPrefixWalkForwardBaselineView",
     "HistoricalPrefixWindowRateComparisonView",
+    "HistoricalSuccessRandomBaselineCellView",
+    "HistoricalSuccessRandomBaselineExactRationalView",
+    "HistoricalSuccessRandomBaselineResponse",
     "create_historical_prefix_success_windows_router",
 ]

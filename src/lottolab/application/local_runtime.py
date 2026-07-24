@@ -73,6 +73,10 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     ): frozenset({"get"}),
     (
         "/api/v1/historical-prefix-success-windows/strategies/"
+        "{strategy_id}/{strategy_version}/{replicate}/random-null-baseline"
+    ): frozenset({"get"}),
+    (
+        "/api/v1/historical-prefix-success-windows/strategies/"
         "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
     ): frozenset({"get"}),
     (

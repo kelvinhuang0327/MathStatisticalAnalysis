@@ -6,6 +6,7 @@ import type {
   HistoricalSuccessCrossImportConcordance,
   HistoricalSuccessMultiImportConcordanceCensus,
   HistoricalSuccessRecent50StabilityAudit,
+  HistoricalSuccessRandomBaseline,
   HistoricalSuccessResearchQualification,
   HistoricalSuccessStabilityMatrix,
   HistoricalSuccessTemporalHoldout,
@@ -216,6 +217,71 @@ export function makeWindowPage(
     items,
     ...overrides,
   }
+}
+
+export function makeRandomBaseline(
+  overrides: Partial<HistoricalSuccessRandomBaseline> = {},
+): HistoricalSuccessRandomBaseline {
+  return {
+    cell: {
+      policy_version:
+        'HISTORICAL_SUCCESS_RANDOM_NULL_BASELINE_R1_OFFICIAL_SIX_NUMBER_IID',
+      import_identity_sha256: IMPORT_SHA,
+      dataset_sha256: 'e'.repeat(64),
+      source_artifact_sha256: 'd'.repeat(64),
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+      window_kind: 'LONG',
+      window_policy_version: 'STRATEGY_SUCCESS_WINDOWS_V1',
+      prefix_count: 1,
+      criterion: 'M3_PLUS',
+    },
+    readiness: 'READY',
+    reason_codes: [],
+    sampling_policy: 'UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT',
+    ticket_count_interpretation: 'nominal-ticket-count equivalent',
+    legal_ticket_count: '13983816',
+    success_ticket_count: '260624',
+    portfolio_success_probability: {
+      numerator: '4654',
+      denominator: '249711',
+      decimal_18: '0.018637545002022338',
+    },
+    eligible_observation_count: 2,
+    excluded_observation_count: 0,
+    observed_success_count: 1,
+    expected_successes: {
+      numerator: '9308',
+      denominator: '249711',
+      decimal_18: '0.037275090004044676',
+    },
+    upper_tail_probability: {
+      numerator: '2302650272',
+      denominator: '62355583521',
+      decimal_18: '0.036927731920342268',
+    },
+    observed_ticket_position_count: 2,
+    observed_distinct_ticket_count: 2,
+    observed_duplicate_ticket_count: 0,
+    observation_count_with_duplicates: 0,
+    interpretation_caveat:
+      'Descriptive official-six-number IID random benchmark only. This result does not establish statistical significance, ranking, promotion, rejection, prediction quality, production eligibility, or monetary cost equivalence.',
+    ...overrides,
+  }
+}
+
+export function makeNotReadyRandomBaseline(): HistoricalSuccessRandomBaseline {
+  return makeRandomBaseline({
+    readiness: 'NOT_READY',
+    reason_codes: ['WINDOW_INCOMPLETE'],
+    eligible_observation_count: 0,
+    observed_success_count: null,
+    expected_successes: null,
+    upper_tail_probability: null,
+    observed_ticket_position_count: 0,
+    observed_distinct_ticket_count: 0,
+  })
 }
 
 export function makeMatrix(

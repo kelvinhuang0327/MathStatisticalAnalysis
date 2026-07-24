@@ -22,9 +22,11 @@ import {
   makeRunPage,
   makeNotReadyTemporalHoldout,
   makeNotReadyRecent50StabilityAudit,
+  makeNotReadyRandomBaseline,
   makeNotReadyCrossImportConcordance,
   makeTemporalHoldout,
   makeRecent50StabilityAudit,
+  makeRandomBaseline,
   makeResearchQualification,
   makeWindowPage,
   makeZeroObservationFeatureCohortDiagnostics,
@@ -38,6 +40,9 @@ let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
 function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
+  if (url.includes('/random-null-baseline')) {
+    return Promise.resolve(apiResponse(makeRandomBaseline()))
+  }
   if (url.includes('/research-qualification')) {
     return Promise.resolve(apiResponse(makeResearchQualification()))
   }
@@ -89,6 +94,11 @@ async function selectMatrix(wrapper: VueWrapper, index = 0): Promise<void> {
 
 async function compareMatrices(wrapper: VueWrapper): Promise<void> {
   await wrapper.get('button.matrix-compare').trigger('click')
+  await flushPromises()
+}
+
+async function loadRandomBaselines(wrapper: VueWrapper): Promise<void> {
+  await wrapper.get('button.random-baseline-load').trigger('click')
   await flushPromises()
 }
 
@@ -596,6 +606,208 @@ describe('HistoricalSuccessWindowsPage', () => {
     wrapper.unmount()
     expect(unmountSignal.aborted).toBe(true)
     expect(secondSignal.aborted).toBe(true)
+  })
+
+  it('keeps the random baseline explicit, defaults to LONG, and loads one to four strategies in selection order', async () => {
+    const strategies = Array.from({ length: 4 }, (_, index) => {
+      const base = makeResult()
+      const strategyId = `strategy-${index + 1}`
+      return makeResult({
+        strategy: {
+          ...base.strategy,
+          strategy_id: strategyId,
+          effective_strategy_id: strategyId,
+          alias_of_strategy_id: null,
+          descriptor_sha256: String(index + 1).repeat(64),
+        },
+        selection: {
+          ...base.selection,
+          strategy_id: strategyId,
+        },
+      })
+    })
+    const page = makeWindowPage({
+      items: strategies,
+      total_count: strategies.length,
+    })
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.includes('/random-null-baseline')) {
+        const match = url.pathname.match(
+          /\/strategies\/([^/]+)\/([^/]+)\/([0-9]+)\/random-null-baseline$/,
+        )!
+        const fixture = makeRandomBaseline()
+        return Promise.resolve(
+          apiResponse(
+            makeRandomBaseline({
+              cell: {
+                ...fixture.cell,
+                strategy_id: decodeURIComponent(match[1]!),
+                strategy_version: decodeURIComponent(match[2]!),
+                replicate: Number(match[3]),
+              },
+            }),
+          ),
+        )
+      }
+      if (url.pathname === '/api/v1/historical-prefix-success-windows') {
+        return Promise.resolve(apiResponse(page))
+      }
+      return Promise.resolve(apiResponse(makeRunPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+
+    expect(
+      (
+        wrapper.get(
+          'select[name="random-baseline-window"]',
+        ).element as HTMLSelectElement
+      ).value,
+    ).toBe('LONG')
+    expect(
+      wrapper
+        .get('select[name="random-baseline-window"]')
+        .findAll('option')
+        .map((option) => option.text()),
+    ).toEqual(['FULL_HISTORY', 'LONG', 'MEDIUM', 'SHORT'])
+
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    expect(wrapper.text()).toContain(
+      'Selection and window changes never load a baseline automatically.',
+    )
+    for (const checkbox of wrapper.findAll('input.matrix-select')) {
+      await checkbox.setValue(true)
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    await loadRandomBaselines(wrapper)
+    const baselineCalls = fetchMock.mock.calls.slice(2)
+    expect(baselineCalls).toHaveLength(4)
+    expect(
+      baselineCalls.map((call) => {
+        const url = new URL(String(call[0]), 'http://localhost')
+        return {
+          strategy: decodeURIComponent(
+            url.pathname.match(/\/strategies\/([^/]+)\//)![1]!,
+          ),
+          query: Object.fromEntries(url.searchParams),
+        }
+      }),
+    ).toEqual(
+      strategies.map((strategy) => ({
+        strategy: strategy.strategy.strategy_id,
+        query: {
+          import_identity_sha256: IMPORT_SHA,
+          prefix_count: '1',
+          criterion: 'M3_PLUS',
+          window_kind: 'LONG',
+        },
+      })),
+    )
+    expect(wrapper.findAll('.random-baseline-result-card')).toHaveLength(4)
+    expect(wrapper.text()).toContain('0.018637545002022338')
+    expect(wrapper.text()).toContain(
+      'This result does not establish statistical significance, ranking, promotion, rejection, prediction quality, production eligibility, or monetary cost equivalence.',
+    )
+    wrapper.unmount()
+  })
+
+  it('renders closed NOT_READY and partial random-baseline outcomes without fabricating result fields', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/random-null-baseline')) {
+        return Promise.resolve(apiResponse(makeNotReadyRandomBaseline()))
+      }
+      return successfulFetch(input)
+    })
+
+    await loadRandomBaselines(wrapper)
+    expect(wrapper.get('.random-baseline-not-ready').text()).toContain(
+      'WINDOW_INCOMPLETE',
+    )
+    expect(wrapper.get('.random-baseline-not-ready').text()).toContain(
+      'No observed, expected, or upper-tail result is exposed.',
+    )
+    expect(wrapper.find('.random-baseline-exact-grid').exists()).toBe(false)
+
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/zero-observation/')) {
+        return Promise.resolve(
+          apiResponse(
+            { error_code: 'HISTORICAL_PREFIX_SUCCESS_WINDOWS_UNAVAILABLE' },
+            503,
+          ),
+        )
+      }
+      if (url.includes('/random-null-baseline')) {
+        return Promise.resolve(apiResponse(makeRandomBaseline()))
+      }
+      return successfulFetch(input)
+    })
+    await loadRandomBaselines(wrapper)
+    expect(wrapper.text()).toContain(
+      'Some random-baseline requests are unavailable; successful results remain visible.',
+    )
+    expect(wrapper.findAll('.random-baseline-result-card')).toHaveLength(2)
+    expect(wrapper.text()).toContain('0.018637545002022338')
+    expect(wrapper.find('.random-baseline-item-error').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('aborts and ignores stale random baselines on window changes and unmount', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock
+      .mockReturnValueOnce(older.promise)
+      .mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.random-baseline-load').trigger('click')
+    const olderSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper
+      .get('select[name="random-baseline-window"]')
+      .setValue('MEDIUM')
+    expect(olderSignal.aborted).toBe(true)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await wrapper.get('button.random-baseline-load').trigger('click')
+    const newerSignal = fetchMock.mock.calls[1]?.[1]?.signal as AbortSignal
+    const medium = makeRandomBaseline()
+    newer.resolve(
+      apiResponse(
+        makeRandomBaseline({
+          cell: { ...medium.cell, window_kind: 'MEDIUM' },
+        }),
+      ),
+    )
+    await flushPromises()
+    older.resolve(apiResponse(makeRandomBaseline()))
+    await flushPromises()
+    expect(wrapper.get('.random-baseline-result-card').text()).toContain(
+      'MEDIUM',
+    )
+    expect(wrapper.get('.random-baseline-result-card').text()).not.toContain(
+      'LONG',
+    )
+
+    fetchMock.mockReturnValueOnce(new Promise<Response>(() => undefined))
+    await wrapper.get('button.random-baseline-load').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[2]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(newerSignal.aborted).toBe(true)
+    expect(unmountSignal.aborted).toBe(true)
   })
 
   it('never requests feature cohorts until the separate explicit action', async () => {

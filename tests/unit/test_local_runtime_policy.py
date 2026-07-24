@@ -318,6 +318,10 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         ): {"get": {}},
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/random-null-baseline"
+        ): {"get": {}},
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts"
         ): {"get": {}},
         (
@@ -431,6 +435,11 @@ def test_smoke_rejects_path_item_references(
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/matrix",
+            "get",
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/random-null-baseline",
             "get",
         ),
         (
@@ -629,7 +638,7 @@ def test_smoke_rejects_historical_prefix_near_miss_paths(path: str) -> None:
         validate_openapi_payload({"paths": paths})
 
 
-def test_smoke_admits_exactly_ten_historical_prefix_success_window_gets() -> None:
+def test_smoke_admits_exactly_eleven_historical_prefix_success_window_gets() -> None:
     paths = authorized_openapi_paths()
     expected = {
         "/api/v1/historical-prefix-success-windows",
@@ -640,6 +649,10 @@ def test_smoke_admits_exactly_ten_historical_prefix_success_window_gets() -> Non
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/matrix"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/random-null-baseline"
         ),
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
@@ -696,6 +709,10 @@ def test_smoke_admits_exactly_ten_historical_prefix_success_window_gets() -> Non
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/matrix"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/random-null-baseline"
         ),
         (
             "/api/v1/historical-prefix-success-windows/strategies/"

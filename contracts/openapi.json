@@ -1359,6 +1359,129 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/random-null-baseline": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Random Null Baseline",
+        "operationId": "getHistoricalPrefixStrategyRandomNullBaseline",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$",
+              "description": "Exact lowercase SHA-256 of one persisted Historical Results import.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Exact lowercase SHA-256 of one persisted Historical Results import."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          },
+          {
+            "name": "window_kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/WindowKind"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification": {
       "get": {
         "tags": [
@@ -6524,6 +6647,247 @@
           "RESEARCH_CANDIDATE"
         ],
         "title": "HistoricalSuccessQualificationPrimaryStatus"
+      },
+      "HistoricalSuccessRandomBaselineCellView": {
+        "properties": {
+          "policy_version": {
+            "type": "string",
+            "title": "Policy Version"
+          },
+          "import_identity_sha256": {
+            "type": "string",
+            "title": "Import Identity Sha256"
+          },
+          "dataset_sha256": {
+            "type": "string",
+            "title": "Dataset Sha256"
+          },
+          "source_artifact_sha256": {
+            "type": "string",
+            "title": "Source Artifact Sha256"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "replicate": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Replicate"
+          },
+          "window_kind": {
+            "$ref": "#/components/schemas/WindowKind"
+          },
+          "window_policy_version": {
+            "type": "string",
+            "title": "Window Policy Version"
+          },
+          "prefix_count": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "policy_version",
+          "import_identity_sha256",
+          "dataset_sha256",
+          "source_artifact_sha256",
+          "strategy_id",
+          "strategy_version",
+          "replicate",
+          "window_kind",
+          "window_policy_version",
+          "prefix_count",
+          "criterion"
+        ],
+        "title": "HistoricalSuccessRandomBaselineCellView"
+      },
+      "HistoricalSuccessRandomBaselineExactRationalView": {
+        "properties": {
+          "numerator": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]*)$",
+            "title": "Numerator"
+          },
+          "denominator": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Denominator"
+          },
+          "decimal_18": {
+            "type": "string",
+            "pattern": "^(?:0|[1-9][0-9]*)\\.[0-9]{18}$",
+            "title": "Decimal 18"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "numerator",
+          "denominator",
+          "decimal_18"
+        ],
+        "title": "HistoricalSuccessRandomBaselineExactRationalView"
+      },
+      "HistoricalSuccessRandomBaselineNotReadyReason": {
+        "type": "string",
+        "enum": [
+          "NO_OBSERVATIONS",
+          "WINDOW_INCOMPLETE",
+          "EXCLUDED_OBSERVATIONS",
+          "SOURCE_TICKET_SEMANTICS_CONFLICT",
+          "EXACT_COMPUTATION_UNAVAILABLE"
+        ],
+        "title": "HistoricalSuccessRandomBaselineNotReadyReason"
+      },
+      "HistoricalSuccessRandomBaselineReadiness": {
+        "type": "string",
+        "enum": [
+          "READY",
+          "NOT_READY"
+        ],
+        "title": "HistoricalSuccessRandomBaselineReadiness"
+      },
+      "HistoricalSuccessRandomBaselineResponse": {
+        "properties": {
+          "cell": {
+            "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineCellView"
+          },
+          "readiness": {
+            "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineReadiness"
+          },
+          "reason_codes": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineNotReadyReason"
+            },
+            "type": "array",
+            "title": "Reason Codes"
+          },
+          "sampling_policy": {
+            "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineSamplingPolicy"
+          },
+          "ticket_count_interpretation": {
+            "type": "string",
+            "title": "Ticket Count Interpretation"
+          },
+          "legal_ticket_count": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Legal Ticket Count"
+          },
+          "success_ticket_count": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Success Ticket Count"
+          },
+          "portfolio_success_probability": {
+            "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineExactRationalView"
+          },
+          "eligible_observation_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Eligible Observation Count"
+          },
+          "excluded_observation_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Excluded Observation Count"
+          },
+          "observed_success_count": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Success Count"
+          },
+          "expected_successes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "upper_tail_probability": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_ticket_position_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Observed Ticket Position Count"
+          },
+          "observed_distinct_ticket_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Observed Distinct Ticket Count"
+          },
+          "observed_duplicate_ticket_count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Observed Duplicate Ticket Count"
+          },
+          "observation_count_with_duplicates": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Observation Count With Duplicates"
+          },
+          "interpretation_caveat": {
+            "type": "string",
+            "title": "Interpretation Caveat"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "cell",
+          "readiness",
+          "reason_codes",
+          "sampling_policy",
+          "ticket_count_interpretation",
+          "legal_ticket_count",
+          "success_ticket_count",
+          "portfolio_success_probability",
+          "eligible_observation_count",
+          "excluded_observation_count",
+          "observed_success_count",
+          "expected_successes",
+          "upper_tail_probability",
+          "observed_ticket_position_count",
+          "observed_distinct_ticket_count",
+          "observed_duplicate_ticket_count",
+          "observation_count_with_duplicates",
+          "interpretation_caveat"
+        ],
+        "title": "HistoricalSuccessRandomBaselineResponse"
+      },
+      "HistoricalSuccessRandomBaselineSamplingPolicy": {
+        "type": "string",
+        "enum": [
+          "UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT"
+        ],
+        "title": "HistoricalSuccessRandomBaselineSamplingPolicy"
       },
       "HistoricalSuccessResearchQualificationResponse": {
         "properties": {

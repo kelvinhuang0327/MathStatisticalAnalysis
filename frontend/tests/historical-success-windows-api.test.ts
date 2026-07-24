@@ -6,6 +6,7 @@ import {
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
   getHistoricalSuccessRecent50StabilityAudit,
+  getHistoricalSuccessRandomBaseline,
   getHistoricalSuccessResearchQualification,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
@@ -27,11 +28,13 @@ import {
   makeRunPage,
   makeNotReadyTemporalHoldout,
   makeNotReadyRecent50StabilityAudit,
+  makeNotReadyRandomBaseline,
   makeNotReadyCrossImportConcordance,
   RIGHT_IMPORT_SHA,
   THIRD_IMPORT_SHA,
   makeTemporalHoldout,
   makeRecent50StabilityAudit,
+  makeRandomBaseline,
   makeResearchQualification,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
@@ -116,6 +119,132 @@ describe('Historical Success Windows API client', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
       '/strategies/alias%20strategy%2Fone/v1%20beta/1?',
     )
+  })
+
+  it('fetches all four exact random-baseline windows with encoded identity, query axes, GET, and AbortSignal', async () => {
+    const controller = new AbortController()
+    const windowKinds = [
+      'FULL_HISTORY',
+      'LONG',
+      'MEDIUM',
+      'SHORT',
+    ] as const
+    for (const windowKind of windowKinds) {
+      fetchMock.mockResolvedValueOnce(
+        apiResponse(
+          makeRandomBaseline({
+            cell: {
+              ...makeRandomBaseline().cell,
+              window_kind: windowKind,
+            },
+          }),
+        ),
+      )
+      const result = await getHistoricalSuccessRandomBaseline(
+        {
+          import_identity_sha256: IMPORT_SHA,
+          strategy_id: 'alias strategy/one',
+          strategy_version: 'v1 beta',
+          replicate: 1,
+          prefix_count: 1,
+          criterion: 'M3_PLUS',
+          window_kind: windowKind,
+        },
+        controller.signal,
+      )
+      expect(result.cell.window_kind).toBe(windowKind)
+    }
+
+    for (const [index, [input, init]] of fetchMock.mock.calls.entries()) {
+      const url = new URL(String(input), 'http://localhost')
+      expect(url.pathname).toBe(
+        '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/random-null-baseline',
+      )
+      expect(Object.fromEntries(url.searchParams)).toEqual({
+        import_identity_sha256: IMPORT_SHA,
+        prefix_count: '1',
+        criterion: 'M3_PLUS',
+        window_kind: windowKinds[index],
+      })
+      expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    }
+  })
+
+  it('accepts a closed NOT_READY baseline and rejects extra, contradictory, or inexact payloads', async () => {
+    fetchMock.mockResolvedValueOnce(apiResponse(makeNotReadyRandomBaseline()))
+    const query = {
+      import_identity_sha256: IMPORT_SHA,
+      strategy_id: 'alias strategy/one',
+      strategy_version: 'v1 beta',
+      replicate: 1,
+      prefix_count: 1 as const,
+      criterion: 'M3_PLUS' as const,
+      window_kind: 'LONG' as const,
+    }
+
+    await expect(getHistoricalSuccessRandomBaseline(query)).resolves.toMatchObject({
+      readiness: 'NOT_READY',
+      reason_codes: ['WINDOW_INCOMPLETE'],
+      observed_success_count: null,
+    })
+
+    fetchMock.mockResolvedValueOnce(
+      apiResponse(
+        makeRandomBaseline({
+          observed_success_count: 2,
+          upper_tail_probability: {
+            numerator: '21659716',
+            denominator: '62355583521',
+            decimal_18: '0.000347358083702408',
+          },
+        }),
+      ),
+    )
+    await expect(getHistoricalSuccessRandomBaseline(query)).resolves.toMatchObject({
+      readiness: 'READY',
+      observed_success_count: 2,
+    })
+
+    const malformed = [
+      { ...makeRandomBaseline(), unexpected: true },
+      {
+        ...makeRandomBaseline(),
+        cell: {
+          ...makeRandomBaseline().cell,
+          import_identity_sha256: RIGHT_IMPORT_SHA,
+        },
+      },
+      {
+        ...makeRandomBaseline(),
+        portfolio_success_probability: {
+          ...makeRandomBaseline().portfolio_success_probability,
+          decimal_18: '0.018637545002022339',
+        },
+      },
+      {
+        ...makeRandomBaseline(),
+        readiness: 'READY' as const,
+        reason_codes: ['NO_OBSERVATIONS'] as const,
+      },
+      {
+        ...makeRandomBaseline(),
+        success_ticket_count: '260625',
+      },
+      {
+        ...makeRandomBaseline(),
+        upper_tail_probability: {
+          numerator: '1',
+          denominator: '1',
+          decimal_18: '1.000000000000000000',
+        },
+      },
+    ]
+    for (const payload of malformed) {
+      fetchMock.mockResolvedValueOnce(apiResponse(payload))
+      await expect(getHistoricalSuccessRandomBaseline(query)).rejects.toMatchObject({
+        kind: 'MALFORMED_RESPONSE',
+      })
+    }
   })
 
   it('fetches one complete matrix with encoded identity, exact SHA, GET, and AbortSignal', async () => {

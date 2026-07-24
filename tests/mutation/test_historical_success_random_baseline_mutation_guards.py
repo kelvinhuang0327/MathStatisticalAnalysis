@@ -78,15 +78,26 @@ def test_guard_window_slicing_and_raw_forwarding_stay_on_existing_source_load() 
     assert "special_numbers_json" in reader_source
 
 
-def test_guard_baseline_does_not_feed_qualification_or_api() -> None:
+def test_guard_baseline_has_one_descriptive_get_api_and_no_qualification_feed() -> None:
     qualification_source = QUALIFICATION.read_text(encoding="utf-8")
-    api_source = "\n".join(
-        path.read_text(encoding="utf-8")
+    api_sources = {
+        path.name: path.read_text(encoding="utf-8")
         for path in sorted(API_ROOT.glob("*.py"))
-    )
+    }
     baseline_source = BASELINE.read_text(encoding="utf-8")
+    baseline_api = api_sources["historical_prefix_success_windows.py"]
 
     assert "historical_success_random_baseline" not in qualification_source
-    assert "historical_success_random_baseline" not in api_source
+    assert baseline_api.count("get_random_null_baseline(") == 1
+    assert baseline_api.count("/random-null-baseline") == 1
+    assert all(
+        "historical_success_random_baseline" not in source
+        for name, source in api_sources.items()
+        if name != "historical_prefix_success_windows.py"
+    )
+    assert "@router.post" not in baseline_api
+    assert "@router.put" not in baseline_api
+    assert "@router.patch" not in baseline_api
+    assert "@router.delete" not in baseline_api
     for forbidden in ("numpy", "scipy", "Monte Carlo", "alpha threshold"):
         assert forbidden not in baseline_source

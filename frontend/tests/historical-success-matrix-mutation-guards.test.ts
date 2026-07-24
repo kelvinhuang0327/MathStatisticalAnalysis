@@ -73,6 +73,82 @@ describe('Historical Success stability-matrix mutation guards', () => {
   })
 })
 
+describe('Historical Success random-null baseline mutation guards', () => {
+  it('derives the response from generated OpenAPI and pins exact BigInt validation', () => {
+    expect(clientSource).toContain(
+      "paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/random-null-baseline']",
+    )
+    const validator = clientSource.split(
+      'function isRandomBaselineResponse(',
+    )[1]!.split('function isExactProbability(', 1)[0]!
+    expect(validator).toContain('hasExactKeys(value')
+    expect(validator).toContain('BigInt(RANDOM_BASELINE_LEGAL_TICKET_COUNT)')
+    expect(validator).toContain(
+      'RANDOM_BASELINE_SUCCESS_TICKET_COUNTS[query.criterion]',
+    )
+    expect(clientSource).toContain('function renderExactDecimal18(')
+    expect(clientSource).toContain('function exactBinomialUpperTailEquals(')
+    expect(clientSource).toContain(
+      'exactBinomialUpperTailEquals(\n      value.upper_tail_probability,',
+    )
+    expect(clientSource).toContain('greatestCommonDivisorBigInt')
+    expect(clientSource).not.toContain('parseFloat')
+  })
+
+  it('pins four closed windows, LONG default, and one explicit load action', () => {
+    expect(clientSource).toContain(
+      "export const HISTORICAL_SUCCESS_WINDOW_KINDS = [\n  'FULL_HISTORY',\n  'LONG',\n  'MEDIUM',\n  'SHORT',",
+    )
+    expect(pageSource).toContain(
+      "ref<HistoricalSuccessWindowKind>('LONG')",
+    )
+    const selector = pageSource.split(
+      'name="random-baseline-window"',
+    )[1]!.split('</select>', 1)[0]!
+    expect(selector).toContain('@change="clearRandomBaselines"')
+    expect(selector).not.toContain('loadRandomBaselines')
+    expect(pageSource).toContain('@click="loadRandomBaselines"')
+  })
+
+  it('keeps one to four strategy requests ordered with partial-failure retention', () => {
+    const evaluate = pageSource.split(
+      'async function loadRandomBaselines(',
+    )[1]!.split('async function compareSelectedMatrices(', 1)[0]!
+    expect(evaluate).toContain('selections.length < 1')
+    expect(evaluate).toContain('selections.length > 4')
+    expect(evaluate).toContain('selections.map(async (selection)')
+    expect(evaluate).not.toContain('.sort(')
+    expect(evaluate).toContain(
+      "successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'",
+    )
+    expect(pageSource).toContain(
+      'successful results remain visible.',
+    )
+  })
+
+  it('aborts stale work and renders only descriptive wording plus the exact caveat', () => {
+    expect(pageSource).toContain(
+      'const generation = ++randomBaselineGeneration',
+    )
+    expect(pageSource).toContain('randomBaselineController?.abort()')
+    expect(pageSource).toContain(
+      'generation !== randomBaselineGeneration',
+    )
+    expect(pageSource).toContain('clearRandomBaselines()')
+    const panel = pageSource.split(
+      'class="research-results random-baseline-panel"',
+    )[1]!.split(
+      'class="research-results feature-cohort-comparison"',
+      1,
+    )[0]!
+    expect(panel).toContain('HISTORICAL_SUCCESS_RANDOM_BASELINE_CAVEAT')
+    expect(panel).not.toMatch(/\bwinner\b|\boutperform|\bbetter than\b|\bqualified\b/i)
+    expect(clientSource).toContain(
+      'This result does not establish statistical significance, ranking, promotion, rejection, prediction quality, production eligibility, or monetary cost equivalence.',
+    )
+  })
+})
+
 describe('Historical Success feature-cohort inferential diagnostics mutation guards', () => {
   it('pins exact BigInt probability validation and fixed method identities', () => {
     const validator = clientSource.split('function isExactProbability(')[1]!.split(

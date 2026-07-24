@@ -106,13 +106,20 @@ def test_random_baseline_is_exact_pure_application_owned_and_has_no_forbidden_ru
     assert "Fraction" in called_names
 
 
-def test_random_baseline_is_not_exposed_through_api_or_qualification() -> None:
+def test_random_baseline_has_one_descriptive_get_api_and_no_qualification_path() -> None:
     router_source = ROUTER.read_text(encoding="utf-8")
     app_source = APP.read_text(encoding="utf-8")
     qualification_source = QUALIFICATION.read_text(encoding="utf-8")
 
-    assert "get_random_null_baseline" not in router_source
-    assert "historical_success_random_baseline" not in router_source
+    assert router_source.count("get_random_null_baseline(") == 1
+    assert router_source.count("/random-null-baseline") == 1
+    assert router_source.count(
+        'operation_id="getHistoricalPrefixStrategyRandomNullBaseline"'
+    ) == 1
+    assert "@router.post" not in router_source
+    assert "@router.put" not in router_source
+    assert "@router.patch" not in router_source
+    assert "@router.delete" not in router_source
     assert "historical_success_random_baseline" not in app_source
     assert "historical_success_random_baseline" not in qualification_source
 

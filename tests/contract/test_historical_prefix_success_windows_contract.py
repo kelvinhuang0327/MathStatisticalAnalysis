@@ -13,6 +13,7 @@ EXACT_PATH = (
     "{strategy_id}/{strategy_version}/{replicate}"
 )
 MATRIX_PATH = f"{EXACT_PATH}/matrix"
+RANDOM_BASELINE_PATH = f"{EXACT_PATH}/random-null-baseline"
 FEATURE_COHORT_PATH = f"{EXACT_PATH}/feature-cohorts"
 DIAGNOSTICS_PATH = f"{FEATURE_COHORT_PATH}/diagnostics"
 TEMPORAL_HOLDOUT_PATH = f"{FEATURE_COHORT_PATH}/temporal-holdout"
@@ -24,12 +25,13 @@ MULTI_IMPORT_CENSUS_PATH = (
 RESEARCH_QUALIFICATION_PATH = f"{EXACT_PATH}/research-qualification"
 
 
-def test_openapi_exposes_exactly_ten_get_operations_with_required_selectors() -> None:
+def test_openapi_exposes_exactly_eleven_get_operations_with_required_selectors() -> None:
     paths = create_app().openapi()["paths"]
 
     assert set(paths[LIST_PATH]) == {"get"}
     assert set(paths[EXACT_PATH]) == {"get"}
     assert set(paths[MATRIX_PATH]) == {"get"}
+    assert set(paths[RANDOM_BASELINE_PATH]) == {"get"}
     assert set(paths[FEATURE_COHORT_PATH]) == {"get"}
     assert set(paths[DIAGNOSTICS_PATH]) == {"get"}
     assert set(paths[TEMPORAL_HOLDOUT_PATH]) == {"get"}
@@ -40,6 +42,7 @@ def test_openapi_exposes_exactly_ten_get_operations_with_required_selectors() ->
     list_operation = paths[LIST_PATH]["get"]
     exact_operation = paths[EXACT_PATH]["get"]
     matrix_operation = paths[MATRIX_PATH]["get"]
+    random_baseline_operation = paths[RANDOM_BASELINE_PATH]["get"]
     feature_cohort_operation = paths[FEATURE_COHORT_PATH]["get"]
     diagnostics_operation = paths[DIAGNOSTICS_PATH]["get"]
     temporal_holdout_operation = paths[TEMPORAL_HOLDOUT_PATH]["get"]
@@ -50,6 +53,9 @@ def test_openapi_exposes_exactly_ten_get_operations_with_required_selectors() ->
     assert list_operation["operationId"] == "listHistoricalPrefixStrategySuccessWindows"
     assert exact_operation["operationId"] == "getHistoricalPrefixStrategySuccessWindows"
     assert matrix_operation["operationId"] == "getHistoricalPrefixStrategySuccessMatrix"
+    assert random_baseline_operation["operationId"] == (
+        "getHistoricalPrefixStrategyRandomNullBaseline"
+    )
     assert (
         feature_cohort_operation["operationId"]
         == "getHistoricalPrefixStrategyFeatureCohorts"
@@ -105,6 +111,19 @@ def test_openapi_exposes_exactly_ten_get_operations_with_required_selectors() ->
         "import_identity_sha256",
     ]
     assert all(item["required"] is True for item in matrix_operation["parameters"])
+    assert [item["name"] for item in random_baseline_operation["parameters"]] == [
+        "strategy_id",
+        "strategy_version",
+        "replicate",
+        "import_identity_sha256",
+        "prefix_count",
+        "criterion",
+        "window_kind",
+    ]
+    assert all(
+        item["required"] is True
+        for item in random_baseline_operation["parameters"]
+    )
     assert [item["name"] for item in feature_cohort_operation["parameters"]] == [
         "strategy_id",
         "strategy_version",
@@ -222,6 +241,33 @@ def test_openapi_pins_closed_prefix_criterion_and_nullable_rate_contract() -> No
         "M4_PLUS_SPECIAL",
         "M5_PLUS_SPECIAL",
     ]
+    assert schemas["WindowKind"]["enum"] == [
+        "FULL_HISTORY",
+        "LONG",
+        "MEDIUM",
+        "SHORT",
+    ]
+    assert schemas["HistoricalSuccessRandomBaselineReadiness"]["enum"] == [
+        "READY",
+        "NOT_READY",
+    ]
+    assert schemas["HistoricalSuccessRandomBaselineNotReadyReason"]["enum"] == [
+        "NO_OBSERVATIONS",
+        "WINDOW_INCOMPLETE",
+        "EXCLUDED_OBSERVATIONS",
+        "SOURCE_TICKET_SEMANTICS_CONFLICT",
+        "EXACT_COMPUTATION_UNAVAILABLE",
+    ]
+    exact_baseline = schemas["HistoricalSuccessRandomBaselineExactRationalView"]
+    assert exact_baseline["additionalProperties"] is False
+    assert exact_baseline["required"] == ["numerator", "denominator", "decimal_18"]
+    assert exact_baseline["properties"]["numerator"]["type"] == "string"
+    assert exact_baseline["properties"]["denominator"]["type"] == "string"
+    assert exact_baseline["properties"]["decimal_18"]["type"] == "string"
+    random_baseline = schemas["HistoricalSuccessRandomBaselineResponse"]
+    assert random_baseline["additionalProperties"] is False
+    assert random_baseline["properties"]["legal_ticket_count"]["type"] == "string"
+    assert random_baseline["properties"]["success_ticket_count"]["type"] == "string"
     assert schemas["HistoricalPrefixCrossImportPairStatus"]["enum"] == [
         "COMPLETE",
         "LEFT_NOT_READY",
@@ -346,6 +392,7 @@ def test_openapi_uses_sanitized_404_422_503_models_for_all_routes() -> None:
         LIST_PATH,
         EXACT_PATH,
         MATRIX_PATH,
+        RANDOM_BASELINE_PATH,
         FEATURE_COHORT_PATH,
         DIAGNOSTICS_PATH,
         TEMPORAL_HOLDOUT_PATH,
@@ -378,6 +425,14 @@ def test_generated_types_keep_all_success_window_parameters_required() -> None:
     matrix_block = declaration.split(f'"{MATRIX_PATH}": {{', 1)[1].split(
         '"/api/v1/replay-rankings/optimal": {', 1
     )[0]
+    random_baseline_start = declaration.index(f'  "{RANDOM_BASELINE_PATH}": {{')
+    random_baseline_end = declaration.find(
+        '\n  "/api/',
+        random_baseline_start + 1,
+    )
+    random_baseline_block = declaration[
+        random_baseline_start:random_baseline_end
+    ]
 
     assert '"import_identity_sha256": string' in list_block
     assert '"prefix_count": components[\'schemas\']["HistoricalPrefixSuccessPrefixCount"]' in (
@@ -388,6 +443,16 @@ def test_generated_types_keep_all_success_window_parameters_required() -> None:
     )
     assert '"limit"?: number' in list_block
     assert '"offset"?: number' in list_block
+    assert (
+        '"window_kind": components[\'schemas\']["WindowKind"]'
+        in random_baseline_block
+    )
+    assert '"window_kind"?:' not in random_baseline_block
+    assert (
+        '"application/json": components[\'schemas\']'
+        '["HistoricalSuccessRandomBaselineResponse"]'
+        in random_baseline_block
+    )
     for name in (
         "strategy_id",
         "strategy_version",

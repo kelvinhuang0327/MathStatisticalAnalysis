@@ -509,6 +509,45 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/random-null-baseline": {
+      get: {
+          parameters: {
+            "path": {
+              "strategy_id": string
+              "strategy_version": string
+              "replicate": number
+            }
+            "query": {
+              "import_identity_sha256": string
+              "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+              "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+              "window_kind": components['schemas']["WindowKind"]
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalSuccessRandomBaselineResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification": {
       get: {
           parameters: {
@@ -1687,6 +1726,47 @@ export interface components {
         }
     "HistoricalSuccessQualificationPairStatus": "COMPLETE" | "LEFT_NOT_READY" | "RIGHT_NOT_READY" | "BOTH_NOT_READY"
     "HistoricalSuccessQualificationPrimaryStatus": "NOT_READY" | "EVIDENCE_INCOMPLETE" | "RESEARCH_CANDIDATE"
+    "HistoricalSuccessRandomBaselineCellView": {
+          "policy_version": string
+          "import_identity_sha256": string
+          "dataset_sha256": string
+          "source_artifact_sha256": string
+          "strategy_id": string
+          "strategy_version": string
+          "replicate": number
+          "window_kind": components['schemas']["WindowKind"]
+          "window_policy_version": string
+          "prefix_count": components['schemas']["HistoricalPrefixSuccessPrefixCount"]
+          "criterion": components['schemas']["HistoricalPrefixSuccessCriterion"]
+        }
+    "HistoricalSuccessRandomBaselineExactRationalView": {
+          "numerator": string
+          "denominator": string
+          "decimal_18": string
+        }
+    "HistoricalSuccessRandomBaselineNotReadyReason": "NO_OBSERVATIONS" | "WINDOW_INCOMPLETE" | "EXCLUDED_OBSERVATIONS" | "SOURCE_TICKET_SEMANTICS_CONFLICT" | "EXACT_COMPUTATION_UNAVAILABLE"
+    "HistoricalSuccessRandomBaselineReadiness": "READY" | "NOT_READY"
+    "HistoricalSuccessRandomBaselineResponse": {
+          "cell": components['schemas']["HistoricalSuccessRandomBaselineCellView"]
+          "readiness": components['schemas']["HistoricalSuccessRandomBaselineReadiness"]
+          "reason_codes": Array<components['schemas']["HistoricalSuccessRandomBaselineNotReadyReason"]>
+          "sampling_policy": components['schemas']["HistoricalSuccessRandomBaselineSamplingPolicy"]
+          "ticket_count_interpretation": string
+          "legal_ticket_count": string
+          "success_ticket_count": string
+          "portfolio_success_probability": components['schemas']["HistoricalSuccessRandomBaselineExactRationalView"]
+          "eligible_observation_count": number
+          "excluded_observation_count": number
+          "observed_success_count": number | null
+          "expected_successes": components['schemas']["HistoricalSuccessRandomBaselineExactRationalView"] | null
+          "upper_tail_probability": components['schemas']["HistoricalSuccessRandomBaselineExactRationalView"] | null
+          "observed_ticket_position_count": number
+          "observed_distinct_ticket_count": number
+          "observed_duplicate_ticket_count": number
+          "observation_count_with_duplicates": number
+          "interpretation_caveat": string
+        }
+    "HistoricalSuccessRandomBaselineSamplingPolicy": "UNIFORM_IID_LEGAL_TICKETS_WITH_REPLACEMENT"
     "HistoricalSuccessResearchQualificationResponse": {
           "identity": components['schemas']["HistoricalSuccessQualificationIdentityView"]
           "ordered_import_evidence": Array<components['schemas']["HistoricalSuccessQualificationImportEvidenceView"]>

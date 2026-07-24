@@ -5,6 +5,7 @@ import {
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
+  getHistoricalSuccessQualificationRandomBaselineEvidence,
   getHistoricalSuccessRecent50StabilityAudit,
   getHistoricalSuccessRandomBaseline,
   getHistoricalSuccessResearchQualification,
@@ -14,6 +15,7 @@ import {
   HistoricalSuccessWindowsRequestError,
   listHistoricalRuns,
   listHistoricalSuccessWindows,
+  type HistoricalSuccessQualificationRandomBaselineEvidence,
 } from '../src/api/historicalSuccessWindows'
 import {
   apiResponse,
@@ -35,6 +37,7 @@ import {
   makeTemporalHoldout,
   makeRecent50StabilityAudit,
   makeRandomBaseline,
+  makeQualificationRandomBaselineEvidence,
   makeResearchQualification,
   makeWindowPage,
   makeZeroObservationFeatureCohorts,
@@ -836,6 +839,201 @@ describe('Historical Success Windows API client', () => {
       }),
     ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
   })
+
+  it('fetches qualification random evidence with ordered repeated imports and AbortSignal', async () => {
+    const controller = new AbortController()
+    fetchMock.mockResolvedValue(
+      apiResponse(makeQualificationRandomBaselineEvidence()),
+    )
+
+    const result =
+      await getHistoricalSuccessQualificationRandomBaselineEvidence(
+        {
+          import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA],
+          strategy_id: 'alias strategy/one',
+          strategy_version: 'v1 beta',
+          replicate: 1,
+          prefix_count: 1,
+          criterion: 'M3_PLUS',
+        },
+        controller.signal,
+      )
+
+    const [input, init] = fetchMock.mock.calls[0]!
+    const url = new URL(String(input), 'http://localhost')
+    expect(url.pathname).toBe(
+      '/api/v1/historical-prefix-success-windows/strategies/alias%20strategy%2Fone/v1%20beta/1/research-qualification/random-baseline-evidence',
+    )
+    expect(url.searchParams.getAll('import_identity_sha256')).toEqual([
+      IMPORT_SHA,
+      RIGHT_IMPORT_SHA,
+    ])
+    expect(init).toMatchObject({ method: 'GET', signal: controller.signal })
+    expect(result.availability_summary).toMatchObject({
+      availability_status: 'COMPLETE',
+      evaluated_cell_count: 8,
+      ready_cell_count: 8,
+      raw_upper_tail_probability_count: 8,
+    })
+    expect(
+      result.ordered_cells.map((cell) => [
+        cell.import_index,
+        cell.window_index,
+        cell.qualification_random_role,
+        cell.baseline.cell.window_kind,
+      ]),
+    ).toEqual([
+      [0, 0, 'REFERENCE_ONLY', 'FULL_HISTORY'],
+      [0, 1, 'PRIMARY_DESCRIPTIVE_COMPARISON', 'LONG'],
+      [0, 2, 'CONFIRMATION_DESCRIPTIVE_COMPARISON', 'MEDIUM'],
+      [0, 3, 'AUDIT_ONLY_NON_BLOCKING', 'SHORT'],
+      [1, 0, 'REFERENCE_ONLY', 'FULL_HISTORY'],
+      [1, 1, 'PRIMARY_DESCRIPTIVE_COMPARISON', 'LONG'],
+      [1, 2, 'CONFIRMATION_DESCRIPTIVE_COMPARISON', 'MEDIUM'],
+      [1, 3, 'AUDIT_ONLY_NON_BLOCKING', 'SHORT'],
+    ])
+  })
+
+  it.each([
+    [[IMPORT_SHA]],
+    [[IMPORT_SHA, IMPORT_SHA]],
+    [
+      [
+        IMPORT_SHA,
+        RIGHT_IMPORT_SHA,
+        THIRD_IMPORT_SHA,
+        'd'.repeat(64),
+        'e'.repeat(64),
+      ],
+    ],
+    [[IMPORT_SHA, 'BAD']],
+  ])(
+    'rejects invalid qualification random-evidence selectors before fetch',
+    async (identities) => {
+      await expect(
+        getHistoricalSuccessQualificationRandomBaselineEvidence({
+          import_identity_sha256: identities,
+          strategy_id: 'alias strategy/one',
+          strategy_version: 'v1 beta',
+          replicate: 1,
+          prefix_count: 1,
+          criterion: 'M3_PLUS',
+        }),
+      ).rejects.toMatchObject({ kind: 'INVALID_REQUEST', status: 422 })
+      expect(fetchMock).not.toHaveBeenCalled()
+    },
+  )
+
+  it('accepts a closed PARTIAL aggregate without fabricating not-ready values', async () => {
+    const aggregate = makeQualificationRandomBaselineEvidence()
+    const notReady = makeNotReadyRandomBaseline()
+    aggregate.ordered_cells[0]!.baseline = {
+      ...notReady,
+      cell: { ...aggregate.ordered_cells[0]!.baseline.cell },
+    }
+    aggregate.availability_summary.availability_status = 'PARTIAL'
+    aggregate.availability_summary.ready_cell_count = 7
+    aggregate.availability_summary.raw_upper_tail_probability_count = 7
+    fetchMock.mockResolvedValue(apiResponse(aggregate))
+
+    const result =
+      await getHistoricalSuccessQualificationRandomBaselineEvidence({
+        import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA],
+        strategy_id: 'alias strategy/one',
+        strategy_version: 'v1 beta',
+        replicate: 1,
+        prefix_count: 1,
+        criterion: 'M3_PLUS',
+      })
+
+    expect(result.availability_summary.availability_status).toBe('PARTIAL')
+    expect(result.ordered_cells[0]!.baseline).toMatchObject({
+      readiness: 'NOT_READY',
+      observed_success_count: null,
+      expected_successes: null,
+      upper_tail_probability: null,
+    })
+  })
+
+  it.each([
+    [
+      'cell order',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        ;[result.ordered_cells[0], result.ordered_cells[1]] = [
+          result.ordered_cells[1]!,
+          result.ordered_cells[0]!,
+        ]
+      },
+    ],
+    [
+      'role mismatch',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        result.ordered_cells[0]!.qualification_random_role =
+          'AUDIT_ONLY_NON_BLOCKING'
+      },
+    ],
+    [
+      'import identity mismatch',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        result.ordered_cells[0]!.baseline.cell.import_identity_sha256 =
+          THIRD_IMPORT_SHA
+      },
+    ],
+    [
+      'source hash drift',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        result.ordered_cells[1]!.baseline.cell.dataset_sha256 = '9'.repeat(64)
+      },
+    ],
+    [
+      'availability count',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        result.availability_summary.ready_cell_count = 7
+      },
+    ],
+    [
+      'warning',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        result.availability_summary.multiple_testing_warning =
+          'No warning available.'
+      },
+    ],
+    [
+      'numeric rational',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        result.ordered_cells[0]!.baseline.upper_tail_probability!.numerator =
+          1 as unknown as string
+      },
+    ],
+    [
+      'extra field',
+      (result: ReturnType<typeof makeQualificationRandomBaselineEvidence>) => {
+        ;(
+          result as HistoricalSuccessQualificationRandomBaselineEvidence & {
+            adjusted_probability?: string
+          }
+        ).adjusted_probability = '0.5'
+      },
+    ],
+  ])(
+    'rejects malformed qualification random evidence %s',
+    async (_label, mutate) => {
+      const aggregate = makeQualificationRandomBaselineEvidence()
+      mutate(aggregate)
+      fetchMock.mockResolvedValue(apiResponse(aggregate))
+
+      await expect(
+        getHistoricalSuccessQualificationRandomBaselineEvidence({
+          import_identity_sha256: [IMPORT_SHA, RIGHT_IMPORT_SHA],
+          strategy_id: 'alias strategy/one',
+          strategy_version: 'v1 beta',
+          replicate: 1,
+          prefix_count: 1,
+          criterion: 'M3_PLUS',
+        }),
+      ).rejects.toMatchObject({ kind: 'MALFORMED_RESPONSE', status: 502 })
+    },
+  )
 
   it('accepts every not-ready cross-import pair status only without a family', async () => {
     for (const [pair_status, left_holdout_status, right_holdout_status] of [

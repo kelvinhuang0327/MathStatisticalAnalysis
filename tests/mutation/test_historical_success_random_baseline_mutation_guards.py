@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 from pathlib import Path
 
+import lottolab.application.use_cases.evaluate_historical_prefix_success_windows as module
 from lottolab.application.historical_success_random_baseline import (
     binomial_upper_tail,
     evaluate_historical_success_random_baseline,
@@ -57,12 +58,16 @@ def test_guard_one_factory_reader_load_strategy_lookup_and_window_evaluation() -
     method = inspect.getsource(
         EvaluateHistoricalPrefixSuccessWindows.get_random_null_baseline
     )
+    evaluator = inspect.getsource(
+        module._evaluate_random_baseline_window  # pyright: ignore[reportPrivateUsage]
+    )
 
     assert method.count("self._reader_factory()") == 1
     assert method.count("self._load_with_reader(") == 1
     assert method.count("_find_exact_strategy(") == 1
     assert method.count("_evaluate_strategy(") == 1
-    assert method.count("_selected_window_observations(") == 1
+    assert method.count("_evaluate_random_baseline_window(") == 1
+    assert evaluator.count("_selected_window_observations(") == 1
     assert "load_source(" not in method
 
 

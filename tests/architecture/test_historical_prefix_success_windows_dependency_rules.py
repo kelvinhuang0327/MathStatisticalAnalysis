@@ -5,23 +5,20 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from lottolab.application.historical_success_qualification import (
+    RANDOM_BASELINE_CAVEAT,
+)
 from lottolab.interfaces.api.app import create_app
 
 ROOT = Path(__file__).resolve().parents[2]
 READ_MODELS = ROOT / "src/lottolab/application/historical_prefix_success_windows.py"
-RANDOM_BASELINE = (
-    ROOT / "src/lottolab/application/historical_success_random_baseline.py"
-)
+RANDOM_BASELINE = ROOT / "src/lottolab/application/historical_success_random_baseline.py"
 QUALIFICATION = ROOT / "src/lottolab/application/historical_success_qualification.py"
-USE_CASE = (
-    ROOT
-    / "src/lottolab/application/use_cases/evaluate_historical_prefix_success_windows.py"
+QUALIFICATION_RANDOM_BASELINE = (
+    ROOT / "src/lottolab/application/historical_success_qualification_random_baseline.py"
 )
-READER = (
-    ROOT
-    / "src/lottolab/infrastructure/persistence/"
-    "historical_prefix_success_window_reader.py"
-)
+USE_CASE = ROOT / "src/lottolab/application/use_cases/evaluate_historical_prefix_success_windows.py"
+READER = ROOT / "src/lottolab/infrastructure/persistence/historical_prefix_success_window_reader.py"
 ROUTER = ROOT / "src/lottolab/interfaces/api/historical_prefix_success_windows.py"
 APP = ROOT / "src/lottolab/interfaces/api/app.py"
 
@@ -44,6 +41,7 @@ def test_all_vertical_modules_exist() -> None:
             READ_MODELS,
             RANDOM_BASELINE,
             QUALIFICATION,
+            QUALIFICATION_RANDOM_BASELINE,
             USE_CASE,
             READER,
             ROUTER,
@@ -113,9 +111,7 @@ def test_random_baseline_has_one_descriptive_get_api_and_no_qualification_path()
 
     assert router_source.count("get_random_null_baseline(") == 1
     assert router_source.count("/random-null-baseline") == 1
-    assert router_source.count(
-        'operation_id="getHistoricalPrefixStrategyRandomNullBaseline"'
-    ) == 1
+    assert router_source.count('operation_id="getHistoricalPrefixStrategyRandomNullBaseline"') == 1
     assert "@router.post" not in router_source
     assert "@router.put" not in router_source
     assert "@router.patch" not in router_source
@@ -127,6 +123,24 @@ def test_random_baseline_has_one_descriptive_get_api_and_no_qualification_path()
 def test_research_qualification_is_pure_application_owned_immutable_policy() -> None:
     imports = _imports(QUALIFICATION)
     source = QUALIFICATION.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    caveat_assignments = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.Assign)
+        and any(
+            isinstance(target, ast.Name) and target.id == "RANDOM_BASELINE_CAVEAT"
+            for target in node.targets
+        )
+    ]
+    assert len(caveat_assignments) == 1
+    assert ast.literal_eval(caveat_assignments[0].value) == RANDOM_BASELINE_CAVEAT
+    policy_source = ast.unparse(
+        ast.Module(
+            body=[node for node in tree.body if node is not caveat_assignments[0]],
+            type_ignores=[],
+        )
+    ).casefold()
 
     assert imports == {"dataclasses", "enum", "re", "__future__"}
     assert "@dataclass(frozen=True, slots=True)" in source
@@ -144,7 +158,48 @@ def test_research_qualification_is_pure_application_owned_immutable_policy() -> 
         "combined",
         "production_eligible",
     ):
-        assert forbidden not in source
+        assert forbidden not in policy_source
+
+
+def test_qualification_random_baseline_aggregate_is_pure_application_owned() -> None:
+    imports = _imports(QUALIFICATION_RANDOM_BASELINE)
+    source = QUALIFICATION_RANDOM_BASELINE.read_text(encoding="utf-8")
+
+    assert not any(name.startswith("lottolab.infrastructure") for name in imports)
+    assert not any(name.startswith("lottolab.interfaces") for name in imports)
+    assert not imports & {
+        "fastapi",
+        "filesystem",
+        "numpy",
+        "pathlib",
+        "pydantic",
+        "random",
+        "scipy",
+        "sqlite3",
+    }
+    assert "@dataclass(frozen=True, slots=True)" in source
+    assert "HistoricalSuccessRandomBaselineResult" in source
+    assert "HistoricalSuccessQualificationIdentity" in source
+
+
+def test_qualification_random_baseline_has_one_adjacent_get_and_direct_use_case() -> None:
+    router_source = ROUTER.read_text(encoding="utf-8")
+    use_case_source = USE_CASE.read_text(encoding="utf-8")
+    route = (
+        "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
+        '"\n            "random-baseline-evidence'
+    )
+
+    assert router_source.count(route) == 1
+    assert (
+        router_source.count(
+            "getHistoricalPrefixStrategyResearchQualificationRandomBaselineEvidence"
+        )
+        == 1
+    )
+    assert router_source.count("get_research_qualification_random_baseline_evidence(") == 1
+    assert use_case_source.count("def get_research_qualification_random_baseline_evidence(") == 1
+    assert "requests." not in use_case_source
 
 
 def test_sqlite_reader_has_no_write_schema_init_strategy_execution_or_analytics_recompute() -> None:
@@ -191,9 +246,7 @@ def test_app_and_openapi_keep_optional_reader_factory_lazy() -> None:
         calls += 1
         raise AssertionError("reader factory must stay lazy")
 
-    app = create_app(
-        historical_prefix_success_window_source_reader_factory=forbidden_factory
-    )
+    app = create_app(historical_prefix_success_window_source_reader_factory=forbidden_factory)
     paths = app.openapi()["paths"]
 
     assert calls == 0

@@ -1602,6 +1602,126 @@
         }
       }
     },
+    "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification/random-baseline-evidence": {
+      "get": {
+        "tags": [
+          "historical-prefix-success-windows"
+        ],
+        "summary": "Get Historical Prefix Strategy Research Qualification Random Baseline Evidence",
+        "operationId": "getHistoricalPrefixStrategyResearchQualificationRandomBaselineEvidence",
+        "parameters": [
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "pattern": "^\\S(?:.*\\S)?$",
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "replicate",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "title": "Replicate"
+            }
+          },
+          {
+            "name": "import_identity_sha256",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "minItems": 2,
+              "maxItems": 4,
+              "description": "Two to four distinct exact Historical Results import SHA-256 values; repeat this query parameter in caller order.",
+              "title": "Import Identity Sha256"
+            },
+            "description": "Two to four distinct exact Historical Results import SHA-256 values; repeat this query parameter in caller order."
+          },
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessPrefixCount"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/HistoricalPrefixSuccessCriterion"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalSuccessQualificationRandomBaselineEvidenceResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census": {
       "get": {
         "tags": [
@@ -6647,6 +6767,133 @@
           "RESEARCH_CANDIDATE"
         ],
         "title": "HistoricalSuccessQualificationPrimaryStatus"
+      },
+      "HistoricalSuccessQualificationRandomAvailabilityStatus": {
+        "type": "string",
+        "enum": [
+          "COMPLETE",
+          "PARTIAL",
+          "ALL_NOT_READY"
+        ],
+        "title": "HistoricalSuccessQualificationRandomAvailabilityStatus"
+      },
+      "HistoricalSuccessQualificationRandomBaselineAvailabilityView": {
+        "properties": {
+          "availability_status": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationRandomAvailabilityStatus"
+          },
+          "evaluated_cell_count": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 8.0,
+            "title": "Evaluated Cell Count"
+          },
+          "ready_cell_count": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 0.0,
+            "title": "Ready Cell Count"
+          },
+          "raw_upper_tail_probability_count": {
+            "type": "integer",
+            "maximum": 16.0,
+            "minimum": 0.0,
+            "title": "Raw Upper Tail Probability Count"
+          },
+          "multiple_testing_warning": {
+            "type": "string",
+            "title": "Multiple Testing Warning"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "availability_status",
+          "evaluated_cell_count",
+          "ready_cell_count",
+          "raw_upper_tail_probability_count",
+          "multiple_testing_warning"
+        ],
+        "title": "HistoricalSuccessQualificationRandomBaselineAvailabilityView"
+      },
+      "HistoricalSuccessQualificationRandomBaselineCellView": {
+        "properties": {
+          "import_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Import Index"
+          },
+          "window_index": {
+            "type": "integer",
+            "maximum": 3.0,
+            "minimum": 0.0,
+            "title": "Window Index"
+          },
+          "qualification_random_role": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationRandomRole"
+          },
+          "baseline": {
+            "$ref": "#/components/schemas/HistoricalSuccessRandomBaselineResponse"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "import_index",
+          "window_index",
+          "qualification_random_role",
+          "baseline"
+        ],
+        "title": "HistoricalSuccessQualificationRandomBaselineCellView"
+      },
+      "HistoricalSuccessQualificationRandomBaselineEvidenceResponse": {
+        "properties": {
+          "qualification_identity": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationIdentityView"
+          },
+          "ordered_import_identity_sha256s": {
+            "items": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "type": "array",
+            "maxItems": 4,
+            "minItems": 2,
+            "title": "Ordered Import Identity Sha256S"
+          },
+          "availability_summary": {
+            "$ref": "#/components/schemas/HistoricalSuccessQualificationRandomBaselineAvailabilityView"
+          },
+          "ordered_cells": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalSuccessQualificationRandomBaselineCellView"
+            },
+            "type": "array",
+            "maxItems": 16,
+            "minItems": 8,
+            "title": "Ordered Cells"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "qualification_identity",
+          "ordered_import_identity_sha256s",
+          "availability_summary",
+          "ordered_cells"
+        ],
+        "title": "HistoricalSuccessQualificationRandomBaselineEvidenceResponse"
+      },
+      "HistoricalSuccessQualificationRandomRole": {
+        "type": "string",
+        "enum": [
+          "REFERENCE_ONLY",
+          "PRIMARY_DESCRIPTIVE_COMPARISON",
+          "CONFIRMATION_DESCRIPTIVE_COMPARISON",
+          "AUDIT_ONLY_NON_BLOCKING"
+        ],
+        "title": "HistoricalSuccessQualificationRandomRole"
       },
       "HistoricalSuccessRandomBaselineCellView": {
         "properties": {

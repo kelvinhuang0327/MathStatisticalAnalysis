@@ -352,6 +352,11 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/research-qualification"
         ): {"get": {}},
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
+            "random-baseline-evidence"
+        ): {"get": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
@@ -445,6 +450,12 @@ def test_smoke_rejects_path_item_references(
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts",
+            "get",
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
+            "random-baseline-evidence",
             "get",
         ),
         ("/api/v1/replay-rankings/optimal", "get"),
@@ -638,7 +649,7 @@ def test_smoke_rejects_historical_prefix_near_miss_paths(path: str) -> None:
         validate_openapi_payload({"paths": paths})
 
 
-def test_smoke_admits_exactly_eleven_historical_prefix_success_window_gets() -> None:
+def test_smoke_admits_exactly_twelve_historical_prefix_success_window_gets() -> None:
     paths = authorized_openapi_paths()
     expected = {
         "/api/v1/historical-prefix-success-windows",
@@ -685,6 +696,11 @@ def test_smoke_admits_exactly_eleven_historical_prefix_success_window_gets() -> 
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/research-qualification"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
+            "random-baseline-evidence"
         ),
     }
 
@@ -735,6 +751,11 @@ def test_smoke_admits_exactly_eleven_historical_prefix_success_window_gets() -> 
         (
             "/api/v1/historical-prefix-success-windows/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/research-qualification"
+        ),
+        (
+            "/api/v1/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
+            "random-baseline-evidence"
         ),
     ],
 )

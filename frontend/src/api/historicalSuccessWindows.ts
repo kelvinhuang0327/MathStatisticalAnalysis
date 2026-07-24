@@ -24,6 +24,8 @@ export type HistoricalSuccessMultiImportConcordanceCensus =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/multi-import-concordance-census']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessResearchQualification =
   paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification']['get']['responses'][200]['content']['application/json']
+export type HistoricalSuccessQualificationRandomBaselineEvidence =
+  paths['/api/v1/historical-prefix-success-windows/strategies/{strategy_id}/{strategy_version}/{replicate}/research-qualification/random-baseline-evidence']['get']['responses'][200]['content']['application/json']
 export type HistoricalSuccessPrefixCount =
   components['schemas']['HistoricalPrefixSuccessPrefixCount']
 export type HistoricalSuccessCriterion =
@@ -63,6 +65,8 @@ const RANDOM_BASELINE_TICKET_INTERPRETATION =
 const RANDOM_BASELINE_LEGAL_TICKET_COUNT = '13983816'
 export const HISTORICAL_SUCCESS_RANDOM_BASELINE_CAVEAT =
   'Descriptive official-six-number IID random benchmark only. This result does not establish statistical significance, ranking, promotion, rejection, prediction quality, production eligibility, or monetary cost equivalence.'
+export const HISTORICAL_SUCCESS_QUALIFICATION_RANDOM_BASELINE_CAVEAT =
+  'Exact official-six-number IID random-benchmark cells are available as descriptive evidence when READY; NOT_READY cells expose no observed, expected, or upper-tail result. No significance threshold, random-advantage decision, ranking, promotion, rejection, production-eligibility decision, or monetary-cost equivalence has been authorized.'
 const RANDOM_BASELINE_SUCCESS_TICKET_COUNTS = {
   M3_PLUS: '260624',
   M4_PLUS: '13804',
@@ -79,6 +83,12 @@ const RANDOM_BASELINE_NOT_READY_REASONS = [
   'EXCLUDED_OBSERVATIONS',
   'SOURCE_TICKET_SEMANTICS_CONFLICT',
   'EXACT_COMPUTATION_UNAVAILABLE',
+] as const
+const QUALIFICATION_RANDOM_WINDOW_ROLES = [
+  ['FULL_HISTORY', 'REFERENCE_ONLY'],
+  ['LONG', 'PRIMARY_DESCRIPTIVE_COMPARISON'],
+  ['MEDIUM', 'CONFIRMATION_DESCRIPTIVE_COMPARISON'],
+  ['SHORT', 'AUDIT_ONLY_NON_BLOCKING'],
 ] as const
 const PREFIX_COUNT_SET = new Set<number>(HISTORICAL_SUCCESS_PREFIX_COUNTS)
 const CRITERION_SET = new Set<string>(HISTORICAL_SUCCESS_CRITERIA)
@@ -198,6 +208,9 @@ export interface HistoricalSuccessResearchQualificationQuery {
   prefix_count: HistoricalSuccessPrefixCount
   criterion: HistoricalSuccessCriterion
 }
+
+export interface HistoricalSuccessQualificationRandomBaselineQuery
+  extends HistoricalSuccessResearchQualificationQuery {}
 
 export type HistoricalSuccessErrorKind =
   | 'NOT_CONFIGURED'
@@ -1927,9 +1940,6 @@ const QUALIFICATION_CENSUS_STATUSES = [
   'PARTIAL_NOT_READY',
   'ALL_NOT_READY',
 ] as const
-const RANDOM_BASELINE_CAVEAT =
-  'Random/null benchmark unavailable; random advantage has not been evaluated.'
-
 function isResearchQualification(
   value: unknown,
   query: HistoricalSuccessResearchQualificationQuery,
@@ -2104,7 +2114,8 @@ function isResearchQualification(
   if (
     candidate !== concordant ||
     (candidate
-      ? value.random_baseline_caveat !== RANDOM_BASELINE_CAVEAT ||
+      ? value.random_baseline_caveat !==
+          HISTORICAL_SUCCESS_QUALIFICATION_RANDOM_BASELINE_CAVEAT ||
         value.census_status !== 'COMPLETE' ||
         value.cohort_census_count !== 64 ||
         value.actual_pair_count !== value.expected_pair_count ||
@@ -2115,6 +2126,129 @@ function isResearchQualification(
     return false
   }
   return true
+}
+
+function qualificationRandomWarning(evaluatedCellCount: number): string {
+  return (
+    `This response evaluated ${evaluatedCellCount} import × window cells. ` +
+    'Each READY upper_tail_probability is a raw, unadjusted exact descriptive value. ' +
+    'No multiplicity adjustment, threshold, pooled probability, combined decision, ' +
+    'or random-advantage inference is authorized.'
+  )
+}
+
+function isQualificationRandomBaselineEvidence(
+  value: unknown,
+  query: HistoricalSuccessQualificationRandomBaselineQuery,
+): value is HistoricalSuccessQualificationRandomBaselineEvidence {
+  const identities = [...query.import_identity_sha256]
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'qualification_identity',
+      'ordered_import_identity_sha256s',
+      'availability_summary',
+      'ordered_cells',
+    ]) ||
+    identities.length < 2 ||
+    identities.length > 4 ||
+    new Set(identities).size !== identities.length ||
+    !identities.every(isSha256) ||
+    !isRecord(value.qualification_identity) ||
+    !hasExactKeys(value.qualification_identity, [
+      'strategy_id',
+      'strategy_version',
+      'replicate',
+      'prefix_count',
+      'criterion',
+    ]) ||
+    value.qualification_identity.strategy_id !== query.strategy_id ||
+    value.qualification_identity.strategy_version !== query.strategy_version ||
+    value.qualification_identity.replicate !== query.replicate ||
+    value.qualification_identity.prefix_count !== query.prefix_count ||
+    value.qualification_identity.criterion !== query.criterion ||
+    !Array.isArray(value.ordered_import_identity_sha256s) ||
+    value.ordered_import_identity_sha256s.length !== identities.length ||
+    !value.ordered_import_identity_sha256s.every(
+      (identity, index) => identity === identities[index],
+    ) ||
+    !isRecord(value.availability_summary) ||
+    !hasExactKeys(value.availability_summary, [
+      'availability_status',
+      'evaluated_cell_count',
+      'ready_cell_count',
+      'raw_upper_tail_probability_count',
+      'multiple_testing_warning',
+    ]) ||
+    !Array.isArray(value.ordered_cells)
+  ) {
+    return false
+  }
+
+  const expectedCellCount =
+    identities.length * QUALIFICATION_RANDOM_WINDOW_ROLES.length
+  const summary = value.availability_summary
+  if (
+    value.ordered_cells.length !== expectedCellCount ||
+    !isNonNegativeInteger(summary.evaluated_cell_count) ||
+    summary.evaluated_cell_count !== expectedCellCount ||
+    !isNonNegativeInteger(summary.ready_cell_count) ||
+    !isNonNegativeInteger(summary.raw_upper_tail_probability_count) ||
+    summary.multiple_testing_warning !==
+      qualificationRandomWarning(expectedCellCount)
+  ) {
+    return false
+  }
+
+  let readyCellCount = 0
+  const sourceHashes = new Map<number, string>()
+  for (const [index, cell] of value.ordered_cells.entries()) {
+    const importIndex = Math.floor(index / QUALIFICATION_RANDOM_WINDOW_ROLES.length)
+    const windowIndex = index % QUALIFICATION_RANDOM_WINDOW_ROLES.length
+    const [windowKind, role] =
+      QUALIFICATION_RANDOM_WINDOW_ROLES[windowIndex]!
+    if (
+      !isRecord(cell) ||
+      !hasExactKeys(cell, [
+        'import_index',
+        'window_index',
+        'qualification_random_role',
+        'baseline',
+      ]) ||
+      cell.import_index !== importIndex ||
+      cell.window_index !== windowIndex ||
+      cell.qualification_random_role !== role ||
+      !isRandomBaselineResponse(cell.baseline, {
+        import_identity_sha256: identities[importIndex]!,
+        strategy_id: query.strategy_id,
+        strategy_version: query.strategy_version,
+        replicate: query.replicate,
+        prefix_count: query.prefix_count,
+        criterion: query.criterion,
+        window_kind: windowKind,
+      })
+    ) {
+      return false
+    }
+    const baseline = cell.baseline
+    const hashes = `${baseline.cell.dataset_sha256}:${baseline.cell.source_artifact_sha256}`
+    const priorHashes = sourceHashes.get(importIndex)
+    if (priorHashes !== undefined && priorHashes !== hashes) return false
+    sourceHashes.set(importIndex, hashes)
+    if (baseline.readiness === 'READY') readyCellCount += 1
+  }
+
+  const expectedAvailability =
+    readyCellCount === expectedCellCount
+      ? 'COMPLETE'
+      : readyCellCount > 0
+        ? 'PARTIAL'
+        : 'ALL_NOT_READY'
+  return (
+    summary.availability_status === expectedAvailability &&
+    summary.ready_cell_count === readyCellCount &&
+    summary.raw_upper_tail_probability_count === readyCellCount
+  )
 }
 
 function isSuccessPage(
@@ -2493,5 +2627,46 @@ export async function getHistoricalSuccessResearchQualification(
     signal,
   )
   if (!isResearchQualification(payload, query)) throw malformedResponse()
+  return payload
+}
+
+export async function getHistoricalSuccessQualificationRandomBaselineEvidence(
+  query: HistoricalSuccessQualificationRandomBaselineQuery,
+  signal?: AbortSignal,
+): Promise<HistoricalSuccessQualificationRandomBaselineEvidence> {
+  const identities = [...query.import_identity_sha256]
+  if (
+    identities.length < 2 ||
+    identities.length > 4 ||
+    new Set(identities).size !== identities.length ||
+    !identities.every(isSha256)
+  ) {
+    throw new HistoricalSuccessWindowsRequestError(
+      'Select two to four distinct historical imports.',
+      422,
+      'INVALID_REQUEST',
+      'REQUEST_VALIDATION_FAILED',
+    )
+  }
+  const parameters = new URLSearchParams()
+  for (const identity of identities) {
+    parameters.append('import_identity_sha256', identity)
+  }
+  parameters.set('prefix_count', String(query.prefix_count))
+  parameters.set('criterion', query.criterion)
+  const strategyIdentity = [
+    query.strategy_id,
+    query.strategy_version,
+    String(query.replicate),
+  ]
+    .map((part) => encodeURIComponent(part))
+    .join('/')
+  const payload = await fetchPayload(
+    `${WINDOWS_ENDPOINT}/strategies/${strategyIdentity}/research-qualification/random-baseline-evidence?${parameters.toString()}`,
+    signal,
+  )
+  if (!isQualificationRandomBaselineEvidence(payload, query)) {
+    throw malformedResponse()
+  }
   return payload
 }

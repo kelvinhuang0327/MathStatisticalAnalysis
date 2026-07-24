@@ -91,6 +91,11 @@ from lottolab.application.historical_success_qualification import (
     HistoricalSuccessResearchQualification,
     qualify_historical_success,
 )
+from lottolab.application.historical_success_qualification_random_baseline import (
+    QUALIFICATION_RANDOM_WINDOW_ROLES,
+    HistoricalSuccessQualificationRandomBaselineEvidence,
+    aggregate_historical_success_qualification_random_baseline_evidence,
+)
 from lottolab.application.historical_success_random_baseline import (
     RANDOM_BASELINE_POLICY_VERSION,
     HistoricalSuccessRandomBaselineCellIdentity,
@@ -1626,6 +1631,56 @@ def _random_baseline_observations(
     )
 
 
+def _evaluate_random_baseline_window(
+    *,
+    source: HistoricalPrefixSuccessWindowSource,
+    strategy: HistoricalPrefixSuccessSourceStrategy,
+    window_result: HistoricalPrefixStrategySuccessWindowResult,
+    window_kind: WindowKind,
+    prefix_count: int,
+    criterion: HistoricalPrefixSuccessCriterion,
+) -> HistoricalSuccessRandomBaselineResult:
+    cell = HistoricalSuccessRandomBaselineCellIdentity(
+        policy_version=RANDOM_BASELINE_POLICY_VERSION,
+        import_identity_sha256=source.metadata.import_identity_sha256,
+        dataset_sha256=source.metadata.dataset_sha256,
+        source_artifact_sha256=source.metadata.source_artifact_sha256,
+        strategy_id=strategy.identity.strategy_id,
+        strategy_version=strategy.identity.strategy_version,
+        replicate=strategy.identity.replicate,
+        window_kind=window_kind,
+        window_policy_version=DEFAULT_WINDOW_POLICY_VERSION,
+        prefix_count=prefix_count,
+        criterion=criterion,
+    )
+    if window_result.status is HistoricalPrefixSuccessEvaluationStatus.NO_OBSERVATIONS:
+        return evaluate_historical_success_random_baseline(
+            cell=cell,
+            observations=(),
+            window_complete=False,
+            eligible_observation_count=0,
+            excluded_observation_count=0,
+            legacy_window_success_count=0,
+        )
+    selected_windows = tuple(
+        window for window in window_result.windows if window.window_kind is window_kind
+    )
+    if len(selected_windows) != 1:
+        raise HistoricalPrefixSuccessWindowsUnavailableError(
+            "existing evaluator did not return the exact selected window"
+        )
+    selected_window = selected_windows[0]
+    selected_observations = _selected_window_observations(strategy, selected_window)
+    return evaluate_historical_success_random_baseline(
+        cell=cell,
+        observations=_random_baseline_observations(selected_observations),
+        window_complete=(selected_window.evaluation_status is WindowEvaluationStatus.COMPLETE),
+        eligible_observation_count=selected_window.eligible_draw_count,
+        excluded_observation_count=selected_window.excluded_draw_count,
+        legacy_window_success_count=selected_window.success_count,
+    )
+
+
 class EvaluateHistoricalPrefixSuccessWindows:
     """Load one exact import once and expose descriptive strategy windows."""
 
@@ -1753,46 +1808,13 @@ class EvaluateHistoricalPrefixSuccessWindows:
             prefix_count=prefix_count,
             criterion=criterion,
         )
-        cell = HistoricalSuccessRandomBaselineCellIdentity(
-            policy_version=RANDOM_BASELINE_POLICY_VERSION,
-            import_identity_sha256=source.metadata.import_identity_sha256,
-            dataset_sha256=source.metadata.dataset_sha256,
-            source_artifact_sha256=source.metadata.source_artifact_sha256,
-            strategy_id=strategy.identity.strategy_id,
-            strategy_version=strategy.identity.strategy_version,
-            replicate=strategy.identity.replicate,
+        return _evaluate_random_baseline_window(
+            source=source,
+            strategy=strategy,
+            window_result=window_result,
             window_kind=window_kind,
-            window_policy_version=DEFAULT_WINDOW_POLICY_VERSION,
             prefix_count=prefix_count,
             criterion=criterion,
-        )
-        if window_result.status is HistoricalPrefixSuccessEvaluationStatus.NO_OBSERVATIONS:
-            return evaluate_historical_success_random_baseline(
-                cell=cell,
-                observations=(),
-                window_complete=False,
-                eligible_observation_count=0,
-                excluded_observation_count=0,
-                legacy_window_success_count=0,
-            )
-        selected_windows = tuple(
-            window for window in window_result.windows if window.window_kind is window_kind
-        )
-        if len(selected_windows) != 1:
-            raise HistoricalPrefixSuccessWindowsUnavailableError(
-                "existing evaluator did not return the exact selected window"
-            )
-        selected_window = selected_windows[0]
-        selected_observations = _selected_window_observations(strategy, selected_window)
-        return evaluate_historical_success_random_baseline(
-            cell=cell,
-            observations=_random_baseline_observations(selected_observations),
-            window_complete=(
-                selected_window.evaluation_status is WindowEvaluationStatus.COMPLETE
-            ),
-            eligible_observation_count=selected_window.eligible_draw_count,
-            excluded_observation_count=selected_window.excluded_draw_count,
-            legacy_window_success_count=selected_window.success_count,
         )
 
     def get_matrix(
@@ -2346,6 +2368,81 @@ class EvaluateHistoricalPrefixSuccessWindows:
                 HistoricalSuccessQualificationCensusSummary(row.summary.value)
                 for row in cohort_census
             ),
+        )
+
+    def get_research_qualification_random_baseline_evidence(
+        self,
+        *,
+        import_identity_sha256s: tuple[str, ...],
+        strategy_id: str,
+        strategy_version: str,
+        replicate: int,
+        prefix_count: int,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalSuccessQualificationRandomBaselineEvidence:
+        _validate_import_identities(import_identity_sha256s)
+        _validate_strategy_axis(strategy_id, "strategy_id")
+        _validate_strategy_axis(strategy_version, "strategy_version")
+        if type(replicate) is not int or replicate < 1:
+            raise _contract_error("replicate must be an integer >= 1")
+        _validate_prefix_count(prefix_count)
+        _validate_criterion(criterion)
+
+        reader = self._reader_factory()
+        sources = tuple(
+            self._load_with_reader(reader, import_identity_sha256)
+            for import_identity_sha256 in import_identity_sha256s
+        )
+        strategies = tuple(
+            _find_exact_strategy(
+                source,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+            )
+            for source in sources
+        )
+        if any(strategy.identity != strategies[0].identity for strategy in strategies[1:]):
+            raise HistoricalPrefixSuccessWindowsUnavailableError(
+                "multi-import exact strategy identities do not match"
+            )
+        window_results = tuple(
+            _evaluate_strategy(
+                source=source,
+                strategy=strategy,
+                prefix_count=prefix_count,
+                criterion=criterion,
+            )
+            for source, strategy in zip(sources, strategies, strict=True)
+        )
+        baselines = tuple(
+            _evaluate_random_baseline_window(
+                source=source,
+                strategy=strategy,
+                window_result=window_result,
+                window_kind=window_kind,
+                prefix_count=prefix_count,
+                criterion=criterion,
+            )
+            for source, strategy, window_result in zip(
+                sources,
+                strategies,
+                window_results,
+                strict=True,
+            )
+            for window_kind, _ in QUALIFICATION_RANDOM_WINDOW_ROLES
+        )
+        strategy = strategies[0].identity
+        return aggregate_historical_success_qualification_random_baseline_evidence(
+            qualification_identity=HistoricalSuccessQualificationIdentity(
+                strategy_id=strategy.strategy_id,
+                strategy_version=strategy.strategy_version,
+                replicate=strategy.replicate,
+                prefix_count=prefix_count,
+                criterion=criterion.value,
+            ),
+            ordered_import_identity_sha256s=import_identity_sha256s,
+            ordered_baselines=baselines,
         )
 
 

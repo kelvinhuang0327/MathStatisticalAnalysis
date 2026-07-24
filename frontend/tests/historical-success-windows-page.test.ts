@@ -27,6 +27,7 @@ import {
   makeTemporalHoldout,
   makeRecent50StabilityAudit,
   makeRandomBaseline,
+  makeQualificationRandomBaselineEvidence,
   makeResearchQualification,
   makeWindowPage,
   makeZeroObservationFeatureCohortDiagnostics,
@@ -42,6 +43,11 @@ function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   const url = String(input)
   if (url.includes('/random-null-baseline')) {
     return Promise.resolve(apiResponse(makeRandomBaseline()))
+  }
+  if (url.includes('/research-qualification/random-baseline-evidence')) {
+    return Promise.resolve(
+      apiResponse(makeQualificationRandomBaselineEvidence()),
+    )
   }
   if (url.includes('/research-qualification')) {
     return Promise.resolve(apiResponse(makeResearchQualification()))
@@ -2049,7 +2055,7 @@ describe('HistoricalSuccessWindowsPage', () => {
     expect(unmountSignal.aborted).toBe(true)
   })
 
-  it('requires the explicit qualification action and issues exactly M ordered requests', async () => {
+  it('requires the explicit qualification action and issues independent ordered projection and random-evidence requests', async () => {
     const runs = [
       makeRun(),
       makeRun({
@@ -2070,6 +2076,21 @@ describe('HistoricalSuccessWindowsPage', () => {
         const strategy = url.pathname.includes('zero-observation')
           ? second.strategy
           : first.strategy
+        if (url.pathname.includes('/random-baseline-evidence')) {
+          return Promise.resolve(
+            apiResponse(
+              makeQualificationRandomBaselineEvidence({
+                qualification_identity: {
+                  strategy_id: strategy.strategy_id,
+                  strategy_version: strategy.strategy_version,
+                  replicate: strategy.replicate,
+                  prefix_count: 1,
+                  criterion: 'M3_PLUS',
+                },
+              }),
+            ),
+          )
+        }
         return Promise.resolve(
           apiResponse(
             makeResearchQualification({
@@ -2116,7 +2137,7 @@ describe('HistoricalSuccessWindowsPage', () => {
 
     await evaluateResearchQualification(wrapper)
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
     for (const call of fetchMock.mock.calls) {
       const url = new URL(String(call[0]), 'http://localhost')
       expect(url.searchParams.getAll('import_identity_sha256')).toEqual([
@@ -2128,10 +2149,20 @@ describe('HistoricalSuccessWindowsPage', () => {
         criterion: 'M3_PLUS',
       })
     }
-    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+    const aggregateCalls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes('/random-baseline-evidence'),
+    )
+    const qualificationCalls = fetchMock.mock.calls.filter(
+      (call) =>
+        String(call[0]).includes('/research-qualification') &&
+        !String(call[0]).includes('/random-baseline-evidence'),
+    )
+    expect(aggregateCalls).toHaveLength(2)
+    expect(qualificationCalls).toHaveLength(2)
+    expect(String(qualificationCalls[0]?.[0])).toContain(
       '/zero-observation/v2/2/research-qualification?',
     )
-    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+    expect(String(qualificationCalls[1]?.[0])).toContain(
       '/alias%20strategy%2Fone/v1%20beta/1/research-qualification?',
     )
     const cards = wrapper.findAll('.research-qualification-result-card')
@@ -2142,12 +2173,31 @@ describe('HistoricalSuccessWindowsPage', () => {
       'Research qualification only. This result does not rank, promote, reject, predict, or establish production eligibility.',
     )
     expect(cards[0]!.text()).toContain(
-      'Random/null benchmark unavailable; random advantage has not been evaluated.',
+      'Exact official-six-number IID random-benchmark cells are available as descriptive evidence when READY',
     )
     expect(cards.map((card) => card.find('h3').text())).toEqual([
       'zero-observation',
       'alias strategy/one',
     ])
+    const randomCards = wrapper.findAll(
+      '.qualification-random-baseline-result-card',
+    )
+    expect(randomCards).toHaveLength(2)
+    expect(
+      randomCards.map((card) =>
+        card.findAll('.qualification-random-baseline-cell').length,
+      ),
+    ).toEqual([8, 8])
+    expect(wrapper.text()).toContain(
+      'Each READY upper_tail_probability is a raw, unadjusted exact descriptive value.',
+    )
+    expect(randomCards[0]!.text()).toContain('REFERENCE_ONLY')
+    expect(randomCards[0]!.text()).toContain(
+      'AUDIT_ONLY_NON_BLOCKING',
+    )
+    expect(randomCards[0]!.text()).toContain(
+      'Descriptive official-six-number IID random benchmark only.',
+    )
     wrapper.unmount()
   })
 
@@ -2182,17 +2232,40 @@ describe('HistoricalSuccessWindowsPage', () => {
     await selectMatrix(wrapper, 0)
     await selectMatrix(wrapper, 1)
     fetchMock.mockReset()
-    fetchMock
-      .mockResolvedValueOnce(apiResponse(makeResearchQualification()))
-      .mockResolvedValueOnce(
-        apiResponse(
-          {
-            error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
-            message: '/secret/path',
-          },
-          404,
-        ),
+    let qualificationCalls = 0
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      const strategy = url.includes('zero-observation')
+        ? second.strategy
+        : first.strategy
+      if (url.includes('/random-baseline-evidence')) {
+        return Promise.resolve(
+          apiResponse(
+            makeQualificationRandomBaselineEvidence({
+              qualification_identity: {
+                strategy_id: strategy.strategy_id,
+                strategy_version: strategy.strategy_version,
+                replicate: strategy.replicate,
+                prefix_count: 1,
+                criterion: 'M3_PLUS',
+              },
+            }),
+          ),
+        )
+      }
+      qualificationCalls += 1
+      return Promise.resolve(
+        qualificationCalls === 1
+          ? apiResponse(makeResearchQualification())
+          : apiResponse(
+              {
+                error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+                message: '/secret/path',
+              },
+              404,
+            ),
       )
+    })
 
     await evaluateResearchQualification(wrapper)
 
@@ -2200,6 +2273,9 @@ describe('HistoricalSuccessWindowsPage', () => {
       'Some qualification requests are unavailable',
     )
     expect(wrapper.findAll('.research-qualification-result-card')).toHaveLength(2)
+    expect(
+      wrapper.findAll('.qualification-random-baseline-result-card'),
+    ).toHaveLength(2)
     expect(wrapper.text()).not.toContain('/secret/path')
 
     fetchMock.mockReset()
@@ -2207,6 +2283,21 @@ describe('HistoricalSuccessWindowsPage', () => {
       const strategy = String(input).includes('zero-observation')
         ? second.strategy
         : first.strategy
+      if (String(input).includes('/random-baseline-evidence')) {
+        return Promise.resolve(
+          apiResponse(
+            makeQualificationRandomBaselineEvidence({
+              qualification_identity: {
+                strategy_id: strategy.strategy_id,
+                strategy_version: strategy.strategy_version,
+                replicate: strategy.replicate,
+                prefix_count: 1,
+                criterion: 'M3_PLUS',
+              },
+            }),
+          ),
+        )
+      }
       return Promise.resolve(
         apiResponse(
           makeResearchQualification({
@@ -2223,7 +2314,7 @@ describe('HistoricalSuccessWindowsPage', () => {
     })
     await wrapper.get('button.research-qualification-retry').trigger('click')
     await flushPromises()
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(wrapper.findAll('.research-qualification-pair-row')).toHaveLength(2)
     expect(
       wrapper
@@ -2233,7 +2324,7 @@ describe('HistoricalSuccessWindowsPage', () => {
     wrapper.unmount()
   })
 
-  it('aborts and ignores stale qualification responses on every selection lifecycle change', async () => {
+  it('isolates aggregate failures and renders closed NOT_READY cells on aggregate-only retry', async () => {
     const runs = [
       makeRun(),
       makeRun({
@@ -2258,74 +2349,166 @@ describe('HistoricalSuccessWindowsPage', () => {
       await option.setValue(true)
     }
     await selectMatrix(wrapper)
-    const older = deferred<Response>()
-    const newer = deferred<Response>()
     fetchMock.mockReset()
-    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+    fetchMock.mockImplementation((input) =>
+      String(input).includes('/random-baseline-evidence')
+        ? Promise.resolve(
+            apiResponse(
+              {
+                error_code: 'HISTORICAL_PREFIX_SUCCESS_WINDOWS_UNAVAILABLE',
+                message: '/private/detail',
+              },
+              503,
+            ),
+          )
+        : Promise.resolve(apiResponse(makeResearchQualification())),
+    )
+
+    await evaluateResearchQualification(wrapper)
+
+    expect(wrapper.findAll('.research-qualification-result-card')).toHaveLength(1)
+    expect(wrapper.get('.qualification-random-baseline-error').text()).toContain(
+      'Qualification projections above remain independent.',
+    )
+    expect(wrapper.text()).not.toContain('/private/detail')
+
+    const partial = makeQualificationRandomBaselineEvidence()
+    const notReady = makeNotReadyRandomBaseline()
+    partial.ordered_cells[0]!.baseline = {
+      ...notReady,
+      cell: { ...partial.ordered_cells[0]!.baseline.cell },
+    }
+    partial.availability_summary.availability_status = 'PARTIAL'
+    partial.availability_summary.ready_cell_count = 7
+    partial.availability_summary.raw_upper_tail_probability_count = 7
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(apiResponse(partial))
+
+    await wrapper
+      .get('button.qualification-random-baseline-retry')
+      .trigger('click')
+    await flushPromises()
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/random-baseline-evidence',
+    )
+    const cells = wrapper.findAll('.qualification-random-baseline-cell')
+    expect(cells).toHaveLength(8)
+    expect(cells[0]!.text()).toContain('NOT_READY')
+    expect(cells[0]!.text()).toContain('WINDOW_INCOMPLETE')
+    expect(cells[0]!.text()).toContain('Not available')
+    expect(wrapper.findAll('.research-qualification-result-card')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('aborts and ignores stale projection and random-evidence responses on selection changes and unmount', async () => {
+    const runs = [
+      makeRun(),
+      makeRun({
+        run_id: 'run-explicit-2',
+        import_identity_sha256: RIGHT_IMPORT_SHA,
+      }),
+    ]
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(
+          apiResponse(makeRunPage({ items: runs, total_count: 2 })),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage()))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    for (const option of wrapper.findAll('.census-import-option input')) {
+      await option.setValue(true)
+    }
+    await selectMatrix(wrapper)
+    const olderAggregate = deferred<Response>()
+    const olderQualification = deferred<Response>()
+    const newerAggregate = deferred<Response>()
+    const newerQualification = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock
+      .mockReturnValueOnce(olderAggregate.promise)
+      .mockReturnValueOnce(olderQualification.promise)
+      .mockReturnValueOnce(newerAggregate.promise)
+      .mockReturnValueOnce(newerQualification.promise)
 
     await wrapper.get('button.research-qualification-action').trigger('click')
-    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    const oldSignals = fetchMock.mock.calls
+      .slice(0, 2)
+      .map((call) => call[1]?.signal as AbortSignal)
     await wrapper.get('button.research-qualification-action').trigger('click')
-    expect(oldSignal.aborted).toBe(true)
-    newer.resolve(apiResponse(makeResearchQualification()))
+    expect(oldSignals.every((signal) => signal.aborted)).toBe(true)
+    newerAggregate.resolve(
+      apiResponse(makeQualificationRandomBaselineEvidence()),
+    )
+    newerQualification.resolve(apiResponse(makeResearchQualification()))
     await flushPromises()
-    const stale = makeResearchQualification()
-    stale.identity.strategy_id = 'stale'
-    older.resolve(apiResponse(stale))
+    const staleQualification = makeResearchQualification()
+    staleQualification.identity.strategy_id = 'stale'
+    const staleAggregate = makeQualificationRandomBaselineEvidence()
+    staleAggregate.qualification_identity.strategy_id = 'stale'
+    olderAggregate.resolve(apiResponse(staleAggregate))
+    olderQualification.resolve(apiResponse(staleQualification))
     await flushPromises()
     expect(wrapper.findAll('.research-qualification-result-card')).toHaveLength(1)
+    expect(
+      wrapper.findAll('.qualification-random-baseline-result-card'),
+    ).toHaveLength(1)
     expect(wrapper.text()).not.toContain('stale')
 
-    const importPending = deferred<Response>()
-    fetchMock.mockReset()
-    fetchMock.mockReturnValueOnce(importPending.promise)
-    await wrapper.get('button.research-qualification-action').trigger('click')
-    const importSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    const startPendingPair = async (): Promise<AbortSignal[]> => {
+      const aggregatePending = deferred<Response>()
+      const qualificationPending = deferred<Response>()
+      fetchMock.mockReset()
+      fetchMock
+        .mockReturnValueOnce(aggregatePending.promise)
+        .mockReturnValueOnce(qualificationPending.promise)
+      await wrapper.get('button.research-qualification-action').trigger('click')
+      return fetchMock.mock.calls.map(
+        (call) => call[1]?.signal as AbortSignal,
+      )
+    }
+
+    let signals = await startPendingPair()
     await wrapper.get('button.census-import-remove').trigger('click')
-    expect(importSignal.aborted).toBe(true)
+    expect(signals.every((signal) => signal.aborted)).toBe(true)
     await wrapper.get('.census-import-option input').setValue(true)
 
-    const strategyPending = deferred<Response>()
-    fetchMock.mockReset()
-    fetchMock.mockReturnValueOnce(strategyPending.promise)
-    await wrapper.get('button.research-qualification-action').trigger('click')
-    const strategySignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    signals = await startPendingPair()
     await wrapper.get('input.matrix-select').setValue(false)
-    expect(strategySignal.aborted).toBe(true)
+    expect(signals.every((signal) => signal.aborted)).toBe(true)
     await wrapper.get('input.matrix-select').setValue(true)
 
     for (const [selector, value, reset] of [
       ['select[name="prefix-count"]', '2', '1'],
       ['select[name="criterion"]', 'M4_PLUS', 'M3_PLUS'],
     ] as const) {
-      const pending = deferred<Response>()
-      fetchMock.mockReset()
-      fetchMock.mockReturnValueOnce(pending.promise)
-      await wrapper.get('button.research-qualification-action').trigger('click')
-      const signal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+      signals = await startPendingPair()
       await wrapper.get(selector).setValue(value)
-      expect(signal.aborted).toBe(true)
+      expect(signals.every((signal) => signal.aborted)).toBe(true)
       await wrapper.get(selector).setValue(reset)
     }
 
-    const runPending = deferred<Response>()
-    fetchMock.mockReset()
-    fetchMock.mockReturnValueOnce(runPending.promise)
-    await wrapper.get('button.research-qualification-action').trigger('click')
-    const runSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    signals = await startPendingPair()
     await wrapper.get('select[name="historical-run"]').setValue('')
-    expect(runSignal.aborted).toBe(true)
+    expect(signals.every((signal) => signal.aborted)).toBe(true)
 
     fetchMock.mockImplementation(successfulFetch)
     await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
     await analyze(wrapper)
+    for (const option of wrapper.findAll('.census-import-option input')) {
+      await option.setValue(true)
+    }
     await selectMatrix(wrapper)
-    fetchMock.mockReset()
-    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
-    await wrapper.get('button.research-qualification-action').trigger('click')
-    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    signals = await startPendingPair()
     wrapper.unmount()
-    expect(unmountSignal.aborted).toBe(true)
+    expect(signals.every((signal) => signal.aborted)).toBe(true)
   })
 
   it('aborts stale concordance on reevaluation, either run change, controls, and unmount', async () => {

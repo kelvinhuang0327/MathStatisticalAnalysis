@@ -1409,6 +1409,11 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                                 (
                                     "/api/v1/historical-prefix-success-windows/strategies/"
                                     "{strategy_id}/{strategy_version}/{replicate}/"
+                                    "feature-cohorts/recent-50-stability-audit"
+                                ): {"get": {}},
+                                (
+                                    "/api/v1/historical-prefix-success-windows/strategies/"
+                                    "{strategy_id}/{strategy_version}/{replicate}/"
                                     "feature-cohorts/cross-import-concordance"
                                 ): {"get": {}},
                                 (

@@ -6,6 +6,7 @@ import {
   getHistoricalSuccessFeatureCohorts,
   getHistoricalSuccessCrossImportConcordance,
   getHistoricalSuccessMultiImportConcordanceCensus,
+  getHistoricalSuccessRecent50StabilityAudit,
   getHistoricalSuccessStabilityMatrix,
   getHistoricalSuccessTemporalHoldout,
   getHistoricalSuccessWindows,
@@ -22,6 +23,7 @@ import {
   type HistoricalSuccessCrossImportConcordance,
   type HistoricalSuccessMultiImportConcordanceCensus,
   type HistoricalSuccessPrefixCount,
+  type HistoricalSuccessRecent50StabilityAudit,
   type HistoricalSuccessStabilityMatrix,
   type HistoricalSuccessTemporalHoldout,
   type HistoricalSuccessWindowPage,
@@ -69,6 +71,13 @@ type TemporalHoldoutOutcome = {
 }
 type TemporalHoldoutComparison =
   HistoricalSuccessTemporalHoldout['comparisons'][number]
+type Recent50StabilityAuditOutcome = {
+  selection: MatrixSelection
+  result: HistoricalSuccessRecent50StabilityAudit | null
+  error: string
+}
+type Recent50StabilityAuditComparison =
+  HistoricalSuccessRecent50StabilityAudit['comparisons'][number]
 type CrossImportConcordanceOutcome = {
   selection: MatrixSelection
   result: HistoricalSuccessCrossImportConcordance | null
@@ -110,6 +119,8 @@ const featureCohortDiagnosticsState = ref<MatrixState>('idle')
 const featureCohortDiagnosticsResults = ref<FeatureCohortDiagnosticOutcome[]>([])
 const temporalHoldoutState = ref<MatrixState>('idle')
 const temporalHoldoutResults = ref<TemporalHoldoutOutcome[]>([])
+const recent50StabilityAuditState = ref<MatrixState>('idle')
+const recent50StabilityAuditResults = ref<Recent50StabilityAuditOutcome[]>([])
 const crossImportConcordanceState = ref<MatrixState>('idle')
 const crossImportConcordanceResults = ref<CrossImportConcordanceOutcome[]>([])
 const censusImportSelections = ref<HistoricalRun[]>([])
@@ -124,6 +135,7 @@ let matrixGeneration = 0
 let featureCohortGeneration = 0
 let featureCohortDiagnosticsGeneration = 0
 let temporalHoldoutGeneration = 0
+let recent50StabilityAuditGeneration = 0
 let crossImportConcordanceGeneration = 0
 let multiImportCensusGeneration = 0
 let runsController: AbortController | undefined
@@ -133,6 +145,7 @@ let matrixController: AbortController | undefined
 let featureCohortController: AbortController | undefined
 let featureCohortDiagnosticsController: AbortController | undefined
 let temporalHoldoutController: AbortController | undefined
+let recent50StabilityAuditController: AbortController | undefined
 let crossImportConcordanceController: AbortController | undefined
 let multiImportCensusController: AbortController | undefined
 
@@ -195,6 +208,7 @@ function detailErrorState(error: unknown): DetailState {
 }
 
 async function loadRuns(offset = 0): Promise<void> {
+  clearRecent50StabilityAudit()
   const generation = ++runsGeneration
   runsController?.abort()
   const controller = new AbortController()
@@ -285,6 +299,14 @@ function clearTemporalHoldout(): void {
     matrixSelections.value.length > 0 ? 'selected' : 'idle'
 }
 
+function clearRecent50StabilityAudit(): void {
+  recent50StabilityAuditGeneration += 1
+  recent50StabilityAuditController?.abort()
+  recent50StabilityAuditResults.value = []
+  recent50StabilityAuditState.value =
+    matrixSelections.value.length > 0 ? 'selected' : 'idle'
+}
+
 function clearCrossImportConcordance(): void {
   crossImportConcordanceGeneration += 1
   crossImportConcordanceController?.abort()
@@ -361,6 +383,7 @@ function toggleMatrixSelection(item: MatrixSelection, event: Event): void {
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
+  clearRecent50StabilityAudit()
   clearCrossImportConcordance()
   clearMultiImportCensus()
 }
@@ -377,6 +400,7 @@ function chooseRun(): void {
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
+  clearRecent50StabilityAudit()
   clearCrossImportConcordance()
   clearMultiImportCensus()
 }
@@ -395,11 +419,13 @@ function controlsChanged(): void {
   clearFeatureCohorts()
   clearFeatureCohortDiagnostics()
   clearTemporalHoldout()
+  clearRecent50StabilityAudit()
   clearCrossImportConcordance()
   clearMultiImportCensus()
 }
 
 async function compareSelectedMatrices(): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   const selections = [...matrixSelections.value]
   if (run === null || selections.length < 1 || selections.length > 4) return
@@ -435,6 +461,7 @@ async function compareSelectedMatrices(): Promise<void> {
 }
 
 async function evaluateSelectedFeatureCohorts(): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   const selections = [...matrixSelections.value]
   if (run === null || selections.length < 1 || selections.length > 4) return
@@ -480,6 +507,7 @@ async function evaluateSelectedFeatureCohorts(): Promise<void> {
 }
 
 async function evaluateSelectedFeatureCohortDiagnostics(): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   const selections = [...matrixSelections.value]
   if (run === null || selections.length < 1 || selections.length > 4) return
@@ -525,6 +553,7 @@ async function evaluateSelectedFeatureCohortDiagnostics(): Promise<void> {
 }
 
 async function evaluateSelectedTemporalHoldout(): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   const selections = [...matrixSelections.value]
   if (run === null || selections.length < 1 || selections.length > 4) return
@@ -569,7 +598,53 @@ async function evaluateSelectedTemporalHoldout(): Promise<void> {
     successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
 }
 
+async function evaluateRecent50StabilityAudit(): Promise<void> {
+  const run = selectedRun.value
+  const selections = [...matrixSelections.value]
+  if (run === null || selections.length < 1 || selections.length > 4) return
+  const selectedPrefix = prefixCount.value
+  const selectedCriterion = criterion.value
+  const generation = ++recent50StabilityAuditGeneration
+  recent50StabilityAuditController?.abort()
+  const controller = new AbortController()
+  recent50StabilityAuditController = controller
+  recent50StabilityAuditResults.value = []
+  recent50StabilityAuditState.value = 'loading'
+  const outcomes = await Promise.all(
+    selections.map(async (selection): Promise<Recent50StabilityAuditOutcome> => {
+      try {
+        const result = await getHistoricalSuccessRecent50StabilityAudit(
+          {
+            import_identity_sha256: run.import_identity_sha256,
+            strategy_id: selection.strategy.strategy_id,
+            strategy_version: selection.strategy.strategy_version,
+            replicate: selection.strategy.replicate,
+            prefix_count: selectedPrefix,
+            criterion: selectedCriterion,
+          },
+          controller.signal,
+        )
+        return { selection, result, error: '' }
+      } catch (error: unknown) {
+        return { selection, result: null, error: errorMessage(error) }
+      }
+    }),
+  )
+  if (
+    !mounted ||
+    generation !== recent50StabilityAuditGeneration ||
+    controller.signal.aborted
+  ) {
+    return
+  }
+  recent50StabilityAuditResults.value = outcomes
+  const successes = outcomes.filter((outcome) => outcome.result !== null).length
+  recent50StabilityAuditState.value =
+    successes === outcomes.length ? 'ready' : successes > 0 ? 'partial' : 'error'
+}
+
 async function evaluateCrossImportConcordance(): Promise<void> {
+  clearRecent50StabilityAudit()
   const leftRun = selectedRun.value
   const rightRun = comparisonRun.value
   const selections = [...matrixSelections.value]
@@ -625,6 +700,7 @@ async function evaluateCrossImportConcordance(): Promise<void> {
 }
 
 async function evaluateMultiImportCensus(): Promise<void> {
+  clearRecent50StabilityAudit()
   const imports = [...censusImportSelections.value]
   const selections = [...matrixSelections.value]
   if (
@@ -695,6 +771,7 @@ async function evaluateMultiImportCensus(): Promise<void> {
 }
 
 async function loadResults(offset: number): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   if (run === null) return
   const selectedPrefix = prefixCount.value
@@ -732,6 +809,7 @@ async function loadResults(offset: number): Promise<void> {
 }
 
 async function inspectStrategy(item: HistoricalSuccessWindowResult): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   if (run === null) return
   const generation = ++detailGeneration
@@ -764,6 +842,7 @@ async function inspectStrategy(item: HistoricalSuccessWindowResult): Promise<voi
 }
 
 async function copyImportIdentity(): Promise<void> {
+  clearRecent50StabilityAudit()
   const run = selectedRun.value
   if (run === null || navigator.clipboard === undefined) return
   await navigator.clipboard.writeText(run.import_identity_sha256)
@@ -858,6 +937,14 @@ function temporalEffectChange(comparison: TemporalHoldoutComparison): string {
     : 'Unavailable (0 / 0)'
 }
 
+function recent50EffectChange(
+  comparison: Recent50StabilityAuditComparison,
+): string {
+  return comparison.effect_change.available
+    ? `${comparison.effect_change.numerator} / ${comparison.effect_change.denominator}`
+    : 'Unavailable (0 / 0)'
+}
+
 function crossImportEffectChange(
   comparison: CrossImportConcordanceComparison,
 ): string {
@@ -879,6 +966,7 @@ onBeforeUnmount(() => {
   featureCohortGeneration += 1
   featureCohortDiagnosticsGeneration += 1
   temporalHoldoutGeneration += 1
+  recent50StabilityAuditGeneration += 1
   crossImportConcordanceGeneration += 1
   multiImportCensusGeneration += 1
   runsController?.abort()
@@ -888,6 +976,7 @@ onBeforeUnmount(() => {
   featureCohortController?.abort()
   featureCohortDiagnosticsController?.abort()
   temporalHoldoutController?.abort()
+  recent50StabilityAuditController?.abort()
   crossImportConcordanceController?.abort()
   multiImportCensusController?.abort()
 })
@@ -1444,6 +1533,200 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div v-else class="research-state research-state--error feature-cohort-item-error">
+            <strong>{{ outcome.error }}</strong>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section
+      class="research-results recent-50-stability-audit-panel"
+      aria-labelledby="recent-50-stability-audit-title"
+    >
+      <div class="panel-heading">
+        <div>
+          <p class="step-label">Descriptive confirmation recency check</p>
+          <h2 id="recent-50-stability-audit-title">Reference 250 / recent 50 stability audit</h2>
+        </div>
+        <button
+          class="button recent-50-stability-audit-action"
+          type="button"
+          :disabled="selectedRun === null || matrixSelections.length === 0"
+          @click="evaluateRecent50StabilityAudit"
+        >
+          Evaluate recent-50 stability audit
+        </button>
+      </div>
+
+      <p class="research-state research-state--notice recent-50-descriptive-notice">
+        Descriptive only. The audit compares two fixed, chronological, non-overlapping
+        slices and produces no prescriptive interpretation.
+      </p>
+      <p v-if="selectedRun === null" class="research-state">
+        Select a run before evaluating the recent-50 stability audit.
+      </p>
+      <p v-else-if="matrixSelections.length === 0" class="research-state">
+        Select one to four exact strategy identities above. No audit request runs on selection.
+      </p>
+      <p v-else-if="recent50StabilityAuditState === 'selected'" class="research-state">
+        {{ matrixSelections.length }} exact {{ matrixSelections.length === 1 ? 'identity' : 'identities' }}
+        selected in manual order. The audit runs only from the explicit action.
+      </p>
+      <p v-if="recent50StabilityAuditState === 'loading'" class="research-state">
+        Evaluating the fixed 250-target reference and 50-target recent slices…
+      </p>
+      <div
+        v-if="recent50StabilityAuditState === 'partial'"
+        class="research-state research-state--notice"
+      >
+        <strong>Some recent-50 audit requests are unavailable; successful results remain visible.</strong>
+        <button
+          class="button button--quiet recent-50-stability-audit-retry"
+          type="button"
+          @click="evaluateRecent50StabilityAudit"
+        >
+          Retry all
+        </button>
+      </div>
+      <div
+        v-if="recent50StabilityAuditState === 'error'"
+        class="research-state research-state--error"
+      >
+        <strong>All selected recent-50 audit requests were unavailable; sanitized errors are shown.</strong>
+        <button
+          class="button button--quiet recent-50-stability-audit-retry"
+          type="button"
+          @click="evaluateRecent50StabilityAudit"
+        >
+          Retry all
+        </button>
+      </div>
+
+      <ol
+        v-if="recent50StabilityAuditResults.length > 0"
+        class="temporal-holdout-result-list recent-50-stability-audit-result-list"
+      >
+        <li
+          v-for="outcome in recent50StabilityAuditResults"
+          :key="matrixIdentity(outcome.selection)"
+          class="temporal-holdout-result-card recent-50-stability-audit-result-card"
+        >
+          <header>
+            <div>
+              <span class="identity-kind">{{ outcome.selection.strategy.identity_kind }}</span>
+              <h3>{{ outcome.selection.strategy.strategy_id }}</h3>
+              <code>
+                {{ outcome.selection.strategy.strategy_version }} · replicate
+                {{ outcome.selection.strategy.replicate }}
+              </code>
+            </div>
+          </header>
+          <div v-if="outcome.result">
+            <dl class="identity-facts temporal-holdout-facts">
+              <div class="source-facts__identity">
+                <dt>Import identity</dt>
+                <dd><code>{{ outcome.result.metadata.import_identity_sha256 }}</code></dd>
+              </div>
+              <div><dt>Strategy identity</dt><dd>{{ outcome.result.strategy.strategy_id }}</dd></div>
+              <div><dt>Version</dt><dd>{{ outcome.result.strategy.strategy_version }}</dd></div>
+              <div><dt>Replicate</dt><dd>{{ outcome.result.strategy.replicate }}</dd></div>
+              <div><dt>Prefix</dt><dd>{{ outcome.result.prefix_count }}</dd></div>
+              <div><dt>Criterion</dt><dd>{{ outcome.result.criterion.criterion }}</dd></div>
+              <div><dt>Status</dt><dd>{{ outcome.result.audit_status }}</dd></div>
+              <div><dt>Source split</dt><dd>{{ outcome.result.split.source_temporal_split_method }}</dd></div>
+              <div><dt>Audit split</dt><dd>{{ outcome.result.split.audit_split_method }}</dd></div>
+              <div><dt>Total assignments</dt><dd>{{ outcome.result.split.total_assignment_count }}</dd></div>
+              <div><dt>Warmup</dt><dd>{{ outcome.result.split.warmup_count }}</dd></div>
+              <div><dt>Discovery</dt><dd>{{ outcome.result.split.discovery_count }}</dd></div>
+              <div><dt>Confirmation</dt><dd>{{ outcome.result.split.confirmation_count }}</dd></div>
+              <div><dt>Reference</dt><dd>{{ outcome.result.split.reference_count }}</dd></div>
+              <div><dt>Recent</dt><dd>{{ outcome.result.split.recent_count }}</dd></div>
+              <div><dt>Discovery first</dt><dd>{{ optionalTarget(outcome.result.split.discovery_first_target) }}</dd></div>
+              <div><dt>Discovery last</dt><dd>{{ optionalTarget(outcome.result.split.discovery_last_target) }}</dd></div>
+              <div><dt>Confirmation first</dt><dd>{{ optionalTarget(outcome.result.split.confirmation_first_target) }}</dd></div>
+              <div><dt>Confirmation last</dt><dd>{{ optionalTarget(outcome.result.split.confirmation_last_target) }}</dd></div>
+              <div><dt>Reference first</dt><dd>{{ optionalTarget(outcome.result.split.reference_first_target) }}</dd></div>
+              <div><dt>Reference last</dt><dd>{{ optionalTarget(outcome.result.split.reference_last_target) }}</dd></div>
+              <div><dt>Recent first</dt><dd>{{ optionalTarget(outcome.result.split.recent_first_target) }}</dd></div>
+              <div><dt>Recent last</dt><dd>{{ optionalTarget(outcome.result.split.recent_last_target) }}</dd></div>
+              <div><dt>Family size</dt><dd>{{ outcome.result.family_size }}</dd></div>
+            </dl>
+            <p
+              v-if="outcome.result.audit_status === 'NOT_READY_INSUFFICIENT_HISTORY'"
+              class="research-state recent-50-stability-audit-not-ready"
+            >
+              Insufficient labeled history. The fixed slices were not shortened and no
+              partial diagnostics were produced.
+            </p>
+            <div v-else class="feature-cohort-diagnostics-table-scroll temporal-holdout-table-scroll">
+              <table class="feature-cohort-diagnostics-table temporal-holdout-table">
+                <caption>
+                  All 64 canonical cohorts in server order. Reference and recent values
+                  are separately adjusted fixed families; exact probabilities remain decimal strings.
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Index</th>
+                    <th scope="col">Long→Medium</th>
+                    <th scope="col">Medium→Short</th>
+                    <th scope="col">Long→Short</th>
+                    <th scope="col">Reference S/F/N</th>
+                    <th scope="col">Reference cohort rate</th>
+                    <th scope="col">Reference outside rate</th>
+                    <th scope="col">Reference risk difference</th>
+                    <th scope="col">Reference raw exact p</th>
+                    <th scope="col">Reference BY exact p</th>
+                    <th scope="col">Recent S/F/N</th>
+                    <th scope="col">Recent cohort rate</th>
+                    <th scope="col">Recent outside rate</th>
+                    <th scope="col">Recent risk difference</th>
+                    <th scope="col">Recent raw exact p</th>
+                    <th scope="col">Recent BY exact p</th>
+                    <th scope="col">Recent − reference effect</th>
+                    <th scope="col">Relationship</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="comparison in outcome.result.comparisons"
+                    :key="comparison.cohort_index"
+                    class="recent-50-stability-audit-comparison"
+                  >
+                    <td>{{ comparison.cohort_index }}</td>
+                    <td>{{ comparison.feature_key.long_to_medium }}</td>
+                    <td>{{ comparison.feature_key.medium_to_short }}</td>
+                    <td>{{ comparison.feature_key.long_to_short }}</td>
+                    <td>
+                      {{ comparison.reference_diagnostic.cohort_counts.success_count }} /
+                      {{ comparison.reference_diagnostic.cohort_counts.failure_count }} /
+                      {{ comparison.reference_diagnostic.cohort_counts.observation_count }}
+                    </td>
+                    <td>{{ featureRate(comparison.reference_diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(comparison.reference_diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(comparison.reference_diagnostic) }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.reference_diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.reference_diagnostic.adjusted_p_value) }}</code></td>
+                    <td>
+                      {{ comparison.recent_diagnostic.cohort_counts.success_count }} /
+                      {{ comparison.recent_diagnostic.cohort_counts.failure_count }} /
+                      {{ comparison.recent_diagnostic.cohort_counts.observation_count }}
+                    </td>
+                    <td>{{ featureRate(comparison.recent_diagnostic.cohort_success_rate) }}</td>
+                    <td>{{ featureRate(comparison.recent_diagnostic.outside_success_rate) }}</td>
+                    <td>{{ diagnosticEffect(comparison.recent_diagnostic) }}</td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.recent_diagnostic.raw_p_value) }}</code></td>
+                    <td><code class="exact-probability">{{ exactProbability(comparison.recent_diagnostic.adjusted_p_value) }}</code></td>
+                    <td>{{ recent50EffectChange(comparison) }}</td>
+                    <td>{{ comparison.relationship }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div
+            v-else
+            class="research-state research-state--error recent-50-stability-audit-item-error"
+          >
             <strong>{{ outcome.error }}</strong>
           </div>
         </li>

@@ -25,6 +25,9 @@ from lottolab.application.historical_prefix_success_windows import (
     FISHER_EXACT_TWO_SIDED_METHOD,
     MAX_PAGE_LIMIT,
     MIN_PAGE_LIMIT,
+    RECENT_AUDIT_SPLIT_METHOD,
+    RECENT_AUDIT_TARGET_COUNT,
+    RECENT_REFERENCE_TARGET_COUNT,
     REQUIRED_LABELED_TARGET_COUNT,
     TEMPORAL_HOLDOUT_SPLIT_METHOD,
     HistoricalPrefixConfirmationOverlapRelation,
@@ -47,6 +50,10 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixMultiImportPairResult,
     HistoricalPrefixOutcomeCounts,
     HistoricalPrefixRateRelation,
+    HistoricalPrefixRecentStabilityAuditCohortComparison,
+    HistoricalPrefixRecentStabilityAuditResult,
+    HistoricalPrefixRecentStabilityAuditSplit,
+    HistoricalPrefixRecentStabilityAuditStatus,
     HistoricalPrefixSignedRateDelta,
     HistoricalPrefixStrategyFeatureCohortDiagnostics,
     HistoricalPrefixStrategyFeatureCohortResult,
@@ -1057,6 +1064,317 @@ class HistoricalPrefixTemporalHoldoutResponse(BaseModel):
         )
 
 
+class HistoricalPrefixRecentStabilityAuditSplitView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    source_temporal_split_method: Literal["FIXED_LAST_750_DISCOVERY_LAST_300_CONFIRMATION"]
+    audit_split_method: Literal["FIXED_CONFIRMATION_FIRST_250_REFERENCE_LAST_50_RECENT"]
+    total_assignment_count: Annotated[int, Field(ge=0)]
+    warmup_count: Annotated[int, Field(ge=0)]
+    discovery_count: Annotated[int, Field(ge=0)]
+    confirmation_count: Annotated[int, Field(ge=0)]
+    reference_count: Literal[0, 250]
+    recent_count: Literal[0, 50]
+    discovery_first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    discovery_last_target: HistoricalPrefixSuccessDrawIdentityView | None
+    confirmation_first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    confirmation_last_target: HistoricalPrefixSuccessDrawIdentityView | None
+    reference_first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    reference_last_target: HistoricalPrefixSuccessDrawIdentityView | None
+    recent_first_target: HistoricalPrefixSuccessDrawIdentityView | None
+    recent_last_target: HistoricalPrefixSuccessDrawIdentityView | None
+
+    @classmethod
+    def from_split(
+        cls, split: HistoricalPrefixRecentStabilityAuditSplit
+    ) -> HistoricalPrefixRecentStabilityAuditSplitView:
+        if split.source_temporal_split_method != TEMPORAL_HOLDOUT_SPLIT_METHOD:
+            raise ValueError("application temporal split method is inconsistent")
+        if split.audit_split_method != RECENT_AUDIT_SPLIT_METHOD:
+            raise ValueError("application audit split method is inconsistent")
+        if split.reference_count not in (0, RECENT_REFERENCE_TARGET_COUNT):
+            raise ValueError("application reference count is outside the closed contract")
+        if split.recent_count not in (0, RECENT_AUDIT_TARGET_COUNT):
+            raise ValueError("application recent count is outside the closed contract")
+        reference_count = split.reference_count
+        recent_count = split.recent_count
+
+        def view(
+            target: HistoricalPrefixSuccessDrawIdentity | None,
+        ) -> HistoricalPrefixSuccessDrawIdentityView | None:
+            return (
+                HistoricalPrefixSuccessDrawIdentityView.from_identity(target)
+                if target is not None
+                else None
+            )
+
+        return cls(
+            source_temporal_split_method=TEMPORAL_HOLDOUT_SPLIT_METHOD,
+            audit_split_method=RECENT_AUDIT_SPLIT_METHOD,
+            total_assignment_count=split.total_assignment_count,
+            warmup_count=split.warmup_count,
+            discovery_count=split.discovery_count,
+            confirmation_count=split.confirmation_count,
+            reference_count=reference_count,
+            recent_count=recent_count,
+            discovery_first_target=view(split.discovery_first_target),
+            discovery_last_target=view(split.discovery_last_target),
+            confirmation_first_target=view(split.confirmation_first_target),
+            confirmation_last_target=view(split.confirmation_last_target),
+            reference_first_target=view(split.reference_first_target),
+            reference_last_target=view(split.reference_last_target),
+            recent_first_target=view(split.recent_first_target),
+            recent_last_target=view(split.recent_last_target),
+        )
+
+
+class HistoricalPrefixRecentStabilityAuditCohortComparisonView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    cohort_index: int
+    feature_key: HistoricalPrefixFeatureRelationTripleView
+    reference_diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+    recent_diagnostic: HistoricalPrefixFeatureCohortDiagnosticView
+    effect_change: HistoricalPrefixSignedRateDeltaView
+    relationship: HistoricalPrefixTemporalHoldoutRelationship
+
+    @model_validator(mode="after")
+    def validate_comparison(self) -> Self:
+        reference = self.reference_diagnostic
+        recent = self.recent_diagnostic
+        if (
+            reference.cohort_index != self.cohort_index
+            or recent.cohort_index != self.cohort_index
+            or reference.feature_key != self.feature_key
+            or recent.feature_key != self.feature_key
+        ):
+            raise ValueError("recent stability comparison identity is inconsistent")
+        reference_effect = reference.risk_difference
+        recent_effect = recent.risk_difference
+        if reference_effect.available and recent_effect.available:
+            expected = Fraction(
+                recent_effect.numerator,
+                recent_effect.denominator,
+            ) - Fraction(
+                reference_effect.numerator,
+                reference_effect.denominator,
+            )
+            if (
+                not self.effect_change.available
+                or self.effect_change.numerator != expected.numerator
+                or self.effect_change.denominator != expected.denominator
+            ):
+                raise ValueError("recent stability effect change is inconsistent")
+        elif (
+            self.effect_change.available
+            or self.effect_change.numerator != 0
+            or self.effect_change.denominator != 0
+        ):
+            raise ValueError("unavailable recent stability effect change is inconsistent")
+        relationship = (
+            HistoricalPrefixTemporalHoldoutRelationship.UNAVAILABLE
+            if (
+                reference.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+                or recent.relation_vs_outside is HistoricalPrefixRateRelation.UNAVAILABLE
+            )
+            else (
+                HistoricalPrefixTemporalHoldoutRelationship.DIFFERENT
+                if reference.relation_vs_outside is not recent.relation_vs_outside
+                else {
+                    HistoricalPrefixRateRelation.HIGHER: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_HIGHER
+                    ),
+                    HistoricalPrefixRateRelation.EQUAL: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_EQUAL
+                    ),
+                    HistoricalPrefixRateRelation.LOWER: (
+                        HistoricalPrefixTemporalHoldoutRelationship.SAME_LOWER
+                    ),
+                }[reference.relation_vs_outside]
+            )
+        )
+        if self.relationship is not relationship:
+            raise ValueError("recent stability relationship is inconsistent")
+        return self
+
+    @classmethod
+    def from_comparison(
+        cls, comparison: HistoricalPrefixRecentStabilityAuditCohortComparison
+    ) -> HistoricalPrefixRecentStabilityAuditCohortComparisonView:
+        return cls(
+            cohort_index=comparison.cohort_index,
+            feature_key=HistoricalPrefixFeatureRelationTripleView.from_feature_key(
+                comparison.feature_key
+            ),
+            reference_diagnostic=HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                comparison.reference_diagnostic
+            ),
+            recent_diagnostic=HistoricalPrefixFeatureCohortDiagnosticView.from_diagnostic(
+                comparison.recent_diagnostic
+            ),
+            effect_change=HistoricalPrefixSignedRateDeltaView.from_delta(comparison.effect_change),
+            relationship=comparison.relationship,
+        )
+
+
+class HistoricalPrefixRecentStabilityAuditResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    metadata: HistoricalPrefixSuccessSourceMetadataView
+    strategy: HistoricalPrefixSuccessStrategyIdentityView
+    criterion: HistoricalPrefixSuccessCriterionView
+    prefix_count: int
+    split: HistoricalPrefixRecentStabilityAuditSplitView
+    audit_status: HistoricalPrefixRecentStabilityAuditStatus
+    family_size: Literal[64]
+    reference: HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse | None
+    recent: HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse | None
+    comparisons: tuple[HistoricalPrefixRecentStabilityAuditCohortComparisonView, ...]
+
+    @model_validator(mode="after")
+    def validate_audit(self) -> Self:
+        split = self.split
+        if (
+            split.source_temporal_split_method != TEMPORAL_HOLDOUT_SPLIT_METHOD
+            or split.audit_split_method != RECENT_AUDIT_SPLIT_METHOD
+            or split.total_assignment_count
+            != split.warmup_count + split.discovery_count + split.confirmation_count
+            or split.confirmation_count != split.reference_count + split.recent_count
+        ):
+            raise ValueError("recent stability split arithmetic is inconsistent")
+        boundaries = (
+            split.discovery_first_target,
+            split.discovery_last_target,
+            split.confirmation_first_target,
+            split.confirmation_last_target,
+            split.reference_first_target,
+            split.reference_last_target,
+            split.recent_first_target,
+            split.recent_last_target,
+        )
+        if (
+            self.audit_status
+            is HistoricalPrefixRecentStabilityAuditStatus.NOT_READY_INSUFFICIENT_HISTORY
+        ):
+            if (
+                split.total_assignment_count >= REQUIRED_LABELED_TARGET_COUNT
+                or split.warmup_count != split.total_assignment_count
+                or any(
+                    count != 0
+                    for count in (
+                        split.discovery_count,
+                        split.confirmation_count,
+                        split.reference_count,
+                        split.recent_count,
+                    )
+                )
+                or any(boundary is not None for boundary in boundaries)
+                or self.reference is not None
+                or self.recent is not None
+                or self.comparisons
+            ):
+                raise ValueError("not-ready recent stability audit is inconsistent")
+            return self
+        if (
+            split.total_assignment_count < REQUIRED_LABELED_TARGET_COUNT
+            or split.discovery_count != DISCOVERY_TARGET_COUNT
+            or split.confirmation_count != CONFIRMATION_TARGET_COUNT
+            or split.reference_count != RECENT_REFERENCE_TARGET_COUNT
+            or split.recent_count != RECENT_AUDIT_TARGET_COUNT
+            or any(boundary is None for boundary in boundaries)
+            or self.reference is None
+            or self.recent is None
+            or len(self.comparisons) != self.family_size
+        ):
+            raise ValueError("complete recent stability audit is inconsistent")
+        non_null_boundaries = tuple(boundary for boundary in boundaries if boundary is not None)
+        try:
+            orders = tuple(
+                (date.fromisoformat(boundary.draw_date), boundary.draw_number)
+                for boundary in non_null_boundaries
+            )
+        except ValueError as exc:
+            raise ValueError("recent stability boundary dates must be ISO dates") from exc
+        (
+            discovery_first_order,
+            discovery_last_order,
+            confirmation_first_order,
+            confirmation_last_order,
+            reference_first_order,
+            reference_last_order,
+            recent_first_order,
+            recent_last_order,
+        ) = orders
+        if not (
+            discovery_first_order
+            <= discovery_last_order
+            < confirmation_first_order
+            == reference_first_order
+            <= reference_last_order
+            < recent_first_order
+            <= recent_last_order
+            == confirmation_last_order
+        ):
+            raise ValueError("recent stability phase boundaries are out of order")
+        reference = self.reference
+        recent = self.recent
+        if (
+            reference.metadata != self.metadata
+            or recent.metadata != self.metadata
+            or reference.strategy != self.strategy
+            or recent.strategy != self.strategy
+            or reference.criterion != self.criterion
+            or recent.criterion != self.criterion
+            or reference.prefix_count != self.prefix_count
+            or recent.prefix_count != self.prefix_count
+            or reference.baseline.observation_count != RECENT_REFERENCE_TARGET_COUNT
+            or recent.baseline.observation_count != RECENT_AUDIT_TARGET_COUNT
+        ):
+            raise ValueError("recent stability phase identity is inconsistent")
+        for index, comparison in enumerate(self.comparisons):
+            if (
+                comparison.cohort_index != index
+                or comparison.reference_diagnostic != reference.diagnostics[index]
+                or comparison.recent_diagnostic != recent.diagnostics[index]
+            ):
+                raise ValueError("recent stability comparisons must preserve canonical order")
+        return self
+
+    @classmethod
+    def from_result(
+        cls, result: HistoricalPrefixRecentStabilityAuditResult
+    ) -> HistoricalPrefixRecentStabilityAuditResponse:
+        if result.family_size != 64:
+            raise ValueError("application recent stability family size is inconsistent")
+        return cls(
+            metadata=HistoricalPrefixSuccessSourceMetadataView.from_metadata(result.metadata),
+            strategy=HistoricalPrefixSuccessStrategyIdentityView.from_identity(result.strategy),
+            criterion=HistoricalPrefixSuccessCriterionView.from_identity(result.criterion),
+            prefix_count=result.prefix_count,
+            split=HistoricalPrefixRecentStabilityAuditSplitView.from_split(result.split),
+            audit_status=result.audit_status,
+            family_size=64,
+            reference=(
+                HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(
+                    result.reference
+                )
+                if result.reference is not None
+                else None
+            ),
+            recent=(
+                HistoricalPrefixStrategyFeatureCohortDiagnosticsResponse.from_result(result.recent)
+                if result.recent is not None
+                else None
+            ),
+            comparisons=tuple(
+                HistoricalPrefixRecentStabilityAuditCohortComparisonView.from_comparison(
+                    comparison
+                )
+                for comparison in result.comparisons
+            ),
+        )
+
+
 class HistoricalPrefixCrossImportMetadataView(BaseModel):
     model_config = _FROZEN_RESPONSE
 
@@ -1771,6 +2089,50 @@ def create_historical_prefix_success_windows_router(
         except Exception:
             return _unavailable_error()
         return HistoricalPrefixCrossImportConcordanceResponse.from_result(result)
+
+    @router.get(
+        (
+            "/historical-prefix-success-windows/strategies/"
+            "{strategy_id}/{strategy_version}/{replicate}/feature-cohorts/"
+            "recent-50-stability-audit"
+        ),
+        response_model=HistoricalPrefixRecentStabilityAuditResponse,
+        responses=error_responses,
+        operation_id="getHistoricalPrefixStrategyFeatureCohortRecent50StabilityAudit",
+    )
+    def get_historical_prefix_strategy_feature_cohort_recent_50_stability_audit(
+        request: Request,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        replicate: Replicate,
+        import_identity_sha256: ImportIdentitySha256,
+        prefix_count: HistoricalPrefixSuccessPrefixCount,
+        criterion: HistoricalPrefixSuccessCriterion,
+    ) -> HistoricalPrefixRecentStabilityAuditResponse | JSONResponse:
+        unexpected = sorted(
+            set(request.query_params.keys())
+            - {"import_identity_sha256", "prefix_count", "criterion"}
+        )
+        if unexpected:
+            return _invalid_matrix_query_error(unexpected)
+        if evaluator is None:
+            return _not_configured_error()
+        try:
+            result = evaluator.get_feature_cohort_recent_50_stability_audit(
+                import_identity_sha256=import_identity_sha256,
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                replicate=replicate,
+                prefix_count=int(prefix_count),
+                criterion=criterion,
+            )
+        except HistoricalPrefixSuccessImportNotFoundError:
+            return _import_not_found_error()
+        except HistoricalPrefixSuccessStrategyNotFoundError:
+            return _strategy_not_found_error()
+        except Exception:
+            return _unavailable_error()
+        return HistoricalPrefixRecentStabilityAuditResponse.from_result(result)
 
     @router.get(
         (

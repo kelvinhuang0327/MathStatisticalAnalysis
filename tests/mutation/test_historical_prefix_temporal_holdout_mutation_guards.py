@@ -19,7 +19,7 @@ def test_guard_prior_only_assignment_sequence_is_built_once_and_reused() -> None
         "def _feature_cohorts_from_assignments(", 1
     )[0]
     holdout = source.split("def _temporal_holdout(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _recent_50_stability_audit(", 1
     )[0]
 
     assert "prior_observations=observations[:index]" in assignment
@@ -35,7 +35,7 @@ def test_guard_prior_only_assignment_sequence_is_built_once_and_reused() -> None
 def test_guard_fixed_split_cannot_shift_shorten_overlap_or_fallback() -> None:
     source = USE_CASE.read_text(encoding="utf-8")
     holdout = source.split("def _temporal_holdout(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _recent_50_stability_audit(", 1
     )[0]
     models = MODELS.read_text(encoding="utf-8")
 
@@ -74,7 +74,7 @@ def test_guard_not_ready_never_runs_partial_inference() -> None:
 def test_guard_two_separate_64_families_and_all_canonical_comparisons() -> None:
     source = USE_CASE.read_text(encoding="utf-8")
     holdout = source.split("def _temporal_holdout(", 1)[1].split(
-        "def _matrix_cell(", 1
+        "def _recent_50_stability_audit(", 1
     )[0]
 
     assert holdout.count("_feature_cohort_diagnostics(") == 2

@@ -21,8 +21,10 @@ import {
   makeRun,
   makeRunPage,
   makeNotReadyTemporalHoldout,
+  makeNotReadyRecent50StabilityAudit,
   makeNotReadyCrossImportConcordance,
   makeTemporalHoldout,
+  makeRecent50StabilityAudit,
   makeWindowPage,
   makeZeroObservationFeatureCohortDiagnostics,
   makeZeroObservationFeatureCohorts,
@@ -43,6 +45,9 @@ function successfulFetch(input: RequestInfo | URL): Promise<Response> {
   }
   if (url.includes('/feature-cohorts/temporal-holdout')) {
     return Promise.resolve(apiResponse(makeTemporalHoldout()))
+  }
+  if (url.includes('/feature-cohorts/recent-50-stability-audit')) {
+    return Promise.resolve(apiResponse(makeRecent50StabilityAudit()))
   }
   if (url.includes('/feature-cohorts/diagnostics')) {
     return Promise.resolve(apiResponse(makeFeatureCohortDiagnostics()))
@@ -97,6 +102,11 @@ async function evaluateFeatureCohortDiagnostics(
 
 async function evaluateTemporalHoldout(wrapper: VueWrapper): Promise<void> {
   await wrapper.get('button.temporal-holdout-action').trigger('click')
+  await flushPromises()
+}
+
+async function evaluateRecent50StabilityAudit(wrapper: VueWrapper): Promise<void> {
+  await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
   await flushPromises()
 }
 
@@ -1100,6 +1110,202 @@ describe('HistoricalSuccessWindowsPage', () => {
     fetchMock.mockReset()
     fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
     await wrapper.get('button.temporal-holdout-action').trigger('click')
+    const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    wrapper.unmount()
+    expect(unmountSignal.aborted).toBe(true)
+  })
+
+  it('never requests the recent-50 audit before its separate explicit action', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    await compareMatrices(wrapper)
+    await evaluateFeatureCohorts(wrapper)
+    await evaluateFeatureCohortDiagnostics(wrapper)
+    await evaluateTemporalHoldout(wrapper)
+
+    expect(
+      fetchMock.mock.calls.some((call) =>
+        String(call[0]).includes('/feature-cohorts/recent-50-stability-audit'),
+      ),
+    ).toBe(false)
+
+    await evaluateRecent50StabilityAudit(wrapper)
+
+    const calls = fetchMock.mock.calls.filter((call) =>
+      String(call[0]).includes('/feature-cohorts/recent-50-stability-audit'),
+    )
+    expect(calls).toHaveLength(1)
+    const url = new URL(String(calls[0]![0]), 'http://localhost')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      import_identity_sha256: IMPORT_SHA,
+      prefix_count: '1',
+      criterion: 'M3_PLUS',
+    })
+    wrapper.unmount()
+  })
+
+  it('issues exactly N recent-50 requests in selection order and renders 64 canonical rows', async () => {
+    const first = makeResult()
+    const second = makeZeroObservationResult()
+    const forResult = (result: ReturnType<typeof makeResult>) => {
+      const audit = makeRecent50StabilityAudit()
+      audit.strategy = result.strategy
+      audit.reference!.strategy = result.strategy
+      audit.recent!.strategy = result.strategy
+      return audit
+    }
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/historical-results/runs')) {
+        return Promise.resolve(apiResponse(makeRunPage()))
+      }
+      if (url.includes('/feature-cohorts/recent-50-stability-audit')) {
+        return Promise.resolve(
+          apiResponse(url.includes('zero-observation') ? forResult(second) : forResult(first)),
+        )
+      }
+      return Promise.resolve(apiResponse(makeWindowPage({ items: [first, second] })))
+    })
+    const wrapper = mount(HistoricalSuccessWindowsPage)
+    await flushPromises()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 1)
+    await selectMatrix(wrapper, 0)
+    fetchMock.mockClear()
+
+    await evaluateRecent50StabilityAudit(wrapper)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain(
+      '/zero-observation/v2/2/feature-cohorts/recent-50-stability-audit?',
+    )
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain(
+      '/alias%20strategy%2Fone/v1%20beta/1/feature-cohorts/recent-50-stability-audit?',
+    )
+    const cards = wrapper.findAll('.recent-50-stability-audit-result-card')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]!.findAll('.recent-50-stability-audit-comparison')).toHaveLength(64)
+    expect(cards[1]!.findAll('.recent-50-stability-audit-comparison')).toHaveLength(64)
+    expect(cards[1]!.text()).toContain(
+      'FIXED_CONFIRMATION_FIRST_250_REFERENCE_LAST_50_RECENT',
+    )
+    expect(cards[1]!.text()).toContain('Reference')
+    expect(cards[1]!.text()).toContain('Recent')
+    expect(cards[1]!.text()).toContain('250')
+    expect(cards[1]!.text()).toContain('50')
+    expect(wrapper.get('.recent-50-descriptive-notice').text()).toContain(
+      'Descriptive only',
+    )
+    expect(
+      wrapper.get('.recent-50-stability-audit-panel').text(),
+    ).not.toMatch(
+      /\bveto\b|\bpass\b|\bfail\b|degraded|promoted|rejected|significant|winner|score|rank|prediction/i,
+    )
+    wrapper.unmount()
+  })
+
+  it('renders not-ready and partial recent-50 outcomes without fabricating rows', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper, 0)
+    await selectMatrix(wrapper, 1)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation((input) =>
+      String(input).includes('zero-observation')
+        ? Promise.resolve(
+            apiResponse(
+              {
+                error_code: 'HISTORICAL_PREFIX_SUCCESS_STRATEGY_NOT_FOUND',
+                message: '/secret/path',
+              },
+              404,
+            ),
+          )
+        : Promise.resolve(apiResponse(makeNotReadyRecent50StabilityAudit())),
+    )
+
+    await evaluateRecent50StabilityAudit(wrapper)
+
+    expect(wrapper.text()).toContain('Some recent-50 audit requests are unavailable')
+    expect(wrapper.text()).toContain('NOT_READY_INSUFFICIENT_HISTORY')
+    expect(wrapper.findAll('.recent-50-stability-audit-comparison')).toHaveLength(0)
+    expect(wrapper.text()).not.toContain('/secret/path')
+
+    fetchMock.mockReset()
+    fetchMock.mockResolvedValue(apiResponse(makeRecent50StabilityAudit()))
+    await wrapper.get('button.recent-50-stability-audit-retry').trigger('click')
+    await flushPromises()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    wrapper.unmount()
+  })
+
+  it('aborts stale recent-50 requests on reevaluation, other research, controls, run change, and unmount', async () => {
+    const wrapper = await mountWithRuns()
+    await selectRun(wrapper)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    const older = deferred<Response>()
+    const newer = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(older.promise).mockReturnValueOnce(newer.promise)
+
+    await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
+    const oldSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
+    expect(oldSignal.aborted).toBe(true)
+    newer.resolve(apiResponse(makeRecent50StabilityAudit()))
+    await flushPromises()
+    older.resolve(
+      apiResponse(
+        makeRecent50StabilityAudit({
+          strategy: {
+            ...makeRecent50StabilityAudit().strategy,
+            strategy_id: 'stale',
+          },
+        }),
+      ),
+    )
+    await flushPromises()
+    expect(wrapper.findAll('.recent-50-stability-audit-result-card')).toHaveLength(1)
+    expect(wrapper.text()).not.toContain('stale')
+
+    const otherResearchPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(otherResearchPending.promise)
+    await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
+    const otherResearchSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('button.temporal-holdout-action').trigger('click')
+    expect(otherResearchSignal.aborted).toBe(true)
+
+    const controlPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(controlPending.promise)
+    await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
+    const controlSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="prefix-count"]').setValue('2')
+    expect(controlSignal.aborted).toBe(true)
+
+    await wrapper.get('select[name="prefix-count"]').setValue('1')
+    const runPending = deferred<Response>()
+    fetchMock.mockReset()
+    fetchMock.mockReturnValueOnce(runPending.promise)
+    await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
+    const runSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
+    await wrapper.get('select[name="historical-run"]').setValue('')
+    expect(runSignal.aborted).toBe(true)
+
+    fetchMock.mockImplementation(successfulFetch)
+    await wrapper.get('select[name="historical-run"]').setValue(IMPORT_SHA)
+    await analyze(wrapper)
+    await selectMatrix(wrapper)
+    fetchMock.mockReset()
+    fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
+    await wrapper.get('button.recent-50-stability-audit-action').trigger('click')
     const unmountSignal = fetchMock.mock.calls[0]?.[1]?.signal as AbortSignal
     wrapper.unmount()
     expect(unmountSignal.aborted).toBe(true)

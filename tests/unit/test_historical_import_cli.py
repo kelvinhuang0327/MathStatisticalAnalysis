@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from click import unstyle
 from tests.fixtures.historical.builder import build_small_envelope, envelope_bytes
 from typer.testing import CliRunner
 
@@ -66,14 +67,15 @@ def _fixed_commit(*, idempotent: bool = False) -> HistoricalImportCommitResult:
 
 def test_command_is_registered_with_both_required_options() -> None:
     root_help = runner.invoke(app, ["--help"])
-    command_help = runner.invoke(app, ["import-historical-results", "--help"])
+    command_help = runner.invoke(app, ["import-historical-results", "--help"], color=True)
+    command_help_text = unstyle(command_help.stdout)
 
     assert root_help.exit_code == 0
     assert "import-historical-results" in root_help.stdout
     assert command_help.exit_code == 0
-    assert "--input" in command_help.stdout
-    assert "--database" in command_help.stdout
-    assert "required" in command_help.stdout.lower()
+    assert "--input" in command_help_text
+    assert "--database" in command_help_text
+    assert "required" in command_help_text.lower()
 
 
 @pytest.mark.parametrize(

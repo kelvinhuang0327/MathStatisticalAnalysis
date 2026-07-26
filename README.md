@@ -83,6 +83,31 @@ LOTTOLAB_HISTORICAL_RESULTS_DB=/absolute/owner-only/historical-results.db \
   LONG / PRIMARY_EVIDENCE / 750、MEDIUM / STABILITY_CONFIRMATION / 300、SHORT / DEGRADATION_VETO / 50；
   alias、replicate 與 zero-observation identity 都保留。
 
+## Historical Results 明確匯入
+
+本機 operator 可將一個已符合 LottoLab `HistoricalResultImportV1` target envelope 的 JSON 檔案，
+明確匯入指定的 Historical Results SQLite DB：
+
+```bash
+uv run --no-sync lottolab import-historical-results \
+  --input /absolute/operator-owned/historical-result-import.json \
+  --database /absolute/operator-owned/historical-results.db
+```
+
+- `--input` 與 `--database` 都是必填；database 必須是絕對路徑，且兩者都沒有環境變數、
+  default/latest/fallback 或目錄掃描行為。
+- input 必須是 worktree 外的既有 regular file，不能是 symlink 或 `LotteryNew` path；CLI 只接受
+  已有 target envelope，不轉換 legacy DB row、legacy JSON 或 research artifact。
+- CLI 會在建立 SQLite repository 前完成既有
+  `verify_and_normalize_historical_import` 驗證，再將完整 normalized import 原樣交給既有
+  `ImportHistoricalResults` 與 `SQLiteHistoricalResultRepository`。
+- closed validation/commit outcome 以 compact、sorted-key JSON 寫到 stdout；caller/input/runtime error
+  以 sanitized 訊息寫到 stderr。成功為 exit 0，validation、persistence 或 caller error 為 exit 1，
+  缺少 required option 則沿用 Typer 的 usage error。
+- 重複匯入相同 import identity 會回傳既有 completed run，並以
+  `"is_idempotent_replay":true` 明確標示；此命令不建立 scheduler、自動 ingestion、production
+  deployment 或 legacy conversion。
+
 ## 本機 Draw Data（P600D R1B）
 
 前端以 hash navigation 提供 `Strategy Overview`、`Historical Success Windows`、`Data Center`、

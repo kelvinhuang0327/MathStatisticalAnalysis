@@ -373,9 +373,14 @@ def test_input_and_execute_surfaces_expose_no_forbidden_fields() -> None:
     assert execute_params == {"request"}
 
 
-# --- 16. production catalog remains exactly the existing three IDs ---------
+# --- 16. production catalog retains exact ONLINE IDs in append order -------
 
 
-def test_production_catalog_still_has_exactly_three_executable_strategies() -> None:
+def test_production_catalog_has_exact_online_strategies_in_append_order() -> None:
     online = production_catalog().list(lifecycle_status=LifecycleStatus.ONLINE)
-    assert len(online) == 3
+    assert [descriptor.strategy_id for descriptor in online] == [
+        "biglotto_social_wisdom_anti_popularity",
+        "biglotto_zone_split_3bet_bet1",
+        "biglotto_deviation_2bet",
+        "biglotto_p0_2bet_bet1",
+    ]

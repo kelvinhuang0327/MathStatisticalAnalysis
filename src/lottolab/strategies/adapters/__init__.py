@@ -12,6 +12,7 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.biglotto_selected import (
     BigLottoDeviation2BetAdapter,
     BigLottoP02BetBet1Adapter,
+    BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
 )
@@ -21,6 +22,7 @@ __all__ = [
     "BetAdapterError",
     "BigLottoDeviation2BetAdapter",
     "BigLottoP02BetBet1Adapter",
+    "BigLottoP02BetBet2Adapter",
     "BigLottoSocialWisdomAntiPopularityAdapter",
     "BigLottoZoneSplit3BetBet1Adapter",
     "CausalDrawRow",

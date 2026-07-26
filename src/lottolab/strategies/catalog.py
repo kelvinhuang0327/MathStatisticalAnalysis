@@ -131,6 +131,26 @@ _PRODUCTION_DESCRIPTORS = (
             "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET1_ADAPTER_MIGRATION_R1",
         ),
     ),
+    StrategyDescriptor(
+        strategy_id="biglotto_p0_2bet_bet2",
+        strategy_name="大樂透 P0 2注（Cold Bet 2）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet2Adapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:44a9067b73cc38fcd517673f5187e98080997aef",
+            "legacy_source:tools/quick_predict.py",
+            "legacy_source:recovered_strategies/biglotto/historical_adapters.py",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET2_ADAPTER_MIGRATION_R1",
+        ),
+    ),
 )
 
 

@@ -25,6 +25,7 @@ from lottolab.strategies import adapters as public_adapters
 from lottolab.strategies.adapters import (
     BetAdapter,
     BigLottoDeviation2BetAdapter,
+    BigLottoP02BetBet1Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     CausalDrawRow,
@@ -34,9 +35,11 @@ from lottolab.strategies.adapters import (
 )
 from lottolab.strategies.adapters.biglotto_selected import (
     _HISTORICAL_BLEND,
+    _P0_ECHO_BOOST,
     _UNPOPULAR_BLEND,
     _deviation_complement_2bet,
     _historical_frequency,
+    _p0_hot_echo_bet1,
     _social_wisdom_prediction,
     _unpopular_scores,
     _zone_seed_digest,
@@ -188,6 +191,7 @@ class _UnsortedOutputAdapter(BetAdapter):
 
 
 ADAPTER_CLASSES = (
+    BigLottoP02BetBet1Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
 )
@@ -198,6 +202,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BetAdapter",
         "BetAdapterError",
         "BigLottoDeviation2BetAdapter",
+        "BigLottoP02BetBet1Adapter",
         "BigLottoSocialWisdomAntiPopularityAdapter",
         "BigLottoZoneSplit3BetBet1Adapter",
         "CausalDrawRow",
@@ -669,6 +674,7 @@ def test_subprocess_repeatability_across_python_hash_seeds() -> None:
 import json
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters import (
+    BigLottoP02BetBet1Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     CausalDrawRow,
@@ -676,6 +682,7 @@ from lottolab.strategies.adapters import (
 zone = (CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),)
 social = tuple(CausalDrawRow(str(i), str(i), (32, 33, 34, 35, 41, 49)) for i in range(50))
 result = {
+    "p0": BigLottoP02BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "zone": BigLottoZoneSplit3BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "social": BigLottoSocialWisdomAntiPopularityAdapter().get_one_bet(
         social, LotteryType.BIG_LOTTO
@@ -697,6 +704,7 @@ print(json.dumps(result, sort_keys=True))
         outputs.append(completed.stdout)
     assert outputs[0] == outputs[1]
     assert json.loads(outputs[0]) == {
+        "p0": [[7, 8, 9, 10, 11, 12], None],
         "social": [[32, 33, 34, 35, 41, 49], None],
         "zone": [[4, 6, 11, 14, 15, 18], None],
     }
@@ -717,6 +725,9 @@ def test_adapter_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoZoneSplit3BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((4, 6, 11, 14, 15, 18), None)
+    assert BigLottoP02BetBet1Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((7, 8, 9, 10, 11, 12), None)
 
 
 # ─── biglotto_deviation_2bet (P603A) ──────────────────────────────────────────
@@ -983,3 +994,93 @@ def test_deviation_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoDeviation2BetAdapter().get_one_bet(
         history, LotteryType.BIG_LOTTO
     ) == (DEVIATION_INSIDE_WINDOW_NUMBERS, None)
+
+
+# ─── biglotto_p0_2bet_bet1 ───────────────────────────────────────────────────
+#
+# Pinned donor authority:
+# 44a9067b73cc38fcd517673f5187e98080997aef:tools/quick_predict.py
+# ::biglotto_p0_2bet and the matching no-DB recovered adapter blob. Only the
+# donor's first Hot+Echo ticket is exposed; bet two remains intentionally absent.
+
+
+def _p0_history(extras: list[int]) -> tuple[CausalDrawRow, ...]:
+    return tuple(
+        CausalDrawRow(
+            draw=f"p0-{index}",
+            date=f"p0-{index}",
+            numbers=(1, 2, 3, 4, 5, extra),
+        )
+        for index, extra in enumerate(extras)
+    )
+
+
+P0_ECHO_HISTORY = _p0_history([7] * 7 + [8] * 9 + list(range(9, 41)) + [7, 41])
+P0_THRESHOLD_EQUALITY_HISTORY = _p0_history(
+    [7] * 7 + [8] * 6 + list(range(9, 43)) + [43, 44]
+)
+P0_FALLBACK_HISTORY = (_row(numbers=(1, 2, 3, 4, 5, 6)),)
+
+
+def test_p0_frozen_donor_lag2_echo_golden_and_exact_weight() -> None:
+    assert len(P0_ECHO_HISTORY) == 50
+    assert P0_ECHO_HISTORY[-2].numbers == (1, 2, 3, 4, 5, 7)
+    assert _P0_ECHO_BOOST == 1.5
+    assert _p0_hot_echo_bet1(P0_ECHO_HISTORY, echo_boost=0.0) == (1, 2, 3, 4, 5, 8)
+    assert _p0_hot_echo_bet1(P0_ECHO_HISTORY) == (1, 2, 3, 4, 5, 7)
+    assert BigLottoP02BetBet1Adapter().get_one_bet(
+        P0_ECHO_HISTORY, LotteryType.BIG_LOTTO
+    ) == ((1, 2, 3, 4, 5, 7), None)
+
+
+def test_p0_strict_hot_threshold_excludes_exact_positive_one() -> None:
+    """With 49 rows, expected frequency is exactly 6.
+
+    Number 7 occurs seven times and therefore has score exactly +1. Strict
+    ``score > 1`` excludes it, so neutral number 8 wins the last fallback
+    slot. A ``>=`` mutant would return number 7 instead.
+    """
+
+    assert len(P0_THRESHOLD_EQUALITY_HISTORY) == 49
+    assert _p0_hot_echo_bet1(P0_THRESHOLD_EQUALITY_HISTORY) == (1, 2, 3, 4, 5, 8)
+
+
+def test_p0_deterministic_tie_and_fallback_order_golden() -> None:
+    assert _p0_hot_echo_bet1(P0_FALLBACK_HISTORY) == (7, 8, 9, 10, 11, 12)
+
+
+def test_p0_uses_exactly_the_latest_50_calculation_rows() -> None:
+    oldest = _row("outside", "outside", (8, 42, 43, 44, 45, 46))
+    history_51 = (oldest, *P0_ECHO_HISTORY)
+
+    assert _p0_hot_echo_bet1(history_51) == (1, 2, 3, 4, 5, 7)
+    assert _p0_hot_echo_bet1(history_51, window=51) == (1, 2, 3, 4, 5, 8)
+    assert BigLottoP02BetBet1Adapter().get_one_bet(
+        history_51, LotteryType.BIG_LOTTO
+    ) == ((1, 2, 3, 4, 5, 7), None)
+
+
+def test_p0_validates_whole_history_before_calculation_window() -> None:
+    malformed_oldest = cast(CausalDrawRow, {"outside": "calculation-window"})
+    with pytest.raises(InvalidOutput):
+        BigLottoP02BetBet1Adapter().get_one_bet(
+            (malformed_oldest, *P0_ECHO_HISTORY),
+            LotteryType.BIG_LOTTO,
+        )
+
+
+def test_p0_returns_one_sorted_legal_six_number_bet_without_special_number() -> None:
+    numbers, special = BigLottoP02BetBet1Adapter().get_one_bet(
+        P0_ECHO_HISTORY,
+        LotteryType.BIG_LOTTO,
+    )
+    assert numbers == tuple(sorted(numbers))
+    assert len(numbers) == len(set(numbers)) == 6
+    assert all(1 <= number <= 49 for number in numbers)
+    assert special is None
+
+
+def test_p0_preserves_global_random_state() -> None:
+    before = random.getstate()
+    _p0_hot_echo_bet1(P0_ECHO_HISTORY)
+    assert random.getstate() == before

@@ -17,6 +17,7 @@ from lottolab.application.use_cases.generate_bet import (
 from lottolab.interfaces.api.app import create_app
 from lottolab.strategies.adapters import (
     BigLottoDeviation2BetAdapter,
+    BigLottoP02BetBet1Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
 )
@@ -30,6 +31,18 @@ def _rows(count: int) -> list[dict[str, object]]:
     return [
         {"draw": str(index), "date": str(index), "numbers": [1, 2, 3, 4, 5, 6]}
         for index in range(count)
+    ]
+
+
+def _p0_echo_rows() -> list[dict[str, object]]:
+    extras = [7, 41] + [7] * 5 + [8] * 9 + list(range(9, 41)) + [7, 7]
+    return [
+        {
+            "draw": str(index),
+            "date": str(index),
+            "numbers": [1, 2, 3, 4, 5, extra],
+        }
+        for index, extra in enumerate(extras)
     ]
 
 
@@ -55,6 +68,7 @@ def test_happy_path_for_each_online_strategy() -> None:
         BigLottoSocialWisdomAntiPopularityAdapter.strategy_id,
         BigLottoZoneSplit3BetBet1Adapter.strategy_id,
         BigLottoDeviation2BetAdapter.strategy_id,
+        BigLottoP02BetBet1Adapter.strategy_id,
     ):
         response = client.post(PATH, json=_request(strategy_id=strategy_id))
         assert response.status_code == 200
@@ -99,6 +113,63 @@ def test_short_history_for_deviation_strategy_is_insufficient_history() -> None:
     assert payload["status"] == "INSUFFICIENT_HISTORY"
     assert payload["reason_code"] == "INSUFFICIENT_HISTORY"
     assert payload["numbers"] is None
+
+
+def test_p0_bet1_preserves_old_to_new_history_order_through_existing_post() -> None:
+    client = TestClient(create_app())
+    history = _p0_echo_rows()
+
+    response = client.post(
+        PATH,
+        json=_request(
+            strategy_id=BigLottoP02BetBet1Adapter.strategy_id,
+            history=history,
+        ),
+    )
+    reversed_response = client.post(
+        PATH,
+        json=_request(
+            strategy_id=BigLottoP02BetBet1Adapter.strategy_id,
+            history=list(reversed(history)),
+        ),
+    )
+
+    assert response.status_code == reversed_response.status_code == 200
+    payload = cast(dict[str, object], response.json())
+    reversed_payload = cast(dict[str, object], reversed_response.json())
+    assert set(payload) == APPROVED_FIELDS
+    assert payload["lottery_type"] == "BIG_LOTTO"
+    assert payload["status"] == "OK"
+    assert payload["numbers"] == [1, 2, 3, 4, 5, 7]
+    assert reversed_payload["numbers"] == [1, 2, 3, 4, 5, 8]
+
+
+def test_p0_bet1_malformed_and_insufficient_history_fail_closed() -> None:
+    client = TestClient(create_app())
+    malformed = client.post(
+        PATH,
+        json=_request(
+            strategy_id=BigLottoP02BetBet1Adapter.strategy_id,
+            history=[{"draw": "1", "date": "1", "numbers": [1, 2, 3]}],
+        ),
+    )
+    insufficient = client.post(
+        PATH,
+        json=_request(
+            strategy_id=BigLottoP02BetBet1Adapter.strategy_id,
+            history=[],
+        ),
+    )
+
+    assert malformed.status_code == insufficient.status_code == 200
+    malformed_payload = cast(dict[str, object], malformed.json())
+    insufficient_payload = cast(dict[str, object], insufficient.json())
+    assert malformed_payload["status"] == "INVALID_OUTPUT"
+    assert malformed_payload["reason_code"] == "INVALID_OUTPUT"
+    assert malformed_payload["numbers"] is None
+    assert insufficient_payload["status"] == "INSUFFICIENT_HISTORY"
+    assert insufficient_payload["reason_code"] == "INSUFFICIENT_HISTORY"
+    assert insufficient_payload["numbers"] is None
 
 
 def test_structurally_valid_rule_invalid_history_is_a_closed_invalid_output() -> None:

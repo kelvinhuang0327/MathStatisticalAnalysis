@@ -10,6 +10,7 @@ from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
 from lottolab.strategies.adapters import (
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
+    BigLottoZoneSplit3BetBet2Adapter,
 )
 from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
@@ -154,12 +155,13 @@ def test_production_catalog_invariants() -> None:
             assert descriptor.adapter_path is None
 
 
-def test_catalog_appends_p0_bet2_after_bet1_without_reordering_existing_strategies() -> None:
+def test_catalog_preserves_approved_strategy_append_order() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
+        "biglotto_zone_split_3bet_bet2",
         "biglotto_deviation_2bet",
         "biglotto_p0_2bet_bet1",
         "biglotto_p0_2bet_bet2",
@@ -171,6 +173,35 @@ def test_catalog_appends_p0_bet2_after_bet1_without_reordering_existing_strategi
     }
     assert online_ids == set(ids)
     assert ExecutableRegistry(catalog).executable_ids() == frozenset(ids)
+
+
+def test_zone_split_bet2_descriptor_and_adapter_identity_match_exactly() -> None:
+    descriptor = production_catalog().get(BigLottoZoneSplit3BetBet2Adapter.strategy_id)
+    assert (
+        descriptor.strategy_id,
+        descriptor.strategy_name,
+        descriptor.version,
+        descriptor.lottery_types,
+        descriptor.min_history,
+        descriptor.lifecycle_status,
+        descriptor.executable,
+        descriptor.adapter_path,
+    ) == (
+        BigLottoZoneSplit3BetBet2Adapter.strategy_id,
+        BigLottoZoneSplit3BetBet2Adapter.strategy_name,
+        BigLottoZoneSplit3BetBet2Adapter.strategy_version,
+        (LotteryType.BIG_LOTTO,),
+        BigLottoZoneSplit3BetBet2Adapter.min_history,
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_selected:BigLottoZoneSplit3BetBet2Adapter",
+    )
+    assert descriptor.provenance == (
+        "legacy_commit:24617fe3bb7ec087acf121f302bffd638ccfa179",
+        "legacy_source:lottery_api/models/p541d_r2_biglotto_selected_adapters.py",
+        "legacy_test:tests/test_p541d_r2_biglotto_selected_adapters.py",
+        "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_ZONE_SPLIT_3BET_BET2_LOCAL_IMPLEMENTATION_R1",
+    )
 
 
 def test_p0_bet1_descriptor_and_adapter_identity_match_exactly() -> None:

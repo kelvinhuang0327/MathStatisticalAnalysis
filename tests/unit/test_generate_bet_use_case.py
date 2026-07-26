@@ -33,6 +33,7 @@ from lottolab.strategies.adapters import (
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
+    BigLottoZoneSplit3BetBet2Adapter,
     CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
@@ -290,6 +291,7 @@ def test_production_descriptors_are_promoted_online_and_executable() -> None:
             BigLottoSocialWisdomAntiPopularityAdapter()
         ),
         BigLottoZoneSplit3BetBet1Adapter.strategy_id: BigLottoZoneSplit3BetBet1Adapter(),
+        BigLottoZoneSplit3BetBet2Adapter.strategy_id: BigLottoZoneSplit3BetBet2Adapter(),
         BigLottoDeviation2BetAdapter.strategy_id: BigLottoDeviation2BetAdapter(),
         BigLottoP02BetBet1Adapter.strategy_id: BigLottoP02BetBet1Adapter(),
         BigLottoP02BetBet2Adapter.strategy_id: BigLottoP02BetBet2Adapter(),
@@ -310,6 +312,16 @@ def test_production_descriptors_are_promoted_online_and_executable() -> None:
     )
     assert result.status is GenerateOneBetStatus.OK
     assert result.numbers == (4, 6, 11, 14, 15, 18)
+
+    bet2_result = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet2Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+        )
+    )
+    assert bet2_result.status is GenerateOneBetStatus.OK
+    assert bet2_result.numbers == (15, 16, 17, 21, 26, 31)
 
 
 def test_status_enum_is_closed_to_authorized_outcomes() -> None:
@@ -477,11 +489,12 @@ def test_render_result_json_is_canonical_and_sorted() -> None:
     assert failure_payload["reason_code"] == "REJECTED_BY_STRATEGY"
 
 
-def test_build_production_generate_one_bet_registers_exactly_the_five_approved_adapters() -> None:
+def test_build_production_generate_one_bet_registers_exactly_the_six_approved_adapters() -> None:
     use_case = build_production_generate_one_bet()
     for strategy_id, expected_numbers_len, history in (
         (BigLottoSocialWisdomAntiPopularityAdapter.strategy_id, 6, _history()),
         (BigLottoZoneSplit3BetBet1Adapter.strategy_id, 6, _history()),
+        (BigLottoZoneSplit3BetBet2Adapter.strategy_id, 6, _history()),
         (BigLottoDeviation2BetAdapter.strategy_id, 6, _long_history()),
         (BigLottoP02BetBet1Adapter.strategy_id, 6, _history()),
         (BigLottoP02BetBet2Adapter.strategy_id, 6, _history()),
@@ -506,6 +519,31 @@ def test_build_production_generate_one_bet_registers_exactly_the_five_approved_a
     )
     assert unregistered.status is GenerateOneBetStatus.STRATEGY_UNAVAILABLE
     assert unregistered.reason_code is GenerateOneBetReason.UNKNOWN_STRATEGY
+
+
+def test_production_use_case_executes_zone_bet2_and_closes_insufficient_history() -> None:
+    use_case = build_production_generate_one_bet()
+    result = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet2Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+        )
+    )
+    assert result.status is GenerateOneBetStatus.OK
+    assert result.numbers == (15, 16, 17, 21, 26, 31)
+    assert result.special_number is None
+
+    insufficient = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet2Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=(),
+        )
+    )
+    assert insufficient.status is GenerateOneBetStatus.INSUFFICIENT_HISTORY
+    assert insufficient.reason_code is GenerateOneBetReason.INSUFFICIENT_HISTORY
+    assert insufficient.numbers is None
 
 
 def test_production_use_case_executes_only_requested_p0_ticket_and_closes_outcomes() -> None:
@@ -605,6 +643,24 @@ def test_run_cli_generate_bet_returns_only_p0_bet2_through_existing_vertical() -
         "seed": 29,
         "status": "OK",
         "strategy_id": BigLottoP02BetBet2Adapter.strategy_id,
+    }
+
+
+def test_run_cli_generate_bet_returns_only_zone_split_bet2() -> None:
+    output, ok = run_cli_generate_bet(
+        strategy_id=BigLottoZoneSplit3BetBet2Adapter.strategy_id,
+        seed=31,
+        history_json=_history_json(),
+    )
+    assert ok is True
+    payload = json.loads(output)
+    assert payload == {
+        "lottery_type": "BIG_LOTTO",
+        "numbers": [15, 16, 17, 21, 26, 31],
+        "reason_code": None,
+        "seed": 31,
+        "status": "OK",
+        "strategy_id": BigLottoZoneSplit3BetBet2Adapter.strategy_id,
     }
 
 

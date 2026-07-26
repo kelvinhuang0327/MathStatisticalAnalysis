@@ -381,6 +381,7 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
     assert [descriptor.strategy_id for descriptor in online] == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
+        "biglotto_zone_split_3bet_bet2",
         "biglotto_deviation_2bet",
         "biglotto_p0_2bet_bet1",
         "biglotto_p0_2bet_bet2",

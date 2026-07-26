@@ -7,7 +7,10 @@ import pytest
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
-from lottolab.strategies.adapters import BigLottoP02BetBet1Adapter
+from lottolab.strategies.adapters import (
+    BigLottoP02BetBet1Adapter,
+    BigLottoP02BetBet2Adapter,
+)
 from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
     StrategyCatalog,
@@ -151,7 +154,7 @@ def test_production_catalog_invariants() -> None:
             assert descriptor.adapter_path is None
 
 
-def test_catalog_appends_p0_bet1_without_reordering_existing_strategies() -> None:
+def test_catalog_appends_p0_bet2_after_bet1_without_reordering_existing_strategies() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
     assert ids == [
@@ -159,6 +162,7 @@ def test_catalog_appends_p0_bet1_without_reordering_existing_strategies() -> Non
         "biglotto_zone_split_3bet_bet1",
         "biglotto_deviation_2bet",
         "biglotto_p0_2bet_bet1",
+        "biglotto_p0_2bet_bet2",
     ]
     online_ids = {
         descriptor.strategy_id
@@ -192,3 +196,34 @@ def test_p0_bet1_descriptor_and_adapter_identity_match_exactly() -> None:
     )
     assert "evidence_status:HISTORICAL_RESEARCH_ONLY" in descriptor.provenance
     assert "current_significance:NOT_ESTABLISHED" in descriptor.provenance
+
+
+def test_p0_bet2_descriptor_and_adapter_identity_match_exactly() -> None:
+    descriptor = production_catalog().get(BigLottoP02BetBet2Adapter.strategy_id)
+    assert (
+        descriptor.strategy_id,
+        descriptor.strategy_name,
+        descriptor.version,
+        descriptor.lottery_types,
+        descriptor.min_history,
+        descriptor.lifecycle_status,
+        descriptor.executable,
+        descriptor.adapter_path,
+    ) == (
+        BigLottoP02BetBet2Adapter.strategy_id,
+        BigLottoP02BetBet2Adapter.strategy_name,
+        BigLottoP02BetBet2Adapter.strategy_version,
+        (LotteryType.BIG_LOTTO,),
+        BigLottoP02BetBet2Adapter.min_history,
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet2Adapter",
+    )
+    assert descriptor.provenance == (
+        "legacy_commit:44a9067b73cc38fcd517673f5187e98080997aef",
+        "legacy_source:tools/quick_predict.py",
+        "legacy_source:recovered_strategies/biglotto/historical_adapters.py",
+        "evidence_status:HISTORICAL_RESEARCH_ONLY",
+        "current_significance:NOT_ESTABLISHED",
+        "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET2_ADAPTER_MIGRATION_R1",
+    )

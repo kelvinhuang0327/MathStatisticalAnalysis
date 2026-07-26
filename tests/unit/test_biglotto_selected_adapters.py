@@ -26,6 +26,7 @@ from lottolab.strategies.adapters import (
     BetAdapter,
     BigLottoDeviation2BetAdapter,
     BigLottoP02BetBet1Adapter,
+    BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     CausalDrawRow,
@@ -39,7 +40,9 @@ from lottolab.strategies.adapters.biglotto_selected import (
     _UNPOPULAR_BLEND,
     _deviation_complement_2bet,
     _historical_frequency,
+    _p0_hot_echo_2bets,
     _p0_hot_echo_bet1,
+    _p0_hot_echo_bet2,
     _social_wisdom_prediction,
     _unpopular_scores,
     _zone_seed_digest,
@@ -192,6 +195,7 @@ class _UnsortedOutputAdapter(BetAdapter):
 
 ADAPTER_CLASSES = (
     BigLottoP02BetBet1Adapter,
+    BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
 )
@@ -203,6 +207,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BetAdapterError",
         "BigLottoDeviation2BetAdapter",
         "BigLottoP02BetBet1Adapter",
+        "BigLottoP02BetBet2Adapter",
         "BigLottoSocialWisdomAntiPopularityAdapter",
         "BigLottoZoneSplit3BetBet1Adapter",
         "CausalDrawRow",
@@ -675,6 +680,7 @@ import json
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters import (
     BigLottoP02BetBet1Adapter,
+    BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     CausalDrawRow,
@@ -682,7 +688,8 @@ from lottolab.strategies.adapters import (
 zone = (CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),)
 social = tuple(CausalDrawRow(str(i), str(i), (32, 33, 34, 35, 41, 49)) for i in range(50))
 result = {
-    "p0": BigLottoP02BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
+    "p0_bet1": BigLottoP02BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
+    "p0_bet2": BigLottoP02BetBet2Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "zone": BigLottoZoneSplit3BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "social": BigLottoSocialWisdomAntiPopularityAdapter().get_one_bet(
         social, LotteryType.BIG_LOTTO
@@ -704,7 +711,8 @@ print(json.dumps(result, sort_keys=True))
         outputs.append(completed.stdout)
     assert outputs[0] == outputs[1]
     assert json.loads(outputs[0]) == {
-        "p0": [[7, 8, 9, 10, 11, 12], None],
+        "p0_bet1": [[7, 8, 9, 10, 11, 12], None],
+        "p0_bet2": [[1, 2, 3, 4, 5, 6], None],
         "social": [[32, 33, 34, 35, 41, 49], None],
         "zone": [[4, 6, 11, 14, 15, 18], None],
     }
@@ -728,6 +736,9 @@ def test_adapter_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoP02BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((7, 8, 9, 10, 11, 12), None)
+    assert BigLottoP02BetBet2Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((1, 2, 3, 4, 5, 6), None)
 
 
 # ─── biglotto_deviation_2bet (P603A) ──────────────────────────────────────────
@@ -996,12 +1007,12 @@ def test_deviation_execution_needs_no_filesystem_clock_database_or_network(
     ) == (DEVIATION_INSIDE_WINDOW_NUMBERS, None)
 
 
-# ─── biglotto_p0_2bet_bet1 ───────────────────────────────────────────────────
+# ─── biglotto_p0_2bet_bet1 / biglotto_p0_2bet_bet2 ──────────────────────────
 #
 # Pinned donor authority:
 # 44a9067b73cc38fcd517673f5187e98080997aef:tools/quick_predict.py
-# ::biglotto_p0_2bet and the matching no-DB recovered adapter blob. Only the
-# donor's first Hot+Echo ticket is exposed; bet two remains intentionally absent.
+# ::biglotto_p0_2bet and the matching no-DB recovered adapter blob. Both target
+# adapters consume one shared producer and expose the donor's semantic indices.
 
 
 def _p0_history(extras: list[int]) -> tuple[CausalDrawRow, ...]:
@@ -1020,6 +1031,99 @@ P0_THRESHOLD_EQUALITY_HISTORY = _p0_history(
     [7] * 7 + [8] * 6 + list(range(9, 43)) + [43, 44]
 )
 P0_FALLBACK_HISTORY = (_row(numbers=(1, 2, 3, 4, 5, 6)),)
+
+
+def _p0_balanced_cold_boundary_history() -> tuple[CausalDrawRow, ...]:
+    rows = [
+        [((row_index * 6 + offset) % 49) + 1 for offset in range(6)]
+        for row_index in range(49)
+    ]
+
+    def replace_one(source: int) -> None:
+        for row in rows:
+            replacement = next(
+                (candidate for candidate in range(1, 7) if candidate not in row),
+                None,
+            )
+            if source in row and replacement is not None:
+                row[row.index(source)] = replacement
+                return
+        raise AssertionError(f"could not replace {source}")
+
+    replace_one(7)
+    for cold_number in range(8, 14):
+        replace_one(cold_number)
+        replace_one(cold_number)
+    return tuple(
+        CausalDrawRow(
+            draw=f"balanced-{index}",
+            date=f"balanced-{index}",
+            numbers=tuple(sorted(row)),
+        )
+        for index, row in enumerate(rows)
+    )
+
+
+def _with_second_newest_number(
+    history: tuple[CausalDrawRow, ...],
+    number: int,
+) -> tuple[CausalDrawRow, ...]:
+    rows = list(history)
+    selected_index = next(
+        index for index, row in enumerate(rows[:-1]) if number in row.numbers
+    )
+    selected = rows.pop(selected_index)
+    rows.insert(len(rows) - 1, selected)
+    return tuple(rows)
+
+
+@pytest.mark.parametrize(
+    ("history", "expected_bet2"),
+    [
+        (P0_ECHO_HISTORY, (6, 42, 43, 44, 45, 46)),
+        (P0_THRESHOLD_EQUALITY_HISTORY, (6, 45, 46, 47, 48, 49)),
+        (P0_FALLBACK_HISTORY, (1, 2, 3, 4, 5, 6)),
+    ],
+    ids=["echo", "strict-hot-threshold", "fallback"],
+)
+def test_p0_joint_producer_preserves_bet1_and_pins_donor_bet2_goldens(
+    history: tuple[CausalDrawRow, ...],
+    expected_bet2: tuple[int, ...],
+) -> None:
+    joint = _p0_hot_echo_2bets(history)
+    assert joint[0] == _p0_hot_echo_bet1(history)
+    assert joint[1] == _p0_hot_echo_bet2(history) == expected_bet2
+    assert BigLottoP02BetBet2Adapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (expected_bet2, None)
+
+
+def test_p0_joint_producer_returns_two_sorted_disjoint_six_number_tickets() -> None:
+    bet1, bet2 = _p0_hot_echo_2bets(P0_ECHO_HISTORY)
+    assert len(bet1) == len(set(bet1)) == 6
+    assert len(bet2) == len(set(bet2)) == 6
+    assert bet1 == tuple(sorted(bet1))
+    assert bet2 == tuple(sorted(bet2))
+    assert set(bet1).isdisjoint(bet2)
+
+
+def test_p0_cold_threshold_ties_and_bet1_finalization_are_pinned() -> None:
+    history = _p0_balanced_cold_boundary_history()
+    bet1, bet2 = _p0_hot_echo_2bets(history, echo_boost=0.0)
+
+    assert bet2 == (8, 9, 10, 11, 12, 13)
+    assert 7 not in bet2  # score == -1 is excluded
+    assert set(bet1).isdisjoint(bet2)
+
+
+def test_p0_second_newest_echo_changes_both_tickets_through_shared_scores() -> None:
+    history = _with_second_newest_number(_p0_balanced_cold_boundary_history(), 8)
+    without_echo = _p0_hot_echo_2bets(history, echo_boost=0.0)
+    with_echo = _p0_hot_echo_2bets(history)
+
+    assert without_echo[0] != with_echo[0]
+    assert without_echo[1] == (8, 9, 10, 11, 12, 13)
+    assert with_echo[1] == (7, 8, 9, 11, 12, 13)
 
 
 def test_p0_frozen_donor_lag2_echo_golden_and_exact_weight() -> None:
@@ -1047,12 +1151,15 @@ def test_p0_strict_hot_threshold_excludes_exact_positive_one() -> None:
 
 def test_p0_deterministic_tie_and_fallback_order_golden() -> None:
     assert _p0_hot_echo_bet1(P0_FALLBACK_HISTORY) == (7, 8, 9, 10, 11, 12)
+    assert _p0_hot_echo_bet2(P0_FALLBACK_HISTORY) == (1, 2, 3, 4, 5, 6)
 
 
 def test_p0_uses_exactly_the_latest_50_calculation_rows() -> None:
     oldest = _row("outside", "outside", (8, 42, 43, 44, 45, 46))
     history_51 = (oldest, *P0_ECHO_HISTORY)
 
+    assert _p0_hot_echo_2bets(history_51) == _p0_hot_echo_2bets(P0_ECHO_HISTORY)
+    assert _p0_hot_echo_2bets(history_51, window=51) != _p0_hot_echo_2bets(history_51)
     assert _p0_hot_echo_bet1(history_51) == (1, 2, 3, 4, 5, 7)
     assert _p0_hot_echo_bet1(history_51, window=51) == (1, 2, 3, 4, 5, 8)
     assert BigLottoP02BetBet1Adapter().get_one_bet(
@@ -1062,11 +1169,12 @@ def test_p0_uses_exactly_the_latest_50_calculation_rows() -> None:
 
 def test_p0_validates_whole_history_before_calculation_window() -> None:
     malformed_oldest = cast(CausalDrawRow, {"outside": "calculation-window"})
-    with pytest.raises(InvalidOutput):
-        BigLottoP02BetBet1Adapter().get_one_bet(
-            (malformed_oldest, *P0_ECHO_HISTORY),
-            LotteryType.BIG_LOTTO,
-        )
+    for adapter in (BigLottoP02BetBet1Adapter(), BigLottoP02BetBet2Adapter()):
+        with pytest.raises(InvalidOutput):
+            adapter.get_one_bet(
+                (malformed_oldest, *P0_ECHO_HISTORY),
+                LotteryType.BIG_LOTTO,
+            )
 
 
 def test_p0_returns_one_sorted_legal_six_number_bet_without_special_number() -> None:
@@ -1082,5 +1190,5 @@ def test_p0_returns_one_sorted_legal_six_number_bet_without_special_number() -> 
 
 def test_p0_preserves_global_random_state() -> None:
     before = random.getstate()
-    _p0_hot_echo_bet1(P0_ECHO_HISTORY)
+    _p0_hot_echo_2bets(P0_ECHO_HISTORY)
     assert random.getstate() == before

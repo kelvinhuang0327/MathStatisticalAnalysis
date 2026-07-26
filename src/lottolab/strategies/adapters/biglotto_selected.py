@@ -287,8 +287,82 @@ class BigLottoDeviation2BetAdapter(BetAdapter):
         return _deviation_complement_2bet(history)[0]
 
 
+_P0_BET1_STRATEGY_ID = "biglotto_p0_2bet_bet1"
+_P0_HISTORY_WINDOW = 50
+_P0_ECHO_BOOST = 1.5
+_P0_HOT_THRESHOLD = 1
+
+
+def _p0_hot_echo_bet1(
+    history: tuple[CausalDrawRow, ...],
+    window: int = _P0_HISTORY_WINDOW,
+    echo_boost: float = _P0_ECHO_BOOST,
+) -> tuple[int, ...]:
+    """Port the donor P0 Hot+Echo first ticket without its cold second ticket."""
+
+    rule = BIG_LOTTO_RULE_CONTRACT
+    recent = history[-window:] if len(history) > window else history
+    expected = len(recent) * rule.main_number_count / rule.main_number_max
+
+    frequencies: dict[int, int] = {}
+    for row in recent:
+        for number in row.numbers:
+            frequencies[number] = frequencies.get(number, 0) + 1
+
+    scores = {
+        number: frequencies.get(number, 0) - expected
+        for number in range(rule.main_number_min, rule.main_number_max + 1)
+    }
+    if len(history) >= 3:
+        for number in history[-2].numbers:
+            if number <= rule.main_number_max:
+                scores[number] += echo_boost
+
+    hot = sorted(
+        (
+            (number, score)
+            for number, score in scores.items()
+            if score > _P0_HOT_THRESHOLD
+        ),
+        key=lambda candidate: candidate[1],
+        reverse=True,
+    )
+    bet = [number for number, _ in hot[: rule.main_number_count]]
+    used = set(bet)
+
+    if len(bet) < rule.main_number_count:
+        nearest_expected = sorted(
+            range(rule.main_number_min, rule.main_number_max + 1),
+            key=lambda number: abs(scores[number]),
+        )
+        for number in nearest_expected:
+            if number not in used and len(bet) < rule.main_number_count:
+                bet.append(number)
+                used.add(number)
+
+    return tuple(sorted(bet[: rule.main_number_count]))
+
+
+class BigLottoP02BetBet1Adapter(BetAdapter):
+    """Deterministic P0 two-bet adapter returning only donor Hot+Echo bet one."""
+
+    strategy_id = _P0_BET1_STRATEGY_ID
+    strategy_name = "大樂透 P0 2注（Hot+Echo Bet 1）"  # noqa: RUF001
+    strategy_version = "v0.1"
+    min_history = 1
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+
+    def _predict(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[int, ...]:
+        return _p0_hot_echo_bet1(history)
+
+
 __all__ = [
     "BigLottoDeviation2BetAdapter",
+    "BigLottoP02BetBet1Adapter",
     "BigLottoSocialWisdomAntiPopularityAdapter",
     "BigLottoZoneSplit3BetBet1Adapter",
 ]

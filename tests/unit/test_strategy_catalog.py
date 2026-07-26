@@ -7,6 +7,7 @@ import pytest
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.strategies.adapters import BigLottoP02BetBet1Adapter
 from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
     StrategyCatalog,
@@ -150,15 +151,14 @@ def test_production_catalog_invariants() -> None:
             assert descriptor.adapter_path is None
 
 
-def test_p603a_catalog_appends_deviation_strategy_as_stable_suffix() -> None:
-    """P603A appends biglotto_deviation_2bet without disturbing the existing
-    two P602B descriptors or their order."""
+def test_catalog_appends_p0_bet1_without_reordering_existing_strategies() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
         "biglotto_deviation_2bet",
+        "biglotto_p0_2bet_bet1",
     ]
     online_ids = {
         descriptor.strategy_id
@@ -167,3 +167,28 @@ def test_p603a_catalog_appends_deviation_strategy_as_stable_suffix() -> None:
     }
     assert online_ids == set(ids)
     assert ExecutableRegistry(catalog).executable_ids() == frozenset(ids)
+
+
+def test_p0_bet1_descriptor_and_adapter_identity_match_exactly() -> None:
+    descriptor = production_catalog().get(BigLottoP02BetBet1Adapter.strategy_id)
+    assert (
+        descriptor.strategy_id,
+        descriptor.strategy_name,
+        descriptor.version,
+        descriptor.lottery_types,
+        descriptor.min_history,
+        descriptor.lifecycle_status,
+        descriptor.executable,
+        descriptor.adapter_path,
+    ) == (
+        BigLottoP02BetBet1Adapter.strategy_id,
+        BigLottoP02BetBet1Adapter.strategy_name,
+        BigLottoP02BetBet1Adapter.strategy_version,
+        (LotteryType.BIG_LOTTO,),
+        BigLottoP02BetBet1Adapter.min_history,
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet1Adapter",
+    )
+    assert "evidence_status:HISTORICAL_RESEARCH_ONLY" in descriptor.provenance
+    assert "current_significance:NOT_ESTABLISHED" in descriptor.provenance

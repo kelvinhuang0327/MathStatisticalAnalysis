@@ -189,11 +189,15 @@ class _UnsortedOutputAdapter(BetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
+    def __init__(self) -> None:
+        self.calls = 0
+
     def _predict(
         self,
         history: tuple[CausalDrawRow, ...],
         lottery_type: LotteryType,
     ) -> tuple[int, ...]:
+        self.calls += 1
         return (6, 5, 4, 3, 2, 1)
 
 
@@ -766,6 +770,59 @@ def test_invalid_adapter_output_is_rejected_and_valid_output_is_canonicalized() 
     assert _UnsortedOutputAdapter().get_one_bet(
         (_row(),), LotteryType.BIG_LOTTO
     ) == ((1, 2, 3, 4, 5, 6), None)
+
+
+def test_unsorted_producer_order_is_captured_before_unchanged_legal_sorting() -> None:
+    adapter = _UnsortedOutputAdapter()
+
+    execution = adapter.get_one_bet_with_emission(
+        (_row(),),
+        LotteryType.BIG_LOTTO,
+    )
+
+    assert adapter.calls == 1
+    assert execution.emitted_main_numbers == (6, 5, 4, 3, 2, 1)
+    assert execution.legal_main_numbers == (1, 2, 3, 4, 5, 6)
+    assert execution.special_number is None
+
+
+@pytest.mark.parametrize(
+    "adapter_class",
+    (
+        BigLottoSocialWisdomAntiPopularityAdapter,
+        BigLottoZoneSplit3BetBet1Adapter,
+        BigLottoZoneSplit3BetBet2Adapter,
+        BigLottoZoneSplit3BetBet3Adapter,
+        BigLottoDeviation2BetAdapter,
+        BigLottoDeviation2BetBet2Adapter,
+        BigLottoP02BetBet1Adapter,
+        BigLottoP02BetBet2Adapter,
+    ),
+)
+def test_every_executable_biglotto_adapter_exposes_its_actual_producer_tuple(
+    adapter_class: type[BetAdapter],
+) -> None:
+    history = (
+        tuple(
+            CausalDrawRow(str(index), str(index), (10, 20, 30, 40, 41, 42))
+            for index in range(100)
+        )
+        if adapter_class.min_history == 100
+        else _zone_history()
+    )
+
+    execution = adapter_class().get_one_bet_with_emission(
+        history,
+        LotteryType.BIG_LOTTO,
+    )
+
+    assert type(execution.emitted_main_numbers) is tuple
+    assert execution.emitted_main_numbers
+    assert execution.legal_main_numbers == tuple(
+        sorted(execution.emitted_main_numbers)
+    )
+    assert len(set(execution.legal_main_numbers)) == 6
+    assert execution.special_number is None
 
 
 def test_input_is_immutable_and_never_modified() -> None:

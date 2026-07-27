@@ -39,6 +39,15 @@ class CausalDrawRow:
     numbers: tuple[int, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class BetAdapterExecution:
+    """One producer execution before and after legal-ticket canonicalization."""
+
+    emitted_main_numbers: tuple[int, ...]
+    legal_main_numbers: tuple[int, ...]
+    special_number: None
+
+
 def _validated_biglotto_numbers(numbers: object, strategy_id: str) -> tuple[int, ...]:
     """Validate exact integers against the authoritative BIG_LOTTO contract."""
 
@@ -113,6 +122,16 @@ class BetAdapter(ABC):
         history: object,
         lottery_type: LotteryType,
     ) -> tuple[tuple[int, ...], None]:
+        execution = self.get_one_bet_with_emission(history, lottery_type)
+        return execution.legal_main_numbers, execution.special_number
+
+    def get_one_bet_with_emission(
+        self,
+        history: object,
+        lottery_type: LotteryType,
+    ) -> BetAdapterExecution:
+        """Execute the producer once and retain its tuple before legal sorting."""
+
         if (
             type(lottery_type) is not LotteryType
             or lottery_type not in self.supported_lottery_types
@@ -134,7 +153,11 @@ class BetAdapter(ABC):
 
         predicted = self._predict(canonical_history, lottery_type)
         validated = _validated_biglotto_numbers(predicted, self.strategy_id)
-        return validated, None
+        return BetAdapterExecution(
+            emitted_main_numbers=predicted,
+            legal_main_numbers=validated,
+            special_number=None,
+        )
 
     def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
         """Select rows that are causally visible to this adapter before row validation."""
@@ -153,6 +176,7 @@ class BetAdapter(ABC):
 __all__ = [
     "BetAdapter",
     "BetAdapterError",
+    "BetAdapterExecution",
     "CausalDrawRow",
     "InsufficientHistory",
     "InvalidOutput",

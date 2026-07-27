@@ -311,6 +311,79 @@ def test_missing_target_and_insufficient_history_each_keep_all_attempts(
     assert all(adapter.calls == [] for adapter in fixture.adapters)
 
 
+def test_mixed_matrix_establishes_executable_cell_call_cardinality_identity(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(reject_second=True)
+    base = _request(tmp_path)
+    request = MaterializeOrderedCandidateEmissionsInput(
+        lottery_type=base.lottery_type,
+        dataset_id=base.dataset_id,
+        dataset_version=base.dataset_version,
+        expected_source_snapshot_sha256=base.expected_source_snapshot_sha256,
+        target_draws=("999", "1", "3", "4"),
+        strategy_ids=base.strategy_ids,
+        minimum_history_draws=1,
+        maximum_history_draws=2,
+        replicate=1,
+        output_directory=base.output_directory,
+    )
+
+    result = fixture.use_case.execute(request)
+
+    assert fixture.reader.calls == 1
+    assert fixture.writer.calls == 1
+    assert fixture.writer.package is not None
+    attempts = fixture.writer.package.attempts
+    total_matrix_cells = len(request.target_draws) * len(request.strategy_ids)
+    assert total_matrix_cells == 8
+    assert result.attempt_count == total_matrix_cells
+
+    preflight_closed_statuses = {
+        OrderedCandidateMaterializationStatus.TARGET_NOT_FOUND,
+        OrderedCandidateMaterializationStatus.INSUFFICIENT_HISTORY,
+    }
+    preflight_closed = [a for a in attempts if a.status in preflight_closed_statuses]
+    executable = [a for a in attempts if a.status not in preflight_closed_statuses]
+
+    # "999" is absent and "1" has no draws before it, so both target draws
+    # are preflight-closed for every strategy; "3" and "4" are executable.
+    assert [attempt.status for attempt in attempts] == [
+        OrderedCandidateMaterializationStatus.TARGET_NOT_FOUND,
+        OrderedCandidateMaterializationStatus.TARGET_NOT_FOUND,
+        OrderedCandidateMaterializationStatus.INSUFFICIENT_HISTORY,
+        OrderedCandidateMaterializationStatus.INSUFFICIENT_HISTORY,
+        OrderedCandidateMaterializationStatus.OK,
+        OrderedCandidateMaterializationStatus.REJECTED,
+        OrderedCandidateMaterializationStatus.OK,
+        OrderedCandidateMaterializationStatus.REJECTED,
+    ]
+    assert [attempt.ordinal for attempt in attempts] == list(range(total_matrix_cells))
+    assert len(preflight_closed) == 4
+    assert len(executable) == 4
+
+    # GenerateOrderedCandidateEmission.execute() and GenerateOneBet each make
+    # exactly one downstream call per invocation (no retry), so the adapter's
+    # exact call list is a 1:1 proxy for calls to the merged P335 use case.
+    assert [adapter.calls for adapter in fixture.adapters] == [
+        [("1", "2"), ("2", "3")],
+        [("1", "2"), ("2", "3")],
+    ]
+    total_p335_calls = sum(len(adapter.calls) for adapter in fixture.adapters)
+    assert total_p335_calls == len(executable) == 4
+    assert len(attempts) == total_matrix_cells
+    assert len(preflight_closed) + len(executable) == total_matrix_cells
+
+    assert all(attempt.history_cutoff is None for attempt in preflight_closed)
+    assert all(
+        attempt.emission_relative_path is None
+        and attempt.emission_file_sha256 is None
+        and attempt.emission_payload_sha256 is None
+        for attempt in preflight_closed
+    )
+    assert len(fixture.writer.package.emission_files) == 2
+
+
 def test_future_publication_binding_uses_package_path_and_exact_file_hash(
     tmp_path: Path,
 ) -> None:

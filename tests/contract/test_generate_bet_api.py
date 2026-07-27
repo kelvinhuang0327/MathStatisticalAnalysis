@@ -17,6 +17,7 @@ from lottolab.application.use_cases.generate_bet import (
 from lottolab.interfaces.api.app import create_app
 from lottolab.strategies.adapters import (
     BigLottoDeviation2BetAdapter,
+    BigLottoDeviation2BetBet2Adapter,
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
@@ -73,6 +74,7 @@ def test_happy_path_for_each_online_strategy() -> None:
         BigLottoZoneSplit3BetBet2Adapter.strategy_id,
         BigLottoZoneSplit3BetBet3Adapter.strategy_id,
         BigLottoDeviation2BetAdapter.strategy_id,
+        BigLottoDeviation2BetBet2Adapter.strategy_id,
         BigLottoP02BetBet1Adapter.strategy_id,
         BigLottoP02BetBet2Adapter.strategy_id,
     ):
@@ -207,6 +209,35 @@ def test_short_history_for_deviation_strategy_is_insufficient_history() -> None:
     assert payload["status"] == "INSUFFICIENT_HISTORY"
     assert payload["reason_code"] == "INSUFFICIENT_HISTORY"
     assert payload["numbers"] is None
+
+
+def test_deviation_bet2_executes_through_existing_generic_endpoint() -> None:
+    client = TestClient(create_app())
+    response = client.post(
+        PATH,
+        json=_request(
+            strategy_id=BigLottoDeviation2BetBet2Adapter.strategy_id,
+            seed=43,
+            history=[
+                {
+                    "draw": str(index),
+                    "date": str(index),
+                    "numbers": [10, 20, 30, 40, 41, 42],
+                }
+                for index in range(100)
+            ],
+        ),
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "strategy_id": BigLottoDeviation2BetBet2Adapter.strategy_id,
+        "lottery_type": "BIG_LOTTO",
+        "seed": 43,
+        "status": "OK",
+        "numbers": [1, 2, 3, 4, 5, 6],
+        "reason_code": None,
+    }
 
 
 def test_p0_adapters_preserve_old_to_new_history_order_through_generic_post() -> None:

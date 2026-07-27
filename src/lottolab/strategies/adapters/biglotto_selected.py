@@ -234,6 +234,7 @@ class BigLottoZoneSplit3BetBet3Adapter(BetAdapter):
 
 
 _DEVIATION_STRATEGY_ID = "biglotto_deviation_2bet"
+_DEVIATION_BET2_STRATEGY_ID = "biglotto_deviation_2bet_bet2"
 _DEVIATION_HISTORY_WINDOW = 50
 _DEVIATION_HOT_THRESHOLD = 1
 _DEVIATION_COLD_THRESHOLD = -1
@@ -321,6 +322,23 @@ class BigLottoDeviation2BetAdapter(BetAdapter):
         lottery_type: LotteryType,
     ) -> tuple[int, ...]:
         return _deviation_complement_2bet(history)[0]
+
+
+class BigLottoDeviation2BetBet2Adapter(BetAdapter):
+    """Deterministic frequency-deviation adapter returning the donor cold bet."""
+
+    strategy_id = _DEVIATION_BET2_STRATEGY_ID
+    strategy_name = "大樂透 Deviation 2注（Cold Bet 2）"  # noqa: RUF001
+    strategy_version = "v0.1"
+    min_history = 100
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+
+    def _predict(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[int, ...]:
+        return _deviation_complement_2bet(history)[1]
 
 
 _P0_BET1_STRATEGY_ID = "biglotto_p0_2bet_bet1"
@@ -459,6 +477,7 @@ class BigLottoP02BetBet2Adapter(BetAdapter):
 
 __all__ = [
     "BigLottoDeviation2BetAdapter",
+    "BigLottoDeviation2BetBet2Adapter",
     "BigLottoP02BetBet1Adapter",
     "BigLottoP02BetBet2Adapter",
     "BigLottoSocialWisdomAntiPopularityAdapter",

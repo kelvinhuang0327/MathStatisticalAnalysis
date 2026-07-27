@@ -66,6 +66,29 @@ class GenerateOneBetResult:
             raise ValueError("non-OK results require a reason code and no numbers")
 
 
+@dataclass(frozen=True, slots=True)
+class GenerateOneBetExecution:
+    """Internal execution detail paired with the unchanged public legal result."""
+
+    legal_bet: GenerateOneBetResult
+    emitted_main_numbers: tuple[int, ...] | None
+    strategy_version: str | None
+
+    def __post_init__(self) -> None:
+        if self.legal_bet.status is GenerateOneBetStatus.OK:
+            if (
+                type(self.emitted_main_numbers) is not tuple
+                or not self.emitted_main_numbers
+                or type(self.strategy_version) is not str
+                or not self.strategy_version
+            ):
+                raise ValueError(
+                    "OK executions require emitted_main_numbers and strategy_version"
+                )
+        elif self.emitted_main_numbers is not None or self.strategy_version is not None:
+            raise ValueError("non-OK executions must not expose an emission identity")
+
+
 class GenerateOneBet:
     """Resolve an injected adapter and convert every outcome to a closed result."""
 
@@ -103,64 +126,76 @@ class GenerateOneBet:
         self._adapters: Mapping[str, BetAdapter] = MappingProxyType(adapter_snapshot)
 
     def execute(self, request: GenerateOneBetInput) -> GenerateOneBetResult:
+        return self.execute_with_emission(request).legal_bet
+
+    def execute_with_emission(
+        self,
+        request: GenerateOneBetInput,
+    ) -> GenerateOneBetExecution:
+        """Return one adapter execution with its pre-canonical emitted order."""
+
         try:
             descriptor = self._catalog.get(request.strategy_id)
         except UnknownStrategyError:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.STRATEGY_UNAVAILABLE,
                 GenerateOneBetReason.UNKNOWN_STRATEGY,
             )
 
         adapter = self._adapters.get(request.strategy_id)
         if adapter is None:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.STRATEGY_UNAVAILABLE,
                 GenerateOneBetReason.ADAPTER_NOT_INJECTED,
             )
         if type(request.lottery_type) is not LotteryType or (
             request.lottery_type not in descriptor.lottery_types
         ):
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.STRATEGY_UNAVAILABLE,
                 GenerateOneBetReason.UNSUPPORTED_LOTTERY_TYPE,
             )
 
         try:
-            numbers, special_number = adapter.get_one_bet(
+            adapter_execution = adapter.get_one_bet_with_emission(
                 request.history,
                 request.lottery_type,
             )
         except RejectPrediction:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.REJECTED,
                 GenerateOneBetReason.REJECTED_BY_STRATEGY,
             )
         except InsufficientHistory:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.INSUFFICIENT_HISTORY,
                 GenerateOneBetReason.INSUFFICIENT_HISTORY,
             )
         except UnsupportedLotteryType:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.STRATEGY_UNAVAILABLE,
                 GenerateOneBetReason.UNSUPPORTED_LOTTERY_TYPE,
             )
         except InvalidOutput:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.INVALID_OUTPUT,
                 GenerateOneBetReason.INVALID_OUTPUT,
             )
         except Exception:
-            return self._failure(
+            return self._failure_execution(
                 GenerateOneBetStatus.REPLAY_ERROR,
                 GenerateOneBetReason.REPLAY_ERROR,
             )
 
-        return GenerateOneBetResult(
-            status=GenerateOneBetStatus.OK,
-            numbers=numbers,
-            special_number=special_number,
-            reason_code=None,
+        return GenerateOneBetExecution(
+            legal_bet=GenerateOneBetResult(
+                status=GenerateOneBetStatus.OK,
+                numbers=adapter_execution.legal_main_numbers,
+                special_number=adapter_execution.special_number,
+                reason_code=None,
+            ),
+            emitted_main_numbers=adapter_execution.emitted_main_numbers,
+            strategy_version=descriptor.version,
         )
 
     @staticmethod
@@ -173,6 +208,18 @@ class GenerateOneBet:
             numbers=None,
             special_number=None,
             reason_code=reason,
+        )
+
+    @classmethod
+    def _failure_execution(
+        cls,
+        status: GenerateOneBetStatus,
+        reason: GenerateOneBetReason,
+    ) -> GenerateOneBetExecution:
+        return GenerateOneBetExecution(
+            legal_bet=cls._failure(status, reason),
+            emitted_main_numbers=None,
+            strategy_version=None,
         )
 
 
@@ -290,6 +337,7 @@ def run_cli_generate_bet(*, strategy_id: str, seed: int, history_json: str) -> t
 __all__ = [
     "AdapterIdentityMismatchError",
     "GenerateOneBet",
+    "GenerateOneBetExecution",
     "GenerateOneBetInput",
     "GenerateOneBetReason",
     "GenerateOneBetResult",

@@ -15,6 +15,7 @@ import lottolab.strategies.adapters.biglotto_selected as biglotto_selected_modul
 from lottolab.application.use_cases.generate_bet import (
     AdapterIdentityMismatchError,
     GenerateOneBet,
+    GenerateOneBetExecution,
     GenerateOneBetInput,
     GenerateOneBetReason,
     GenerateOneBetResult,
@@ -187,6 +188,39 @@ def test_ok_result_is_canonical_and_typed() -> None:
     assert result.numbers == (32, 33, 34, 35, 41, 49)
     assert result.special_number is None
     assert result.reason_code is None
+
+
+def test_execution_detail_preserves_raw_order_without_a_second_adapter_call() -> None:
+    adapter = _OutcomeAdapter()
+    use_case = GenerateOneBet(
+        StrategyCatalog((_descriptor(),)),
+        {STRATEGY_ID: adapter},
+    )
+
+    execution = use_case.execute_with_emission(_request())
+
+    assert isinstance(execution, GenerateOneBetExecution)
+    assert adapter.calls == 1
+    assert execution.emitted_main_numbers == (49, 41, 35, 34, 33, 32)
+    assert execution.legal_bet.numbers == (32, 33, 34, 35, 41, 49)
+    assert execution.strategy_version == STRATEGY_VERSION
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    ("rejected", "insufficient", "invalid", "replay-error"),
+)
+def test_non_ok_execution_detail_never_exposes_an_emission(outcome: str) -> None:
+    use_case = GenerateOneBet(
+        StrategyCatalog((_descriptor(),)),
+        {STRATEGY_ID: _OutcomeAdapter(outcome)},
+    )
+
+    execution = use_case.execute_with_emission(_request())
+
+    assert execution.legal_bet.status is not GenerateOneBetStatus.OK
+    assert execution.emitted_main_numbers is None
+    assert execution.strategy_version is None
 
 
 def test_unknown_strategy_is_unavailable() -> None:

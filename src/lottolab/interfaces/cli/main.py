@@ -19,6 +19,9 @@ from lottolab.application.local_runtime import (
 from lottolab.application.use_cases.generate_bet import HistoryParseError, run_cli_generate_bet
 from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
 from lottolab.interfaces.cli.historical_import import historical_import_command
+from lottolab.interfaces.cli.ordered_candidate_materialization import (
+    materialize_ordered_candidate_emissions_command,
+)
 from lottolab.interfaces.cli.replay_predictions import replay_predictions_command
 from lottolab.strategies.catalog import production_catalog
 
@@ -27,6 +30,9 @@ local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only
 app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
 app.command("replay-predictions")(replay_predictions_command)
+app.command("materialize-ordered-candidate-emissions")(
+    materialize_ordered_candidate_emissions_command
+)
 
 
 @app.callback()

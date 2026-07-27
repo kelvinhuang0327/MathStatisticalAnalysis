@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from lottolab.application.draw_data import (
@@ -28,6 +29,9 @@ from lottolab.application.historical_queries import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
+from lottolab.domain.ordered_candidate_materialization import (
+    OrderedCandidateSourceSnapshot,
+)
 from lottolab.domain.replay_history import ReplayCausalDrawRow
 from lottolab.domain.replay_scoring import (
     ReplayTargetOutcomeReadResult,
@@ -38,6 +42,9 @@ from lottolab.domain.replay_scoring_projection import (
     ReplayScoringPersistResult,
     ReplayScoringRunProjection,
     ReplayStrategyAggregateProjection,
+)
+from lottolab.evidence.ordered_candidate_emission_package import (
+    OrderedCandidateEmissionPackage,
 )
 from lottolab.evidence.replay_scoring_artifact import ReplayScoringArtifact
 
@@ -250,3 +257,34 @@ class ReplayTargetOutcomeReader(Protocol):
     ) -> ReplayTargetOutcomeReadResult:
         """Return a typed found/not-found result without leaking storage errors."""
         ...
+
+
+@runtime_checkable
+class OrderedCandidateMaterializationReader(Protocol):
+    """Read-only boundary for one complete ordered-candidate source snapshot."""
+
+    def read_source_snapshot(
+        self,
+        lottery_type: LotteryType,
+    ) -> OrderedCandidateSourceSnapshot:
+        """Return all source rows plus their exact LCJ-1 content digest."""
+        ...
+
+
+@runtime_checkable
+class OrderedCandidatePackageWriter(Protocol):
+    """Atomic absent-root seal boundary for one prevalidated package."""
+
+    def write_package(
+        self,
+        output_directory: Path,
+        package: OrderedCandidateEmissionPackage,
+    ) -> None:
+        """Seal the package without overwriting any existing path."""
+        ...
+
+
+type OrderedCandidateMaterializationReaderFactory = Callable[
+    [], OrderedCandidateMaterializationReader
+]
+type OrderedCandidatePackageWriterFactory = Callable[[], OrderedCandidatePackageWriter]

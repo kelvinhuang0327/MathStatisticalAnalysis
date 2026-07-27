@@ -94,6 +94,24 @@ _PRODUCTION_DESCRIPTORS = (
         ),
     ),
     StrategyDescriptor(
+        strategy_id="biglotto_zone_split_3bet_bet2",
+        strategy_name="大樂透 Zone Split 3注（Replay Bet 2）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_selected:BigLottoZoneSplit3BetBet2Adapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:24617fe3bb7ec087acf121f302bffd638ccfa179",
+            "legacy_source:lottery_api/models/p541d_r2_biglotto_selected_adapters.py",
+            "legacy_test:tests/test_p541d_r2_biglotto_selected_adapters.py",
+            "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_ZONE_SPLIT_3BET_BET2_LOCAL_IMPLEMENTATION_R1",
+        ),
+    ),
+    StrategyDescriptor(
         strategy_id="biglotto_deviation_2bet",
         strategy_name="大樂透 Deviation 2注",
         version="v0.1",

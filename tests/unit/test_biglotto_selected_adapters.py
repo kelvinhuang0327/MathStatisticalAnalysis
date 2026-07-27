@@ -29,6 +29,7 @@ from lottolab.strategies.adapters import (
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
+    BigLottoZoneSplit3BetBet2Adapter,
     CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
@@ -198,6 +199,7 @@ ADAPTER_CLASSES = (
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
+    BigLottoZoneSplit3BetBet2Adapter,
 )
 
 
@@ -210,6 +212,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BigLottoP02BetBet2Adapter",
         "BigLottoSocialWisdomAntiPopularityAdapter",
         "BigLottoZoneSplit3BetBet1Adapter",
+        "BigLottoZoneSplit3BetBet2Adapter",
         "CausalDrawRow",
         "InsufficientHistory",
         "InvalidOutput",
@@ -234,6 +237,12 @@ def test_zone_adapter_returns_frozen_donor_bet_one() -> None:
     assert BigLottoZoneSplit3BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((4, 6, 11, 14, 15, 18), None)
+
+
+def test_zone_bet2_adapter_returns_frozen_donor_bet_two() -> None:
+    assert BigLottoZoneSplit3BetBet2Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((15, 16, 17, 21, 26, 31), None)
 
 
 def test_social_repeated_high_golden() -> None:
@@ -683,6 +692,7 @@ from lottolab.strategies.adapters import (
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
+    BigLottoZoneSplit3BetBet2Adapter,
     CausalDrawRow,
 )
 zone = (CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),)
@@ -690,7 +700,12 @@ social = tuple(CausalDrawRow(str(i), str(i), (32, 33, 34, 35, 41, 49)) for i in 
 result = {
     "p0_bet1": BigLottoP02BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "p0_bet2": BigLottoP02BetBet2Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
-    "zone": BigLottoZoneSplit3BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
+    "zone_bet1": BigLottoZoneSplit3BetBet1Adapter().get_one_bet(
+        zone, LotteryType.BIG_LOTTO
+    ),
+    "zone_bet2": BigLottoZoneSplit3BetBet2Adapter().get_one_bet(
+        zone, LotteryType.BIG_LOTTO
+    ),
     "social": BigLottoSocialWisdomAntiPopularityAdapter().get_one_bet(
         social, LotteryType.BIG_LOTTO
     ),
@@ -714,7 +729,8 @@ print(json.dumps(result, sort_keys=True))
         "p0_bet1": [[7, 8, 9, 10, 11, 12], None],
         "p0_bet2": [[1, 2, 3, 4, 5, 6], None],
         "social": [[32, 33, 34, 35, 41, 49], None],
-        "zone": [[4, 6, 11, 14, 15, 18], None],
+        "zone_bet1": [[4, 6, 11, 14, 15, 18], None],
+        "zone_bet2": [[15, 16, 17, 21, 26, 31], None],
     }
 
 
@@ -733,6 +749,9 @@ def test_adapter_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoZoneSplit3BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((4, 6, 11, 14, 15, 18), None)
+    assert BigLottoZoneSplit3BetBet2Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((15, 16, 17, 21, 26, 31), None)
     assert BigLottoP02BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((7, 8, 9, 10, 11, 12), None)

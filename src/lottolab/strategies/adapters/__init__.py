@@ -16,6 +16,7 @@ from lottolab.strategies.adapters.biglotto_selected import (
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
 )
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
     "BigLottoSocialWisdomAntiPopularityAdapter",
     "BigLottoZoneSplit3BetBet1Adapter",
     "BigLottoZoneSplit3BetBet2Adapter",
+    "BigLottoZoneSplit3BetBet3Adapter",
     "CausalDrawRow",
     "InsufficientHistory",
     "InvalidOutput",

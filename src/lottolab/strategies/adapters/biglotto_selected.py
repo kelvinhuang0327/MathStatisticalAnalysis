@@ -17,6 +17,7 @@ from lottolab.strategies.adapters.base import (
 
 _ZONE_STRATEGY_ID = "biglotto_zone_split_3bet_bet1"
 _ZONE_BET2_STRATEGY_ID = "biglotto_zone_split_3bet_bet2"
+_ZONE_BET3_STRATEGY_ID = "biglotto_zone_split_3bet_bet3"
 _SOCIAL_STRATEGY_ID = "biglotto_social_wisdom_anti_popularity"
 _ZONE_BET_COUNT = 3
 _ZONE_OVERLAP_SIZE = 2
@@ -213,6 +214,23 @@ class BigLottoZoneSplit3BetBet2Adapter(BetAdapter):
         lottery_type: LotteryType,
     ) -> tuple[int, ...]:
         return _zone_split_bets(history)[1]
+
+
+class BigLottoZoneSplit3BetBet3Adapter(BetAdapter):
+    """Deterministic Zone Split three-bet adapter returning generated bet three."""
+
+    strategy_id = _ZONE_BET3_STRATEGY_ID
+    strategy_name = "大樂透 Zone Split 3注（Replay Bet 3）"  # noqa: RUF001
+    strategy_version = "v0.1"
+    min_history = 1
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+
+    def _predict(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[int, ...]:
+        return _zone_split_bets(history)[2]
 
 
 _DEVIATION_STRATEGY_ID = "biglotto_deviation_2bet"

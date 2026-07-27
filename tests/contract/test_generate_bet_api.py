@@ -22,6 +22,7 @@ from lottolab.strategies.adapters import (
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
 )
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -70,6 +71,7 @@ def test_happy_path_for_each_online_strategy() -> None:
         BigLottoSocialWisdomAntiPopularityAdapter.strategy_id,
         BigLottoZoneSplit3BetBet1Adapter.strategy_id,
         BigLottoZoneSplit3BetBet2Adapter.strategy_id,
+        BigLottoZoneSplit3BetBet3Adapter.strategy_id,
         BigLottoDeviation2BetAdapter.strategy_id,
         BigLottoP02BetBet1Adapter.strategy_id,
         BigLottoP02BetBet2Adapter.strategy_id,
@@ -118,32 +120,64 @@ def test_zone_split_bet2_returns_only_frozen_second_ticket() -> None:
     }
 
 
-def test_zone_split_bet2_malformed_and_insufficient_history_fail_closed() -> None:
+def test_zone_split_bet3_returns_only_frozen_third_ticket() -> None:
     client = TestClient(create_app())
-    malformed = client.post(
+    response = client.post(
         PATH,
         json=_request(
-            strategy_id=BigLottoZoneSplit3BetBet2Adapter.strategy_id,
-            history=[{"draw": "1", "date": "1", "numbers": [1, 2, 3]}],
-        ),
-    )
-    insufficient = client.post(
-        PATH,
-        json=_request(
-            strategy_id=BigLottoZoneSplit3BetBet2Adapter.strategy_id,
-            history=[],
+            strategy_id=BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+            seed=37,
+            history=[
+                {
+                    "draw": "1",
+                    "date": "2026-01-01",
+                    "numbers": [1, 2, 3, 4, 5, 6],
+                }
+            ],
         ),
     )
 
-    assert malformed.status_code == insufficient.status_code == 200
-    malformed_payload = cast(dict[str, object], malformed.json())
-    insufficient_payload = cast(dict[str, object], insufficient.json())
-    assert malformed_payload["status"] == "INVALID_OUTPUT"
-    assert malformed_payload["reason_code"] == "INVALID_OUTPUT"
-    assert malformed_payload["numbers"] is None
-    assert insufficient_payload["status"] == "INSUFFICIENT_HISTORY"
-    assert insufficient_payload["reason_code"] == "INSUFFICIENT_HISTORY"
-    assert insufficient_payload["numbers"] is None
+    assert response.status_code == 200
+    assert response.json() == {
+        "strategy_id": BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+        "lottery_type": "BIG_LOTTO",
+        "seed": 37,
+        "status": "OK",
+        "numbers": [38, 41, 42, 44, 48, 49],
+        "reason_code": None,
+    }
+
+
+def test_zone_split_replay_adapters_malformed_and_insufficient_history_fail_closed() -> None:
+    client = TestClient(create_app())
+    for adapter_class in (
+        BigLottoZoneSplit3BetBet2Adapter,
+        BigLottoZoneSplit3BetBet3Adapter,
+    ):
+        malformed = client.post(
+            PATH,
+            json=_request(
+                strategy_id=adapter_class.strategy_id,
+                history=[{"draw": "1", "date": "1", "numbers": [1, 2, 3]}],
+            ),
+        )
+        insufficient = client.post(
+            PATH,
+            json=_request(
+                strategy_id=adapter_class.strategy_id,
+                history=[],
+            ),
+        )
+
+        assert malformed.status_code == insufficient.status_code == 200
+        malformed_payload = cast(dict[str, object], malformed.json())
+        insufficient_payload = cast(dict[str, object], insufficient.json())
+        assert malformed_payload["status"] == "INVALID_OUTPUT"
+        assert malformed_payload["reason_code"] == "INVALID_OUTPUT"
+        assert malformed_payload["numbers"] is None
+        assert insufficient_payload["status"] == "INSUFFICIENT_HISTORY"
+        assert insufficient_payload["reason_code"] == "INSUFFICIENT_HISTORY"
+        assert insufficient_payload["numbers"] is None
 
 
 def test_unknown_strategy_is_a_closed_200_result() -> None:

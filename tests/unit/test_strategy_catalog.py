@@ -8,6 +8,7 @@ import pytest
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
 from lottolab.strategies.adapters import (
+    BigLottoDeviation2BetBet2Adapter,
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
@@ -165,6 +166,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "biglotto_zone_split_3bet_bet2",
         "biglotto_zone_split_3bet_bet3",
         "biglotto_deviation_2bet",
+        "biglotto_deviation_2bet_bet2",
         "biglotto_p0_2bet_bet1",
         "biglotto_p0_2bet_bet2",
     ]
@@ -203,6 +205,46 @@ def test_zone_split_bet2_descriptor_and_adapter_identity_match_exactly() -> None
         "legacy_source:lottery_api/models/p541d_r2_biglotto_selected_adapters.py",
         "legacy_test:tests/test_p541d_r2_biglotto_selected_adapters.py",
         "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_ZONE_SPLIT_3BET_BET2_LOCAL_IMPLEMENTATION_R1",
+    )
+
+
+def test_deviation_bet2_descriptor_registry_and_provenance_match_exactly() -> None:
+    catalog = production_catalog()
+    descriptor = catalog.get(BigLottoDeviation2BetBet2Adapter.strategy_id)
+    assert (
+        descriptor.strategy_id,
+        descriptor.strategy_name,
+        descriptor.version,
+        descriptor.lottery_types,
+        descriptor.min_history,
+        descriptor.lifecycle_status,
+        descriptor.executable,
+        descriptor.adapter_path,
+    ) == (
+        BigLottoDeviation2BetBet2Adapter.strategy_id,
+        BigLottoDeviation2BetBet2Adapter.strategy_name,
+        BigLottoDeviation2BetBet2Adapter.strategy_version,
+        (LotteryType.BIG_LOTTO,),
+        BigLottoDeviation2BetBet2Adapter.min_history,
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_selected:"
+        "BigLottoDeviation2BetBet2Adapter",
+    )
+    assert descriptor.provenance == (
+        "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+        "legacy_source:tools/predict_biglotto_deviation_2bet.py",
+        "legacy_symbol:deviation_complement_2bet",
+        "target_producer:_deviation_complement_2bet",
+        "output_index:1",
+        "evidence_status:HISTORICAL_RESEARCH_ONLY",
+        "current_significance:NOT_ESTABLISHED",
+        "migration_task:"
+        "MATHSTATISTICALANALYSIS_BIGLOTTO_DEVIATION_2BET_BET2_IMPLEMENT_AND_PUBLISH_R1",
+    )
+    assert (
+        ExecutableRegistry(catalog).load_adapter(descriptor.strategy_id)
+        is BigLottoDeviation2BetBet2Adapter
     )
 
 

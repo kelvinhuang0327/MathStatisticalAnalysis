@@ -26,6 +26,7 @@ from lottolab.strategies import adapters as public_adapters
 from lottolab.strategies.adapters import (
     BetAdapter,
     BigLottoDeviation2BetAdapter,
+    BigLottoDeviation2BetBet2Adapter,
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
@@ -211,6 +212,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BetAdapter",
         "BetAdapterError",
         "BigLottoDeviation2BetAdapter",
+        "BigLottoDeviation2BetBet2Adapter",
         "BigLottoP02BetBet1Adapter",
         "BigLottoP02BetBet2Adapter",
         "BigLottoSocialWisdomAntiPopularityAdapter",
@@ -794,6 +796,7 @@ def test_subprocess_repeatability_across_python_hash_seeds() -> None:
 import json
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters import (
+    BigLottoDeviation2BetBet2Adapter,
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
@@ -804,7 +807,11 @@ from lottolab.strategies.adapters import (
 )
 zone = (CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),)
 social = tuple(CausalDrawRow(str(i), str(i), (32, 33, 34, 35, 41, 49)) for i in range(50))
+deviation = tuple(CausalDrawRow(str(i), str(i), (10, 20, 30, 40, 41, 42)) for i in range(100))
 result = {
+    "deviation_bet2": BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        deviation, LotteryType.BIG_LOTTO
+    ),
     "p0_bet1": BigLottoP02BetBet1Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "p0_bet2": BigLottoP02BetBet2Adapter().get_one_bet(zone, LotteryType.BIG_LOTTO),
     "zone_bet1": BigLottoZoneSplit3BetBet1Adapter().get_one_bet(
@@ -836,6 +843,7 @@ print(json.dumps(result, sort_keys=True))
         outputs.append(completed.stdout)
     assert outputs[0] == outputs[1]
     assert json.loads(outputs[0]) == {
+        "deviation_bet2": [[1, 2, 3, 4, 5, 6], None],
         "p0_bet1": [[7, 8, 9, 10, 11, 12], None],
         "p0_bet2": [[1, 2, 3, 4, 5, 6], None],
         "social": [[32, 33, 34, 35, 41, 49], None],
@@ -931,6 +939,37 @@ def test_deviation_golden_windowing_and_first_bet_extraction() -> None:
     assert BigLottoDeviation2BetAdapter().get_one_bet(
         history, LotteryType.BIG_LOTTO
     ) == (DEVIATION_INSIDE_WINDOW_NUMBERS, None)
+    assert BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (DEVIATION_OUTSIDE_WINDOW_NUMBERS, None)
+    assert set(hot).isdisjoint(cold)
+    assert hot == tuple(sorted(hot))
+    assert cold == tuple(sorted(cold))
+    assert all(1 <= number <= 49 for number in (*hot, *cold))
+
+
+def test_deviation_adapters_select_exact_producer_indices(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    producer_output = ((1, 3, 5, 7, 9, 11), (2, 4, 6, 8, 10, 12))
+
+    def fixed_producer(
+        _history: tuple[CausalDrawRow, ...],
+    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        return producer_output
+
+    monkeypatch.setattr(
+        biglotto_selected_module,
+        "_deviation_complement_2bet",
+        fixed_producer,
+    )
+    history = _deviation_history()
+    assert BigLottoDeviation2BetAdapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (producer_output[0], None)
+    assert BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (producer_output[1], None)
 
 
 def test_deviation_50_vs_51_rows_boundary_is_mutation_sensitive() -> None:
@@ -1045,17 +1084,27 @@ def test_deviation_minimum_history_gate_is_explicit() -> None:
     history_99 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(99))
     history_100 = tuple(_deviation_row(index, (1, 2, 3, 4, 5, 6)) for index in range(100))
 
-    with pytest.raises(InsufficientHistory):
-        BigLottoDeviation2BetAdapter().get_one_bet(history_99, LotteryType.BIG_LOTTO)
+    for adapter_class in (
+        BigLottoDeviation2BetAdapter,
+        BigLottoDeviation2BetBet2Adapter,
+    ):
+        with pytest.raises(InsufficientHistory):
+            adapter_class().get_one_bet(history_99, LotteryType.BIG_LOTTO)
 
-    assert BigLottoDeviation2BetAdapter().get_one_bet(
-        history_100, LotteryType.BIG_LOTTO
-    ) == ((1, 2, 3, 4, 5, 6), None)
+        numbers, special = adapter_class().get_one_bet(
+            history_100, LotteryType.BIG_LOTTO
+        )
+        assert len(numbers) == 6
+        assert special is None
 
 
 def test_deviation_wrong_lottery_type_is_rejected() -> None:
-    with pytest.raises(UnsupportedLotteryType):
-        BigLottoDeviation2BetAdapter().get_one_bet(None, LotteryType.POWER_LOTTO)
+    for adapter_class in (
+        BigLottoDeviation2BetAdapter,
+        BigLottoDeviation2BetBet2Adapter,
+    ):
+        with pytest.raises(UnsupportedLotteryType):
+            adapter_class().get_one_bet(None, LotteryType.POWER_LOTTO)
 
 
 def test_deviation_validates_full_history_before_window_slice(
@@ -1111,14 +1160,20 @@ def test_deviation_input_is_immutable_and_never_modified() -> None:
 
 def test_deviation_preserves_global_random_state() -> None:
     before = random.getstate()
-    _deviation_complement_2bet(_deviation_history())
+    BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        _deviation_history(), LotteryType.BIG_LOTTO
+    )
     assert random.getstate() == before
 
 
 def test_deviation_cross_instance_equality() -> None:
     history = _deviation_history()
-    first = BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
-    second = BigLottoDeviation2BetAdapter().get_one_bet(history, LotteryType.BIG_LOTTO)
+    first = BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    )
+    second = BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    )
     assert first == second
 
 
@@ -1138,6 +1193,9 @@ def test_deviation_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoDeviation2BetAdapter().get_one_bet(
         history, LotteryType.BIG_LOTTO
     ) == (DEVIATION_INSIDE_WINDOW_NUMBERS, None)
+    assert BigLottoDeviation2BetBet2Adapter().get_one_bet(
+        history, LotteryType.BIG_LOTTO
+    ) == (DEVIATION_OUTSIDE_WINDOW_NUMBERS, None)
 
 
 # ─── biglotto_p0_2bet_bet1 / biglotto_p0_2bet_bet2 ──────────────────────────

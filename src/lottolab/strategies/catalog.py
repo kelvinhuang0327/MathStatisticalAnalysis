@@ -153,6 +153,30 @@ _PRODUCTION_DESCRIPTORS = (
         ),
     ),
     StrategyDescriptor(
+        strategy_id="biglotto_deviation_2bet_bet2",
+        strategy_name="大樂透 Deviation 2注（Cold Bet 2）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_selected:"
+            "BigLottoDeviation2BetBet2Adapter"
+        ),
+        min_history=100,
+        provenance=(
+            "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",
+            "legacy_source:tools/predict_biglotto_deviation_2bet.py",
+            "legacy_symbol:deviation_complement_2bet",
+            "target_producer:_deviation_complement_2bet",
+            "output_index:1",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "migration_task:"
+            "MATHSTATISTICALANALYSIS_BIGLOTTO_DEVIATION_2BET_BET2_IMPLEMENT_AND_PUBLISH_R1",
+        ),
+    ),
+    StrategyDescriptor(
         strategy_id="biglotto_p0_2bet_bet1",
         strategy_name="大樂透 P0 2注（Hot+Echo Bet 1）",  # noqa: RUF001
         version="v0.1",

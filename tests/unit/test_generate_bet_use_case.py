@@ -30,6 +30,7 @@ from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
 from lottolab.strategies.adapters import (
     BetAdapter,
     BigLottoDeviation2BetAdapter,
+    BigLottoDeviation2BetBet2Adapter,
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoSocialWisdomAntiPopularityAdapter,
@@ -296,6 +297,7 @@ def test_production_descriptors_are_promoted_online_and_executable() -> None:
         BigLottoZoneSplit3BetBet2Adapter.strategy_id: BigLottoZoneSplit3BetBet2Adapter(),
         BigLottoZoneSplit3BetBet3Adapter.strategy_id: BigLottoZoneSplit3BetBet3Adapter(),
         BigLottoDeviation2BetAdapter.strategy_id: BigLottoDeviation2BetAdapter(),
+        BigLottoDeviation2BetBet2Adapter.strategy_id: BigLottoDeviation2BetBet2Adapter(),
         BigLottoP02BetBet1Adapter.strategy_id: BigLottoP02BetBet1Adapter(),
         BigLottoP02BetBet2Adapter.strategy_id: BigLottoP02BetBet2Adapter(),
     }
@@ -502,7 +504,7 @@ def test_render_result_json_is_canonical_and_sorted() -> None:
     assert failure_payload["reason_code"] == "REJECTED_BY_STRATEGY"
 
 
-def test_build_production_generate_one_bet_registers_exactly_the_seven_approved_adapters() -> None:
+def test_build_production_generate_one_bet_registers_exactly_the_eight_approved_adapters() -> None:
     use_case = build_production_generate_one_bet()
     for strategy_id, expected_numbers_len, history in (
         (BigLottoSocialWisdomAntiPopularityAdapter.strategy_id, 6, _history()),
@@ -510,6 +512,7 @@ def test_build_production_generate_one_bet_registers_exactly_the_seven_approved_
         (BigLottoZoneSplit3BetBet2Adapter.strategy_id, 6, _history()),
         (BigLottoZoneSplit3BetBet3Adapter.strategy_id, 6, _history()),
         (BigLottoDeviation2BetAdapter.strategy_id, 6, _long_history()),
+        (BigLottoDeviation2BetBet2Adapter.strategy_id, 6, _long_history()),
         (BigLottoP02BetBet1Adapter.strategy_id, 6, _history()),
         (BigLottoP02BetBet2Adapter.strategy_id, 6, _history()),
     ):
@@ -533,6 +536,27 @@ def test_build_production_generate_one_bet_registers_exactly_the_seven_approved_
     )
     assert unregistered.status is GenerateOneBetStatus.STRATEGY_UNAVAILABLE
     assert unregistered.reason_code is GenerateOneBetReason.UNKNOWN_STRATEGY
+
+
+def test_production_use_case_returns_only_deviation_cold_bet2() -> None:
+    result = build_production_generate_one_bet().execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoDeviation2BetBet2Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=tuple(
+                CausalDrawRow(
+                    str(index),
+                    str(index),
+                    (10, 20, 30, 40, 41, 42),
+                )
+                for index in range(100)
+            ),
+        )
+    )
+    assert result.status is GenerateOneBetStatus.OK
+    assert result.numbers == (1, 2, 3, 4, 5, 6)
+    assert result.special_number is None
+    assert result.reason_code is None
 
 
 def test_production_use_case_executes_zone_bet2_and_closes_insufficient_history() -> None:

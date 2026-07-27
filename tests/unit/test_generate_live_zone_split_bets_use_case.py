@@ -384,6 +384,7 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "biglotto_zone_split_3bet_bet2",
         "biglotto_zone_split_3bet_bet3",
         "biglotto_deviation_2bet",
+        "biglotto_deviation_2bet_bet2",
         "biglotto_p0_2bet_bet1",
         "biglotto_p0_2bet_bet2",
     ]

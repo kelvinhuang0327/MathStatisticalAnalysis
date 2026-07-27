@@ -11,6 +11,7 @@ from lottolab.strategies.adapters import (
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
 )
 from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
@@ -162,6 +163,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
         "biglotto_zone_split_3bet_bet2",
+        "biglotto_zone_split_3bet_bet3",
         "biglotto_deviation_2bet",
         "biglotto_p0_2bet_bet1",
         "biglotto_p0_2bet_bet2",
@@ -201,6 +203,40 @@ def test_zone_split_bet2_descriptor_and_adapter_identity_match_exactly() -> None
         "legacy_source:lottery_api/models/p541d_r2_biglotto_selected_adapters.py",
         "legacy_test:tests/test_p541d_r2_biglotto_selected_adapters.py",
         "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_ZONE_SPLIT_3BET_BET2_LOCAL_IMPLEMENTATION_R1",
+    )
+
+
+def test_zone_split_bet3_descriptor_and_adapter_identity_match_exactly() -> None:
+    descriptor = production_catalog().get(BigLottoZoneSplit3BetBet3Adapter.strategy_id)
+    assert (
+        descriptor.strategy_id,
+        descriptor.strategy_name,
+        descriptor.version,
+        descriptor.lottery_types,
+        descriptor.min_history,
+        descriptor.lifecycle_status,
+        descriptor.executable,
+        descriptor.adapter_path,
+    ) == (
+        BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+        BigLottoZoneSplit3BetBet3Adapter.strategy_name,
+        BigLottoZoneSplit3BetBet3Adapter.strategy_version,
+        (LotteryType.BIG_LOTTO,),
+        BigLottoZoneSplit3BetBet3Adapter.min_history,
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_selected:BigLottoZoneSplit3BetBet3Adapter",
+    )
+    assert descriptor.provenance == (
+        "legacy_commit:24617fe3bb7ec087acf121f302bffd638ccfa179",
+        "legacy_source:lottery_api/models/p541d_r2_biglotto_selected_adapters.py",
+        "legacy_test:tests/test_p541d_r2_biglotto_selected_adapters.py",
+        "legacy_symbol:_zone_split_bets",
+        "legacy_contract:P541D_R2",
+        "evidence_status:HISTORICAL_RESEARCH_ONLY",
+        "current_significance:NOT_ESTABLISHED",
+        "migration_task:"
+        "MATHSTATISTICALANALYSIS_BIGLOTTO_ZONE_SPLIT_3BET_BET3_IMPLEMENT_AND_PUBLISH_R1",
     )
 
 

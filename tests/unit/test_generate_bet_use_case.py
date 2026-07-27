@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 
+import lottolab.strategies.adapters.biglotto_selected as biglotto_selected_module
 from lottolab.application.use_cases.generate_bet import (
     AdapterIdentityMismatchError,
     GenerateOneBet,
@@ -34,6 +35,7 @@ from lottolab.strategies.adapters import (
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
     CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
@@ -292,6 +294,7 @@ def test_production_descriptors_are_promoted_online_and_executable() -> None:
         ),
         BigLottoZoneSplit3BetBet1Adapter.strategy_id: BigLottoZoneSplit3BetBet1Adapter(),
         BigLottoZoneSplit3BetBet2Adapter.strategy_id: BigLottoZoneSplit3BetBet2Adapter(),
+        BigLottoZoneSplit3BetBet3Adapter.strategy_id: BigLottoZoneSplit3BetBet3Adapter(),
         BigLottoDeviation2BetAdapter.strategy_id: BigLottoDeviation2BetAdapter(),
         BigLottoP02BetBet1Adapter.strategy_id: BigLottoP02BetBet1Adapter(),
         BigLottoP02BetBet2Adapter.strategy_id: BigLottoP02BetBet2Adapter(),
@@ -322,6 +325,16 @@ def test_production_descriptors_are_promoted_online_and_executable() -> None:
     )
     assert bet2_result.status is GenerateOneBetStatus.OK
     assert bet2_result.numbers == (15, 16, 17, 21, 26, 31)
+
+    bet3_result = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+        )
+    )
+    assert bet3_result.status is GenerateOneBetStatus.OK
+    assert bet3_result.numbers == (38, 41, 42, 44, 48, 49)
 
 
 def test_status_enum_is_closed_to_authorized_outcomes() -> None:
@@ -489,12 +502,13 @@ def test_render_result_json_is_canonical_and_sorted() -> None:
     assert failure_payload["reason_code"] == "REJECTED_BY_STRATEGY"
 
 
-def test_build_production_generate_one_bet_registers_exactly_the_six_approved_adapters() -> None:
+def test_build_production_generate_one_bet_registers_exactly_the_seven_approved_adapters() -> None:
     use_case = build_production_generate_one_bet()
     for strategy_id, expected_numbers_len, history in (
         (BigLottoSocialWisdomAntiPopularityAdapter.strategy_id, 6, _history()),
         (BigLottoZoneSplit3BetBet1Adapter.strategy_id, 6, _history()),
         (BigLottoZoneSplit3BetBet2Adapter.strategy_id, 6, _history()),
+        (BigLottoZoneSplit3BetBet3Adapter.strategy_id, 6, _history()),
         (BigLottoDeviation2BetAdapter.strategy_id, 6, _long_history()),
         (BigLottoP02BetBet1Adapter.strategy_id, 6, _history()),
         (BigLottoP02BetBet2Adapter.strategy_id, 6, _history()),
@@ -544,6 +558,63 @@ def test_production_use_case_executes_zone_bet2_and_closes_insufficient_history(
     assert insufficient.status is GenerateOneBetStatus.INSUFFICIENT_HISTORY
     assert insufficient.reason_code is GenerateOneBetReason.INSUFFICIENT_HISTORY
     assert insufficient.numbers is None
+
+
+def test_production_use_case_returns_only_zone_bet3_and_closes_outcomes() -> None:
+    use_case = build_production_generate_one_bet()
+    result = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+        )
+    )
+    assert result.status is GenerateOneBetStatus.OK
+    assert result.numbers == (38, 41, 42, 44, 48, 49)
+    assert result.special_number is None
+
+    insufficient = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=(),
+        )
+    )
+    assert insufficient.status is GenerateOneBetStatus.INSUFFICIENT_HISTORY
+    assert insufficient.reason_code is GenerateOneBetReason.INSUFFICIENT_HISTORY
+    assert insufficient.numbers is None
+
+    unsupported = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+            lottery_type=LotteryType.POWER_LOTTO,
+            history=_history(),
+        )
+    )
+    assert unsupported.status is GenerateOneBetStatus.STRATEGY_UNAVAILABLE
+    assert unsupported.reason_code is GenerateOneBetReason.UNSUPPORTED_LOTTERY_TYPE
+    assert unsupported.numbers is None
+
+
+def test_production_use_case_maps_zone_bet3_producer_failure_to_replay_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_producer(_history: object) -> tuple[tuple[int, ...], ...]:
+        raise RuntimeError("producer failure must not escape")
+
+    monkeypatch.setattr(biglotto_selected_module, "_zone_split_bets", fail_producer)
+    result = build_production_generate_one_bet().execute(
+        GenerateOneBetInput(
+            strategy_id=BigLottoZoneSplit3BetBet3Adapter.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+        )
+    )
+
+    assert result.status is GenerateOneBetStatus.REPLAY_ERROR
+    assert result.reason_code is GenerateOneBetReason.REPLAY_ERROR
+    assert result.numbers is None
+    assert result.special_number is None
 
 
 def test_production_use_case_executes_only_requested_p0_ticket_and_closes_outcomes() -> None:

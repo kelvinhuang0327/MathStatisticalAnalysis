@@ -15,6 +15,7 @@ import sys
 import time
 from dataclasses import FrozenInstanceError
 from pathlib import Path
+from types import SimpleNamespace
 from typing import cast
 
 import pytest
@@ -30,6 +31,7 @@ from lottolab.strategies.adapters import (
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
     CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
@@ -200,6 +202,7 @@ ADAPTER_CLASSES = (
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
 )
 
 
@@ -213,6 +216,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BigLottoSocialWisdomAntiPopularityAdapter",
         "BigLottoZoneSplit3BetBet1Adapter",
         "BigLottoZoneSplit3BetBet2Adapter",
+        "BigLottoZoneSplit3BetBet3Adapter",
         "CausalDrawRow",
         "InsufficientHistory",
         "InvalidOutput",
@@ -243,6 +247,108 @@ def test_zone_bet2_adapter_returns_frozen_donor_bet_two() -> None:
     assert BigLottoZoneSplit3BetBet2Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((15, 16, 17, 21, 26, 31), None)
+
+
+def test_zone_bet3_adapter_returns_only_frozen_donor_bet_three() -> None:
+    assert BigLottoZoneSplit3BetBet3Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((38, 41, 42, 44, 48, 49), None)
+
+
+def test_zone_seed_preserves_row_order_and_canonicalizes_number_order() -> None:
+    first = _row("1", "2026-01-01", (1, 2, 3, 4, 5, 6))
+    second = _row("2", "2026-01-02", (7, 8, 9, 10, 11, 12))
+    assert _zone_seed_preimage((first, second)) != _zone_seed_preimage((second, first))
+
+    reordered_numbers = _row("1", "2026-01-01", (6, 5, 4, 3, 2, 1))
+    assert _zone_seed_preimage((reordered_numbers,)) == ZONE_PREIMAGE
+
+
+def test_zone_seed_serializes_only_canonical_row_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    row_with_extra = SimpleNamespace(
+        draw="1",
+        date="2026-01-01",
+        numbers=(1, 2, 3, 4, 5, 6),
+        ignored_extra="not-seeded",
+    )
+
+    def canonicalized_history(
+        _history: object,
+        _strategy_id: str,
+    ) -> tuple[CausalDrawRow, ...]:
+        return cast(tuple[CausalDrawRow, ...], (row_with_extra,))
+
+    monkeypatch.setattr(
+        biglotto_selected_module,
+        "validated_history",
+        canonicalized_history,
+    )
+
+    assert _zone_seed_preimage(object()) == ZONE_PREIMAGE
+
+
+def test_zone_uses_one_local_rng_for_three_sequential_samples(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seeds: list[int] = []
+    samples: list[tuple[tuple[int, ...], int]] = []
+
+    class SpyRandom:
+        def __init__(self, seed: int) -> None:
+            seeds.append(seed)
+
+        def sample(self, population: tuple[int, ...], count: int) -> list[int]:
+            samples.append((population, count))
+            return list(population[:count])
+
+    monkeypatch.setattr(biglotto_selected_module.random, "Random", SpyRandom)
+
+    assert _zone_split_bets(_zone_history()) == (
+        (1, 2, 3, 4, 5, 6),
+        (15, 16, 17, 18, 19, 20),
+        (31, 32, 33, 34, 35, 36),
+    )
+    assert len(seeds) == 1
+    assert samples == [(pool, 6) for pool in _zone_split_pools()]
+
+
+def test_zone_does_not_call_module_level_random_apis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def forbidden(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("module-level random API called")
+
+    monkeypatch.setattr(random, "seed", forbidden)
+    monkeypatch.setattr(random, "sample", forbidden)
+
+    assert _zone_split_bets(_zone_history()) == tuple(tuple(bet) for bet in ZONE_BETS)
+
+
+def test_zone_does_not_import_or_execute_old_zone_split(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    legacy_module = "lottery_api.models.zone_split"
+    real_import = builtins.__import__
+
+    def guarded_import(
+        name: str,
+        globals_: dict[str, object] | None = None,
+        locals_: dict[str, object] | None = None,
+        fromlist: tuple[str, ...] = (),
+        level: int = 0,
+    ) -> object:
+        if name == legacy_module:
+            raise AssertionError("old global-random ZoneSplitStrategy imported")
+        return real_import(name, globals_, locals_, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", guarded_import)
+
+    assert legacy_module not in sys.modules
+    assert BigLottoZoneSplit3BetBet3Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((38, 41, 42, 44, 48, 49), None)
 
 
 def test_social_repeated_high_golden() -> None:
@@ -693,6 +799,7 @@ from lottolab.strategies.adapters import (
     BigLottoSocialWisdomAntiPopularityAdapter,
     BigLottoZoneSplit3BetBet1Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
+    BigLottoZoneSplit3BetBet3Adapter,
     CausalDrawRow,
 )
 zone = (CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),)
@@ -704,6 +811,9 @@ result = {
         zone, LotteryType.BIG_LOTTO
     ),
     "zone_bet2": BigLottoZoneSplit3BetBet2Adapter().get_one_bet(
+        zone, LotteryType.BIG_LOTTO
+    ),
+    "zone_bet3": BigLottoZoneSplit3BetBet3Adapter().get_one_bet(
         zone, LotteryType.BIG_LOTTO
     ),
     "social": BigLottoSocialWisdomAntiPopularityAdapter().get_one_bet(
@@ -731,6 +841,7 @@ print(json.dumps(result, sort_keys=True))
         "social": [[32, 33, 34, 35, 41, 49], None],
         "zone_bet1": [[4, 6, 11, 14, 15, 18], None],
         "zone_bet2": [[15, 16, 17, 21, 26, 31], None],
+        "zone_bet3": [[38, 41, 42, 44, 48, 49], None],
     }
 
 
@@ -752,6 +863,9 @@ def test_adapter_execution_needs_no_filesystem_clock_database_or_network(
     assert BigLottoZoneSplit3BetBet2Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((15, 16, 17, 21, 26, 31), None)
+    assert BigLottoZoneSplit3BetBet3Adapter().get_one_bet(
+        _zone_history(), LotteryType.BIG_LOTTO
+    ) == ((38, 41, 42, 44, 48, 49), None)
     assert BigLottoP02BetBet1Adapter().get_one_bet(
         _zone_history(), LotteryType.BIG_LOTTO
     ) == ((7, 8, 9, 10, 11, 12), None)

@@ -451,7 +451,7 @@ onBeforeUnmount(() => {
         <button class="button button--primary" data-testid="manual-sync" type="button" :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo" @click="runSync('manual')">Manual sync</button>
         <button class="button button--quiet" type="button" :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo" @click="runSync('missing-scan')">Scan missing draws</button>
         <button class="button button--quiet" type="button" :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo" @click="runSync('backfill')">Bounded backfill</button>
-        <button class="button button--quiet" type="button" :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo" @click="runSync('scheduled')">Run scheduled trigger</button>
+        <button class="button button--quiet" data-testid="scheduled-sync" type="button" :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo" @click="runSync('scheduled')">Run scheduled trigger</button>
       </div>
       <p v-if="syncMessage" class="state-panel" :class="{ 'state-panel--error': !syncResult }" aria-live="polite">
         {{ syncMessage }}

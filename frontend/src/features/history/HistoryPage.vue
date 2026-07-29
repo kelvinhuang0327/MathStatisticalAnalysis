@@ -222,6 +222,10 @@ onBeforeUnmount(() => {
 
       <article v-if="runDetail" class="panel" aria-labelledby="run-detail-title">
         <h3 id="run-detail-title">Run Detail <code>{{ runDetail.run.run_id }}</code></h3>
+        <p class="run-error-summary" data-testid="run-error-summary">
+          <strong>Error summary:</strong>
+          {{ runDetail.run.error_summary?.trim() || 'No error summary provided.' }}
+        </p>
         <p v-if="runDetail.items_truncated" class="state-panel state-panel--warning">Partial result: showing a bounded item set of {{ runDetail.item_count }} total items.</p>
         <div class="table-wrap">
           <table>

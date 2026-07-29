@@ -57,6 +57,21 @@ const run = {
   error_summary: 'PROVIDER_CONTRACT_INVALID',
 }
 
+const successfulRun = {
+  ...run,
+  run_id: 'run-success',
+  status: 'SUCCESS',
+  inserted_count: 1,
+  failed_count: 0,
+  error_summary: null,
+}
+
+const failedRunWithoutSummary = {
+  ...run,
+  run_id: 'run-without-summary',
+  error_summary: null,
+}
+
 const evidence = {
   items: [
     {
@@ -176,6 +191,9 @@ describe('History workspace', () => {
     await wrapper.findAll('button').find((button) => button.text() === 'Open')?.trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('Partial result')
+    expect(wrapper.get('[data-testid="run-error-summary"]').text()).toContain(
+      'PROVIDER_CONTRACT_INVALID',
+    )
     expect(wrapper.text()).toContain('Sanitized provider validation failure')
 
     await wrapper
@@ -186,6 +204,142 @@ describe('History workspace', () => {
     expect(wrapper.text()).toContain('Historical Results storage is not configured')
     expect(wrapper.text()).not.toContain('Run replay')
     expect(wrapper.text()).not.toContain('Delete')
+    wrapper.unmount()
+  })
+
+  it('renders a neutral fallback when a failed run has no error summary', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/draws?')) {
+        return Promise.resolve(
+          apiResponse({
+            records: [],
+            page: 1,
+            page_size: 25,
+            total_count: 0,
+            total_pages: 0,
+            sort: ['draw_date:desc', 'draw_number:string_desc', 'id:desc'],
+          }),
+        )
+      }
+      if (url.endsWith('/api/v1/ingestion-runs/run-without-summary')) {
+        return Promise.resolve(
+          apiResponse({
+            run: failedRunWithoutSummary,
+            items: [],
+            item_count: 0,
+            items_truncated: false,
+          }),
+        )
+      }
+      if (url.includes('/api/v1/ingestion-runs?')) {
+        return Promise.resolve(
+          apiResponse({
+            records: [failedRunWithoutSummary],
+            page: 1,
+            page_size: 25,
+            total_count: 1,
+            total_pages: 1,
+            sort: ['started_at:desc', 'id:desc'],
+          }),
+        )
+      }
+      return Promise.resolve(apiResponse({ items: [], total_count: 0, limit: 50, offset: 0 }))
+    })
+    const wrapper = mount(HistoryPage)
+    await flushPromises()
+
+    await wrapper
+      .get('nav[aria-label="History sections"]')
+      .findAll('button')[1]
+      ?.trigger('click')
+    await wrapper.findAll('button').find((button) => button.text() === 'Open')?.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="run-error-summary"]').text()).toContain(
+      'No error summary provided.',
+    )
+    expect(wrapper.text()).not.toContain('/Users/')
+    expect(wrapper.text()).not.toContain('SELECT ')
+    wrapper.unmount()
+  })
+
+  it('keeps a successful current detail when an older failed response arrives late', async () => {
+    const pendingFailedDetail = deferred<Response>()
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/draws?')) {
+        return Promise.resolve(
+          apiResponse({
+            records: [],
+            page: 1,
+            page_size: 25,
+            total_count: 0,
+            total_pages: 0,
+            sort: ['draw_date:desc', 'draw_number:string_desc', 'id:desc'],
+          }),
+        )
+      }
+      if (url.endsWith('/api/v1/ingestion-runs/run-1')) return pendingFailedDetail.promise
+      if (url.endsWith('/api/v1/ingestion-runs/run-success')) {
+        return Promise.resolve(
+          apiResponse({
+            run: successfulRun,
+            items: [],
+            item_count: 0,
+            items_truncated: false,
+          }),
+        )
+      }
+      if (url.includes('/api/v1/ingestion-runs?')) {
+        return Promise.resolve(
+          apiResponse({
+            records: [run, successfulRun],
+            page: 1,
+            page_size: 25,
+            total_count: 2,
+            total_pages: 1,
+            sort: ['started_at:desc', 'id:desc'],
+          }),
+        )
+      }
+      return Promise.resolve(apiResponse({ items: [], total_count: 0, limit: 50, offset: 0 }))
+    })
+    const wrapper = mount(HistoryPage)
+    await flushPromises()
+
+    await wrapper
+      .get('nav[aria-label="History sections"]')
+      .findAll('button')[1]
+      ?.trigger('click')
+    const openButtons = wrapper.findAll('button').filter((button) => button.text() === 'Open')
+    await openButtons[0]?.trigger('click')
+    await flushPromises()
+    const failedSignal = (fetchMock.mock.calls.find((call) =>
+      String(call[0]).endsWith('/api/v1/ingestion-runs/run-1'),
+    )?.[1] as RequestInit).signal
+    await openButtons[1]?.trigger('click')
+    await flushPromises()
+
+    expect(failedSignal?.aborted).toBe(true)
+    expect(wrapper.get('#run-detail-title').text()).toContain('run-success')
+    expect(wrapper.get('[data-testid="run-error-summary"]').text()).toContain(
+      'No error summary provided.',
+    )
+    expect(wrapper.text()).not.toContain('PROVIDER_CONTRACT_INVALID')
+
+    pendingFailedDetail.resolve(
+      apiResponse({
+        run,
+        items: [],
+        item_count: 0,
+        items_truncated: false,
+      }),
+    )
+    await flushPromises()
+
+    expect(wrapper.get('#run-detail-title').text()).toContain('run-success')
+    expect(wrapper.text()).not.toContain('PROVIDER_CONTRACT_INVALID')
     wrapper.unmount()
   })
 

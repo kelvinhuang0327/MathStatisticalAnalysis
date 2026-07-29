@@ -19,10 +19,10 @@ legacy_empty_state: No submitted rows
 legacy_error_state: Route-specific validation or database error
 legacy_write_effect: May insert uploaded draw data directly
 legacy_known_defect: Browser submission and mutation authority are not cleanly separated
-new_core: DrawCsvParser plus PreviewDrawCsv and CommitDrawCsv
-new_api: POST /api/v1/draw-data/preview and POST /api/v1/draw-data/commit
-new_page: "#/data-center"
-new_tests: tests/contract/test_draw_data_api.py; frontend/tests/data-center.test.ts
+new_core: "use cases: PreviewDrawImport + CommitDrawImport; adapters: parse_draw_csv + SQLiteDrawDataRepository"
+new_api: "POST /api/v1/draw-imports/preview via previewDrawImport; POST /api/v1/draw-imports/commit via commitDrawImport"
+new_page: "route: #/data-center; component: frontend/src/features/data-center/DataCenterPage.vue"
+new_tests: "backend: tests/contract/test_draw_data_api.py; frontend: frontend/tests/data-center.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -40,10 +40,10 @@ legacy_empty_state: No submitted file
 legacy_error_state: Per-request error
 legacy_write_effect: Individual request mutations
 legacy_known_defect: No explicit per-file batch transaction or aggregate-result contract
-new_core: Per-file preview state and independent CommitDrawCsv transaction
-new_api: Existing preview and commit routes invoked once per file
-new_page: "#/data-center input[multiple], preview all, commit all valid, commit selected valid, cancel"
-new_tests: frontend/tests/data-center.test.ts
+new_core: "use cases: PreviewDrawImport + CommitDrawImport per file; adapters: parse_draw_csv + SQLiteDrawDataRepository"
+new_api: "POST /api/v1/draw-imports/preview via previewDrawImport; POST /api/v1/draw-imports/commit via commitDrawImport"
+new_page: "route: #/data-center; component: frontend/src/features/data-center/DataCenterPage.vue"
+new_tests: "backend: tests/contract/test_draw_data_api.py; frontend: frontend/tests/data-center.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -61,10 +61,10 @@ legacy_empty_state: No source rows
 legacy_error_state: Fetcher or ingest error
 legacy_write_effect: Fetch and persist draw data
 legacy_known_defect: Source access and persistence are coupled to legacy runtime behavior
-new_core: DrawDataProvider plus FetchDrawData with MANUAL_SYNC audit trigger
-new_api: POST /api/v1/draw-data/sync/manual
-new_page: "#/data-center"
-new_tests: tests/unit/test_draw_automation.py; tests/contract/test_non_multiticket_web_parity_api.py
+new_core: "use case: FetchDrawData; adapters: JsonHttpDrawDataProvider + SQLiteDrawDataRepository"
+new_api: "POST /api/v1/draw-sync/manual via runDrawSync('manual')"
+new_page: "route: #/data-center; component: frontend/src/features/data-center/DataCenterPage.vue"
+new_tests: "backend: tests/unit/test_draw_automation.py + tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/data-center.test.ts"
 parity_status: PAGE_READY
 ```
 
@@ -82,10 +82,10 @@ legacy_empty_state: No missing issues
 legacy_error_state: Fetcher or detector error
 legacy_write_effect: Legacy flow may couple scan and source refresh
 legacy_known_defect: Read and source-refresh responsibilities are mixed
-new_core: ScanMissingDraws with MISSING_DRAW_SCAN audit trigger
-new_api: POST /api/v1/draw-data/sync/missing-scan
-new_page: "#/data-center"
-new_tests: tests/unit/test_draw_automation.py; tests/contract/test_non_multiticket_web_parity_api.py
+new_core: "use case: ScanMissingDraws; adapters: JsonHttpDrawDataProvider + SQLiteDrawDataRepository"
+new_api: "POST /api/v1/draw-sync/missing-scan via runDrawSync('missing-scan')"
+new_page: "route: #/data-center; component: frontend/src/features/data-center/DataCenterPage.vue"
+new_tests: "backend: tests/unit/test_draw_automation.py + tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/data-center.test.ts"
 parity_status: PAGE_READY
 ```
 
@@ -103,10 +103,10 @@ legacy_empty_state: No rows in range
 legacy_error_state: Fetcher, validation, or database error
 legacy_write_effect: Fetch and persist historical draw rows
 legacy_known_defect: Legacy endpoint does not define the target 366-day safety boundary
-new_core: BackfillDrawRange with maximum 366 inclusive days and no-overwrite persistence
-new_api: POST /api/v1/draw-data/sync/backfill
-new_page: "#/data-center"
-new_tests: tests/unit/test_draw_automation.py; tests/contract/test_non_multiticket_web_parity_api.py
+new_core: "use case: BackfillDrawRange; adapters: JsonHttpDrawDataProvider + SQLiteDrawDataRepository"
+new_api: "POST /api/v1/draw-sync/backfill via runDrawSync('backfill')"
+new_page: "route: #/data-center; component: frontend/src/features/data-center/DataCenterPage.vue"
+new_tests: "backend: tests/unit/test_draw_automation.py + tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/data-center.test.ts"
 parity_status: PAGE_READY
 ```
 
@@ -124,10 +124,10 @@ legacy_empty_state: Scheduler has no due work
 legacy_error_state: Background scheduler or fetch failure
 legacy_write_effect: Background process can fetch and persist data
 legacy_known_defect: Construction-time scheduler ownership can create hidden side effects
-new_core: ScheduledDrawSync with SCHEDULED_SYNC audit trigger and no construction-time job
-new_api: POST /api/v1/draw-data/sync/scheduled
-new_page: "#/data-center explicit trigger"
-new_tests: tests/unit/test_draw_automation.py; tests/contract/test_non_multiticket_web_parity_api.py
+new_core: "use case: ScheduledDrawSync; adapters: JsonHttpDrawDataProvider + SQLiteDrawDataRepository"
+new_api: "POST /api/v1/draw-sync/scheduled via runDrawSync('scheduled')"
+new_page: "route: #/data-center; component: frontend/src/features/data-center/DataCenterPage.vue"
+new_tests: "backend: tests/unit/test_draw_automation.py + tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/data-center.test.ts"
 parity_status: PAGE_READY
 ```
 
@@ -149,10 +149,10 @@ legacy_empty_state: No ingest logs
 legacy_error_state: Log or database error
 legacy_write_effect: Read action may coexist with legacy maintenance controls
 legacy_known_defect: Trigger, provider, conflict, and failure structure is not one stable contract
-new_core: Append-only ingestion run, context, item, conflict, and failure records
-new_api: GET /api/v1/ingestion-runs and GET /api/v1/ingestion-runs/{run_id}
-new_page: "#/history — Ingestion History"
-new_tests: tests/contract/test_non_multiticket_web_parity_api.py; frontend/tests/non-multiticket-workspaces.test.ts
+new_core: "use cases: ListIngestionRuns + GetIngestionRun; adapter: SQLiteDrawDataRepository"
+new_api: "GET /api/v1/ingestion-runs via listIngestionRuns; GET /api/v1/ingestion-runs/{run_id} via getIngestionRun"
+new_page: "route: #/history; component: frontend/src/features/history/HistoryPage.vue"
+new_tests: "backend: tests/contract/test_draw_data_api.py + tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -170,10 +170,10 @@ legacy_empty_state: No matching draws
 legacy_error_state: History route or database error
 legacy_write_effect: Legacy read can refresh scheduler state
 legacy_known_defect: A nominal read can have scheduler side effects
-new_core: QueryDrawHistory read model
-new_api: GET /api/v1/draws
-new_page: "#/history — Draw History"
-new_tests: tests/contract/test_draw_history_api.py; frontend/tests/draw-history.test.ts
+new_core: "use cases: ListDraws + GetDraw; adapter: SQLiteDrawDataRepository"
+new_api: "GET /api/v1/draws via listDraws"
+new_page: "route: #/history; components: frontend/src/features/history/HistoryPage.vue + frontend/src/features/draw-history/DrawHistoryPage.vue"
+new_tests: "backend: tests/contract/test_draw_data_api.py + tests/integration/test_draw_repositories.py; frontend: frontend/tests/draw-history.test.ts + frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -191,10 +191,10 @@ legacy_empty_state: No matching activity
 legacy_error_state: Log or database error
 legacy_write_effect: NONE
 legacy_known_defect: No single bounded run/detail contract
-new_core: QueryIngestionRuns and QueryIngestionRunDetail
-new_api: GET /api/v1/ingestion-runs and GET /api/v1/ingestion-runs/{run_id}
-new_page: "#/history — Ingestion History"
-new_tests: tests/contract/test_non_multiticket_web_parity_api.py; frontend/tests/non-multiticket-workspaces.test.ts stale-list/detail race
+new_core: "use cases: ListIngestionRuns + GetIngestionRun; adapter: SQLiteDrawDataRepository"
+new_api: "GET /api/v1/ingestion-runs via listIngestionRuns; GET /api/v1/ingestion-runs/{run_id} via getIngestionRun"
+new_page: "route: #/history; component: frontend/src/features/history/HistoryPage.vue"
+new_tests: "backend: tests/contract/test_draw_data_api.py + tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -212,10 +212,10 @@ legacy_empty_state: No completed imports
 legacy_error_state: Historical storage unavailable or invalid
 legacy_write_effect: NONE
 legacy_known_defect: Metadata and replay/outcome concepts are heterogeneous
-new_core: QueryHistoricalRuns metadata-only read model
-new_api: GET /api/v1/historical-results/runs
-new_page: "#/history — Historical Import Runs"
-new_tests: tests/integration/test_historical_results_repository.py; frontend/tests/non-multiticket-workspaces.test.ts
+new_core: "use case: ListHistoricalRuns; adapter: SQLiteHistoricalResultQueryRepository"
+new_api: "GET /api/v1/historical-results/runs via listHistoricalImportRuns"
+new_page: "route: #/history; component: frontend/src/features/history/HistoryPage.vue"
+new_tests: "backend: tests/unit/test_historical_results_api.py + tests/integration/test_historical_repositories.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -237,10 +237,10 @@ legacy_empty_state: No strategy records
 legacy_error_state: Legacy result-source failure
 legacy_write_effect: NONE
 legacy_known_defect: Catalog lifecycle and result-derived claims can be visually conflated
-new_core: StrategyCatalog plus committed canonical-evidence registry reader
-new_api: GET /api/v1/strategy-evidence
-new_page: "#/strategy-evidence"
-new_tests: tests/contract/test_non_multiticket_web_parity_api.py; frontend/tests/non-multiticket-workspaces.test.ts
+new_core: "use case: QueryStrategyEvidence; adapter: CommittedStrategyEvidenceRegistry"
+new_api: "GET /api/v1/strategy-evidence via queryStrategyEvidence"
+new_page: "route: #/strategy-evidence; component: frontend/src/features/strategy-evidence/StrategyEvidencePage.vue"
+new_tests: "backend: tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -258,10 +258,10 @@ legacy_empty_state: No eligible result
 legacy_error_state: Legacy artifact unavailable
 legacy_write_effect: NONE
 legacy_known_defect: Presentation may imply ranking authority not present in the catalog
-new_core: Fixed unavailable block with NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE
-new_api: GET /api/v1/strategy-evidence
-new_page: "#/strategy-evidence"
-new_tests: tests/contract/test_non_multiticket_web_parity_api.py; frontend/tests/non-multiticket-workspaces.test.ts
+new_core: "use case: QueryStrategyEvidence; adapter: CommittedStrategyEvidenceRegistry"
+new_api: "GET /api/v1/strategy-evidence via queryStrategyEvidence"
+new_page: "route: #/strategy-evidence; component: frontend/src/features/strategy-evidence/StrategyEvidencePage.vue"
+new_tests: "backend: tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -279,10 +279,10 @@ legacy_empty_state: No D3 value
 legacy_error_state: Artifact unavailable
 legacy_write_effect: NONE
 legacy_known_defect: Missing values may not carry a canonical definition state
-new_core: Committed D3 definition reader
-new_api: GET /api/v1/strategy-evidence
-new_page: "#/strategy-evidence"
-new_tests: tests/contract/test_non_multiticket_web_parity_api.py; frontend/tests/non-multiticket-workspaces.test.ts
+new_core: "use case: QueryStrategyEvidence; adapter: CommittedStrategyEvidenceRegistry"
+new_api: "GET /api/v1/strategy-evidence via queryStrategyEvidence"
+new_page: "route: #/strategy-evidence; component: frontend/src/features/strategy-evidence/StrategyEvidencePage.vue"
+new_tests: "backend: tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: PARITY_VERIFIED
 ```
 
@@ -303,10 +303,10 @@ legacy_empty_state: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 legacy_error_state: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 legacy_write_effect: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 legacy_known_defect: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
-new_core: Fixed exclusion block only
-new_api: GET /api/v1/strategy-evidence returns exclusion metadata only
-new_page: "#/strategy-evidence exclusion block"
-new_tests: tests/contract/test_non_multiticket_web_parity_api.py; frontend/tests/non-multiticket-workspaces.test.ts
+new_core: "use case: QueryStrategyEvidence exclusion metadata; adapter: CommittedStrategyEvidenceRegistry"
+new_api: "GET /api/v1/strategy-evidence via queryStrategyEvidence"
+new_page: "route: #/strategy-evidence; component: frontend/src/features/strategy-evidence/StrategyEvidencePage.vue"
+new_tests: "backend: tests/contract/test_non_multiticket_web_parity_api.py; frontend: frontend/tests/non-multiticket-workspaces.test.ts"
 parity_status: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 ```
 
@@ -324,11 +324,11 @@ legacy_empty_state: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 legacy_error_state: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 legacy_write_effect: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
 legacy_known_defect: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
-new_core: NOT_PRESENT
-new_api: NOT_PRESENT
-new_page: NOT_PRESENT
-new_tests: Changed-path exclusion review
-parity_status: EXCLUDED_ACTIVE_MULTITICKET_SCOPE
+new_core: EXCLUDED_HISTORICAL_REPLAY_SCOPE
+new_api: EXCLUDED_HISTORICAL_REPLAY_SCOPE
+new_page: EXCLUDED_HISTORICAL_REPLAY_SCOPE
+new_tests: "backend: NOT_PRESENT; frontend: NOT_PRESENT; evidence: safety-commit changed-path exclusion review"
+parity_status: EXCLUDED_HISTORICAL_REPLAY_SCOPE
 ```
 
 ## Cutover statement

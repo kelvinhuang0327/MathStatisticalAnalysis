@@ -12,6 +12,12 @@ export type DrawRecord = DrawHistoryResponse['records'][number]
 export type IngestionRunPage =
   paths['/api/v1/ingestion-runs']['get']['responses'][200]['content']['application/json']
 export type IngestionRun = IngestionRunPage['records'][number]
+export type IngestionRunDetail =
+  paths['/api/v1/ingestion-runs/{run_id}']['get']['responses'][200]['content']['application/json']
+export type DrawSyncRequest = components['schemas']['DrawSyncRequestView']
+export type DrawSyncResponse =
+  paths['/api/v1/draw-sync/manual']['post']['responses'][200]['content']['application/json']
+export type DrawSyncOperation = 'manual' | 'missing-scan' | 'backfill' | 'scheduled'
 
 export interface PreviewOutcome {
   ok: boolean
@@ -37,6 +43,16 @@ export interface DrawHistoryQuery {
   dateTo: string
   page: number
   pageSize: number
+}
+
+export interface IngestionRunQuery {
+  status?: 'RUNNING' | 'SUCCESS' | 'FAILED'
+  operationType?: IngestionRun['operation_type']
+  source?: string
+  dateFrom?: string
+  dateTo?: string
+  page?: number
+  pageSize?: number
 }
 
 export class DrawDataRequestError extends Error {
@@ -106,18 +122,62 @@ export async function commitDrawImport(
   throw malformedResponse('CSV commit', response.status)
 }
 
-export async function listIngestionRuns(signal?: AbortSignal): Promise<IngestionRunPage> {
-  const response = await fetch(
-    '/api/v1/ingestion-runs?lottery_type=BIG_LOTTO&page=1&page_size=25',
-    {
-      method: 'GET',
-      headers: { Accept: 'application/json' },
-      signal,
-    },
-  )
+export async function runDrawSync(
+  operation: DrawSyncOperation,
+  request: DrawSyncRequest,
+  signal?: AbortSignal,
+): Promise<DrawSyncResponse> {
+  const response = await fetch(`/api/v1/draw-sync/${operation}`, {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(request),
+    signal,
+  })
+  const payload = await responseJson(response)
+  if (!response.ok) throw responseError('Draw automation', response.status, payload)
+  if (!isDrawSyncResponse(payload)) throw malformedResponse('Draw automation', response.status)
+  return payload
+}
+
+export async function listIngestionRuns(
+  query: IngestionRunQuery = {},
+  signal?: AbortSignal,
+): Promise<IngestionRunPage> {
+  const parameters = new URLSearchParams({
+    lottery_type: 'BIG_LOTTO',
+    page: String(query.page ?? 1),
+    page_size: String(query.pageSize ?? 25),
+  })
+  if (query.status) parameters.set('status', query.status)
+  if (query.operationType) parameters.set('operation_type', query.operationType)
+  if (query.source) parameters.set('source', query.source)
+  if (query.dateFrom) parameters.set('date_from', query.dateFrom)
+  if (query.dateTo) parameters.set('date_to', query.dateTo)
+  const response = await fetch(`/api/v1/ingestion-runs?${parameters.toString()}`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal,
+  })
   const payload = await responseJson(response)
   if (!response.ok) throw responseError('Ingestion runs', response.status, payload)
   if (!isIngestionRunPage(payload)) throw malformedResponse('Ingestion runs', response.status)
+  return payload
+}
+
+export async function getIngestionRun(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<IngestionRunDetail> {
+  const response = await fetch(`/api/v1/ingestion-runs/${encodeURIComponent(runId)}`, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  const payload = await responseJson(response)
+  if (!response.ok) throw responseError('Ingestion run detail', response.status, payload)
+  if (!isIngestionRunDetail(payload)) {
+    throw malformedResponse('Ingestion run detail', response.status)
+  }
   return payload
 }
 
@@ -295,15 +355,30 @@ function isDrawHistory(value: unknown): value is DrawHistoryResponse {
 }
 
 function isIngestionRun(value: unknown): boolean {
+  const operationTypes = [
+    'DRAW_CSV_IMPORT',
+    'MANUAL_SYNC',
+    'MISSING_DRAW_SCAN',
+    'BOUNDED_BACKFILL',
+    'SCHEDULED_SYNC',
+  ]
   return (
     isRecord(value) &&
     isString(value.run_id) &&
-    value.operation_type === 'DRAW_CSV_IMPORT' &&
+    operationTypes.includes(String(value.operation_type)) &&
     ['RUNNING', 'SUCCESS', 'FAILED'].includes(String(value.status)) &&
     (value.lottery_type === null || value.lottery_type === 'BIG_LOTTO') &&
     isString(value.source_filename) &&
     isString(value.source_sha256) &&
     isString(value.parser_version) &&
+    value.trigger === value.operation_type &&
+    isOptionalString(value.provider) &&
+    isOptionalString(value.provider_version) &&
+    isOptionalString(value.requested_start) &&
+    isOptionalString(value.requested_end) &&
+    isOptionalString(value.resolved_start) &&
+    isOptionalString(value.resolved_end) &&
+    isInteger(value.fetched_count) &&
     isInteger(value.total_count) &&
     isInteger(value.inserted_count) &&
     isInteger(value.skipped_count) &&
@@ -327,5 +402,47 @@ function isIngestionRunPage(value: unknown): value is IngestionRunPage {
     isInteger(value.total_count) &&
     isInteger(value.total_pages) &&
     isStringArray(value.sort)
+  )
+}
+
+function isIngestionItem(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isInteger(value.source_row_number) &&
+    (value.lottery_type === null || value.lottery_type === 'BIG_LOTTO') &&
+    isOptionalString(value.draw_number) &&
+    isOptionalString(value.source) &&
+    ['INSERTED', 'SKIPPED_DUPLICATE', 'CONFLICT', 'FAILED'].includes(
+      String(value.disposition),
+    ) &&
+    isOptionalString(value.normalized_record_hash) &&
+    isOptionalString(value.message)
+  )
+}
+
+function isIngestionRunDetail(value: unknown): value is IngestionRunDetail {
+  return (
+    isRecord(value) &&
+    isIngestionRun(value.run) &&
+    Array.isArray(value.items) &&
+    value.items.every(isIngestionItem) &&
+    isInteger(value.item_count) &&
+    typeof value.items_truncated === 'boolean'
+  )
+}
+
+function isDrawSyncResponse(value: unknown): value is DrawSyncResponse {
+  return (
+    isRecord(value) &&
+    ['MANUAL_SYNC', 'MISSING_DRAW_SCAN', 'BOUNDED_BACKFILL', 'SCHEDULED_SYNC'].includes(
+      String(value.operation_type),
+    ) &&
+    isString(value.provider) &&
+    isString(value.requested_start) &&
+    isString(value.requested_end) &&
+    isOptionalString(value.resolved_start) &&
+    isOptionalString(value.resolved_end) &&
+    isInteger(value.fetched_count) &&
+    isCommitResult(value.result)
   )
 }

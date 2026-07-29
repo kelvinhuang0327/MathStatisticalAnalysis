@@ -15,8 +15,9 @@ from pathlib import Path
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 DATABASE_FILENAME = "lottolab.db"
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 MIGRATION_NAME = "create_local_draw_data_schema"
+CONTEXT_MIGRATION_NAME = "add_ingestion_run_context"
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -121,6 +122,32 @@ MIGRATION_STATEMENTS = (
 
 MIGRATION_SQL = ";\n".join(statement.strip() for statement in MIGRATION_STATEMENTS) + ";\n"
 MIGRATION_CHECKSUM = hashlib.sha256(MIGRATION_SQL.encode("utf-8")).hexdigest()
+CONTEXT_MIGRATION_STATEMENTS = (
+    """
+    CREATE TABLE ingestion_run_context (
+        ingestion_run_id TEXT PRIMARY KEY,
+        trigger TEXT NOT NULL,
+        provider TEXT,
+        provider_version TEXT,
+        requested_start TEXT,
+        requested_end TEXT,
+        resolved_start TEXT,
+        resolved_end TEXT,
+        fetched_count INTEGER NOT NULL CHECK (fetched_count >= 0),
+        FOREIGN KEY (ingestion_run_id) REFERENCES ingestion_runs(id) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE INDEX idx_ingestion_run_context_trigger
+    ON ingestion_run_context (trigger, requested_start, ingestion_run_id)
+    """,
+)
+CONTEXT_MIGRATION_SQL = (
+    ";\n".join(statement.strip() for statement in CONTEXT_MIGRATION_STATEMENTS) + ";\n"
+)
+CONTEXT_MIGRATION_CHECKSUM = hashlib.sha256(
+    CONTEXT_MIGRATION_SQL.encode("utf-8")
+).hexdigest()
 
 _EXPECTED_TABLE_XINFO = {
     "schema_migrations": (
@@ -174,6 +201,21 @@ _EXPECTED_TABLE_XINFO = {
     ),
 }
 
+_EXPECTED_TABLE_XINFO_V2 = {
+    **_EXPECTED_TABLE_XINFO,
+    "ingestion_run_context": (
+        (0, "ingestion_run_id", "TEXT", 0, None, 1, 0),
+        (1, "trigger", "TEXT", 1, None, 0, 0),
+        (2, "provider", "TEXT", 0, None, 0, 0),
+        (3, "provider_version", "TEXT", 0, None, 0, 0),
+        (4, "requested_start", "TEXT", 0, None, 0, 0),
+        (5, "requested_end", "TEXT", 0, None, 0, 0),
+        (6, "resolved_start", "TEXT", 0, None, 0, 0),
+        (7, "resolved_end", "TEXT", 0, None, 0, 0),
+        (8, "fetched_count", "INTEGER", 1, None, 0, 0),
+    ),
+}
+
 _EXPECTED_INDEX_LIST = {
     "schema_migrations": {},
     "ingestion_runs": {
@@ -186,6 +228,14 @@ _EXPECTED_INDEX_LIST = {
     },
     "ingestion_items": {
         "idx_ingestion_items_run_row": (0, "c", 0),
+    },
+}
+
+_EXPECTED_INDEX_LIST_V2 = {
+    **_EXPECTED_INDEX_LIST,
+    "ingestion_run_context": {
+        "idx_ingestion_run_context_trigger": (0, "c", 0),
+        "sqlite_autoindex_ingestion_run_context_1": (1, "pk", 0),
     },
 }
 
@@ -218,12 +268,42 @@ _EXPECTED_INDEX_XINFO = {
     ),
 }
 
+_EXPECTED_INDEX_XINFO_V2 = {
+    **_EXPECTED_INDEX_XINFO,
+    "sqlite_autoindex_ingestion_run_context_1": (
+        (0, 0, "ingestion_run_id", 0, "BINARY", 1),
+        (1, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_ingestion_run_context_trigger": (
+        (0, 1, "trigger", 0, "BINARY", 1),
+        (1, 4, "requested_start", 0, "BINARY", 1),
+        (2, 0, "ingestion_run_id", 0, "BINARY", 1),
+        (3, -1, None, 0, "BINARY", 0),
+    ),
+}
+
 _EXPECTED_FOREIGN_KEYS = {
     "schema_migrations": (),
     "ingestion_runs": (),
     "draws": ((0, 0, "ingestion_runs", "ingestion_run_id", "id", "NO ACTION", "RESTRICT", "NONE"),),
     "ingestion_items": (
         (0, 0, "ingestion_runs", "ingestion_run_id", "id", "NO ACTION", "CASCADE", "NONE"),
+    ),
+}
+
+_EXPECTED_FOREIGN_KEYS_V2 = {
+    **_EXPECTED_FOREIGN_KEYS,
+    "ingestion_run_context": (
+        (
+            0,
+            0,
+            "ingestion_runs",
+            "ingestion_run_id",
+            "id",
+            "NO ACTION",
+            "CASCADE",
+            "NONE",
+        ),
     ),
 }
 
@@ -239,12 +319,30 @@ _EXPECTED_SCHEMA_SQL = {
     "sqlite_autoindex_ingestion_runs_1": None,
 }
 
+_EXPECTED_SCHEMA_SQL_V2 = {
+    **_EXPECTED_SCHEMA_SQL,
+    "ingestion_run_context": CONTEXT_MIGRATION_STATEMENTS[0],
+    "idx_ingestion_run_context_trigger": CONTEXT_MIGRATION_STATEMENTS[1],
+    "sqlite_autoindex_ingestion_run_context_1": None,
+}
+
 _EXPECTED_SCHEMA_OBJECTS = {("table", name, name) for name in _EXPECTED_TABLE_XINFO} | {
     ("index", "idx_draws_history", "draws"),
     ("index", "idx_ingestion_runs_history", "ingestion_runs"),
     ("index", "idx_ingestion_items_run_row", "ingestion_items"),
     ("index", "sqlite_autoindex_draws_1", "draws"),
     ("index", "sqlite_autoindex_ingestion_runs_1", "ingestion_runs"),
+}
+
+_EXPECTED_SCHEMA_OBJECTS_V2 = {
+    ("table", name, name) for name in _EXPECTED_TABLE_XINFO_V2
+} | {
+    (object_type, name, table)
+    for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS
+    if object_type == "index"
+} | {
+    ("index", "idx_ingestion_run_context_trigger", "ingestion_run_context"),
+    ("index", "sqlite_autoindex_ingestion_run_context_1", "ingestion_run_context"),
 }
 
 _SCHEMA_SQL_TOKEN = re.compile(
@@ -279,7 +377,7 @@ def resolve_local_data_paths(
 
 
 def initialize_schema(paths: LocalDataPaths) -> None:
-    """Securely create/upgrade an empty or version-1 database in one transaction."""
+    """Securely create or upgrade the local draw database in one transaction."""
 
     _validate_path_definition(paths)
     _validate_existing_paths(paths)
@@ -292,7 +390,8 @@ def initialize_schema(paths: LocalDataPaths) -> None:
         with _raw_connection(paths, read_only=False) as connection:
             connection.execute("BEGIN IMMEDIATE")
             try:
-                if not _verify_migration_state(connection):
+                version = _verify_migration_state(connection)
+                if version is None:
                     for statement in MIGRATION_STATEMENTS:
                         connection.execute(statement)
                     connection.execute(
@@ -301,14 +400,33 @@ def initialize_schema(paths: LocalDataPaths) -> None:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            CURRENT_SCHEMA_VERSION,
+                            1,
                             MIGRATION_NAME,
                             MIGRATION_CHECKSUM,
                             _utc_now(),
                         ),
                     )
-                    if not _verify_migration_state(connection):
-                        raise SchemaMigrationError("schema migration did not reach version 1")
+                    version = _verify_migration_state(connection)
+                if version == 1:
+                    for statement in CONTEXT_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO schema_migrations (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            CONTEXT_MIGRATION_NAME,
+                            CONTEXT_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version != CURRENT_SCHEMA_VERSION:
+                    raise SchemaMigrationError(
+                        f"schema migration did not reach version {CURRENT_SCHEMA_VERSION}"
+                    )
             except BaseException:
                 connection.rollback()
                 raise
@@ -339,10 +457,10 @@ def verify_schema_read_only(paths: LocalDataPaths) -> bool:
         return False
     with _raw_connection(paths, read_only=True) as connection:
         try:
-            initialized = _verify_migration_state(connection)
+            version = _verify_migration_state(connection)
         except sqlite3.DatabaseError as exc:
             raise SchemaMigrationError("SQLite schema verification failed") from exc
-        if not initialized:
+        if version is None:
             raise SchemaMigrationError("database exists without a schema migration")
     _validate_existing_paths(paths)
     return True
@@ -352,7 +470,7 @@ def verify_schema_read_only(paths: LocalDataPaths) -> bool:
 def open_database(
     paths: LocalDataPaths, *, read_only: bool = False
 ) -> Generator[sqlite3.Connection]:
-    """Open a fresh, configured connection to an existing verified version-1 DB."""
+    """Open a fresh configured connection to an existing verified draw DB."""
 
     _validate_path_definition(paths)
     _validate_existing_paths(paths)
@@ -360,10 +478,10 @@ def open_database(
         raise SchemaMigrationError("local draw database does not exist")
     with _raw_connection(paths, read_only=read_only) as connection:
         try:
-            initialized = _verify_migration_state(connection)
+            version = _verify_migration_state(connection)
         except sqlite3.DatabaseError as exc:
             raise SchemaMigrationError("SQLite schema verification failed") from exc
-        if not initialized:
+        if version is None:
             raise SchemaMigrationError("database exists without a schema migration")
         yield connection
 
@@ -403,7 +521,7 @@ def _raw_connection(paths: LocalDataPaths, *, read_only: bool) -> Generator[sqli
         connection.close()
 
 
-def _verify_migration_state(connection: sqlite3.Connection) -> bool:
+def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
     table_names = {
         str(row[0])
         for row in connection.execute(
@@ -417,7 +535,7 @@ def _verify_migration_state(connection: sqlite3.Connection) -> bool:
     if "schema_migrations" not in table_names:
         if table_names:
             raise SchemaMigrationError("unversioned database contains application tables")
-        return False
+        return None
 
     rows = connection.execute(
         "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
@@ -428,39 +546,80 @@ def _verify_migration_state(connection: sqlite3.Connection) -> bool:
         raise SchemaMigrationError("database migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise NewerSchemaVersionError("database schema is newer than this LottoLab build")
-    if versions != [CURRENT_SCHEMA_VERSION]:
+    if versions not in ([1], [1, CURRENT_SCHEMA_VERSION]):
         raise SchemaMigrationError("database migration history is incomplete")
-    _, name, checksum = rows[0]
-    if name != MIGRATION_NAME or checksum != MIGRATION_CHECKSUM:
+    _, initial_name, initial_checksum = rows[0]
+    if initial_name != MIGRATION_NAME or initial_checksum != MIGRATION_CHECKSUM:
         raise MigrationChecksumError("database migration checksum does not match")
+    if versions == [1, CURRENT_SCHEMA_VERSION]:
+        _, current_name, current_checksum = rows[1]
+        if (
+            current_name != CONTEXT_MIGRATION_NAME
+            or current_checksum != CONTEXT_MIGRATION_CHECKSUM
+        ):
+            raise MigrationChecksumError("database migration checksum does not match")
 
-    _verify_schema_semantics(connection, table_names)
-    return True
+    version = versions[-1]
+    _verify_schema_semantics(connection, table_names, version=version)
+    return version
 
 
-def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[str]) -> None:
-    if table_names != set(_EXPECTED_TABLE_XINFO):
-        raise SchemaMigrationError("database schema tables do not match version 1")
+def _verify_schema_semantics(
+    connection: sqlite3.Connection,
+    table_names: set[str],
+    *,
+    version: int,
+) -> None:
+    expected_table_xinfo = (
+        _EXPECTED_TABLE_XINFO_V2 if version == CURRENT_SCHEMA_VERSION else _EXPECTED_TABLE_XINFO
+    )
+    expected_schema_objects = (
+        _EXPECTED_SCHEMA_OBJECTS_V2
+        if version == CURRENT_SCHEMA_VERSION
+        else _EXPECTED_SCHEMA_OBJECTS
+    )
+    expected_schema_sql = (
+        _EXPECTED_SCHEMA_SQL_V2 if version == CURRENT_SCHEMA_VERSION else _EXPECTED_SCHEMA_SQL
+    )
+    expected_index_list = (
+        _EXPECTED_INDEX_LIST_V2 if version == CURRENT_SCHEMA_VERSION else _EXPECTED_INDEX_LIST
+    )
+    expected_foreign_keys = (
+        _EXPECTED_FOREIGN_KEYS_V2
+        if version == CURRENT_SCHEMA_VERSION
+        else _EXPECTED_FOREIGN_KEYS
+    )
+    expected_index_xinfo = (
+        _EXPECTED_INDEX_XINFO_V2
+        if version == CURRENT_SCHEMA_VERSION
+        else _EXPECTED_INDEX_XINFO
+    )
+    if table_names != set(expected_table_xinfo):
+        raise SchemaMigrationError(f"database schema tables do not match version {version}")
 
     schema_rows = connection.execute(
         "SELECT type, name, tbl_name, sql FROM sqlite_schema ORDER BY type, name"
     ).fetchall()
     schema_objects = {(str(row[0]), str(row[1]), str(row[2])) for row in schema_rows}
-    if schema_objects != _EXPECTED_SCHEMA_OBJECTS:
-        raise SchemaMigrationError("database schema objects do not match version 1")
+    if schema_objects != expected_schema_objects:
+        raise SchemaMigrationError(f"database schema objects do not match version {version}")
     for row in schema_rows:
         name = str(row[1])
-        expected_sql = _EXPECTED_SCHEMA_SQL[name]
+        expected_sql = expected_schema_sql[name]
         actual_sql = row[3]
         if expected_sql is None:
             if actual_sql is not None:
-                raise SchemaMigrationError(f"database schema SQL does not match version 1: {name}")
+                raise SchemaMigrationError(
+                    f"database schema SQL does not match version {version}: {name}"
+                )
         elif not isinstance(actual_sql, str) or _canonical_schema_sql(
             actual_sql
         ) != _canonical_schema_sql(expected_sql):
-            raise SchemaMigrationError(f"database schema SQL does not match version 1: {name}")
+            raise SchemaMigrationError(
+                f"database schema SQL does not match version {version}: {name}"
+            )
 
-    for table, expected_columns in _EXPECTED_TABLE_XINFO.items():
+    for table, expected_columns in expected_table_xinfo.items():
         columns = tuple(
             (
                 int(row[0]),
@@ -474,15 +633,17 @@ def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[st
             for row in connection.execute(f"PRAGMA table_xinfo({table})")
         )
         if columns != expected_columns:
-            raise SchemaMigrationError(f"database table semantics do not match version 1: {table}")
+            raise SchemaMigrationError(
+                f"database table semantics do not match version {version}: {table}"
+            )
 
         indexes = {
             str(row[1]): (int(row[2]), str(row[3]), int(row[4]))
             for row in connection.execute(f"PRAGMA index_list({table})")
         }
-        if indexes != _EXPECTED_INDEX_LIST[table]:
+        if indexes != expected_index_list[table]:
             raise SchemaMigrationError(
-                f"database index inventory does not match version 1: {table}"
+                f"database index inventory does not match version {version}: {table}"
             )
 
         foreign_keys = tuple(
@@ -498,12 +659,12 @@ def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[st
             )
             for row in connection.execute(f"PRAGMA foreign_key_list({table})")
         )
-        if foreign_keys != _EXPECTED_FOREIGN_KEYS[table]:
+        if foreign_keys != expected_foreign_keys[table]:
             raise SchemaMigrationError(
-                f"database foreign-key semantics do not match version 1: {table}"
+                f"database foreign-key semantics do not match version {version}: {table}"
             )
 
-    for index, expected_index_columns in _EXPECTED_INDEX_XINFO.items():
+    for index, expected_index_columns in expected_index_xinfo.items():
         index_columns = tuple(
             (
                 int(row[0]),
@@ -516,7 +677,9 @@ def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[st
             for row in connection.execute(f"PRAGMA index_xinfo({index})")
         )
         if index_columns != expected_index_columns:
-            raise SchemaMigrationError(f"database index semantics do not match version 1: {index}")
+            raise SchemaMigrationError(
+                f"database index semantics do not match version {version}: {index}"
+            )
 
 
 def _canonical_schema_sql(sql: str) -> tuple[str, ...]:

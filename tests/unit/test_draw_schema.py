@@ -13,6 +13,8 @@ from pytest import MonkeyPatch
 import lottolab.infrastructure.persistence.draw_schema as draw_schema
 from lottolab.infrastructure.persistence.draw_schema import (
     BUSY_TIMEOUT_MS,
+    CONTEXT_MIGRATION_CHECKSUM,
+    CONTEXT_MIGRATION_NAME,
     CURRENT_SCHEMA_VERSION,
     DATA_DIRECTORY_ENV,
     MIGRATION_CHECKSUM,
@@ -61,7 +63,7 @@ def create_lookalike_schema(
             INSERT INTO schema_migrations (version, name, checksum, applied_at)
             VALUES (?, ?, ?, '2026-07-16T00:00:00Z')
             """,
-            (CURRENT_SCHEMA_VERSION, MIGRATION_NAME, MIGRATION_CHECKSUM),
+            (1, MIGRATION_NAME, MIGRATION_CHECKSUM),
         )
 
 
@@ -127,7 +129,7 @@ def test_empty_read_is_noncreating(tmp_path: Path) -> None:
     assert not paths.database.exists()
 
 
-def test_schema_v1_creation_security_shape_and_idempotency(tmp_path: Path) -> None:
+def test_schema_v2_creation_security_shape_and_idempotency(tmp_path: Path) -> None:
     paths = task_paths(tmp_path)
     initialize_schema(paths)
 
@@ -152,23 +154,30 @@ def test_schema_v1_creation_security_shape_and_idempotency(tmp_path: Path) -> No
             "draws",
             "ingestion_runs",
             "ingestion_items",
+            "ingestion_run_context",
         }
-        migration = connection.execute(
-            "SELECT version, name, checksum, applied_at FROM schema_migrations"
-        ).fetchone()
-        assert migration is not None
-        assert migration[0] == CURRENT_SCHEMA_VERSION
-        assert migration[1] == "create_local_draw_data_schema"
-        assert migration[2] == MIGRATION_CHECKSUM
-        assert str(migration[3]).endswith("Z")
-        applied_at = migration[3]
+        migrations = connection.execute(
+            """
+            SELECT version, name, checksum, applied_at
+            FROM schema_migrations ORDER BY version
+            """
+        ).fetchall()
+        assert [(row[0], row[1], row[2]) for row in migrations] == [
+            (1, MIGRATION_NAME, MIGRATION_CHECKSUM),
+            (CURRENT_SCHEMA_VERSION, CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM),
+        ]
+        assert all(str(row[3]).endswith("Z") for row in migrations)
+        applied_at = [row[3] for row in migrations]
 
     initialize_schema(paths)
     with sqlite3.connect(paths.database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (1,)
-        assert connection.execute("SELECT applied_at FROM schema_migrations").fetchone() == (
-            applied_at,
-        )
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (2,)
+        assert [
+            row[0]
+            for row in connection.execute(
+                "SELECT applied_at FROM schema_migrations ORDER BY version"
+            )
+        ] == applied_at
     assert verify_schema_read_only(paths) is True
 
 
@@ -197,6 +206,34 @@ def test_connection_policy_enforces_fk_timeout_delete_journal_and_read_only(
             connection.execute("DELETE FROM ingestion_runs")
 
 
+def test_existing_v1_is_verified_read_only_then_upgraded_only_by_write(
+    tmp_path: Path,
+) -> None:
+    paths = task_paths(tmp_path)
+    create_lookalike_schema(paths)
+
+    assert verify_schema_read_only(paths) is True
+    with sqlite3.connect(paths.database) as connection:
+        assert connection.execute(
+            "SELECT name FROM sqlite_master WHERE name = 'ingestion_run_context'"
+        ).fetchone() is None
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (1,)
+
+    initialize_schema(paths)
+
+    with sqlite3.connect(paths.database) as connection:
+        assert connection.execute(
+            "SELECT name FROM sqlite_master WHERE name = 'ingestion_run_context'"
+        ).fetchone() == ("ingestion_run_context",)
+        assert connection.execute(
+            """
+            SELECT name, checksum FROM schema_migrations
+            WHERE version = ?
+            """,
+            (CURRENT_SCHEMA_VERSION,),
+        ).fetchone() == (CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM)
+
+
 def test_checksum_mismatch_and_newer_version_fail_closed(tmp_path: Path) -> None:
     checksum_paths = task_paths(tmp_path / "checksum")
     initialize_schema(checksum_paths)
@@ -214,7 +251,7 @@ def test_checksum_mismatch_and_newer_version_fail_closed(tmp_path: Path) -> None
         connection.execute(
             """
             INSERT INTO schema_migrations (version, name, checksum, applied_at)
-            VALUES (2, 'future', ?, '2099-01-01T00:00:00Z')
+            VALUES (3, 'future', ?, '2099-01-01T00:00:00Z')
             """,
             ("f" * 64,),
         )

@@ -16,9 +16,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
+    StrategyEvidenceRegistryReader,
 )
 from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
@@ -33,6 +35,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
     resolve_local_data_paths,
 )
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
+from lottolab.infrastructure.strategy_evidence_registry import (
+    CommittedStrategyEvidenceRegistry,
+)
 from lottolab.interfaces.api.draw_data import (
     ApiValidationErrorResponse,
     RequestValidationIssueView,
@@ -58,6 +63,7 @@ from lottolab.interfaces.api.strategy_catalog import (
     API_VERSION,
     create_strategy_catalog_router,
 )
+from lottolab.interfaces.api.strategy_evidence import create_strategy_evidence_router
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
 LocalDataPathsProvider = Callable[[], LocalDataPaths]
@@ -78,6 +84,8 @@ def create_app(
     historical_prefix_success_window_source_reader_factory: (
         HistoricalPrefixSuccessWindowSourceReaderFactory | None
     ) = None,
+    draw_data_provider_factory: DrawDataProviderFactory | None = None,
+    strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -91,6 +99,11 @@ def create_app(
         generate_live_zone_split_bets
         if generate_live_zone_split_bets is not None
         else build_production_generate_live_zone_split_bets()
+    )
+    resolved_strategy_evidence_registry = (
+        strategy_evidence_registry_reader
+        if strategy_evidence_registry_reader is not None
+        else CommittedStrategyEvidenceRegistry.default()
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -123,7 +136,18 @@ def create_app(
         return {"status": "ok", "api_version": API_VERSION}
 
     app.include_router(create_strategy_catalog_router(resolved_catalog))
-    app.include_router(create_draw_data_router(repository_factory))
+    app.include_router(
+        create_strategy_evidence_router(
+            resolved_catalog,
+            resolved_strategy_evidence_registry,
+        )
+    )
+    app.include_router(
+        create_draw_data_router(
+            repository_factory,
+            provider_factory=draw_data_provider_factory,
+        )
+    )
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))

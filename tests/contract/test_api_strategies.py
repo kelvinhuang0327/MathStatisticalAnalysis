@@ -296,8 +296,13 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/health"),
         ("get", "/api/v1/strategies"),
         ("get", "/api/v1/strategy-overview"),
+        ("get", "/api/v1/strategy-evidence"),
         ("post", "/api/v1/draw-imports/preview"),
         ("post", "/api/v1/draw-imports/commit"),
+        ("post", "/api/v1/draw-sync/manual"),
+        ("post", "/api/v1/draw-sync/missing-scan"),
+        ("post", "/api/v1/draw-sync/backfill"),
+        ("post", "/api/v1/draw-sync/scheduled"),
         ("get", "/api/v1/draws"),
         ("get", "/api/v1/draws/{lottery_type}/{draw_number}"),
         ("get", "/api/v1/ingestion-runs"),
@@ -393,7 +398,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 35
+    assert len(operations) == 40
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

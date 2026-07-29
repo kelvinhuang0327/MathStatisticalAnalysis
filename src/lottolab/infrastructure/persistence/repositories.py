@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sqlite3
 import uuid
@@ -9,6 +10,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from typing import Never, cast
 
+from lottolab.application.draw_automation import IngestionAuditContext
 from lottolab.application.draw_data import (
     MAX_INGESTION_ITEM_DETAILS,
     DrawHistoryPage,
@@ -48,10 +50,20 @@ _DRAW_COLUMNS = """
     source_reference, ingestion_run_id, created_at, updated_at
 """
 _RUN_COLUMNS = """
-    id, operation_type, status, lottery_type, source_filename,
-    source_sha256, parser_version, total_count, inserted_count,
-    skipped_count, conflict_count, failed_count, first_draw_number,
-    last_draw_number, started_at, completed_at, error_summary
+    r.id, r.operation_type, r.status, r.lottery_type, r.source_filename,
+    r.source_sha256, r.parser_version, c.provider, c.provider_version,
+    c.requested_start, c.requested_end, c.resolved_start, c.resolved_end,
+    COALESCE(c.fetched_count, r.total_count), r.total_count, r.inserted_count,
+    r.skipped_count, r.conflict_count, r.failed_count, r.first_draw_number,
+    r.last_draw_number, r.started_at, r.completed_at, r.error_summary
+"""
+_RUN_COLUMNS_V1 = """
+    r.id, r.operation_type, r.status, r.lottery_type, r.source_filename,
+    r.source_sha256, r.parser_version, NULL, NULL, NULL, NULL,
+    r.first_draw_number, r.last_draw_number, r.total_count, r.total_count,
+    r.inserted_count, r.skipped_count, r.conflict_count, r.failed_count,
+    r.first_draw_number, r.last_draw_number, r.started_at, r.completed_at,
+    r.error_summary
 """
 
 
@@ -141,6 +153,13 @@ class SQLiteIngestionRunRepository:
 
     def __init__(self, connection: sqlite3.Connection) -> None:
         self._connection = connection
+        self._has_context = (
+            connection.execute(
+                "SELECT 1 FROM sqlite_schema WHERE type = 'table' "
+                "AND name = 'ingestion_run_context'"
+            ).fetchone()
+            is not None
+        )
 
     def create(
         self,
@@ -152,7 +171,23 @@ class SQLiteIngestionRunRepository:
         first_draw_number: str | None,
         last_draw_number: str | None,
         started_at: datetime,
+        context: IngestionAuditContext | None = None,
     ) -> None:
+        operation_type = (
+            context.operation_type
+            if context is not None
+            else IngestionOperationType.DRAW_CSV_IMPORT
+        )
+        resolved_start = (
+            context.resolved_start.isoformat()
+            if context is not None and context.resolved_start is not None
+            else first_draw_number
+        )
+        resolved_end = (
+            context.resolved_end.isoformat()
+            if context is not None and context.resolved_end is not None
+            else last_draw_number
+        )
         self._connection.execute(
             """
             INSERT INTO ingestion_runs (
@@ -164,7 +199,7 @@ class SQLiteIngestionRunRepository:
             """,
             (
                 run_id,
-                IngestionOperationType.DRAW_CSV_IMPORT.value,
+                operation_type.value,
                 IngestionRunStatus.RUNNING.value,
                 lottery_type.value if lottery_type is not None else None,
                 result.source_filename,
@@ -174,6 +209,28 @@ class SQLiteIngestionRunRepository:
                 first_draw_number,
                 last_draw_number,
                 _format_utc(started_at),
+            ),
+        )
+        if not self._has_context:
+            raise _StoredDataError("current schema is missing ingestion run context")
+        self._connection.execute(
+            """
+            INSERT INTO ingestion_run_context (
+                ingestion_run_id, trigger, provider, provider_version,
+                requested_start, requested_end, resolved_start, resolved_end,
+                fetched_count
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                operation_type.value,
+                None if context is None else context.provider_id,
+                None if context is None else context.provider_version,
+                None if context is None else context.requested_start.isoformat(),
+                None if context is None else context.requested_end.isoformat(),
+                resolved_start,
+                resolved_end,
+                total_count if context is None else context.fetched_count,
             ),
         )
 
@@ -215,22 +272,36 @@ class SQLiteIngestionRunRepository:
             raise _StoredDataError("ingestion run completion did not update exactly one row")
 
     def count(self, query: IngestionRunQuery) -> int:
-        where_sql, parameters = _run_filters(query)
+        where_sql, parameters = _run_filters(query, has_context=self._has_context)
+        context_join = (
+            " LEFT JOIN ingestion_run_context c ON c.ingestion_run_id = r.id"
+            if self._has_context
+            else ""
+        )
         row = self._connection.execute(
-            f"SELECT COUNT(*) FROM ingestion_runs{where_sql}", parameters
+            "SELECT COUNT(*) FROM ingestion_runs r" + context_join + where_sql,
+            parameters,
         ).fetchone()
         if row is None:
             raise _StoredDataError("ingestion run count query returned no row")
         return _nonnegative_integer(row[0], "ingestion run count")
 
     def query(self, query: IngestionRunQuery) -> tuple[IngestionRunRecord, ...]:
-        where_sql, parameters = _run_filters(query)
+        where_sql, parameters = _run_filters(query, has_context=self._has_context)
         offset = (query.page - 1) * query.page_size
+        columns = _RUN_COLUMNS if self._has_context else _RUN_COLUMNS_V1
+        context_join = (
+            "LEFT JOIN ingestion_run_context c ON c.ingestion_run_id = r.id"
+            if self._has_context
+            else ""
+        )
         rows = self._connection.execute(
             f"""
-            SELECT {_RUN_COLUMNS}
-            FROM ingestion_runs{where_sql}
-            ORDER BY started_at DESC, id DESC
+            SELECT {columns}
+            FROM ingestion_runs r
+            {context_join}
+            {where_sql}
+            ORDER BY r.started_at DESC, r.id DESC
             LIMIT ? OFFSET ?
             """,
             (*parameters, query.page_size, offset),
@@ -238,8 +309,19 @@ class SQLiteIngestionRunRepository:
         return tuple(_ingestion_run_record(row) for row in rows)
 
     def get(self, run_id: str) -> IngestionRunRecord | None:
+        columns = _RUN_COLUMNS if self._has_context else _RUN_COLUMNS_V1
+        context_join = (
+            "LEFT JOIN ingestion_run_context c ON c.ingestion_run_id = r.id"
+            if self._has_context
+            else ""
+        )
         row = self._connection.execute(
-            f"SELECT {_RUN_COLUMNS} FROM ingestion_runs WHERE id = ?",
+            f"""
+            SELECT {columns}
+            FROM ingestion_runs r
+            {context_join}
+            WHERE r.id = ?
+            """,
             (run_id,),
         ).fetchone()
         return None if row is None else _ingestion_run_record(row)
@@ -292,7 +374,7 @@ class SQLiteIngestionItemRepository:
         rows = self._connection.execute(
             """
             SELECT source_row_number, lottery_type, draw_number, disposition,
-                   normalized_record_hash, message
+                   normalized_record_hash, message, NULL
             FROM ingestion_items
             WHERE ingestion_run_id = ?
             ORDER BY source_row_number, id
@@ -417,9 +499,115 @@ class SQLiteDrawDataRepository:
         try:
             initialize_schema(self._paths)
             with open_database(self._paths) as connection:
-                return self._apply_transaction(connection, result=result)
+                return self._apply_transaction(connection, result=result, context=None)
         except (InvalidDrawImportError, ExistingDrawConflictError):
             raise
+        except (
+            LocalDataError,
+            SchemaMigrationError,
+            sqlite3.DatabaseError,
+            _StoredDataError,
+        ) as exc:
+            _raise_repository_error(exc)
+
+    def apply_automation_import(
+        self,
+        result: DrawCsvParseResult,
+        context: IngestionAuditContext,
+    ) -> ImportCommitResult:
+        if not result.is_valid:
+            raise InvalidDrawImportError(result)
+        if context.fetched_count != len(result.normalized_rows):
+            raise RepositoryUnavailableError("Provider audit counts are inconsistent")
+        try:
+            initialize_schema(self._paths)
+            with open_database(self._paths) as connection:
+                return self._apply_transaction(connection, result=result, context=context)
+        except (InvalidDrawImportError, ExistingDrawConflictError):
+            raise
+        except (
+            LocalDataError,
+            SchemaMigrationError,
+            sqlite3.DatabaseError,
+            _StoredDataError,
+        ) as exc:
+            _raise_repository_error(exc)
+
+    def record_automation_failure(
+        self,
+        context: IngestionAuditContext,
+        *,
+        error_code: str,
+    ) -> None:
+        if error_code not in {
+            "AUTOMATION_NOT_CONFIGURED",
+            "PROVIDER_CONTRACT_INVALID",
+            "PROVIDER_UNAVAILABLE",
+        }:
+            raise RepositoryUnavailableError("Automation audit error code is invalid")
+        try:
+            initialize_schema(self._paths)
+            with open_database(self._paths) as connection:
+                run_id = str(uuid.uuid4())
+                started_at = _utc_now()
+                request_identity = (
+                    f"{context.operation_type.value}|{context.lottery_type.value}|"
+                    f"{context.requested_start.isoformat()}|"
+                    f"{context.requested_end.isoformat()}|{context.provider_id}|"
+                    f"{context.provider_version}"
+                )
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    connection.execute(
+                        """
+                        INSERT INTO ingestion_runs (
+                            id, operation_type, status, lottery_type,
+                            source_filename, source_sha256, parser_version,
+                            total_count, inserted_count, skipped_count,
+                            conflict_count, failed_count, first_draw_number,
+                            last_draw_number, started_at, completed_at,
+                            error_summary
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?, NULL,
+                                  NULL, ?, ?, ?)
+                        """,
+                        (
+                            run_id,
+                            context.operation_type.value,
+                            IngestionRunStatus.FAILED.value,
+                            context.lottery_type.value,
+                            context.provider_id,
+                            hashlib.sha256(request_identity.encode("utf-8")).hexdigest(),
+                            "AUTOMATION_AUDIT_V1",
+                            context.fetched_count,
+                            context.fetched_count,
+                            _format_utc(started_at),
+                            _format_utc(started_at),
+                            error_code,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT INTO ingestion_run_context (
+                            ingestion_run_id, trigger, provider,
+                            provider_version, requested_start, requested_end,
+                            resolved_start, resolved_end, fetched_count
+                        ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL, ?)
+                        """,
+                        (
+                            run_id,
+                            context.operation_type.value,
+                            context.provider_id,
+                            context.provider_version,
+                            context.requested_start.isoformat(),
+                            context.requested_end.isoformat(),
+                            context.fetched_count,
+                        ),
+                    )
+                    connection.commit()
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
         except (
             LocalDataError,
             SchemaMigrationError,
@@ -433,9 +621,10 @@ class SQLiteDrawDataRepository:
         connection: sqlite3.Connection,
         *,
         result: DrawCsvParseResult,
+        context: IngestionAuditContext | None,
     ) -> ImportCommitResult:
         rows = result.normalized_rows
-        lottery_type = _single_lottery_type(rows)
+        lottery_type = context.lottery_type if context is not None else _single_lottery_type(rows)
         first_draw_number = rows[0].draw_number if rows else None
         last_draw_number = rows[-1].draw_number if rows else None
         run_id = str(uuid.uuid4())
@@ -454,6 +643,7 @@ class SQLiteDrawDataRepository:
                 first_draw_number=first_draw_number,
                 last_draw_number=last_draw_number,
                 started_at=started_at,
+                context=context,
             )
             decisions = tuple(
                 _classify(draw_repository.find(row.lottery_type, row.draw_number), row)
@@ -463,14 +653,25 @@ class SQLiteDrawDataRepository:
                 decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
             ):
                 connection.rollback()
-                conflict_result = self._record_failed_conflict(
-                    connection,
-                    result=result,
-                    run_id=run_id,
-                    lottery_type=lottery_type,
-                    first_draw_number=first_draw_number,
-                    last_draw_number=last_draw_number,
-                )
+                if context is None:
+                    conflict_result = self._record_failed_conflict(
+                        connection,
+                        result=result,
+                        run_id=run_id,
+                        lottery_type=lottery_type,
+                        first_draw_number=first_draw_number,
+                        last_draw_number=last_draw_number,
+                    )
+                else:
+                    conflict_result = self._record_failed_conflict(
+                        connection,
+                        result=result,
+                        run_id=run_id,
+                        lottery_type=lottery_type,
+                        first_draw_number=first_draw_number,
+                        last_draw_number=last_draw_number,
+                        context=context,
+                    )
                 raise ExistingDrawConflictError(conflict_result)
 
             inserted_count = 0
@@ -538,6 +739,7 @@ class SQLiteDrawDataRepository:
         lottery_type: LotteryType | None,
         first_draw_number: str | None,
         last_draw_number: str | None,
+        context: IngestionAuditContext | None = None,
     ) -> ImportCommitResult:
         rows = result.normalized_rows
         draw_repository = SQLiteDrawRepository(connection)
@@ -567,6 +769,7 @@ class SQLiteDrawDataRepository:
                 first_draw_number=first_draw_number,
                 last_draw_number=last_draw_number,
                 started_at=completed_at,
+                context=context,
             )
             for decision in decisions:
                 disposition = decision.disposition
@@ -636,15 +839,39 @@ def _draw_filters(query: DrawHistoryQuery) -> tuple[str, tuple[object, ...]]:
     return where_sql, tuple(parameters)
 
 
-def _run_filters(query: IngestionRunQuery) -> tuple[str, tuple[object, ...]]:
+def _run_filters(
+    query: IngestionRunQuery,
+    *,
+    has_context: bool,
+) -> tuple[str, tuple[object, ...]]:
     clauses: list[str] = []
     parameters: list[object] = []
     if query.status is not None:
-        clauses.append("status = ?")
+        clauses.append("r.status = ?")
         parameters.append(query.status.value)
+    if query.operation_type is not None:
+        clauses.append("r.operation_type = ?")
+        parameters.append(query.operation_type.value)
     if query.lottery_type is not None:
-        clauses.append("lottery_type = ?")
+        clauses.append("r.lottery_type = ?")
         parameters.append(query.lottery_type.value)
+    if query.source is not None:
+        if has_context:
+            clauses.append(
+                "(instr(r.source_filename, ?) > 0 OR instr(COALESCE(c.provider, ''), ?) > 0)"
+            )
+            parameters.extend((query.source, query.source))
+        else:
+            clauses.append("instr(r.source_filename, ?) > 0")
+            parameters.append(query.source)
+    if query.date_from is not None:
+        clauses.append("r.started_at >= ?")
+        parameters.append(f"{query.date_from.isoformat()}T00:00:00Z")
+    if query.date_to is not None:
+        clauses.append("r.started_at < ?")
+        parameters.append(
+            f"{date.fromordinal(query.date_to.toordinal() + 1).isoformat()}T00:00:00Z"
+        )
     where_sql = " WHERE " + " AND ".join(clauses) if clauses else ""
     return where_sql, tuple(parameters)
 
@@ -701,7 +928,7 @@ def _ingestion_run_record(
     row: sqlite3.Row | tuple[object, ...],
 ) -> IngestionRunRecord:
     values = tuple(row)
-    if len(values) != 17:
+    if len(values) != 24:
         raise _StoredDataError("ingestion run row shape is invalid")
     try:
         operation_type = IngestionOperationType(_required_string(values[1], "operation type"))
@@ -716,22 +943,29 @@ def _ingestion_run_record(
         source_filename=_required_string(values[4], "source filename"),
         source_sha256=_required_string(values[5], "source digest"),
         parser_version=_required_string(values[6], "parser version"),
-        total_count=_nonnegative_integer(values[7], "total count"),
-        inserted_count=_nonnegative_integer(values[8], "inserted count"),
-        skipped_count=_nonnegative_integer(values[9], "skipped count"),
-        conflict_count=_nonnegative_integer(values[10], "conflict count"),
-        failed_count=_nonnegative_integer(values[11], "failed count"),
-        first_draw_number=_optional_string(values[12], "first draw number"),
-        last_draw_number=_optional_string(values[13], "last draw number"),
-        started_at=_datetime_value(values[14]),
-        completed_at=(None if values[15] is None else _datetime_value(values[15])),
-        error_summary=_optional_string(values[16], "error summary"),
+        provider=_optional_string(values[7], "provider"),
+        provider_version=_optional_string(values[8], "provider version"),
+        requested_start=_optional_string(values[9], "requested start"),
+        requested_end=_optional_string(values[10], "requested end"),
+        resolved_start=_optional_string(values[11], "resolved start"),
+        resolved_end=_optional_string(values[12], "resolved end"),
+        fetched_count=_nonnegative_integer(values[13], "fetched count"),
+        total_count=_nonnegative_integer(values[14], "total count"),
+        inserted_count=_nonnegative_integer(values[15], "inserted count"),
+        skipped_count=_nonnegative_integer(values[16], "skipped count"),
+        conflict_count=_nonnegative_integer(values[17], "conflict count"),
+        failed_count=_nonnegative_integer(values[18], "failed count"),
+        first_draw_number=_optional_string(values[19], "first draw number"),
+        last_draw_number=_optional_string(values[20], "last draw number"),
+        started_at=_datetime_value(values[21]),
+        completed_at=(None if values[22] is None else _datetime_value(values[22])),
+        error_summary=_optional_string(values[23], "error summary"),
     )
 
 
 def _ingestion_item_record(row: sqlite3.Row | tuple[object, ...]) -> IngestionItemRecord:
     values = tuple(row)
-    if len(values) != 6:
+    if len(values) != 7:
         raise _StoredDataError("ingestion item row shape is invalid")
     try:
         disposition = IngestionItemDisposition(_required_string(values[3], "disposition"))
@@ -741,6 +975,7 @@ def _ingestion_item_record(row: sqlite3.Row | tuple[object, ...]) -> IngestionIt
         source_row_number=_positive_integer(values[0], "source row number"),
         lottery_type=_optional_lottery_type(values[1]),
         draw_number=_optional_string(values[2], "draw number"),
+        source=_optional_string(values[6], "item source"),
         disposition=disposition,
         normalized_record_hash=_optional_string(values[4], "normalized hash"),
         message=_optional_string(values[5], "item message"),

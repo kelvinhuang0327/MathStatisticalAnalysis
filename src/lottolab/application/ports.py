@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import date
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from lottolab.application.draw_automation import (
+    IngestionAuditContext,
+    ProviderFetchResult,
+)
 from lottolab.application.draw_data import (
     DrawHistoryPage,
     DrawHistoryQuery,
@@ -26,6 +31,7 @@ from lottolab.application.historical_queries import (
     HistoricalRunQuery,
     HistoricalStrategySummaryList,
 )
+from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
@@ -65,6 +71,25 @@ class DrawImportRepository(Protocol):
         ...
 
 
+class DrawAutomationRepository(Protocol):
+    def apply_automation_import(
+        self,
+        result: DrawCsvParseResult,
+        context: IngestionAuditContext,
+    ) -> ImportCommitResult:
+        """Persist one provider fetch transaction and its append-only audit."""
+        ...
+
+    def record_automation_failure(
+        self,
+        context: IngestionAuditContext,
+        *,
+        error_code: str,
+    ) -> None:
+        """Append one sanitized failed automation audit without draw writes."""
+        ...
+
+
 class IngestionRunRepository(Protocol):
     def list_ingestion_runs(self, query: IngestionRunQuery) -> IngestionRunPage:
         """Return one deterministic ingestion-log page."""
@@ -75,7 +100,13 @@ class IngestionRunRepository(Protocol):
         ...
 
 
-class DrawDataRepository(DrawRepository, DrawImportRepository, IngestionRunRepository, Protocol):
+class DrawDataRepository(
+    DrawRepository,
+    DrawImportRepository,
+    DrawAutomationRepository,
+    IngestionRunRepository,
+    Protocol,
+):
     """Combined operation-scoped port implemented by local persistence."""
 
 
@@ -84,6 +115,40 @@ class DrawCsvParser(Protocol):
 
 
 type DrawDataRepositoryFactory = Callable[[], DrawDataRepository]
+type DrawAutomationRepositoryFactory = Callable[[], DrawAutomationRepository]
+
+
+@runtime_checkable
+class DrawDataProvider(Protocol):
+    @property
+    def provider_id(self) -> str:
+        """Stable provider identity stored in ingestion audit records."""
+        ...
+
+    @property
+    def provider_version(self) -> str:
+        """Stable provider contract version stored in ingestion audit records."""
+        ...
+
+    def fetch_draws(
+        self,
+        *,
+        lottery_type: LotteryType,
+        date_from: date,
+        date_to: date,
+    ) -> ProviderFetchResult:
+        """Fetch one bounded inclusive range without writing application state."""
+        ...
+
+
+type DrawDataProviderFactory = Callable[[], DrawDataProvider | None]
+
+
+@runtime_checkable
+class StrategyEvidenceRegistryReader(Protocol):
+    def read(self) -> StrategyEvidenceRegistrySnapshot:
+        """Read only committed registry and definition state."""
+        ...
 
 
 class HistoricalResultRepository(Protocol):

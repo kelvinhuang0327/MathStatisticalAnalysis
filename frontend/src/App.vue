@@ -2,16 +2,18 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import DataCenterPage from './features/data-center/DataCenterPage.vue'
-import DrawHistoryPage from './features/draw-history/DrawHistoryPage.vue'
+import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
+import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidencePage.vue'
 
 type Page =
   | 'strategies'
   | 'historical-success-windows'
   | 'data-center'
-  | 'draw-history'
+  | 'history'
+  | 'strategy-evidence'
   | 'live-zone-split-bets'
 
 const currentPage = ref<Page>(pageFromHash())
@@ -20,7 +22,8 @@ function pageFromHash(): Page {
   const route = window.location.hash.replace(/^#\/?/, '')
   if (route === 'historical-success-windows') return 'historical-success-windows'
   if (route === 'data-center') return 'data-center'
-  if (route === 'draw-history') return 'draw-history'
+  if (route === 'history' || route === 'draw-history') return 'history'
+  if (route === 'strategy-evidence') return 'strategy-evidence'
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
   return 'strategies'
 }
@@ -56,8 +59,14 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         <a href="#/data-center" :aria-current="currentPage === 'data-center' ? 'page' : undefined">
           Data Center
         </a>
-        <a href="#/draw-history" :aria-current="currentPage === 'draw-history' ? 'page' : undefined">
-          Draw History
+        <a href="#/history" :aria-current="currentPage === 'history' ? 'page' : undefined">
+          History
+        </a>
+        <a
+          href="#/strategy-evidence"
+          :aria-current="currentPage === 'strategy-evidence' ? 'page' : undefined"
+        >
+          Strategy Evidence
         </a>
         <a
           href="#/live-zone-split-bets"
@@ -73,7 +82,8 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <StrategyCatalogPage v-if="currentPage === 'strategies'" />
       <HistoricalSuccessWindowsPage v-else-if="currentPage === 'historical-success-windows'" />
       <DataCenterPage v-else-if="currentPage === 'data-center'" />
-      <DrawHistoryPage v-else-if="currentPage === 'draw-history'" />
+      <HistoryPage v-else-if="currentPage === 'history'" />
+      <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
       <LiveZoneSplitBetsPage v-else />
     </main>
 
@@ -88,6 +98,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'live-zone-split-bets'">
         Target-contract-only view of the merged Live Zone Split API. Legacy LotteryNew consumer
         parity is not claimed or verified here.
+      </template>
+      <template v-else-if="currentPage === 'strategy-evidence'">
+        Evidence availability comes only from committed registries and definitions; unavailable
+        values are never inferred.
       </template>
       <template v-else>
         Local draw data stays outside Git. Import writes occur only after explicit confirmation.

@@ -427,13 +427,20 @@ class SQLiteHistoricalResultQueryRepository:
             )
             rows = connection.execute(
                 """
-                SELECT id, import_identity_sha256, manifest_sha256, contract_version, source_kind,
-                       source_repository, source_commit_oid, source_artifact_sha256,
-                       dataset_identity, dataset_sha256, legacy_run_id, lottery_type,
-                       started_at, completed_at
-                FROM historical_result_run
-                WHERE status = 'COMPLETED'
-                ORDER BY completed_at DESC, id DESC
+                SELECT r.id, r.import_identity_sha256, r.manifest_sha256,
+                       r.contract_version, r.source_kind, r.source_repository,
+                       r.source_commit_oid, r.source_artifact_sha256,
+                       r.dataset_identity, r.dataset_sha256, r.legacy_run_id,
+                       r.lottery_type, r.started_at, r.completed_at, r.status,
+                       (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                        WHERE s.run_id = r.id),
+                       (SELECT COUNT(*) FROM historical_draw_snapshot d
+                        WHERE d.run_id = r.id),
+                       (SELECT COUNT(*) FROM historical_portfolio p
+                        WHERE p.run_id = r.id)
+                FROM historical_result_run r
+                WHERE r.status = 'COMPLETED'
+                ORDER BY r.completed_at DESC, r.id DESC
                 LIMIT ? OFFSET ?
                 """,
                 (query.limit, query.offset),
@@ -629,6 +636,10 @@ def _row_to_run_summary(row: sqlite3.Row | tuple[object, ...]) -> HistoricalRunS
         lottery_type,
         started_at,
         completed_at,
+        status,
+        strategy_count,
+        draw_count,
+        portfolio_count,
     ) = row
     return HistoricalRunSummary(
         run_id=str(run_id),
@@ -645,6 +656,11 @@ def _row_to_run_summary(row: sqlite3.Row | tuple[object, ...]) -> HistoricalRunS
         lottery_type=str(lottery_type),
         started_at=str(started_at),
         completed_at=str(completed_at),
+        status=str(status),
+        strategy_count=_decode_int(strategy_count),
+        draw_count=_decode_int(draw_count),
+        portfolio_count=_decode_int(portfolio_count),
+        is_idempotent_replay=False,
     )
 
 

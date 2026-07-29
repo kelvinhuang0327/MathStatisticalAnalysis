@@ -1233,6 +1233,39 @@ td code {
   }
 }
 
+.tab-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin: 0 0 1.25rem;
+}
+
+.tab-list [aria-pressed='true'] {
+  border-color: var(--mint);
+  background: color-mix(in srgb, var(--mint) 16%, transparent);
+}
+
+.history-workspace > section > h2 {
+  margin: 0 0 1rem;
+}
+
+.table-wrap td small {
+  display: block;
+  margin-top: 0.25rem;
+}
+
+.table-wrap td code {
+  overflow-wrap: anywhere;
+}
+
+.error-copy {
+  color: var(--danger);
+}
+
+.automation-panel {
+  margin-top: 1.25rem;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

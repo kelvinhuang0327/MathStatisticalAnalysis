@@ -62,6 +62,11 @@ class HistoricalRunSummary:
     lottery_type: str
     started_at: str
     completed_at: str
+    status: str = "COMPLETED"
+    strategy_count: int = 0
+    draw_count: int = 0
+    portfolio_count: int = 0
+    is_idempotent_replay: bool = False
 
 
 @dataclass(frozen=True, slots=True)

@@ -24,6 +24,10 @@ class IngestionOperationType(StrEnum):
     """Stable operation identifiers stored in the local ingestion log."""
 
     DRAW_CSV_IMPORT = "DRAW_CSV_IMPORT"
+    MANUAL_SYNC = "MANUAL_SYNC"
+    MISSING_DRAW_SCAN = "MISSING_DRAW_SCAN"
+    BOUNDED_BACKFILL = "BOUNDED_BACKFILL"
+    SCHEDULED_SYNC = "SCHEDULED_SYNC"
 
 
 class IngestionRunStatus(StrEnum):

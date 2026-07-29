@@ -61,6 +61,23 @@ beforeEach(() => {
         }),
       )
     }
+    if (url.includes('/api/v1/strategy-evidence')) {
+      return Promise.resolve(
+        apiResponse({
+          items: [],
+          best_strategy: {
+            status: 'UNAVAILABLE',
+            reason: 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+          },
+          strategy_combination_hit_rate: {
+            status: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
+            value: 'NOT_AVAILABLE',
+            owner: 'ACTIVE_MULTITICKET_AGENT',
+          },
+          d3: { status: 'RESERVED_UNAVAILABLE', value: 'NOT_AVAILABLE' },
+        }),
+      )
+    }
     if (url.includes('/api/v1/historical-results/runs')) {
       return Promise.resolve(apiResponse(makeRunPage()))
     }
@@ -105,7 +122,8 @@ describe('App navigation', () => {
       'Strategy Overview',
       'Success Windows',
       'Data Center',
-      'Draw History',
+      'History',
+      'Strategy Evidence',
       'Live Zone Split Bets',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
@@ -126,11 +144,20 @@ describe('App navigation', () => {
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
     expect(navigation.find('a[href="#/data-center"]').attributes('aria-current')).toBe('page')
 
-    window.location.hash = '#/draw-history'
+    window.location.hash = '#/history'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
+    expect(wrapper.find('#history-title').exists()).toBe(true)
     expect(wrapper.find('#draw-history-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/draw-history"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/history"]').attributes('aria-current')).toBe('page')
+
+    window.location.hash = '#/strategy-evidence'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#strategy-evidence-title').exists()).toBe(true)
+    expect(
+      navigation.find('a[href="#/strategy-evidence"]').attributes('aria-current'),
+    ).toBe('page')
 
     window.location.hash = '#/strategies'
     window.dispatchEvent(new HashChangeEvent('hashchange'))

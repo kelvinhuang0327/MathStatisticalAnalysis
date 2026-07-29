@@ -50,6 +50,23 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/strategy-evidence": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["StrategyEvidenceResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/draw-imports/preview": {
       post: {
           parameters: Record<string, never>
@@ -84,6 +101,134 @@ export interface paths {
                   422: {
                           content: {
                                     "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-sync/manual": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["DrawSyncResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["CommitConflictResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  502: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-sync/missing-scan": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["DrawSyncResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["CommitConflictResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  502: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-sync/backfill": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["DrawSyncResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["CommitConflictResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  502: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-sync/scheduled": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["DrawSyncResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["CommitConflictResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  502: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
                                   }
                         }
                   503: {
@@ -162,7 +307,11 @@ export interface paths {
           parameters: {
             "query": {
               "status"?: components['schemas']["IngestionRunStatus"] | null
+              "operation_type"?: components['schemas']["IngestionOperationType"] | null
               "lottery_type"?: components['schemas']["LotteryType"] | null
+              "source"?: string | null
+              "date_from"?: string | null
+              "date_to"?: string | null
               "page"?: number
               "page_size"?: number
             }
@@ -1109,6 +1258,12 @@ export interface components {
           "result": components['schemas']["ImportCommitResultView"] | null
         }
     "ConflictPolicy": "REJECT"
+    "D3AvailabilityBlock": {
+          "status": components['schemas']["D3AvailabilityStatus"]
+          "value": string | string
+        }
+    "D3AvailabilityStatus": "RESERVED_UNAVAILABLE" | "DEFINITION_MISSING" | "EVIDENCE_MISSING" | "VALUE_UNVERIFIED" | "VALUE_PRESENT" | "STALE" | "INCOMPATIBLE"
+    "DefinitionAvailabilityStatus": "DEFINITION_AVAILABLE" | "DEFINITION_UNAVAILABLE"
     "DrawHistoryResponse": {
           "records": Array<components['schemas']["DrawRecordView"]>
           "page": number
@@ -1165,7 +1320,24 @@ export interface components {
           "created_at": string
           "updated_at": string
         }
+    "DrawSyncRequestView": {
+          "lottery_type": components['schemas']["LotteryType"]
+          "date_from": string
+          "date_to": string
+        }
+    "DrawSyncResponse": {
+          "operation_type": components['schemas']["IngestionOperationType"]
+          "provider": string
+          "requested_start": string
+          "requested_end": string
+          "resolved_start": string | null
+          "resolved_end": string | null
+          "fetched_count": number
+          "result": components['schemas']["ImportCommitResultView"]
+        }
+    "EvidenceRegistrationStatus": "CANONICAL_EVIDENCE_REGISTERED" | "CANONICAL_EVIDENCE_MISSING"
     "EvidenceStatus": "DESCRIPTIVE_ONLY" | "HISTORICAL_OOS_VERIFIED" | "CROSS_GAME_VERIFIED" | "SHADOW_CAPTURE" | "PRODUCTION_ELIGIBLE" | "REJECTED" | "NOT_READY"
+    "EvidenceVerificationStatus": "EVIDENCE_VERIFIED" | "EVIDENCE_DECLARED_NOT_RECOMPUTED" | "EVIDENCE_STALE" | "EVIDENCE_INCOMPATIBLE" | "EVIDENCE_MISSING"
     "ExactRatioView": {
           "numerator": number
           "denominator": number
@@ -1709,6 +1881,11 @@ export interface components {
           "lottery_type": string
           "started_at": string
           "completed_at": string
+          "status": string
+          "strategy_count": number
+          "draw_count": number
+          "portfolio_count": number
+          "is_idempotent_replay": boolean
         }
     "HistoricalStrategySummaryListResponse": {
           "run_id": string
@@ -1867,11 +2044,12 @@ export interface components {
           "source_row_number": number
           "lottery_type": components['schemas']["LotteryType"] | null
           "draw_number": string | null
+          "source": string | null
           "disposition": components['schemas']["IngestionItemDisposition"]
           "normalized_record_hash": string | null
           "message": string | null
         }
-    "IngestionOperationType": "DRAW_CSV_IMPORT"
+    "IngestionOperationType": "DRAW_CSV_IMPORT" | "MANUAL_SYNC" | "MISSING_DRAW_SCAN" | "BOUNDED_BACKFILL" | "SCHEDULED_SYNC"
     "IngestionRunDetailResponse": {
           "run": components['schemas']["IngestionRunView"]
           "items": Array<components['schemas']["IngestionItemView"]>
@@ -1895,6 +2073,14 @@ export interface components {
           "source_filename": string
           "source_sha256": string
           "parser_version": string
+          "trigger": components['schemas']["IngestionOperationType"]
+          "provider": string | null
+          "provider_version": string | null
+          "requested_start": string | null
+          "requested_end": string | null
+          "resolved_start": string | null
+          "resolved_end": string | null
+          "fetched_count": number
           "total_count": number
           "inserted_count": number
           "skipped_count": number
@@ -2060,6 +2246,37 @@ export interface components {
     "RequestValidationIssueView": {
           "location": string
           "type": string
+        }
+    "StrategyCombinationHitRateBlock": {
+          "status": string
+          "value": string
+          "owner": string
+        }
+    "StrategyEvidenceBestStrategyBlock": {
+          "status": string
+          "reason": string
+        }
+    "StrategyEvidenceItem": {
+          "strategy_id": string
+          "strategy_version": string
+          "replicate": number | string
+          "display_name": string
+          "lifecycle_status": components['schemas']["LifecycleStatus"]
+          "executable": boolean
+          "supported_lottery_types": Array<components['schemas']["LotteryType"]>
+          "minimum_history": number
+          "provenance": Array<string>
+          "adapter_available": boolean
+          "registration_status": components['schemas']["EvidenceRegistrationStatus"]
+          "definition_status": components['schemas']["DefinitionAvailabilityStatus"]
+          "verification_status": components['schemas']["EvidenceVerificationStatus"]
+          "unavailable_reason_code": string | null
+        }
+    "StrategyEvidenceResponse": {
+          "items": Array<components['schemas']["StrategyEvidenceItem"]>
+          "best_strategy": components['schemas']["StrategyEvidenceBestStrategyBlock"]
+          "strategy_combination_hit_rate": components['schemas']["StrategyCombinationHitRateBlock"]
+          "d3": components['schemas']["D3AvailabilityBlock"]
         }
     "StrategyOverviewCapabilities": {
           "evaluation_metrics_available": boolean

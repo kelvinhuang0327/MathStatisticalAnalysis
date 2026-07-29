@@ -393,9 +393,9 @@ def test_openapi_adds_exactly_one_new_operation() -> None:
 # --- 11. forbidden-word exception remains exactly one path -----------------
 
 
-def test_forbidden_word_exception_remains_only_generate_bet() -> None:
-    # A path with no forbidden route word needs no exception and must validate
-    # as-is; the exact-operation-set check stays load-bearing for both paths.
+def test_forbidden_word_exceptions_remain_explicit_and_exact() -> None:
+    # Paths without forbidden route words need no exception; bounded backfill
+    # is explicitly exempted. The exact-operation-set check remains load-bearing.
     response = TestClient(create_app()).get("/openapi.json")
     document = cast(dict[str, object], response.json())
     local_runtime.validate_openapi_payload(document)

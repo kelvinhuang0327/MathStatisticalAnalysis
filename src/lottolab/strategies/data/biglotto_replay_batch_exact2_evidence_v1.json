@@ -1,0 +1,51 @@
+{
+  "backtest_policy_version": "BIG_LOTTO_CAUSAL_ORDERED_20_PREFIX_5_10_15_20_V1",
+  "catalog_sha256_before_status_overlay": "0f02673adef5c7570c6c958d184a2288fa7f1346dff06f37bd6bab6be68d741a",
+  "constructor": "strategy_preserving_20_ticket/v1",
+  "dataset_sha256": "a09379956f24ceb2ad211b899da8798dafef400540ee72f58554f421ef19606a",
+  "dataset_version": "BIG_LOTTO_EXACT_REPLAY_BATCH_MATERIALIZATION_V1",
+  "evidence_schema_version": "BIG_LOTTO_REPLAY_BATCH_EXACT2_EVIDENCE_V1",
+  "input_canonical_sha256": "c38f2d5c8b962af9c76d97a6347beed4c3234bdcfed51a641bc73108697bb02f",
+  "input_raw_sha256": "0184da8c8a20c9785b74bca7522657ed014b4fe878c4fd733c0a78550ae0587c",
+  "output_checksums": {
+    "SHA256SUMS": "48bc105b4480bbf9db8a0270d9bfd8da90b2552cff5076247e1263b0df053c16",
+    "biglotto_execution_audit.csv": "6de1bc0de6e6a3a24599539f96a5954930bb7e61f83f2896e80f6bc6603664ee",
+    "biglotto_full_rankings.csv": "6b5fe66f74d85d70000c14aee1148edb0c91c62cbee65ccc383cbd4399fd6fcf",
+    "biglotto_multi_ticket_backtest_report.json": "0a5a2d31726b06d4d44f7ea7c0dce3386de52b968e04ccc0db8b685f51981acc",
+    "biglotto_official_prize_distributions.csv": "8d2d888a14d94a6c31887b49baea742594fa8f53fa3af58e86c701ec62137462",
+    "biglotto_strategy_universe.csv": "3ac889f8ac7fa135ab991492d83e51d7996887a39e62234562b44842413dc4f7",
+    "biglotto_success_metrics.csv": "da9109086ba332c9ddea906c9ef063795b39fa3d5f308f858959a3845e55fed6",
+    "biglotto_top10.csv": "65926fdea9d80e3ad94567405d1b06f07cb4afadd52ebd069ef3737c192523e9"
+  },
+  "report_file_sha256": "0a5a2d31726b06d4d44f7ea7c0dce3386de52b968e04ccc0db8b685f51981acc",
+  "report_schema_version": "BIG_LOTTO_MULTI_TICKET_BACKTEST_REPORT_V1",
+  "report_sha256": "61e423b347dad187641851bb9c77cfb42d9ad298da7d5c40d044c0d9fb45adde",
+  "source_database_sha256_after": "a09379956f24ceb2ad211b899da8798dafef400540ee72f58554f421ef19606a",
+  "source_database_sha256_before": "a09379956f24ceb2ad211b899da8798dafef400540ee72f58554f421ef19606a",
+  "source_read_mode": "sqlite-mode=ro,immutable=1,query_only=ON",
+  "strategies": [
+    {
+      "catalog_strategy_id": "legacy_biglotto__backtest_biglotto_5bet_ts3markov__25760472baa0",
+      "execution_count": 1500,
+      "first_target_draw": "102000012",
+      "last_target_draw": "115000055",
+      "legacy_method_id": "tools/backtest_biglotto_5bet_ts3markov.py",
+      "native_ticket_count": 4,
+      "registry_strategy_id": "biglotto_ts3_markov_4bet_w30",
+      "strategy_version": "legacy-source-49a25effa62f-25760472baa0"
+    },
+    {
+      "catalog_strategy_id": "legacy_biglotto__predict_biglotto_triple_strike__236fe529c01f",
+      "execution_count": 1550,
+      "first_target_draw": "99000056",
+      "last_target_draw": "115000053",
+      "legacy_method_id": "tools/predict_biglotto_triple_strike.py",
+      "native_ticket_count": 3,
+      "registry_strategy_id": "biglotto_triple_strike",
+      "strategy_version": "legacy-source-49a25effa62f-236fe529c01f"
+    }
+  ],
+  "supplemented_low_max_draw_count": 21,
+  "target_draw_count": 1552,
+  "user_seed_namespace": "p20c-v1-historical-validation"
+}

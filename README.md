@@ -202,6 +202,19 @@ metric definition，不從 lifecycle、adapter、歷史結果或 catalog order �
 `RESERVED_UNAVAILABLE`，value 顯示 `NOT_AVAILABLE`，絕不以 0 代替。Strategy Combination Hit Rate
 固定顯示 `EXCLUDED_ACTIVE_MULTITICKET_SCOPE`，不讀取或模擬 active multi-ticket agent 的產物。
 
+## 大樂透全策略研究
+
+大樂透 full-strategy research 使用 frozen P541B 的 221 個 actual-method 母體，
+不以 production lifecycle 或 replay coverage 過濾。清冊輸出、ordered-20
+portfolio input、5/10/15/20 prefix 回測、八項標準、官方獎項、完整排名與
+checksum contract 見
+[大樂透全策略復現與多注回測](docs/architecture/biglotto-full-strategy-research.md)。
+目前 packaged 清冊為 135 `BACKTESTED`、74 `CLOSED_UNEXECUTABLE`、
+12 `DUPLICATE_ALIAS`、0 `OWNER_DECISION_REQUIRED`，221 個方法均已有正式
+處置，且 `full_universe_complete=true`。11 個 replay-backed 策略仍只是一個
+早期批次，不等於或取代 221 方法母體。歷史成功率與隨機基準差異只供描述性
+研究，不保證未來中獎。
+
 ## 目錄地圖
 
 | 路徑 | 職責 |

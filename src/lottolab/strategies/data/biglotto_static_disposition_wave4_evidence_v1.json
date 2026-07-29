@@ -1,0 +1,234 @@
+{
+  "base_catalog_sha256": "3df50a51a06df23bd260184b44e1fb0b6c6cf82af74ae96f5e37af549ead38d4",
+  "dispositions": [
+    {
+      "decisive_source_facts": [
+        "The frozen module docstring states that it is a read-only readiness inventory and is not a prediction.",
+        "choose_recommended_next_task chooses a follow-up task description; it never selects lottery numbers.",
+        "No callable in the frozen source emits a legal six-number BIG_LOTTO ticket."
+      ],
+      "legacy_method_id": "analysis/p540a_full_replay_regeneration_readiness.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "5788d284f793f62730656e29ca9b7475f13b860c",
+      "source_byte_size": 32355,
+      "source_sha256": "c4b73b3cf9d58e79f268c079fb996d4542bdb25b27f3555db79cb004d83a50a4",
+      "status_reason": "The frozen source is a replay-regeneration readiness report. It inventories other generators and recommends a next task but contains no BIG_LOTTO ticket-selection entrypoint."
+    },
+    {
+      "decisive_source_facts": [
+        "The frozen module binds LOTTERY_TYPE to DAILY_539.",
+        "_run_one_prediction always calls every reused adapter with that DAILY_539 constant.",
+        "BIG_LOTTO and POWER_LOTTO are read only for before/after row-count guards and are never generated."
+      ],
+      "legacy_method_id": "analysis/p540b_daily539_incremental_replay_generation.py",
+      "reason_code": "FROZEN_SOURCE_SUPPORTS_DAILY_539_ONLY",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "740f4e719d9ea91ef39469c04b3cba38db22f487",
+      "source_byte_size": 28983,
+      "source_sha256": "fd786b751d6de9f226d14c1ddab78ef24699cdf8a9f9734f8d54e917e4795d87",
+      "status_reason": "The frozen replay generator is explicitly and structurally limited to DAILY_539. Treating it as a BIG_LOTTO method would change its lottery contract."
+    },
+    {
+      "decisive_source_facts": [
+        "ReportGenerator accepts completed phase and fusion result objects as inputs and transforms them into report sections.",
+        "generate_json_report and print_console_report serialize or display supplied results.",
+        "The frozen source has no number-generation, ticket-selection, or prediction entrypoint."
+      ],
+      "legacy_method_id": "ai_lab/automl_biglotto/report.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "d77acf29c08cbbcf1893dfa2d09e793743f450ff",
+      "source_byte_size": 19991,
+      "source_sha256": "d44620e4a3b3bf6cc14b1328a27e774b89469e1edb12fc21fc8739c6c25f25b6",
+      "status_reason": "The frozen file is a presentation layer for already-computed AutoML results. It never selects a BIG_LOTTO ticket, so it has no independent native portfolio to replay."
+    },
+    {
+      "decisive_source_facts": [
+        "PredrawLedgerWriter.write_live_prediction and write_retrospective_record require predicted_numbers from the caller.",
+        "The ledger validates, hashes, appends, settles, and audits records but never derives predicted_numbers.",
+        "select_eligible_records selects previously written ledger records, not lottery numbers."
+      ],
+      "legacy_method_id": "lottery_api/engine/predraw_ledger.py",
+      "reason_code": "CALLER_SUPPLIED_TICKETS_NO_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "86ebb09b1e6326cc3383a5419c35250f9dfe24c7",
+      "source_byte_size": 33228,
+      "source_sha256": "5b2eb5d589e89b6d6a5123f7c7e4357ed3c7cf691e7e09aee993ebcdd83906ed",
+      "status_reason": "The frozen component is a provenance ledger whose writers require an upstream predicted_numbers payload. It does not select numbers and no authoritative upstream pairing belongs to this catalog record."
+    },
+    {
+      "decisive_source_facts": [
+        "The frozen PREDICTIONS mapping contains tickets hard-coded from other named strategies rather than generating a new ticket.",
+        "compute_metrics compares those fixed tickets with the already-known ACTUAL result for draw 115000019.",
+        "random_pick is used only for a Monte Carlo proximity baseline and is not emitted as a recommended or predicted portfolio."
+      ],
+      "legacy_method_id": "analyze_proximity_115000019.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "9d5696d74692a7dc21db485ef015c9811106cdbe",
+      "source_byte_size": 27777,
+      "source_sha256": "55b5baedcc2c5eb91d2864b9ceba92c4d5ea3e596dc7f5c98abb9a944bfc5053",
+      "status_reason": "The frozen source is a post-result proximity and failure-analysis report over hard-coded tickets from other strategies. Its random tickets are a null baseline, not an independent selection method."
+    },
+    {
+      "decisive_source_facts": [
+        "The frozen source hard-codes the already-known draw 115000019 result as TARGET.",
+        "Its random 6-from-49 combinations are consumed only by null-hypothesis Monte Carlo counts against TARGET.",
+        "Every remaining computation is a statistical test or descriptive report and no ticket is emitted."
+      ],
+      "legacy_method_id": "null_hypothesis_115000019.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "0ded73f64544a74d3b9e9d528661fd5fd4e81629",
+      "source_byte_size": 20815,
+      "source_sha256": "49c23be4d3407a07bf3bc2f10ccf7b6fb2ca94c711e51bcaeb70a489315398a4",
+      "status_reason": "The frozen file performs falsification tests on an already-known target draw. Its simulated combinations are a probability baseline and there is no history-to-ticket selection entrypoint."
+    },
+    {
+      "decisive_source_facts": [
+        "The frozen module hard-codes draw 115000019 and its winning numbers as TARGET_NUMBERS.",
+        "Its module-level output is a comprehensive descriptive analysis of that known result.",
+        "NumPy random draws are used for simulation and percentile estimates; no generated combination is presented as a prediction or portfolio."
+      ],
+      "legacy_method_id": "tools/analyze_draw_115000019.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "ba42b58d44a73d8d986b1f5bacbfa703995fea2a",
+      "source_byte_size": 28654,
+      "source_sha256": "acf606fdb2dea23d9a8ad9bddd8a0314316cb627485f2abdf200e41f3b8a92bb",
+      "status_reason": "The frozen source is a post-result statistical analysis of draw 115000019. Its simulations do not define or emit an independent BIG_LOTTO selection method."
+    },
+    {
+      "decisive_source_facts": [
+        "extract_traits accepts target_nums as an input and only prints frequency, gap, and last-draw traits for those supplied numbers.",
+        "The main block supplies a hard-coded list of already-known target numbers.",
+        "The source contains no ranking, selection, generation, or ticket-returning entrypoint."
+      ],
+      "legacy_method_id": "tools/eval_traits_115000021.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "6995ddd63e413a7a018dce488ec618d71444cbf2",
+      "source_byte_size": 1216,
+      "source_sha256": "be2da602c46441f3efc1f10637e46b97223580c483f3c1bdf26caf28b8d0822a",
+      "status_reason": "The frozen source only reports traits of caller-supplied or hard-coded winning numbers. It never selects or predicts a BIG_LOTTO ticket."
+    },
+    {
+      "decisive_source_facts": [
+        "The frozen module docstring defines a POWER_LOTTO first zone of 1..38 and a second zone of 1..8.",
+        "SuperLottoPredictor.get_draws always requests lottery_type POWER_LOTTO.",
+        "predict emits a 1..38 main-number ticket plus a required special-zone value, not a legal BIG_LOTTO 1..49 ticket."
+      ],
+      "legacy_method_id": "tools/predict_superlotto_best.py",
+      "reason_code": "FROZEN_SOURCE_SUPPORTS_POWER_LOTTO_ONLY",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "d848e19553073c6bd8b1d706b6ee31d33d917685",
+      "source_byte_size": 5839,
+      "source_sha256": "e0cc0edec9518246cac204548ff342e6f6f30dec200d87bf22f3a1fe4b869a2f",
+      "status_reason": "The frozen source is a POWER_LOTTO predictor with 1..38 main numbers and a 1..8 special zone. Converting that output into BIG_LOTTO would change the method."
+    },
+    {
+      "decisive_source_facts": [
+        "CriticDataset creates positive and synthetic negative training examples and converts them to multi-hot feature vectors.",
+        "The random combinations are labeled training samples for NeuralCritic rather than predictions for a target draw.",
+        "train_critic only optimizes and saves model weights; it never ranks or emits a playable ticket."
+      ],
+      "legacy_method_id": "ai_lab/scripts/train_critic.py",
+      "reason_code": "TRAINING_ONLY_NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "7034f3ea6732a8cc555ec716544da5fe98ba3ad5",
+      "source_byte_size": 3217,
+      "source_sha256": "e0cfda5699f849f8261d801666412085cc6a649500f7bb8e9c3f3b0d9a6103e1",
+      "status_reason": "The frozen source trains and persists a discriminator from real and synthetic examples. Its random combinations are training data, not target-draw selections."
+    },
+    {
+      "decisive_source_facts": [
+        "analyze_biglotto_special consumes only historical special numbers and prints repeater and Markov sparsity statistics.",
+        "Its range over 1..49 enumerates transition-matrix cells and does not select a main-number ticket.",
+        "The source emits neither a predicted special number nor a playable six-number BIG_LOTTO ticket."
+      ],
+      "legacy_method_id": "tools/analyze_biglotto_special.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "1d2683c732939629b80089c2770e5766d8f34846",
+      "source_byte_size": 3060,
+      "source_sha256": "d3f92b5b3209849da5a2c9f514c5c4dc66255f10e84ab03057694b9f38e30f5f",
+      "status_reason": "The frozen source is a descriptive special-number transition audit. It does not select a six-number BIG_LOTTO ticket or emit any prediction."
+    },
+    {
+      "decisive_source_facts": [
+        "The frozen module docstring explicitly says that it is pure mathematical and financial analysis and outputs no number prediction.",
+        "Its combinations are exact combinatorial counts for probability, coverage-cost, and jackpot-threshold calculations.",
+        "No function accepts draw history or returns a selected ticket."
+      ],
+      "legacy_method_id": "tools/arbitrage_analysis.py",
+      "reason_code": "NO_TICKET_SELECTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "3b4cca3aecec98ccf5c21b29da4847a1328e26e7",
+      "source_byte_size": 30392,
+      "source_sha256": "2bb4dc75d414fe0a70367da14ba3bc1bbf55fe7d17f05b4df50b89be8a7b3fe8",
+      "status_reason": "The frozen file is a probability and financial-arbitrage report whose own contract says it emits no number prediction. It has no native portfolio."
+    },
+    {
+      "decisive_source_facts": [
+        "generate_realistic_lottery_data synthesizes a dated CSV dataset rather than predicting a future target draw.",
+        "generate_realistic_numbers and generate_special_number create each synthetic historical row consumed by that dataset writer.",
+        "The module never uses causal draw history, identifies a target draw, or emits a prediction portfolio."
+      ],
+      "legacy_method_id": "tools/generate_realistic_data.py",
+      "reason_code": "SYNTHETIC_DATA_GENERATOR_NO_PREDICTION_ENTRYPOINT",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "de32287785a3ba27bbbe5e797f2c3dfc24f906e0",
+      "source_byte_size": 5337,
+      "source_sha256": "bff44e409ab91ff60fee502c369efd616cc5f77587cb3b74d117fef17d4d349b",
+      "status_reason": "The frozen source creates a synthetic historical CSV and a manual-input template. Its generated rows are test data, not target-draw predictions."
+    },
+    {
+      "decisive_source_facts": [
+        "predict_kill_numbers ranks numbers for exclusion and returns a sorted kill list whose dynamic length is not a six-number ticket.",
+        "The source does not define which upstream positive selector should consume that exclusion list.",
+        "main prints only the dynamic kill list and never emits a playable BIG_LOTTO portfolio."
+      ],
+      "legacy_method_id": "tools/negative_selector.py",
+      "reason_code": "NEGATIVE_FILTER_ONLY_NO_UPSTREAM_TICKET_SELECTOR",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "c8b347172f95c967c6550e0df93af30386ac802e",
+      "source_byte_size": 4900,
+      "source_sha256": "80e79f80f9f5978ee2d7e71bb65e7b63bf101192a402ab8a9d0644796d4e3ff0",
+      "status_reason": "The frozen method produces only a variable-length exclusion list. No authoritative upstream ticket selector or composition belongs to this source record, so inventing tickets would change the method."
+    },
+    {
+      "decisive_source_facts": [
+        "predict_kill_numbers ranks numbers for exclusion and returns a sorted dynamic kill list rather than six selected ticket numbers.",
+        "The source has no input or contract identifying a positive ticket generator that consumes the kill list.",
+        "main prints only excluded numbers and no playable portfolio."
+      ],
+      "legacy_method_id": "tools/negative_selector_optimized.py",
+      "reason_code": "NEGATIVE_FILTER_ONLY_NO_UPSTREAM_TICKET_SELECTOR",
+      "reproduction_status": "CLOSED_UNEXECUTABLE",
+      "source_blob_id": "85b83a7eac764c25bf7469fc4c9273397d6b3c42",
+      "source_byte_size": 5159,
+      "source_sha256": "55cf2af964a9b5b1ad40f4c15f1c234a6cbaee987278e10b078d10675c286eba",
+      "status_reason": "The frozen optimized kill model produces only a variable-length exclusion list. Without a source-identified positive selector it has no playable native ticket portfolio."
+    },
+    {
+      "canonical_legacy_method_id": "tools/biglotto_diversified_ensemble_v6.py",
+      "canonical_strategy_id": "legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d",
+      "decisive_source_facts": [
+        "Both frozen paths resolve to Git blob 8a2b6d9e5f8f921d5d20e719e99e94e1fb67cf3b.",
+        "Both regular blobs are 6152 bytes and have SHA-256 8caaac8fcb5d1976174e6def13bf01d47e0fb00edb6d555d838c662bb5daaf2d.",
+        "A byte-for-byte comparison of both frozen blob streams succeeds."
+      ],
+      "legacy_method_id": "tools/biglotto_diversified_ensemble_v6_backup.py",
+      "reason_code": "EXACT_FROZEN_SOURCE_BLOB_DUPLICATE",
+      "reproduction_status": "DUPLICATE_ALIAS",
+      "source_blob_id": "8a2b6d9e5f8f921d5d20e719e99e94e1fb67cf3b",
+      "source_byte_size": 6152,
+      "source_sha256": "8caaac8fcb5d1976174e6def13bf01d47e0fb00edb6d555d838c662bb5daaf2d",
+      "status_reason": "The frozen backup path is byte-for-byte identical to the canonical diversified-ensemble-v6 source. It remains in the 221-method universe as an explicit alias and must not receive an independent ranking row."
+    }
+  ],
+  "evidence_schema_version": "BIG_LOTTO_STATIC_DISPOSITION_WAVE4_EVIDENCE_V1",
+  "frozen_source_commit": "49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+  "review_policy_version": "BIG_LOTTO_FROZEN_SOURCE_DISPOSITION_REVIEW_V2"
+}

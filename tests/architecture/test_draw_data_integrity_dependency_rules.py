@@ -15,6 +15,8 @@ SRC = REPO_ROOT / "src" / "lottolab"
 DOMAIN_FILE = SRC / "domain" / "draw_data_integrity.py"
 APPLICATION_FILE = SRC / "application" / "use_cases" / "inspect_draw_data_integrity.py"
 INFRASTRUCTURE_FILE = SRC / "infrastructure" / "persistence" / "draw_data_integrity_reader.py"
+# P338A: the one Owner-authorized CLI consumer of the three files above.
+CLI_ADAPTER_FILE = SRC / "interfaces" / "cli" / "draw_data_integrity.py"
 
 _FORBIDDEN_PREFIXES = (
     "lottolab.interfaces",
@@ -161,7 +163,7 @@ def test_no_other_existing_repository_file_references_the_new_modules() -> None:
     """Guards the exact seven-path scope: nothing outside the new files wires this in."""
 
     needle = "draw_data_integrity"
-    new_files = {DOMAIN_FILE, APPLICATION_FILE, INFRASTRUCTURE_FILE}
+    new_files = {DOMAIN_FILE, APPLICATION_FILE, INFRASTRUCTURE_FILE, CLI_ADAPTER_FILE}
     violations: list[Path] = []
     for path in SRC.rglob("*.py"):
         if path in new_files:

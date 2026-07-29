@@ -6,6 +6,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from lottolab.application.strategy_evidence import (
+    D3AvailabilityStatus,
+    DefinitionAvailabilityStatus,
+    EvidenceRegistrationStatus,
+    EvidenceVerificationStatus,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
 
@@ -97,3 +103,53 @@ class StrategyOverviewResponse(BaseModel):
     items: tuple[StrategyOverviewItem, ...]
     summary: StrategyOverviewSummary
     capabilities: StrategyOverviewCapabilities
+
+
+class StrategyEvidenceItem(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    strategy_id: str
+    strategy_version: str
+    replicate: int | Literal["NOT_APPLICABLE"]
+    display_name: str
+    lifecycle_status: LifecycleStatus
+    executable: bool
+    supported_lottery_types: tuple[LotteryType, ...]
+    minimum_history: int = Field(ge=1)
+    provenance: tuple[str, ...]
+    adapter_available: bool
+    registration_status: EvidenceRegistrationStatus
+    definition_status: DefinitionAvailabilityStatus
+    verification_status: EvidenceVerificationStatus
+    unavailable_reason_code: str | None
+
+
+class StrategyEvidenceBestStrategyBlock(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    status: Literal["UNAVAILABLE"]
+    reason: Literal["NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE"]
+
+
+class StrategyCombinationHitRateBlock(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    status: Literal["EXCLUDED_ACTIVE_MULTITICKET_SCOPE"]
+    value: Literal["NOT_AVAILABLE"]
+    owner: Literal["ACTIVE_MULTITICKET_AGENT"]
+
+
+class D3AvailabilityBlock(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    status: D3AvailabilityStatus
+    value: Literal["NOT_AVAILABLE"] | str
+
+
+class StrategyEvidenceResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    items: tuple[StrategyEvidenceItem, ...]
+    best_strategy: StrategyEvidenceBestStrategyBlock
+    strategy_combination_hit_rate: StrategyCombinationHitRateBlock
+    d3: D3AvailabilityBlock

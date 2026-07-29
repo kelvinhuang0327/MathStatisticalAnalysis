@@ -108,12 +108,24 @@ uv run --no-sync lottolab import-historical-results \
   `"is_idempotent_replay":true` 明確標示；此命令不建立 scheduler、自動 ingestion、production
   deployment 或 legacy conversion。
 
-## 本機 Draw Data（P600D R1B）
+## 非多票 Web 工作區（LotteryNew → LottoLab R1）
 
 前端以 hash navigation 提供 `Strategy Overview`、`Historical Success Windows`、`Data Center`、
-`Draw History` 與 `Live Zone Split Bets`。
-Data Center 只接受 LottoLab canonical CSV；瀏覽器把檔案讀成 UTF-8 文字並以 JSON 傳送，
-不使用 multipart，也不把 CSV 放進 localStorage、sessionStorage 或 IndexedDB。
+`History`、`Strategy Evidence` 與既有 `Live Zone Split Bets`。本節只描述非多票資料、歷史與
+證據可用性；多票 replay／backtest／portfolio／ranking／combination／ticket matrix 一律不在此
+遷移範圍。逐項 legacy 對照與未完成條件見
+[non-multiticket web parity matrix](docs/migration/lotterynew-lottolab-non-multiticket-web-parity-r1.md)。
+
+### Data Center
+
+`#/data-center` 只接受 LottoLab canonical CSV。檔案選擇器支援多檔；瀏覽器把每個檔案讀成
+UTF-8 文字後，以獨立 preview request 取得後端權威 digest、parser version、valid／invalid／
+duplicate／conflict 統計。使用者可明確 commit 全部有效檔或勾選的有效檔；每檔是獨立 transaction
+與 ingestion run，不宣稱跨檔 atomicity。批次狀態固定為 `NOT_COMMITTED`、`SUCCESS`、`FAILED`
+或 `PARTIAL_SUCCESS`。取消、切換檔案與 unmount 都會中止 request 並使舊 response 失效。
+
+瀏覽器不使用 multipart，也不把 CSV 放進 localStorage、sessionStorage 或 IndexedDB；成功 commit
+或取消後會丟棄該頁 session 的 raw text。
 
 Canonical 欄位如下；`special_numbers` 與 `source` 可省略欄位，但目前 BIG_LOTTO 規則要求
 恰好一個特別號，因此有效資料列仍須提供 `special_numbers`。號碼欄以 `|` 分隔：
@@ -135,8 +147,16 @@ BIG_LOTTO,000001,2026-07-16,1|3|9|17|24|49,7,synthetic-reference
   以及 fresh-path 在 schema 初始化後發生的 concurrent first-write conflict。
 - BIG_LOTTO import contract 固定為 6 個不重複主號（1–49）、1 個必要且不與主號重疊的特別號
   （1–49），canonical storage order 為數字遞增；draw number 是保留前導零的 ASCII digit string。
-- Draw History 的 draw-number filter 是 substring search；結果固定依 draw date descending、
-  draw number stable-string descending、internal ID descending 排序並分頁，且沒有編輯／刪除功能。
+- `DrawDataProvider` 是 application port；預設沒有 provider，automation endpoint 會回傳 sanitized
+  `AUTOMATION_NOT_CONFIGURED`。Local runtime 只有在 `LOTTOLAB_DRAW_PROVIDER_URL` 明確設定為不含
+  credential 的 absolute HTTPS URL 時，才建立 lazy JSON adapter；app construction、OpenAPI 與
+  frontend build 不會連網。
+- `MANUAL_SYNC`、`MISSING_DRAW_SCAN`、`BOUNDED_BACKFILL` 與 `SCHEDULED_SYNC` 共用最長 366 天、
+  canonical backend validation、no-overwrite 與 append-only audit。接受的 bounded invocation 即使
+  not configured、transport unavailable 或 provider contract invalid，也會留下 sanitized FAILED run。
+  `SCHEDULED_SYNC` 是可供外部 scheduler 呼叫的明確 trigger，不會在 web process 啟動 background job。
+- 目前 adapter boundary 不代表官方資料源已驗證，也不構成 production scheduler、traffic cutover
+  或 LotteryNew retirement 證據。
 
 本機 DB 永遠在 Git worktree 外。可用絕對、owner-only 的目錄覆寫預設位置：
 
@@ -145,7 +165,9 @@ LOTTOLAB_DATA_DIR=/absolute/owner-only/path uv run --no-sync lottolab local star
 ```
 
 未存在 DB 的 history read 會回傳 deterministic empty result，不建立目錄、DB 或 migration；第一個
-有效 commit 才能建立 version-1 schema。使用者 DB、SQLite sidecar、upload 與 runtime artifacts
+明確 write 才能建立 version-2 schema。既有 version-1 DB 的 read 仍以 SQLite `mode=ro` 與
+`query_only` 驗證且不升級；下一個明確 write 才 transactionally 加入 version-2 ingestion context。
+使用者 DB、SQLite sidecar、upload 與 runtime artifacts
 都不進 Git。測試與 task lifecycle 一律把 `LOTTOLAB_DATA_DIR` 指向 repo 外的新建暫存目錄，並在
 驗證後只移除該 task 自己建立的路徑。
 
@@ -154,8 +176,31 @@ repository 與 LotteryNew 邊界檢查仍會強制執行；但已用相同 OS �
 owner-owned 檔案的惡意 process 不在支援的 threat model 內，實作不宣稱具備 same-UID
 namespace-race immunity。若需更強隔離，必須採用 OS sandboxing 或 privilege separation，超出目前範圍。
 
-R1B 不提供 fetch-latest、missing-period scan、backfill、scheduler 或自動 ingestion；這些不是
-隱藏或 disabled controls，而是明確不在目前功能面。
+### History
+
+`#/history` 統一三個唯讀分頁：
+
+- Draw History：draw-number substring filter；結果依 draw date descending、draw number
+  stable-string descending、internal ID descending 排序並分頁。
+- Ingestion History：依 status、trigger、provider／filename 與日期查詢 run，並顯示 bounded
+  item／duplicate／conflict／failure detail；partial detail 會明確標示。
+- Historical Import Runs：只讀取已存在 Historical Results DB 的 completed import metadata、
+  identity、source、counts、time 與 idempotent-import flag；未設定時顯示 `NOT_CONFIGURED`。
+
+此 workspace 沒有 edit、delete、clear、prediction、strategy execution、replay 或 ranking control；
+read routes 不會 initialize schema、migration 或 fallback 到其他 DB。
+
+### Strategy Evidence
+
+`#/strategy-evidence` 以完整 `strategy_id`／`strategy_version`／`replicate` identity 顯示 Catalog
+metadata 與 canonical evidence availability。Catalog 沒有 replicate 維度時固定顯示
+`NOT_APPLICABLE`。Registration／definition／verification 只來自 committed evidence registry 與
+metric definition，不從 lifecycle、adapter、歷史結果或 catalog order 推導。
+
+目前 registry 沒有 canonical strategy evaluation evidence，因此 Best Strategy 固定為
+`UNAVAILABLE / NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE`。D3 definition 固定為
+`RESERVED_UNAVAILABLE`，value 顯示 `NOT_AVAILABLE`，絕不以 0 代替。Strategy Combination Hit Rate
+固定顯示 `EXCLUDED_ACTIVE_MULTITICKET_SCOPE`，不讀取或模擬 active multi-ticket agent 的產物。
 
 ## 目錄地圖
 

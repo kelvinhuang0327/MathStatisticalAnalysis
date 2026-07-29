@@ -356,7 +356,7 @@ def test_newer_schema_version_fails_closed(tmp_path: Path) -> None:
     initialize_schema(paths)
     connection = _raw_connection(paths)
     try:
-        connection.execute("UPDATE schema_migrations SET version = ? WHERE version = ?", (2, 1))
+        connection.execute("UPDATE schema_migrations SET version = ? WHERE version = ?", (3, 2))
         connection.commit()
     finally:
         connection.close()

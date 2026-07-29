@@ -151,6 +151,37 @@
         }
       }
     },
+    "/api/v1/strategy-evidence": {
+      "get": {
+        "tags": [
+          "strategy-evidence"
+        ],
+        "summary": "Strategy Evidence",
+        "operationId": "queryStrategyEvidence",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyEvidenceResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/draw-imports/preview": {
       "post": {
         "tags": [
@@ -236,6 +267,290 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-sync/manual": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Manual Sync",
+        "operationId": "fetchDrawData",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawSyncRequestView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawSyncResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitConflictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-sync/missing-scan": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Missing Draw Scan",
+        "operationId": "scanMissingDraws",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawSyncRequestView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawSyncResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitConflictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-sync/backfill": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Bounded Backfill",
+        "operationId": "backfillDrawRange",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawSyncRequestView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawSyncResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitConflictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-sync/scheduled": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Scheduled Sync",
+        "operationId": "runScheduledDrawSync",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DrawSyncRequestView"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DrawSyncResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitConflictResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Bad Gateway",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
                 }
               }
             }
@@ -486,6 +801,22 @@
             }
           },
           {
+            "name": "operation_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/IngestionOperationType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Operation Type"
+            }
+          },
+          {
             "name": "lottery_type",
             "in": "query",
             "required": false,
@@ -499,6 +830,58 @@
                 }
               ],
               "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 255
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
             }
           },
           {
@@ -3152,6 +3535,52 @@
         "title": "ConflictPolicy",
         "description": "Import collision behavior supported by the current release."
       },
+      "D3AvailabilityBlock": {
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/D3AvailabilityStatus"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "NOT_AVAILABLE"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "value"
+        ],
+        "title": "D3AvailabilityBlock"
+      },
+      "D3AvailabilityStatus": {
+        "type": "string",
+        "enum": [
+          "RESERVED_UNAVAILABLE",
+          "DEFINITION_MISSING",
+          "EVIDENCE_MISSING",
+          "VALUE_UNVERIFIED",
+          "VALUE_PRESENT",
+          "STALE",
+          "INCOMPATIBLE"
+        ],
+        "title": "D3AvailabilityStatus"
+      },
+      "DefinitionAvailabilityStatus": {
+        "type": "string",
+        "enum": [
+          "DEFINITION_AVAILABLE",
+          "DEFINITION_UNAVAILABLE"
+        ],
+        "title": "DefinitionAvailabilityStatus"
+      },
       "DrawHistoryResponse": {
         "properties": {
           "records": {
@@ -3490,6 +3919,103 @@
         ],
         "title": "DrawRecordView"
       },
+      "DrawSyncRequestView": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "date_from": {
+            "type": "string",
+            "format": "date",
+            "title": "Date From"
+          },
+          "date_to": {
+            "type": "string",
+            "format": "date",
+            "title": "Date To"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "date_from",
+          "date_to"
+        ],
+        "title": "DrawSyncRequestView"
+      },
+      "DrawSyncResponse": {
+        "properties": {
+          "operation_type": {
+            "$ref": "#/components/schemas/IngestionOperationType"
+          },
+          "provider": {
+            "type": "string",
+            "title": "Provider"
+          },
+          "requested_start": {
+            "type": "string",
+            "format": "date",
+            "title": "Requested Start"
+          },
+          "requested_end": {
+            "type": "string",
+            "format": "date",
+            "title": "Requested End"
+          },
+          "resolved_start": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Start"
+          },
+          "resolved_end": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved End"
+          },
+          "fetched_count": {
+            "type": "integer",
+            "title": "Fetched Count"
+          },
+          "result": {
+            "$ref": "#/components/schemas/ImportCommitResultView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "operation_type",
+          "provider",
+          "requested_start",
+          "requested_end",
+          "resolved_start",
+          "resolved_end",
+          "fetched_count",
+          "result"
+        ],
+        "title": "DrawSyncResponse"
+      },
+      "EvidenceRegistrationStatus": {
+        "type": "string",
+        "enum": [
+          "CANONICAL_EVIDENCE_REGISTERED",
+          "CANONICAL_EVIDENCE_MISSING"
+        ],
+        "title": "EvidenceRegistrationStatus"
+      },
       "EvidenceStatus": {
         "type": "string",
         "enum": [
@@ -3503,6 +4029,17 @@
         ],
         "title": "EvidenceStatus",
         "description": "Evidence classification only; no status triggers promotion behavior."
+      },
+      "EvidenceVerificationStatus": {
+        "type": "string",
+        "enum": [
+          "EVIDENCE_VERIFIED",
+          "EVIDENCE_DECLARED_NOT_RECOMPUTED",
+          "EVIDENCE_STALE",
+          "EVIDENCE_INCOMPATIBLE",
+          "EVIDENCE_MISSING"
+        ],
+        "title": "EvidenceVerificationStatus"
       },
       "ExactRatioView": {
         "properties": {
@@ -6430,6 +6967,26 @@
           "completed_at": {
             "type": "string",
             "title": "Completed At"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "draw_count": {
+            "type": "integer",
+            "title": "Draw Count"
+          },
+          "portfolio_count": {
+            "type": "integer",
+            "title": "Portfolio Count"
+          },
+          "is_idempotent_replay": {
+            "type": "boolean",
+            "title": "Is Idempotent Replay"
           }
         },
         "type": "object",
@@ -6447,7 +7004,12 @@
           "legacy_run_id",
           "lottery_type",
           "started_at",
-          "completed_at"
+          "completed_at",
+          "status",
+          "strategy_count",
+          "draw_count",
+          "portfolio_count",
+          "is_idempotent_replay"
         ],
         "title": "HistoricalRunView"
       },
@@ -7417,6 +7979,17 @@
             ],
             "title": "Draw Number"
           },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
           "disposition": {
             "$ref": "#/components/schemas/IngestionItemDisposition"
           },
@@ -7448,6 +8021,7 @@
           "source_row_number",
           "lottery_type",
           "draw_number",
+          "source",
           "disposition",
           "normalized_record_hash",
           "message"
@@ -7457,7 +8031,11 @@
       "IngestionOperationType": {
         "type": "string",
         "enum": [
-          "DRAW_CSV_IMPORT"
+          "DRAW_CSV_IMPORT",
+          "MANUAL_SYNC",
+          "MISSING_DRAW_SCAN",
+          "BOUNDED_BACKFILL",
+          "SCHEDULED_SYNC"
         ],
         "title": "IngestionOperationType",
         "description": "Stable operation identifiers stored in the local ingestion log."
@@ -7580,6 +8158,79 @@
             "type": "string",
             "title": "Parser Version"
           },
+          "trigger": {
+            "$ref": "#/components/schemas/IngestionOperationType"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "provider_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Version"
+          },
+          "requested_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Start"
+          },
+          "requested_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested End"
+          },
+          "resolved_start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Start"
+          },
+          "resolved_end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved End"
+          },
+          "fetched_count": {
+            "type": "integer",
+            "title": "Fetched Count"
+          },
           "total_count": {
             "type": "integer",
             "title": "Total Count"
@@ -7660,6 +8311,14 @@
           "source_filename",
           "source_sha256",
           "parser_version",
+          "trigger",
+          "provider",
+          "provider_version",
+          "requested_start",
+          "requested_end",
+          "resolved_start",
+          "resolved_end",
+          "fetched_count",
           "total_count",
           "inserted_count",
           "skipped_count",
@@ -8609,6 +9268,176 @@
           "type"
         ],
         "title": "RequestValidationIssueView"
+      },
+      "StrategyCombinationHitRateBlock": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "EXCLUDED_ACTIVE_MULTITICKET_SCOPE",
+            "title": "Status"
+          },
+          "value": {
+            "type": "string",
+            "const": "NOT_AVAILABLE",
+            "title": "Value"
+          },
+          "owner": {
+            "type": "string",
+            "const": "ACTIVE_MULTITICKET_AGENT",
+            "title": "Owner"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "value",
+          "owner"
+        ],
+        "title": "StrategyCombinationHitRateBlock"
+      },
+      "StrategyEvidenceBestStrategyBlock": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "UNAVAILABLE",
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "const": "NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status",
+          "reason"
+        ],
+        "title": "StrategyEvidenceBestStrategyBlock"
+      },
+      "StrategyEvidenceItem": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "replicate": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string",
+                "const": "NOT_APPLICABLE"
+              }
+            ],
+            "title": "Replicate"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "lifecycle_status": {
+            "$ref": "#/components/schemas/LifecycleStatus"
+          },
+          "executable": {
+            "type": "boolean",
+            "title": "Executable"
+          },
+          "supported_lottery_types": {
+            "items": {
+              "$ref": "#/components/schemas/LotteryType"
+            },
+            "type": "array",
+            "title": "Supported Lottery Types"
+          },
+          "minimum_history": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Minimum History"
+          },
+          "provenance": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Provenance"
+          },
+          "adapter_available": {
+            "type": "boolean",
+            "title": "Adapter Available"
+          },
+          "registration_status": {
+            "$ref": "#/components/schemas/EvidenceRegistrationStatus"
+          },
+          "definition_status": {
+            "$ref": "#/components/schemas/DefinitionAvailabilityStatus"
+          },
+          "verification_status": {
+            "$ref": "#/components/schemas/EvidenceVerificationStatus"
+          },
+          "unavailable_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason Code"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "replicate",
+          "display_name",
+          "lifecycle_status",
+          "executable",
+          "supported_lottery_types",
+          "minimum_history",
+          "provenance",
+          "adapter_available",
+          "registration_status",
+          "definition_status",
+          "verification_status",
+          "unavailable_reason_code"
+        ],
+        "title": "StrategyEvidenceItem"
+      },
+      "StrategyEvidenceResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StrategyEvidenceItem"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "best_strategy": {
+            "$ref": "#/components/schemas/StrategyEvidenceBestStrategyBlock"
+          },
+          "strategy_combination_hit_rate": {
+            "$ref": "#/components/schemas/StrategyCombinationHitRateBlock"
+          },
+          "d3": {
+            "$ref": "#/components/schemas/D3AvailabilityBlock"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "best_strategy",
+          "strategy_combination_hit_rate",
+          "d3"
+        ],
+        "title": "StrategyEvidenceResponse"
       },
       "StrategyOverviewCapabilities": {
         "properties": {

@@ -62,7 +62,11 @@ class DrawHistoryPage:
 @dataclass(frozen=True, slots=True)
 class IngestionRunQuery:
     status: IngestionRunStatus | None = None
+    operation_type: IngestionOperationType | None = None
     lottery_type: LotteryType | None = None
+    source: str | None = None
+    date_from: date | None = None
+    date_to: date | None = None
     page: int = 1
     page_size: int = 25
 
@@ -76,6 +80,13 @@ class IngestionRunRecord:
     source_filename: str
     source_sha256: str
     parser_version: str
+    provider: str | None
+    provider_version: str | None
+    requested_start: str | None
+    requested_end: str | None
+    resolved_start: str | None
+    resolved_end: str | None
+    fetched_count: int
     total_count: int
     inserted_count: int
     skipped_count: int
@@ -103,6 +114,7 @@ class IngestionItemRecord:
     source_row_number: int
     lottery_type: LotteryType | None
     draw_number: str | None
+    source: str | None
     disposition: IngestionItemDisposition
     normalized_record_hash: str | None
     message: str | None

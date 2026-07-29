@@ -82,6 +82,11 @@ class HistoricalRunView(BaseModel):
     lottery_type: str
     started_at: str
     completed_at: str
+    status: str
+    strategy_count: int
+    draw_count: int
+    portfolio_count: int
+    is_idempotent_replay: bool
 
     @classmethod
     def from_summary(cls, summary: HistoricalRunSummary) -> HistoricalRunView:
@@ -100,6 +105,11 @@ class HistoricalRunView(BaseModel):
             lottery_type=summary.lottery_type,
             started_at=summary.started_at,
             completed_at=summary.completed_at,
+            status=summary.status,
+            strategy_count=summary.strategy_count,
+            draw_count=summary.draw_count,
+            portfolio_count=summary.portfolio_count,
+            is_idempotent_replay=summary.is_idempotent_replay,
         )
 
 

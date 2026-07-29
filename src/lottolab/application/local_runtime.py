@@ -48,8 +48,13 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/health": frozenset({"get"}),
     "/api/v1/strategies": frozenset({"get"}),
     "/api/v1/strategy-overview": frozenset({"get"}),
+    "/api/v1/strategy-evidence": frozenset({"get"}),
     "/api/v1/draw-imports/preview": frozenset({"post"}),
     "/api/v1/draw-imports/commit": frozenset({"post"}),
+    "/api/v1/draw-sync/manual": frozenset({"post"}),
+    "/api/v1/draw-sync/missing-scan": frozenset({"post"}),
+    "/api/v1/draw-sync/backfill": frozenset({"post"}),
+    "/api/v1/draw-sync/scheduled": frozenset({"post"}),
     "/api/v1/draws": frozenset({"get"}),
     "/api/v1/draws/{lottery_type}/{draw_number}": frozenset({"get"}),
     "/api/v1/ingestion-runs": frozenset({"get"}),
@@ -130,6 +135,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
 _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
     {
         "/api/v1/generate-bet",
+        "/api/v1/draw-sync/backfill",
         "/api/v1/historical-results/runs/{run_id}/replay",
         (
             "/api/v1/historical-prefix-analytics/strategies/"
@@ -144,7 +150,10 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
 )
 """The narrow, approved paths exempt from the forbidden-word screen.
 
-``/api/v1/generate-bet`` is the one approved execution path.
+``/api/v1/generate-bet`` is the approved number-generation path.
+``/api/v1/draw-sync/backfill`` is a bounded, explicit draw-ingestion write;
+it never executes a strategy, overwrites a draw, or starts a background job,
+but its path segment intentionally contains the forbidden word "backfill".
 ``/api/v1/historical-results/runs/{run_id}/replay`` is a read-only projection
 view over an already-committed historical-results portfolio (BLHQ R2) — it
 never consumes or modifies Replay's ``DrawHistoryReader`` and executes no

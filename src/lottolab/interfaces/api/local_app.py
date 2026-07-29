@@ -15,9 +15,11 @@ from lottolab.application.historical_prefix_success_windows import (
 )
 from lottolab.application.historical_queries import HistoricalResultsUnavailableError
 from lottolab.application.ports import (
+    DrawDataProvider,
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
 )
+from lottolab.infrastructure.draw_provider import JsonHttpDrawDataProvider
 from lottolab.infrastructure.persistence.historical_prefix_success_window_reader import (
     SQLiteHistoricalPrefixSuccessWindowSourceReader,
 )
@@ -28,6 +30,7 @@ from lottolab.infrastructure.persistence.historical_schema import verify_schema_
 from lottolab.interfaces.api.app import create_app
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
+DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 
 
 @dataclass(frozen=True)
@@ -79,9 +82,11 @@ def create_local_app() -> FastAPI:
     """Compose the normal local app without opening or modifying any database."""
 
     composition = local_historical_composition(os.environ)
+    provider = local_draw_provider(os.environ)
     if composition is None:
-        return create_app()
+        return create_app(draw_data_provider_factory=lambda: provider)
     return create_app(
+        draw_data_provider_factory=lambda: provider,
         historical_query_repository_factory=composition.historical_query_repository,
         historical_prefix_success_window_source_reader_factory=(
             composition.historical_prefix_success_window_source_reader
@@ -89,9 +94,22 @@ def create_local_app() -> FastAPI:
     )
 
 
+def local_draw_provider(
+    environment: Mapping[str, str],
+) -> DrawDataProvider | None:
+    """Resolve an optional provider adapter without making a network request."""
+
+    configured = environment.get(DRAW_PROVIDER_URL_ENV)
+    if configured is None or configured == "":
+        return None
+    return JsonHttpDrawDataProvider(configured)
+
+
 __all__ = [
+    "DRAW_PROVIDER_URL_ENV",
     "HISTORICAL_RESULTS_DB_ENV",
     "LocalHistoricalComposition",
     "create_local_app",
+    "local_draw_provider",
     "local_historical_composition",
 ]

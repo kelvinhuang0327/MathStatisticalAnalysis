@@ -16,6 +16,108 @@ function apiResponse(payload: unknown): Response {
   } as unknown as Response
 }
 
+const keyboardRun = {
+  run_id: 'keyboard-failed-run',
+  operation_type: 'MANUAL_SYNC',
+  status: 'FAILED',
+  lottery_type: 'BIG_LOTTO',
+  source_filename: 'keyboard-fixture',
+  source_sha256: 'a'.repeat(64),
+  parser_version: 'AUTOMATION_AUDIT_V1',
+  trigger: 'MANUAL_SYNC',
+  provider: 'keyboard-fixture',
+  provider_version: 'fixture-v1',
+  requested_start: '2026-07-29',
+  requested_end: '2026-07-29',
+  resolved_start: null,
+  resolved_end: null,
+  fetched_count: 1,
+  total_count: 1,
+  inserted_count: 0,
+  skipped_count: 0,
+  conflict_count: 0,
+  failed_count: 1,
+  first_draw_number: null,
+  last_draw_number: null,
+  started_at: '2026-07-29T01:00:00Z',
+  completed_at: '2026-07-29T01:00:00Z',
+  error_summary: 'PROVIDER_CONTRACT_INVALID',
+}
+
+function tabbableElements(): HTMLElement[] {
+  return Array.from(
+    document.querySelectorAll<HTMLElement>(
+      'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled)',
+    ),
+  ).filter((element) => element.tabIndex >= 0 && !element.hidden)
+}
+
+function keyboardTab(shiftKey = false): HTMLElement {
+  const current = document.activeElement as HTMLElement
+  current.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey, bubbles: true }))
+  const elements = tabbableElements()
+  const currentIndex = elements.indexOf(current)
+  let target: HTMLElement | undefined
+
+  if (currentIndex >= 0) {
+    target = elements.at(shiftKey ? currentIndex - 1 : currentIndex + 1)
+  } else {
+    const ordered = elements.filter((element) => {
+      const position = current.compareDocumentPosition(element)
+      return shiftKey
+        ? Boolean(position & Node.DOCUMENT_POSITION_PRECEDING)
+        : Boolean(position & Node.DOCUMENT_POSITION_FOLLOWING)
+    })
+    target = shiftKey ? ordered.at(-1) : ordered.at(0)
+  }
+  target ??= shiftKey ? elements.at(-1) : elements.at(0)
+  if (!target) throw new Error('No tabbable target is available')
+  target.focus()
+  target.dispatchEvent(new KeyboardEvent('keyup', { key: 'Tab', shiftKey, bubbles: true }))
+  return target
+}
+
+function tabUntil(
+  predicate: (element: HTMLElement) => boolean,
+  shiftKey = false,
+  maximumMoves = 40,
+): HTMLElement {
+  const visited: string[] = []
+  for (let move = 0; move < maximumMoves; move += 1) {
+    const target = keyboardTab(shiftKey)
+    visited.push(
+      `${target.tagName}:${target.textContent?.trim() ?? ''}:${target.getAttribute('type') ?? ''}`,
+    )
+    if (predicate(target)) return target
+  }
+  throw new Error(`Keyboard journey did not reach the expected control: ${visited.join(' -> ')}`)
+}
+
+async function activateFocused(key: 'Enter' | ' '): Promise<void> {
+  const current = document.activeElement as HTMLElement
+  const hashChange =
+    current instanceof HTMLAnchorElement && current.hash !== window.location.hash
+      ? new Promise<void>((resolve) =>
+          window.addEventListener('hashchange', () => resolve(), { once: true }),
+        )
+      : Promise.resolve()
+  current.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }))
+  current.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true }))
+  current.click()
+  await hashChange
+  await flushPromises()
+}
+
+function enterFocusedValue(value: string): void {
+  const current = document.activeElement
+  if (!(current instanceof HTMLInputElement)) {
+    throw new Error('Expected the focused element to be an input')
+  }
+  current.value = value
+  current.dispatchEvent(new InputEvent('input', { bubbles: true, data: value }))
+  current.dispatchEvent(new Event('change', { bubbles: true }))
+}
+
 beforeEach(() => {
   window.location.hash = '#/strategies'
   fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
@@ -61,17 +163,71 @@ beforeEach(() => {
         }),
       )
     }
+    if (url.includes('/api/v1/strategy-evidence')) {
+      return Promise.resolve(
+        apiResponse({
+          items: [
+            {
+              strategy_id: 'keyboard_evidence_fixture',
+              strategy_version: 'v1',
+              replicate: 'NOT_APPLICABLE',
+              display_name: 'Keyboard evidence fixture',
+              lifecycle_status: 'OBSERVATION',
+              executable: false,
+              supported_lottery_types: ['BIG_LOTTO'],
+              minimum_history: 1,
+              provenance: ['fixture:keyboard'],
+              adapter_available: false,
+              registration_status: 'CANONICAL_EVIDENCE_MISSING',
+              definition_status: 'DEFINITION_AVAILABLE',
+              verification_status: 'EVIDENCE_MISSING',
+              unavailable_reason_code: 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+            },
+          ],
+          best_strategy: {
+            status: 'UNAVAILABLE',
+            reason: 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+          },
+          strategy_combination_hit_rate: {
+            status: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
+            value: 'NOT_AVAILABLE',
+            owner: 'ACTIVE_MULTITICKET_AGENT',
+          },
+          d3: { status: 'RESERVED_UNAVAILABLE', value: 'NOT_AVAILABLE' },
+        }),
+      )
+    }
     if (url.includes('/api/v1/historical-results/runs')) {
       return Promise.resolve(apiResponse(makeRunPage()))
+    }
+    if (url.endsWith('/api/v1/ingestion-runs/keyboard-failed-run')) {
+      return Promise.resolve(
+        apiResponse({
+          run: keyboardRun,
+          items: [
+            {
+              source_row_number: 1,
+              lottery_type: 'BIG_LOTTO',
+              draw_number: '1001',
+              source: 'keyboard-fixture',
+              disposition: 'FAILED',
+              normalized_record_hash: 'b'.repeat(64),
+              message: 'Sanitized keyboard fixture failure.',
+            },
+          ],
+          item_count: 1,
+          items_truncated: false,
+        }),
+      )
     }
     if (url.includes('/api/v1/ingestion-runs')) {
       return Promise.resolve(
         apiResponse({
-          records: [],
+          records: [keyboardRun],
           page: 1,
           page_size: 25,
-          total_count: 0,
-          total_pages: 0,
+          total_count: 1,
+          total_pages: 1,
           sort: ['started_at:desc', 'id:desc'],
         }),
       )
@@ -93,6 +249,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllGlobals()
   window.location.hash = ''
+  document.body.replaceChildren()
 })
 
 describe('App navigation', () => {
@@ -105,7 +262,8 @@ describe('App navigation', () => {
       'Strategy Overview',
       'Success Windows',
       'Data Center',
-      'Draw History',
+      'History',
+      'Strategy Evidence',
       'Live Zone Split Bets',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
@@ -126,16 +284,92 @@ describe('App navigation', () => {
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
     expect(navigation.find('a[href="#/data-center"]').attributes('aria-current')).toBe('page')
 
-    window.location.hash = '#/draw-history'
+    window.location.hash = '#/history'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
+    expect(wrapper.find('#history-title').exists()).toBe(true)
     expect(wrapper.find('#draw-history-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/draw-history"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/history"]').attributes('aria-current')).toBe('page')
+
+    window.location.hash = '#/strategy-evidence'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#strategy-evidence-title').exists()).toBe(true)
+    expect(
+      navigation.find('a[href="#/strategy-evidence"]').attributes('aria-current'),
+    ).toBe('page')
 
     window.location.hash = '#/strategies'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('completes the keyboard-only workspace journey with intentional route focus', async () => {
+    const wrapper = mount(App, { attachTo: document.body })
+    await flushPromises()
+
+    expect(document.activeElement).toBe(document.body)
+    expect(keyboardTab().getAttribute('aria-label')).toBe('LottoLab home')
+    expect(keyboardTab().textContent?.trim()).toBe('Strategy Overview')
+    expect(keyboardTab().textContent?.trim()).toBe('Success Windows')
+    expect(keyboardTab().textContent?.trim()).toBe('Data Center')
+    await activateFocused('Enter')
+
+    expect(window.location.hash).toBe('#/data-center')
+    expect(document.activeElement?.textContent?.trim()).toBe('Data Center')
+    expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
+    expect(tabUntil((element) => element.matches('input[type="file"]'))).toBe(
+      wrapper.get('input[type="file"]').element,
+    )
+    expect(keyboardTab()).toBe(wrapper.get('[data-testid="sync-date-from"]').element)
+    enterFocusedValue('2026-07-28')
+    expect(keyboardTab()).toBe(wrapper.get('[data-testid="sync-date-to"]').element)
+    enterFocusedValue('2026-07-29')
+    await wrapper.vm.$nextTick()
+
+    tabUntil((element) => element.textContent?.trim() === 'Run scheduled trigger')
+    expect(document.activeElement?.textContent?.trim()).toBe('Run scheduled trigger')
+    expect(keyboardTab(true).textContent?.trim()).toBe('Bounded backfill')
+    expect(keyboardTab().textContent?.trim()).toBe('Run scheduled trigger')
+    tabUntil(
+      (element) =>
+        element.matches('nav[aria-label="Primary navigation"] a') &&
+        element.textContent?.trim() === 'History',
+      true,
+    )
+    await activateFocused('Enter')
+
+    expect(window.location.hash).toBe('#/history')
+    expect(document.activeElement?.textContent?.trim()).toBe('History')
+    expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
+    expect(tabUntil((element) => element.textContent?.trim() === 'Draw History')).toBe(
+      wrapper.get('nav[aria-label="History sections"]').findAll('button')[0]?.element,
+    )
+    expect(keyboardTab().textContent?.trim()).toBe('Ingestion History')
+    await activateFocused(' ')
+    const openDetail = tabUntil((element) => element.textContent?.trim() === 'Open')
+    expect(openDetail.tagName).toBe('BUTTON')
+    await activateFocused('Enter')
+    expect(wrapper.text()).toContain('Run Detail')
+    expect(wrapper.text()).toContain('Sanitized keyboard fixture failure.')
+
+    tabUntil((element) => element.textContent?.trim() === 'Ingestion History', true)
+    tabUntil(
+      (element) =>
+        element.matches('nav[aria-label="Primary navigation"] a') &&
+        element.textContent?.trim() === 'Strategy Evidence',
+      true,
+    )
+    await activateFocused('Enter')
+
+    expect(window.location.hash).toBe('#/strategy-evidence')
+    expect(document.activeElement?.textContent?.trim()).toBe('Strategy Evidence')
+    expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
+    expect(tabUntil((element) => element.matches('input[type="search"]'))).toBe(
+      wrapper.get('input[type="search"]').element,
+    )
     wrapper.unmount()
   })
 })

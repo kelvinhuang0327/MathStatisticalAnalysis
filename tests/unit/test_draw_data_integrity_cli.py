@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 import typer
+from click import unstyle
 from typer.testing import CliRunner
 
 import lottolab.interfaces.cli.draw_data_integrity as cli_module
@@ -357,10 +358,11 @@ def test_root_command_help_marks_database_required_without_adapter_execution(
     monkeypatch.setattr(cli_module, "inspect_draw_data_integrity_report", record_execution)
 
     result = runner.invoke(root_app, ["inspect-draw-data-integrity", "--help"])
+    help_text = unstyle(result.stdout)
 
     assert result.exit_code == 0
-    assert "--database" in result.stdout
-    assert "required" in result.stdout.casefold()
+    assert "--database" in help_text
+    assert "required" in help_text.casefold()
     assert calls == []
 
 
@@ -376,9 +378,10 @@ def test_missing_root_database_option_fails_before_adapter_execution(
     monkeypatch.setattr(cli_module, "inspect_draw_data_integrity_report", record_execution)
 
     result = runner.invoke(root_app, ["inspect-draw-data-integrity"])
+    error_text = unstyle(result.stderr)
 
     assert result.exit_code != 0
-    assert "--database" in result.stderr
+    assert "--database" in error_text
     assert calls == []
 
 

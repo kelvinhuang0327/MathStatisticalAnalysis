@@ -5,6 +5,7 @@ import DataCenterPage from './features/data-center/DataCenterPage.vue'
 import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
+import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
 import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidencePage.vue'
 
@@ -15,6 +16,7 @@ type Page =
   | 'history'
   | 'strategy-evidence'
   | 'live-zone-split-bets'
+  | 'replay-history'
 
 const currentPage = ref<Page>(pageFromHash())
 
@@ -25,6 +27,7 @@ function pageFromHash(): Page {
   if (route === 'history' || route === 'draw-history') return 'history'
   if (route === 'strategy-evidence') return 'strategy-evidence'
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
+  if (route === 'replay-history') return 'replay-history'
   return 'strategies'
 }
 
@@ -74,6 +77,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           Live Zone Split Bets
         </a>
+        <a
+          href="#/replay-history"
+          :aria-current="currentPage === 'replay-history' ? 'page' : undefined"
+        >
+          Replay History
+        </a>
       </nav>
       <span class="environment-badge">Local workspace</span>
     </header>
@@ -84,7 +93,8 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <DataCenterPage v-else-if="currentPage === 'data-center'" />
       <HistoryPage v-else-if="currentPage === 'history'" />
       <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
-      <LiveZoneSplitBetsPage v-else />
+      <LiveZoneSplitBetsPage v-else-if="currentPage === 'live-zone-split-bets'" />
+      <ReplayHistoryPage v-else />
     </main>
 
     <footer class="app-footer">
@@ -102,6 +112,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'strategy-evidence'">
         Evidence availability comes only from committed registries and definitions; unavailable
         values are never inferred.
+      </template>
+      <template v-else-if="currentPage === 'replay-history'">
+        Historical success rates, rankings, and random-baseline differences are descriptive
+        research only — not a prediction, recommendation, go-live decision, or winning guarantee.
       </template>
       <template v-else>
         Local draw data stays outside Git. Import writes occur only after explicit confirmation.

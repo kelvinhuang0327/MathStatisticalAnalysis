@@ -265,6 +265,7 @@ describe('App navigation', () => {
       'History',
       'Strategy Evidence',
       'Live Zone Split Bets',
+      'Replay History',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
 
@@ -298,6 +299,12 @@ describe('App navigation', () => {
     expect(
       navigation.find('a[href="#/strategy-evidence"]').attributes('aria-current'),
     ).toBe('page')
+
+    window.location.hash = '#/replay-history'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#replay-history-title').exists()).toBe(true)
+    expect(navigation.find('a[href="#/replay-history"]').attributes('aria-current')).toBe('page')
 
     window.location.hash = '#/strategies'
     window.dispatchEvent(new HashChangeEvent('hashchange'))

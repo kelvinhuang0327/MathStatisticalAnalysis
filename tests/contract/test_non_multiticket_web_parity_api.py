@@ -87,8 +87,6 @@ def test_manual_sync_persists_draw_and_queryable_audit_context(tmp_path: Path) -
         params={
             "operation_type": "MANUAL_SYNC",
             "source": "fixture-provider",
-            "date_from": "2026-07-29",
-            "date_to": "2026-07-29",
         },
     )
     assert runs.status_code == 200
@@ -97,6 +95,7 @@ def test_manual_sync_persists_draw_and_queryable_audit_context(tmp_path: Path) -
     assert run["trigger"] == "MANUAL_SYNC"
     assert run["provider_version"] == "fixture-v1"
     assert run["requested_start"] == run["resolved_start"] == "2026-07-29"
+    assert run["requested_end"] == run["resolved_end"] == "2026-07-29"
 
     detail = client.get(f"/api/v1/ingestion-runs/{run_id}")
     assert detail.status_code == 200

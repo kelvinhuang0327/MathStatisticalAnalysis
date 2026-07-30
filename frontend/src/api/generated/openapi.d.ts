@@ -50,6 +50,51 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/b649-multi-ticket-records/summary": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649MultiTicketSummaryResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-multi-ticket-records": {
+      get: {
+          parameters: {
+            "query": {
+              "prefix_count": components['schemas']["B649PrefixCount"]
+              "window": components['schemas']["B649HistoryWindow"]
+              "criterion": components['schemas']["B649SuccessCriterion"]
+              "q"?: string | null
+              "method_family"?: string | null
+              "reproduction_status"?: "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS" | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649MultiTicketRecordPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649MultiTicketApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/strategy-evidence": {
       get: {
           parameters: Record<string, never>
@@ -1252,6 +1297,84 @@ export interface components {
           "preview"?: components['schemas']["DrawImportPreviewResponse"] | null
           "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
         }
+    "B649HistoryWindow": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+    "B649MultiTicketApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649MultiTicketRecordPageResponse": {
+          "items": Array<components['schemas']["B649MultiTicketRecordView"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "prefix_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": components['schemas']["B649SuccessCriterion"]
+          "research_disclaimer": string
+        }
+    "B649MultiTicketRecordView": {
+          "strategy_id": string
+          "strategy_version": string
+          "legacy_method_id": string
+          "source_path": string
+          "method_family": string
+          "reproduction_status": "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS"
+          "duplicate_alias_target": string | null
+          "prefix_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": components['schemas']["B649SuccessCriterion"]
+          "rank": number | null
+          "unranked_reason": string | null
+          "success_count": number | null
+          "effective_backtest_draw_count": number | null
+          "successful_execution_count": number | null
+          "historical_success_rate": string | null
+          "random_baseline_success_rate": string | null
+          "random_baseline_rate_difference": string | null
+          "coverage": string | null
+          "window_available_draws": number | null
+          "window_requested_draws": number | null
+          "window_complete": boolean | null
+          "official_prize_counts": components['schemas']["B649OfficialPrizeCountsView"] | null
+          "no_prize_count": number | null
+          "report_sha256": string | null
+          "report_file_sha256": string | null
+          "catalog_sha256": string
+        }
+    "B649MultiTicketSummaryResponse": {
+          "progress": components['schemas']["B649ResearchProgressView"]
+          "prefix_counts": Array<number>
+          "windows": Array<components['schemas']["B649HistoryWindow"]>
+          "success_criteria": Array<components['schemas']["B649SuccessCriterion"]>
+          "method_families": Array<string>
+          "reproduction_statuses": Array<"BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS">
+          "catalog_sha256": string
+          "records_available": boolean
+          "projection_sha256": string | null
+          "source_report_count": number | null
+          "research_disclaimer": string
+        }
+    "B649OfficialPrizeCountsView": {
+          "first": number
+          "second": number
+          "third": number
+          "fourth": number
+          "fifth": number
+          "sixth": number
+          "seventh": number
+          "general": number
+        }
+    "B649PrefixCount": 5 | 10 | 15 | 20
+    "B649ResearchProgressView": {
+          "total_strategy_count": number
+          "reproduced_count": number
+          "backtested_count": number
+          "closed_count": number
+          "duplicate_alias_count": number
+          "owner_decision_required_count": number
+          "uncompleted_count": number
+        }
+    "B649SuccessCriterion": "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
     "CommitConflictResponse": {
           "error_code": string
           "message": string

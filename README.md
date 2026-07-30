@@ -83,6 +83,25 @@ LOTTOLAB_HISTORICAL_RESULTS_DB=/absolute/owner-only/historical-results.db \
   LONG / PRIMARY_EVIDENCE / 750、MEDIUM / STABILITY_CONFIRMATION / 300、SHORT / DEGRADATION_VETO / 50；
   alias、replicate 與 zero-observation identity 都保留。
 
+## B649 多注歷史紀錄
+
+`#/b649-multi-ticket-records` 是 221 個大樂透研究方法的唯讀聚合紀錄頁。使用者必須明確選擇
+5／10／15／20 注、FULL／RECENT_750／RECENT_300／RECENT_50，以及八項成功標準之一，再按下
+「查詢」；策略搜尋、方法分類與正式復現狀態是額外篩選。頁面不預選第一名、最佳策略、最新報告
+或任何贏家。
+
+- Runtime 只讀固定名稱的 packaged
+  `biglotto_multi_ticket_historical_records_v1.json`，並驗證 projection self-hash 與 final catalog
+  SHA-256；沒有 report directory scan、latest/newest discovery、legacy DB 或 fallback。
+- Offline builder 只接受逐一指定的 `--report` 路徑，並以 final catalog 宣告的 committed evidence
+  checksum 驗證 physical report、internal report self-hash 與策略歸屬。135 個 BACKTESTED 策略若未
+  全數具有 128 組 metric、128 組 ranking 與 16 組官方獎項分布，builder 不會輸出 projection。
+- API 只有 GET summary 與 GET records；HTTP request 不執行策略、不產生票券、不重跑回測，也不載入
+  ordered-20、native tickets 或 execution audit。正式 closed／alias 策略保留未排名原因，所有缺少
+  的數值欄位維持 `null`，不補 0。
+- 固定研究限制為：「歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、
+  上線決策或中獎保證。」
+
 ## Historical Results 明確匯入
 
 本機 operator 可將一個已符合 LottoLab `HistoricalResultImportV1` target envelope 的 JSON 檔案，
@@ -110,8 +129,9 @@ uv run --no-sync lottolab import-historical-results \
 
 ## 非多票 Web 工作區（LotteryNew → LottoLab R1）
 
-前端以 hash navigation 提供 `Strategy Overview`、`Historical Success Windows`、`Data Center`、
-`History`、`Strategy Evidence` 與既有 `Live Zone Split Bets`。本節只描述非多票資料、歷史與
+前端以 hash navigation 提供 `Strategy Overview`、`Historical Success Windows`、
+`B649 Records`、`Data Center`、`History`、`Strategy Evidence` 與既有
+`Live Zone Split Bets`。本節只描述非多票資料、歷史與
 證據可用性；多票 replay／backtest／portfolio／ranking／combination／ticket matrix 一律不在此
 遷移範圍。逐項 legacy 對照與未完成條件見
 [non-multiticket web parity matrix](docs/migration/lotterynew-lottolab-non-multiticket-web-parity-r1.md)。

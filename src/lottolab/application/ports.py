@@ -7,6 +7,9 @@ from datetime import date
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from lottolab.application.biglotto_multi_ticket_records import (
+    B649MultiTicketRecordDataset,
+)
 from lottolab.application.draw_automation import (
     IngestionAuditContext,
     ProviderFetchResult,
@@ -116,6 +119,18 @@ class DrawCsvParser(Protocol):
 
 type DrawDataRepositoryFactory = Callable[[], DrawDataRepository]
 type DrawAutomationRepositoryFactory = Callable[[], DrawAutomationRepository]
+
+
+@runtime_checkable
+class B649MultiTicketRecordReader(Protocol):
+    """Load the one checksum-pinned aggregate projection without side effects."""
+
+    def read(self) -> B649MultiTicketRecordDataset:
+        """Return the complete validated 221-strategy aggregate projection."""
+        ...
+
+
+type B649MultiTicketRecordReaderFactory = Callable[[], B649MultiTicketRecordReader]
 
 
 @runtime_checkable

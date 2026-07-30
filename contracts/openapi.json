@@ -151,6 +151,174 @@
         }
       }
     },
+    "/api/v1/b649-multi-ticket-records/summary": {
+      "get": {
+        "tags": [
+          "b649-multi-ticket-records"
+        ],
+        "summary": "Summary",
+        "operationId": "getB649MultiTicketRecordSummary",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649MultiTicketSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649-multi-ticket-records": {
+      "get": {
+        "tags": [
+          "b649-multi-ticket-records"
+        ],
+        "summary": "Records",
+        "operationId": "listB649MultiTicketRecords",
+        "parameters": [
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649PrefixCount"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649HistoryWindow"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649SuccessCriterion"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "method_family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Family"
+            }
+          },
+          {
+            "name": "reproduction_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "BACKTESTED",
+                    "CLOSED_UNEXECUTABLE",
+                    "DUPLICATE_ALIAS"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reproduction Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649MultiTicketRecordPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649MultiTicketApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/strategy-evidence": {
       "get": {
         "tags": [
@@ -3497,6 +3665,564 @@
           "message"
         ],
         "title": "ApiValidationErrorResponse"
+      },
+      "B649HistoryWindow": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "RECENT_750",
+          "RECENT_300",
+          "RECENT_50"
+        ],
+        "title": "B649HistoryWindow"
+      },
+      "B649MultiTicketApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649MultiTicketApiErrorResponse"
+      },
+      "B649MultiTicketRecordPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649MultiTicketRecordView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649SuccessCriterion"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "prefix_count",
+          "window",
+          "criterion",
+          "research_disclaimer"
+        ],
+        "title": "B649MultiTicketRecordPageResponse"
+      },
+      "B649MultiTicketRecordView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "legacy_method_id": {
+            "type": "string",
+            "title": "Legacy Method Id"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "method_family": {
+            "type": "string",
+            "title": "Method Family"
+          },
+          "reproduction_status": {
+            "type": "string",
+            "enum": [
+              "BACKTESTED",
+              "CLOSED_UNEXECUTABLE",
+              "DUPLICATE_ALIAS"
+            ],
+            "title": "Reproduction Status"
+          },
+          "duplicate_alias_target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Alias Target"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649SuccessCriterion"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "unranked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unranked Reason"
+          },
+          "success_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Count"
+          },
+          "effective_backtest_draw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Backtest Draw Count"
+          },
+          "successful_execution_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successful Execution Count"
+          },
+          "historical_success_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Success Rate"
+          },
+          "random_baseline_success_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Baseline Success Rate"
+          },
+          "random_baseline_rate_difference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Baseline Rate Difference"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "window_available_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Available Draws"
+          },
+          "window_requested_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Requested Draws"
+          },
+          "window_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Complete"
+          },
+          "official_prize_counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/B649OfficialPrizeCountsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "no_prize_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Prize Count"
+          },
+          "report_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Sha256"
+          },
+          "report_file_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report File Sha256"
+          },
+          "catalog_sha256": {
+            "type": "string",
+            "title": "Catalog Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "legacy_method_id",
+          "source_path",
+          "method_family",
+          "reproduction_status",
+          "duplicate_alias_target",
+          "prefix_count",
+          "window",
+          "criterion",
+          "rank",
+          "unranked_reason",
+          "success_count",
+          "effective_backtest_draw_count",
+          "successful_execution_count",
+          "historical_success_rate",
+          "random_baseline_success_rate",
+          "random_baseline_rate_difference",
+          "coverage",
+          "window_available_draws",
+          "window_requested_draws",
+          "window_complete",
+          "official_prize_counts",
+          "no_prize_count",
+          "report_sha256",
+          "report_file_sha256",
+          "catalog_sha256"
+        ],
+        "title": "B649MultiTicketRecordView"
+      },
+      "B649MultiTicketSummaryResponse": {
+        "properties": {
+          "progress": {
+            "$ref": "#/components/schemas/B649ResearchProgressView"
+          },
+          "prefix_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Prefix Counts"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/B649HistoryWindow"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "success_criteria": {
+            "items": {
+              "$ref": "#/components/schemas/B649SuccessCriterion"
+            },
+            "type": "array",
+            "title": "Success Criteria"
+          },
+          "method_families": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Method Families"
+          },
+          "reproduction_statuses": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "BACKTESTED",
+                "CLOSED_UNEXECUTABLE",
+                "DUPLICATE_ALIAS"
+              ]
+            },
+            "type": "array",
+            "title": "Reproduction Statuses"
+          },
+          "catalog_sha256": {
+            "type": "string",
+            "title": "Catalog Sha256"
+          },
+          "records_available": {
+            "type": "boolean",
+            "title": "Records Available"
+          },
+          "projection_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection Sha256"
+          },
+          "source_report_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Report Count"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "progress",
+          "prefix_counts",
+          "windows",
+          "success_criteria",
+          "method_families",
+          "reproduction_statuses",
+          "catalog_sha256",
+          "records_available",
+          "projection_sha256",
+          "source_report_count",
+          "research_disclaimer"
+        ],
+        "title": "B649MultiTicketSummaryResponse"
+      },
+      "B649OfficialPrizeCountsView": {
+        "properties": {
+          "first": {
+            "type": "integer",
+            "title": "First"
+          },
+          "second": {
+            "type": "integer",
+            "title": "Second"
+          },
+          "third": {
+            "type": "integer",
+            "title": "Third"
+          },
+          "fourth": {
+            "type": "integer",
+            "title": "Fourth"
+          },
+          "fifth": {
+            "type": "integer",
+            "title": "Fifth"
+          },
+          "sixth": {
+            "type": "integer",
+            "title": "Sixth"
+          },
+          "seventh": {
+            "type": "integer",
+            "title": "Seventh"
+          },
+          "general": {
+            "type": "integer",
+            "title": "General"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "first",
+          "second",
+          "third",
+          "fourth",
+          "fifth",
+          "sixth",
+          "seventh",
+          "general"
+        ],
+        "title": "B649OfficialPrizeCountsView"
+      },
+      "B649PrefixCount": {
+        "type": "integer",
+        "enum": [
+          5,
+          10,
+          15,
+          20
+        ],
+        "title": "B649PrefixCount"
+      },
+      "B649ResearchProgressView": {
+        "properties": {
+          "total_strategy_count": {
+            "type": "integer",
+            "title": "Total Strategy Count"
+          },
+          "reproduced_count": {
+            "type": "integer",
+            "title": "Reproduced Count"
+          },
+          "backtested_count": {
+            "type": "integer",
+            "title": "Backtested Count"
+          },
+          "closed_count": {
+            "type": "integer",
+            "title": "Closed Count"
+          },
+          "duplicate_alias_count": {
+            "type": "integer",
+            "title": "Duplicate Alias Count"
+          },
+          "owner_decision_required_count": {
+            "type": "integer",
+            "title": "Owner Decision Required Count"
+          },
+          "uncompleted_count": {
+            "type": "integer",
+            "title": "Uncompleted Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total_strategy_count",
+          "reproduced_count",
+          "backtested_count",
+          "closed_count",
+          "duplicate_alias_count",
+          "owner_decision_required_count",
+          "uncompleted_count"
+        ],
+        "title": "B649ResearchProgressView"
+      },
+      "B649SuccessCriterion": {
+        "type": "string",
+        "enum": [
+          "M3_PLUS",
+          "M4_PLUS",
+          "M5_PLUS",
+          "M6",
+          "M2_PLUS_SPECIAL",
+          "M3_PLUS_SPECIAL",
+          "M4_PLUS_SPECIAL",
+          "M5_PLUS_SPECIAL"
+        ],
+        "title": "B649SuccessCriterion"
       },
       "CommitConflictResponse": {
         "properties": {

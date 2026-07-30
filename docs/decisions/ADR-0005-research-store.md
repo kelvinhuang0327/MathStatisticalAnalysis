@@ -142,3 +142,41 @@ imported. Rebuilt runs use versioned current-scorer semantics. The two are
 distinct scoring systems: they must never be presented as directly normalized
 or directly comparable rankings without an explicit, documented
 transformation between them.
+
+## M2a amendment — resumable native historical backtests
+
+M2a adds one application-owned BIG_LOTTO historical-backtest runner. A
+caller-supplied canonical
+`BIG_LOTTO_RESEARCH_BACKTEST_RUN_MANIFEST_V1` fixes the ordered target and
+strategy matrix, draw-snapshot checksum, history bounds, dataset identity, and
+replicate. The deterministic run identity also binds the exact runner commit,
+runner version, resolved native strategy-source bytes, runtime fingerprint, and
+the current versioned rule/scorer contract.
+
+The CLI requires explicit manifest, draw-data, and research-data paths. It
+never consults ambient `LOTTOLAB_DATA_DIR` and rejects the production canonical
+research destination. The draw database remains read-only; the explicitly
+selected research database is the only writable database.
+
+Source checksum, every target identity, causal history availability, every
+strategy identity, executability, BIG_LOTTO compatibility, and COMPLETE native
+provenance are validated before the research repository is created or any
+research write begins. Every accepted target must have at least one real source
+row strictly earlier in the pinned canonical order. A target with zero prior
+rows rejects the entire manifest with
+`TARGET_HAS_NO_STRICTLY_EARLIER_HISTORY`; no synthetic or target-equal cutoff is
+permitted. A target with nonzero history below the manifest minimum remains a
+terminal `INSUFFICIENT_HISTORY` attempt with its real cutoff and history count.
+
+Each target × strategy attempt becomes visible through one `commit_target`
+transaction containing the terminal target, its ordered ticket, current-scorer
+result, or typed closure. SIGTERM requests a pause only after a completed
+target transaction. The appended progress cursor carries reconciled run and
+per-strategy status counts; resume pages the complete natural-key set and never
+uses the aggregate count to select work. A completed identical invocation
+returns an exact no-op before any repository write, summary, or terminal event.
+
+Native historical backtests use `VERSIONED_CURRENT_SCORER`; reference baselines
+remain `LEGACY_REPORTED`. M2a stores audit and per-strategy coverage summaries
+with `rank_value = null` and does not perform promotion, ranking, portfolio
+construction, or current-pointer mutation.

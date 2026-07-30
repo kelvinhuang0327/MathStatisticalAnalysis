@@ -34,8 +34,16 @@ class ResearchExecutionStatus(StrEnum):
     WAITING_FOR_DRAW = "WAITING_FOR_DRAW"
 
 
+class StrategyProvenanceAvailability(StrEnum):
+    """Whether a strategy snapshot has native source/runtime provenance."""
+
+    COMPLETE = "COMPLETE"
+    LEGACY_UNAVAILABLE = "LEGACY_UNAVAILABLE"
+
+
 __all__ = [
     "ResearchExecutionStatus",
     "ResearchRunKind",
     "ResearchRunStatus",
+    "StrategyProvenanceAvailability",
 ]

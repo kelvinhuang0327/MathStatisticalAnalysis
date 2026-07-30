@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
+    CURRENT_SCHEMA_VERSION,
     DATA_DIRECTORY_ENV,
     MIGRATION_CHECKSUM,
     RESEARCH_DATABASE_FILENAME,
@@ -51,7 +52,7 @@ def test_create_then_verify_reports_full_store_health(
     assert report["resolved_path"] == str(
         data_directory / RESEARCH_DATABASE_FILENAME
     )
-    assert report["schema_version"] == 1
+    assert report["schema_version"] == CURRENT_SCHEMA_VERSION
     assert report["migration_checksum"] == MIGRATION_CHECKSUM
     assert report["migration_checksum_match"] is True
     assert report["table_inventory"] == sorted(TABLE_NAMES)

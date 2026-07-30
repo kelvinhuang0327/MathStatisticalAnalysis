@@ -1,4 +1,4 @@
-"""Dependency-boundary and scope contract for the P338A draw-data integrity CLI adapter.
+"""Dependency-boundary and scope contract for the P338B root-CLI registration.
 
 Self-contained on purpose, mirroring ``test_draw_data_integrity_dependency_rules.py``:
 this file does not import helpers from other architecture tests so it stays
@@ -21,6 +21,18 @@ INTEGRATION_TEST_FILE = (
     REPO_ROOT / "tests" / "integration" / "test_draw_data_integrity_cli_sqlite.py"
 )
 ARCHITECTURE_TEST_FILE = Path(__file__).resolve()
+CORE_ARCHITECTURE_TEST_FILE = (
+    REPO_ROOT / "tests" / "architecture" / "test_draw_data_integrity_dependency_rules.py"
+)
+
+_AUTHORIZED_P338B_REFERENCE_FILES = {
+    CLI_FILE,
+    MAIN_FILE,
+    UNIT_TEST_FILE,
+    INTEGRATION_TEST_FILE,
+    ARCHITECTURE_TEST_FILE,
+    CORE_ARCHITECTURE_TEST_FILE,
+}
 
 _ALLOWED_LOTTOLAB_IMPORTS = {
     "lottolab.application.use_cases.inspect_draw_data_integrity",
@@ -48,11 +60,40 @@ def _absolute_imports() -> set[str]:
     return imports
 
 
-def test_the_four_authorized_paths_exist() -> None:
-    assert CLI_FILE.is_file()
-    assert UNIT_TEST_FILE.is_file()
-    assert INTEGRATION_TEST_FILE.is_file()
-    assert ARCHITECTURE_TEST_FILE.is_file()
+def _main_source() -> str:
+    return MAIN_FILE.read_text(encoding="utf-8")
+
+
+def _main_tree() -> ast.Module:
+    return ast.parse(_main_source())
+
+
+def _root_registration_calls() -> list[ast.Call]:
+    registrations: list[ast.Call] = []
+    for node in ast.walk(_main_tree()):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Call):
+            continue
+        command_call = node.func
+        if not isinstance(command_call.func, ast.Attribute):
+            continue
+        if not isinstance(command_call.func.value, ast.Name):
+            continue
+        if command_call.func.value.id != "app" or command_call.func.attr != "command":
+            continue
+        if len(command_call.args) != 1:
+            continue
+        command_name = command_call.args[0]
+        if (
+            isinstance(command_name, ast.Constant)
+            and command_name.value == "inspect-draw-data-integrity"
+        ):
+            registrations.append(node)
+    return registrations
+
+
+def test_the_six_authorized_p338b_paths_exist() -> None:
+    assert len(_AUTHORIZED_P338B_REFERENCE_FILES) == 6
+    assert all(path.is_file() for path in _AUTHORIZED_P338B_REFERENCE_FILES)
 
 
 def test_cli_imports_only_the_merged_p337_core_and_standard_library() -> None:
@@ -131,23 +172,65 @@ def test_cli_output_never_carries_timestamp_hostname_or_process_identity() -> No
         assert forbidden not in source
 
 
-def test_cli_main_has_no_draw_data_integrity_registration_yet() -> None:
-    main_source = MAIN_FILE.read_text(encoding="utf-8")
-    assert "draw_data_integrity" not in main_source
-    assert "DrawDataIntegrityReader" not in main_source
-    assert "InspectDrawDataIntegrity" not in main_source
-    assert "draw-data-integrity" not in main_source
+def test_cli_main_registers_exactly_one_bounded_adapter_command() -> None:
+    main_source = _main_source()
+    main_tree = _main_tree()
+    adapter_imports = [
+        node
+        for node in ast.walk(main_tree)
+        if isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module == "lottolab.interfaces.cli.draw_data_integrity"
+    ]
+    registrations = _root_registration_calls()
+    command_name_constants = [
+        node
+        for node in ast.walk(main_tree)
+        if isinstance(node, ast.Constant) and node.value == "inspect-draw-data-integrity"
+    ]
+
+    assert len(adapter_imports) == 1
+    assert [alias.name for alias in adapter_imports[0].names] == [
+        "draw_data_integrity_command"
+    ]
+    assert len(registrations) == 1
+    assert len(registrations[0].args) == 1
+    assert isinstance(registrations[0].args[0], ast.Name)
+    assert registrations[0].args[0].id == "draw_data_integrity_command"
+    assert registrations[0].keywords == []
+    assert len(command_name_constants) == 1
+
+    for forbidden in (
+        "DrawDataIntegrityReader",
+        "SQLiteDrawDataIntegrityReader",
+        "InspectDrawDataIntegrity",
+        "InspectDrawDataIntegrityRequest",
+    ):
+        assert forbidden not in main_source
 
 
-def test_no_other_existing_repository_file_outside_p338a_references_the_cli_module() -> None:
-    """Guards the exact four-path P338A scope, mirroring the P337 core's own guard."""
+def test_cli_main_contains_no_draw_data_inspection_or_database_logic() -> None:
+    main_source = _main_source()
+    main_imports: set[str] = set()
+    for node in ast.walk(_main_tree()):
+        if isinstance(node, ast.Import):
+            main_imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            main_imports.add(node.module)
+
+    assert "sqlite3" not in main_imports
+    assert "inspect_draw_data_integrity_report" not in main_source
+    assert re.search(r"\b(SELECT|INSERT|UPDATE|DELETE|CREATE TABLE|PRAGMA)\b", main_source) is None
+
+
+def test_no_other_repository_file_outside_p338b_references_the_cli_module() -> None:
+    """Guard the exact six-path P338B registration scope."""
 
     needle = "interfaces.cli.draw_data_integrity"
-    authorized_files = {CLI_FILE, UNIT_TEST_FILE, INTEGRATION_TEST_FILE, ARCHITECTURE_TEST_FILE}
     violations: list[Path] = []
     for path in (*SRC.rglob("*.py"), *(REPO_ROOT / "tests").rglob("*.py")):
-        if path in authorized_files:
+        if path in _AUTHORIZED_P338B_REFERENCE_FILES:
             continue
         if needle in path.read_text(encoding="utf-8"):
             violations.append(path)
-    assert not violations, f"unexpected references outside the P338A files: {violations}"
+    assert not violations, f"unexpected references outside the P338B files: {violations}"

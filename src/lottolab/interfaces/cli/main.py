@@ -21,6 +21,7 @@ from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
 from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     multi_ticket_backtest_command,
 )
+from lottolab.interfaces.cli.draw_data_integrity import draw_data_integrity_command
 from lottolab.interfaces.cli.full_strategy_research import (
     export_full_strategy_research_catalog_command,
 )
@@ -195,6 +196,9 @@ local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only
 app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
 app.command("replay-predictions")(replay_predictions_command)
+app.command("inspect-draw-data-integrity")(
+    draw_data_integrity_command
+)
 app.command("materialize-ordered-candidate-emissions")(
     materialize_ordered_candidate_emissions_command
 )

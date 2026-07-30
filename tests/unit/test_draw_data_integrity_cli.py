@@ -1,8 +1,7 @@
-"""Unit tests for the draw-data integrity CLI adapter, against fake readers.
+"""Unit tests for the draw-data integrity CLI adapter and root registration.
 
-Registers ``draw_data_integrity_command`` on a test-local Typer app: P338A
-does not wire this command into the LottoLab root CLI, so exercising it needs
-its own harness rather than ``lottolab.interfaces.cli.main.app``.
+Adapter behavior remains isolated on a test-local Typer app, while focused
+root-app tests prove discovery, required-option handling, and direct dispatch.
 """
 
 from __future__ import annotations
@@ -24,6 +23,7 @@ from lottolab.domain.draw_data_integrity import (
     DrawDataTableCount,
 )
 from lottolab.infrastructure.persistence.draw_schema import LocalDataError, SchemaMigrationError
+from lottolab.interfaces.cli.main import app as root_app
 
 runner = CliRunner()
 
@@ -325,3 +325,80 @@ def test_missing_required_option_fails_with_empty_stdout() -> None:
     assert result.exit_code != 0
     assert result.stdout == ""
     assert "Traceback" not in result.stderr
+
+
+def test_root_help_lists_the_command_exactly_once_without_adapter_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Path] = []
+
+    def record_execution(database: Path) -> DrawDataIntegrityReport:
+        calls.append(database)
+        return _HEALTHY_REPORT
+
+    monkeypatch.setattr(cli_module, "inspect_draw_data_integrity_report", record_execution)
+
+    result = runner.invoke(root_app, ["--help"])
+
+    assert result.exit_code == 0
+    assert result.stdout.count("inspect-draw-data-integrity") == 1
+    assert calls == []
+
+
+def test_root_command_help_marks_database_required_without_adapter_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Path] = []
+
+    def record_execution(database: Path) -> DrawDataIntegrityReport:
+        calls.append(database)
+        return _HEALTHY_REPORT
+
+    monkeypatch.setattr(cli_module, "inspect_draw_data_integrity_report", record_execution)
+
+    result = runner.invoke(root_app, ["inspect-draw-data-integrity", "--help"])
+
+    assert result.exit_code == 0
+    assert "--database" in result.stdout
+    assert "required" in result.stdout.casefold()
+    assert calls == []
+
+
+def test_missing_root_database_option_fails_before_adapter_execution(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Path] = []
+
+    def record_execution(database: Path) -> DrawDataIntegrityReport:
+        calls.append(database)
+        return _HEALTHY_REPORT
+
+    monkeypatch.setattr(cli_module, "inspect_draw_data_integrity_report", record_execution)
+
+    result = runner.invoke(root_app, ["inspect-draw-data-integrity"])
+
+    assert result.exit_code != 0
+    assert "--database" in result.stderr
+    assert calls == []
+
+
+def test_root_dispatch_reaches_the_existing_adapter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[Path] = []
+
+    def record_execution(database: Path) -> DrawDataIntegrityReport:
+        calls.append(database)
+        return _HEALTHY_REPORT
+
+    monkeypatch.setattr(cli_module, "inspect_draw_data_integrity_report", record_execution)
+    database = Path("/private/tmp/p338b-fixture/lottolab.db")
+
+    result = runner.invoke(
+        root_app,
+        ["inspect-draw-data-integrity", "--database", str(database)],
+    )
+
+    assert result.exit_code == 0
+    assert calls == [database]
+    assert json.loads(result.stdout)["status"] == "HEALTHY"

@@ -6,6 +6,7 @@ import {
   type DrawHistoryQuery,
   type DrawHistoryResponse,
 } from '../../api/drawData'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
 
@@ -90,7 +91,7 @@ onBeforeUnmount(() => requestController?.abort())
         <p class="eyebrow">P600D · immutable records</p>
         <h1 id="draw-history-title">Draw History</h1>
         <p class="page-intro">
-          Search locally imported BIG_LOTTO draws. Results use deterministic date and string-identity ordering.
+          Search locally imported {{ lotteryTypeDisplayLabel('BIG_LOTTO') }} draws. Results use deterministic date and string-identity ordering.
         </p>
       </div>
       <div class="scope-card" aria-label="History result count">
@@ -105,7 +106,7 @@ onBeforeUnmount(() => requestController?.abort())
         <label>
           <span>Lottery type</span>
           <select :value="query.lotteryType" disabled>
-            <option value="BIG_LOTTO">BIG_LOTTO</option>
+            <option value="BIG_LOTTO">{{ lotteryTypeDisplayLabel('BIG_LOTTO') }}</option>
           </select>
         </label>
         <label>
@@ -162,7 +163,7 @@ onBeforeUnmount(() => requestController?.abort())
         <tbody>
           <tr v-for="record in result.records" :key="`${record.lottery_type}-${record.draw_number}`">
             <td>
-              <small>{{ record.lottery_type }}</small>
+              <small>{{ lotteryTypeDisplayLabel(record.lottery_type) }}</small>
               <code class="draw-identity">{{ record.draw_number }}</code>
             </td>
             <td>{{ record.draw_date }}</td>

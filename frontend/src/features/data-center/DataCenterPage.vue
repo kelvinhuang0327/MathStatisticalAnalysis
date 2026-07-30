@@ -12,6 +12,7 @@ import {
   type ImportCommitResult,
   type IngestionRun,
 } from '../../api/drawData'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 
 type FileStatus = 'READING' | 'NOT_PREVIEWED' | 'PREVIEWING' | 'VALID' | 'INVALID' | 'ERROR'
 type CommitStatus = 'NOT_COMMITTED' | 'COMMITTING' | 'SUCCESS' | 'FAILED'
@@ -321,7 +322,7 @@ onBeforeUnmount(() => {
       <div class="scope-card" aria-label="Batch status">
         <span>Batch status</span>
         <strong data-testid="batch-status">{{ batchStatus }}</strong>
-        <small>BIG_LOTTO · REJECT conflicts</small>
+        <small>{{ lotteryTypeDisplayLabel('BIG_LOTTO') }} · REJECT conflicts</small>
       </div>
     </header>
 

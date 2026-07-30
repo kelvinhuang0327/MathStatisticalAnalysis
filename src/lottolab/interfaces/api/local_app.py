@@ -27,10 +27,13 @@ from lottolab.infrastructure.persistence.historical_repositories import (
     SQLiteHistoricalResultQueryRepository,
 )
 from lottolab.infrastructure.persistence.historical_schema import verify_schema_read_only
+from lottolab.infrastructure.taiwan_lottery_draw_provider import TaiwanLotteryDrawProvider
 from lottolab.interfaces.api.app import create_app
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
+DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
+OFFICIAL_TAIWAN_LOTTERY_SOURCE = "OFFICIAL_TAIWAN_LOTTERY"
 
 
 @dataclass(frozen=True)
@@ -97,17 +100,28 @@ def create_local_app() -> FastAPI:
 def local_draw_provider(
     environment: Mapping[str, str],
 ) -> DrawDataProvider | None:
-    """Resolve an optional provider adapter without making a network request."""
+    """Resolve an optional provider adapter without making a network request.
 
-    configured = environment.get(DRAW_PROVIDER_URL_ENV)
-    if configured is None or configured == "":
-        return None
-    return JsonHttpDrawDataProvider(configured)
+    An explicit ``LOTTOLAB_DRAW_PROVIDER_URL`` always wins (a caller-owned
+    JSON endpoint, e.g. for local testing). Otherwise, opting in to
+    ``LOTTOLAB_DRAW_PROVIDER_SOURCE=OFFICIAL_TAIWAN_LOTTERY`` wires the
+    official Taiwan Lottery API adapter. With neither set, this returns
+    ``None`` and draw-sync stays fail-closed, unchanged from before.
+    """
+
+    configured_url = environment.get(DRAW_PROVIDER_URL_ENV)
+    if configured_url:
+        return JsonHttpDrawDataProvider(configured_url)
+    if environment.get(DRAW_PROVIDER_SOURCE_ENV) == OFFICIAL_TAIWAN_LOTTERY_SOURCE:
+        return TaiwanLotteryDrawProvider()
+    return None
 
 
 __all__ = [
+    "DRAW_PROVIDER_SOURCE_ENV",
     "DRAW_PROVIDER_URL_ENV",
     "HISTORICAL_RESULTS_DB_ENV",
+    "OFFICIAL_TAIWAN_LOTTERY_SOURCE",
     "LocalHistoricalComposition",
     "create_local_app",
     "local_draw_provider",

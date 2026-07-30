@@ -15,8 +15,9 @@ SRC = REPO_ROOT / "src" / "lottolab"
 DOMAIN_FILE = SRC / "domain" / "draw_data_integrity.py"
 APPLICATION_FILE = SRC / "application" / "use_cases" / "inspect_draw_data_integrity.py"
 INFRASTRUCTURE_FILE = SRC / "infrastructure" / "persistence" / "draw_data_integrity_reader.py"
-# P338A: the one Owner-authorized CLI consumer of the three files above.
+# P338B: the Owner-authorized CLI adapter and its bounded root registration.
 CLI_ADAPTER_FILE = SRC / "interfaces" / "cli" / "draw_data_integrity.py"
+CLI_MAIN_FILE = SRC / "interfaces" / "cli" / "main.py"
 
 _FORBIDDEN_PREFIXES = (
     "lottolab.interfaces",
@@ -143,11 +144,38 @@ def test_none_of_the_three_production_files_import_forbidden_scope() -> None:
         assert not violations, f"{path.name} imports forbidden scope: {violations}"
 
 
-def test_cli_main_has_no_draw_data_integrity_registration() -> None:
-    cli_main = (SRC / "interfaces" / "cli" / "main.py").read_text(encoding="utf-8")
-    assert "draw_data_integrity" not in cli_main
-    assert "DrawDataIntegrityReader" not in cli_main
-    assert "InspectDrawDataIntegrity" not in cli_main
+def test_cli_main_has_one_bounded_draw_data_integrity_registration() -> None:
+    cli_main = CLI_MAIN_FILE.read_text(encoding="utf-8")
+    cli_main_tree = ast.parse(cli_main)
+    adapter_imports = [
+        node
+        for node in ast.walk(cli_main_tree)
+        if isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module == "lottolab.interfaces.cli.draw_data_integrity"
+    ]
+
+    assert len(adapter_imports) == 1
+    assert [alias.name for alias in adapter_imports[0].names] == [
+        "draw_data_integrity_command"
+    ]
+    assert cli_main.count('"inspect-draw-data-integrity"') == 1
+    for forbidden in (
+        "DrawDataIntegrityReader",
+        "SQLiteDrawDataIntegrityReader",
+        "InspectDrawDataIntegrity",
+        "InspectDrawDataIntegrityRequest",
+    ):
+        assert forbidden not in cli_main
+
+    assert not any(
+        module.startswith("lottolab.interfaces")
+        for module in _imported_modules(APPLICATION_FILE)
+    )
+    assert not any(
+        module.startswith("lottolab.interfaces")
+        for module in _imported_modules(INFRASTRUCTURE_FILE)
+    )
 
 
 def test_api_layer_has_no_draw_data_integrity_registration() -> None:
@@ -159,14 +187,20 @@ def test_api_layer_has_no_draw_data_integrity_registration() -> None:
         assert "InspectDrawDataIntegrity" not in source, path
 
 
-def test_no_other_existing_repository_file_references_the_new_modules() -> None:
-    """Guards the exact seven-path scope: nothing outside the new files wires this in."""
+def test_no_other_production_file_references_the_integrity_modules() -> None:
+    """Guard the five authorized production consumers through P338B."""
 
     needle = "draw_data_integrity"
-    new_files = {DOMAIN_FILE, APPLICATION_FILE, INFRASTRUCTURE_FILE, CLI_ADAPTER_FILE}
+    authorized_production_files = {
+        DOMAIN_FILE,
+        APPLICATION_FILE,
+        INFRASTRUCTURE_FILE,
+        CLI_ADAPTER_FILE,
+        CLI_MAIN_FILE,
+    }
     violations: list[Path] = []
     for path in SRC.rglob("*.py"):
-        if path in new_files:
+        if path in authorized_production_files:
             continue
         if needle in path.read_text(encoding="utf-8"):
             violations.append(path.relative_to(SRC))

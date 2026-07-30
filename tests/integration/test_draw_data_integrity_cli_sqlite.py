@@ -1,8 +1,7 @@
-"""Real-SQLite integration tests for the draw-data integrity CLI adapter.
+"""Real-SQLite integration tests through the registered LottoLab root CLI.
 
 Every database here lives under ``tmp_path``; none of these tests ever
-resolves or opens a default/canonical database, and the CLI is invoked
-through a test-local Typer app rather than the LottoLab root CLI.
+resolves or opens a default/canonical database.
 """
 
 from __future__ import annotations
@@ -12,7 +11,7 @@ import json
 import sqlite3
 from pathlib import Path
 
-import typer
+import pytest
 from typer.testing import CliRunner, Result
 
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityFindingCode
@@ -23,12 +22,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
     initialize_schema,
     resolve_local_data_paths,
 )
-from lottolab.interfaces.cli.draw_data_integrity import draw_data_integrity_command
+from lottolab.interfaces.cli.main import app as root_app
 
 runner = CliRunner()
-
-test_app = typer.Typer()
-test_app.command("inspect-draw-data-integrity")(draw_data_integrity_command)
 
 _TIMESTAMP = "2026-01-01T00:00:00.000000Z"
 
@@ -38,7 +34,10 @@ def _task_paths(tmp_path: Path, suffix: str = "task-integrity-cli-data") -> Loca
 
 
 def _invoke(database: Path) -> Result:
-    return runner.invoke(test_app, ["--database", str(database)])
+    return runner.invoke(
+        root_app,
+        ["inspect-draw-data-integrity", "--database", str(database)],
+    )
 
 
 def _raw_connection(paths: LocalDataPaths) -> sqlite3.Connection:
@@ -105,6 +104,21 @@ def test_absent_database_exits_one_and_creates_nothing(tmp_path: Path) -> None:
     assert result.stderr == ""
     assert not paths.data_directory.exists()
     assert not paths.database.exists()
+
+
+def test_root_cli_does_not_open_an_ambient_default_database(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    ambient_data_directory = tmp_path / "ambient-default"
+    explicit_database = tmp_path / "explicit" / "lottolab.db"
+    monkeypatch.setenv(DATA_DIRECTORY_ENV, str(ambient_data_directory))
+
+    result = _invoke(explicit_database)
+
+    assert result.exit_code == 1
+    assert not ambient_data_directory.exists()
+    assert not explicit_database.parent.exists()
 
 
 def test_healthy_database_exits_zero_with_exact_report(tmp_path: Path) -> None:

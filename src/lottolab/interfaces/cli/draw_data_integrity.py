@@ -1,10 +1,10 @@
-"""Read-only CLI adapter for the P337 draw-data integrity inspection core.
+"""Official read-only root-CLI adapter for the P337 draw-data integrity inspection core.
 
-Not yet registered on the LottoLab root CLI (``main.py``): this module exposes
-``draw_data_integrity_command`` for a later, separate registration step. It
-holds no database-checking logic of its own -- it only composes the already
-merged ``InspectDrawDataIntegrity`` use case with ``SQLiteDrawDataIntegrityReader``
-and renders the closed report as compact, deterministic JSON.
+This module exposes ``draw_data_integrity_command`` through the LottoLab root
+CLI. It holds no database-checking logic of its own -- it only composes the
+already merged ``InspectDrawDataIntegrity`` use case with
+``SQLiteDrawDataIntegrityReader`` and renders the closed report as compact,
+deterministic JSON.
 """
 
 from __future__ import annotations

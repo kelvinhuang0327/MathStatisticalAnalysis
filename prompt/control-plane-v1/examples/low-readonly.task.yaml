@@ -20,7 +20,11 @@
   "context": {
     "base_sha": "UNKNOWN",
     "head_sha": "UNKNOWN",
-    "worktree": {"mode": "NOT_APPLICABLE", "path": "NOT_APPLICABLE"}
+    "worktree": {
+      "mode": "NOT_APPLICABLE",
+      "path": "NOT_APPLICABLE",
+      "branch": "NOT_APPLICABLE"
+    }
   },
   "scope": {
     "allowed_reads": ["contracts/", "src/interfaces/", "tests/contract/"],
@@ -32,7 +36,7 @@
   "authorization": {
     "class": "NONE",
     "state": "NOT_REQUIRED",
-    "owner_statement_ref": "NOT_APPLICABLE"
+    "owner_statement_ref": "NOT_REQUIRED"
   },
   "routing": {
     "path": "LOW_READ_ONLY",

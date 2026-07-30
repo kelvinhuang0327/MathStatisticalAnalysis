@@ -1,16 +1,29 @@
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
+import re
+import runpy
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any, cast
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 CONTROL_PLANE = REPO / "prompt" / "control-plane-v1"
 TOOL = CONTROL_PLANE / "prototype" / "promptctl.py"
 COMPILED = CONTROL_PLANE / "compiled"
 STATUS = "DRAFT_FOR_OWNER_REVIEW"
+L23 = "L23_UNSAFE_OWNER_STATEMENT_REFERENCE"
+L24 = "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES"
+L25 = "L25_AUTHORIZATION_REQUIRED_BEFORE_RENDER"
+L25_FAILURE = (
+    f"{L25}: required authorization must be PRESENT with a safe OWNER_MESSAGE_REF before rendering"
+)
 ROLE_FILES = (
     "HANDOFF_REPORTER.compiled.md",
     "CEO_DECISION_REVIEW.compiled.md",
@@ -40,6 +53,120 @@ def marked_block(text: str, label: str) -> str:
     start = f"<!-- {label}:START -->"
     end = f"<!-- {label}:END -->"
     return text[text.index(start) : text.index(end) + len(end)]
+
+
+def load_example(filename: str) -> dict[str, Any]:
+    return cast(
+        dict[str, Any],
+        json.loads(
+            (CONTROL_PLANE / "examples" / filename).read_text(encoding="utf-8")
+        ),
+    )
+
+
+def write_manifest(path: Path, manifest: dict[str, Any]) -> None:
+    path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+        newline="\n",
+    )
+
+
+def standalone_manifest() -> dict[str, Any]:
+    manifest = load_example("medium-implementation.task.yaml")
+    risk = cast(dict[str, Any], manifest["risk"])
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    routing = cast(dict[str, Any], manifest["routing"])
+    risk["level"] = "HIGH"
+    authorization["class"] = "STANDALONE"
+    routing["path"] = "STRATEGIC_HIGH"
+    routing["stages"] = [
+        "CTO",
+        "CEO",
+        "OWNER_DECISION",
+        "PLANNER",
+        "WORKER",
+        "REVIEW",
+    ]
+    return manifest
+
+
+def stable_diagnostic_codes(stderr: str) -> set[str]:
+    return set(re.findall(r"\bL\d+_[A-Z0-9_]+\b", stderr))
+
+
+def control_plane_snapshot() -> dict[str, bytes]:
+    return {
+        str(path.relative_to(CONTROL_PLANE)): path.read_bytes()
+        for path in sorted(CONTROL_PLANE.rglob("*"))
+        if path.is_file()
+    }
+
+
+def assert_manifest_rejected(
+    manifest: dict[str, Any], tmp_path: Path, filename: str, lint_code: str
+) -> None:
+    manifest_path = tmp_path / filename
+    output_path = tmp_path / f"{manifest_path.stem}.worker.md"
+    write_manifest(manifest_path, manifest)
+    before = control_plane_snapshot()
+
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode == 1
+    assert lint_code in lint.stderr
+    assert stable_diagnostic_codes(lint.stderr) == {lint_code}
+    assert lint.stdout == ""
+
+    render = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+        check=False,
+    )
+    assert render.returncode == 1
+    assert lint_code in render.stderr
+    assert stable_diagnostic_codes(render.stderr) == {lint_code}
+    assert render.stdout == ""
+    assert not output_path.exists()
+    assert control_plane_snapshot() == before
+
+
+def assert_render_blocked(
+    manifest_path: Path, tmp_path: Path, output_name: str = "blocked.worker.md"
+) -> None:
+    output_path = tmp_path / output_name
+    before = control_plane_snapshot()
+
+    lint = run_tool("lint", "--manifest", str(manifest_path), check=False)
+    assert lint.returncode == 0
+    assert lint.stderr == ""
+
+    render_stdout = run_tool("render", "--manifest", str(manifest_path), check=False)
+    render_file = run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+        check=False,
+    )
+    for result in (render_stdout, render_file):
+        assert result.returncode == 1
+        assert result.stderr == f"FAIL {L25_FAILURE}\n"
+        assert stable_diagnostic_codes(result.stderr) == {L25}
+        assert result.stdout == ""
+        for partial in (
+            "# Executable Worker Task",
+            "## Goal",
+            "## Allowed writes",
+            "## Execution",
+            "## Memory and lifecycle",
+        ):
+            assert partial not in result.stdout
+    assert not output_path.exists()
+    assert control_plane_snapshot() == before
 
 
 def test_control_plane_check_passes() -> None:
@@ -107,7 +234,7 @@ def test_examples_lint_and_invalid_authorization_is_rejected(tmp_path: Path) -> 
     manifest["authorization"] = {
         "class": "NONE",
         "state": "NOT_REQUIRED",
-        "owner_statement_ref": "NOT_APPLICABLE",
+        "owner_statement_ref": "NOT_REQUIRED",
     }
     invalid = tmp_path / "invalid.task.yaml"
     invalid.write_text(
@@ -118,21 +245,588 @@ def test_examples_lint_and_invalid_authorization_is_rejected(tmp_path: Path) -> 
     result = run_tool("lint", "--manifest", str(invalid), check=False)
     assert result.returncode == 1
     assert "$.authorization.class: expected constant 'SINGLE_PROMPT'" in result.stderr
-    assert "$.authorization.state: expected constant 'PRESENT'" in result.stderr
+
+
+def test_l23_safe_reference_grammar_and_metadata_rendering(tmp_path: Path) -> None:
+    low = CONTROL_PLANE / "examples" / "low-readonly.task.yaml"
+    pending = CONTROL_PLANE / "examples" / "medium-implementation.task.yaml"
+    run_tool("lint", "--manifest", str(low))
+    run_tool("lint", "--manifest", str(pending))
+
+    confirmed = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], confirmed["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = "OWNER_MESSAGE_REF:msg-123_example"
+    confirmed_path = tmp_path / "confirmed-external.task.yaml"
+    output_path = tmp_path / "confirmed-external.worker.md"
+    write_manifest(confirmed_path, confirmed)
+
+    run_tool("lint", "--manifest", str(confirmed_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(confirmed_path),
+        "--output",
+        str(output_path),
+    )
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Owner statement reference: `OWNER_MESSAGE_REF:msg-123_example`" in rendered
+    assert "evidence metadata only" in rendered
+    assert "does not independently authorize" in rendered
+    assert "Exact task branch: `task/catalog-ordering`" in rendered
+
+
+def test_l25_allows_none_with_the_valid_none_envelope(tmp_path: Path) -> None:
+    manifest_path = CONTROL_PLANE / "examples" / "low-readonly.task.yaml"
+    output_path = tmp_path / "low-readonly.worker.md"
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Authorization class: `NONE`" in rendered
+    assert "Authorization state: `NOT_REQUIRED`" in rendered
+    assert "Owner statement reference: `NOT_REQUIRED`" in rendered
+
+
+def test_l25_allows_standalone_present_with_safe_metadata(tmp_path: Path) -> None:
+    manifest = standalone_manifest()
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = "OWNER_MESSAGE_REF:decision-456"
+    manifest_path = tmp_path / "standalone-present.task.yaml"
+    output_path = tmp_path / "standalone-present.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+
+    rendered = output_path.read_text(encoding="utf-8")
+    assert "Authorization class: `STANDALONE`" in rendered
+    assert "Authorization state: `PRESENT`" in rendered
+    assert "OWNER_MESSAGE_REF:decision-456" in rendered
+    assert "AUTHORIZE_" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("auth_class", "state", "reference", "render_ready"),
+    [
+        pytest.param("NONE", "NOT_REQUIRED", "NOT_REQUIRED", True, id="none-not-required"),
+        pytest.param(
+            "SINGLE_PROMPT",
+            "MISSING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="single-missing",
+        ),
+        pytest.param(
+            "SINGLE_PROMPT",
+            "PENDING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="single-pending",
+        ),
+        pytest.param(
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:single-1",
+            True,
+            id="single-present",
+        ),
+        pytest.param(
+            "STANDALONE",
+            "MISSING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="standalone-missing",
+        ),
+        pytest.param(
+            "STANDALONE",
+            "PENDING",
+            "PENDING_OWNER_REFERENCE",
+            False,
+            id="standalone-pending",
+        ),
+        pytest.param(
+            "STANDALONE",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:standalone-1",
+            True,
+            id="standalone-present",
+        ),
+    ],
+)
+def test_external_authorization_state_matrix_matches_cli_and_direct_renderer(
+    tmp_path: Path,
+    auth_class: str,
+    state: str,
+    reference: str,
+    render_ready: bool,
+) -> None:
+    if auth_class == "NONE":
+        manifest = load_example("low-readonly.task.yaml")
+    elif auth_class == "STANDALONE":
+        manifest = standalone_manifest()
+    else:
+        manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization.update({"class": auth_class, "state": state, "owner_statement_ref": reference})
+    case_name = f"{auth_class.lower()}-{state.lower()}"
+    manifest_path = tmp_path / f"{case_name}.task.yaml"
+    output_path = tmp_path / f"{case_name}.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    renderer = cast(Callable[[dict[str, Any]], bytes], namespace["render_worker"])
+    control_plane_error = namespace["ControlPlaneError"]
+    before = control_plane_snapshot()
+
+    if not render_ready:
+        assert_render_blocked(manifest_path, tmp_path, output_path.name)
+        with pytest.raises(control_plane_error) as exc_info:
+            renderer(manifest)
+        assert str(exc_info.value) == L25_FAILURE
+        assert control_plane_snapshot() == before
+        return
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    stdout_render = run_tool("render", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+    direct_payload = renderer(manifest)
+    assert stdout_render.stdout.encode("utf-8") == direct_payload
+    assert output_path.read_bytes() == direct_payload
+    assert control_plane_snapshot() == before
+
+
+@pytest.mark.parametrize(
+    "opaque_id",
+    [pytest.param("a", id="length-1"), pytest.param("a" * 128, id="length-128")],
+)
+def test_l23_accepts_owner_message_reference_boundaries(tmp_path: Path, opaque_id: str) -> None:
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = f"OWNER_MESSAGE_REF:{opaque_id}"
+    manifest_path = tmp_path / f"owner-ref-{len(opaque_id)}.task.yaml"
+    output_path = tmp_path / f"owner-ref-{len(opaque_id)}.worker.md"
+    write_manifest(manifest_path, manifest)
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool(
+        "render",
+        "--manifest",
+        str(manifest_path),
+        "--output",
+        str(output_path),
+    )
+    assert f"OWNER_MESSAGE_REF:{opaque_id}" in output_path.read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("example", "auth_class", "state", "reference"),
+    [
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "AUTHORIZE_EXAMPLE_TOKEN_123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "Owner approved this task",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "Owner approved\nthis task",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "Bearer abc123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "token=abc123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "secret:abc123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "cookie=session123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "password=hunter2",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "-----BEGIN PRIVATE KEY-----abc",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "OWNER_MESSAGE_REF:" + "a" * 129,
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "https://example.invalid/owner/123",
+        ),
+        (
+            "low-readonly.task.yaml",
+            "NONE",
+            "NOT_REQUIRED",
+            "PENDING_OWNER_REFERENCE",
+        ),
+        (
+            "low-readonly.task.yaml",
+            "NONE",
+            "NOT_REQUIRED",
+            "OWNER_MESSAGE_REF:msg-123",
+        ),
+        (
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "NOT_REQUIRED",
+            "NOT_REQUIRED",
+        ),
+    ],
+)
+def test_l23_rejects_unsafe_authorization_references_without_output(
+    tmp_path: Path,
+    example: str,
+    auth_class: str,
+    state: str,
+    reference: str,
+) -> None:
+    manifest = load_example(example)
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization.update(
+        {
+            "class": auth_class,
+            "state": state,
+            "owner_statement_ref": reference,
+        }
+    )
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-l23.task.yaml",
+        "L23_UNSAFE_OWNER_STATEMENT_REFERENCE",
+    )
+
+
+@pytest.mark.parametrize(
+    ("example", "auth_class", "state", "reference"),
+    [
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PENDING",
+            "OWNER_MESSAGE_REF:requested-1",
+            id="pending-owner-message-reference",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PENDING",
+            "NOT_REQUIRED",
+            id="pending-not-required-reference",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PENDING",
+            None,
+            id="pending-missing-reference",
+        ),
+        pytest.param(
+            "low-readonly.task.yaml",
+            "NONE",
+            "PENDING",
+            "PENDING_OWNER_REFERENCE",
+            id="none-pending",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "UNRECOGNIZED",
+            "PENDING_OWNER_REFERENCE",
+            id="invalid-state",
+        ),
+        pytest.param(
+            "medium-implementation.task.yaml",
+            "SINGLE_PROMPT",
+            "PRESENT",
+            "PENDING_OWNER_REFERENCE",
+            id="present-pending-reference",
+        ),
+    ],
+)
+def test_l23_rejects_invalid_authorization_combinations_before_l25(
+    tmp_path: Path,
+    example: str,
+    auth_class: str,
+    state: str,
+    reference: str | None,
+) -> None:
+    manifest = load_example(example)
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["class"] = auth_class
+    authorization["state"] = state
+    if reference is None:
+        authorization.pop("owner_statement_ref", None)
+    else:
+        authorization["owner_statement_ref"] = reference
+
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-invalid-authorization.task.yaml",
+        L23,
+    )
+
+
+def test_external_manifest_bytes_receive_l23_sensitive_text_scan(
+    tmp_path: Path,
+) -> None:
+    manifest = load_example("medium-implementation.task.yaml")
+    task = cast(dict[str, Any], manifest["task"])
+    task["goal"] = f"{task['goal']} Bearer abc123"
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-sensitive-bytes.task.yaml",
+        "L23_UNSAFE_OWNER_STATEMENT_REFERENCE",
+    )
+
+
+def test_l23_rejects_present_authorization_without_owner_reference(
+    tmp_path: Path,
+) -> None:
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    del authorization["owner_statement_ref"]
+
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        "external-missing-owner-ref.task.yaml",
+        L23,
+    )
+
+
+@pytest.mark.parametrize(
+    "auth_class",
+    [
+        pytest.param("SINGLE_PROMPT", id="single-prompt-missing-pending-reference"),
+        pytest.param("STANDALONE", id="standalone-missing-pending-reference"),
+    ],
+)
+def test_l25_blocks_lint_valid_unresolved_required_authorization(
+    tmp_path: Path, auth_class: str
+) -> None:
+    manifest = (
+        standalone_manifest()
+        if auth_class == "STANDALONE"
+        else load_example("medium-implementation.task.yaml")
+    )
+    manifest_path = tmp_path / f"{auth_class.lower()}-unresolved.task.yaml"
+    write_manifest(manifest_path, manifest)
+
+    assert_render_blocked(manifest_path, tmp_path)
+
+
+def test_l25_pending_medium_example_cannot_emit_any_worker_prompt(
+    tmp_path: Path,
+) -> None:
+    manifest_path = CONTROL_PLANE / "examples" / "medium-implementation.task.yaml"
+    assert_render_blocked(manifest_path, tmp_path, "pending-example.worker.md")
+
+
+def test_l25_direct_renderer_call_cannot_bypass_readiness_gate(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    renderer = cast(Callable[[dict[str, Any]], bytes], namespace["render_worker"])
+    control_plane_error = namespace["ControlPlaneError"]
+    before = control_plane_snapshot()
+
+    with pytest.raises(control_plane_error) as exc_info:
+        renderer(load_example("medium-implementation.task.yaml"))
+
+    captured = capsys.readouterr()
+    assert str(exc_info.value) == L25_FAILURE
+    assert captured.out == ""
+    assert captured.err == ""
+    assert control_plane_snapshot() == before
+
+
+def test_l24_accepts_read_only_and_write_capable_worktree_envelopes(
+    tmp_path: Path,
+) -> None:
+    cases: list[tuple[str, dict[str, Any]]] = []
+    cases.append(("low-readonly", load_example("low-readonly.task.yaml")))
+
+    medium_readonly = load_example("medium-implementation.task.yaml")
+    medium_readonly_scope = cast(dict[str, Any], medium_readonly["scope"])
+    medium_readonly_context = cast(dict[str, Any], medium_readonly["context"])
+    medium_readonly_scope["allowed_writes"] = []
+    medium_readonly_context["worktree"] = {
+        "mode": "NOT_APPLICABLE",
+        "path": "NOT_APPLICABLE",
+        "branch": "NOT_APPLICABLE",
+    }
+    cases.append(("medium-readonly", medium_readonly))
+
+    reusable = load_example("medium-implementation.task.yaml")
+    cases.append(("medium-reusable", reusable))
+
+    isolated = copy.deepcopy(reusable)
+    isolated_context = cast(dict[str, Any], isolated["context"])
+    isolated_context["worktree"] = {
+        "mode": "EPHEMERAL_TASK_WORKTREE",
+        "path": "/workspace/neutral-catalog-isolated",
+        "branch": "task/catalog-ordering-isolated",
+    }
+    cases.append(("medium-isolated", isolated))
+
+    for name, manifest in cases:
+        manifest_path = tmp_path / f"{name}.task.yaml"
+        write_manifest(manifest_path, manifest)
+        run_tool("lint", "--manifest", str(manifest_path))
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "medium-writes-not-applicable",
+        "low-writes-not-applicable",
+        "missing-path",
+        "missing-branch",
+        "empty-path",
+        "placeholder-path",
+        "empty-branch",
+        "placeholder-branch",
+    ],
+)
+def test_l24_rejects_repository_writes_without_exact_worktree_envelope(
+    tmp_path: Path, case: str
+) -> None:
+    if case == "low-writes-not-applicable":
+        manifest = load_example("low-readonly.task.yaml")
+        scope = cast(dict[str, Any], manifest["scope"])
+        scope["allowed_writes"] = ["src/catalog/order.py"]
+    else:
+        manifest = load_example("medium-implementation.task.yaml")
+
+    context = cast(dict[str, Any], manifest["context"])
+    worktree = cast(dict[str, Any], context["worktree"])
+    if case == "medium-writes-not-applicable":
+        context["worktree"] = {
+            "mode": "NOT_APPLICABLE",
+            "path": "NOT_APPLICABLE",
+            "branch": "NOT_APPLICABLE",
+        }
+    elif case == "missing-path":
+        del worktree["path"]
+    elif case == "missing-branch":
+        del worktree["branch"]
+    elif case == "empty-path":
+        worktree["path"] = ""
+    elif case == "placeholder-path":
+        worktree["path"] = "UNKNOWN"
+    elif case == "empty-branch":
+        worktree["branch"] = ""
+    elif case == "placeholder-branch":
+        worktree["branch"] = "PENDING"
+
+    assert_manifest_rejected(
+        manifest,
+        tmp_path,
+        f"external-{case}.task.yaml",
+        "L24_WORKTREE_REQUIRED_FOR_REPOSITORY_WRITES",
+    )
 
 
 def test_renderer_is_deterministic_and_complete(tmp_path: Path) -> None:
-    manifest = CONTROL_PLANE / "examples" / "medium-implementation.task.yaml"
+    manifest = load_example("medium-implementation.task.yaml")
+    authorization = cast(dict[str, Any], manifest["authorization"])
+    authorization["state"] = "PRESENT"
+    authorization["owner_statement_ref"] = "OWNER_MESSAGE_REF:msg-123_example"
+    manifest_path = tmp_path / "authorized-external.task.yaml"
     first = tmp_path / "worker-1.md"
     second = tmp_path / "worker-2.md"
-    run_tool("render", "--manifest", str(manifest), "--output", str(first))
-    run_tool("render", "--manifest", str(manifest), "--output", str(second))
+    write_manifest(manifest_path, manifest)
+
+    run_tool("lint", "--manifest", str(manifest_path))
+    run_tool("render", "--manifest", str(manifest_path), "--output", str(first))
+    run_tool("render", "--manifest", str(manifest_path), "--output", str(second))
+
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    direct_renderer = cast(Callable[[dict[str, Any]], bytes], namespace["render_worker"])
     assert first.read_bytes() == second.read_bytes()
+    assert first.read_bytes() == direct_renderer(manifest)
     text = first.read_text(encoding="utf-8")
     assert "{{" not in text
     assert STATUS in text
     assert "SINGLE_PROMPT" in text
     assert "REUSABLE_AGENT_WORKTREE" in text
+    assert "PRESENT" in text
+    assert "OWNER_MESSAGE_REF:msg-123_example" in text
+    assert "PENDING_OWNER_REFERENCE" not in text
+    assert "AUTHORIZE_" not in text
+    assert "task/catalog-ordering" in text
 
 
 def test_public_safety_and_web_portability_scan() -> None:
@@ -157,6 +851,28 @@ def test_public_safety_and_web_portability_scan() -> None:
         assert "AUTHORIZE_" not in text
         assert "/Users/" not in text
         assert "../" not in text
+
+
+@pytest.mark.parametrize(
+    "unsafe_text, expected_kind",
+    (
+        ("AUTHORIZE_" + "OWNER_REVIEW_123", "authorization token"),
+        ("token=" + "examplecredential123", "credential assignment"),
+        ("-----BEGIN " + "PRIVATE KEY-----", "private key"),
+        ("/Users/" + "example/consumer/repository", "user-specific absolute path"),
+        ("./consumer/memory/session.json", "consumer memory path"),
+        ("./consumer/data.sqlite", "database path"),
+    ),
+)
+def test_public_safety_scanner_rejects_required_categories(
+    unsafe_text: str, expected_kind: str
+) -> None:
+    namespace = runpy.run_path(str(TOOL), run_name="promptctl_test")
+    scanner = cast(
+        Callable[[str, str], list[str]], namespace["_public_safety_text_errors"]
+    )
+    errors = scanner("synthetic fixture", unsafe_text)
+    assert any(expected_kind in error for error in errors)
 
 
 def test_compiled_prompts_are_materially_shorter_than_legacy_sources() -> None:

@@ -12,8 +12,9 @@ Rendered by: Planner / Task Compiler
 - Route: `{{ROUTING_PATH}}`
 - Stages: {{ROUTING_STAGES_INLINE}}
 
-This prompt records but does not create authorization. STOP if the required authorization state is
-not satisfied or if the live task exceeds the authorized scope.
+The Owner statement reference is evidence metadata only; it does not independently authorize
+execution. This prompt records but does not create authorization. STOP if the required authorization
+state is not satisfied or if the live task exceeds the authorized scope.
 
 ## Project context
 
@@ -25,6 +26,7 @@ not satisfied or if the live task exceeds the authorized scope.
 - Project profile: `{{PROFILE_PATH}}`
 - Worktree mode: `{{WORKTREE_MODE}}`
 - Exact worktree path: `{{WORKTREE_PATH}}`
+- Exact task branch: `{{WORKTREE_BRANCH}}`
 
 Read the repo-local project profile when available, then observe the relevant live state. Consumer
 context overrides examples; the manifest does not override contrary live facts.

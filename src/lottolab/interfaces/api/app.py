@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
@@ -30,6 +31,10 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
     GenerateLiveZoneSplitBets,
     build_production_generate_live_zone_split_bets,
 )
+from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
+from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    PackagedB649MultiTicketRecordReader,
+)
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
@@ -37,6 +42,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.strategy_evidence_registry import (
     CommittedStrategyEvidenceRegistry,
+)
+from lottolab.interfaces.api.b649_multi_ticket_records import (
+    create_b649_multi_ticket_records_router,
 )
 from lottolab.interfaces.api.draw_data import (
     ApiValidationErrorResponse,
@@ -86,6 +94,9 @@ def create_app(
     ) = None,
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
+    b649_multi_ticket_record_reader_factory: (
+        B649MultiTicketRecordReaderFactory | None
+    ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -104,6 +115,11 @@ def create_app(
         strategy_evidence_registry_reader
         if strategy_evidence_registry_reader is not None
         else CommittedStrategyEvidenceRegistry.default()
+    )
+    resolved_b649_reader_factory = (
+        b649_multi_ticket_record_reader_factory
+        if b649_multi_ticket_record_reader_factory is not None
+        else PackagedB649MultiTicketRecordReader
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -136,6 +152,12 @@ def create_app(
         return {"status": "ok", "api_version": API_VERSION}
 
     app.include_router(create_strategy_catalog_router(resolved_catalog))
+    app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(),
+            resolved_b649_reader_factory,
+        )
+    )
     app.include_router(
         create_strategy_evidence_router(
             resolved_catalog,

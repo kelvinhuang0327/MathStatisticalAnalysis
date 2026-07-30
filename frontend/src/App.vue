@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import DataCenterPage from './features/data-center/DataCenterPage.vue'
+import B649MultiTicketRecordsPage from './features/b649-multi-ticket-records/B649MultiTicketRecordsPage.vue'
 import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
@@ -11,6 +12,7 @@ import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidenceP
 type Page =
   | 'strategies'
   | 'historical-success-windows'
+  | 'b649-multi-ticket-records'
   | 'data-center'
   | 'history'
   | 'strategy-evidence'
@@ -21,6 +23,7 @@ const currentPage = ref<Page>(pageFromHash())
 function pageFromHash(): Page {
   const route = window.location.hash.replace(/^#\/?/, '')
   if (route === 'historical-success-windows') return 'historical-success-windows'
+  if (route === 'b649-multi-ticket-records') return 'b649-multi-ticket-records'
   if (route === 'data-center') return 'data-center'
   if (route === 'history' || route === 'draw-history') return 'history'
   if (route === 'strategy-evidence') return 'strategy-evidence'
@@ -56,6 +59,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           Success Windows
         </a>
+        <a
+          href="#/b649-multi-ticket-records"
+          :aria-current="currentPage === 'b649-multi-ticket-records' ? 'page' : undefined"
+        >
+          B649 Records
+        </a>
         <a href="#/data-center" :aria-current="currentPage === 'data-center' ? 'page' : undefined">
           Data Center
         </a>
@@ -81,6 +90,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
     <main>
       <StrategyCatalogPage v-if="currentPage === 'strategies'" />
       <HistoricalSuccessWindowsPage v-else-if="currentPage === 'historical-success-windows'" />
+      <B649MultiTicketRecordsPage v-else-if="currentPage === 'b649-multi-ticket-records'" />
       <DataCenterPage v-else-if="currentPage === 'data-center'" />
       <HistoryPage v-else-if="currentPage === 'history'" />
       <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
@@ -94,6 +104,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'historical-success-windows'">
         Historical Success Windows are descriptive, exact-source research evidence—not rankings,
         promotion decisions, or predictions.
+      </template>
+      <template v-else-if="currentPage === 'b649-multi-ticket-records'">
+        歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。
       </template>
       <template v-else-if="currentPage === 'live-zone-split-bets'">
         Target-contract-only view of the merged Live Zone Split API. Legacy LotteryNew consumer

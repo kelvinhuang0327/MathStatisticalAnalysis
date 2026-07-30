@@ -68,6 +68,9 @@ from lottolab.interfaces.cli.legacy_hpsb_native_batch_wave57 import (
 from lottolab.interfaces.cli.legacy_random_batch import (
     materialize_legacy_random_native_batch_command,
 )
+from lottolab.interfaces.cli.legacy_reference_import import (
+    import_biglotto_legacy_reference_command,
+)
 from lottolab.interfaces.cli.legacy_seeded_benchmark_native_batch_wave60 import (
     materialize_legacy_seeded_benchmark_native_wave60_batch_command,
 )
@@ -198,6 +201,9 @@ app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("research-store")(research_store_command)
+app.command("import-biglotto-legacy-reference")(
+    import_biglotto_legacy_reference_command
+)
 app.command("inspect-draw-data-integrity")(
     draw_data_integrity_command
 )

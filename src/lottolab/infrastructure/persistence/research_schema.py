@@ -20,8 +20,8 @@ from pathlib import Path
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 RESEARCH_DATABASE_FILENAME = "lottolab_research.db"
-CURRENT_SCHEMA_VERSION = 1
-MIGRATION_NAME = "create_canonical_research_store"
+CURRENT_SCHEMA_VERSION = 2
+MIGRATION_NAME = "create_canonical_research_store_with_legacy_provenance"
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -146,20 +146,48 @@ _BASE_MIGRATION_STATEMENTS = (
         run_id TEXT NOT NULL,
         lottery_type TEXT NOT NULL,
         strategy_id TEXT NOT NULL,
+        strategy_name TEXT,
         strategy_version TEXT NOT NULL,
-        source_commit_oid TEXT NOT NULL,
-        strategy_source_sha256 TEXT NOT NULL CHECK (length(strategy_source_sha256) = 64),
+        provenance_availability TEXT NOT NULL CHECK (
+            provenance_availability IN ('COMPLETE', 'LEGACY_UNAVAILABLE')
+        ),
+        source_commit_oid TEXT,
+        strategy_source_sha256 TEXT CHECK (
+            strategy_source_sha256 IS NULL OR length(strategy_source_sha256) = 64
+        ),
         producer_identity TEXT NOT NULL,
         producer_version TEXT NOT NULL,
-        runtime_fingerprint TEXT NOT NULL,
-        parameters_json TEXT NOT NULL,
-        parameters_sha256 TEXT NOT NULL CHECK (length(parameters_sha256) = 64),
-        seed_protocol TEXT NOT NULL,
+        runtime_fingerprint TEXT,
+        parameters_json TEXT,
+        parameters_sha256 TEXT CHECK (
+            parameters_sha256 IS NULL OR length(parameters_sha256) = 64
+        ),
+        seed_protocol TEXT,
         replicate INTEGER NOT NULL CHECK (replicate >= 1),
         execution_code_version TEXT NOT NULL,
         governance_status TEXT,
         lifecycle_status TEXT,
         created_at TEXT NOT NULL,
+        CHECK (
+            (
+                provenance_availability = 'COMPLETE'
+                AND source_commit_oid IS NOT NULL
+                AND strategy_source_sha256 IS NOT NULL
+                AND runtime_fingerprint IS NOT NULL
+                AND parameters_json IS NOT NULL
+                AND parameters_sha256 IS NOT NULL
+                AND seed_protocol IS NOT NULL
+            )
+            OR (
+                provenance_availability = 'LEGACY_UNAVAILABLE'
+                AND source_commit_oid IS NULL
+                AND strategy_source_sha256 IS NULL
+                AND runtime_fingerprint IS NULL
+                AND parameters_json IS NULL
+                AND parameters_sha256 IS NULL
+                AND seed_protocol IS NULL
+            )
+        ),
         UNIQUE (
             run_id,
             lottery_type,
@@ -271,7 +299,17 @@ _BASE_MIGRATION_STATEMENTS = (
                 AND portfolio_duplicate_of_position < ordered_portfolio_position
             )
         ),
+        legacy_record_json TEXT,
+        legacy_record_sha256 TEXT CHECK (
+            legacy_record_sha256 IS NULL OR length(legacy_record_sha256) = 64
+        ),
+        legacy_provenance_hash TEXT,
+        legacy_provenance_source TEXT,
         created_at TEXT NOT NULL,
+        CHECK (
+            (legacy_record_json IS NULL AND legacy_record_sha256 IS NULL)
+            OR (legacy_record_json IS NOT NULL AND legacy_record_sha256 IS NOT NULL)
+        ),
         UNIQUE (target_id, native_position),
         FOREIGN KEY (target_id)
             REFERENCES research_prediction_targets(id) ON DELETE RESTRICT
@@ -310,9 +348,25 @@ _BASE_MIGRATION_STATEMENTS = (
         ticket_count_prefix INTEGER NOT NULL CHECK (ticket_count_prefix > 0),
         main_hit_count INTEGER NOT NULL CHECK (main_hit_count >= 0),
         special_hit_count INTEGER NOT NULL CHECK (special_hit_count >= 0),
+        hit_numbers_json TEXT,
+        legacy_reported_result_json TEXT,
+        legacy_reported_result_sha256 TEXT CHECK (
+            legacy_reported_result_sha256 IS NULL
+            OR length(legacy_reported_result_sha256) = 64
+        ),
         prize_tier_id TEXT,
         result_sha256 TEXT NOT NULL CHECK (length(result_sha256) = 64),
         created_at TEXT NOT NULL,
+        CHECK (
+            (
+                legacy_reported_result_json IS NULL
+                AND legacy_reported_result_sha256 IS NULL
+            )
+            OR (
+                legacy_reported_result_json IS NOT NULL
+                AND legacy_reported_result_sha256 IS NOT NULL
+            )
+        ),
         UNIQUE (target_id, ticket_id, ticket_count_prefix, result_version),
         UNIQUE (target_id, ticket_id, ticket_count_prefix, draw_sha256),
         FOREIGN KEY (target_id)
@@ -603,7 +657,7 @@ def resolve_research_data_paths(
 
 
 def initialize_schema(paths: ResearchDataPaths) -> None:
-    """Securely create or verify the canonical version-1 research store."""
+    """Securely create or verify the canonical version-2 research store."""
 
     _validate_path_definition(paths)
     _validate_existing_paths(paths)
@@ -633,7 +687,7 @@ def initialize_schema(paths: ResearchDataPaths) -> None:
                     )
                     if not _verify_migration_state(connection):
                         raise ResearchSchemaError(
-                            "research schema migration did not reach version 1"
+                            "research schema migration did not reach version 2"
                         )
             except BaseException:
                 connection.rollback()
@@ -780,7 +834,7 @@ def _verify_schema_semantics(
     table_names: set[str],
 ) -> None:
     if table_names != set(TABLE_NAMES):
-        raise ResearchSchemaError("database tables do not match version 1")
+        raise ResearchSchemaError("database tables do not match version 2")
     schema_rows = connection.execute(
         """
         SELECT type, name, tbl_name, sql
@@ -798,9 +852,9 @@ def _verify_schema_semantics(
         if expected_sql is None or not isinstance(actual_sql, str):
             raise ResearchSchemaError(f"unexpected database schema object: {name}")
         if _canonical_schema_sql(actual_sql) != _canonical_schema_sql(expected_sql):
-            raise ResearchSchemaError(f"database schema SQL does not match version 1: {name}")
+            raise ResearchSchemaError(f"database schema SQL does not match version 2: {name}")
     if seen_names != set(_EXPECTED_SCHEMA_SQL_BY_NAME):
-        raise ResearchSchemaError("database schema objects do not match version 1")
+        raise ResearchSchemaError("database schema objects do not match version 2")
     for table in TABLE_NAMES:
         for foreign_key in connection.execute(f"PRAGMA foreign_key_list({table})"):
             if str(foreign_key[6]) != "RESTRICT":

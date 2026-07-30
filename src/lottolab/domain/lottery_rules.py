@@ -55,6 +55,14 @@ class NoPrizeResult(StrEnum):
     NO_PRIZE = "NO_PRIZE"
 
 
+@dataclass(frozen=True, slots=True)
+class BigLottoTicketScore:
+    """One deterministic BIG_LOTTO ticket-vs-draw scoring result."""
+
+    main_hits: int
+    special_hit: bool
+
+
 AUTHORITATIVE_SOURCE_HOSTS = frozenset(
     {
         "lotto.ctbcbank.com",
@@ -425,3 +433,45 @@ def resolve_big_lotto_prize_tier(
         if tier.main_hits == main_hits and tier.special_hit is special_hit:
             return tier
     return NoPrizeResult.NO_PRIZE
+
+
+def score_big_lotto_ticket(
+    *,
+    predicted_main_numbers: tuple[int, ...],
+    winning_main_numbers: tuple[int, ...],
+    winning_special_number: int,
+) -> BigLottoTicketScore:
+    """Score one canonical BIG_LOTTO ticket without mutating either input."""
+
+    rule = BIG_LOTTO_RULE_CONTRACT
+    for label, numbers in (
+        ("predicted_main_numbers", predicted_main_numbers),
+        ("winning_main_numbers", winning_main_numbers),
+    ):
+        if type(numbers) is not tuple:
+            raise ValueError(f"{label} must be a tuple")
+        if len(numbers) != rule.main_number_count:
+            raise ValueError(
+                f"{label} must contain exactly {rule.main_number_count} numbers"
+            )
+        if any(type(number) is not int for number in numbers):
+            raise ValueError(f"{label} must contain exact built-in integers")
+        if any(
+            not rule.main_number_min <= number <= rule.main_number_max
+            for number in numbers
+        ):
+            raise ValueError(f"{label} contains an out-of-range number")
+        if len(set(numbers)) != len(numbers):
+            raise ValueError(f"{label} must not contain duplicates")
+        if numbers != tuple(sorted(numbers)):
+            raise ValueError(f"{label} must use canonical ascending order")
+    if type(winning_special_number) is not int:
+        raise ValueError("winning_special_number must be an exact built-in integer")
+    if not rule.special_number_min <= winning_special_number <= rule.special_number_max:
+        raise ValueError("winning_special_number is out of range")
+    if winning_special_number in winning_main_numbers:
+        raise ValueError("winning_special_number must not overlap winning_main_numbers")
+    return BigLottoTicketScore(
+        main_hits=len(set(predicted_main_numbers).intersection(winning_main_numbers)),
+        special_hit=winning_special_number in predicted_main_numbers,
+    )

@@ -80,3 +80,65 @@ discoverable from one stable path. The draw database and existing historical
 and replay-scoring schemas remain unchanged. SQLite remains operationally
 simple, but multi-writer scaling is explicitly deferred to the exit triggers
 above.
+
+## Phase 2a amendment — sealed legacy reference baseline
+
+This amendment remains in ADR-0005 because it refines the canonical store's
+lineage and atomicity contracts; it does not choose a separate subsystem.
+
+Only the 24,140 `BIG_LOTTO` rows in the sealed
+`LOTTOLAB_LEGACY_REFERENCE_CORPUS_V1/tables/strategy_prediction_replays.jsonl`
+file may enter Phase 2a, and they enter as `REFERENCE_BASELINE`.
+`POWER_LOTTO` (36,104 rows) and `DAILY_539` (35,208 rows) remain deferred to
+Phase 5 because no reviewed rule contract exists for either lottery.
+`prediction_runs`, `prediction_items`, `prediction_results`, and the sealed
+B649 reports remain Phase 2b work.
+
+The importer verifies the replay and raw-draw JSONL files against the corpus
+`SHA256SUMS` before parsing either file. The replay file is the run's input
+dataset and imported artifact. The independently sealed `draws.jsonl` file
+supplies cutoff and target draw bindings and the causal history count; replay
+target facts must agree with it semantically. Mixed slash/dash date spelling is
+parsed as a date, while the canonical store retains one ISO date value. Missing,
+conflicting, or non-causal draw facts fail closed.
+
+Legacy strategy source commits, strategy-source hashes, runtime fingerprints,
+parameters, and seed protocols never existed. Schema version 2 therefore
+represents them as null fields paired with the typed
+`LEGACY_UNAVAILABLE` provenance status. It never stores a hash-shaped
+placeholder. Stable `strategy_id`, `strategy_name`, and `strategy_version`
+remain snapshot identity. The legacy `provenance_hash` and
+`provenance_source` vary by ticket, so they are retained verbatim on ticket
+rows together with a canonical copy and real SHA-256 of the complete legacy
+record. Legacy-reported hit numbers, hit count, and special-hit flag are
+retained on result rows and are not replaced by recomputation.
+
+For imported scored targets, the target, ordered tickets, and legacy result
+rows commit in one repository transaction. `commit_ticket_results` remains a
+public verification/versioning path and must treat those already-committed
+results as a verified no-op. This closes the first-real-data shakedown finding
+that a process interruption between the earlier two public calls could
+otherwise expose a terminal target without its results.
+
+Phase 2a is scratch-only. It does not create, initialize, open, verify, or
+write the default canonical research store. A complete import, forced
+interruption/resume, idempotent rerun, conflicting-payload rejection,
+append-only attempts, reference-baseline query exclusion, performance
+measurement, and `verify_store()` health check must pass in an explicitly
+selected, task-owned scratch directory outside the repository and `/tmp`. The
+importer CLI requires that explicit destination and refuses to fall back to
+the default canonical locator. A scratch store is retained for inspection;
+immutable rows are never patched in place.
+
+The `SCHEMA_FINDINGS` recorded from Phase 2a must be reviewed and any blockers
+closed before canonical bootstrap is considered. The importer/schema PR must
+be merged first. Canonical bootstrap — creating, initializing, or writing the
+default canonical research store for the first time — is a separate,
+separately authorised lifecycle task; it is not a continuation this importer
+performs on its own.
+
+`REFERENCE_BASELINE` rows retain legacy-reported scoring semantics exactly as
+imported. Rebuilt runs use versioned current-scorer semantics. The two are
+distinct scoring systems: they must never be presented as directly normalized
+or directly comparable rankings without an explicit, documented
+transformation between them.

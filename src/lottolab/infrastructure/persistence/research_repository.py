@@ -19,11 +19,31 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypeVar, cast
 
+from lottolab.application.research_store import (
+    ClosureInput,
+    CompletedTargetCursor,
+    CoverageCursor,
+    CoverageRow,
+    DrawBindingInput,
+    QueryPage,
+    RankingCursor,
+    RankingRow,
+    ResearchStoreReport,
+    RunProgress,
+    RunSummaryInput,
+    StrategySnapshotInput,
+    TargetCommitInput,
+    TargetCommitResult,
+    TicketCursor,
+    TicketInput,
+    TicketResultInput,
+)
 from lottolab.domain.lottery_rules import LotteryRuleContract
 from lottolab.domain.research import (
     ResearchExecutionStatus,
     ResearchRunKind,
     ResearchRunStatus,
+    StrategyProvenanceAvailability,
 )
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
@@ -52,219 +72,6 @@ class DuplicateIdempotencyKeyError(ResearchRepositoryError):
 
 class ResearchConflictError(ResearchRepositoryError):
     """Stored immutable bytes conflict with a recomputed identity."""
-
-
-@dataclass(frozen=True, slots=True)
-class StrategySnapshotInput:
-    lottery_type: str
-    strategy_id: str
-    strategy_version: str
-    source_commit_oid: str
-    strategy_source_sha256: str
-    producer_identity: str
-    producer_version: str
-    runtime_fingerprint: str
-    parameters_json: str
-    seed_protocol: str
-    replicate: int
-    execution_code_version: str
-    governance_status: str | None = None
-    lifecycle_status: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class DrawBindingInput:
-    lottery_type: str
-    draw_number: str
-    draw_date: str
-    main_numbers_json: str
-    special_numbers_json: str
-    draw_sha256: str
-    draw_data_version: str
-
-
-@dataclass(frozen=True, slots=True)
-class TicketInput:
-    native_position: int
-    ordered_portfolio_position: int | None
-    canonical_ticket_json: str
-
-
-@dataclass(frozen=True, slots=True)
-class ClosureInput:
-    closure_type: ResearchExecutionStatus
-    reason_code: str
-    sanitized_detail: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class TargetCommitInput:
-    run_id: str
-    strategy_snapshot_id: str
-    target_order: int
-    input_dataset_identity: str
-    input_dataset_sha256: str
-    history_cutoff: DrawBindingInput
-    history_draw_count: int
-    source_history_order: str
-    target_draw: DrawBindingInput
-    causal_eligible: bool
-    candidate_k: int | None
-    combination_count: int | None
-    ticket_count_prefix: int | None
-    tickets: tuple[TicketInput, ...]
-    execution_status: ResearchExecutionStatus
-    closure: ClosureInput | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class TicketResultInput:
-    ticket_native_position: int
-    ticket_count_prefix: int
-    main_hit_count: int
-    special_hit_count: int
-    prize_tier_id: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class TargetCommitResult:
-    target_id: str
-    verified_no_op: bool
-    ticket_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class RunProgress:
-    run_id: str
-    status: ResearchRunStatus
-    expected_target_count: int
-    completed_target_count: int
-    progress_cursor: str | None
-
-
-@dataclass(frozen=True, slots=True)
-class CoverageRow:
-    run_id: str
-    run_kind: ResearchRunKind
-    strategy_snapshot_id: str
-    denominator_count: int
-    ok_count: int
-    closed_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class CompletedTargetCursor:
-    target_order: int
-    strategy_snapshot_id: str
-    target_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class CoverageCursor:
-    started_at: str
-    run_id: str
-    strategy_snapshot_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class RankingCursor:
-    rank_missing: int
-    rank_sort: float
-    prefix_sort: int
-    run_id: str
-    strategy_key: str
-    summary_id: str
-
-
-@dataclass(frozen=True, slots=True)
-class TicketCursor:
-    native_position: int
-    ticket_id: str
-
-
-PageCursor = CompletedTargetCursor | CoverageCursor | RankingCursor | TicketCursor
-
-
-@dataclass(frozen=True, slots=True)
-class QueryPage[PageItem]:
-    items: tuple[PageItem, ...]
-    next_cursor: PageCursor | None
-
-
-@dataclass(frozen=True, slots=True)
-class RunSummaryInput:
-    run_id: str
-    strategy_snapshot_id: str | None
-    summary_kind: str
-    ticket_count_prefix: int | None
-    summary_version: int
-    denominator_count: int
-    successful_count: int
-    closed_count: int
-    rank_value: float | None
-    canonical_summary_json: str
-
-
-@dataclass(frozen=True, slots=True)
-class RankingRow:
-    run_id: str
-    run_kind: ResearchRunKind
-    strategy_snapshot_id: str | None
-    ticket_count_prefix: int | None
-    rank_value: float | None
-    summary_sha256: str
-
-
-@dataclass(frozen=True, slots=True)
-class ResearchStoreReport:
-    resolved_path: str
-    schema_version: int
-    migration_checksum: str
-    migration_checksum_match: bool
-    table_inventory: tuple[str, ...]
-    row_counts: tuple[tuple[str, int], ...]
-    append_only_triggers: tuple[str, ...]
-    missing_append_only_triggers: tuple[str, ...]
-    wal_sidecars_present: tuple[str, ...]
-    missing_artifact_references: int
-    resumable_runs: tuple[RunProgress, ...]
-
-    @property
-    def healthy(self) -> bool:
-        return (
-            self.migration_checksum_match
-            and not self.missing_append_only_triggers
-            and not self.wal_sidecars_present
-            and self.missing_artifact_references == 0
-        )
-
-    def as_dict(self) -> dict[str, object]:
-        return {
-            "append_only_trigger_count": len(self.append_only_triggers),
-            "healthy": self.healthy,
-            "migration_checksum": self.migration_checksum,
-            "migration_checksum_match": self.migration_checksum_match,
-            "missing_append_only_triggers": list(self.missing_append_only_triggers),
-            "missing_artifact_references": self.missing_artifact_references,
-            "resolved_path": self.resolved_path,
-            "resumable_runs": [
-                {
-                    "completed_target_count": row.completed_target_count,
-                    "expected_target_count": row.expected_target_count,
-                    "progress_cursor": row.progress_cursor,
-                    "run_id": row.run_id,
-                    "status": row.status.value,
-                }
-                for row in self.resumable_runs
-            ],
-            "row_counts": [
-                {"row_count": count, "table_name": table}
-                for table, count in self.row_counts
-            ],
-            "schema_version": self.schema_version,
-            "table_inventory": list(self.table_inventory),
-            "wal_sidecars_present": list(self.wal_sidecars_present),
-        }
 
 
 class SQLiteResearchRepository:
@@ -495,15 +302,45 @@ class SQLiteResearchRepository:
         idempotency_key: str,
         snapshot_id: str | None = None,
     ) -> str:
-        _require_sha256(value.strategy_source_sha256, "strategy_source_sha256")
-        canonical_parameters = _validated_canonical_json(value.parameters_json, "parameters_json")
-        parameters_sha256 = _sha256(canonical_parameters)
+        if value.strategy_source_sha256 is not None:
+            _require_sha256(value.strategy_source_sha256, "strategy_source_sha256")
+        if value.strategy_name is not None and not value.strategy_name.strip():
+            raise ResearchRepositoryError("strategy_name must be non-empty when present")
+        provenance_values = (
+            value.source_commit_oid,
+            value.strategy_source_sha256,
+            value.runtime_fingerprint,
+            value.parameters_json,
+            value.seed_protocol,
+        )
+        if value.provenance_availability is StrategyProvenanceAvailability.COMPLETE:
+            if any(item is None for item in provenance_values):
+                raise ResearchRepositoryError(
+                    "complete strategy provenance requires every native provenance field"
+                )
+        elif value.provenance_availability is StrategyProvenanceAvailability.LEGACY_UNAVAILABLE:
+            if any(item is not None for item in provenance_values):
+                raise ResearchRepositoryError(
+                    "legacy-unavailable provenance fields must remain null"
+                )
+        else:
+            raise ResearchRepositoryError("strategy provenance availability is unsupported")
+        canonical_parameters = (
+            None
+            if value.parameters_json is None
+            else _validated_canonical_json(value.parameters_json, "parameters_json")
+        )
+        parameters_sha256 = (
+            None if canonical_parameters is None else _sha256(canonical_parameters)
+        )
         selected_id = snapshot_id or f"strategy-{uuid.uuid4()}"
         payload = {
             "parameters_sha256": parameters_sha256,
+            "provenance_availability": value.provenance_availability.value,
             "run_id": run_id,
             "snapshot_id": selected_id,
             "strategy_id": value.strategy_id,
+            "strategy_name": value.strategy_name,
             "strategy_source_sha256": value.strategy_source_sha256,
             "strategy_version": value.strategy_version,
         }
@@ -515,37 +352,60 @@ class SQLiteResearchRepository:
                 idempotency_key=idempotency_key,
                 request_sha256=_request_sha256("register_strategy_snapshot", payload),
             )
+            expected = (
+                run_id,
+                value.lottery_type,
+                value.strategy_id,
+                value.strategy_name,
+                value.strategy_version,
+                value.provenance_availability.value,
+                value.source_commit_oid,
+                value.strategy_source_sha256,
+                value.producer_identity,
+                value.producer_version,
+                value.runtime_fingerprint,
+                canonical_parameters,
+                parameters_sha256,
+                value.seed_protocol,
+                value.replicate,
+                value.execution_code_version,
+                value.governance_status,
+                value.lifecycle_status,
+            )
+            existing = connection.execute(
+                """
+                SELECT run_id, lottery_type, strategy_id, strategy_name,
+                       strategy_version, provenance_availability,
+                       source_commit_oid, strategy_source_sha256,
+                       producer_identity, producer_version, runtime_fingerprint,
+                       parameters_json, parameters_sha256, seed_protocol,
+                       replicate, execution_code_version, governance_status,
+                       lifecycle_status
+                FROM research_strategy_snapshots
+                WHERE id = ?
+                """,
+                (selected_id,),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) != expected:
+                    raise ResearchConflictError(
+                        "strategy snapshot identity conflicts with stored bytes"
+                    )
+                return selected_id
             connection.execute(
                 """
                 INSERT INTO research_strategy_snapshots (
-                    id, run_id, lottery_type, strategy_id, strategy_version,
-                    source_commit_oid, strategy_source_sha256, producer_identity,
-                    producer_version, runtime_fingerprint, parameters_json,
-                    parameters_sha256, seed_protocol, replicate,
-                    execution_code_version, governance_status, lifecycle_status,
-                    created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    id, run_id, lottery_type, strategy_id, strategy_name,
+                    strategy_version, provenance_availability, source_commit_oid,
+                    strategy_source_sha256, producer_identity, producer_version,
+                    runtime_fingerprint, parameters_json, parameters_sha256,
+                    seed_protocol, replicate, execution_code_version,
+                    governance_status, lifecycle_status, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
                 """,
-                (
-                    selected_id,
-                    run_id,
-                    value.lottery_type,
-                    value.strategy_id,
-                    value.strategy_version,
-                    value.source_commit_oid,
-                    value.strategy_source_sha256,
-                    value.producer_identity,
-                    value.producer_version,
-                    value.runtime_fingerprint,
-                    canonical_parameters,
-                    parameters_sha256,
-                    value.seed_protocol,
-                    value.replicate,
-                    value.execution_code_version,
-                    value.governance_status,
-                    value.lifecycle_status,
-                    _utc_now(),
-                ),
+                (selected_id, *expected, _utc_now()),
             )
             return selected_id
 
@@ -586,11 +446,22 @@ class SQLiteResearchRepository:
             if existing is not None:
                 target_id = str(existing[0])
                 stored_hashes = tuple(
-                    (int(row[0]), row[1], str(row[2]), str(row[3]))
+                    (
+                        int(row[0]),
+                        None if row[1] is None else int(row[1]),
+                        str(row[2]),
+                        str(row[3]),
+                        None if row[4] is None else str(row[4]),
+                        None if row[5] is None else str(row[5]),
+                        None if row[6] is None else str(row[6]),
+                        None if row[7] is None else str(row[7]),
+                    )
                     for row in connection.execute(
                         """
                         SELECT native_position, ordered_portfolio_position,
-                               canonical_ticket_json, ticket_sha256
+                               canonical_ticket_json, ticket_sha256,
+                               legacy_record_json, legacy_record_sha256,
+                               legacy_provenance_hash, legacy_provenance_source
                         FROM research_prediction_tickets
                         WHERE target_id = ?
                         ORDER BY native_position, id
@@ -671,8 +542,10 @@ class SQLiteResearchRepository:
                         canonical_ticket_json, main_numbers_json,
                         special_numbers_json, ticket_sha256,
                         native_duplicate_of_position,
-                        portfolio_duplicate_of_position, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        portfolio_duplicate_of_position, legacy_record_json,
+                        legacy_record_sha256, legacy_provenance_hash,
+                        legacy_provenance_source, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         f"{target_id}-ticket-{ticket.native_position}",
@@ -685,9 +558,24 @@ class SQLiteResearchRepository:
                         ticket.ticket_sha256,
                         ticket.native_duplicate_of_position,
                         ticket.portfolio_duplicate_of_position,
+                        ticket.legacy_record_json,
+                        ticket.legacy_record_sha256,
+                        ticket.legacy_provenance_hash,
+                        ticket.legacy_provenance_source,
                         now,
                     ),
                 )
+            if value.result_draw is not None:
+                inserted_results = _commit_ticket_result_rows(
+                    connection,
+                    target_id,
+                    value.result_draw,
+                    value.ticket_results,
+                )
+                if inserted_results != len(value.ticket_results):
+                    raise ResearchConflictError(
+                        "atomic ticket results did not insert as one complete target"
+                    )
             if value.closure is not None:
                 connection.execute(
                     """
@@ -723,16 +611,7 @@ class SQLiteResearchRepository:
     ) -> int:
         if not results:
             raise ResearchRepositoryError("at least one ticket result is required")
-        result_payload = [
-            {
-                "main_hit_count": row.main_hit_count,
-                "prize_tier_id": row.prize_tier_id,
-                "special_hit_count": row.special_hit_count,
-                "ticket_count_prefix": row.ticket_count_prefix,
-                "ticket_native_position": row.ticket_native_position,
-            }
-            for row in results
-        ]
+        result_payload = [_ticket_result_payload(row) for row in results]
         request_sha256 = _request_sha256(
             "commit_ticket_results",
             {
@@ -749,103 +628,7 @@ class SQLiteResearchRepository:
                 idempotency_key=idempotency_key,
                 request_sha256=request_sha256,
             )
-            target_key = connection.execute(
-                """
-                SELECT target_lottery_type, target_draw_number
-                FROM research_prediction_targets
-                WHERE id = ?
-                """,
-                (target_id,),
-            ).fetchone()
-            if target_key is None:
-                raise ResearchRepositoryError("ticket results reference a missing target")
-            if (str(target_key[0]), str(target_key[1])) != (
-                draw.lottery_type,
-                draw.draw_number,
-            ):
-                raise ResearchRepositoryError(
-                    "ticket result draw natural key does not match the prediction target"
-                )
-            draw_binding_id = _insert_or_verify_draw_binding(connection, draw)
-            inserted = 0
-            for row in results:
-                ticket_row = connection.execute(
-                    """
-                    SELECT id
-                    FROM research_prediction_tickets
-                    WHERE target_id = ? AND native_position = ?
-                    """,
-                    (target_id, row.ticket_native_position),
-                ).fetchone()
-                if ticket_row is None:
-                    raise ResearchRepositoryError("ticket result references a missing ticket")
-                ticket_id = str(ticket_row[0])
-                payload = _canonical_json(
-                    {
-                        "draw_sha256": draw.draw_sha256,
-                        "main_hit_count": row.main_hit_count,
-                        "prize_tier_id": row.prize_tier_id,
-                        "special_hit_count": row.special_hit_count,
-                        "ticket_count_prefix": row.ticket_count_prefix,
-                        "ticket_id": ticket_id,
-                    }
-                )
-                result_sha256 = _sha256(payload)
-                existing = connection.execute(
-                    """
-                    SELECT result_sha256
-                    FROM research_ticket_results
-                    WHERE target_id = ? AND ticket_id = ?
-                      AND ticket_count_prefix = ? AND draw_sha256 = ?
-                    """,
-                    (
-                        target_id,
-                        ticket_id,
-                        row.ticket_count_prefix,
-                        draw.draw_sha256,
-                    ),
-                ).fetchone()
-                if existing is not None:
-                    if str(existing[0]) != result_sha256:
-                        raise ResearchConflictError(
-                            "same draw checksum produced different ticket results"
-                        )
-                    continue
-                version_row = connection.execute(
-                    """
-                    SELECT COALESCE(MAX(result_version), 0)
-                    FROM research_ticket_results
-                    WHERE target_id = ? AND ticket_id = ?
-                      AND ticket_count_prefix = ?
-                    """,
-                    (target_id, ticket_id, row.ticket_count_prefix),
-                ).fetchone()
-                next_version = int(version_row[0]) + 1
-                connection.execute(
-                    """
-                    INSERT INTO research_ticket_results (
-                        id, target_id, ticket_id, draw_binding_id, result_version,
-                        draw_sha256, ticket_count_prefix, main_hit_count,
-                        special_hit_count, prize_tier_id, result_sha256, created_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        f"result-{uuid.uuid4()}",
-                        target_id,
-                        ticket_id,
-                        draw_binding_id,
-                        next_version,
-                        draw.draw_sha256,
-                        row.ticket_count_prefix,
-                        row.main_hit_count,
-                        row.special_hit_count,
-                        row.prize_tier_id,
-                        result_sha256,
-                        _utc_now(),
-                    ),
-                )
-                inserted += 1
-            return inserted
+            return _commit_ticket_result_rows(connection, target_id, draw, results)
 
         return self._write_transaction(operation)
 
@@ -942,6 +725,7 @@ class SQLiteResearchRepository:
         value: RunSummaryInput,
         *,
         idempotency_key: str,
+        summary_id: str | None = None,
     ) -> str:
         if value.summary_kind not in {"COVERAGE", "RANKING", "DENOMINATOR", "AUDIT"}:
             raise ResearchRepositoryError("summary_kind is not supported")
@@ -961,7 +745,7 @@ class SQLiteResearchRepository:
             "canonical_summary_json",
         )
         summary_sha256 = _sha256(canonical)
-        summary_id = f"summary-{uuid.uuid4()}"
+        selected_summary_id = summary_id or f"summary-{uuid.uuid4()}"
         payload = {
             "canonical_summary_json": canonical,
             "closed_count": value.closed_count,
@@ -971,6 +755,7 @@ class SQLiteResearchRepository:
             "strategy_snapshot_id": value.strategy_snapshot_id,
             "successful_count": value.successful_count,
             "summary_kind": value.summary_kind,
+            "summary_id": selected_summary_id,
             "summary_version": value.summary_version,
             "ticket_count_prefix": value.ticket_count_prefix,
         }
@@ -982,6 +767,36 @@ class SQLiteResearchRepository:
                 idempotency_key=idempotency_key,
                 request_sha256=_request_sha256("store_run_summary", payload),
             )
+            expected = (
+                value.run_id,
+                value.strategy_snapshot_id,
+                value.summary_kind,
+                value.ticket_count_prefix,
+                value.summary_version,
+                value.denominator_count,
+                value.successful_count,
+                value.closed_count,
+                value.rank_value,
+                canonical,
+                summary_sha256,
+            )
+            existing = connection.execute(
+                """
+                SELECT run_id, strategy_snapshot_id, summary_kind,
+                       ticket_count_prefix, summary_version, denominator_count,
+                       successful_count, closed_count, rank_value,
+                       canonical_summary_json, summary_sha256
+                FROM research_run_summaries
+                WHERE id = ?
+                """,
+                (selected_summary_id,),
+            ).fetchone()
+            if existing is not None:
+                if tuple(existing) != expected:
+                    raise ResearchConflictError(
+                        "run summary identity conflicts with stored bytes"
+                    )
+                return selected_summary_id
             connection.execute(
                 """
                 INSERT INTO research_run_summaries (
@@ -992,22 +807,12 @@ class SQLiteResearchRepository:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    summary_id,
-                    value.run_id,
-                    value.strategy_snapshot_id,
-                    value.summary_kind,
-                    value.ticket_count_prefix,
-                    value.summary_version,
-                    value.denominator_count,
-                    value.successful_count,
-                    value.closed_count,
-                    value.rank_value,
-                    canonical,
-                    summary_sha256,
+                    selected_summary_id,
+                    *expected,
                     _utc_now(),
                 ),
             )
-            return summary_id
+            return selected_summary_id
 
         return self._write_transaction(operation)
 
@@ -1060,7 +865,7 @@ class SQLiteResearchRepository:
             next_cursor=next_cursor,
         )
 
-    def progress(self, run_id: str) -> RunProgress:
+    def find_progress(self, run_id: str) -> RunProgress | None:
         with open_database(self._paths, read_only=True) as connection:
             row = connection.execute(
                 """
@@ -1093,7 +898,7 @@ class SQLiteResearchRepository:
                 (run_id,),
             ).fetchone()
         if row is None:
-            raise ResearchRepositoryError("research run does not exist")
+            return None
         return RunProgress(
             run_id=run_id,
             status=ResearchRunStatus(str(row[2])),
@@ -1101,6 +906,12 @@ class SQLiteResearchRepository:
             completed_target_count=int(row[1]),
             progress_cursor=None if row[3] is None else str(row[3]),
         )
+
+    def progress(self, run_id: str) -> RunProgress:
+        progress = self.find_progress(run_id)
+        if progress is None:
+            raise ResearchRepositoryError("research run does not exist")
+        return progress
 
     def coverage(
         self,
@@ -1436,13 +1247,29 @@ class _NormalizedTicket:
     ticket_sha256: str
     native_duplicate_of_position: int | None
     portfolio_duplicate_of_position: int | None
+    legacy_record_json: str | None
+    legacy_record_sha256: str | None
+    legacy_provenance_hash: str | None
+    legacy_provenance_source: str | None
 
 
 @dataclass(frozen=True, slots=True)
 class _NormalizedTarget:
     tickets: tuple[_NormalizedTicket, ...]
     ordered_ticket_count: int
-    ticket_identity_rows: tuple[tuple[int, int | None, str, str], ...]
+    ticket_identity_rows: tuple[
+        tuple[
+            int,
+            int | None,
+            str,
+            str,
+            str | None,
+            str | None,
+            str | None,
+            str | None,
+        ],
+        ...,
+    ]
     target_payload_sha256: str
     request_payload: dict[str, object]
 
@@ -1461,6 +1288,10 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
         value.closure is None or value.closure.closure_type is not value.execution_status
     ):
         raise ResearchRepositoryError("closed target requires a matching typed closure")
+    if (value.result_draw is None) != (not value.ticket_results):
+        raise ResearchRepositoryError(
+            "atomic ticket results require both result_draw and ticket_results"
+        )
     positions = [ticket.native_position for ticket in value.tickets]
     if positions != list(range(1, len(value.tickets) + 1)):
         raise ResearchRepositoryError("native ticket positions must be contiguous and ordered")
@@ -1472,6 +1303,11 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
     if sorted(ordered_positions) != list(range(1, len(ordered_positions) + 1)):
         raise ResearchRepositoryError(
             "ordered portfolio positions must be unique and contiguous"
+        )
+    result_positions = [row.ticket_native_position for row in value.ticket_results]
+    if result_positions and result_positions != positions:
+        raise ResearchRepositoryError(
+            "atomic ticket results must cover every ticket in native order"
         )
 
     native_first: dict[str, int] = {}
@@ -1499,6 +1335,14 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
         special_numbers = decoded["special_numbers"]
         if not isinstance(main_numbers, list) or not isinstance(special_numbers, list):
             raise ResearchRepositoryError("ticket number fields must be JSON arrays")
+        legacy_record = (
+            None
+            if ticket.legacy_record_json is None
+            else _validated_canonical_json(
+                ticket.legacy_record_json,
+                "legacy_record_json",
+            )
+        )
         native_duplicate = native_first.get(canonical)
         native_first.setdefault(canonical, ticket.native_position)
         portfolio_duplicate: int | None = None
@@ -1515,6 +1359,12 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
                 ticket_sha256=_sha256(canonical),
                 native_duplicate_of_position=native_duplicate,
                 portfolio_duplicate_of_position=portfolio_duplicate,
+                legacy_record_json=legacy_record,
+                legacy_record_sha256=(
+                    None if legacy_record is None else _sha256(legacy_record)
+                ),
+                legacy_provenance_hash=ticket.legacy_provenance_hash,
+                legacy_provenance_source=ticket.legacy_provenance_source,
             )
         )
     ticket_rows = tuple(
@@ -1523,6 +1373,10 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
             row.ordered_portfolio_position,
             row.canonical_ticket_json,
             row.ticket_sha256,
+            row.legacy_record_json,
+            row.legacy_record_sha256,
+            row.legacy_provenance_hash,
+            row.legacy_provenance_source,
         )
         for row in normalized
     )
@@ -1547,10 +1401,19 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
                 "native_position": row.native_position,
                 "ordered_portfolio_position": row.ordered_portfolio_position,
                 "ticket_sha256": row.ticket_sha256,
+                "legacy_record_json": row.legacy_record_json,
+                "legacy_record_sha256": row.legacy_record_sha256,
+                "legacy_provenance_hash": row.legacy_provenance_hash,
+                "legacy_provenance_source": row.legacy_provenance_source,
             }
             for row in normalized
         ],
     }
+    if value.result_draw is not None:
+        request_payload["result_draw"] = _draw_payload(value.result_draw)
+        request_payload["ticket_results"] = [
+            _ticket_result_payload(row) for row in value.ticket_results
+        ]
     if value.closure is not None:
         request_payload["closure"] = {
             "closure_type": value.closure.closure_type.value,
@@ -1564,6 +1427,168 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
         target_payload_sha256=_sha256(_canonical_json(request_payload)),
         request_payload=request_payload,
     )
+
+
+def _ticket_result_payload(value: TicketResultInput) -> dict[str, object]:
+    for label, number in (
+        ("ticket_native_position", value.ticket_native_position),
+        ("ticket_count_prefix", value.ticket_count_prefix),
+        ("main_hit_count", value.main_hit_count),
+        ("special_hit_count", value.special_hit_count),
+    ):
+        if type(number) is not int:
+            raise ResearchRepositoryError(f"{label} must be an integer")
+    if value.ticket_native_position < 1:
+        raise ResearchRepositoryError("ticket_native_position must be positive")
+    if value.ticket_count_prefix < 1:
+        raise ResearchRepositoryError("ticket_count_prefix must be positive")
+    if value.main_hit_count < 0 or value.special_hit_count < 0:
+        raise ResearchRepositoryError("ticket hit counts must not be negative")
+    hit_numbers_json = (
+        None
+        if value.hit_numbers_json is None
+        else _validated_canonical_json(value.hit_numbers_json, "hit_numbers_json")
+    )
+    if hit_numbers_json is not None and not isinstance(json.loads(hit_numbers_json), list):
+        raise ResearchRepositoryError("hit_numbers_json must contain a JSON array")
+    legacy_result_json = (
+        None
+        if value.legacy_reported_result_json is None
+        else _validated_canonical_json(
+            value.legacy_reported_result_json,
+            "legacy_reported_result_json",
+        )
+    )
+    return {
+        "hit_numbers_json": hit_numbers_json,
+        "legacy_reported_result_json": legacy_result_json,
+        "legacy_reported_result_sha256": (
+            None if legacy_result_json is None else _sha256(legacy_result_json)
+        ),
+        "main_hit_count": value.main_hit_count,
+        "prize_tier_id": value.prize_tier_id,
+        "special_hit_count": value.special_hit_count,
+        "ticket_count_prefix": value.ticket_count_prefix,
+        "ticket_native_position": value.ticket_native_position,
+    }
+
+
+def _commit_ticket_result_rows(
+    connection: sqlite3.Connection,
+    target_id: str,
+    draw: DrawBindingInput,
+    results: Sequence[TicketResultInput],
+) -> int:
+    target_key = connection.execute(
+        """
+        SELECT target_lottery_type, target_draw_number
+        FROM research_prediction_targets
+        WHERE id = ?
+        """,
+        (target_id,),
+    ).fetchone()
+    if target_key is None:
+        raise ResearchRepositoryError("ticket results reference a missing target")
+    if (str(target_key[0]), str(target_key[1])) != (
+        draw.lottery_type,
+        draw.draw_number,
+    ):
+        raise ResearchRepositoryError(
+            "ticket result draw natural key does not match the prediction target"
+        )
+    draw_binding_id = _insert_or_verify_draw_binding(connection, draw)
+    inserted = 0
+    for row in results:
+        normalized = _ticket_result_payload(row)
+        ticket_row = connection.execute(
+            """
+            SELECT id
+            FROM research_prediction_tickets
+            WHERE target_id = ? AND native_position = ?
+            """,
+            (target_id, row.ticket_native_position),
+        ).fetchone()
+        if ticket_row is None:
+            raise ResearchRepositoryError("ticket result references a missing ticket")
+        ticket_id = str(ticket_row[0])
+        payload = _canonical_json(
+            {
+                "draw_sha256": draw.draw_sha256,
+                "hit_numbers_json": normalized["hit_numbers_json"],
+                "legacy_reported_result_json": normalized[
+                    "legacy_reported_result_json"
+                ],
+                "legacy_reported_result_sha256": normalized[
+                    "legacy_reported_result_sha256"
+                ],
+                "main_hit_count": row.main_hit_count,
+                "prize_tier_id": row.prize_tier_id,
+                "special_hit_count": row.special_hit_count,
+                "ticket_count_prefix": row.ticket_count_prefix,
+                "ticket_id": ticket_id,
+            }
+        )
+        result_sha256 = _sha256(payload)
+        existing = connection.execute(
+            """
+            SELECT result_sha256
+            FROM research_ticket_results
+            WHERE target_id = ? AND ticket_id = ?
+              AND ticket_count_prefix = ? AND draw_sha256 = ?
+            """,
+            (
+                target_id,
+                ticket_id,
+                row.ticket_count_prefix,
+                draw.draw_sha256,
+            ),
+        ).fetchone()
+        if existing is not None:
+            if str(existing[0]) != result_sha256:
+                raise ResearchConflictError(
+                    "same draw checksum produced different ticket results"
+                )
+            continue
+        version_row = connection.execute(
+            """
+            SELECT COALESCE(MAX(result_version), 0)
+            FROM research_ticket_results
+            WHERE target_id = ? AND ticket_id = ?
+              AND ticket_count_prefix = ?
+            """,
+            (target_id, ticket_id, row.ticket_count_prefix),
+        ).fetchone()
+        next_version = int(version_row[0]) + 1
+        connection.execute(
+            """
+            INSERT INTO research_ticket_results (
+                id, target_id, ticket_id, draw_binding_id, result_version,
+                draw_sha256, ticket_count_prefix, main_hit_count,
+                special_hit_count, hit_numbers_json,
+                legacy_reported_result_json, legacy_reported_result_sha256,
+                prize_tier_id, result_sha256, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                f"result-{uuid.uuid4()}",
+                target_id,
+                ticket_id,
+                draw_binding_id,
+                next_version,
+                draw.draw_sha256,
+                row.ticket_count_prefix,
+                row.main_hit_count,
+                row.special_hit_count,
+                normalized["hit_numbers_json"],
+                normalized["legacy_reported_result_json"],
+                normalized["legacy_reported_result_sha256"],
+                row.prize_tier_id,
+                result_sha256,
+                _utc_now(),
+            ),
+        )
+        inserted += 1
+    return inserted
 
 
 def _insert_or_verify_draw_binding(

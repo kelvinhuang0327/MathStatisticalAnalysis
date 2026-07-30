@@ -143,11 +143,17 @@ class ScoreReplayArtifact:
 
         predicted = snapshot.predicted_main_numbers
         assert predicted is not None
-        main_hits = len(set(predicted).intersection(outcome.winning_main_numbers))
-        special_hit = outcome.winning_special_number in predicted
-        resolution = lottery_rules.resolve_big_lotto_prize_tier(main_hits, special_hit)
-        base["main_number_hit_count"] = main_hits
-        base["special_number_hit"] = special_hit
+        ticket_score = lottery_rules.score_big_lotto_ticket(
+            predicted_main_numbers=predicted,
+            winning_main_numbers=outcome.winning_main_numbers,
+            winning_special_number=outcome.winning_special_number,
+        )
+        resolution = lottery_rules.resolve_big_lotto_prize_tier(
+            ticket_score.main_hits,
+            ticket_score.special_hit,
+        )
+        base["main_number_hit_count"] = ticket_score.main_hits
+        base["special_number_hit"] = ticket_score.special_hit
         if isinstance(resolution, BigLottoPrizeTier):
             base["prize_tier_id"] = resolution.tier_id
             base["prize_official_label"] = resolution.official_label

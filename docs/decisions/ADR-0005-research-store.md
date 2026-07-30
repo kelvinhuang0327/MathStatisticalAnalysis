@@ -120,10 +120,25 @@ results as a verified no-op. This closes the first-real-data shakedown finding
 that a process interruption between the earlier two public calls could
 otherwise expose a terminal target without its results.
 
-Every canonical legacy import follows two stages. A complete import, forced
+Phase 2a is scratch-only. It does not create, initialize, open, verify, or
+write the default canonical research store. A complete import, forced
 interruption/resume, idempotent rerun, conflicting-payload rejection,
 append-only attempts, reference-baseline query exclusion, performance
-measurement, and `verify_store()` health check must pass in a task-owned
-scratch directory outside the repository and `/tmp`. Only then may the same
-committed importer create the default canonical store. A scratch store is
-retained for inspection; immutable rows are never patched in place.
+measurement, and `verify_store()` health check must pass in an explicitly
+selected, task-owned scratch directory outside the repository and `/tmp`. The
+importer CLI requires that explicit destination and refuses to fall back to
+the default canonical locator. A scratch store is retained for inspection;
+immutable rows are never patched in place.
+
+The `SCHEMA_FINDINGS` recorded from Phase 2a must be reviewed and any blockers
+closed before canonical bootstrap is considered. The importer/schema PR must
+be merged first. Canonical bootstrap — creating, initializing, or writing the
+default canonical research store for the first time — is a separate,
+separately authorised lifecycle task; it is not a continuation this importer
+performs on its own.
+
+`REFERENCE_BASELINE` rows retain legacy-reported scoring semantics exactly as
+imported. Rebuilt runs use versioned current-scorer semantics. The two are
+distinct scoring systems: they must never be presented as directly normalized
+or directly comparable rankings without an explicit, documented
+transformation between them.

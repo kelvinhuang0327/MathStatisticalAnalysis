@@ -20,6 +20,7 @@ from lottolab.infrastructure.persistence.research_repository import (
     SQLiteResearchRepository,
 )
 from lottolab.infrastructure.persistence.research_schema import (
+    DATA_DIRECTORY_ENV,
     ResearchDataError,
     ResearchSchemaError,
     resolve_research_data_paths,
@@ -34,6 +35,17 @@ def import_biglotto_legacy_reference_command(
             help="Absolute sealed LOTTOLAB_LEGACY_REFERENCE_CORPUS_V1 path.",
         ),
     ],
+    data_dir: Annotated[
+        Path,
+        typer.Option(
+            "--data-dir",
+            help=(
+                "Explicit task-owned import destination. Required. This "
+                "command never falls back to the default canonical research "
+                "store or to an ambient LOTTOLAB_DATA_DIR."
+            ),
+        ),
+    ],
     include_duration_samples: Annotated[
         bool,
         typer.Option(
@@ -42,7 +54,8 @@ def import_biglotto_legacy_reference_command(
         ),
     ] = False,
 ) -> None:
-    """Import or resume the sealed BIG_LOTTO reference baseline."""
+    """Import or resume the sealed BIG_LOTTO reference baseline into an
+    explicitly selected scratch destination; never the default canonical store."""
 
     stop_requested = threading.Event()
     previous_handler = signal.getsignal(signal.SIGTERM)
@@ -52,7 +65,10 @@ def import_biglotto_legacy_reference_command(
 
     signal.signal(signal.SIGTERM, request_safe_stop)
     try:
-        repository = SQLiteResearchRepository(resolve_research_data_paths())
+        paths = resolve_research_data_paths(
+            environ={DATA_DIRECTORY_ENV: str(data_dir)}
+        )
+        repository = SQLiteResearchRepository(paths)
         source_commit_oid = _resolve_source_commit_oid()
         result = BigLottoLegacyReferenceImporter(repository).execute(
             corpus_root,

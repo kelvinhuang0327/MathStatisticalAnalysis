@@ -189,6 +189,7 @@ from lottolab.interfaces.cli.replay_backed_batch import (
     materialize_exact_replay_batch_command,
 )
 from lottolab.interfaces.cli.replay_predictions import replay_predictions_command
+from lottolab.interfaces.cli.research_store import research_store_command
 from lottolab.strategies.catalog import production_catalog
 
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
@@ -196,6 +197,7 @@ local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only
 app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
 app.command("replay-predictions")(replay_predictions_command)
+app.command("research-store")(research_store_command)
 app.command("inspect-draw-data-integrity")(
     draw_data_integrity_command
 )

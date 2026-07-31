@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator
 
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyDescriptor
 
 
 class DuplicateStrategyIdError(ValueError):
@@ -215,6 +215,115 @@ _PRODUCTION_DESCRIPTORS = (
             "current_significance:NOT_ESTABLISHED",
             "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET2_ADAPTER_MIGRATION_R1",
         ),
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__graph_predictor__cd70713a5709",
+        strategy_name="大樂透 Co-occurrence Graph (PageRank + Clique)",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoGraphPredictorAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:ai_lab/scripts/graph_predictor.py",
+            "full_strategy_catalog_id:legacy_biglotto__graph_predictor__cd70713a5709",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_must_hit__909c91fd2fd0",
+        strategy_name="大樂透 Must-Hit Top6（近50期最頻繁）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoMustHitTop6Adapter"
+        ),
+        min_history=50,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_must_hit.py",
+            "legacy_symbol:predict_must_hit",
+            "full_strategy_catalog_id:legacy_biglotto__backtest_must_hit__909c91fd2fd0",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__dynamic_frequency_predictor__36e5bf9998ac",
+        strategy_name="大樂透 Dynamic Frequency（自動選窗）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoDynamicFrequencyAdapter"
+        ),
+        min_history=200,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/dynamic_frequency_predictor.py",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__dynamic_frequency_predictor__36e5bf9998ac",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__hot_cooccurrence_analyzer__48121f27d7ee",
+        strategy_name="大樂透 Hot Co-occurrence Analyzer",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoHotCooccurrenceAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/hot_cooccurrence_analyzer.py",
+            "legacy_symbol:analyze_and_recommend",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__hot_cooccurrence_analyzer__48121f27d7ee",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
+        strategy_name="大樂透 Echo-Aware Phase 2（自適應權重，2注+3注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoEchoPhase2Adapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_biglotto_echo_phase2.py",
+            "legacy_source:tools/predict_biglotto_echo_2bet.py",
+            "legacy_source:tools/predict_biglotto_echo_3bet.py",
+            "legacy_symbol:phase2_echo_2bet",
+            "legacy_symbol:phase2_echo_3bet",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=5,
     ),
 )
 

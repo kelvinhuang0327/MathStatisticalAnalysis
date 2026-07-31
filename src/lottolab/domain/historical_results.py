@@ -7,14 +7,78 @@ every other historical-results layer depends on, never the reverse.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from types import MappingProxyType
 
 
 class HistoricalLotteryType(StrEnum):
-    """R1 supports exactly one lottery type; the wire contract pins the value."""
+    """Closed internal lottery identifiers for historical-results V2."""
 
+    DAILY_539 = "DAILY_539"
     BIG_LOTTO = "BIG_LOTTO"
+    POWER_LOTTO = "POWER_LOTTO"
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalLotteryMechanics:
+    """Pure number mechanics required to normalize one historical lottery."""
+
+    main_number_count: int
+    main_number_min: int
+    main_number_max: int
+    main_numbers_unique: bool
+    special_number_count: int
+    special_number_min: int | None
+    special_number_max: int | None
+    special_numbers_unique: bool
+    special_numbers_required: bool
+    main_special_overlap_allowed: bool
+
+
+HISTORICAL_LOTTERY_MECHANICS: Mapping[HistoricalLotteryType, HistoricalLotteryMechanics] = (
+    MappingProxyType(
+        {
+            HistoricalLotteryType.DAILY_539: HistoricalLotteryMechanics(
+                main_number_count=5,
+                main_number_min=1,
+                main_number_max=39,
+                main_numbers_unique=True,
+                special_number_count=0,
+                special_number_min=None,
+                special_number_max=None,
+                special_numbers_unique=True,
+                special_numbers_required=False,
+                main_special_overlap_allowed=False,
+            ),
+            HistoricalLotteryType.BIG_LOTTO: HistoricalLotteryMechanics(
+                main_number_count=6,
+                main_number_min=1,
+                main_number_max=49,
+                main_numbers_unique=True,
+                special_number_count=1,
+                special_number_min=1,
+                special_number_max=49,
+                special_numbers_unique=True,
+                special_numbers_required=True,
+                main_special_overlap_allowed=False,
+            ),
+            HistoricalLotteryType.POWER_LOTTO: HistoricalLotteryMechanics(
+                main_number_count=6,
+                main_number_min=1,
+                main_number_max=38,
+                main_numbers_unique=True,
+                special_number_count=1,
+                special_number_min=1,
+                special_number_max=8,
+                special_numbers_unique=True,
+                special_numbers_required=True,
+                main_special_overlap_allowed=True,
+            ),
+        }
+    )
+)
 
 
 class HistoricalSourceKind(StrEnum):

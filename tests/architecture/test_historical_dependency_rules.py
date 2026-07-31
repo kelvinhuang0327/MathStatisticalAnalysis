@@ -70,6 +70,20 @@ def test_domain_historical_results_imports_no_other_lottolab_layer() -> None:
     assert not any(module.startswith("lottolab") for module in imports)
 
 
+def test_historical_lottery_domain_is_closed_and_pure() -> None:
+    from lottolab.domain.historical_results import (
+        HISTORICAL_LOTTERY_MECHANICS,
+        HistoricalLotteryType,
+    )
+
+    assert tuple(HistoricalLotteryType) == (
+        HistoricalLotteryType.DAILY_539,
+        HistoricalLotteryType.BIG_LOTTO,
+        HistoricalLotteryType.POWER_LOTTO,
+    )
+    assert tuple(HISTORICAL_LOTTERY_MECHANICS) == tuple(HistoricalLotteryType)
+
+
 def test_normalization_historical_import_imports_only_domain_and_evidence_canonical_json() -> None:
     path = HISTORICAL_MODULE_PATHS["lottolab.normalization.historical_import"]
     tree = ast.parse(path.read_text(encoding="utf-8"))

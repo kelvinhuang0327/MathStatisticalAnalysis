@@ -192,6 +192,9 @@ from lottolab.interfaces.cli.replay_backed_batch import (
     materialize_exact_replay_batch_command,
 )
 from lottolab.interfaces.cli.replay_predictions import replay_predictions_command
+from lottolab.interfaces.cli.research_backtest_runner import (
+    run_biglotto_research_backtest_command,
+)
 from lottolab.interfaces.cli.research_store import research_store_command
 from lottolab.strategies.catalog import production_catalog
 
@@ -201,6 +204,9 @@ app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("research-store")(research_store_command)
+app.command("run-biglotto-research-backtest")(
+    run_biglotto_research_backtest_command
+)
 app.command("import-biglotto-legacy-reference")(
     import_biglotto_legacy_reference_command
 )

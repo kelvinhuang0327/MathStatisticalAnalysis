@@ -197,6 +197,45 @@ beforeEach(() => {
         }),
       )
     }
+    if (url.includes('/api/v1/b649-multi-ticket-records/summary')) {
+      return Promise.resolve(
+        apiResponse({
+          progress: {
+            total_strategy_count: 221,
+            reproduced_count: 135,
+            backtested_count: 135,
+            closed_count: 74,
+            duplicate_alias_count: 12,
+            owner_decision_required_count: 0,
+            uncompleted_count: 0,
+          },
+          prefix_counts: [5, 10, 15, 20],
+          windows: ['FULL', 'RECENT_750', 'RECENT_300', 'RECENT_50'],
+          success_criteria: [
+            'M3_PLUS',
+            'M4_PLUS',
+            'M5_PLUS',
+            'M6',
+            'M2_PLUS_SPECIAL',
+            'M3_PLUS_SPECIAL',
+            'M4_PLUS_SPECIAL',
+            'M5_PLUS_SPECIAL',
+          ],
+          method_families: ['fixture'],
+          reproduction_statuses: [
+            'BACKTESTED',
+            'CLOSED_UNEXECUTABLE',
+            'DUPLICATE_ALIAS',
+          ],
+          catalog_sha256: 'c'.repeat(64),
+          records_available: false,
+          projection_sha256: null,
+          source_report_count: null,
+          research_disclaimer:
+            '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。',
+        }),
+      )
+    }
     if (url.includes('/api/v1/historical-results/runs')) {
       return Promise.resolve(apiResponse(makeRunPage()))
     }
@@ -261,6 +300,7 @@ describe('App navigation', () => {
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
       'Strategy Overview',
       'Success Windows',
+      'B649 Records',
       'Data Center',
       'History',
       'Strategy Evidence',
@@ -276,6 +316,16 @@ describe('App navigation', () => {
     expect(
       navigation
         .find('a[href="#/historical-success-windows"]')
+        .attributes('aria-current'),
+    ).toBe('page')
+
+    window.location.hash = '#/b649-multi-ticket-records'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#b649-records-title').exists()).toBe(true)
+    expect(
+      navigation
+        .find('a[href="#/b649-multi-ticket-records"]')
         .attributes('aria-current'),
     ).toBe('page')
 
@@ -321,6 +371,7 @@ describe('App navigation', () => {
     expect(keyboardTab().getAttribute('aria-label')).toBe('LottoLab home')
     expect(keyboardTab().textContent?.trim()).toBe('Strategy Overview')
     expect(keyboardTab().textContent?.trim()).toBe('Success Windows')
+    expect(keyboardTab().textContent?.trim()).toBe('B649 Records')
     expect(keyboardTab().textContent?.trim()).toBe('Data Center')
     await activateFocused('Enter')
 

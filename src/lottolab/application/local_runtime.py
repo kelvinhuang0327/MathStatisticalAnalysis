@@ -50,6 +50,8 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/strategies": frozenset({"get"}),
     "/api/v1/strategy-overview": frozenset({"get"}),
     "/api/v1/strategy-evidence": frozenset({"get"}),
+    "/api/v1/b649-multi-ticket-records/summary": frozenset({"get"}),
+    "/api/v1/b649-multi-ticket-records": frozenset({"get"}),
     "/api/v1/draw-imports/preview": frozenset({"post"}),
     "/api/v1/draw-imports/commit": frozenset({"post"}),
     "/api/v1/draw-sync/manual": frozenset({"post"}),

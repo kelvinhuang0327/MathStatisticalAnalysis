@@ -161,7 +161,7 @@ def test_historical_import_metadata_route_is_explicitly_not_configured() -> None
     assert response.json()["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
 
 
-def test_openapi_contains_only_the_new_non_multiticket_workspace_paths() -> None:
+def test_openapi_adds_only_the_approved_read_only_multiticket_paths() -> None:
     paths = set(create_app().openapi()["paths"])
 
     assert {
@@ -174,4 +174,11 @@ def test_openapi_contains_only_the_new_non_multiticket_workspace_paths() -> None
         "/api/v1/strategy-evidence",
         "/api/v1/historical-results/runs",
     } <= paths
-    assert not any("multi-ticket" in path or "multiticket" in path for path in paths)
+    assert {
+        path
+        for path in paths
+        if "multi-ticket" in path or "multiticket" in path
+    } == {
+        "/api/v1/b649-multi-ticket-records",
+        "/api/v1/b649-multi-ticket-records/summary",
+    }

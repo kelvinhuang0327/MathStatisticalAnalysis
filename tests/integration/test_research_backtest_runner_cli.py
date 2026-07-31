@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+import shutil
+import sqlite3
+from collections.abc import Callable
 from pathlib import Path
+from typing import NamedTuple
 
 import pytest
 from typer.testing import CliRunner
@@ -15,6 +20,7 @@ from lottolab.application.research_backtest_runner import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.research import ResearchRunKind
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
+from lottolab.infrastructure.persistence import research_repository as research_repository_module
 from lottolab.infrastructure.persistence.draw_schema import (
     DATA_DIRECTORY_ENV,
     LocalDataPaths,
@@ -27,7 +33,12 @@ from lottolab.infrastructure.persistence.repositories import (
     SQLiteDrawDataRepository,
 )
 from lottolab.infrastructure.persistence.research_schema import (
+    DATA_DIRECTORY_ENV as RESEARCH_DATA_DIRECTORY_ENV,
+)
+from lottolab.infrastructure.persistence.research_schema import (
     RESEARCH_DATABASE_FILENAME,
+    ResearchDataPaths,
+    initialize_schema,
 )
 from lottolab.interfaces.cli import research_backtest_runner as cli_module
 from lottolab.interfaces.cli.main import app
@@ -118,6 +129,49 @@ def _args(
 def _assert_no_sidecars(database: Path) -> None:
     for suffix in ("-wal", "-shm", "-journal"):
         assert not Path(f"{database}{suffix}").exists()
+
+
+def _production_args(
+    manifest_file: Path,
+    draw_data_dir: Path,
+    *,
+    production: bool = False,
+    research_data_dir: Path | None = None,
+) -> list[str]:
+    args = [
+        "run-biglotto-research-backtest",
+        "--manifest-file",
+        str(manifest_file),
+        "--draw-data-dir",
+        str(draw_data_dir),
+    ]
+    if production:
+        args.append("--production")
+    if research_data_dir is not None:
+        args += ["--research-data-dir", str(research_data_dir)]
+    return args
+
+
+def _seed_canonical_research_store(canonical_dir: Path) -> ResearchDataPaths:
+    paths = ResearchDataPaths(
+        canonical_dir,
+        canonical_dir / RESEARCH_DATABASE_FILENAME,
+    )
+    initialize_schema(paths)
+    return paths
+
+
+class _FakeDiskUsage(NamedTuple):
+    total: int
+    used: int
+    free: int
+
+
+def _fake_disk_usage(free_bytes: int) -> Callable[[object], _FakeDiskUsage]:
+    def _disk_usage(_path: object) -> _FakeDiskUsage:
+        return _FakeDiskUsage(total=free_bytes + 1, used=1, free=free_bytes)
+
+    return _disk_usage
 
 
 def test_zero_history_cli_rejects_before_research_database_creation(
@@ -365,3 +419,208 @@ def test_unexpected_cli_failure_is_sanitized(
         "reason_code": "RESEARCH_BACKTEST_FAILED",
         "status": "ERROR",
     }
+
+
+def test_both_research_modes_selected_fails_before_database_access(
+    tmp_path: Path,
+) -> None:
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    research_dir = tmp_path / "research-data"
+    research_dir.mkdir(mode=0o700)
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2",)),
+    )
+
+    result = runner.invoke(
+        app,
+        _production_args(
+            manifest_file,
+            draw_paths.data_directory,
+            production=True,
+            research_data_dir=research_dir,
+        ),
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stderr)["reason_code"] == "RESEARCH_MODE_AMBIGUOUS"
+    assert not (research_dir / RESEARCH_DATABASE_FILENAME).exists()
+
+
+def test_neither_research_mode_selected_fails_before_database_access(
+    tmp_path: Path,
+) -> None:
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2",)),
+    )
+
+    result = runner.invoke(
+        app,
+        _production_args(manifest_file, draw_paths.data_directory),
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stderr)["reason_code"] == "RESEARCH_MODE_REQUIRED"
+
+
+def test_production_mode_success_uses_resolver_and_skips_initialize(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_repository_source_commit_oid",
+        _fixed_source_commit,
+    )
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    canonical_dir = tmp_path / "canonical-research-store"
+    canonical_paths = _seed_canonical_research_store(canonical_dir)
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2", "3", "4")),
+    )
+    monkeypatch.setattr(shutil, "disk_usage", _fake_disk_usage(100 * 1024**3))
+
+    def _fail_if_initialized(_paths: ResearchDataPaths) -> None:
+        raise AssertionError("production mode must not initialize the store")
+
+    monkeypatch.setattr(
+        research_repository_module, "initialize_schema", _fail_if_initialized
+    )
+    before = canonical_paths.database.read_bytes()
+
+    result = runner.invoke(
+        app,
+        _production_args(manifest_file, draw_paths.data_directory, production=True),
+        env={RESEARCH_DATA_DIRECTORY_ENV: str(canonical_dir)},
+    )
+
+    assert result.exit_code == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["status"] == "COMPLETED"
+    assert canonical_paths.database.read_bytes() != before
+    assert not (draw_paths.data_directory / RESEARCH_DATABASE_FILENAME).exists()
+    _assert_no_sidecars(canonical_paths.database)
+
+
+def test_production_missing_database_is_not_created(
+    tmp_path: Path,
+) -> None:
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    canonical_dir = tmp_path / "canonical-research-store"
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2",)),
+    )
+
+    result = runner.invoke(
+        app,
+        _production_args(manifest_file, draw_paths.data_directory, production=True),
+        env={RESEARCH_DATA_DIRECTORY_ENV: str(canonical_dir)},
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stderr)["reason_code"] == (
+        "PRODUCTION_RESEARCH_DATABASE_MISSING"
+    )
+    assert not canonical_dir.exists()
+
+
+def test_production_invalid_schema_fails_read_only(
+    tmp_path: Path,
+) -> None:
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    canonical_dir = tmp_path / "canonical-research-store"
+    canonical_dir.mkdir(mode=0o700)
+    database = canonical_dir / RESEARCH_DATABASE_FILENAME
+    sqlite3.connect(str(database)).close()
+    os.chmod(database, 0o600)
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2",)),
+    )
+    before = database.read_bytes()
+
+    result = runner.invoke(
+        app,
+        _production_args(manifest_file, draw_paths.data_directory, production=True),
+        env={RESEARCH_DATA_DIRECTORY_ENV: str(canonical_dir)},
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.stderr)["reason_code"] == "RESEARCH_BACKTEST_FAILED"
+    assert database.read_bytes() == before
+
+
+def test_production_low_disk_fails_before_repository_construction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    canonical_dir = tmp_path / "canonical-research-store"
+    canonical_paths = _seed_canonical_research_store(canonical_dir)
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2",)),
+    )
+    before = canonical_paths.database.read_bytes()
+    monkeypatch.setattr(shutil, "disk_usage", _fake_disk_usage(1))
+
+    def _fail_if_constructed(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("repository must not be constructed when disk is low")
+
+    monkeypatch.setattr(cli_module, "SQLiteResearchRepository", _fail_if_constructed)
+
+    result = runner.invoke(
+        app,
+        _production_args(manifest_file, draw_paths.data_directory, production=True),
+        env={RESEARCH_DATA_DIRECTORY_ENV: str(canonical_dir)},
+    )
+
+    assert result.exit_code == 1
+    error = json.loads(result.stderr)
+    assert error["reason_code"] == "INSUFFICIENT_PRODUCTION_DISK_SPACE"
+    assert str(canonical_dir) not in error["message"]
+    assert "bytes" in error["message"]
+    assert canonical_paths.database.read_bytes() == before
+
+
+def test_production_mode_ignores_scratch_forbidden_directory_constant(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        cli_module,
+        "resolve_repository_source_commit_oid",
+        _fixed_source_commit,
+    )
+    draw_paths = _draw_paths(tmp_path)
+    _seed(draw_paths)
+    canonical_dir = tmp_path / "canonical-research-store"
+    canonical_paths = _seed_canonical_research_store(canonical_dir)
+    decoy_directory = tmp_path / "decoy-scratch-forbidden-directory"
+    monkeypatch.setattr(cli_module, "_PRODUCTION_RESEARCH_DIRECTORY", decoy_directory)
+    manifest_file = _write_manifest(
+        tmp_path,
+        _manifest(draw_paths, targets=("2",)),
+    )
+    monkeypatch.setattr(shutil, "disk_usage", _fake_disk_usage(100 * 1024**3))
+    before = canonical_paths.database.read_bytes()
+
+    result = runner.invoke(
+        app,
+        _production_args(manifest_file, draw_paths.data_directory, production=True),
+        env={RESEARCH_DATA_DIRECTORY_ENV: str(canonical_dir)},
+    )
+
+    assert result.exit_code == 0, result.stderr
+    assert not decoy_directory.exists()
+    assert canonical_paths.database.read_bytes() != before

@@ -1,7 +1,15 @@
-import type { paths } from './generated/openapi'
+import type { components, paths } from './generated/openapi'
 
 export type HistoricalImportRunPage =
   paths['/api/v1/historical-results/runs']['get']['responses'][200]['content']['application/json']
+
+export type LotteryType = components['schemas']['LotteryType']
+
+export interface HistoricalImportRunListOptions {
+  lotteryType?: LotteryType
+  limit?: number
+  offset?: number
+}
 
 export class HistoricalImportsRequestError extends Error {
   readonly status: number
@@ -17,8 +25,24 @@ export class HistoricalImportsRequestError extends Error {
 
 export async function listHistoricalImportRuns(
   signal?: AbortSignal,
+  options: HistoricalImportRunListOptions = {},
 ): Promise<HistoricalImportRunPage> {
-  const response = await fetch('/api/v1/historical-results/runs?limit=50&offset=0', {
+  const limit = options.limit ?? 50
+  const offset = options.offset ?? 0
+  if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+    throw new RangeError('Historical imports limit must be an integer between 1 and 200')
+  }
+  if (!Number.isInteger(offset) || offset < 0) {
+    throw new RangeError('Historical imports offset must be a non-negative integer')
+  }
+  const query = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  })
+  if (options.lotteryType !== undefined) {
+    query.set('lottery_type', options.lotteryType)
+  }
+  const response = await fetch(`/api/v1/historical-results/runs?${query.toString()}`, {
     method: 'GET',
     headers: { Accept: 'application/json' },
     signal,

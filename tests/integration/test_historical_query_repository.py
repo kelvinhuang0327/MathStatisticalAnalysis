@@ -7,6 +7,7 @@ canonical or default production database.
 
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 from typing import Any
 
@@ -33,12 +34,22 @@ from lottolab.application.historical_queries import (
     HistoricalResultsUnavailableError,
     HistoricalRunQuery,
 )
-from lottolab.domain.historical_results import HistoricalRunImport, HistoricalRunStatus
+from lottolab.domain.historical_results import (
+    HistoricalLotteryType,
+    HistoricalRunImport,
+    HistoricalRunStatus,
+)
 from lottolab.infrastructure.persistence.historical_repositories import (
     SQLiteHistoricalResultQueryRepository,
     SQLiteHistoricalResultRepository,
 )
-from lottolab.infrastructure.persistence.historical_schema import initialize_schema, open_database
+from lottolab.infrastructure.persistence.historical_schema import (
+    MIGRATION_CHECKSUM,
+    MIGRATION_NAME,
+    MIGRATION_STATEMENTS,
+    initialize_schema,
+    open_database,
+)
 from lottolab.normalization.historical_import import verify_and_normalize_historical_import
 
 
@@ -56,7 +67,14 @@ def _commit(database: Path, envelope: dict[str, Any], *, clock: Any = None) -> s
     return result.run_id
 
 
-def _insert_raw_run(database: Path, *, run_id: str, status: str, completed_at: str | None) -> None:
+def _insert_raw_run(
+    database: Path,
+    *,
+    run_id: str,
+    status: str,
+    completed_at: str | None,
+    lottery_type: str = "BIG_LOTTO",
+) -> None:
     """Directly insert a run row bypassing the write-side repository.
 
     The public commit path never durably persists a non-terminal run (it
@@ -75,11 +93,11 @@ def _insert_raw_run(database: Path, *, run_id: str, status: str, completed_at: s
                 source_repository, source_commit_oid, source_artifact_sha256, dataset_identity,
                 dataset_sha256, legacy_run_id, lottery_type, status, started_at, completed_at,
                 error_code, error_summary, created_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, 'BIG_LOTTO', ?, ?, ?, NULL, NULL, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, NULL, NULL, ?)
             """,
             (
                 run_id,
-                "a" * 64,
+                run_id.ljust(64, "x")[:64],
                 "b" * 64,
                 "1.0.0",
                 "SYNTHETIC_TEST_ONLY",
@@ -88,6 +106,7 @@ def _insert_raw_run(database: Path, *, run_id: str, status: str, completed_at: s
                 "d" * 64,
                 f"raw_dataset_{run_id}",
                 "e" * 64,
+                lottery_type,
                 status,
                 "2026-01-01T00:00:00.000000Z",
                 completed_at,
@@ -110,6 +129,109 @@ def test_list_runs_returns_only_completed_runs(tmp_path: Path) -> None:
 
     assert page.total_count == 1
     assert [item.run_id for item in page.items] == [completed_run_id]
+
+
+def test_list_runs_filters_count_pagination_and_ordering_by_lottery(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "historical.db"
+    completed_at = "2026-07-31T00:00:00.000000Z"
+    _insert_raw_run(
+        database,
+        run_id="daily-a",
+        status="COMPLETED",
+        completed_at=completed_at,
+        lottery_type="DAILY_539",
+    )
+    _insert_raw_run(
+        database,
+        run_id="daily-b",
+        status="COMPLETED",
+        completed_at=completed_at,
+        lottery_type="DAILY_539",
+    )
+    _insert_raw_run(
+        database,
+        run_id="big-a",
+        status="COMPLETED",
+        completed_at=completed_at,
+        lottery_type="BIG_LOTTO",
+    )
+    _insert_raw_run(
+        database,
+        run_id="power-a",
+        status="COMPLETED",
+        completed_at=completed_at,
+        lottery_type="POWER_LOTTO",
+    )
+    repository = SQLiteHistoricalResultQueryRepository(database)
+
+    all_runs = repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
+    assert all_runs.total_count == 4
+    assert [item.run_id for item in all_runs.items] == [
+        "power-a",
+        "daily-b",
+        "daily-a",
+        "big-a",
+    ]
+    daily_page = repository.list_runs(
+        HistoricalRunQuery(
+            limit=1,
+            offset=1,
+            lottery_type=HistoricalLotteryType.DAILY_539,
+        )
+    )
+    assert daily_page.total_count == 2
+    assert [item.run_id for item in daily_page.items] == ["daily-a"]
+    for lottery_type, expected in (
+        (HistoricalLotteryType.BIG_LOTTO, "big-a"),
+        (HistoricalLotteryType.POWER_LOTTO, "power-a"),
+    ):
+        page = repository.list_runs(HistoricalRunQuery(lottery_type=lottery_type))
+        assert page.total_count == 1
+        assert [item.run_id for item in page.items] == [expected]
+
+
+def test_v1_run_filtering_is_read_only_and_non_big_filters_are_empty(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "historical-v1.db"
+    with sqlite3.connect(database) as connection:
+        for statement in MIGRATION_STATEMENTS:
+            connection.execute(statement)
+        connection.execute(
+            "INSERT INTO historical_schema_migrations VALUES (1, ?, ?, 'pinned')",
+            (MIGRATION_NAME, MIGRATION_CHECKSUM),
+        )
+        connection.execute(
+            """
+            INSERT INTO historical_result_run (
+                id, import_identity_sha256, manifest_sha256, contract_version, source_kind,
+                source_repository, source_commit_oid, source_artifact_sha256, dataset_identity,
+                dataset_sha256, lottery_type, status, started_at, completed_at, created_at
+            ) VALUES ('v1-run', ?, ?, '1.0.0', 'SYNTHETIC_TEST_ONLY', 'repo', ?, ?,
+                      'dataset', ?, 'BIG_LOTTO', 'COMPLETED', 'start', 'complete', 'created')
+            """,
+            ("1" * 64, "2" * 64, "3" * 40, "4" * 64, "5" * 64),
+        )
+        connection.commit()
+    before = database.read_bytes()
+    repository = SQLiteHistoricalResultQueryRepository(database)
+
+    assert [
+        item.run_id
+        for item in repository.list_runs(
+            HistoricalRunQuery(lottery_type=HistoricalLotteryType.BIG_LOTTO)
+        ).items
+    ] == ["v1-run"]
+    for lottery_type in (
+        HistoricalLotteryType.DAILY_539,
+        HistoricalLotteryType.POWER_LOTTO,
+    ):
+        page = repository.list_runs(HistoricalRunQuery(lottery_type=lottery_type))
+        assert page.total_count == 0
+        assert page.items == ()
+    assert database.read_bytes() == before
 
 
 def test_get_run_specific_endpoints_treat_failed_and_in_progress_as_not_found(

@@ -13,6 +13,7 @@ from fastapi.testclient import TestClient
 from tests.fixtures.historical.builder import (
     REAL_STRATEGY_IDS,
     build_baseline_envelope,
+    build_v2_envelope,
     envelope_bytes,
 )
 
@@ -63,6 +64,27 @@ def test_list_runs_returns_the_seeded_completed_run(tmp_path: Path) -> None:
     assert body["limit"] == 50
     assert body["offset"] == 0
     assert [item["run_id"] for item in body["items"]] == [run_id]
+
+
+@pytest.mark.parametrize("lottery_type", ["DAILY_539", "BIG_LOTTO", "POWER_LOTTO"])
+def test_list_runs_accepts_and_filters_each_internal_lottery_type(
+    tmp_path: Path, lottery_type: str
+) -> None:
+    database = tmp_path / "historical.db"
+    run_ids: dict[str, str] = {}
+    repository = SQLiteHistoricalResultRepository(database)
+    for selected in ("DAILY_539", "BIG_LOTTO", "POWER_LOTTO"):
+        result = repository.commit_import(_normalized_import(build_v2_envelope(selected)))
+        run_ids[selected] = result.run_id
+    response = _client_for(database).get(
+        f"{PREFIX}/runs",
+        params={"lottery_type": lottery_type, "limit": 1, "offset": 0},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total_count"] == 1
+    assert [item["run_id"] for item in body["items"]] == [run_ids[lottery_type]]
+    assert body["items"][0]["lottery_type"] == lottery_type
 
 
 def test_list_run_strategies_returns_summaries_for_each_ticket_count(tmp_path: Path) -> None:
@@ -205,6 +227,7 @@ def test_unknown_run_id_on_configured_database_is_not_found(tmp_path: Path) -> N
         ("/runs", {"limit": 0}),
         ("/runs", {"limit": 201}),
         ("/runs", {"offset": -1}),
+        ("/runs", {"lottery_type": "L649"}),
         ("/runs/some-run/strategies", {"ticket_count": 12}),
         ("/runs/some-run/replay", {"strategy_id": "x", "ticket_count": 11}),
         ("/portfolios/some-portfolio", {"ticket_count": 0}),
@@ -251,6 +274,18 @@ def test_openapi_document_declares_all_four_operations() -> None:
     assert set(paths[f"{PREFIX}/runs/{{run_id}}/strategies"]) == {"get"}
     assert set(paths[f"{PREFIX}/runs/{{run_id}}/replay"]) == {"get"}
     assert set(paths[f"{PREFIX}/portfolios/{{portfolio_id}}"]) == {"get"}
+    operation = paths[f"{PREFIX}/runs"]["get"]
+    assert operation["operationId"] == "listHistoricalRuns"
+    lottery_parameter = next(
+        parameter for parameter in operation["parameters"] if parameter["name"] == "lottery_type"
+    )
+    reference = lottery_parameter["schema"]["anyOf"][0]["$ref"]
+    schema_name = reference.rsplit("/", 1)[-1]
+    assert document["components"]["schemas"][schema_name]["enum"] == [
+        "DAILY_539",
+        "BIG_LOTTO",
+        "POWER_LOTTO",
+    ]
 
 
 def test_app_construction_and_openapi_generation_perform_no_db_access(tmp_path: Path) -> None:

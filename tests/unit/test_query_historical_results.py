@@ -26,6 +26,7 @@ from lottolab.application.use_cases.query_historical_results import (
     ListHistoricalRuns,
     ListHistoricalStrategies,
 )
+from lottolab.domain.historical_results import HistoricalLotteryType
 
 
 class _FakeQueryRepository:
@@ -146,6 +147,21 @@ def test_list_runs_accepts_boundary_pagination() -> None:
     use_case.execute(limit=1, offset=0)
     use_case.execute(limit=200, offset=0)
     assert repository.received_run_query == HistoricalRunQuery(limit=200, offset=0)
+
+
+def test_list_runs_forwards_typed_lottery_filter() -> None:
+    repository = _FakeQueryRepository(run_page=_run_page())
+    use_case = ListHistoricalRuns(lambda: repository)
+    use_case.execute(
+        limit=25,
+        offset=5,
+        lottery_type=HistoricalLotteryType.POWER_LOTTO,
+    )
+    assert repository.received_run_query == HistoricalRunQuery(
+        limit=25,
+        offset=5,
+        lottery_type=HistoricalLotteryType.POWER_LOTTO,
+    )
 
 
 def test_list_replay_portfolios_rejects_invalid_pagination() -> None:

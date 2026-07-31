@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from lottolab.domain.historical_results import HistoricalLotteryType
+
 MIN_PAGE_LIMIT = 1
 MAX_PAGE_LIMIT = 200
 DEFAULT_PAGE_LIMIT = 50
@@ -44,6 +46,7 @@ class HistoricalResultsUnavailableError(HistoricalQueryApplicationError):
 class HistoricalRunQuery:
     limit: int = DEFAULT_PAGE_LIMIT
     offset: int = DEFAULT_PAGE_OFFSET
+    lottery_type: HistoricalLotteryType | None = None
 
 
 @dataclass(frozen=True, slots=True)

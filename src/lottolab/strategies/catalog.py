@@ -325,6 +325,71 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__high_prize_trend_optimizer__0fc72409150e",
+        strategy_name="大樂透 High Prize Trend（7組Lambda衰減）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2:BigLottoHighPrizeTrendAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:ai_lab/scripts/high_prize_trend_optimizer.py",
+            "legacy_symbol:HighPrizeTrendOptimizer.predict",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__high_prize_trend_optimizer__0fc72409150e",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE2_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=7,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__core_satellite__2e82891003b3",
+        strategy_name="大樂透 Core-Satellite（4模式x3注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2:BigLottoCoreSatelliteAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/engine/core_satellite.py",
+            "legacy_symbol:CoreSatelliteGenerator.generate_from_history",
+            "full_strategy_catalog_id:legacy_biglotto__core_satellite__2e82891003b3",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE2_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=12,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__auto_discovery_biglotto__06bcb164db84",
+        strategy_name="大樂透 Auto-Discovery（6維度x54組態）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2:BigLottoAutoDiscoveryAdapter"
+        ),
+        min_history=50,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/auto_discovery_biglotto.py",
+            "legacy_symbol:build_methods",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__auto_discovery_biglotto__06bcb164db84",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE2_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=54,
+    ),
 )
 
 

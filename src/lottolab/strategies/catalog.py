@@ -454,6 +454,92 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5",
+        strategy_name="大樂透三注智能組合預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave4:BigLottoThreeBetOptimizerAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source:tools/negative_selector.py",
+            "legacy_symbol:BigLotto3BetOptimizer.predict_3bets_diversified",
+            "full_strategy_catalog_id:legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE4_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__biglotto_tme_optimizer__62c6cb676bad",
+        strategy_name="大樂透 TME 4注智能組合預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=("lottolab.strategies.adapters.biglotto_wave4:BigLottoTMEOptimizerAdapter"),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/biglotto_tme_optimizer.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_symbol:BigLottoTMEOptimizer.predict_4bets",
+            "full_strategy_catalog_id:legacy_biglotto__biglotto_tme_optimizer__62c6cb676bad",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE4_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__optimized_ensemble__e05e0fde22d7",
+        strategy_name="ROI 優化集成預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave4:BigLottoOptimizedEnsembleAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/optimized_ensemble.py",
+            "legacy_symbol:OptimizedEnsemblePredictor.predict",
+            "full_strategy_catalog_id:legacy_biglotto__optimized_ensemble__e05e0fde22d7",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE4_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_biglotto_115000007_2bets__3dc7842c0511",
+        strategy_name="大樂透兩注精選預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave4:BigLottoTwoBetElitePredictorAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_biglotto_115000007_2bets.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source:tools/negative_selector.py",
+            "legacy_symbol:BigLotto2BetOptimizer.predict_2bets",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_115000007_2bets__3dc7842c0511",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE4_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

@@ -398,4 +398,8 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__biglotto_2bet_final__7eaedb330a07",
         "legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
         "legacy_biglotto__biglotto_2bet_optimizer_v2__783226366ac3",
+        "legacy_biglotto__biglotto_3bet_optimizer__2835d6cb20c5",
+        "legacy_biglotto__biglotto_tme_optimizer__62c6cb676bad",
+        "legacy_biglotto__optimized_ensemble__e05e0fde22d7",
+        "legacy_biglotto__predict_biglotto_115000007_2bets__3dc7842c0511",
     ]

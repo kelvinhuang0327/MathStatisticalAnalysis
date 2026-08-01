@@ -557,8 +557,12 @@ def test_production_catalog_wave3_descriptors_declare_expected_shapes() -> None:
 
 
 def test_production_catalog_now_has_nineteen_descriptors() -> None:
+    """Name pinned at the wave 3 landing point; wave 4 added 4 more on top,
+    so this now asserts the current total (see also
+    ``test_production_catalog_now_has_twenty_three_descriptors`` in
+    ``test_biglotto_wave4_adapters.py``)."""
     catalog = production_catalog()
-    assert len(catalog) == 19
+    assert len(catalog) == 23
 
 
 def test_wave1_and_wave2_descriptors_are_unaffected_by_wave3() -> None:

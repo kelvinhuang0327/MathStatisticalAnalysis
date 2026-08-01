@@ -11,8 +11,8 @@ here), so donor parity for every new engine method ported in this wave
 ``NegativeSelector.predict_kill_numbers``, ``OptimizedEnsemblePredictor``)
 was independently re-derived by reading
 ``lottery_api/models/unified_predictor.py`` /
-``tools/negative_selector.py`` / ``tools/optimized_ensemble.py`` at the
-frozen commit; see ``biglotto_wave4.py``'s module docstring for the full
+``tools/negative_selector.py`` / ``lottery_api/models/optimized_ensemble.py``
+at the frozen commit; see ``biglotto_wave4.py``'s module docstring for the full
 provenance chain and for which donor fields are load-bearing versus
 discarded (only ``numbers`` is ever read by any of the four adapters here).
 

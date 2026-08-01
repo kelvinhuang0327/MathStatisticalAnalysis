@@ -55,7 +55,7 @@ New engine methods ported here, not needed by waves 1-3:
   likewise provably unreachable: ``predict_kill_numbers`` only ever assigns
   ``strategy`` to ``"targeted_cold"``, ``"safe_conservative"``, or
   ``"balanced"`` -- omitted, not "improved away."
-* ``OptimizedEnsemblePredictor`` (``tools/optimized_ensemble.py``) is a
+* ``OptimizedEnsemblePredictor`` (``lottery_api/models/optimized_ensemble.py``) is a
   fully self-contained class (no shared engine dependency). Its own
   ``np.argsort(final_scores[1:])[::-1] + 1`` ranking reuses wave 3's
   already-verified ``_numpy_argsort`` (the literal NumPy introsort port),
@@ -331,8 +331,8 @@ def _unified_zone_balance_ticket(history: tuple[CausalDrawRow, ...]) -> tuple[in
     return _ticket(sorted(predicted))
 
 
-# ─── tools/optimized_ensemble.py::OptimizedEnsemblePredictor (self-
-#     contained; BIG_LOTTO config only -- see class docstring) ─────────────
+# ─── lottery_api/models/optimized_ensemble.py::OptimizedEnsemblePredictor
+#     (self-contained; BIG_LOTTO config only -- see class docstring) ───────
 
 
 def _momentum_scores(history: tuple[CausalDrawRow, ...]) -> dict[int, float]:
@@ -479,7 +479,8 @@ class BigLottoTMEOptimizerAdapter(PortfolioBetAdapter):
 
 
 # ─── legacy_biglotto__optimized_ensemble__e05e0fde22d7 ─────────────────────
-# Donor: tools/optimized_ensemble.py -- OptimizedEnsemblePredictor.predict
+# Donor: lottery_api/models/optimized_ensemble.py --
+# OptimizedEnsemblePredictor.predict
 # (n_bets=1, BIG_LOTTO config). Momentum + entropy + lag-reversion scoring
 # fused and ranked by NumPy argsort -- a single-ticket strategy.
 

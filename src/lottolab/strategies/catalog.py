@@ -510,7 +510,7 @@ _PRODUCTION_DESCRIPTORS = (
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
-            "legacy_source:tools/optimized_ensemble.py",
+            "legacy_source:lottery_api/models/optimized_ensemble.py",
             "legacy_symbol:OptimizedEnsemblePredictor.predict",
             "full_strategy_catalog_id:legacy_biglotto__optimized_ensemble__e05e0fde22d7",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE4_R1",

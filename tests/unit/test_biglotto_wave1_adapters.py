@@ -752,7 +752,10 @@ def test_generate_portfolio_fails_closed_for_single_ticket_strategy() -> None:
 def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
     use_case = build_production_generate_portfolio()
     assert set(use_case._adapters.keys()) == {
-        "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4"
+        "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
+        "legacy_biglotto__high_prize_trend_optimizer__0fc72409150e",
+        "legacy_biglotto__core_satellite__2e82891003b3",
+        "legacy_biglotto__auto_discovery_biglotto__06bcb164db84",
     }
 
 

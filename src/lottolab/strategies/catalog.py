@@ -390,6 +390,70 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=54,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__biglotto_2bet_final__7eaedb330a07",
+        strategy_name="大樂透 雙注優化 V3 最終版（Top15+大號加強）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=("lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetFinalAdapter"),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/biglotto_2bet_final.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_symbol:BigLotto2BetOptimizerV3.predict_2bets_final",
+            "full_strategy_catalog_id:legacy_biglotto__biglotto_2bet_final__7eaedb330a07",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE3_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
+        strategy_name="大樂透 雙注覆蓋優化",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetOptimizerAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/biglotto_2bet_optimizer.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_symbol:BigLotto2BetOptimizer.predict_2bets",
+            "full_strategy_catalog_id:legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE3_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__biglotto_2bet_optimizer_v2__783226366ac3",
+        strategy_name="大樂透 雙注覆蓋優化 V2",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetOptimizerV2Adapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/biglotto_2bet_optimizer_v2.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_symbol:BigLotto2BetOptimizerV2.predict_2bets_optimized",
+            "full_strategy_catalog_id:legacy_biglotto__biglotto_2bet_optimizer_v2__783226366ac3",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE3_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

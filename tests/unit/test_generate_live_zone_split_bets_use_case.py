@@ -395,4 +395,7 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__high_prize_trend_optimizer__0fc72409150e",
         "legacy_biglotto__core_satellite__2e82891003b3",
         "legacy_biglotto__auto_discovery_biglotto__06bcb164db84",
+        "legacy_biglotto__biglotto_2bet_final__7eaedb330a07",
+        "legacy_biglotto__biglotto_2bet_optimizer__898ac9e38876",
+        "legacy_biglotto__biglotto_2bet_optimizer_v2__783226366ac3",
     ]

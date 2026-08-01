@@ -20,6 +20,7 @@ from lottolab.application.research_backtest_runner import (
 )
 from lottolab.application.use_cases.generate_ordered_candidate_emission import (
     build_production_generate_ordered_candidate_emission,
+    build_production_generate_ordered_portfolio_emission,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
     DATABASE_FILENAME as DRAW_DATABASE_FILENAME,
@@ -156,6 +157,9 @@ def run_biglotto_research_backtest_command(
             executable_registry=executable_registry,
             generate_ordered_candidate_emission=(
                 build_production_generate_ordered_candidate_emission()
+            ),
+            generate_ordered_portfolio_emission=(
+                build_production_generate_ordered_portfolio_emission()
             ),
             source_commit_resolver=lambda: (
                 resolve_repository_source_commit_oid(repository_root)

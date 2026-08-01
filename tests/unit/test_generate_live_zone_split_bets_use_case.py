@@ -387,4 +387,9 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "biglotto_deviation_2bet_bet2",
         "biglotto_p0_2bet_bet1",
         "biglotto_p0_2bet_bet2",
+        "legacy_biglotto__graph_predictor__cd70713a5709",
+        "legacy_biglotto__backtest_must_hit__909c91fd2fd0",
+        "legacy_biglotto__dynamic_frequency_predictor__36e5bf9998ac",
+        "legacy_biglotto__hot_cooccurrence_analyzer__48121f27d7ee",
+        "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
     ]

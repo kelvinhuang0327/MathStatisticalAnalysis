@@ -117,6 +117,9 @@ class _FixedGenerate(GenerateOrderedCandidateEmission):
                 GenerateOneBetReason.INVALID_OUTPUT
             ),
             GenerateOneBetStatus.REPLAY_ERROR: GenerateOneBetReason.REPLAY_ERROR,
+            GenerateOneBetStatus.WRONG_RESPONSE_PATH: (
+                GenerateOneBetReason.STRATEGY_IS_PORTFOLIO
+            ),
         }
         return GenerateOrderedCandidateEmissionResult(
             legal_bet=GenerateOneBetResult(
@@ -724,6 +727,10 @@ def test_injected_target_commit_failure_exposes_no_partial_target_and_clean_reru
         (
             GenerateOneBetStatus.REPLAY_ERROR,
             ResearchExecutionStatus.EXECUTION_ERROR,
+        ),
+        (
+            GenerateOneBetStatus.WRONG_RESPONSE_PATH,
+            ResearchExecutionStatus.STRATEGY_UNAVAILABLE,
         ),
     ],
 )

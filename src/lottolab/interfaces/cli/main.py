@@ -16,7 +16,11 @@ from lottolab.application.local_runtime import (
     RuntimeStatus,
     RuntimeStatusKind,
 )
-from lottolab.application.use_cases.generate_bet import HistoryParseError, run_cli_generate_bet
+from lottolab.application.use_cases.generate_bet import (
+    HistoryParseError,
+    run_cli_generate_bet,
+    run_cli_generate_portfolio,
+)
 from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
 from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     multi_ticket_backtest_command,
@@ -430,6 +434,47 @@ def generate_bet_command(
         )
     except (OSError, HistoryParseError) as exc:
         typer.echo(f"generate-bet input error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(output)
+    if not ok:
+        raise typer.Exit(code=1)
+
+
+@app.command("generate-bet-portfolio")
+def generate_bet_portfolio_command(
+    strategy_id: str,
+    seed: Annotated[
+        int,
+        typer.Option(
+            min=0,
+            help=(
+                "Caller-provided bookkeeping value echoed verbatim in the output; "
+                "does not affect the generated numbers."
+            ),
+        ),
+    ],
+    history_file: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            dir_okay=False,
+            help="Path to a JSON array of {draw, date, numbers} rows.",
+        ),
+    ],
+) -> None:
+    """Generate one strategy's complete native ticket portfolio (PORTFOLIO strategies only).
+
+    Returns the full, ordered native ticket set — never truncated to one
+    ticket. For SINGLE_TICKET strategy_ids, use ``generate-bet`` instead;
+    this command fails closed (WRONG_RESPONSE_PATH) for those.
+    """
+    try:
+        history_json = history_file.read_text(encoding="utf-8")
+        output, ok = run_cli_generate_portfolio(
+            strategy_id=strategy_id, seed=seed, history_json=history_json
+        )
+    except (OSError, HistoryParseError) as exc:
+        typer.echo(f"generate-bet-portfolio input error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
     typer.echo(output)
     if not ok:

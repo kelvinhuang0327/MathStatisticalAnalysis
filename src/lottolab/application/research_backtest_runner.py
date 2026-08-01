@@ -1326,6 +1326,9 @@ _EXECUTION_STATUS_MAP: Mapping[
     GenerateOneBetStatus.STRATEGY_UNAVAILABLE: (
         ResearchExecutionStatus.STRATEGY_UNAVAILABLE
     ),
+    GenerateOneBetStatus.WRONG_RESPONSE_PATH: (
+        ResearchExecutionStatus.STRATEGY_UNAVAILABLE
+    ),
     GenerateOneBetStatus.INVALID_OUTPUT: ResearchExecutionStatus.INVALID_OUTPUT,
     GenerateOneBetStatus.REPLAY_ERROR: ResearchExecutionStatus.EXECUTION_ERROR,
 }

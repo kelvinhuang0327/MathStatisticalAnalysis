@@ -189,6 +189,10 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__predict_biglotto_echo_2bet__59c20b25b1fa",
         "legacy_biglotto__predict_biglotto_elite7__eb46a9856446",
         "legacy_biglotto__research_variant_history__149648f9fffc",
+        "legacy_biglotto__auto_optimizer_alpha__7eaa9572e384",
+        "legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
+        "legacy_biglotto__test_tme__f3bb5106dfe3",
+        "legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776",
     ]
     online_ids = {
         descriptor.strategy_id

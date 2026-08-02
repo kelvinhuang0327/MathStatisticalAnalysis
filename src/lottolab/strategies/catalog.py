@@ -644,6 +644,111 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=11,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__auto_optimizer_alpha__7eaa9572e384",
+        strategy_name="大樂透 Auto Optimizer Alpha（5方法×5窗口）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoAutoOptimizerAlphaAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/auto_optimizer_alpha.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "7eaa9572e3848fdf8fbcb66dbade25f653bf25a7fe7c4be95b6e9d2f8df1d61d",
+            "legacy_symbol:AutoOptimizer.generate_strategy_space",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__auto_optimizer_alpha__7eaa9572e384",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=25,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
+        strategy_name="大樂透 10注 Unified＋EWMA 回測組合",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoTenBetBacktestAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_10bet_biglotto.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "054e85b088bec0827318b2442255dee961fa3e9ca8b08b87cc2d5b4cfcb669f2",
+            "legacy_symbol:main",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=10,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_tme__f3bb5106dfe3",
+        strategy_name="大樂透 TME 三方法獨立組合",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoTmeThreeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_tme.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "f3bb5106dfe3f255bc84317169fb5fbafa653a97c2977b66cb12a49eab07891c",
+            "legacy_symbol:TMEOptimizer.predict_3bets_tme",
+            "full_strategy_catalog_id:legacy_biglotto__test_tme__f3bb5106dfe3",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776"
+        ),
+        strategy_name="大樂透 Gemini V1 雙注驗證組合",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoGeminiTwoBetVerifierAdapter"
+        ),
+        min_history=50,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/verify_gemini_2bet_claim.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "d5ca233aa776d257c12b0f07e6d68205c5126b05759c39cf00e8ce8314062df3",
+            "legacy_symbol:generate_2bet_v1",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

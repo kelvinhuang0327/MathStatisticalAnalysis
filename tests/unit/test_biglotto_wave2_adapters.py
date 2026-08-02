@@ -889,10 +889,10 @@ def test_production_catalog_wave2_descriptors_declare_expected_shapes() -> None:
 
 def test_production_catalog_now_has_sixteen_descriptors() -> None:
     """Name pinned at the wave 2 landing point; wave 3 added 3 more and
-    wave 4 a further 4 and wave 5 another 5 on top, so this now asserts the
-    current total."""
+    wave 4 a further 4, wave 5 another 5, and wave 6 another 4 on top, so
+    this now asserts the current total."""
     catalog = production_catalog()
-    assert len(catalog) == 28
+    assert len(catalog) == 32
 
 
 def test_wave1_and_pre_wave1_descriptors_are_unaffected_by_wave2() -> None:

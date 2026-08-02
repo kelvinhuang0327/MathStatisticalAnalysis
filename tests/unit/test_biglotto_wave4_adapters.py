@@ -795,7 +795,7 @@ def test_production_catalog_wave4_single_ticket_descriptor_declares_expected_sha
 
 def test_production_catalog_now_has_thirty_two_descriptors() -> None:
     catalog = production_catalog()
-    assert len(catalog) == 35
+    assert len(catalog) == 37
 
 
 def test_wave1_through_wave3_descriptors_are_unaffected_by_wave4() -> None:

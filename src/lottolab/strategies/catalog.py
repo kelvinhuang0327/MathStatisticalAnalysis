@@ -832,6 +832,61 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=7,
     ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__attention_replay_predictor__a811e2eb8215"
+        ),
+        strategy_name="大樂透 Attention Replay 15期加權頻率",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoAttentionReplayAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:ai_lab/scripts/attention_replay_predictor.py",
+            "legacy_source_sha256:"
+            "a811e2eb821506396cad2c739c90f05184792bd57b09bf6808e996afbace94fc",
+            "legacy_symbol:predict_next_draw",
+            "frozen_semantics:model_logits_ignored_fixed_recency_weights",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__attention_replay_predictor__a811e2eb8215",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+    ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d"
+        ),
+        strategy_name="大樂透 Zone Balance 500 五位置組合",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoZoneBalanceFiveAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:predict_biglotto_115000002_zone_balance.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "8febca575f5d61b28095b1a27ff92b9717f74da88dd810ec0837fabba9033d02",
+            "legacy_symbol:main",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=5,
+    ),
 )
 
 

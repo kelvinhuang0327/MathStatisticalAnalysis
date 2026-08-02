@@ -1,6 +1,6 @@
-"""BigLotto native-strategy Wave 7 frozen BACKTESTED portfolio ports.
+"""BigLotto native-strategy Wave 7 frozen BACKTESTED ports.
 
-The three adapters preserve fixed, positional portfolios from donor commit
+The five adapters preserve fixed single-ticket and positional portfolios from donor commit
 ``49a25effa62fc24f40789c16be6f11bdfb41a4a9`` without retaining the donor
 scripts' database, console, or report shells.  Existing strategy-layer ports
 are reused when the donor called the same frozen ``UnifiedPredictionEngine``
@@ -18,7 +18,11 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 
 from lottolab.domain.draws import LotteryType
-from lottolab.strategies.adapters.base import CausalDrawRow, PortfolioBetAdapter
+from lottolab.strategies.adapters.base import (
+    BetAdapter,
+    CausalDrawRow,
+    PortfolioBetAdapter,
+)
 from lottolab.strategies.adapters.biglotto_wave3 import (
     _ticket,
     _unified_deviation_ticket,
@@ -35,6 +39,45 @@ from lottolab.strategies.adapters.biglotto_wave6 import (
 _MIN_NUM = 1
 _MAX_NUM = 49
 _PICK = 6
+_ATTENTION_WEIGHTS = tuple(
+    (1.0 + index * 0.1) / 25.5 for index in range(15)
+)
+_ZONE_BALANCE_WINDOWS = (100, 200, 300, 500)
+
+
+def _attention_replay_ticket(
+    history: tuple[CausalDrawRow, ...],
+) -> tuple[int, ...]:
+    weighted_frequency: defaultdict[int, float] = defaultdict(float)
+    for index, draw in enumerate(history[-15:]):
+        weight = _ATTENTION_WEIGHTS[index]
+        for number in draw.numbers:
+            weighted_frequency[number] += weight
+    ranked = sorted(
+        weighted_frequency.items(),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+    return _ticket([number for number, _weight in ranked[:_PICK]])
+
+
+class BigLottoAttentionReplayAdapter(BetAdapter):
+    """Frozen 15-draw recency-weighted frequency ticket."""
+
+    strategy_id = (
+        "legacy_biglotto__attention_replay_predictor__a811e2eb8215"
+    )
+    strategy_name = "大樂透 Attention Replay 15期加權頻率"
+    strategy_version = "v0.1"
+    min_history = 1
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+
+    def _predict(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[int, ...]:
+        return _attention_replay_ticket(history)
 
 
 class BigLottoFiveMeAdapter(PortfolioBetAdapter):
@@ -91,6 +134,160 @@ class BigLottoSmartTwoBetAdapter(PortfolioBetAdapter):
             _smart_true_frequency_ticket(history),
             _unified_deviation_ticket(tuple(reversed(history))),
         )
+
+
+def _variance(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    mean = sum(values) / len(values)
+    return sum((value - mean) ** 2 for value in values) / len(values)
+
+
+def _dynamic_zone_partition(
+    history: tuple[CausalDrawRow, ...],
+) -> tuple[tuple[tuple[int, ...], ...], float]:
+    frequency: Counter[int] = Counter(
+        number for draw in history for number in draw.numbers
+    )
+    sorted_pairs = sorted(
+        (
+            (number, frequency.get(number, 0))
+            for number in range(_MIN_NUM, _MAX_NUM + 1)
+        ),
+        key=lambda item: item[1],
+        reverse=True,
+    )
+    number_of_zones = 4
+    zone_size = len(sorted_pairs) // number_of_zones
+    remainder = len(sorted_pairs) % number_of_zones
+    zones: list[tuple[int, ...]] = []
+    start_index = 0
+    for index in range(number_of_zones):
+        current_size = zone_size + (1 if index < remainder else 0)
+        zone = tuple(
+            sorted(
+                number
+                for number, _count in sorted_pairs[
+                    start_index : start_index + current_size
+                ]
+            )
+        )
+        if zone:
+            zones.append(zone)
+        start_index += current_size
+
+    zone_means = [
+        sum(frequency.get(number, 0) for number in zone) / len(zone)
+        for zone in zones
+    ]
+    between_variance = _variance(zone_means)
+    within_variances = [
+        _variance(
+            [float(frequency.get(number, 0)) for number in zone]
+        )
+        for zone in zones
+        if len(zone) > 1
+    ]
+    average_within = (
+        sum(within_variances) / len(within_variances)
+        if within_variances
+        else 1.0
+    )
+    quality = between_variance / (average_within + 1.0)
+    return tuple(zones), min(1.0, quality / 10.0)
+
+
+def _zone_balance_ticket(
+    history: tuple[CausalDrawRow, ...],
+) -> tuple[int, ...]:
+    if len(history) > 1 and history[0].draw > history[-1].draw:
+        history = tuple(reversed(history))
+    zones, _quality = _dynamic_zone_partition(history)
+    zone_counts = [0] * len(zones)
+    for draw in history[-min(len(history), 80) :]:
+        for number in draw.numbers:
+            for index, zone in enumerate(zones):
+                if min(zone) <= number <= max(zone):
+                    zone_counts[index] += 1
+                    break
+
+    recent_zone_counts = [0] * len(zones)
+    for draw in history[-20:]:
+        for number in draw.numbers:
+            for index, zone in enumerate(zones):
+                if min(zone) <= number <= max(zone):
+                    recent_zone_counts[index] += 1
+                    break
+
+    total = sum(zone_counts) if sum(zone_counts) > 0 else 1
+    recent_total = (
+        sum(recent_zone_counts) if sum(recent_zone_counts) > 0 else 1
+    )
+    targets = [
+        round(
+            (
+                zone_counts[index] / total * 0.7
+                + recent_zone_counts[index] / recent_total * 0.3
+            )
+            * _PICK
+        )
+        for index in range(len(zones))
+    ]
+    while sum(targets) < _PICK:
+        targets[targets.index(min(targets))] += 1
+    while sum(targets) > _PICK:
+        targets[targets.index(max(targets))] -= 1
+
+    frequency: Counter[int] = Counter(
+        number for draw in history for number in draw.numbers
+    )
+    predicted: list[int] = []
+    for index, zone in enumerate(zones):
+        zone_scores: list[tuple[int, float]] = []
+        for number in zone:
+            recent_frequency = sum(
+                1
+                for draw in history[-30:]
+                for candidate in draw.numbers
+                if candidate == number
+            )
+            zone_scores.append(
+                (
+                    number,
+                    frequency.get(number, 0) * 0.6
+                    + recent_frequency * 0.4,
+                )
+            )
+        zone_scores.sort(key=lambda item: item[1], reverse=True)
+        predicted.extend(
+            number for number, _score in zone_scores[: targets[index]]
+        )
+    return _ticket(predicted)
+
+
+class BigLottoZoneBalanceFiveAdapter(PortfolioBetAdapter):
+    """Main 500-window ticket, then 100/200/300/500 comparisons."""
+
+    strategy_id = (
+        "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d"
+    )
+    strategy_name = "大樂透 Zone Balance 500 五位置組合"
+    strategy_version = "v0.1"
+    min_history = 1
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    native_ticket_count = 5
+
+    def _predict_all(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        main_500 = _zone_balance_ticket(history[-500:])
+        comparisons = tuple(
+            _zone_balance_ticket(history[-window:])
+            for window in _ZONE_BALANCE_WINDOWS
+        )
+        return (main_500, *comparisons)
 
 
 def _gemini_markov_ticket(
@@ -258,7 +455,9 @@ class BigLottoGeminiPhaseTwoVerifierAdapter(PortfolioBetAdapter):
 
 
 __all__ = [
+    "BigLottoAttentionReplayAdapter",
     "BigLottoFiveMeAdapter",
     "BigLottoGeminiPhaseTwoVerifierAdapter",
     "BigLottoSmartTwoBetAdapter",
+    "BigLottoZoneBalanceFiveAdapter",
 ]

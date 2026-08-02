@@ -414,4 +414,6 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd",
         "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a",
         "legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519",
+        "legacy_biglotto__attention_replay_predictor__a811e2eb8215",
+        "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d",
     ]

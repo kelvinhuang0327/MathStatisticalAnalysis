@@ -749,6 +749,89 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd"
+        ),
+        strategy_name="大樂透 5ME 五方法獨立組合",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoFiveMeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_5me_115000004.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "8a1c06ce1bddb2ab605ad00e95503d1f6bea35b102ad5c39559eb1cf4c5e5782",
+            "legacy_symbol:main",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=5,
+    ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a"
+        ),
+        strategy_name="大樂透 Smart 2-Bet 頻率偏差互補組合",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoSmartTwoBetAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_big_lotto_smart_2bet.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "7acdaab1bd0afea2dd270e225335c25ccdb26594ce788902f2752b5e41801ede",
+            "legacy_symbol:main",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519"
+        ),
+        strategy_name="大樂透 Gemini Phase 2 七方法驗證組合",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoGeminiPhaseTwoVerifierAdapter"
+        ),
+        min_history=100,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/verify_gemini_phase2_claim.py",
+            "legacy_source_sha256:"
+            "6407a8f3951913fcd2de6b98046305defd377739e67d7f37b53884f81964b480",
+            "legacy_symbol:generate_7_bets",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519",
+            "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=7,
+    ),
 )
 
 

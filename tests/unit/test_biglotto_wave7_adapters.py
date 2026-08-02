@@ -1,4 +1,4 @@
-"""Parity and production-path tests for BigLotto native strategy wave 6."""
+"""Parity and production-path tests for BigLotto native strategy Wave 7."""
 
 # pyright: reportPrivateUsage=false
 
@@ -19,25 +19,20 @@ import pytest
 from lottolab.application.legacy_history_native_portfolios import (
     LegacyHistoryDraw,
 )
+from lottolab.application.legacy_source_native_portfolios_wave8 import (
+    GEMINI_PHASE2_METHOD_ID,
+    LegacySourceNativeWave8Request,
+    generate_legacy_source_native_wave8_portfolio,
+)
+from lottolab.application.legacy_source_native_portfolios_wave22 import (
+    SMART_2BET_METHOD_ID,
+    LegacySourceNativeWave22Request,
+    generate_legacy_source_native_wave22_portfolio,
+)
 from lottolab.application.legacy_source_native_portfolios_wave23 import (
-    TME_METHOD_ID,
+    FIVE_ME_METHOD_ID,
     LegacySourceNativeWave23Request,
     generate_legacy_source_native_wave23_portfolio,
-)
-from lottolab.application.legacy_source_native_portfolios_wave27 import (
-    GEMINI_2BET_METHOD_ID,
-    LegacySourceNativeWave27Request,
-    generate_legacy_source_native_wave27_portfolio,
-)
-from lottolab.application.legacy_source_native_portfolios_wave30 import (
-    TEN_BET_METHOD_ID,
-    LegacySourceNativeWave30Request,
-    generate_legacy_source_native_wave30_portfolio,
-)
-from lottolab.application.legacy_source_native_portfolios_wave34 import (
-    AUTO_OPTIMIZER_METHOD_ID,
-    LegacySourceNativeWave34Request,
-    generate_legacy_source_native_wave34_portfolio,
 )
 from lottolab.application.use_cases.generate_bet import (
     GenerateOneBetInput,
@@ -55,31 +50,32 @@ from lottolab.strategies.adapters.base import (
     PortfolioBetAdapter,
     UnsupportedLotteryType,
 )
-from lottolab.strategies.adapters.biglotto_wave6 import (
-    BigLottoAutoOptimizerAlphaAdapter,
-    BigLottoGeminiTwoBetVerifierAdapter,
-    BigLottoTenBetBacktestAdapter,
-    BigLottoTmeThreeAdapter,
+from lottolab.strategies.adapters.biglotto_wave7 import (
+    BigLottoFiveMeAdapter,
+    BigLottoGeminiPhaseTwoVerifierAdapter,
+    BigLottoSmartTwoBetAdapter,
 )
 from lottolab.strategies.catalog import production_catalog
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
-WAVE6_ADAPTER_CLASSES = (
-    BigLottoAutoOptimizerAlphaAdapter,
-    BigLottoTenBetBacktestAdapter,
-    BigLottoTmeThreeAdapter,
-    BigLottoGeminiTwoBetVerifierAdapter,
+WAVE7_ADAPTER_CLASSES = (
+    BigLottoFiveMeAdapter,
+    BigLottoSmartTwoBetAdapter,
+    BigLottoGeminiPhaseTwoVerifierAdapter,
 )
-WAVE6_COUNTS = {
-    BigLottoAutoOptimizerAlphaAdapter.strategy_id: 25,
-    BigLottoTenBetBacktestAdapter.strategy_id: 10,
-    BigLottoTmeThreeAdapter.strategy_id: 3,
-    BigLottoGeminiTwoBetVerifierAdapter.strategy_id: 2,
+WAVE7_COUNTS = {
+    BigLottoFiveMeAdapter.strategy_id: 5,
+    BigLottoSmartTwoBetAdapter.strategy_id: 2,
+    BigLottoGeminiPhaseTwoVerifierAdapter.strategy_id: 7,
 }
 
 
-def _history(count: int, *, unpadded_offset: int = 0) -> tuple[CausalDrawRow, ...]:
+def _history(
+    count: int,
+    *,
+    unpadded_offset: int = 0,
+) -> tuple[CausalDrawRow, ...]:
     rng = random.Random(20260802 + count + unpadded_offset)
     return tuple(
         CausalDrawRow(
@@ -120,33 +116,25 @@ def _reference(
 ) -> tuple[tuple[int, ...], ...]:
     legacy = _legacy_history(history)
     target = "target-after-causal-cutoff"
-    if adapter_class is BigLottoAutoOptimizerAlphaAdapter:
-        return generate_legacy_source_native_wave34_portfolio(
-            LegacySourceNativeWave34Request(
-                legacy_method_id=AUTO_OPTIMIZER_METHOD_ID,
-                target_draw_number=target,
-                history=legacy,
-            )
-        ).tickets
-    if adapter_class is BigLottoTenBetBacktestAdapter:
-        return generate_legacy_source_native_wave30_portfolio(
-            LegacySourceNativeWave30Request(
-                legacy_method_id=TEN_BET_METHOD_ID,
-                target_draw_number=target,
-                history=legacy,
-            )
-        ).tickets
-    if adapter_class is BigLottoTmeThreeAdapter:
+    if adapter_class is BigLottoFiveMeAdapter:
         return generate_legacy_source_native_wave23_portfolio(
             LegacySourceNativeWave23Request(
-                legacy_method_id=TME_METHOD_ID,
+                legacy_method_id=FIVE_ME_METHOD_ID,
                 target_draw_number=target,
                 history=legacy,
             )
         ).tickets
-    return generate_legacy_source_native_wave27_portfolio(
-        LegacySourceNativeWave27Request(
-            legacy_method_id=GEMINI_2BET_METHOD_ID,
+    if adapter_class is BigLottoSmartTwoBetAdapter:
+        return generate_legacy_source_native_wave22_portfolio(
+            LegacySourceNativeWave22Request(
+                legacy_method_id=SMART_2BET_METHOD_ID,
+                target_draw_number=target,
+                history=legacy,
+            )
+        ).tickets
+    return generate_legacy_source_native_wave8_portfolio(
+        LegacySourceNativeWave8Request(
+            legacy_method_id=GEMINI_PHASE2_METHOD_ID,
             target_draw_number=target,
             history=legacy,
         )
@@ -156,9 +144,9 @@ def _reference(
 @pytest.mark.parametrize("count", (1, 2, 49, 50, 100, 150, 250, 500))
 @pytest.mark.parametrize(
     "adapter_class",
-    WAVE6_ADAPTER_CLASSES[:-1],
+    (BigLottoFiveMeAdapter, BigLottoSmartTwoBetAdapter),
 )
-def test_wave6_matches_frozen_reference(
+def test_wave7_matches_frozen_reference(
     count: int,
     adapter_class: type[PortfolioBetAdapter],
 ) -> None:
@@ -168,28 +156,24 @@ def test_wave6_matches_frozen_reference(
     )
 
 
-@pytest.mark.parametrize("count", (50, 51, 100, 150, 250, 500))
-def test_wave6_gemini_two_bet_matches_frozen_reference(count: int) -> None:
+@pytest.mark.parametrize("count", (100, 101, 150, 250, 500))
+def test_wave7_gemini_phase_two_matches_frozen_reference(count: int) -> None:
     history = _history(count)
-    assert BigLottoGeminiTwoBetVerifierAdapter().get_bets(
+    assert BigLottoGeminiPhaseTwoVerifierAdapter().get_bets(
         history, LotteryType.BIG_LOTTO
-    ) == _reference(BigLottoGeminiTwoBetVerifierAdapter, history)
+    ) == _reference(BigLottoGeminiPhaseTwoVerifierAdapter, history)
 
 
-@pytest.mark.parametrize("adapter_class", WAVE6_ADAPTER_CLASSES)
-def test_wave6_randomized_unpadded_draw_id_parity(
-    adapter_class: type[PortfolioBetAdapter],
-) -> None:
-    # "98" > "243" exercises the donor's text-ID Markov reversal guard.
+def test_wave7_five_me_preserves_unpadded_draw_id_markov_guard() -> None:
     history = _history(146, unpadded_offset=97)
     assert history[0].draw > history[-1].draw
-    assert adapter_class().get_bets(history, LotteryType.BIG_LOTTO) == (
-        _reference(adapter_class, history)
-    )
+    assert BigLottoFiveMeAdapter().get_bets(
+        history, LotteryType.BIG_LOTTO
+    ) == _reference(BigLottoFiveMeAdapter, history)
 
 
-@pytest.mark.parametrize("adapter_class", WAVE6_ADAPTER_CLASSES)
-def test_wave6_fixed_count_order_duplicates_and_repeatability(
+@pytest.mark.parametrize("adapter_class", WAVE7_ADAPTER_CLASSES)
+def test_wave7_fixed_count_order_duplicates_and_repeatability(
     adapter_class: type[PortfolioBetAdapter],
 ) -> None:
     history = _history(250)
@@ -202,33 +186,33 @@ def test_wave6_fixed_count_order_duplicates_and_repeatability(
     assert len(first) - len(set(first)) == len(expected) - len(set(expected))
 
 
-def test_wave6_minimum_history_boundaries() -> None:
-    for adapter_class in WAVE6_ADAPTER_CLASSES[:-1]:
+def test_wave7_minimum_history_boundaries() -> None:
+    for adapter_class in (BigLottoFiveMeAdapter, BigLottoSmartTwoBetAdapter):
         with pytest.raises(InsufficientHistory):
             adapter_class().get_bets((), LotteryType.BIG_LOTTO)
-        assert len(adapter_class().get_bets(_history(1), LotteryType.BIG_LOTTO)) == (
-            adapter_class.native_ticket_count
-        )
+        assert len(
+            adapter_class().get_bets(_history(1), LotteryType.BIG_LOTTO)
+        ) == adapter_class.native_ticket_count
     with pytest.raises(InsufficientHistory):
-        BigLottoGeminiTwoBetVerifierAdapter().get_bets(
-            _history(49), LotteryType.BIG_LOTTO
+        BigLottoGeminiPhaseTwoVerifierAdapter().get_bets(
+            _history(99), LotteryType.BIG_LOTTO
         )
     assert len(
-        BigLottoGeminiTwoBetVerifierAdapter().get_bets(
-            _history(50), LotteryType.BIG_LOTTO
+        BigLottoGeminiPhaseTwoVerifierAdapter().get_bets(
+            _history(100), LotteryType.BIG_LOTTO
         )
-    ) == 2
+    ) == 7
 
 
-@pytest.mark.parametrize("adapter_class", WAVE6_ADAPTER_CLASSES)
-def test_wave6_rejects_wrong_lottery_type(
+@pytest.mark.parametrize("adapter_class", WAVE7_ADAPTER_CLASSES)
+def test_wave7_rejects_wrong_lottery_type(
     adapter_class: type[PortfolioBetAdapter],
 ) -> None:
     with pytest.raises(UnsupportedLotteryType):
         adapter_class().get_bets(_history(250), LotteryType.POWER_LOTTO)
 
 
-def test_wave6_adapters_need_no_filesystem_clock_database_or_network(
+def test_wave7_adapters_need_no_filesystem_clock_database_or_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def forbidden(*_args: object, **_kwargs: object) -> object:
@@ -240,21 +224,21 @@ def test_wave6_adapters_need_no_filesystem_clock_database_or_network(
     monkeypatch.setattr(time, "time", forbidden)
     monkeypatch.setattr(time, "monotonic", forbidden)
     history = _history(250)
-    for adapter_class in WAVE6_ADAPTER_CLASSES:
+    for adapter_class in WAVE7_ADAPTER_CLASSES:
         assert adapter_class().get_bets(history, LotteryType.BIG_LOTTO) == (
             _reference(adapter_class, history)
         )
 
 
-def test_wave6_repeatability_across_python_hash_seeds() -> None:
+def test_wave7_repeatability_across_python_hash_seeds() -> None:
     code = """
 import json, random, sys
 sys.path.insert(0, {src!r})
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import CausalDrawRow
-from lottolab.strategies.adapters.biglotto_wave6 import (
-    BigLottoAutoOptimizerAlphaAdapter, BigLottoTenBetBacktestAdapter,
-    BigLottoTmeThreeAdapter, BigLottoGeminiTwoBetVerifierAdapter,
+from lottolab.strategies.adapters.biglotto_wave7 import (
+    BigLottoFiveMeAdapter, BigLottoSmartTwoBetAdapter,
+    BigLottoGeminiPhaseTwoVerifierAdapter,
 )
 rng = random.Random(20260802)
 history = tuple(
@@ -267,8 +251,8 @@ history = tuple(
 print(json.dumps([
     cls().get_bets(history, LotteryType.BIG_LOTTO)
     for cls in (
-        BigLottoAutoOptimizerAlphaAdapter, BigLottoTenBetBacktestAdapter,
-        BigLottoTmeThreeAdapter, BigLottoGeminiTwoBetVerifierAdapter,
+        BigLottoFiveMeAdapter, BigLottoSmartTwoBetAdapter,
+        BigLottoGeminiPhaseTwoVerifierAdapter,
     )
 ]))
 """
@@ -286,10 +270,10 @@ print(json.dumps([
     assert outputs[0] == outputs[1]
 
 
-def test_wave6_catalog_descriptors_and_response_paths() -> None:
+def test_wave7_catalog_descriptors_and_response_paths() -> None:
     catalog = production_catalog()
     assert len(catalog) == 35
-    for adapter_class in WAVE6_ADAPTER_CLASSES:
+    for adapter_class in WAVE7_ADAPTER_CLASSES:
         descriptor = catalog.get(adapter_class.strategy_id)
         assert descriptor.strategy_name == adapter_class.strategy_name
         assert descriptor.min_history == adapter_class.min_history
@@ -302,13 +286,13 @@ def test_wave6_catalog_descriptors_and_response_paths() -> None:
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9"
             in descriptor.provenance
         )
-        assert "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1" in (
+        assert "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1" in (
             descriptor.provenance
         )
 
 
-@pytest.mark.parametrize("strategy_id", tuple(WAVE6_COUNTS))
-def test_generate_one_bet_fails_closed_for_wave6_portfolios(
+@pytest.mark.parametrize("strategy_id", tuple(WAVE7_COUNTS))
+def test_generate_one_bet_fails_closed_for_wave7_portfolios(
     strategy_id: str,
 ) -> None:
     result = build_production_generate_one_bet().execute(
@@ -323,10 +307,10 @@ def test_generate_one_bet_fails_closed_for_wave6_portfolios(
     assert result.numbers is None
 
 
-def test_generate_portfolio_returns_every_wave6_native_ticket() -> None:
+def test_generate_portfolio_returns_every_wave7_native_ticket() -> None:
     use_case = build_production_generate_portfolio()
     history = _history(250)
-    for adapter_class in WAVE6_ADAPTER_CLASSES:
+    for adapter_class in WAVE7_ADAPTER_CLASSES:
         result = use_case.execute(
             GenerateOneBetInput(
                 strategy_id=adapter_class.strategy_id,
@@ -340,9 +324,9 @@ def test_generate_portfolio_returns_every_wave6_native_ticket() -> None:
         assert len(result.numbers) == adapter_class.native_ticket_count
 
 
-def test_all_wave6_ids_are_reachable_only_on_the_portfolio_path() -> None:
+def test_all_wave7_ids_are_reachable_only_on_the_portfolio_path() -> None:
     one_bet = build_production_generate_one_bet()
     portfolio = build_production_generate_portfolio()
-    assert set(WAVE6_COUNTS).isdisjoint(one_bet._adapters)
-    assert set(WAVE6_COUNTS) <= set(portfolio._adapters)
+    assert set(WAVE7_COUNTS).isdisjoint(one_bet._adapters)
+    assert set(WAVE7_COUNTS) <= set(portfolio._adapters)
     assert set(one_bet._adapters).isdisjoint(portfolio._adapters)

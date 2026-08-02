@@ -184,6 +184,11 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__biglotto_tme_optimizer__62c6cb676bad",
         "legacy_biglotto__optimized_ensemble__e05e0fde22d7",
         "legacy_biglotto__predict_biglotto_115000007_2bets__3dc7842c0511",
+        "legacy_biglotto__predict_biglotto_6bets_cluster__1fd9e8a7ae2a",
+        "legacy_biglotto__predict_biglotto_7bets_cluster__8f55b5d94669",
+        "legacy_biglotto__predict_biglotto_echo_2bet__59c20b25b1fa",
+        "legacy_biglotto__predict_biglotto_elite7__eb46a9856446",
+        "legacy_biglotto__research_variant_history__149648f9fffc",
     ]
     online_ids = {
         descriptor.strategy_id

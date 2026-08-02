@@ -258,6 +258,18 @@ def _variant_statistical_ticket(
         return _unified_frequency_ticket(history)
 
 
+def _variant_markov_ticket(
+    history: tuple[CausalDrawRow, ...],
+) -> tuple[int, ...]:
+    # Preserve the donor's exact text draw-id ordering guard.  Although the
+    # framework supplies causal history oldest-first, unpadded identifiers can
+    # compare lexicographically descending (for example, "97" > "146").
+    markov_history = history
+    if len(history) > 1 and history[0].draw > history[-1].draw:
+        markov_history = tuple(reversed(history))
+    return _unified_markov_ticket(markov_history)
+
+
 def _variant_history_portfolio(
     history: tuple[CausalDrawRow, ...],
 ) -> tuple[tuple[int, ...], ...]:
@@ -281,7 +293,7 @@ def _variant_history_portfolio(
         elif method_name == "statistical":
             ticket = _variant_statistical_ticket(variant_history)
         elif method_name == "markov":
-            ticket = _unified_markov_ticket(variant_history)
+            ticket = _variant_markov_ticket(variant_history)
         elif method_name == "frequency":
             ticket = _unified_frequency_ticket(variant_history)
         else:

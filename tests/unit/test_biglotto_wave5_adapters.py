@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import builtins
 import os
+import random
 import socket
 import sqlite3
 import subprocess
@@ -187,6 +188,27 @@ def test_variant_history_matches_frozen_reference(count: int) -> None:
         )
     ).tickets
     assert BigLottoVariantHistoryAdapter().get_bets(history, LotteryType.BIG_LOTTO) == expected
+
+
+def test_variant_history_matches_frozen_reference_for_unpadded_draw_ids() -> None:
+    rng = random.Random(20260802)
+    history = tuple(
+        CausalDrawRow(
+            draw=str(index + 1),
+            date=f"2020-{(index % 12) + 1:02d}-{(index % 28) + 1:02d}",
+            numbers=tuple(sorted(rng.sample(range(1, 50), 6))),
+        )
+        for index in range(146)
+    )
+    expected = generate_legacy_source_native_wave32_portfolio(
+        LegacySourceNativeWave32Request(
+            legacy_method_id=VARIANT_HISTORY_METHOD_ID,
+            target_draw_number="147",
+            history=_legacy_history(history),
+        )
+    ).tickets
+    actual = BigLottoVariantHistoryAdapter().get_bets(history, LotteryType.BIG_LOTTO)
+    assert actual == expected
 
 
 WAVE5_GOLDENS_250 = {

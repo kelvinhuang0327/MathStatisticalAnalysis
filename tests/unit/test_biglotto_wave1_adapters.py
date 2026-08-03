@@ -775,6 +775,10 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a",
         "legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519",
         "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d",
+        "legacy_biglotto__test_ces__78d17c530ab8",
+        "legacy_biglotto__test_dms__b63442289bd5",
+        "legacy_biglotto__test_greedy_optimizer__82df7f878ece",
+        "legacy_biglotto__test_mwsc__ba37643d6a3b",
     }
 
 

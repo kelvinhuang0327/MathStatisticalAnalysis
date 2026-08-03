@@ -1,10 +1,10 @@
 """DB-free production adapters for the frozen CES/DMS/Greedy/MWSC cluster.
 
 The donor scripts at commit ``49a25effa62fc24f40789c16be6f11bdfb41a4a9``
-couple their backtest wrappers to the legacy database.  Their prediction methods are
-already preserved by the dependency-free Wave 26 native helper, so these adapters only
-translate validated causal rows into that helper's request contract.  Ticket order and
-positional duplicates pass through unchanged.
+couple their backtest wrappers to the legacy database.  These adapters reproduce the
+frozen method bodies with dependency-free strategy-layer primitives, translating
+validated causal rows directly while preserving method order, constraints, ticket
+order, and positional duplicates.
 """
 
 # pyright: reportPrivateUsage=false

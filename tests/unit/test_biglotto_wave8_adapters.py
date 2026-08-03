@@ -13,7 +13,6 @@ import sqlite3
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
@@ -26,7 +25,6 @@ from lottolab.application.legacy_source_native_portfolios_wave26 import (
     GREEDY_METHOD_ID,
     MWSC_METHOD_ID,
     LegacySourceNativeWave26Request,
-    LegacySourceNativeWave26SourceError,
     generate_legacy_source_native_wave26_portfolio,
 )
 from lottolab.application.strategy_preserving_20_ticket import Ticket
@@ -53,6 +51,7 @@ from lottolab.strategies.adapters.biglotto_wave8 import (
     BigLottoDmsThreeAdapter,
     BigLottoGreedyThreeAdapter,
     BigLottoMwscThreeAdapter,
+    BigLottoWave8SourceError,
 )
 from lottolab.strategies.catalog import production_catalog
 
@@ -203,11 +202,6 @@ def test_wave8_minimum_history_and_boundary_closures() -> None:
     ) == 3
 
 
-@dataclass(frozen=True, slots=True)
-class _StubResult:
-    tickets: tuple[tuple[int, ...], ...]
-
-
 def test_wave8_preserves_positional_order_and_duplicate_tickets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -217,12 +211,15 @@ def test_wave8_preserves_positional_order_and_duplicate_tickets(
         (7, 8, 9, 10, 11, 12),
     )
 
-    def frozen_stub(_request: LegacySourceNativeWave26Request) -> _StubResult:
-        return _StubResult(expected)
+    def frozen_stub(
+        _method_id: str,
+        _history: tuple[CausalDrawRow, ...],
+    ) -> tuple[tuple[int, ...], ...]:
+        return expected
 
     monkeypatch.setattr(
         biglotto_wave8,
-        "generate_legacy_source_native_wave26_portfolio",
+        "_generate_frozen_portfolio",
         frozen_stub,
     )
     assert BigLottoCesThreeAdapter().get_bets(
@@ -234,20 +231,21 @@ def test_wave8_preserves_native_closure_on_direct_and_production_paths(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def closed_stub(
-        _request: LegacySourceNativeWave26Request,
-    ) -> _StubResult:
-        raise LegacySourceNativeWave26SourceError(
+        _method_id: str,
+        _history: tuple[CausalDrawRow, ...],
+    ) -> tuple[tuple[int, ...], ...]:
+        raise BigLottoWave8SourceError(
             "FROZEN_SOURCE_NATIVE_TICKET_COUNT_CHANGED"
         )
 
     monkeypatch.setattr(
         biglotto_wave8,
-        "generate_legacy_source_native_wave26_portfolio",
+        "_generate_frozen_portfolio",
         closed_stub,
     )
     history = _history(30)
     with pytest.raises(
-        LegacySourceNativeWave26SourceError,
+        BigLottoWave8SourceError,
         match="FROZEN_SOURCE_NATIVE_TICKET_COUNT_CHANGED",
     ):
         BigLottoCesThreeAdapter().get_bets(
@@ -351,21 +349,6 @@ print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         separators=(",", ":"),
     ).encode()
     assert first == second
-
-
-def test_wave8_target_identity_is_deterministic_and_collision_free() -> None:
-    history = (
-        CausalDrawRow("cutoff:lottolab-next-target", "2020-01-01", (1, 2, 3, 4, 5, 6)),
-        CausalDrawRow(
-            "cutoff:lottolab-next-target:next",
-            "2020-01-02",
-            (7, 8, 9, 10, 11, 12),
-        ),
-        CausalDrawRow("cutoff", "2020-01-03", (13, 14, 15, 16, 17, 18)),
-    )
-    target = biglotto_wave8._target_after_causal_cutoff(history)
-    assert target == "cutoff:lottolab-next-target:next:next"
-    assert target not in {row.draw for row in history}
 
 
 def test_wave8_catalog_descriptors_are_canonical_and_exact() -> None:

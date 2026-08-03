@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
@@ -536,7 +536,37 @@ def _instantiated_portfolio_adapter(
         raise AdapterIdentityMismatchError(
             f"{strategy_id}: adapter_path does not resolve to a PortfolioBetAdapter subclass"
         )
-    return adapter_class()
+    adapter_factory = cast(Callable[..., PortfolioBetAdapter], adapter_class)
+    if getattr(adapter_class, "requires_wave26_authority", False) is True:
+        return adapter_factory(wave26_authority=_generate_wave26_portfolio)
+    return adapter_factory()
+
+
+def _generate_wave26_portfolio(
+    method_id: str,
+    target_draw_number: str,
+    history: tuple[CausalDrawRow, ...],
+) -> tuple[tuple[int, ...], ...]:
+    """Translate canonical adapter rows into the application-owned Wave26 request."""
+
+    from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
+    from lottolab.application.legacy_source_native_portfolios_wave26 import (
+        LegacySourceNativeWave26Request,
+        generate_legacy_source_native_wave26_portfolio,
+    )
+    from lottolab.application.strategy_preserving_20_ticket import Ticket
+
+    legacy_history = tuple(
+        LegacyHistoryDraw(draw_number=row.draw, numbers=cast(Ticket, row.numbers))
+        for row in history
+    )
+    return generate_legacy_source_native_wave26_portfolio(
+        LegacySourceNativeWave26Request(
+            legacy_method_id=method_id,
+            target_draw_number=target_draw_number,
+            history=legacy_history,
+        )
+    ).tickets
 
 
 def build_production_generate_portfolio() -> GeneratePortfolio:

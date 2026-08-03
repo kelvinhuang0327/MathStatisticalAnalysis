@@ -2,27 +2,28 @@
 
 The donor scripts at commit ``49a25effa62fc24f40789c16be6f11bdfb41a4a9``
 couple their backtest wrappers to the legacy database.  Their prediction methods are
-already preserved by the dependency-free Wave 26 native helper, so these adapters only
-translate validated causal rows into that helper's request contract.  Ticket order and
-positional duplicates pass through unchanged.
+already preserved by the dependency-free Wave 26 native helper, so the application
+composition root injects that authority into these adapters.  Ticket order and positional
+duplicates pass through unchanged.
 """
 
 from __future__ import annotations
 
-from typing import ClassVar, cast
+from collections.abc import Callable
+from typing import ClassVar
 
-from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
-from lottolab.application.legacy_source_native_portfolios_wave26 import (
-    CES_METHOD_ID,
-    DMS_METHOD_ID,
-    GREEDY_METHOD_ID,
-    MWSC_METHOD_ID,
-    LegacySourceNativeWave26Request,
-    generate_legacy_source_native_wave26_portfolio,
-)
-from lottolab.application.strategy_preserving_20_ticket import Ticket
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import CausalDrawRow, PortfolioBetAdapter
+
+CES_METHOD_ID = "tools/test_ces.py"
+DMS_METHOD_ID = "tools/test_dms.py"
+GREEDY_METHOD_ID = "tools/test_greedy_optimizer.py"
+MWSC_METHOD_ID = "tools/test_mwsc.py"
+
+Wave26PortfolioAuthority = Callable[
+    [str, str, tuple[CausalDrawRow, ...]],
+    tuple[tuple[int, ...], ...],
+]
 
 
 def _target_after_causal_cutoff(history: tuple[CausalDrawRow, ...]) -> str:
@@ -35,35 +36,26 @@ def _target_after_causal_cutoff(history: tuple[CausalDrawRow, ...]) -> str:
     return target
 
 
-def _generate_frozen_portfolio(
-    method_id: str,
-    history: tuple[CausalDrawRow, ...],
-) -> tuple[tuple[int, ...], ...]:
-    legacy_history = tuple(
-        LegacyHistoryDraw(draw_number=row.draw, numbers=cast(Ticket, row.numbers))
-        for row in history
-    )
-    return generate_legacy_source_native_wave26_portfolio(
-        LegacySourceNativeWave26Request(
-            legacy_method_id=method_id,
-            target_draw_number=_target_after_causal_cutoff(history),
-            history=legacy_history,
-        )
-    ).tickets
-
-
 class _BigLottoWave8PortfolioAdapter(PortfolioBetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
     native_ticket_count = 3
+    requires_wave26_authority: ClassVar[bool] = True
     legacy_method_id: ClassVar[str]
+
+    def __init__(self, *, wave26_authority: Wave26PortfolioAuthority) -> None:
+        self._wave26_authority = wave26_authority
 
     def _predict_all(
         self,
         history: tuple[CausalDrawRow, ...],
         lottery_type: LotteryType,
     ) -> tuple[tuple[int, ...], ...]:
-        return _generate_frozen_portfolio(self.legacy_method_id, history)
+        return self._wave26_authority(
+            self.legacy_method_id,
+            _target_after_causal_cutoff(history),
+            history,
+        )
 
 
 class BigLottoCesThreeAdapter(_BigLottoWave8PortfolioAdapter):

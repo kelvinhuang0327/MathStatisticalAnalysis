@@ -13,11 +13,13 @@ import sqlite3
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import cast
 
 import pytest
 
+import lottolab.application.use_cases.generate_bet as generate_bet_module
 from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
 from lottolab.application.legacy_source_native_portfolios_wave26 import (
     CES_METHOD_ID,
@@ -124,17 +126,36 @@ def _legacy_history(
     )
 
 
-def _frozen_reference(
+def _wave26_authority(
     method_id: str,
+    target_draw_number: str,
     history: tuple[CausalDrawRow, ...],
 ) -> tuple[tuple[int, ...], ...]:
     return generate_legacy_source_native_wave26_portfolio(
         LegacySourceNativeWave26Request(
             legacy_method_id=method_id,
-            target_draw_number="reference-target-after-causal-cutoff",
+            target_draw_number=target_draw_number,
             history=_legacy_history(history),
         )
     ).tickets
+
+
+def _frozen_reference(
+    method_id: str,
+    history: tuple[CausalDrawRow, ...],
+) -> tuple[tuple[int, ...], ...]:
+    return _wave26_authority(
+        method_id,
+        "reference-target-after-causal-cutoff",
+        history,
+    )
+
+
+def _adapter(
+    adapter_class: type[PortfolioBetAdapter],
+) -> PortfolioBetAdapter:
+    adapter_factory = cast(Callable[..., PortfolioBetAdapter], adapter_class)
+    return adapter_factory(wave26_authority=_wave26_authority)
 
 
 def _exact_seeded_history(
@@ -199,7 +220,7 @@ def test_wave8_pr84_corrective_regressions_match_wave26_bytes(
     )
     expected_bytes = json.dumps(expected, separators=(",", ":")).encode()
 
-    actual = adapter_class().get_bets(history, LotteryType.BIG_LOTTO)
+    actual = _adapter(adapter_class).get_bets(history, LotteryType.BIG_LOTTO)
 
     assert actual == expected
     assert _frozen_reference(method_id, history) == expected
@@ -234,7 +255,7 @@ def test_wave8_matches_frozen_reference_across_history_boundaries(
 ) -> None:
     history = _history(count, seed=91000 + count)
     expected = _frozen_reference(method_id, history)
-    actual = adapter_class().get_bets(history, LotteryType.BIG_LOTTO)
+    actual = _adapter(adapter_class).get_bets(history, LotteryType.BIG_LOTTO)
     assert actual == expected
     assert len(actual) == 3
     assert len(actual) - len(set(actual)) == len(expected) - len(set(expected))
@@ -244,7 +265,7 @@ def test_wave8_preserves_randomized_non_zero_padded_draw_identity_semantics() ->
     history = _history(146, seed=99173, unpadded_offset=97)
     assert history[0].draw > history[-1].draw
     for adapter_class, method_id in ADAPTER_METHODS:
-        assert adapter_class().get_bets(
+        assert _adapter(adapter_class).get_bets(
             history, LotteryType.BIG_LOTTO
         ) == _frozen_reference(method_id, history)
 
@@ -256,24 +277,22 @@ def test_wave8_minimum_history_and_boundary_closures() -> None:
         BigLottoMwscThreeAdapter,
     ):
         with pytest.raises(InsufficientHistory):
-            adapter_class().get_bets((), LotteryType.BIG_LOTTO)
+            _adapter(adapter_class).get_bets((), LotteryType.BIG_LOTTO)
         assert len(
-            adapter_class().get_bets(_history(1), LotteryType.BIG_LOTTO)
+            _adapter(adapter_class).get_bets(_history(1), LotteryType.BIG_LOTTO)
         ) == 3
     with pytest.raises(InsufficientHistory):
-        BigLottoDmsThreeAdapter().get_bets(
+        _adapter(BigLottoDmsThreeAdapter).get_bets(
             _history(19), LotteryType.BIG_LOTTO
         )
     assert len(
-        BigLottoDmsThreeAdapter().get_bets(
+        _adapter(BigLottoDmsThreeAdapter).get_bets(
             _history(20), LotteryType.BIG_LOTTO
         )
     ) == 3
 
 
-def test_wave8_preserves_positional_order_and_duplicate_tickets(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_wave8_preserves_positional_order_and_duplicate_tickets() -> None:
     expected = (
         (1, 2, 3, 4, 5, 6),
         (1, 2, 3, 4, 5, 6),
@@ -282,16 +301,12 @@ def test_wave8_preserves_positional_order_and_duplicate_tickets(
 
     def frozen_stub(
         _method_id: str,
+        _target_draw_number: str,
         _history: tuple[CausalDrawRow, ...],
     ) -> tuple[tuple[int, ...], ...]:
         return expected
 
-    monkeypatch.setattr(
-        biglotto_wave8,
-        "_generate_frozen_portfolio",
-        frozen_stub,
-    )
-    assert BigLottoCesThreeAdapter().get_bets(
+    assert BigLottoCesThreeAdapter(wave26_authority=frozen_stub).get_bets(
         _history(1), LotteryType.BIG_LOTTO
     ) == expected
 
@@ -301,23 +316,20 @@ def test_wave8_preserves_native_closure_on_direct_and_production_paths(
 ) -> None:
     def closed_stub(
         _method_id: str,
+        _target_draw_number: str,
         _history: tuple[CausalDrawRow, ...],
     ) -> tuple[tuple[int, ...], ...]:
         raise LegacySourceNativeWave26SourceError(
             "FROZEN_SOURCE_NATIVE_TICKET_COUNT_CHANGED"
         )
 
-    monkeypatch.setattr(
-        biglotto_wave8,
-        "_generate_frozen_portfolio",
-        closed_stub,
-    )
+    monkeypatch.setattr(generate_bet_module, "_generate_wave26_portfolio", closed_stub)
     history = _history(30)
     with pytest.raises(
         LegacySourceNativeWave26SourceError,
         match="FROZEN_SOURCE_NATIVE_TICKET_COUNT_CHANGED",
     ):
-        BigLottoCesThreeAdapter().get_bets(
+        BigLottoCesThreeAdapter(wave26_authority=closed_stub).get_bets(
             history, LotteryType.BIG_LOTTO
         )
     result = build_production_generate_portfolio().execute(
@@ -340,7 +352,7 @@ def test_wave8_rejects_non_biglotto_requests(
     adapter_class: type[PortfolioBetAdapter],
 ) -> None:
     with pytest.raises(UnsupportedLotteryType):
-        adapter_class().get_bets(_history(50), LotteryType.POWER_LOTTO)
+        _adapter(adapter_class).get_bets(_history(50), LotteryType.POWER_LOTTO)
 
 
 def test_wave8_uses_no_filesystem_database_clock_or_network(
@@ -356,7 +368,7 @@ def test_wave8_uses_no_filesystem_database_clock_or_network(
     monkeypatch.setattr(time, "monotonic", forbidden)
     history = _history(60)
     for adapter_class, method_id in ADAPTER_METHODS:
-        assert adapter_class().get_bets(
+        assert _adapter(adapter_class).get_bets(
             history, LotteryType.BIG_LOTTO
         ) == _frozen_reference(method_id, history)
 
@@ -366,6 +378,9 @@ def test_wave8_repeat_bytes_are_stable_within_and_across_hash_seeds() -> None:
 import json, random, sys
 sys.path.insert(0, {src!r})
 from lottolab.domain.draws import LotteryType
+from lottolab.application.use_cases.generate_bet import (
+    GenerateOneBetInput, build_production_generate_portfolio,
+)
 from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.adapters.biglotto_wave8 import (
     BigLottoCesThreeAdapter, BigLottoDmsThreeAdapter,
@@ -379,8 +394,15 @@ history = tuple(
     )
     for index in range(60)
 )
+portfolio = build_production_generate_portfolio()
 payload = [
-    cls().get_bets(history, LotteryType.BIG_LOTTO)
+    portfolio.execute(
+        GenerateOneBetInput(
+            strategy_id=cls.strategy_id,
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=history,
+        )
+    ).numbers
     for cls in (
         BigLottoCesThreeAdapter, BigLottoDmsThreeAdapter,
         BigLottoGreedyThreeAdapter, BigLottoMwscThreeAdapter,
@@ -403,7 +425,7 @@ print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
     history = _history(60, seed=20260803, unpadded_offset=97)
     first = json.dumps(
         [
-            adapter_class().get_bets(history, LotteryType.BIG_LOTTO)
+            _adapter(adapter_class).get_bets(history, LotteryType.BIG_LOTTO)
             for adapter_class, _method_id in ADAPTER_METHODS
         ],
         sort_keys=True,
@@ -411,7 +433,7 @@ print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
     ).encode()
     second = json.dumps(
         [
-            adapter_class().get_bets(history, LotteryType.BIG_LOTTO)
+            _adapter(adapter_class).get_bets(history, LotteryType.BIG_LOTTO)
             for adapter_class, _method_id in ADAPTER_METHODS
         ],
         sort_keys=True,

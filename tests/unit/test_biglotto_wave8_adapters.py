@@ -25,6 +25,7 @@ from lottolab.application.legacy_source_native_portfolios_wave26 import (
     GREEDY_METHOD_ID,
     MWSC_METHOD_ID,
     LegacySourceNativeWave26Request,
+    LegacySourceNativeWave26SourceError,
     generate_legacy_source_native_wave26_portfolio,
 )
 from lottolab.application.strategy_preserving_20_ticket import Ticket
@@ -51,7 +52,6 @@ from lottolab.strategies.adapters.biglotto_wave8 import (
     BigLottoDmsThreeAdapter,
     BigLottoGreedyThreeAdapter,
     BigLottoMwscThreeAdapter,
-    BigLottoWave8SourceError,
 )
 from lottolab.strategies.catalog import production_catalog
 
@@ -135,6 +135,75 @@ def _frozen_reference(
             history=_legacy_history(history),
         )
     ).tickets
+
+
+def _exact_seeded_history(
+    count: int,
+    *,
+    seed: int,
+    draw_offset: int,
+) -> tuple[CausalDrawRow, ...]:
+    rng = random.Random(seed)
+    return tuple(
+        CausalDrawRow(
+            draw=str(index + draw_offset),
+            date="2020-01-01",
+            numbers=tuple(sorted(rng.sample(range(1, 50), 6))),
+        )
+        for index in range(count)
+    )
+
+
+@pytest.mark.parametrize(
+    ("adapter_class", "method_id", "count", "seed", "draw_offset", "expected"),
+    (
+        (
+            BigLottoCesThreeAdapter,
+            CES_METHOD_ID,
+            47,
+            20261261,
+            97,
+            (
+                (3, 21, 23, 28, 31, 48),
+                (21, 25, 26, 27, 41, 48),
+                (5, 26, 31, 33, 43, 48),
+            ),
+        ),
+        (
+            BigLottoDmsThreeAdapter,
+            DMS_METHOD_ID,
+            20,
+            1,
+            1,
+            (
+                (15, 26, 33, 36, 43, 48),
+                (4, 10, 11, 12, 13, 16),
+                (2, 15, 26, 32, 33, 36),
+            ),
+        ),
+    ),
+    ids=("ces-hot-cold-tie", "dms-insertion-order-tie"),
+)
+def test_wave8_pr84_corrective_regressions_match_wave26_bytes(
+    adapter_class: type[PortfolioBetAdapter],
+    method_id: str,
+    count: int,
+    seed: int,
+    draw_offset: int,
+    expected: tuple[tuple[int, ...], ...],
+) -> None:
+    history = _exact_seeded_history(
+        count,
+        seed=seed,
+        draw_offset=draw_offset,
+    )
+    expected_bytes = json.dumps(expected, separators=(",", ":")).encode()
+
+    actual = adapter_class().get_bets(history, LotteryType.BIG_LOTTO)
+
+    assert actual == expected
+    assert _frozen_reference(method_id, history) == expected
+    assert json.dumps(actual, separators=(",", ":")).encode() == expected_bytes
 
 
 @pytest.mark.parametrize(
@@ -234,7 +303,7 @@ def test_wave8_preserves_native_closure_on_direct_and_production_paths(
         _method_id: str,
         _history: tuple[CausalDrawRow, ...],
     ) -> tuple[tuple[int, ...], ...]:
-        raise BigLottoWave8SourceError(
+        raise LegacySourceNativeWave26SourceError(
             "FROZEN_SOURCE_NATIVE_TICKET_COUNT_CHANGED"
         )
 
@@ -245,7 +314,7 @@ def test_wave8_preserves_native_closure_on_direct_and_production_paths(
     )
     history = _history(30)
     with pytest.raises(
-        BigLottoWave8SourceError,
+        LegacySourceNativeWave26SourceError,
         match="FROZEN_SOURCE_NATIVE_TICKET_COUNT_CHANGED",
     ):
         BigLottoCesThreeAdapter().get_bets(
@@ -349,6 +418,21 @@ print(json.dumps(payload, sort_keys=True, separators=(",", ":")))
         separators=(",", ":"),
     ).encode()
     assert first == second
+
+
+def test_wave8_target_identity_is_deterministic_and_collision_free() -> None:
+    history = (
+        CausalDrawRow("cutoff:lottolab-next-target", "2020-01-01", (1, 2, 3, 4, 5, 6)),
+        CausalDrawRow(
+            "cutoff:lottolab-next-target:next",
+            "2020-01-02",
+            (7, 8, 9, 10, 11, 12),
+        ),
+        CausalDrawRow("cutoff", "2020-01-03", (13, 14, 15, 16, 17, 18)),
+    )
+    target = biglotto_wave8._target_after_causal_cutoff(history)
+    assert target == "cutoff:lottolab-next-target:next:next"
+    assert target not in {row.draw for row in history}
 
 
 def test_wave8_catalog_descriptors_are_canonical_and_exact() -> None:

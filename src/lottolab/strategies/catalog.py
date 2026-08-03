@@ -887,6 +887,111 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_ces__78d17c530ab8",
+        strategy_name="大樂透 CES 約束菁英取樣三注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoCesThreeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_ces.py",
+            "legacy_source_sha256:"
+            "78d17c530ab8cacf25146c5c39cb4017e3a3ffacde90a4e14ae07a8026b0bc22",
+            "legacy_symbol:test_ces",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
+            "full_strategy_catalog_id:legacy_biglotto__test_ces__78d17c530ab8",
+            "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_dms__b63442289bd5",
+        strategy_name="大樂透 DMS 動態方法選擇三注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoDmsThreeAdapter"
+        ),
+        min_history=20,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_dms.py",
+            "legacy_source_sha256:"
+            "b63442289bd5862955075bdea70bc682e16b2fe885190d16367b7b2987234dd1",
+            "legacy_symbol:test_dms",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
+            "full_strategy_catalog_id:legacy_biglotto__test_dms__b63442289bd5",
+            "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_greedy_optimizer__82df7f878ece",
+        strategy_name="大樂透 Greedy 約束最佳化三注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoGreedyThreeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_greedy_optimizer.py",
+            "legacy_source_sha256:"
+            "82df7f878ece8f9daa86b3efc1208dd85440bab8a241308fcf7a2d14c7cd6db6",
+            "legacy_symbol:test_greedy",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__test_greedy_optimizer__82df7f878ece",
+            "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_mwsc__ba37643d6a3b",
+        strategy_name="大樂透 MWSC 多視窗共識三注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoMwscThreeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_mwsc.py",
+            "legacy_source_sha256:"
+            "ba37643d6a3b533d1e61dadf91f040e667d088e95a5163007d568931bcdc6033",
+            "legacy_symbol:test_mwsc",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
+            "full_strategy_catalog_id:legacy_biglotto__test_mwsc__ba37643d6a3b",
+            "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
 )
 
 

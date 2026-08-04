@@ -54,6 +54,22 @@ const invalidFile = {
   ],
 } satisfies BatchImportPreview['files'][number]
 
+const partialFile = {
+  ...validFile,
+  source_filename: 'partial.csv',
+  source_locator: 'partial.csv',
+  status: 'PARTIAL',
+  failed_rows: 1,
+  issues: [
+    {
+      code: 'MISSING_REQUIRED_VALUE',
+      message: 'Required value is blank.',
+      row_number: 3,
+      member_name: null,
+    },
+  ],
+} satisfies BatchImportPreview['files'][number]
+
 const validPreview = {
   source_filename: 'batch-import',
   is_valid: true,
@@ -87,6 +103,15 @@ const invalidPreview = {
   },
 } satisfies BatchImportPreview
 
+const partialPreview = {
+  ...validPreview,
+  files: [partialFile],
+  summary: {
+    ...validPreview.summary,
+    failed_rows: 1,
+  },
+} satisfies BatchImportPreview
+
 const batchCommitSuccess = {
   run_id: '7de87eeb-ecc7-4c03-830a-c0fdb71254e8',
   status: 'SUCCESS',
@@ -95,6 +120,12 @@ const batchCommitSuccess = {
   files: [validFile],
   completed_at: '2026-07-16T07:00:00Z',
   error_summary: null,
+} satisfies BatchImportCommit
+
+const batchCommitFailure = {
+  ...batchCommitSuccess,
+  status: 'FAILED',
+  error_summary: 'Existing draw data conflicts; the batch inserted no draws.',
 } satisfies BatchImportCommit
 
 const drawCommitSuccess = {
@@ -267,6 +298,21 @@ describe('DataCenterPage batch ingestion', () => {
     wrapper.unmount()
   })
 
+  it('preserves partial file status in the per-file preview', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(partialPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('partial.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="batch-file-1"]').text()).toContain('PARTIAL')
+    wrapper.unmount()
+  })
+
   it('rolls back the whole batch when a committed batch conflicts', async () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
@@ -306,6 +352,28 @@ describe('DataCenterPage batch ingestion', () => {
 
     expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('FAILED')
     expect(wrapper.text()).toContain('Batch content does not match')
+    wrapper.unmount()
+  })
+
+  it('treats an HTTP-200 FAILED batch result as a failed commit', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+      .mockResolvedValueOnce(apiResponse(batchCommitFailure))
+      .mockResolvedValueOnce(apiResponse(populatedRuns))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('valid.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="batch-confirmation"]').setValue(true)
+    await wrapper.get('[data-testid="commit-selected-valid"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('FAILED')
+    expect(wrapper.text()).toContain('Existing draw data conflicts')
     wrapper.unmount()
   })
 

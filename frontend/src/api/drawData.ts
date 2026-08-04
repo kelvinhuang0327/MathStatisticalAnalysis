@@ -184,7 +184,14 @@ export async function commitBatchDrawImport(
   })
   const payload = await responseJson(response)
   if (response.status === 200 && isBatchCommit(payload)) {
-    return { ok: true, status: response.status, result: payload, preview: null }
+    const ok = payload.status === 'SUCCESS'
+    return {
+      ok,
+      status: response.status,
+      result: payload,
+      preview: null,
+      message: ok ? undefined : (payload.error_summary ?? 'Batch import was not committed.'),
+    }
   }
   if ((response.status === 409 || response.status === 422) && isErrorRecord(payload)) {
     return {

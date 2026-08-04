@@ -3,11 +3,16 @@
 from __future__ import annotations
 
 import io
+import stat
 import zipfile
 
 from lottolab.domain.batch_imports import ImportFilePayload, ImportFileStatus
 from lottolab.domain.draws import LotteryType
-from lottolab.infrastructure.imports.batch_files import preview_import_batch
+from lottolab.infrastructure.imports.batch_files import (
+    MAX_ARCHIVE_MEMBERS,
+    MAX_IMPORT_FILE_BYTES,
+    preview_import_batch,
+)
 from lottolab.infrastructure.imports.legacy_files import (
     parse_legacy_csv,
     parse_legacy_daily539_txt,
@@ -114,3 +119,43 @@ def test_batch_expansion_is_deterministic_and_reports_exclusions() -> None:
     assert statuses["notes.json"] is ImportFileStatus.EXCLUDED
     assert statuses["broken.zip"] is ImportFileStatus.FAILED
     assert any(file.issues[0].code == "UNSAFE_ARCHIVE_MEMBER" for file in preview.files)
+
+
+def test_archive_edge_limits_duplicates_and_symlinks_are_reported() -> None:
+    duplicate_archive = io.BytesIO()
+    with zipfile.ZipFile(duplicate_archive, "w") as archive:
+        archive.writestr("same.csv", b"")
+        archive.writestr("same.csv", b"")
+
+    symlink_archive = io.BytesIO()
+    with zipfile.ZipFile(symlink_archive, "w") as archive:
+        info = zipfile.ZipInfo("link.csv")
+        info.create_system = 3
+        info.external_attr = (stat.S_IFLNK | 0o777) << 16
+        archive.writestr(info, b"target.csv")
+
+    member_limit_archive = io.BytesIO()
+    with zipfile.ZipFile(member_limit_archive, "w") as archive:
+        for index in range(MAX_ARCHIVE_MEMBERS + 1):
+            archive.writestr(f"member-{index}.csv", b"")
+
+    oversized_archive = zip_bytes(("oversized.csv", b"x" * (MAX_IMPORT_FILE_BYTES + 1)))
+    preview = preview_import_batch(
+        (
+            ImportFilePayload("duplicate.zip", duplicate_archive.getvalue()),
+            ImportFilePayload("symlink.zip", symlink_archive.getvalue()),
+            ImportFilePayload("member-limit.zip", member_limit_archive.getvalue()),
+            ImportFilePayload("oversized.zip", oversized_archive),
+            ImportFilePayload("oversized.csv", b"x" * (MAX_IMPORT_FILE_BYTES + 1)),
+        )
+    )
+
+    issue_codes = {
+        issue.code
+        for file in preview.files
+        for issue in file.issues
+    }
+    assert "DUPLICATE_ARCHIVE_MEMBER" in issue_codes
+    assert "UNSAFE_ARCHIVE_MEMBER" in issue_codes
+    assert "ARCHIVE_MEMBER_LIMIT_EXCEEDED" in issue_codes
+    assert "FILE_SIZE_LIMIT_EXCEEDED" in issue_codes

@@ -196,9 +196,12 @@ async function commitFiles(entries: BatchFile[]): Promise<void> {
     if (!isCurrentSelection(selection)) return
     for (const entry of entries) {
       entry.result = outcome.result
-      entry.commitStatus = outcome.ok ? 'SUCCESS' : 'FAILED'
-      entry.error = outcome.ok ? '' : (outcome.message ?? 'Batch import was not committed.')
-      if (outcome.ok) entry.contentBase64 = ''
+      const committed = outcome.ok && outcome.result?.status === 'SUCCESS'
+      entry.commitStatus = committed ? 'SUCCESS' : 'FAILED'
+      entry.error = committed
+        ? ''
+        : (outcome.message ?? outcome.result?.error_summary ?? 'Batch import was not committed.')
+      if (committed) entry.contentBase64 = ''
     }
   } catch (error: unknown) {
     if (!isCurrentSelection(selection) || isAbort(error)) return
@@ -303,11 +306,14 @@ function applyBatchPreview(
     entry.fileResults = preview ? resultsForEntry(preview, entry) : []
     const accepted = entryAcceptedRows(entry)
     const hasFailure = entry.fileResults.some((file) => file.status === 'FAILED')
+    const hasPartial = entry.fileResults.some((file) => file.status === 'PARTIAL')
     const hasInvalid = entry.fileResults.some((file) => file.status === 'INVALID')
     const hasExcluded = entry.fileResults.length > 0 && entry.fileResults.every((file) => file.status === 'EXCLUDED')
     entry.previewStatus = hasFailure
       ? 'ERROR'
-      : accepted > 0 && !hasInvalid
+      : accepted > 0 && hasPartial
+        ? 'PARTIAL'
+        : accepted > 0 && !hasInvalid
         ? 'VALID'
         : hasExcluded
           ? 'EXCLUDED'

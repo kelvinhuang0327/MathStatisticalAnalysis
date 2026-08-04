@@ -65,3 +65,25 @@ all required exclusions, deterministic batch manifests, API preview/commit,
 mixed-lottery persistence, duplicate semantics, and atomic conflict rollback.
 Real archive verification is performed only under the task-owned run root
 `LEGACY_SINGLE_MULTI_FILE_IMPORT_FULL_VERTICAL_MIGRATION_R1`.
+
+## Filesystem execution ledger
+
+This ledger separates repository edits from generated verification state and
+checkout metadata.
+
+- Repository files written and retained: the files in the implementation
+  commit and its bounded remediation commit; the final list is mechanically
+  available from `git diff --name-only d19a220d6fb22dd956409db8fb760e2e73477acb1 HEAD`.
+  No repository files were deleted.
+- Task-owned runtime outputs retained under
+  `/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/LEGACY_SINGLE_MULTI_FILE_IMPORT_FULL_VERTICAL_MIGRATION_R1`:
+  `preview.json`, `real-multifile.json`, `single-multifile-parity.json`,
+  `lottolab.db`, and `single-file/lottolab.db`.
+- Task-worktree-only generated materialization: the Python environment,
+  frontend dependency directory, and frontend build output are ignored local
+  build artifacts; they are not repository deliverables.
+- Canonical checkout, donor tree, downloaded archives, and reference databases
+  were read-only inputs. No files were written to those locations.
+- Git metadata and the ephemeral task worktree are lifecycle metadata, not
+  product edits. The canonical checkout remains clean and the task branch is
+  retained until the authorized Draft PR and CI lifecycle completes.

@@ -63,7 +63,11 @@ def test_forwarding_is_complete_idempotent_and_source_immutable(
 ) -> None:
     database, first, second = forwarded_p638_database
     assert verify_schema_read_only(database) is True
-    assert first.strategy_count == 10
+    # The frozen R4 source bundle only ever covered 8 strategy identities;
+    # power_fourier_rhythm_2bet and power_orthogonal_5bet were reconstructed
+    # later (P638 all-10 vertical) and are absent from this specific
+    # snapshot rather than "excluded" -- this run's own registry is 8/8.
+    assert first.strategy_count == 8
     assert first.draw_count == 1933
     assert first.source_target_count == 15464
     assert first.source_complete_target_count == 15224
@@ -75,7 +79,7 @@ def test_forwarding_is_complete_idempotent_and_source_immutable(
     assert first.forwarded_excluded_target_count == 240
     assert first.forwarded_failed_target_count == 0
     assert first.forwarded_ticket_count == 39963
-    assert first.excluded_strategy_count == 2
+    assert first.excluded_strategy_count == 0
     assert second.run_id == first.run_id
     assert second.import_identity_sha256 == first.import_identity_sha256
     assert second.is_idempotent_replay is True
@@ -91,23 +95,17 @@ def test_repository_exposes_registry_replay_metrics_and_ranges(
     runs = repository.list_runs(limit=10, offset=0)
     assert runs.total_count == 1
     run = runs.items[0]
-    assert run.strategy_count == 10
+    assert run.strategy_count == 8
     assert run.draw_count == 1933
     assert run.first_draw_number == "97000001"
     assert run.last_draw_number == "115000061"
 
     strategies = repository.list_strategies(run.run_id, limit=200, offset=0)
     assert strategies is not None
-    assert len(strategies.items) == 10
-    assert sum(item.replay_status == "R4_RESULT_REUSABLE" for item in strategies.items) == 8
-    assert sum(item.replay_status != "R4_RESULT_REUSABLE" for item in strategies.items) == 2
+    assert len(strategies.items) == 8
+    assert all(item.replay_status == "R4_RESULT_REUSABLE" for item in strategies.items)
+    assert all(item.exclusion_reason is None for item in strategies.items)
     assert sum(item.ticket_count for item in strategies.items) == 39963
-    excluded_strategy = next(
-        item for item in strategies.items if item.strategy_id == "power_fourier_rhythm_2bet"
-    )
-    assert excluded_strategy.replay_status == "EXCLUDED_UNRESOLVED_CONTRACT"
-    assert "bounded P47/P56/P128 adapter wave" in (excluded_strategy.exclusion_reason or "")
-    assert excluded_strategy.ticket_count == 0
 
     replay = repository.list_replay(run.run_id, query=_replay_query())
     assert replay is not None
@@ -165,7 +163,7 @@ def test_p638_api_is_lottery_scoped_and_factory_is_lazy(
     runs_response = client.get("/api/v1/p638-historical/runs?limit=10&offset=0")
     assert runs_response.status_code == 200
     run = runs_response.json()["items"][0]
-    assert run["strategy_count"] == 10
+    assert run["strategy_count"] == 8
     run_id = run["run_id"]
     assert calls == 1
 
@@ -173,7 +171,7 @@ def test_p638_api_is_lottery_scoped_and_factory_is_lazy(
         f"/api/v1/p638-historical/runs/{run_id}/strategies?limit=200&offset=0"
     )
     assert strategies_response.status_code == 200
-    assert len(strategies_response.json()["items"]) == 10
+    assert len(strategies_response.json()["items"]) == 8
 
     replay_response = client.get(
         f"/api/v1/p638-historical/runs/{run_id}/replay?strategy_id=zonal_entropy_2bet&status=COMPLETE&limit=5&offset=0"
@@ -200,7 +198,7 @@ def test_p638_api_is_lottery_scoped_and_factory_is_lazy(
         "/api/v1/historical-results/runs?lottery_type=POWER_LOTTO&limit=10&offset=0"
     )
     assert generic_runs.status_code == 200
-    assert generic_runs.json()["items"][0]["strategy_count"] == 10
+    assert generic_runs.json()["items"][0]["strategy_count"] == 8
     assert generic_runs.json()["items"][0]["portfolio_count"] == 15464
 
 

@@ -1,7 +1,13 @@
+# pyright: reportPrivateUsage=false
+
 """Focused contract tests for the pure POWER_LOTTO Wave 1 adapters."""
 
 from __future__ import annotations
 
+import cmath
+import itertools
+import math
+import random
 from collections.abc import Mapping
 
 import pytest
@@ -17,6 +23,17 @@ from lottolab.strategies.adapters.powerlotto_wave1 import (
     WAVE1_STRATEGIES,
     P638HistoryRow,
     P638StrategySpec,
+    _acb_scores,
+    _bluestein_dft,
+    _cold_ticket,
+    _fft_complex_pow2,
+    _fourier_rhythm_fixed_window_scores,
+    _fourier_scores,
+    _ifft_complex_pow2,
+    _markov_ticket,
+    _midfreq_scores,
+    _power_fourier_rhythm_tickets,
+    _power_orthogonal_tickets,
     coerce_p638_history,
 )
 from lottolab.strategies.powerlotto_second_zone import second_zone_predict
@@ -30,9 +47,11 @@ _EXPECTED_IDS = (
     "fourier_rhythm_3bet",
     "power_precision_3bet",
     "pp3_freqort_4bet",
+    "power_fourier_rhythm_2bet",
+    "power_orthogonal_5bet",
 )
-_EXPECTED_COUNTS = (2, 2, 2, 2, 3, 3, 3, 4)
-_EXPECTED_MIN_HISTORY = (30, 10, 10, 30, 30, 10, 30, 30)
+_EXPECTED_COUNTS = (2, 2, 2, 2, 3, 3, 3, 4, 2, 5)
+_EXPECTED_MIN_HISTORY = (30, 10, 10, 30, 30, 10, 30, 30, 100, 30)
 
 
 def _row(index: int) -> P638HistoryRow:
@@ -55,9 +74,7 @@ def test_wave1_selection_metadata_is_ordered_and_provenanced() -> None:
     assert tuple(spec.native_ticket_count for spec in WAVE1_STRATEGIES) == _EXPECTED_COUNTS
     assert tuple(spec.min_history for spec in WAVE1_STRATEGIES) == _EXPECTED_MIN_HISTORY
     assert all(spec.source_paths and spec.provenance for spec in WAVE1_STRATEGIES)
-    assert tuple(item.strategy_id for item in WAVE1_BLOCKED_STRATEGIES) == (
-        "power_orthogonal_5bet",
-    )
+    assert WAVE1_BLOCKED_STRATEGIES == ()
 
 
 @pytest.mark.parametrize("spec", WAVE1_STRATEGIES, ids=lambda spec: spec.strategy_id)
@@ -160,3 +177,276 @@ def test_coerce_history_is_immutable_and_fail_closed() -> None:
                 }
             ]
         )
+
+
+# ─── Exact arbitrary-length FFT machinery (Bluestein) ──────────────────────
+
+
+def _naive_dft(values: tuple[complex, ...]) -> tuple[complex, ...]:
+    """O(n^2) reference DFT: the textbook definition, no algorithmic tricks."""
+
+    n = len(values)
+    return tuple(
+        sum(values[t] * cmath.exp(-2j * math.pi * k * t / n) for t in range(n))
+        for k in range(n)
+    )
+
+
+@pytest.mark.parametrize("length", [1, 2, 3, 5, 7, 8, 13, 16, 100, 128, 499, 500, 501])
+def test_bluestein_dft_matches_naive_dft(length: int) -> None:
+    rng = random.Random(f"bluestein-{length}")
+    signal = tuple(rng.uniform(-1.0, 1.0) for _ in range(length))
+    got = _bluestein_dft(signal)
+    want = _naive_dft(tuple(complex(value) for value in signal))
+    assert len(got) == length
+    for actual, expected in zip(got, want, strict=True):
+        assert abs(actual - expected) < 1e-9
+
+
+def test_fft_pow2_round_trip() -> None:
+    rng = random.Random("fft-pow2-round-trip")
+    for length in (1, 2, 4, 8, 16, 32, 64, 128, 1024):
+        values = tuple(complex(rng.uniform(-1, 1), rng.uniform(-1, 1)) for _ in range(length))
+        restored = _ifft_complex_pow2(_fft_complex_pow2(values))
+        for original, recovered in zip(values, restored, strict=True):
+            assert abs(original - recovered) < 1e-9
+
+
+# ─── power_fourier_rhythm_2bet golden vectors ──────────────────────────────
+#
+# Independent oracle for the donor's fixed-window bitstream FFT
+# (tools/power_fourier_rhythm.py::detect_dominant_period /
+# fourier_rhythm_predict), built from the naive DFT above rather than the
+# production Bluestein path, so this proves the *donor formula* -- window
+# fixed at 500 with trailing zero-padding, strictly-positive frequency bins
+# only, period gated to (2, window/2) -- is transcribed correctly, not just
+# that Bluestein reproduces its own production sibling.
+
+
+def _oracle_fourier_rhythm_scores(
+    history: tuple[P638HistoryRow, ...], window: int = 500
+) -> dict[int, float]:
+    recent = history[-window:] if len(history) > window else history
+    scores: dict[int, float] = {}
+    for number in range(1, 39):
+        bitstream = [0.0] * window
+        for index, row in enumerate(recent):
+            if number in row.numbers:
+                bitstream[index] = 1.0
+        if sum(bitstream) < 2:
+            scores[number] = 0.0
+            continue
+        mean = sum(bitstream) / window
+        spectrum = _naive_dft(tuple(complex(value - mean) for value in bitstream))
+        half = window // 2
+        dominant_index = max(range(1, half), key=lambda index: (abs(spectrum[index]), -index))
+        period = window / dominant_index
+        if not (2 < period < window / 2):
+            scores[number] = 0.0
+            continue
+        last_hit = max(index for index, value in enumerate(bitstream) if value)
+        gap = (window - 1) - last_hit
+        scores[number] = 1.0 / (abs(gap - period) + 1.0)
+    return scores
+
+
+def _oracle_power_fourier_rhythm_tickets(
+    history: tuple[P638HistoryRow, ...],
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    scores = _oracle_fourier_rhythm_scores(history)
+    ranked = sorted(range(1, 39), key=lambda number: (-scores[number], number))
+    return (tuple(sorted(ranked[0:6])), tuple(sorted(ranked[6:12])))
+
+
+@pytest.mark.parametrize("history_length", [100, 150, 299, 300, 500, 700])
+def test_power_fourier_rhythm_matches_donor_formula_oracle(history_length: int) -> None:
+    rng = random.Random(f"power-fourier-rhythm-{history_length}")
+    history = tuple(
+        P638HistoryRow(
+            draw=f"{index + 1:09d}",
+            date="2020-01-01",
+            numbers=tuple(sorted(rng.sample(range(1, 39), 6))),
+            second_number=rng.randint(1, 8),
+        )
+        for index in range(history_length)
+    )
+    scores = _fourier_rhythm_fixed_window_scores(history)
+    oracle_scores = _oracle_fourier_rhythm_scores(history)
+    assert scores.keys() == oracle_scores.keys()
+    for number, score in scores.items():
+        assert score == pytest.approx(oracle_scores[number], abs=1e-9)
+    assert _power_fourier_rhythm_tickets(history) == _oracle_power_fourier_rhythm_tickets(history)
+
+
+def test_power_fourier_rhythm_pads_short_history_with_trailing_zeros() -> None:
+    """Fewer than 500 causal draws must not shrink the FFT window."""
+
+    rng = random.Random("power-fourier-rhythm-short-history")
+    history = tuple(
+        P638HistoryRow(
+            draw=f"{index + 1:09d}",
+            date="2020-01-01",
+            numbers=tuple(sorted(rng.sample(range(1, 39), 6))),
+            second_number=rng.randint(1, 8),
+        )
+        for index in range(100)
+    )
+    scores = _fourier_rhythm_fixed_window_scores(history)
+    assert scores == _oracle_fourier_rhythm_scores(history)
+    # Every non-zero score must reflect a period strictly inside (2, 250);
+    # a shrunk (unpadded) window would instead gate against (2, 50).
+    for number, score in scores.items():
+        if score > 0.0:
+            assert 2 < 500 / _dominant_index_for(history, number) < 250
+
+
+def _dominant_index_for(history: tuple[P638HistoryRow, ...], number: int) -> int:
+    window = 500
+    recent = history[-window:] if len(history) > window else history
+    bitstream = [0.0] * window
+    for index, row in enumerate(recent):
+        if number in row.numbers:
+            bitstream[index] = 1.0
+    mean = sum(bitstream) / window
+    spectrum = _naive_dft(tuple(complex(value - mean) for value in bitstream))
+    half = window // 2
+    return max(range(1, half), key=lambda index: (abs(spectrum[index]), -index))
+
+
+def test_power_fourier_rhythm_native_ticket_shape() -> None:
+    spec = next(
+        spec for spec in WAVE1_STRATEGIES if spec.strategy_id == "power_fourier_rhythm_2bet"
+    )
+    rng = random.Random("power-fourier-rhythm-shape")
+    history = tuple(
+        {
+            "draw": str(index + 1),
+            "date": "2020-01-01",
+            "numbers": sorted(rng.sample(range(1, 39), 6)),
+            "special": rng.randint(1, 8),
+        }
+        for index in range(120)
+    )
+    tickets = spec.predict_tickets(history, LotteryType.POWER_LOTTO)
+    assert len(tickets) == 2
+    first_zone_numbers = [ticket[0] for ticket in tickets]
+    assert len(set(first_zone_numbers[0]) | set(first_zone_numbers[1])) == 12
+    assert not set(first_zone_numbers[0]) & set(first_zone_numbers[1])
+
+
+# ─── power_orthogonal_5bet golden vectors ──────────────────────────────────
+#
+# Independent oracles for the donor's actual-length (unpadded) helper family
+# (lottery_api/models/p128_wave2_phase2_adapters.py), reimplemented from the
+# donor's literal formulas rather than by calling the production module.
+
+
+def _oracle_midfreq_scores(
+    history: tuple[P638HistoryRow, ...], window: int = 100
+) -> dict[int, float]:
+    recent = history[-window:] if len(history) >= window else history
+    w = len(recent)
+    expected = w * 6 / 38
+    freq: dict[int, int] = {}
+    for row in recent:
+        for number in row.numbers:
+            freq[number] = freq.get(number, 0) + 1
+    return {number: -abs(freq.get(number, 0) - expected) for number in range(1, 39)}
+
+
+def _oracle_cold_top6(history: tuple[P638HistoryRow, ...], window: int = 100) -> tuple[int, ...]:
+    recent = history[-window:] if len(history) >= window else history
+    freq: dict[int, int] = {}
+    for row in recent:
+        for number in row.numbers:
+            freq[number] = freq.get(number, 0) + 1
+    ranked = sorted(range(1, 39), key=lambda number: (freq.get(number, 0), number))
+    return tuple(sorted(ranked[:6]))
+
+
+def _oracle_markov30_top6(history: tuple[P638HistoryRow, ...], window: int = 30) -> tuple[int, ...]:
+    recent = history[-window:] if len(history) >= window else history
+    if len(recent) < 2:
+        return tuple(range(1, 7))
+    transition: dict[int, dict[int, float]] = {number: {} for number in range(1, 39)}
+    row_totals: dict[int, float] = {number: 0.0 for number in range(1, 39)}
+    for previous, current in itertools.pairwise(recent):
+        for a in previous.numbers:
+            for b in current.numbers:
+                transition[a][b] = transition[a].get(b, 0.0) + 1.0
+                row_totals[a] += 1.0
+    scores = {number: 0.0 for number in range(1, 39)}
+    last_numbers = recent[-1].numbers
+    for a in last_numbers:
+        total = row_totals[a]
+        if total == 0:
+            continue
+        for number in range(1, 39):
+            scores[number] += transition[a].get(number, 0.0) / total
+    ranked = sorted(range(1, 39), key=lambda number: (-scores[number], number))
+    return tuple(sorted(ranked[:6]))
+
+
+def _oracle_acb_scores(history: tuple[P638HistoryRow, ...], window: int = 100) -> dict[int, float]:
+    recent = history[-window:] if len(history) >= window else history
+    w = len(recent)
+    p = 6 / 38
+    expected = w * p
+    variance = w * p * (1 - p)
+    sigma = math.sqrt(variance) if variance > 0 else 1.0
+    freq: dict[int, int] = {}
+    for row in recent:
+        for number in row.numbers:
+            freq[number] = freq.get(number, 0) + 1
+    return {number: (expected - freq.get(number, 0)) / sigma for number in range(1, 39)}
+
+
+@pytest.mark.parametrize("history_length", [30, 45, 99, 100, 250])
+def test_power_orthogonal_matches_donor_formula_oracle(history_length: int) -> None:
+    rng = random.Random(f"power-orthogonal-{history_length}")
+    history = tuple(
+        P638HistoryRow(
+            draw=f"{index + 1:09d}",
+            date="2020-01-01",
+            numbers=tuple(sorted(rng.sample(range(1, 39), 6))),
+            second_number=rng.randint(1, 8),
+        )
+        for index in range(history_length)
+    )
+
+    bet1, bet2, bet3, bet4, bet5 = _power_orthogonal_tickets(history)
+
+    oracle_midfreq = _oracle_midfreq_scores(history)
+    ranked_midfreq = sorted(range(1, 39), key=lambda number: (-oracle_midfreq[number], number))
+    assert bet1 == tuple(sorted(ranked_midfreq[:6]))
+
+    # bet2 (Fourier500) reuses the existing accepted radix-2 approximation
+    # already shipped for six sibling strategies -- assert composition, not
+    # a fresh numpy-exactness claim for that one signal.
+    from lottolab.strategies.adapters.powerlotto_wave1 import _FOURIER_LONG_WINDOW, _ranked_ticket
+
+    assert bet2 == _ranked_ticket(_fourier_scores(history, _FOURIER_LONG_WINDOW))
+
+    assert bet3 == _oracle_cold_top6(history)
+    assert bet4 == _oracle_markov30_top6(history)
+
+    oracle_acb = _oracle_acb_scores(history)
+    ranked_acb = sorted(range(1, 39), key=lambda number: (-oracle_acb[number], number))
+    assert bet5 == tuple(sorted(ranked_acb[:6]))
+
+
+def test_power_orthogonal_reuses_existing_helpers_directly() -> None:
+    """Every position must be present, including position 2 (RSR-6's concern)."""
+
+    history = _history(60)
+    tickets = _power_orthogonal_tickets(history)
+    assert len(tickets) == 5
+    assert tickets[0] == _ranked_ticket_helper(_midfreq_scores(history))
+    assert tickets[2] == _cold_ticket(history, 100)
+    assert tickets[3] == _markov_ticket(history, 30)
+    assert tickets[4] == _ranked_ticket_helper(_acb_scores(history))
+
+
+def _ranked_ticket_helper(scores: dict[int, float]) -> tuple[int, ...]:
+    ranked = sorted(range(1, 39), key=lambda number: (-scores[number], number))
+    return tuple(sorted(ranked[:6]))

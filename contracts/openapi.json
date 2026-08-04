@@ -2172,6 +2172,70 @@
         }
       }
     },
+    "/api/v1/p638-historical/runs/{run_id}/rankings": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Rankings",
+        "operationId": "listP638HistoricalRankings",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638RankingPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-analytics/rankings": {
       "get": {
         "tags": [
@@ -10411,6 +10475,172 @@
           "last_draw_date"
         ],
         "title": "P638MetricsResponse"
+      },
+      "P638PrizeTierCountView": {
+        "properties": {
+          "prize_tier": {
+            "type": "string",
+            "title": "Prize Tier"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prize_tier",
+          "count"
+        ],
+        "title": "P638PrizeTierCountView"
+      },
+      "P638RankingPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638RankingView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Historical winning rank describes past replay only and does not guarantee future winning."
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items"
+        ],
+        "title": "P638RankingPageResponse"
+      },
+      "P638RankingView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "eligible_target_count": {
+            "type": "integer",
+            "title": "Eligible Target Count"
+          },
+          "winning_target_count": {
+            "type": "integer",
+            "title": "Winning Target Count"
+          },
+          "winning_target_rate": {
+            "type": "number",
+            "title": "Winning Target Rate"
+          },
+          "total_complete_ticket_count": {
+            "type": "integer",
+            "title": "Total Complete Ticket Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "ticket_winning_rate": {
+            "type": "number",
+            "title": "Ticket Winning Rate"
+          },
+          "prize_tier_counts": {
+            "items": {
+              "$ref": "#/components/schemas/P638PrizeTierCountView"
+            },
+            "type": "array",
+            "title": "Prize Tier Counts"
+          },
+          "highest_prize_tier_achieved": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Prize Tier Achieved"
+          },
+          "first_eligible_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Eligible Draw"
+          },
+          "last_eligible_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Eligible Draw"
+          },
+          "prize_rule_version": {
+            "type": "string",
+            "title": "Prize Rule Version"
+          },
+          "prize_rule_provenance": {
+            "type": "string",
+            "title": "Prize Rule Provenance"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "rank",
+          "strategy_id",
+          "strategy_version",
+          "native_ticket_count",
+          "eligible_target_count",
+          "winning_target_count",
+          "winning_target_rate",
+          "total_complete_ticket_count",
+          "winning_ticket_count",
+          "ticket_winning_rate",
+          "prize_tier_counts",
+          "highest_prize_tier_achieved",
+          "first_eligible_draw",
+          "last_eligible_draw",
+          "prize_rule_version",
+          "prize_rule_provenance",
+          "provenance"
+        ],
+        "title": "P638RankingView"
       },
       "P638ReplayPageResponse": {
         "properties": {

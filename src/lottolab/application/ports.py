@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date
 from pathlib import Path
 from typing import Protocol, runtime_checkable
@@ -36,7 +36,23 @@ from lottolab.application.historical_queries import (
 )
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
+from lottolab.domain.historical_archive import ArchiveMember, ParsedDraw, StructuralIssue
+from lottolab.domain.historical_draw_import import (
+    ExistingHistoricalDraw,
+    HistoricalDrawCandidate,
+    HistoricalImportBatchStatus,
+    HistoricalImportChunkResult,
+    HistoricalImportFileResult,
+    HistoricalImportFilter,
+    HistoricalImportRowResult,
+    ImportRunStorage,
+    StoredImportRun,
+)
+from lottolab.domain.historical_results import (
+    HistoricalImportCommitResult,
+    HistoricalLotteryType,
+    HistoricalRunImport,
+)
 from lottolab.domain.ingestion import DrawCsvParseResult
 from lottolab.domain.ordered_candidate_materialization import (
     OrderedCandidateSourceSnapshot,
@@ -71,6 +87,32 @@ class DrawRepository(Protocol):
 class DrawImportRepository(Protocol):
     def apply_valid_import(self, result: DrawCsvParseResult) -> ImportCommitResult:
         """Atomically apply a fully valid canonical parse result."""
+        ...
+
+
+class HistoricalArchiveParser(Protocol):
+    """Safe, streaming-compatible parser port for legacy archive inputs."""
+
+    def parse_csv_bytes(
+        self,
+        content: bytes,
+        *,
+        archive_path: str,
+        member_path: str,
+    ) -> tuple[ArchiveMember, tuple[ParsedDraw, ...], tuple[StructuralIssue, ...]]:
+        ...
+
+    def parse_zip_bytes(
+        self,
+        content: bytes,
+        *,
+        archive_path: str,
+    ) -> tuple[
+        tuple[ArchiveMember, ...],
+        tuple[ParsedDraw, ...],
+        tuple[StructuralIssue, ...],
+        bool,
+    ]:
         ...
 
 
@@ -211,6 +253,81 @@ class HistoricalResultQueryRepository(Protocol):
 
 
 type HistoricalResultQueryRepositoryFactory = Callable[[], HistoricalResultQueryRepository]
+
+
+class HistoricalDrawImportRepository(Protocol):
+    """Read/write port for legacy draw archive imports in Historical V2."""
+
+    def ensure_schema(self) -> None:
+        """Create or migrate only the explicitly configured Historical DB."""
+        ...
+
+    def load_existing_draws(
+        self,
+    ) -> Mapping[tuple[HistoricalLotteryType, str], ExistingHistoricalDraw]:
+        """Read completed Historical V2 draw snapshots for duplicate resolution."""
+        ...
+
+    def create_run(
+        self,
+        *,
+        lottery_filter: HistoricalImportFilter,
+        import_identity_sha256: str,
+        files: Sequence[HistoricalImportFileResult],
+        rows: Sequence[HistoricalImportRowResult],
+    ) -> ImportRunStorage:
+        """Persist import provenance and row audit metadata before chunk writes."""
+        ...
+
+    def commit_chunk(
+        self,
+        *,
+        run_id: str,
+        chunk_index: int,
+        batch_identity_sha256: str,
+        candidates: Sequence[HistoricalDrawCandidate],
+        row_ids: Sequence[int],
+    ) -> HistoricalImportChunkResult:
+        """Commit one bounded chunk and its Historical V2 draw snapshots."""
+        ...
+
+    def record_failed_chunk(
+        self,
+        *,
+        run_id: str,
+        chunk_index: int,
+        candidate_rows: int,
+        row_ids: Sequence[int],
+        error_message: str,
+    ) -> HistoricalImportChunkResult:
+        """Record a failed chunk while preserving earlier committed chunks."""
+        ...
+
+    def update_files(
+        self,
+        *,
+        run_id: str,
+        files: Sequence[HistoricalImportFileResult],
+    ) -> None:
+        """Persist final per-file counts and statuses after chunk processing."""
+        ...
+
+    def complete_run(
+        self,
+        *,
+        run_id: str,
+        status: HistoricalImportBatchStatus,
+        error_message: str | None = None,
+    ) -> None:
+        """Close the import audit without changing completed Historical V2 rows."""
+        ...
+
+    def get_run(self, run_id: str) -> StoredImportRun | None:
+        """Read one import run and its provenance rows."""
+        ...
+
+
+type HistoricalDrawImportRepositoryFactory = Callable[[], HistoricalDrawImportRepository]
 
 
 @runtime_checkable

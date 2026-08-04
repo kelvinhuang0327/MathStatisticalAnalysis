@@ -17,12 +17,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
+V2_SCHEMA_VERSION = 2
 MIGRATION_NAME = "create_historical_results_schema"
 V2_MIGRATION_NAME = "expand_historical_lottery_types"
+V3_MIGRATION_NAME = "add_historical_draw_import_tables"
 BUSY_TIMEOUT_MS = 5_000
 
-TABLE_NAMES = (
+_BASE_TABLE_NAMES = (
     "historical_schema_migrations",
     "historical_result_run",
     "historical_strategy_snapshot",
@@ -31,6 +33,16 @@ TABLE_NAMES = (
     "historical_ticket",
     "historical_count_summary",
 )
+
+_IMPORT_TABLE_NAMES = (
+    "historical_import_run",
+    "historical_import_file",
+    "historical_import_row",
+    "historical_import_chunk",
+)
+
+TABLE_NAMES = _BASE_TABLE_NAMES
+CURRENT_TABLE_NAMES = _BASE_TABLE_NAMES + _IMPORT_TABLE_NAMES
 
 
 class HistoricalSchemaError(RuntimeError):
@@ -267,6 +279,121 @@ V2_MIGRATION_STATEMENTS = (
 V2_MIGRATION_SQL = ";\n".join(statement.strip() for statement in V2_MIGRATION_STATEMENTS) + ";\n"
 V2_MIGRATION_CHECKSUM = hashlib.sha256(V2_MIGRATION_SQL.encode("utf-8")).hexdigest()
 
+V3_MIGRATION_STATEMENTS = (
+    """
+    CREATE TABLE historical_import_run (
+        id TEXT PRIMARY KEY,
+        status TEXT NOT NULL CHECK (
+            status IN ('PREVIEW', 'COMPLETED', 'PARTIAL_SUCCESS', 'FAILED')
+        ),
+        lottery_filter TEXT NOT NULL CHECK (
+            lottery_filter IN ('ALL', 'DAILY_539', 'BIG_LOTTO', 'POWER_LOTTO')
+        ),
+        import_identity_sha256 TEXT NOT NULL CHECK (length(import_identity_sha256) = 64),
+        started_at TEXT NOT NULL,
+        completed_at TEXT NULL,
+        error_code TEXT NULL,
+        error_summary TEXT NULL,
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE historical_import_file (
+        id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        sequence INTEGER NOT NULL CHECK (sequence >= 0),
+        filename TEXT NOT NULL,
+        source_sha256 TEXT NOT NULL CHECK (length(source_sha256) = 64),
+        status TEXT NOT NULL CHECK (
+            status IN ('ACCEPTED', 'PARTIAL_SUCCESS', 'EXCLUDED', 'FAILED')
+        ),
+        discovered_members INTEGER NOT NULL CHECK (discovered_members >= 0),
+        accepted_files INTEGER NOT NULL CHECK (accepted_files >= 0),
+        excluded_files INTEGER NOT NULL CHECK (excluded_files >= 0),
+        parsed_rows INTEGER NOT NULL CHECK (parsed_rows >= 0),
+        valid_rows INTEGER NOT NULL CHECK (valid_rows >= 0),
+        excluded_rows INTEGER NOT NULL CHECK (excluded_rows >= 0),
+        duplicate_rows INTEGER NOT NULL CHECK (duplicate_rows >= 0),
+        conflict_rows INTEGER NOT NULL CHECK (conflict_rows >= 0),
+        imported_rows INTEGER NOT NULL CHECK (imported_rows >= 0),
+        failed_rows INTEGER NOT NULL CHECK (failed_rows >= 0),
+        created_at TEXT NOT NULL,
+        UNIQUE (run_id, sequence),
+        FOREIGN KEY (run_id) REFERENCES historical_import_run(id) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE TABLE historical_import_chunk (
+        id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        chunk_index INTEGER NOT NULL CHECK (chunk_index >= 0),
+        candidate_rows INTEGER NOT NULL CHECK (candidate_rows >= 0),
+        imported_rows INTEGER NOT NULL CHECK (imported_rows >= 0),
+        failed_rows INTEGER NOT NULL CHECK (failed_rows >= 0),
+        status TEXT NOT NULL CHECK (status IN ('COMMITTED', 'FAILED')),
+        historical_run_ids_json TEXT NOT NULL,
+        error_code TEXT NULL,
+        error_message TEXT NULL,
+        started_at TEXT NOT NULL,
+        completed_at TEXT NOT NULL,
+        UNIQUE (run_id, chunk_index),
+        FOREIGN KEY (run_id) REFERENCES historical_import_run(id) ON DELETE CASCADE
+    )
+    """,
+    """
+    CREATE TABLE historical_import_row (
+        id INTEGER PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        file_id TEXT NOT NULL,
+        chunk_id TEXT NULL,
+        member_path TEXT NOT NULL,
+        member_sha256 TEXT NULL CHECK (
+            member_sha256 IS NULL OR length(member_sha256) = 64
+        ),
+        source_row_number INTEGER NULL CHECK (source_row_number IS NULL OR source_row_number >= 1),
+        lottery_type TEXT NULL CHECK (
+            lottery_type IS NULL OR lottery_type IN ('DAILY_539', 'BIG_LOTTO', 'POWER_LOTTO')
+        ),
+        draw_number TEXT NULL,
+        draw_date TEXT NULL,
+        main_numbers_json TEXT NULL,
+        special_numbers_json TEXT NULL,
+        normalized_record_hash TEXT NULL CHECK (
+            normalized_record_hash IS NULL OR length(normalized_record_hash) = 64
+        ),
+        disposition TEXT NOT NULL CHECK (
+            disposition IN ('ACCEPTED', 'EXCLUDED', 'DUPLICATE_SKIPPED',
+                            'CONFLICT_REJECTED', 'FAILED')
+        ),
+        reason_code TEXT NULL,
+        message TEXT NULL,
+        historical_run_id TEXT NULL,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (run_id) REFERENCES historical_import_run(id) ON DELETE CASCADE,
+        FOREIGN KEY (file_id) REFERENCES historical_import_file(id) ON DELETE CASCADE,
+        FOREIGN KEY (chunk_id) REFERENCES historical_import_chunk(id) ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE INDEX idx_historical_import_file_history
+    ON historical_import_file (run_id, sequence)
+    """,
+    """
+    CREATE INDEX idx_historical_import_row_file
+    ON historical_import_row (run_id, file_id, source_row_number, id)
+    """,
+    """
+    CREATE INDEX idx_historical_import_row_key
+    ON historical_import_row (lottery_type, draw_number, disposition)
+    """,
+    """
+    CREATE INDEX idx_historical_import_chunk_history
+    ON historical_import_chunk (run_id, chunk_index)
+    """,
+)
+V3_MIGRATION_SQL = ";\n".join(statement.strip() for statement in V3_MIGRATION_STATEMENTS) + ";\n"
+V3_MIGRATION_CHECKSUM = hashlib.sha256(V3_MIGRATION_SQL.encode("utf-8")).hexdigest()
+
 _SCHEMA_SQL_TOKEN = re.compile(
     r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^]]*\]|[(),]|[^\s(),]+"
 )
@@ -298,6 +425,10 @@ _EXPECTED_SCHEMA_SQL_BY_NAME_V2 = {
     "idx_historical_result_run_identity_completed": V2_MIGRATION_STATEMENTS[9],
     "idx_historical_result_run_history": V2_MIGRATION_STATEMENTS[10],
     "idx_historical_result_run_lottery_completed": V2_MIGRATION_STATEMENTS[11],
+}
+_EXPECTED_SCHEMA_SQL_BY_NAME_V3 = {
+    **_EXPECTED_SCHEMA_SQL_BY_NAME_V2,
+    **{_object_name(statement): statement for statement in V3_MIGRATION_STATEMENTS},
 }
 
 
@@ -354,9 +485,26 @@ def initialize_schema(database: Path) -> None:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            CURRENT_SCHEMA_VERSION,
+                            V2_SCHEMA_VERSION,
                             V2_MIGRATION_NAME,
                             V2_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version == 2:
+                    for statement in V3_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO historical_schema_migrations
+                            (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            V3_MIGRATION_NAME,
+                            V3_MIGRATION_CHECKSUM,
                             _utc_now(),
                         ),
                     )
@@ -465,14 +613,22 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
         raise HistoricalSchemaMigrationError("migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise HistoricalSchemaMigrationError("database schema is newer than this LottoLab build")
-    if versions not in ([1], [1, CURRENT_SCHEMA_VERSION]):
+    if versions not in (
+        [1],
+        [1, V2_SCHEMA_VERSION],
+        [1, V2_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION],
+    ):
         raise HistoricalSchemaMigrationError("migration history is incomplete")
     _, initial_name, initial_checksum = rows[0]
     if initial_name != MIGRATION_NAME or initial_checksum != MIGRATION_CHECKSUM:
         raise HistoricalSchemaChecksumError("migration checksum does not match")
-    if versions == [1, CURRENT_SCHEMA_VERSION]:
+    if versions in ([1, V2_SCHEMA_VERSION], [1, V2_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION]):
         _, current_name, current_checksum = rows[1]
         if current_name != V2_MIGRATION_NAME or current_checksum != V2_MIGRATION_CHECKSUM:
+            raise HistoricalSchemaChecksumError("migration checksum does not match")
+    if versions == [1, V2_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION]:
+        _, current_name, current_checksum = rows[2]
+        if current_name != V3_MIGRATION_NAME or current_checksum != V3_MIGRATION_CHECKSUM:
             raise HistoricalSchemaChecksumError("migration checksum does not match")
 
     version = versions[-1]
@@ -483,7 +639,19 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
 def _verify_schema_semantics(
     connection: sqlite3.Connection, table_names: set[str], *, version: int
 ) -> None:
-    if table_names != set(TABLE_NAMES):
+    expected_sql_by_name = (
+        _EXPECTED_SCHEMA_SQL_BY_NAME_V3
+        if version == CURRENT_SCHEMA_VERSION
+        else _EXPECTED_SCHEMA_SQL_BY_NAME_V2
+        if version == 2
+        else _EXPECTED_SCHEMA_SQL_BY_NAME
+    )
+    expected_table_names = (
+        CURRENT_TABLE_NAMES
+        if version == CURRENT_SCHEMA_VERSION
+        else _BASE_TABLE_NAMES
+    )
+    if table_names != set(expected_table_names):
         raise HistoricalSchemaMigrationError(f"database tables do not match version {version}")
 
     schema_rows = connection.execute(
@@ -494,11 +662,6 @@ def _verify_schema_semantics(
         """
     ).fetchall()
     seen_names: set[str] = set()
-    expected_sql_by_name = (
-        _EXPECTED_SCHEMA_SQL_BY_NAME_V2
-        if version == CURRENT_SCHEMA_VERSION
-        else _EXPECTED_SCHEMA_SQL_BY_NAME
-    )
     for row in schema_rows:
         name = str(row[1])
         actual_sql = row[3]
@@ -515,7 +678,7 @@ def _verify_schema_semantics(
             f"database schema objects do not match version {version}"
         )
 
-    for table in TABLE_NAMES:
+    for table in expected_table_names:
         foreign_keys = connection.execute(f"PRAGMA foreign_key_list({table})").fetchall()
         for fk_row in foreign_keys:
             on_delete = str(fk_row[6])

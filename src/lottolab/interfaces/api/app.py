@@ -31,6 +31,7 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
     GenerateLiveZoneSplitBets,
     build_production_generate_live_zone_split_bets,
 )
+from lottolab.application.use_cases.historical_draw_import import HistoricalDrawImportService
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PackagedB649MultiTicketRecordReader,
@@ -52,6 +53,9 @@ from lottolab.interfaces.api.draw_data import (
     create_draw_data_router,
 )
 from lottolab.interfaces.api.generate_bet import create_generate_bet_router
+from lottolab.interfaces.api.historical_draw_imports import (
+    create_historical_draw_import_router,
+)
 from lottolab.interfaces.api.historical_prefix_analytics import (
     HistoricalPrefixAnalyticsResultProvider,
     create_historical_prefix_analytics_router,
@@ -97,6 +101,7 @@ def create_app(
     b649_multi_ticket_record_reader_factory: (
         B649MultiTicketRecordReaderFactory | None
     ) = None,
+    historical_draw_import_service: HistoricalDrawImportService | None = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -173,6 +178,7 @@ def create_app(
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))
+    app.include_router(create_historical_draw_import_router(historical_draw_import_service))
     app.include_router(
         create_historical_prefix_analytics_router(
             historical_prefix_analytics_result_provider

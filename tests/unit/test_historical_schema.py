@@ -10,6 +10,7 @@ import pytest
 from lottolab.infrastructure.persistence import historical_schema as schema_module
 from lottolab.infrastructure.persistence.historical_schema import (
     CURRENT_SCHEMA_VERSION,
+    CURRENT_TABLE_NAMES,
     MIGRATION_CHECKSUM,
     MIGRATION_NAME,
     MIGRATION_STATEMENTS,
@@ -146,7 +147,7 @@ def test_verify_schema_read_only_returns_false_for_absent_database(tmp_path: Pat
     assert not database.exists()
 
 
-def test_initialize_schema_creates_all_six_domain_tables_plus_migrations(tmp_path: Path) -> None:
+def test_initialize_schema_creates_domain_and_import_tables_plus_migrations(tmp_path: Path) -> None:
     database = tmp_path / "historical.db"
     initialize_schema(database)
     with open_database(database, read_only=True) as connection:
@@ -156,7 +157,7 @@ def test_initialize_schema_creates_all_six_domain_tables_plus_migrations(tmp_pat
                 "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
             )
         }
-    assert names == set(TABLE_NAMES)
+    assert names == set(CURRENT_TABLE_NAMES)
     domain_tables = {
         "historical_result_run",
         "historical_strategy_snapshot",
@@ -169,7 +170,7 @@ def test_initialize_schema_creates_all_six_domain_tables_plus_migrations(tmp_pat
     with sqlite3.connect(database) as connection:
         assert connection.execute(
             "SELECT version FROM historical_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,)]
+        ).fetchall() == [(1,), (2,), (3,)]
 
 
 def test_initialize_schema_is_idempotent_and_byte_stable(tmp_path: Path) -> None:
@@ -261,7 +262,7 @@ def test_populated_v1_database_is_readable_then_migrates_with_exact_row_preserva
     with open_database(database, read_only=True) as connection:
         assert connection.execute(
             "SELECT version FROM historical_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,)]
+        ).fetchall() == [(1,), (2,), (3,)]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         indexes = {row[1] for row in connection.execute("PRAGMA index_list(historical_result_run)")}
         assert "idx_historical_result_run_lottery_completed" in indexes
@@ -387,7 +388,7 @@ def test_newer_unknown_schema_version_fails_closed(tmp_path: Path) -> None:
     initialize_schema(database)
     with sqlite3.connect(database) as connection:
         connection.execute(
-            "INSERT INTO historical_schema_migrations VALUES (3, 'future', 'future', 'future')"
+            "INSERT INTO historical_schema_migrations VALUES (4, 'future', 'future', 'future')"
         )
         connection.commit()
     with pytest.raises(HistoricalSchemaMigrationError):

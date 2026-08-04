@@ -13,6 +13,7 @@ import {
   type IngestionRun,
 } from '../../api/drawData'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import HistoricalDrawImportPanel from './HistoricalDrawImportPanel.vue'
 
 type FileStatus = 'READING' | 'NOT_PREVIEWED' | 'PREVIEWING' | 'VALID' | 'INVALID' | 'ERROR'
 type CommitStatus = 'NOT_COMMITTED' | 'COMMITTING' | 'SUCCESS' | 'FAILED'
@@ -458,6 +459,8 @@ onBeforeUnmount(() => {
         {{ syncMessage }}
       </p>
     </article>
+
+    <HistoricalDrawImportPanel />
 
     <section class="log-section" aria-labelledby="ingestion-log-title">
       <div class="section-heading">

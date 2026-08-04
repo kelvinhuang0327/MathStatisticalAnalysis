@@ -23,9 +23,15 @@ from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import date, datetime
-from enum import StrEnum
 from pathlib import Path, PurePosixPath
 from typing import Any, Protocol, cast
+
+from lottolab.domain.historical_archive import (
+    ArchiveMember,
+    DatasetClassification,
+    ParsedDraw,
+    StructuralIssue,
+)
 
 REPORT_SCHEMA_VERSION = "lottery-download-archive-audit-v1"
 POWER_LOTTO = "POWER_LOTTO"
@@ -43,16 +49,6 @@ _ISO_DATE = re.compile(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", flags=re.ASCII)
 _RAW_DATE_FORMATS = ("%Y/%m/%d", "%Y-%m-%d", "%Y.%m.%d")
 
 
-class DatasetClassification(StrEnum):
-    """Classification derived from member headers and row content."""
-
-    POWER_LOTTO = POWER_LOTTO
-    DAILY_539 = DAILY_539
-    BIG_LOTTO = BIG_LOTTO
-    OTHER = "OTHER"
-    UNKNOWN = "UNKNOWN"
-
-
 @dataclass(frozen=True, slots=True)
 class ArchiveFile:
     """One regular file directly under the configured download root."""
@@ -62,57 +58,6 @@ class ArchiveFile:
     sha256: str
     detected_format: str
     integrity_status: str
-
-
-@dataclass(frozen=True, slots=True)
-class ArchiveMember:
-    """Inventory metadata for one ZIP member."""
-
-    archive_path: str
-    member_path: str
-    uncompressed_byte_size: int
-    compressed_byte_size: int
-    crc32: int
-    member_sha256: str | None
-    detected_encoding: str | None
-    classification: DatasetClassification
-    row_count: int
-    header_fields: tuple[str, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class StructuralIssue:
-    """A deterministic, location-aware parsing or validation observation."""
-
-    code: str
-    message: str
-    archive_path: str | None = None
-    member_path: str | None = None
-    row_number: int | None = None
-    draw_identity: str | None = None
-    severity: str = "ERROR"
-    details: tuple[tuple[str, str], ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class ParsedDraw:
-    """One retained draw row with raw and normalized values side by side."""
-
-    archive_path: str
-    member_path: str
-    row_number: int
-    classification: DatasetClassification
-    raw_lottery_name: str
-    raw_draw_identity: str
-    raw_date_text: str
-    draw_identity: str | None
-    draw_date: str | None
-    raw_zone1: tuple[str, ...]
-    zone1: tuple[int, ...]
-    raw_zone2: str | None
-    zone2: int | None
-    raw_fields: tuple[str, ...]
-    issues: tuple[StructuralIssue, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1071,6 +1016,67 @@ def parse_csv_bytes(
     return result.member, result.draws, result.issues
 
 
+def parse_zip_bytes(
+    content: bytes,
+    *,
+    archive_path: str = "fixture.zip",
+) -> tuple[tuple[ArchiveMember, ...], tuple[ParsedDraw, ...], tuple[StructuralIssue, ...], bool]:
+    """Parse one in-memory ZIP with the same safe member rules as the auditor.
+
+    Uploaded files must not be materialized on disk merely to reuse the archive
+    auditor.  This entry point keeps ZIP traversal, path checks, CSV decoding,
+    and issue codes on the same code path as downloaded-archive auditing.
+    """
+
+    try:
+        with zipfile.ZipFile(io.BytesIO(content), "r") as archive:
+            return _parse_zip_archive(archive, relative_path=archive_path)
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        return (
+            (),
+            (),
+            (
+                _issue(
+                    "CORRUPT_ZIP_ARCHIVE",
+                    "ZIP archive could not be opened or enumerated",
+                    archive_path=archive_path,
+                    details={"error": str(exc)},
+                ),
+            ),
+            True,
+        )
+
+
+class DownloadedDrawArchiveParser:
+    """Application-facing adapter over the auditor's safe in-memory parsers."""
+
+    @staticmethod
+    def parse_csv_bytes(
+        content: bytes,
+        *,
+        archive_path: str,
+        member_path: str,
+    ) -> tuple[ArchiveMember, tuple[ParsedDraw, ...], tuple[StructuralIssue, ...]]:
+        return parse_csv_bytes(
+            content,
+            archive_path=archive_path,
+            member_path=member_path,
+        )
+
+    @staticmethod
+    def parse_zip_bytes(
+        content: bytes,
+        *,
+        archive_path: str,
+    ) -> tuple[
+        tuple[ArchiveMember, ...],
+        tuple[ParsedDraw, ...],
+        tuple[StructuralIssue, ...],
+        bool,
+    ]:
+        return parse_zip_bytes(content, archive_path=archive_path)
+
+
 def _finish_member(
     *,
     archive_path: str,
@@ -1112,8 +1118,8 @@ def _hash_member(raw_member: _ReadableBinary) -> str:
     return digest.hexdigest()
 
 
-def _parse_zip_file(
-    path: Path,
+def _parse_zip_archive(
+    archive: zipfile.ZipFile,
     *,
     relative_path: str,
 ) -> tuple[tuple[ArchiveMember, ...], tuple[ParsedDraw, ...], tuple[StructuralIssue, ...], bool]:
@@ -1122,155 +1128,167 @@ def _parse_zip_file(
     issues: list[StructuralIssue] = []
     corrupt = False
     seen_names: set[str] = set()
+    for info in sorted(archive.infolist(), key=lambda item: item.filename):
+        member_path = info.filename
+        if member_path in seen_names:
+            issues.append(
+                _issue(
+                    "DUPLICATE_MEMBER_NAME",
+                    "ZIP archive contains duplicate member names",
+                    archive_path=relative_path,
+                    member_path=member_path,
+                )
+            )
+        seen_names.add(member_path)
+        if not _safe_member_name(member_path):
+            issues.append(
+                _issue(
+                    "UNSAFE_MEMBER_PATH",
+                    "unsafe ZIP member path was not opened or extracted",
+                    archive_path=relative_path,
+                    member_path=member_path,
+                )
+            )
+            members.append(
+                ArchiveMember(
+                    archive_path=relative_path,
+                    member_path=member_path,
+                    uncompressed_byte_size=info.file_size,
+                    compressed_byte_size=info.compress_size,
+                    crc32=info.CRC,
+                    member_sha256=None,
+                    detected_encoding=None,
+                    classification=DatasetClassification.UNKNOWN,
+                    row_count=0,
+                    header_fields=(),
+                )
+            )
+            continue
+        if info.flag_bits & 0x1:
+            issues.append(
+                _issue(
+                    "ENCRYPTED_MEMBER",
+                    "encrypted ZIP member is unsupported and was not opened",
+                    archive_path=relative_path,
+                    member_path=member_path,
+                )
+            )
+            corrupt = True
+            members.append(
+                ArchiveMember(
+                    archive_path=relative_path,
+                    member_path=member_path,
+                    uncompressed_byte_size=info.file_size,
+                    compressed_byte_size=info.compress_size,
+                    crc32=info.CRC,
+                    member_sha256=None,
+                    detected_encoding=None,
+                    classification=DatasetClassification.UNKNOWN,
+                    row_count=0,
+                    header_fields=(),
+                )
+            )
+            continue
+        try:
+            if info.is_dir():
+                member_hash = hashlib.sha256(b"").hexdigest()
+                members.append(
+                    ArchiveMember(
+                        archive_path=relative_path,
+                        member_path=member_path,
+                        uncompressed_byte_size=info.file_size,
+                        compressed_byte_size=info.compress_size,
+                        crc32=info.CRC,
+                        member_sha256=member_hash,
+                        detected_encoding=None,
+                        classification=DatasetClassification.UNKNOWN,
+                        row_count=0,
+                        header_fields=(),
+                    )
+                )
+                continue
+            with archive.open(info, "r") as raw_member:
+                if member_path.casefold().endswith(".csv"):
+                    result = _parse_csv_member(
+                        raw_member,
+                        archive_path=relative_path,
+                        member_path=member_path,
+                        uncompressed_size=info.file_size,
+                        compressed_size=info.compress_size,
+                        crc32=info.CRC,
+                    )
+                else:
+                    member_hash = _hash_member(raw_member)
+                    result = _MemberParseResult(
+                        member=ArchiveMember(
+                            archive_path=relative_path,
+                            member_path=member_path,
+                            uncompressed_byte_size=info.file_size,
+                            compressed_byte_size=info.compress_size,
+                            crc32=info.CRC,
+                            member_sha256=member_hash,
+                            detected_encoding=None,
+                            classification=DatasetClassification.UNKNOWN,
+                            row_count=0,
+                            header_fields=(),
+                        ),
+                        draws=(),
+                        issues=(),
+                        corrupt=False,
+                    )
+            members.append(result.member)
+            draws.extend(result.draws)
+            issues.extend(result.issues)
+        except (NotImplementedError, RuntimeError, ValueError, zipfile.BadZipFile) as exc:
+            corrupt = True
+            issues.append(
+                _issue(
+                    "CORRUPT_OR_UNSUPPORTED_MEMBER",
+                    "ZIP member could not be read completely",
+                    archive_path=relative_path,
+                    member_path=member_path,
+                    details={"error": str(exc)},
+                )
+            )
+            members.append(
+                ArchiveMember(
+                    archive_path=relative_path,
+                    member_path=member_path,
+                    uncompressed_byte_size=info.file_size,
+                    compressed_byte_size=info.compress_size,
+                    crc32=info.CRC,
+                    member_sha256=None,
+                    detected_encoding=None,
+                    classification=DatasetClassification.UNKNOWN,
+                    row_count=0,
+                    header_fields=(),
+                )
+            )
+    return tuple(members), tuple(draws), tuple(issues), corrupt
+
+
+def _parse_zip_file(
+    path: Path,
+    *,
+    relative_path: str,
+) -> tuple[tuple[ArchiveMember, ...], tuple[ParsedDraw, ...], tuple[StructuralIssue, ...], bool]:
     try:
         with zipfile.ZipFile(path, "r") as archive:
-            for info in sorted(archive.infolist(), key=lambda item: item.filename):
-                member_path = info.filename
-                if member_path in seen_names:
-                    issues.append(
-                        _issue(
-                            "DUPLICATE_MEMBER_NAME",
-                            "ZIP archive contains duplicate member names",
-                            archive_path=relative_path,
-                            member_path=member_path,
-                        )
-                    )
-                seen_names.add(member_path)
-                if not _safe_member_name(member_path):
-                    issues.append(
-                        _issue(
-                            "UNSAFE_MEMBER_PATH",
-                            "unsafe ZIP member path was not opened or extracted",
-                            archive_path=relative_path,
-                            member_path=member_path,
-                        )
-                    )
-                    members.append(
-                        ArchiveMember(
-                            archive_path=relative_path,
-                            member_path=member_path,
-                            uncompressed_byte_size=info.file_size,
-                            compressed_byte_size=info.compress_size,
-                            crc32=info.CRC,
-                            member_sha256=None,
-                            detected_encoding=None,
-                            classification=DatasetClassification.UNKNOWN,
-                            row_count=0,
-                            header_fields=(),
-                        )
-                    )
-                    continue
-                if info.flag_bits & 0x1:
-                    issues.append(
-                        _issue(
-                            "ENCRYPTED_MEMBER",
-                            "encrypted ZIP member is unsupported and was not opened",
-                            archive_path=relative_path,
-                            member_path=member_path,
-                        )
-                    )
-                    corrupt = True
-                    members.append(
-                        ArchiveMember(
-                            archive_path=relative_path,
-                            member_path=member_path,
-                            uncompressed_byte_size=info.file_size,
-                            compressed_byte_size=info.compress_size,
-                            crc32=info.CRC,
-                            member_sha256=None,
-                            detected_encoding=None,
-                            classification=DatasetClassification.UNKNOWN,
-                            row_count=0,
-                            header_fields=(),
-                        )
-                    )
-                    continue
-                try:
-                    if info.is_dir():
-                        member_hash = hashlib.sha256(b"").hexdigest()
-                        members.append(
-                            ArchiveMember(
-                                archive_path=relative_path,
-                                member_path=member_path,
-                                uncompressed_byte_size=info.file_size,
-                                compressed_byte_size=info.compress_size,
-                                crc32=info.CRC,
-                                member_sha256=member_hash,
-                                detected_encoding=None,
-                                classification=DatasetClassification.UNKNOWN,
-                                row_count=0,
-                                header_fields=(),
-                            )
-                        )
-                        continue
-                    with archive.open(info, "r") as raw_member:
-                        if member_path.casefold().endswith(".csv"):
-                            result = _parse_csv_member(
-                                raw_member,
-                                archive_path=relative_path,
-                                member_path=member_path,
-                                uncompressed_size=info.file_size,
-                                compressed_size=info.compress_size,
-                                crc32=info.CRC,
-                            )
-                        else:
-                            member_hash = _hash_member(raw_member)
-                            result = _MemberParseResult(
-                                member=ArchiveMember(
-                                    archive_path=relative_path,
-                                    member_path=member_path,
-                                    uncompressed_byte_size=info.file_size,
-                                    compressed_byte_size=info.compress_size,
-                                    crc32=info.CRC,
-                                    member_sha256=member_hash,
-                                    detected_encoding=None,
-                                    classification=DatasetClassification.UNKNOWN,
-                                    row_count=0,
-                                    header_fields=(),
-                                ),
-                                draws=(),
-                                issues=(),
-                                corrupt=False,
-                            )
-                    members.append(result.member)
-                    draws.extend(result.draws)
-                    issues.extend(result.issues)
-                except (NotImplementedError, RuntimeError, ValueError, zipfile.BadZipFile) as exc:
-                    corrupt = True
-                    issues.append(
-                        _issue(
-                            "CORRUPT_OR_UNSUPPORTED_MEMBER",
-                            "ZIP member could not be read completely",
-                            archive_path=relative_path,
-                            member_path=member_path,
-                            details={"error": str(exc)},
-                        )
-                    )
-                    members.append(
-                        ArchiveMember(
-                            archive_path=relative_path,
-                            member_path=member_path,
-                            uncompressed_byte_size=info.file_size,
-                            compressed_byte_size=info.compress_size,
-                            crc32=info.CRC,
-                            member_sha256=None,
-                            detected_encoding=None,
-                            classification=DatasetClassification.UNKNOWN,
-                            row_count=0,
-                            header_fields=(),
-                        )
-                    )
+            return _parse_zip_archive(archive, relative_path=relative_path)
     except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
-        corrupt = True
-        issues.append(
-            _issue(
-                "CORRUPT_ZIP_ARCHIVE",
-                "ZIP archive could not be opened or enumerated",
-                archive_path=relative_path,
-                details={"error": str(exc)},
-            )
+        return (
+            (),
+            (),
+            (
+                _issue(
+                    "CORRUPT_ZIP_ARCHIVE",
+                    "ZIP archive could not be opened or enumerated",
+                    archive_path=relative_path,
+                    details={"error": str(exc)},
+                ),
+            ),
+            True,
         )
-    return tuple(members), tuple(draws), tuple(issues), corrupt
 
 
 def _inventory_download_root(
@@ -2311,6 +2329,7 @@ __all__ = [
     "AuditSummary",
     "CandidateAuditResult",
     "DatasetClassification",
+    "DownloadedDrawArchiveParser",
     "ParsedDraw",
     "ReconciliationMismatch",
     "ReferenceAuditResult",
@@ -2320,6 +2339,7 @@ __all__ = [
     "exit_code",
     "main",
     "parse_csv_bytes",
+    "parse_zip_bytes",
     "sha256_file",
     "summary_to_dict",
     "write_reports",

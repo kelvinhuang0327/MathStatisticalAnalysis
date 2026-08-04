@@ -1598,6 +1598,172 @@
         }
       }
     },
+    "/api/v1/historical-results/imports/preview": {
+      "post": {
+        "tags": [
+          "historical-draw-imports"
+        ],
+        "summary": "Preview Historical Draw Import",
+        "operationId": "previewHistoricalDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoricalImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/historical-results/imports": {
+      "post": {
+        "tags": [
+          "historical-draw-imports"
+        ],
+        "summary": "Commit Historical Draw Import",
+        "operationId": "commitHistoricalDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HistoricalImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalImportResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/historical-results/imports/{run_id}": {
+      "get": {
+        "tags": [
+          "historical-draw-imports"
+        ],
+        "summary": "Get Historical Draw Import",
+        "operationId": "getHistoricalDrawImport",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoricalImportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-analytics/rankings": {
       "get": {
         "tags": [
@@ -5005,6 +5171,539 @@
           "draw_sha256"
         ],
         "title": "HistoricalDrawIdentityView"
+      },
+      "HistoricalImportBatchStatus": {
+        "type": "string",
+        "enum": [
+          "PREVIEW",
+          "COMPLETED",
+          "PARTIAL_SUCCESS",
+          "FAILED"
+        ],
+        "title": "HistoricalImportBatchStatus"
+      },
+      "HistoricalImportChunkView": {
+        "properties": {
+          "chunk_index": {
+            "type": "integer",
+            "title": "Chunk Index"
+          },
+          "candidate_rows": {
+            "type": "integer",
+            "title": "Candidate Rows"
+          },
+          "imported_rows": {
+            "type": "integer",
+            "title": "Imported Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "historical_run_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Historical Run Ids"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalImportReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "chunk_index",
+          "candidate_rows",
+          "imported_rows",
+          "failed_rows",
+          "status",
+          "historical_run_ids",
+          "error_code",
+          "error_message"
+        ],
+        "title": "HistoricalImportChunkView"
+      },
+      "HistoricalImportDisposition": {
+        "type": "string",
+        "enum": [
+          "ACCEPTED",
+          "EXCLUDED",
+          "DUPLICATE_SKIPPED",
+          "CONFLICT_REJECTED",
+          "FAILED"
+        ],
+        "title": "HistoricalImportDisposition"
+      },
+      "HistoricalImportFileRequest": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 0,
+            "title": "Content Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "content_base64"
+        ],
+        "title": "HistoricalImportFileRequest"
+      },
+      "HistoricalImportFileStatus": {
+        "type": "string",
+        "enum": [
+          "ACCEPTED",
+          "PARTIAL_SUCCESS",
+          "EXCLUDED",
+          "FAILED"
+        ],
+        "title": "HistoricalImportFileStatus"
+      },
+      "HistoricalImportFileView": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "title": "Filename"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HistoricalImportFileStatus"
+          },
+          "discovered_members": {
+            "type": "integer",
+            "title": "Discovered Members"
+          },
+          "accepted_files": {
+            "type": "integer",
+            "title": "Accepted Files"
+          },
+          "excluded_files": {
+            "type": "integer",
+            "title": "Excluded Files"
+          },
+          "parsed_rows": {
+            "type": "integer",
+            "title": "Parsed Rows"
+          },
+          "valid_rows": {
+            "type": "integer",
+            "title": "Valid Rows"
+          },
+          "excluded_rows": {
+            "type": "integer",
+            "title": "Excluded Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows": {
+            "type": "integer",
+            "title": "Conflict Rows"
+          },
+          "imported_rows": {
+            "type": "integer",
+            "title": "Imported Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalImportRowView"
+            },
+            "type": "array",
+            "title": "Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "filename",
+          "source_sha256",
+          "status",
+          "discovered_members",
+          "accepted_files",
+          "excluded_files",
+          "parsed_rows",
+          "valid_rows",
+          "excluded_rows",
+          "duplicate_rows",
+          "conflict_rows",
+          "imported_rows",
+          "failed_rows",
+          "rows"
+        ],
+        "title": "HistoricalImportFileView"
+      },
+      "HistoricalImportFilter": {
+        "type": "string",
+        "enum": [
+          "ALL",
+          "DAILY_539",
+          "BIG_LOTTO",
+          "POWER_LOTTO"
+        ],
+        "title": "HistoricalImportFilter"
+      },
+      "HistoricalImportReason": {
+        "type": "string",
+        "enum": [
+          "UNSUPPORTED_FILE_TYPE",
+          "EMPTY_FILE",
+          "CORRUPT_ZIP",
+          "UNSAFE_ARCHIVE_MEMBER",
+          "ENCRYPTED_ARCHIVE_MEMBER",
+          "BINGO_EXCLUDED",
+          "LOTTERY_FILTER_MISMATCH",
+          "UNKNOWN_GAME_TYPE",
+          "UNSUPPORTED_TARGET_LOTTERY",
+          "UNSUPPORTED_BONUS_DRAW",
+          "INVALID_DRAW_IDENTITY",
+          "INVALID_DRAW_DATE",
+          "INVALID_NUMBER_COUNT",
+          "INVALID_NUMBER_VALUE",
+          "INVALID_NUMBER_RANGE",
+          "DUPLICATE_NUMBER",
+          "INVALID_SPECIAL_NUMBER",
+          "INVALID_SECOND_NUMBER",
+          "DUPLICATE_SKIPPED",
+          "CONFLICT_REJECTED",
+          "PARSE_ERROR",
+          "PERSISTENCE_FAILURE"
+        ],
+        "title": "HistoricalImportReason"
+      },
+      "HistoricalImportRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalImportFileRequest"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Files"
+          },
+          "lottery_filter": {
+            "$ref": "#/components/schemas/HistoricalImportFilter",
+            "default": "ALL"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "HistoricalImportRequest"
+      },
+      "HistoricalImportResponse": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HistoricalImportBatchStatus"
+          },
+          "lottery_filter": {
+            "$ref": "#/components/schemas/HistoricalImportFilter"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalImportFileView"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalImportChunkView"
+            },
+            "type": "array",
+            "title": "Chunks"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/HistoricalImportSummaryView"
+          },
+          "row_results": {
+            "items": {
+              "$ref": "#/components/schemas/HistoricalImportRowView"
+            },
+            "type": "array",
+            "title": "Row Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "lottery_filter",
+          "files",
+          "chunks",
+          "summary",
+          "row_results"
+        ],
+        "title": "HistoricalImportResponse"
+      },
+      "HistoricalImportRowView": {
+        "properties": {
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "member_path": {
+            "type": "string",
+            "title": "Member Path"
+          },
+          "member_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Sha256"
+          },
+          "source_row_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Row Number"
+          },
+          "lottery_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lottery Type"
+          },
+          "draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draw Date"
+          },
+          "main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Main Numbers"
+          },
+          "special_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Special Numbers"
+          },
+          "disposition": {
+            "$ref": "#/components/schemas/HistoricalImportDisposition"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoricalImportReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "normalized_record_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized Record Hash"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "historical_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Run Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_filename",
+          "source_sha256",
+          "member_path",
+          "member_sha256",
+          "source_row_number",
+          "lottery_type",
+          "draw_number",
+          "draw_date",
+          "main_numbers",
+          "special_numbers",
+          "disposition",
+          "reason_code",
+          "normalized_record_hash",
+          "message",
+          "historical_run_id"
+        ],
+        "title": "HistoricalImportRowView"
+      },
+      "HistoricalImportSummaryView": {
+        "properties": {
+          "discovered_files": {
+            "type": "integer",
+            "title": "Discovered Files"
+          },
+          "accepted_files": {
+            "type": "integer",
+            "title": "Accepted Files"
+          },
+          "excluded_files": {
+            "type": "integer",
+            "title": "Excluded Files"
+          },
+          "parsed_rows": {
+            "type": "integer",
+            "title": "Parsed Rows"
+          },
+          "valid_rows": {
+            "type": "integer",
+            "title": "Valid Rows"
+          },
+          "excluded_rows": {
+            "type": "integer",
+            "title": "Excluded Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows": {
+            "type": "integer",
+            "title": "Conflict Rows"
+          },
+          "imported_rows": {
+            "type": "integer",
+            "title": "Imported Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          },
+          "committed_chunks": {
+            "type": "integer",
+            "title": "Committed Chunks"
+          },
+          "failed_chunks": {
+            "type": "integer",
+            "title": "Failed Chunks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "discovered_files",
+          "accepted_files",
+          "excluded_files",
+          "parsed_rows",
+          "valid_rows",
+          "excluded_rows",
+          "duplicate_rows",
+          "conflict_rows",
+          "imported_rows",
+          "failed_rows",
+          "committed_chunks",
+          "failed_chunks"
+        ],
+        "title": "HistoricalImportSummaryView"
       },
       "HistoricalLotteryType": {
         "type": "string",

@@ -19,7 +19,12 @@ from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
 )
+from lottolab.application.use_cases.historical_draw_import import HistoricalDrawImportService
+from lottolab.infrastructure.downloaded_draw_archive import DownloadedDrawArchiveParser
 from lottolab.infrastructure.draw_provider import JsonHttpDrawDataProvider
+from lottolab.infrastructure.persistence.historical_draw_import_repository import (
+    SQLiteHistoricalDrawImportRepository,
+)
 from lottolab.infrastructure.persistence.historical_prefix_success_window_reader import (
     SQLiteHistoricalPrefixSuccessWindowSourceReader,
 )
@@ -35,7 +40,7 @@ DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 
 @dataclass(frozen=True)
 class LocalHistoricalComposition:
-    """Two lazy read-only factories bound to one exact configured path."""
+    """Lazy Historical V2 factories bound to one exact configured path."""
 
     database: Path
 
@@ -48,6 +53,14 @@ class LocalHistoricalComposition:
     ) -> HistoricalPrefixSuccessWindowSourceReader:
         self._require_available(for_success_windows=True)
         return SQLiteHistoricalPrefixSuccessWindowSourceReader(self.database)
+
+    def historical_draw_import_service(self) -> HistoricalDrawImportService:
+        """Return the explicit-path Historical V2 draw-import writer."""
+
+        return HistoricalDrawImportService(
+            SQLiteHistoricalDrawImportRepository(self.database),
+            DownloadedDrawArchiveParser(),
+        )
 
     def _require_available(self, *, for_success_windows: bool) -> None:
         try:
@@ -91,6 +104,7 @@ def create_local_app() -> FastAPI:
         historical_prefix_success_window_source_reader_factory=(
             composition.historical_prefix_success_window_source_reader
         ),
+        historical_draw_import_service=composition.historical_draw_import_service(),
     )
 
 

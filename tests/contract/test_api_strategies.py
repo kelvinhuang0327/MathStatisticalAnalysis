@@ -312,6 +312,9 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("post", "/api/v1/generate-bet"),
         ("post", "/api/v1/live-zone-split-bets"),
         ("get", "/api/v1/historical-results/runs"),
+        ("post", "/api/v1/historical-results/imports/preview"),
+        ("post", "/api/v1/historical-results/imports"),
+        ("get", "/api/v1/historical-results/imports/{run_id}"),
         ("get", "/api/v1/historical-results/runs/{run_id}/strategies"),
         ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
         ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
@@ -400,7 +403,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 42
+    assert len(operations) == 45
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

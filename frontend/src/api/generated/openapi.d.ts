@@ -579,6 +579,81 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/historical-results/imports/preview": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalImportResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-results/imports": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalImportResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/historical-results/imports/{run_id}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["HistoricalImportResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-analytics/rankings": {
       get: {
           parameters: {
@@ -1495,6 +1570,85 @@ export interface components {
           "main_numbers": Array<number>
           "special_numbers": Array<number>
           "draw_sha256": string
+        }
+    "HistoricalImportBatchStatus": "PREVIEW" | "COMPLETED" | "PARTIAL_SUCCESS" | "FAILED"
+    "HistoricalImportChunkView": {
+          "chunk_index": number
+          "candidate_rows": number
+          "imported_rows": number
+          "failed_rows": number
+          "status": string
+          "historical_run_ids": Array<string>
+          "error_code": components['schemas']["HistoricalImportReason"] | null
+          "error_message": string | null
+        }
+    "HistoricalImportDisposition": "ACCEPTED" | "EXCLUDED" | "DUPLICATE_SKIPPED" | "CONFLICT_REJECTED" | "FAILED"
+    "HistoricalImportFileRequest": {
+          "filename": string
+          "content_base64": string
+        }
+    "HistoricalImportFileStatus": "ACCEPTED" | "PARTIAL_SUCCESS" | "EXCLUDED" | "FAILED"
+    "HistoricalImportFileView": {
+          "filename": string
+          "source_sha256": string
+          "status": components['schemas']["HistoricalImportFileStatus"]
+          "discovered_members": number
+          "accepted_files": number
+          "excluded_files": number
+          "parsed_rows": number
+          "valid_rows": number
+          "excluded_rows": number
+          "duplicate_rows": number
+          "conflict_rows": number
+          "imported_rows": number
+          "failed_rows": number
+          "rows": Array<components['schemas']["HistoricalImportRowView"]>
+        }
+    "HistoricalImportFilter": "ALL" | "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
+    "HistoricalImportReason": "UNSUPPORTED_FILE_TYPE" | "EMPTY_FILE" | "CORRUPT_ZIP" | "UNSAFE_ARCHIVE_MEMBER" | "ENCRYPTED_ARCHIVE_MEMBER" | "BINGO_EXCLUDED" | "LOTTERY_FILTER_MISMATCH" | "UNKNOWN_GAME_TYPE" | "UNSUPPORTED_TARGET_LOTTERY" | "UNSUPPORTED_BONUS_DRAW" | "INVALID_DRAW_IDENTITY" | "INVALID_DRAW_DATE" | "INVALID_NUMBER_COUNT" | "INVALID_NUMBER_VALUE" | "INVALID_NUMBER_RANGE" | "DUPLICATE_NUMBER" | "INVALID_SPECIAL_NUMBER" | "INVALID_SECOND_NUMBER" | "DUPLICATE_SKIPPED" | "CONFLICT_REJECTED" | "PARSE_ERROR" | "PERSISTENCE_FAILURE"
+    "HistoricalImportRequest": {
+          "files": Array<components['schemas']["HistoricalImportFileRequest"]>
+          "lottery_filter"?: components['schemas']["HistoricalImportFilter"]
+        }
+    "HistoricalImportResponse": {
+          "run_id": string | null
+          "status": components['schemas']["HistoricalImportBatchStatus"]
+          "lottery_filter": components['schemas']["HistoricalImportFilter"]
+          "files": Array<components['schemas']["HistoricalImportFileView"]>
+          "chunks": Array<components['schemas']["HistoricalImportChunkView"]>
+          "summary": components['schemas']["HistoricalImportSummaryView"]
+          "row_results": Array<components['schemas']["HistoricalImportRowView"]>
+        }
+    "HistoricalImportRowView": {
+          "source_filename": string
+          "source_sha256": string
+          "member_path": string
+          "member_sha256": string | null
+          "source_row_number": number | null
+          "lottery_type": string | null
+          "draw_number": string | null
+          "draw_date": string | null
+          "main_numbers": Array<number>
+          "special_numbers": Array<number>
+          "disposition": components['schemas']["HistoricalImportDisposition"]
+          "reason_code": components['schemas']["HistoricalImportReason"] | null
+          "normalized_record_hash": string | null
+          "message": string | null
+          "historical_run_id": string | null
+        }
+    "HistoricalImportSummaryView": {
+          "discovered_files": number
+          "accepted_files": number
+          "excluded_files": number
+          "parsed_rows": number
+          "valid_rows": number
+          "excluded_rows": number
+          "duplicate_rows": number
+          "conflict_rows": number
+          "imported_rows": number
+          "failed_rows": number
+          "committed_chunks": number
+          "failed_chunks": number
         }
     "HistoricalLotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
     "HistoricalPerDrawPrefixMetricsView": {

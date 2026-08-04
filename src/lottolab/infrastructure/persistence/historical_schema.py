@@ -17,12 +17,13 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 MIGRATION_NAME = "create_historical_results_schema"
 V2_MIGRATION_NAME = "expand_historical_lottery_types"
+P638_MIGRATION_NAME = "add_powerlotto_replay_extension"
 BUSY_TIMEOUT_MS = 5_000
 
-TABLE_NAMES = (
+BASE_TABLE_NAMES = (
     "historical_schema_migrations",
     "historical_result_run",
     "historical_strategy_snapshot",
@@ -31,6 +32,15 @@ TABLE_NAMES = (
     "historical_ticket",
     "historical_count_summary",
 )
+
+P638_TABLE_NAMES = (
+    "historical_p638_run",
+    "historical_p638_strategy_ledger",
+    "historical_p638_target",
+    "historical_p638_ticket",
+)
+
+TABLE_NAMES = BASE_TABLE_NAMES + P638_TABLE_NAMES
 
 
 class HistoricalSchemaError(RuntimeError):
@@ -267,6 +277,147 @@ V2_MIGRATION_STATEMENTS = (
 V2_MIGRATION_SQL = ";\n".join(statement.strip() for statement in V2_MIGRATION_STATEMENTS) + ";\n"
 V2_MIGRATION_CHECKSUM = hashlib.sha256(V2_MIGRATION_SQL.encode("utf-8")).hexdigest()
 
+P638_MIGRATION_STATEMENTS = (
+    """
+    CREATE TABLE historical_p638_run (
+        run_id TEXT PRIMARY KEY,
+        lottery_type TEXT NOT NULL CHECK (lottery_type = 'POWER_LOTTO'),
+        source_run_id TEXT NOT NULL,
+        source_replay_sha256 TEXT NOT NULL CHECK (length(source_replay_sha256) = 64),
+        source_draw_db_sha256 TEXT NOT NULL CHECK (length(source_draw_db_sha256) = 64),
+        source_content_sha256 TEXT NOT NULL CHECK (length(source_content_sha256) = 64),
+        second_zone_ssot_version TEXT NOT NULL,
+        total_source_targets INTEGER NOT NULL CHECK (total_source_targets >= 0),
+        selected_strategy_count INTEGER NOT NULL CHECK (selected_strategy_count >= 0),
+        draw_count INTEGER NOT NULL CHECK (draw_count >= 0),
+        eligible_attempts INTEGER NOT NULL CHECK (eligible_attempts >= 0),
+        complete_targets INTEGER NOT NULL CHECK (complete_targets >= 0),
+        excluded_targets INTEGER NOT NULL CHECK (excluded_targets >= 0),
+        failed_targets INTEGER NOT NULL CHECK (failed_targets >= 0),
+        ticket_rows INTEGER NOT NULL CHECK (ticket_rows >= 0),
+        provenance_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        completed_at TEXT NOT NULL,
+        FOREIGN KEY (run_id) REFERENCES historical_result_run(id) ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE TABLE historical_p638_strategy_ledger (
+        strategy_snapshot_id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        strategy_id TEXT NOT NULL,
+        strategy_version TEXT NOT NULL,
+        lottery_type TEXT NOT NULL CHECK (lottery_type = 'POWER_LOTTO'),
+        display_label TEXT NOT NULL,
+        executable INTEGER NOT NULL CHECK (executable IN (0, 1)),
+        adapter_path TEXT NULL,
+        native_ticket_count INTEGER NULL CHECK (
+            native_ticket_count IS NULL OR native_ticket_count > 0
+        ),
+        min_history INTEGER NULL CHECK (min_history IS NULL OR min_history >= 0),
+        zone1_contract TEXT NOT NULL,
+        zone2_contract TEXT NOT NULL,
+        lifecycle_status TEXT NOT NULL,
+        replay_status TEXT NOT NULL CHECK (
+            replay_status IN (
+                'R4_RESULT_REUSABLE', 'REPLAY_REQUIRED', 'REPLAY_COMPLETED',
+                'EXCLUDED_NON_EXECUTABLE', 'EXCLUDED_DONOR_DEFECT',
+                'EXCLUDED_UNRESOLVED_CONTRACT', 'RETIRED', 'IDENTITY_CONFLICT'
+            )
+        ),
+        source_run_id TEXT NULL,
+        source_replay_sha256 TEXT NULL CHECK (
+            source_replay_sha256 IS NULL OR length(source_replay_sha256) = 64
+        ),
+        source_paths_json TEXT NOT NULL,
+        provenance TEXT NOT NULL,
+        exclusion_reason TEXT NULL,
+        UNIQUE (run_id, strategy_id, strategy_version),
+        FOREIGN KEY (run_id) REFERENCES historical_result_run(id) ON DELETE RESTRICT,
+        FOREIGN KEY (strategy_snapshot_id) REFERENCES historical_strategy_snapshot(id)
+            ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE TABLE historical_p638_target (
+        id TEXT PRIMARY KEY,
+        run_id TEXT NOT NULL,
+        strategy_snapshot_id TEXT NOT NULL,
+        strategy_id TEXT NOT NULL,
+        strategy_version TEXT NOT NULL,
+        target_draw_snapshot_id INTEGER NOT NULL,
+        cutoff_draw_snapshot_id INTEGER NULL,
+        target_draw_number TEXT NOT NULL,
+        target_draw_date TEXT NOT NULL,
+        history_boundary_draw_number TEXT NULL,
+        history_boundary_date TEXT NULL,
+        history_length INTEGER NOT NULL CHECK (history_length >= 0),
+        expected_ticket_count INTEGER NOT NULL CHECK (expected_ticket_count > 0),
+        status TEXT NOT NULL CHECK (
+            status IN ('COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY', 'FAILED')
+        ),
+        exclusion_reason TEXT NULL,
+        failure_reason TEXT NULL,
+        source_target_locator TEXT NULL,
+        UNIQUE (run_id, strategy_id, strategy_version, target_draw_number),
+        FOREIGN KEY (run_id) REFERENCES historical_result_run(id) ON DELETE RESTRICT,
+        FOREIGN KEY (strategy_snapshot_id) REFERENCES historical_p638_strategy_ledger(
+            strategy_snapshot_id
+        ) ON DELETE RESTRICT,
+        FOREIGN KEY (target_draw_snapshot_id) REFERENCES historical_draw_snapshot(id)
+            ON DELETE RESTRICT,
+        FOREIGN KEY (cutoff_draw_snapshot_id) REFERENCES historical_draw_snapshot(id)
+            ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE TABLE historical_p638_ticket (
+        id TEXT PRIMARY KEY,
+        target_id TEXT NOT NULL,
+        run_id TEXT NOT NULL,
+        strategy_id TEXT NOT NULL,
+        strategy_version TEXT NOT NULL,
+        target_draw_number TEXT NOT NULL,
+        ticket_position INTEGER NOT NULL CHECK (ticket_position > 0),
+        predicted_zone1_numbers_json TEXT NOT NULL,
+        predicted_zone2_number INTEGER NOT NULL CHECK (predicted_zone2_number BETWEEN 1 AND 8),
+        actual_zone1_numbers_json TEXT NOT NULL,
+        actual_zone2_number INTEGER NOT NULL CHECK (actual_zone2_number BETWEEN 1 AND 8),
+        zone1_hit_count INTEGER NOT NULL CHECK (zone1_hit_count BETWEEN 0 AND 6),
+        zone2_hit INTEGER NOT NULL CHECK (zone2_hit IN (0, 1)),
+        status TEXT NOT NULL CHECK (status = 'COMPLETE'),
+        source_run_id TEXT NOT NULL,
+        source_replay_sha256 TEXT NOT NULL CHECK (length(source_replay_sha256) = 64),
+        source_record_locator TEXT NULL,
+        second_zone_ssot_version TEXT NOT NULL,
+        provenance TEXT NOT NULL,
+        UNIQUE (target_id, ticket_position),
+        FOREIGN KEY (target_id) REFERENCES historical_p638_target(id) ON DELETE CASCADE,
+        FOREIGN KEY (run_id) REFERENCES historical_result_run(id) ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE INDEX idx_historical_p638_strategy_run_status
+    ON historical_p638_strategy_ledger (run_id, replay_status, strategy_id)
+    """,
+    """
+    CREATE INDEX idx_historical_p638_target_query
+    ON historical_p638_target (
+        run_id, strategy_id, target_draw_date, target_draw_number, status
+    )
+    """,
+    """
+    CREATE INDEX idx_historical_p638_ticket_query
+    ON historical_p638_ticket (
+        run_id, strategy_id, target_draw_number, ticket_position
+    )
+    """,
+)
+P638_MIGRATION_SQL = (
+    ";\n".join(statement.strip() for statement in P638_MIGRATION_STATEMENTS) + ";\n"
+)
+P638_MIGRATION_CHECKSUM = hashlib.sha256(P638_MIGRATION_SQL.encode("utf-8")).hexdigest()
+
 _SCHEMA_SQL_TOKEN = re.compile(
     r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^]]*\]|[(),]|[^\s(),]+"
 )
@@ -298,6 +449,10 @@ _EXPECTED_SCHEMA_SQL_BY_NAME_V2 = {
     "idx_historical_result_run_identity_completed": V2_MIGRATION_STATEMENTS[9],
     "idx_historical_result_run_history": V2_MIGRATION_STATEMENTS[10],
     "idx_historical_result_run_lottery_completed": V2_MIGRATION_STATEMENTS[11],
+}
+_EXPECTED_SCHEMA_SQL_BY_NAME_V3 = {
+    **_EXPECTED_SCHEMA_SQL_BY_NAME_V2,
+    **{_object_name(statement): statement for statement in P638_MIGRATION_STATEMENTS},
 }
 
 
@@ -354,9 +509,26 @@ def initialize_schema(database: Path) -> None:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            CURRENT_SCHEMA_VERSION,
+                            2,
                             V2_MIGRATION_NAME,
                             V2_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version == 2:
+                    for statement in P638_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO historical_schema_migrations
+                            (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            P638_MIGRATION_NAME,
+                            P638_MIGRATION_CHECKSUM,
                             _utc_now(),
                         ),
                     )
@@ -465,14 +637,18 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
         raise HistoricalSchemaMigrationError("migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise HistoricalSchemaMigrationError("database schema is newer than this LottoLab build")
-    if versions not in ([1], [1, CURRENT_SCHEMA_VERSION]):
+    if versions not in ([1], [1, 2], [1, 2, CURRENT_SCHEMA_VERSION]):
         raise HistoricalSchemaMigrationError("migration history is incomplete")
     _, initial_name, initial_checksum = rows[0]
     if initial_name != MIGRATION_NAME or initial_checksum != MIGRATION_CHECKSUM:
         raise HistoricalSchemaChecksumError("migration checksum does not match")
-    if versions == [1, CURRENT_SCHEMA_VERSION]:
+    if len(versions) >= 2:
         _, current_name, current_checksum = rows[1]
         if current_name != V2_MIGRATION_NAME or current_checksum != V2_MIGRATION_CHECKSUM:
+            raise HistoricalSchemaChecksumError("migration checksum does not match")
+    if versions == [1, 2, CURRENT_SCHEMA_VERSION]:
+        _, current_name, current_checksum = rows[2]
+        if current_name != P638_MIGRATION_NAME or current_checksum != P638_MIGRATION_CHECKSUM:
             raise HistoricalSchemaChecksumError("migration checksum does not match")
 
     version = versions[-1]
@@ -483,7 +659,10 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
 def _verify_schema_semantics(
     connection: sqlite3.Connection, table_names: set[str], *, version: int
 ) -> None:
-    if table_names != set(TABLE_NAMES):
+    expected_table_names = (
+        set(TABLE_NAMES) if version == CURRENT_SCHEMA_VERSION else set(BASE_TABLE_NAMES)
+    )
+    if table_names != expected_table_names:
         raise HistoricalSchemaMigrationError(f"database tables do not match version {version}")
 
     schema_rows = connection.execute(
@@ -494,11 +673,11 @@ def _verify_schema_semantics(
         """
     ).fetchall()
     seen_names: set[str] = set()
-    expected_sql_by_name = (
-        _EXPECTED_SCHEMA_SQL_BY_NAME_V2
-        if version == CURRENT_SCHEMA_VERSION
-        else _EXPECTED_SCHEMA_SQL_BY_NAME
-    )
+    expected_sql_by_name = _EXPECTED_SCHEMA_SQL_BY_NAME
+    if version >= 2:
+        expected_sql_by_name = {**expected_sql_by_name, **_EXPECTED_SCHEMA_SQL_BY_NAME_V2}
+    if version == CURRENT_SCHEMA_VERSION:
+        expected_sql_by_name = {**expected_sql_by_name, **_EXPECTED_SCHEMA_SQL_BY_NAME_V3}
     for row in schema_rows:
         name = str(row[1])
         actual_sql = row[3]
@@ -515,7 +694,8 @@ def _verify_schema_semantics(
             f"database schema objects do not match version {version}"
         )
 
-    for table in TABLE_NAMES:
+    tables_to_check = TABLE_NAMES if version == CURRENT_SCHEMA_VERSION else BASE_TABLE_NAMES
+    for table in tables_to_check:
         foreign_keys = connection.execute(f"PRAGMA foreign_key_list({table})").fetchall()
         for fk_row in foreign_keys:
             on_delete = str(fk_row[6])

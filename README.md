@@ -83,6 +83,31 @@ LOTTOLAB_HISTORICAL_RESULTS_DB=/absolute/owner-only/historical-results.db \
   LONG / PRIMARY_EVIDENCE / 750、MEDIUM / STABILITY_CONFIRMATION / 300、SHORT / DEGRADATION_VETO / 50；
   alias、replicate 與 zero-observation identity 都保留。
 
+## P638 Historical Replay V2
+
+`#/p638-historical-replay` 與 `#/p638-strategy-analysis` 是 POWER_LOTTO／P638 專用的唯讀 Historical
+Results V2 vertical。前者以 server-side strategy、date、status 與 pagination 查詢完整 replay target、
+ticket、exclusion 與 source provenance；後者顯示目前 registry 的 10 個 identity、8 個可重用 replay
+identity、2 個保留但排除的 identity，以及 stored hit distributions。兩頁都只呈現描述性歷史資料，
+不產生票券、不排名、不預測。
+
+V2 schema extension 由明確指定的離線 forwarder 建立；runtime API construction、OpenAPI generation 與
+frontend build 不會 initialize 或 migrate DB，request 只以 SQLite `mode=ro`／`query_only` 讀取既有 DB。
+forwarder 只寫 task-owned output，會驗證固定來源檔案 bytes／SHA-256、P638 R4 ledger、舊 DB draw authority、
+registry coverage 與 totals，並以 deterministic import identity 保證 rerun idempotence：
+
+```bash
+uv run --no-sync lottolab forward-p638-historical \
+  --source-replay-db /absolute/task-owned/p638_wave1_replay_r4.sqlite3 \
+  --source-draw-db /absolute/task-owned/powerlotto_draws.sqlite3 \
+  --database /absolute/task-owned/historical_results_v2.sqlite3
+```
+
+同一個 exact path 由 `LOTTOLAB_HISTORICAL_RESULTS_DB` 注入 local runtime；canonical／production DB 與來源
+DB 不會被自動採用或修改。P638 API routes 為 `/api/v1/p638-historical/runs`、`/strategies`、`/replay`、
+`/targets/{target_id}` 與 `/metrics`；generic Historical Results runs 也會在 `lottery_type=POWER_LOTTO`
+時顯示 V2 run summary。
+
 ## B649 多注歷史紀錄
 
 `#/b649-multi-ticket-records` 是 221 個大樂透研究方法的唯讀聚合紀錄頁。使用者必須明確選擇

@@ -70,6 +70,11 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/historical-results/runs/{run_id}/strategies": frozenset({"get"}),
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
+    "/api/v1/p638-historical/runs": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/strategies": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/replay": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/metrics": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/rankings": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/strategies": frozenset({"get"}),
     (
@@ -142,6 +147,8 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/generate-bet",
         "/api/v1/draw-sync/backfill",
         "/api/v1/historical-results/runs/{run_id}/replay",
+        "/api/v1/p638-historical/runs/{run_id}/replay",
+        "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}",
         (
             "/api/v1/historical-prefix-analytics/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/replay"

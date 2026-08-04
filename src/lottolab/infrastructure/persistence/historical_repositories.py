@@ -425,6 +425,35 @@ class SQLiteHistoricalResultQueryRepository:
             if query.lottery_type is not None:
                 predicate += " AND lottery_type = ?"
                 predicate_parameters = (query.lottery_type.value,)
+            p638_tables_available = _has_p638_extension(connection)
+            if p638_tables_available:
+                strategy_count_sql = """
+                       CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
+                            (SELECT COUNT(*) FROM historical_p638_strategy_ledger p638s
+                             WHERE p638s.run_id = r.id)
+                            ELSE
+                            (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                             WHERE s.run_id = r.id)
+                       END
+                """
+                portfolio_count_sql = """
+                       CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
+                            (SELECT COUNT(*) FROM historical_p638_target p638t
+                             WHERE p638t.run_id = r.id)
+                            ELSE
+                            (SELECT COUNT(*) FROM historical_portfolio p
+                             WHERE p.run_id = r.id)
+                       END
+                """
+            else:
+                strategy_count_sql = """
+                       (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                        WHERE s.run_id = r.id)
+                """
+                portfolio_count_sql = """
+                       (SELECT COUNT(*) FROM historical_portfolio p
+                        WHERE p.run_id = r.id)
+                """
             total_count = _scalar(
                 connection,
                 f"SELECT COUNT(*) FROM historical_result_run WHERE {predicate}",
@@ -437,12 +466,10 @@ class SQLiteHistoricalResultQueryRepository:
                        r.source_commit_oid, r.source_artifact_sha256,
                        r.dataset_identity, r.dataset_sha256, r.legacy_run_id,
                        r.lottery_type, r.started_at, r.completed_at, r.status,
-                       (SELECT COUNT(*) FROM historical_strategy_snapshot s
-                        WHERE s.run_id = r.id),
+                       {strategy_count_sql},
                        (SELECT COUNT(*) FROM historical_draw_snapshot d
                         WHERE d.run_id = r.id),
-                       (SELECT COUNT(*) FROM historical_portfolio p
-                        WHERE p.run_id = r.id)
+                       {portfolio_count_sql}
                 FROM historical_result_run r
                 WHERE {predicate}
                 ORDER BY r.completed_at DESC, r.id DESC
@@ -592,6 +619,21 @@ def _scalar(connection: sqlite3.Connection, sql: str, parameters: tuple[object, 
     if row is None:
         raise HistoricalResultsUnavailableError("expected aggregate query result is missing")
     return int(row[0])
+
+
+def _has_p638_extension(connection: sqlite3.Connection) -> bool:
+    names = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        )
+    }
+    return {
+        "historical_p638_run",
+        "historical_p638_strategy_ledger",
+        "historical_p638_target",
+        "historical_p638_ticket",
+    } <= names
 
 
 def _run_is_completed(connection: sqlite3.Connection, run_id: str) -> bool:

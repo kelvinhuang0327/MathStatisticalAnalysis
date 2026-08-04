@@ -34,6 +34,14 @@ from lottolab.application.historical_queries import (
     HistoricalRunQuery,
     HistoricalStrategySummaryList,
 )
+from lottolab.application.p638_historical import (
+    P638ReplayPage,
+    P638ReplayQuery,
+    P638RunPage,
+    P638StrategyMetrics,
+    P638StrategyPage,
+    P638TargetDetail,
+)
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
 from lottolab.domain.batch_imports import (
     BatchDrawImportCommit,
@@ -80,17 +88,13 @@ class DrawImportRepository(Protocol):
 
 
 class BatchDrawImportRepository(Protocol):
-    def apply_valid_batch_import(
-        self, preview: BatchDrawImportPreview
-    ) -> BatchDrawImportCommit:
+    def apply_valid_batch_import(self, preview: BatchDrawImportPreview) -> BatchDrawImportCommit:
         """Atomically apply all accepted rows from one multi-file import."""
         ...
 
 
 class BatchDrawImportParser(Protocol):
-    def __call__(
-        self, payloads: tuple[ImportFilePayload, ...]
-    ) -> BatchDrawImportPreview:
+    def __call__(self, payloads: tuple[ImportFilePayload, ...]) -> BatchDrawImportPreview:
         """Parse one bounded batch without filesystem or database I/O."""
         ...
 
@@ -235,6 +239,35 @@ class HistoricalResultQueryRepository(Protocol):
 type HistoricalResultQueryRepositoryFactory = Callable[[], HistoricalResultQueryRepository]
 
 
+class P638HistoricalQueryRepository(Protocol):
+    """Read-only, POWER_LOTTO-scoped query port for the P638 V2 projection."""
+
+    def list_runs(self, *, limit: int, offset: int) -> P638RunPage:
+        """Return completed P638 forwarding runs, newest first."""
+        ...
+
+    def list_strategies(self, run_id: str, *, limit: int, offset: int) -> P638StrategyPage | None:
+        """Return the complete current P638 ledger for one completed run."""
+        ...
+
+    def list_replay(self, run_id: str, query: P638ReplayQuery) -> P638ReplayPage | None:
+        """Return paginated targets and their tickets for one completed run."""
+        ...
+
+    def get_target(self, run_id: str, target_id: str) -> P638TargetDetail | None:
+        """Return one target and its ordered tickets, or ``None``."""
+        ...
+
+    def get_metrics(
+        self, run_id: str, *, strategy_id: str | None = None
+    ) -> P638StrategyMetrics | None:
+        """Return server-side target, ticket, and hit distributions."""
+        ...
+
+
+type P638HistoricalQueryRepositoryFactory = Callable[[], P638HistoricalQueryRepository]
+
+
 @runtime_checkable
 class HistoricalPrefixSuccessWindowSourceReader(Protocol):
     """Narrow read-only boundary for one exact persisted Historical Prefix source."""
@@ -307,9 +340,7 @@ class ReplayScoringProjectionReader(Protocol):
     never mutate storage.
     """
 
-    def get_run(
-        self, scoring_artifact_payload_sha256: str
-    ) -> ReplayScoringRunProjection | None:
+    def get_run(self, scoring_artifact_payload_sha256: str) -> ReplayScoringRunProjection | None:
         """Return the stored run identity, or ``None`` if not found."""
         ...
 

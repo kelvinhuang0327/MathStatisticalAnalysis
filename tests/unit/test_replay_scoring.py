@@ -9,6 +9,7 @@ import pytest
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import (
     BIG_LOTTO_RULE_CONTRACT,
+    BigLottoPrizeRuleContract,
     BigLottoPrizeTier,
     BigLottoPrizeTierId,
     NoPrizeResult,
@@ -22,6 +23,9 @@ from lottolab.domain.replay_scoring import (
     ReplayTargetOutcome,
     recompute_scored_result_sha256,
 )
+
+_BIG_LOTTO_PRIZE_RULE = BIG_LOTTO_RULE_CONTRACT.prize_rule
+assert isinstance(_BIG_LOTTO_PRIZE_RULE, BigLottoPrizeRuleContract)
 
 _SOURCE_ARTIFACT_SHA = "a" * 64
 _SOURCE_SNAPSHOT_SHA = "b" * 64
@@ -217,7 +221,7 @@ def test_no_prize_is_scored_and_distinct_from_not_scored() -> None:
 
 @pytest.mark.parametrize(
     "tier",
-    BIG_LOTTO_RULE_CONTRACT.prize_rule.tiers,
+    _BIG_LOTTO_PRIZE_RULE.tiers,
     ids=lambda tier: tier.tier_id.value,
 )
 def test_every_canonical_winning_tier_remains_valid(tier: BigLottoPrizeTier) -> None:

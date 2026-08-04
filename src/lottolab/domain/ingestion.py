@@ -101,6 +101,7 @@ class NormalizedDrawInput:
     source: str | None
     normalized_record_hash: str
     rule_status: LotteryRuleStatus
+    source_name: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

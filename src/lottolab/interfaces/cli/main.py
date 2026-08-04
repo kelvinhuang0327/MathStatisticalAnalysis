@@ -42,6 +42,7 @@ from lottolab.interfaces.cli.legacy_checkpoint_native_batch_wave55 import (
 from lottolab.interfaces.cli.legacy_diversified_native_batch_wave62 import (
     materialize_legacy_diversified_native_wave62_batch_command,
 )
+from lottolab.interfaces.cli.legacy_draw_import import legacy_draw_import_command
 from lottolab.interfaces.cli.legacy_dual_seeded_native_batch_wave58 import (
     materialize_legacy_dual_seeded_native_wave58_batch_command,
 )
@@ -217,6 +218,7 @@ app.command("import-biglotto-legacy-reference")(
 app.command("inspect-draw-data-integrity")(
     draw_data_integrity_command
 )
+app.command("import-legacy-draw-files")(legacy_draw_import_command)
 app.command("materialize-ordered-candidate-emissions")(
     materialize_ordered_candidate_emissions_command
 )

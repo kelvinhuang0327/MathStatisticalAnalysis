@@ -4,7 +4,8 @@ import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type {
-  DrawImportPreview,
+  BatchImportCommit,
+  BatchImportPreview,
   DrawSyncResponse,
   ImportCommitResult,
   IngestionRun,
@@ -16,43 +17,88 @@ const csvText =
   'lottery_type,draw_number,draw_date,main_numbers,special_numbers\n' +
   'BIG_LOTTO,0001,2026-07-16,1|3|9|17|24|49,7\n'
 
-const validPreview = {
-  filename: 'valid.csv',
-  is_valid: true,
-  content_sha256: 'a'.repeat(64),
-  parser_version: 'lottolab-draw-csv-v2',
-  supported_lottery_types: ['BIG_LOTTO'],
-  total_rows: 1,
-  valid_rows: 1,
-  blank_rows: 0,
+const validFile = {
+  source_filename: 'valid.csv',
+  source_locator: 'valid.csv',
+  source_sha256: 'a'.repeat(64),
+  status: 'ACCEPTED',
+  lottery_type: 'BIG_LOTTO',
+  discovered_rows: 1,
+  accepted_rows: 1,
+  excluded_rows: 0,
   duplicate_rows: 0,
-  conflict_rows_inside_input: 0,
-  validation_error_count: 0,
-  ignored_columns: [],
-  normalized_preview: [],
-  validation_errors: [],
-  preview_truncated: false,
-  errors_truncated: false,
-} satisfies DrawImportPreview
+  conflict_rows: 0,
+  failed_rows: 0,
+  issues: [],
+} satisfies BatchImportPreview['files'][number]
 
-const invalidPreview = {
-  ...validPreview,
-  filename: 'invalid.csv',
-  is_valid: false,
-  valid_rows: 0,
-  validation_error_count: 1,
-  validation_errors: [
+const invalidFile = {
+  source_filename: 'invalid.csv',
+  source_locator: 'invalid.csv',
+  source_sha256: 'b'.repeat(64),
+  status: 'INVALID',
+  lottery_type: null,
+  discovered_rows: 1,
+  accepted_rows: 0,
+  excluded_rows: 0,
+  duplicate_rows: 0,
+  conflict_rows: 0,
+  failed_rows: 1,
+  issues: [
     {
       code: 'INVALID_DRAW_DATE',
       message: 'draw_date is not a valid calendar date.',
       row_number: 2,
-      field: 'draw_date',
+      member_name: null,
     },
   ],
-} satisfies DrawImportPreview
+} satisfies BatchImportPreview['files'][number]
 
-const commitSuccess = {
+const validPreview = {
+  source_filename: 'batch-import',
+  is_valid: true,
+  manifest_sha256: 'a'.repeat(64),
+  parser_version: 'lottolab-legacy-draw-batch-v1',
+  files: [validFile],
+  summary: {
+    discovered_files: 1,
+    accepted_files: 1,
+    excluded_files: 0,
+    parsed_rows: 1,
+    accepted_rows: 1,
+    excluded_rows: 0,
+    duplicate_rows: 0,
+    conflict_rows: 0,
+    imported_rows: 0,
+    failed_rows: 0,
+  },
+  normalized_preview: [],
+  preview_truncated: false,
+} satisfies BatchImportPreview
+
+const invalidPreview = {
+  ...validPreview,
+  files: [validFile, invalidFile],
+  summary: {
+    ...validPreview.summary,
+    discovered_files: 2,
+    parsed_rows: 2,
+    failed_rows: 1,
+  },
+} satisfies BatchImportPreview
+
+const batchCommitSuccess = {
   run_id: '7de87eeb-ecc7-4c03-830a-c0fdb71254e8',
+  status: 'SUCCESS',
+  manifest_sha256: validPreview.manifest_sha256,
+  summary: { ...validPreview.summary, imported_rows: 1 },
+  files: [validFile],
+  completed_at: '2026-07-16T07:00:00Z',
+  error_summary: null,
+} satisfies BatchImportCommit
+
+const drawCommitSuccess = {
+  run_id: batchCommitSuccess.run_id,
   status: 'SUCCESS',
   lottery_type: 'BIG_LOTTO',
   total_count: 1,
@@ -62,24 +108,16 @@ const commitSuccess = {
   failed_count: 0,
   first_draw_number: '0001',
   last_draw_number: '0001',
-  completed_at: '2026-07-16T07:00:00Z',
-} satisfies ImportCommitResult
-
-const commitFailure = {
-  ...commitSuccess,
-  run_id: 'f2b2ac5a-8ccf-48c4-9dfa-69787065b348',
-  status: 'FAILED',
-  inserted_count: 0,
-  conflict_count: 1,
+  completed_at: batchCommitSuccess.completed_at,
 } satisfies ImportCommitResult
 
 const runRecord = {
-  run_id: commitSuccess.run_id,
+  run_id: drawCommitSuccess.run_id,
   operation_type: 'DRAW_CSV_IMPORT',
   status: 'SUCCESS',
   lottery_type: 'BIG_LOTTO',
   source_filename: 'valid.csv',
-  source_sha256: validPreview.content_sha256,
+  source_sha256: validPreview.manifest_sha256,
   parser_version: validPreview.parser_version,
   trigger: 'DRAW_CSV_IMPORT',
   provider: null,
@@ -179,7 +217,7 @@ describe('DataCenterPage batch ingestion', () => {
     const wrapper = mount(DataCenterPage)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('No CSV selected')
+    expect(wrapper.text()).toContain('No import file selected')
     expect(wrapper.text()).toContain('No ingestion runs have been recorded')
     expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('NOT_COMMITTED')
     expect(wrapper.text()).toContain('L649')
@@ -189,21 +227,12 @@ describe('DataCenterPage batch ingestion', () => {
     wrapper.unmount()
   })
 
-  it('previews every file, exposes per-file validation, and commits only valid files', async () => {
+  it('previews every file, exposes per-file validation, and atomically commits selected files', async () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(invalidPreview))
       .mockResolvedValueOnce(apiResponse(validPreview))
-      .mockResolvedValueOnce(
-        apiResponse(
-          {
-            error_code: 'CSV_VALIDATION_FAILED',
-            message: 'CSV validation failed; no data was persisted.',
-            preview: invalidPreview,
-          },
-          422,
-        ),
-      )
-      .mockResolvedValueOnce(apiResponse(commitSuccess))
+      .mockResolvedValueOnce(apiResponse(batchCommitSuccess))
       .mockResolvedValueOnce(apiResponse(populatedRuns))
     const wrapper = mount(DataCenterPage)
     await flushPromises()
@@ -213,7 +242,7 @@ describe('DataCenterPage batch ingestion', () => {
     await flushPromises()
 
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
-    expect(wrapper.text()).toContain(validPreview.content_sha256)
+    expect(wrapper.text()).toContain(validPreview.manifest_sha256)
     expect(wrapper.text()).toContain('INVALID_DRAW_DATE')
     expect(wrapper.text()).toContain('1 valid · 0 invalid')
     expect(wrapper.text()).toContain('0 valid · 1 invalid')
@@ -224,33 +253,42 @@ describe('DataCenterPage batch ingestion', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('PARTIAL_SUCCESS')
-    expect(wrapper.text()).toContain(commitSuccess.run_id)
-    const previewBodies = fetchMock.mock.calls.slice(1, 3).map((call) => {
-      const init = call[1] as RequestInit
-      return JSON.parse(String(init.body)) as Record<string, unknown>
-    })
-    expect(previewBodies.map((body) => body.filename)).toEqual(['valid.csv', 'invalid.csv'])
+    expect(wrapper.text()).toContain(batchCommitSuccess.run_id)
+    const previewBody = JSON.parse(
+      String((fetchMock.mock.calls[1]?.[1] as RequestInit).body),
+    ) as { files: Array<{ filename: string; content_base64: string }> }
+    expect(previewBody.files.map((file) => file.filename)).toEqual(['valid.csv', 'invalid.csv'])
     const commitInit = fetchMock.mock.calls[3]?.[1] as RequestInit
     expect(JSON.parse(String(commitInit.body))).toMatchObject({
-      filename: 'valid.csv',
-      expected_sha256: validPreview.content_sha256,
-      conflict_policy: 'REJECT',
+      files: [{ filename: 'valid.csv' }],
+      expected_manifest_sha256: validPreview.manifest_sha256,
+      parser_version: validPreview.parser_version,
     })
     wrapper.unmount()
   })
 
-  it('reports partial success when independent file transactions diverge', async () => {
+  it('rolls back the whole batch when a committed batch conflicts', async () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
-      .mockResolvedValueOnce(apiResponse(validPreview))
-      .mockResolvedValueOnce(apiResponse({ ...validPreview, filename: 'second.csv' }))
-      .mockResolvedValueOnce(apiResponse(commitSuccess))
+      .mockResolvedValueOnce(
+        apiResponse({
+          ...validPreview,
+          files: [validFile, { ...validFile, source_filename: 'second.csv' }],
+          summary: { ...validPreview.summary, discovered_files: 2, accepted_rows: 2 },
+        }),
+      )
+      .mockResolvedValueOnce(
+        apiResponse({
+          ...validPreview,
+          files: [validFile, { ...validFile, source_filename: 'second.csv' }],
+          summary: { ...validPreview.summary, discovered_files: 2, accepted_rows: 2 },
+        }),
+      )
       .mockResolvedValueOnce(
         apiResponse(
           {
-            error_code: 'EXISTING_DRAW_CONFLICT',
-            message: 'Existing draw data conflicts; the batch inserted no draws.',
-            result: commitFailure,
+            error_code: 'BATCH_DIGEST_MISMATCH',
+            message: 'Batch content does not match the preview manifest.',
           },
           409,
         ),
@@ -266,10 +304,8 @@ describe('DataCenterPage batch ingestion', () => {
     await wrapper.get('[data-testid="commit-all-valid"]').trigger('click')
     await flushPromises()
 
-    expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('PARTIAL_SUCCESS')
-    expect(wrapper.text()).toContain('Existing draw data conflicts')
-    expect(wrapper.text()).toContain(commitSuccess.run_id)
-    expect(wrapper.text()).toContain(commitFailure.run_id)
+    expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('FAILED')
+    expect(wrapper.text()).toContain('Batch content does not match')
     wrapper.unmount()
   })
 
@@ -306,15 +342,16 @@ describe('DataCenterPage batch ingestion', () => {
     await flushPromises()
 
     expect(previewInit.signal?.aborted).toBe(true)
-    expect(wrapper.text()).toContain('No CSV selected')
-    expect(wrapper.text()).not.toContain(validPreview.content_sha256)
+    expect(wrapper.text()).toContain('No import file selected')
+    expect(wrapper.text()).not.toContain(validPreview.manifest_sha256)
     wrapper.unmount()
   })
 
-  it('unmount aborts an in-flight per-file commit', async () => {
+  it('unmount aborts an in-flight atomic batch commit', async () => {
     const pending = deferred<Response>()
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
       .mockResolvedValueOnce(apiResponse(validPreview))
       .mockImplementationOnce(() => pending.promise)
     const wrapper = mount(DataCenterPage)
@@ -323,10 +360,10 @@ describe('DataCenterPage batch ingestion', () => {
     await wrapper.get('[data-testid="batch-confirmation"]').setValue(true)
     await wrapper.get('[data-testid="commit-selected-valid"]').trigger('click')
     await flushPromises()
-    const commitInit = fetchMock.mock.calls[2]?.[1] as RequestInit
+    const commitInit = fetchMock.mock.calls[3]?.[1] as RequestInit
 
     wrapper.unmount()
-    pending.resolve(apiResponse(commitSuccess))
+    pending.resolve(apiResponse(batchCommitSuccess))
     await flushPromises()
 
     expect(commitInit.signal?.aborted).toBe(true)
@@ -337,6 +374,7 @@ describe('DataCenterPage batch ingestion', () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
       .mockResolvedValueOnce(apiResponse(validPreview))
+      .mockResolvedValueOnce(apiResponse(validPreview))
       .mockImplementationOnce(() => pending.promise)
       .mockResolvedValueOnce(apiResponse(emptyRuns))
     const wrapper = mount(DataCenterPage)
@@ -345,15 +383,15 @@ describe('DataCenterPage batch ingestion', () => {
     await wrapper.get('[data-testid="batch-confirmation"]').setValue(true)
     await wrapper.get('[data-testid="commit-selected-valid"]').trigger('click')
     await flushPromises()
-    const commitInit = fetchMock.mock.calls[2]?.[1] as RequestInit
+    const commitInit = fetchMock.mock.calls[3]?.[1] as RequestInit
 
     await selectFiles(wrapper, [file('new.csv')])
-    pending.resolve(apiResponse(commitSuccess))
+    pending.resolve(apiResponse(batchCommitSuccess))
     await flushPromises()
 
     expect(commitInit.signal?.aborted).toBe(true)
     expect(wrapper.text()).toContain('new.csv')
-    expect(wrapper.text()).not.toContain(commitSuccess.run_id)
+    expect(wrapper.text()).not.toContain(batchCommitSuccess.run_id)
     wrapper.unmount()
   })
 
@@ -361,6 +399,7 @@ describe('DataCenterPage batch ingestion', () => {
     const pending = deferred<Response>()
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
       .mockResolvedValueOnce(apiResponse(validPreview))
       .mockImplementationOnce(() => pending.promise)
       .mockResolvedValueOnce(apiResponse(emptyRuns))
@@ -387,6 +426,7 @@ describe('DataCenterPage batch ingestion', () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
       .mockResolvedValueOnce(apiResponse(validPreview))
+      .mockResolvedValueOnce(apiResponse(validPreview))
       .mockImplementationOnce(() => pending.promise)
     const wrapper = mount(DataCenterPage)
     await flushPromises()
@@ -397,8 +437,8 @@ describe('DataCenterPage batch ingestion', () => {
     await Promise.all([button.trigger('click'), button.trigger('click')])
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledTimes(3)
-    pending.resolve(apiResponse(commitSuccess))
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+    pending.resolve(apiResponse(batchCommitSuccess))
     await flushPromises()
     wrapper.unmount()
   })
@@ -412,7 +452,7 @@ describe('DataCenterPage batch ingestion', () => {
       resolved_start: '2026-07-29',
       resolved_end: '2026-07-29',
       fetched_count: 1,
-      result: commitSuccess,
+      result: drawCommitSuccess,
     } satisfies DrawSyncResponse
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))

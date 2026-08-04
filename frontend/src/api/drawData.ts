@@ -2,10 +2,17 @@ import type { components, paths } from './generated/openapi'
 
 export type DrawImportPreviewRequest = components['schemas']['DrawImportPreviewRequest']
 export type DrawImportCommitRequest = components['schemas']['DrawImportCommitRequest']
+export type BatchImportFileRequest = components['schemas']['BatchImportFileRequest']
+export type BatchImportPreviewRequest = components['schemas']['BatchImportPreviewRequest']
+export type BatchImportCommitRequest = components['schemas']['BatchImportCommitRequest']
 export type DrawImportPreview =
   paths['/api/v1/draw-imports/preview']['post']['responses'][200]['content']['application/json']
 export type ImportCommitResult =
   paths['/api/v1/draw-imports/commit']['post']['responses'][200]['content']['application/json']
+export type BatchImportPreview =
+  paths['/api/v1/draw-imports/batch/preview']['post']['responses'][200]['content']['application/json']
+export type BatchImportCommit =
+  paths['/api/v1/draw-imports/batch/commit']['post']['responses'][200]['content']['application/json']
 export type DrawHistoryResponse =
   paths['/api/v1/draws']['get']['responses'][200]['content']['application/json']
 export type DrawRecord = DrawHistoryResponse['records'][number]
@@ -34,6 +41,23 @@ export interface CommitOutcome {
   message?: string
   result: ImportCommitResult | null
   preview: DrawImportPreview | null
+}
+
+export interface BatchPreviewOutcome {
+  ok: boolean
+  status: number
+  errorCode?: string
+  message?: string
+  preview: BatchImportPreview | null
+}
+
+export interface BatchCommitOutcome {
+  ok: boolean
+  status: number
+  errorCode?: string
+  message?: string
+  result: BatchImportCommit | null
+  preview: BatchImportPreview | null
 }
 
 export interface DrawHistoryQuery {
@@ -120,6 +144,62 @@ export async function commitDrawImport(
     throw new DrawDataRequestError(payload.message, response.status)
   }
   throw malformedResponse('CSV commit', response.status)
+}
+
+export async function previewBatchDrawImport(
+  request: BatchImportPreviewRequest,
+  signal?: AbortSignal,
+): Promise<BatchPreviewOutcome> {
+  const response = await fetch('/api/v1/draw-imports/batch/preview', {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(request),
+    signal,
+  })
+  const payload = await responseJson(response)
+  if (response.status === 200 && isBatchPreview(payload)) {
+    return { ok: true, status: response.status, preview: payload }
+  }
+  if (response.status === 422 && isErrorRecord(payload)) {
+    return {
+      ok: false,
+      status: response.status,
+      errorCode: payload.error_code,
+      message: payload.message,
+      preview: isBatchPreview(payload.preview) ? payload.preview : null,
+    }
+  }
+  throw malformedResponse('Batch preview', response.status)
+}
+
+export async function commitBatchDrawImport(
+  request: BatchImportCommitRequest,
+  signal?: AbortSignal,
+): Promise<BatchCommitOutcome> {
+  const response = await fetch('/api/v1/draw-imports/batch/commit', {
+    method: 'POST',
+    headers: jsonHeaders(),
+    body: JSON.stringify(request),
+    signal,
+  })
+  const payload = await responseJson(response)
+  if (response.status === 200 && isBatchCommit(payload)) {
+    return { ok: true, status: response.status, result: payload, preview: null }
+  }
+  if ((response.status === 409 || response.status === 422) && isErrorRecord(payload)) {
+    return {
+      ok: false,
+      status: response.status,
+      errorCode: payload.error_code,
+      message: payload.message,
+      result: null,
+      preview: isBatchPreview(payload.preview) ? payload.preview : null,
+    }
+  }
+  if (response.status === 503 && isErrorRecord(payload)) {
+    throw new DrawDataRequestError(payload.message, response.status)
+  }
+  throw malformedResponse('Batch commit', response.status)
 }
 
 export async function runDrawSync(
@@ -252,6 +332,10 @@ function isNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every(isInteger)
 }
 
+function isLotteryType(value: unknown): value is 'DAILY_539' | 'BIG_LOTTO' | 'POWER_LOTTO' {
+  return value === 'DAILY_539' || value === 'BIG_LOTTO' || value === 'POWER_LOTTO'
+}
+
 function isErrorRecord(value: unknown): value is Record<string, unknown> & {
   error_code: string
   message: string
@@ -263,7 +347,7 @@ function isPreviewRow(value: unknown): boolean {
   return (
     isRecord(value) &&
     isInteger(value.source_row_number) &&
-    value.lottery_type === 'BIG_LOTTO' &&
+    isLotteryType(value.lottery_type) &&
     isString(value.draw_number) &&
     isString(value.draw_date) &&
     isNumberArray(value.main_numbers) &&
@@ -291,7 +375,7 @@ function isPreview(value: unknown): value is DrawImportPreview {
     isString(value.content_sha256) &&
     isString(value.parser_version) &&
     Array.isArray(value.supported_lottery_types) &&
-    value.supported_lottery_types.every((item) => item === 'BIG_LOTTO') &&
+    value.supported_lottery_types.every(isLotteryType) &&
     isInteger(value.total_rows) &&
     isInteger(value.valid_rows) &&
     isInteger(value.blank_rows) &&
@@ -308,12 +392,87 @@ function isPreview(value: unknown): value is DrawImportPreview {
   )
 }
 
+function isBatchImportIssue(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.code) &&
+    isString(value.message) &&
+    (value.row_number === null || isInteger(value.row_number)) &&
+    (value.member_name === null || isString(value.member_name))
+  )
+}
+
+function isBatchImportFile(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isString(value.source_filename) &&
+    isString(value.source_locator) &&
+    isString(value.source_sha256) &&
+    isString(value.status) &&
+    (value.lottery_type === null || isLotteryType(value.lottery_type)) &&
+    isInteger(value.discovered_rows) &&
+    isInteger(value.accepted_rows) &&
+    isInteger(value.excluded_rows) &&
+    isInteger(value.duplicate_rows) &&
+    isInteger(value.conflict_rows) &&
+    isInteger(value.failed_rows) &&
+    Array.isArray(value.issues) &&
+    value.issues.every(isBatchImportIssue)
+  )
+}
+
+function isBatchImportSummary(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    isInteger(value.discovered_files) &&
+    isInteger(value.accepted_files) &&
+    isInteger(value.excluded_files) &&
+    isInteger(value.parsed_rows) &&
+    isInteger(value.accepted_rows) &&
+    isInteger(value.excluded_rows) &&
+    isInteger(value.duplicate_rows) &&
+    isInteger(value.conflict_rows) &&
+    isInteger(value.imported_rows) &&
+    isInteger(value.failed_rows)
+  )
+}
+
+function isBatchPreview(value: unknown): value is BatchImportPreview {
+  return (
+    isRecord(value) &&
+    isString(value.source_filename) &&
+    typeof value.is_valid === 'boolean' &&
+    isString(value.manifest_sha256) &&
+    isString(value.parser_version) &&
+    Array.isArray(value.files) &&
+    value.files.every(isBatchImportFile) &&
+    isBatchImportSummary(value.summary) &&
+    Array.isArray(value.normalized_preview) &&
+    value.normalized_preview.every(isPreviewRow) &&
+    typeof value.preview_truncated === 'boolean'
+  )
+}
+
+function isBatchCommit(value: unknown): value is BatchImportCommit {
+  return (
+    isRecord(value) &&
+    isOptionalString(value.run_id) &&
+    isString(value.status) &&
+    isString(value.manifest_sha256) &&
+    isBatchImportSummary(value.summary) &&
+    Array.isArray(value.files) &&
+    value.files.every(isBatchImportFile) &&
+    isString(value.completed_at) &&
+    isOptionalString(value.error_summary)
+  )
+}
+
 function isCommitResult(value: unknown): value is ImportCommitResult {
   return (
     isRecord(value) &&
     isOptionalString(value.run_id) &&
     (value.status === 'SUCCESS' || value.status === 'FAILED') &&
-    (value.lottery_type === null || value.lottery_type === 'BIG_LOTTO') &&
+    (value.lottery_type === null || isLotteryType(value.lottery_type)) &&
     isInteger(value.total_count) &&
     isInteger(value.inserted_count) &&
     isInteger(value.skipped_count) &&
@@ -328,7 +487,7 @@ function isCommitResult(value: unknown): value is ImportCommitResult {
 function isDrawRecord(value: unknown): boolean {
   return (
     isRecord(value) &&
-    value.lottery_type === 'BIG_LOTTO' &&
+    isLotteryType(value.lottery_type) &&
     isString(value.draw_number) &&
     isString(value.draw_date) &&
     isNumberArray(value.main_numbers) &&
@@ -367,7 +526,7 @@ function isIngestionRun(value: unknown): boolean {
     isString(value.run_id) &&
     operationTypes.includes(String(value.operation_type)) &&
     ['RUNNING', 'SUCCESS', 'FAILED'].includes(String(value.status)) &&
-    (value.lottery_type === null || value.lottery_type === 'BIG_LOTTO') &&
+    (value.lottery_type === null || isLotteryType(value.lottery_type)) &&
     isString(value.source_filename) &&
     isString(value.source_sha256) &&
     isString(value.parser_version) &&

@@ -301,6 +301,8 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             ("get", "/api/v1/b649-multi-ticket-records/summary"),
         ("post", "/api/v1/draw-imports/preview"),
         ("post", "/api/v1/draw-imports/commit"),
+        ("post", "/api/v1/draw-imports/batch/preview"),
+        ("post", "/api/v1/draw-imports/batch/commit"),
         ("post", "/api/v1/draw-sync/manual"),
         ("post", "/api/v1/draw-sync/missing-scan"),
         ("post", "/api/v1/draw-sync/backfill"),
@@ -400,7 +402,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 42
+    assert len(operations) == 44
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

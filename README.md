@@ -138,17 +138,19 @@ uv run --no-sync lottolab import-historical-results \
 
 ### Data Center
 
-`#/data-center` 只接受 LottoLab canonical CSV。檔案選擇器支援多檔；瀏覽器把每個檔案讀成
-UTF-8 文字後，以獨立 preview request 取得後端權威 digest、parser version、valid／invalid／
-duplicate／conflict 統計。使用者可明確 commit 全部有效檔或勾選的有效檔；每檔是獨立 transaction
-與 ingestion run，不宣稱跨檔 atomicity。批次狀態固定為 `NOT_COMMITTED`、`SUCCESS`、`FAILED`
-或 `PARTIAL_SUCCESS`。取消、切換檔案與 unmount 都會中止 request 並使舊 response 失效。
+`#/data-center` 支援 legacy CSV、Daily 539 TXT、ZIP archive，以及現有 canonical CSV。檔案選擇器
+可以一次送入單檔或多檔；瀏覽器把 bounded bytes 轉成 base64，交給同一組 batch preview／commit
+API。後端會 deterministic 展開 ZIP、回報每個檔案或 archive member 的 accepted／partial／
+excluded／invalid 狀態與排除原因，再以一個 manifest digest 鎖定 commit payload。使用者可明確
+commit 全部有效檔或勾選的有效檔；選定內容使用單一 transaction 與 ingestion run，任何 persisted
+draw conflict 都會 rollback 整批。批次狀態固定為 `NOT_COMMITTED`、`SUCCESS`、`FAILED` 或
+`PARTIAL_SUCCESS`。取消、切換檔案與 unmount 都會中止 request 並使舊 response 失效。
 
-瀏覽器不使用 multipart，也不把 CSV 放進 localStorage、sessionStorage 或 IndexedDB；成功 commit
-或取消後會丟棄該頁 session 的 raw text。
+瀏覽器不使用 multipart，也不把輸入檔放進 localStorage、sessionStorage 或 IndexedDB；成功 commit
+或取消後會丟棄該頁 session 的 raw bytes。
 
-Canonical 欄位如下；`special_numbers` 與 `source` 可省略欄位，但目前 BIG_LOTTO 規則要求
-恰好一個特別號，因此有效資料列仍須提供 `special_numbers`。號碼欄以 `|` 分隔：
+Canonical 欄位如下；`special_numbers` 與 `source` 可省略欄位，但 BIG_LOTTO 與 POWER_LOTTO
+分別要求一個特別號／第二區號，DAILY_539 不使用特別號。號碼欄以 `|` 分隔：
 
 ```csv
 lottery_type,draw_number,draw_date,main_numbers,special_numbers,source
@@ -157,16 +159,20 @@ BIG_LOTTO,000001,2026-07-16,1|3|9|17|24|49,7,synthetic-reference
 
 - `preview` 只做後端權威解析、SHA-256 與 bounded preview；不解析 data path、不建立目錄／DB，
   也不寫 ingestion log。
-- `commit` 必須帶回相同內容、preview digest、目前 parser version 與唯一支援的 conflict policy
-  `REJECT`，後端會重新解析。Validation、digest、parser-version、input duplicate 與 input conflict
-  失敗都保持 DB-free，且不會建立 ingestion run。
+- `POST /api/v1/draw-imports/batch/preview` 與 `/batch/commit` 是單檔與多檔共用的 migration
+  boundary；commit 必須帶回相同內容、manifest digest 與目前 batch parser version，後端會重新解析。
+  Validation、digest、parser-version、input duplicate 與 input conflict 失敗都保持 DB-free，且不會
+  建立 ingestion run。
 - 有效 commit 以單一 transaction 寫入 draws、ingestion items 與 SUCCESS run。語意完全相同的
   draw 會記為 `SKIPPED_DUPLICATE`。
 - 已通過驗證的 persisted-draw conflict（同 key 不同內容）會先 rollback draw transaction、永不覆寫
   既有 draw，再以獨立 transaction commit FAILED ingestion audit。此行為同時適用於既有 DB，
   以及 fresh-path 在 schema 初始化後發生的 concurrent first-write conflict。
-- BIG_LOTTO import contract 固定為 6 個不重複主號（1–49）、1 個必要且不與主號重疊的特別號
-  （1–49），canonical storage order 為數字遞增；draw number 是保留前導零的 ASCII digit string。
+- BIG_LOTTO import contract 固定為 6 個不重複主號（1–49）與 1 個不重疊特別號（1–49）；
+  DAILY_539 為 5 個不重複主號（1–39）；POWER_LOTTO 為 6 個不重複主號（1–38）與第二區
+  號碼（1–8）。三者 canonical storage order 為數字遞增；draw number 是保留前導零的 ASCII digit string。
+- CLI `lottolab import-legacy-draw-files --input ... --database ...` 可對明確指定的檔案做 bounded
+  preview 或 task-owned commit；它不會掃描、修改或讀取 reference databases。
 - `DrawDataProvider` 是 application port；預設沒有 provider，automation endpoint 會回傳 sanitized
   `AUTOMATION_NOT_CONFIGURED`。Local runtime 只有在 `LOTTOLAB_DRAW_PROVIDER_URL` 明確設定為不含
   credential 的 absolute HTTPS URL 時，才建立 lazy JSON adapter；app construction、OpenAPI 與

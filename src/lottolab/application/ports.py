@@ -35,6 +35,11 @@ from lottolab.application.historical_queries import (
     HistoricalStrategySummaryList,
 )
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
+from lottolab.domain.batch_imports import (
+    BatchDrawImportCommit,
+    BatchDrawImportPreview,
+    ImportFilePayload,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
@@ -74,6 +79,22 @@ class DrawImportRepository(Protocol):
         ...
 
 
+class BatchDrawImportRepository(Protocol):
+    def apply_valid_batch_import(
+        self, preview: BatchDrawImportPreview
+    ) -> BatchDrawImportCommit:
+        """Atomically apply all accepted rows from one multi-file import."""
+        ...
+
+
+class BatchDrawImportParser(Protocol):
+    def __call__(
+        self, payloads: tuple[ImportFilePayload, ...]
+    ) -> BatchDrawImportPreview:
+        """Parse one bounded batch without filesystem or database I/O."""
+        ...
+
+
 class DrawAutomationRepository(Protocol):
     def apply_automation_import(
         self,
@@ -106,6 +127,7 @@ class IngestionRunRepository(Protocol):
 class DrawDataRepository(
     DrawRepository,
     DrawImportRepository,
+    BatchDrawImportRepository,
     DrawAutomationRepository,
     IngestionRunRepository,
     Protocol,

@@ -294,6 +294,8 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/b649-multi-ticket-records/summary": {"get": {}},
         "/api/v1/draw-imports/preview": {"post": {}},
         "/api/v1/draw-imports/commit": {"post": {}},
+        "/api/v1/draw-imports/batch/preview": {"post": {}},
+        "/api/v1/draw-imports/batch/commit": {"post": {}},
         "/api/v1/draw-sync/manual": {"post": {}},
         "/api/v1/draw-sync/missing-scan": {"post": {}},
         "/api/v1/draw-sync/backfill": {"post": {}},

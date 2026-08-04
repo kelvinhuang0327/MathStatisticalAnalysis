@@ -54,6 +54,8 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/b649-multi-ticket-records": frozenset({"get"}),
     "/api/v1/draw-imports/preview": frozenset({"post"}),
     "/api/v1/draw-imports/commit": frozenset({"post"}),
+    "/api/v1/draw-imports/batch/preview": frozenset({"post"}),
+    "/api/v1/draw-imports/batch/commit": frozenset({"post"}),
     "/api/v1/draw-sync/manual": frozenset({"post"}),
     "/api/v1/draw-sync/missing-scan": frozenset({"post"}),
     "/api/v1/draw-sync/backfill": frozenset({"post"}),

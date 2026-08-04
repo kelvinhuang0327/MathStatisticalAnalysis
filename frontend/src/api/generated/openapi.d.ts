@@ -50,6 +50,51 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/b649-multi-ticket-records/summary": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649MultiTicketSummaryResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-multi-ticket-records": {
+      get: {
+          parameters: {
+            "query": {
+              "prefix_count": components['schemas']["B649PrefixCount"]
+              "window": components['schemas']["B649HistoryWindow"]
+              "criterion": components['schemas']["B649SuccessCriterion"]
+              "q"?: string | null
+              "method_family"?: string | null
+              "reproduction_status"?: "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS" | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649MultiTicketRecordPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649MultiTicketApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/strategy-evidence": {
       get: {
           parameters: Record<string, never>
@@ -101,6 +146,50 @@ export interface paths {
                   422: {
                           content: {
                                     "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-imports/batch/preview": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportPreviewResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-imports/batch/commit": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportCommitResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportValidationErrorResponse"]
                                   }
                         }
                   503: {
@@ -406,6 +495,7 @@ export interface paths {
             "query": {
               "limit"?: number
               "offset"?: number
+              "lottery_type"?: components['schemas']["HistoricalLotteryType"] | null
             }
           }
           responses: {
@@ -513,6 +603,173 @@ export interface paths {
                   200: {
                           content: {
                                     "application/json": components['schemas']["HistoricalPortfolioView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs": {
+      get: {
+          parameters: {
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638RunPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs/{run_id}/strategies": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638StrategyPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs/{run_id}/replay": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "strategy_id"?: string | null
+              "date_from"?: string | null
+              "date_to"?: string | null
+              "status"?: "COMPLETE" | "EXCLUDED_INSUFFICIENT_HISTORY" | "FAILED" | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638ReplayPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+              "target_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638ReplayView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs/{run_id}/metrics": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "strategy_id"?: string | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638MetricsResponse"]
                                   }
                         }
                   404: {
@@ -1252,6 +1509,154 @@ export interface components {
           "preview"?: components['schemas']["DrawImportPreviewResponse"] | null
           "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
         }
+    "B649HistoryWindow": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+    "B649MultiTicketApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649MultiTicketRecordPageResponse": {
+          "items": Array<components['schemas']["B649MultiTicketRecordView"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "prefix_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": components['schemas']["B649SuccessCriterion"]
+          "research_disclaimer": string
+        }
+    "B649MultiTicketRecordView": {
+          "strategy_id": string
+          "strategy_version": string
+          "legacy_method_id": string
+          "source_path": string
+          "method_family": string
+          "reproduction_status": "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS"
+          "duplicate_alias_target": string | null
+          "prefix_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": components['schemas']["B649SuccessCriterion"]
+          "rank": number | null
+          "unranked_reason": string | null
+          "success_count": number | null
+          "effective_backtest_draw_count": number | null
+          "successful_execution_count": number | null
+          "historical_success_rate": string | null
+          "random_baseline_success_rate": string | null
+          "random_baseline_rate_difference": string | null
+          "coverage": string | null
+          "window_available_draws": number | null
+          "window_requested_draws": number | null
+          "window_complete": boolean | null
+          "official_prize_counts": components['schemas']["B649OfficialPrizeCountsView"] | null
+          "no_prize_count": number | null
+          "report_sha256": string | null
+          "report_file_sha256": string | null
+          "catalog_sha256": string
+        }
+    "B649MultiTicketSummaryResponse": {
+          "progress": components['schemas']["B649ResearchProgressView"]
+          "prefix_counts": Array<number>
+          "windows": Array<components['schemas']["B649HistoryWindow"]>
+          "success_criteria": Array<components['schemas']["B649SuccessCriterion"]>
+          "method_families": Array<string>
+          "reproduction_statuses": Array<"BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS">
+          "catalog_sha256": string
+          "records_available": boolean
+          "projection_sha256": string | null
+          "source_report_count": number | null
+          "research_disclaimer": string
+        }
+    "B649OfficialPrizeCountsView": {
+          "first": number
+          "second": number
+          "third": number
+          "fourth": number
+          "fifth": number
+          "sixth": number
+          "seventh": number
+          "general": number
+        }
+    "B649PrefixCount": 5 | 10 | 15 | 20
+    "B649ResearchProgressView": {
+          "total_strategy_count": number
+          "reproduced_count": number
+          "backtested_count": number
+          "closed_count": number
+          "duplicate_alias_count": number
+          "owner_decision_required_count": number
+          "uncompleted_count": number
+        }
+    "B649SuccessCriterion": "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
+    "BatchImportCommitRequest": {
+          "files": Array<components['schemas']["BatchImportFileRequest"]>
+          "expected_manifest_sha256": string
+          "parser_version": string
+        }
+    "BatchImportCommitResponse": {
+          "run_id": string | null
+          "status": string
+          "manifest_sha256": string
+          "summary": components['schemas']["BatchImportSummaryView"]
+          "files": Array<components['schemas']["BatchImportFileView"]>
+          "completed_at": string
+          "error_summary": string | null
+        }
+    "BatchImportFileRequest": {
+          "filename": string
+          "content_base64": string
+        }
+    "BatchImportFileView": {
+          "source_filename": string
+          "source_locator": string
+          "source_sha256": string
+          "status": string
+          "lottery_type": components['schemas']["LotteryType"] | null
+          "discovered_rows": number
+          "accepted_rows": number
+          "excluded_rows": number
+          "duplicate_rows": number
+          "conflict_rows": number
+          "failed_rows": number
+          "issues": Array<components['schemas']["BatchImportIssueView"]>
+        }
+    "BatchImportIssueView": {
+          "code": string
+          "message": string
+          "row_number": number | null
+          "member_name": string | null
+        }
+    "BatchImportPreviewRequest": {
+          "files": Array<components['schemas']["BatchImportFileRequest"]>
+          "declared_parser_version"?: string | null
+        }
+    "BatchImportPreviewResponse": {
+          "source_filename": string
+          "is_valid": boolean
+          "manifest_sha256": string
+          "parser_version": string
+          "files": Array<components['schemas']["BatchImportFileView"]>
+          "summary": components['schemas']["BatchImportSummaryView"]
+          "normalized_preview": Array<components['schemas']["NormalizedDrawPreviewView"]>
+          "preview_truncated": boolean
+        }
+    "BatchImportSummaryView": {
+          "discovered_files": number
+          "accepted_files": number
+          "excluded_files": number
+          "parsed_rows": number
+          "accepted_rows": number
+          "excluded_rows": number
+          "duplicate_rows": number
+          "conflict_rows": number
+          "imported_rows": number
+          "failed_rows": number
+        }
+    "BatchImportValidationErrorResponse": {
+          "error_code": string
+          "message": string
+          "preview"?: components['schemas']["BatchImportPreviewResponse"] | null
+          "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
+        }
     "CommitConflictResponse": {
           "error_code": string
           "message": string
@@ -1363,8 +1768,8 @@ export interface components {
         }
     "GenerateLiveZoneSplitBetsReason": "INVALID_NUM_BETS" | "MALFORMED_OUTPUT" | "EXECUTION_ERROR"
     "GenerateLiveZoneSplitBetsStatus": "OK" | "INVALID_REQUEST" | "INVALID_OUTPUT" | "EXECUTION_ERROR"
-    "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
-    "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR"
+    "GenerateOneBetReason": "REJECTED_BY_STRATEGY" | "INSUFFICIENT_HISTORY" | "UNKNOWN_STRATEGY" | "ADAPTER_NOT_INJECTED" | "UNSUPPORTED_LOTTERY_TYPE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "STRATEGY_IS_PORTFOLIO"
+    "GenerateOneBetStatus": "OK" | "REJECTED" | "INSUFFICIENT_HISTORY" | "STRATEGY_UNAVAILABLE" | "INVALID_OUTPUT" | "REPLAY_ERROR" | "WRONG_RESPONSE_PATH"
     "HistoricalDrawIdentityView": {
           "draw_number": string
           "draw_date": string
@@ -1372,6 +1777,7 @@ export interface components {
           "special_numbers": Array<number>
           "draw_sha256": string
         }
+    "HistoricalLotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
     "HistoricalPerDrawPrefixMetricsView": {
           "identity": components['schemas']["HistoricalPrefixStrategyIdentityView"]
           "prefix_count": number
@@ -2118,6 +2524,141 @@ export interface components {
           "normalized_record_hash": string
         }
     "OverviewPrefixCount": 10 | 15 | 20
+    "P638HitDistributionView": {
+          "value": number
+          "count": number
+        }
+    "P638MetricsResponse": {
+          "run_id": string
+          "strategy_id": string | null
+          "target_count": number
+          "complete_target_count": number
+          "excluded_target_count": number
+          "failed_target_count": number
+          "ticket_count": number
+          "combined_zone1_4plus_zone2_hit_count": number
+          "zone1_hit_distribution": Array<components['schemas']["P638HitDistributionView"]>
+          "zone2_hit_distribution": Array<components['schemas']["P638HitDistributionView"]>
+          "first_draw_number": string | null
+          "first_draw_date": string | null
+          "last_draw_number": string | null
+          "last_draw_date": string | null
+        }
+    "P638ReplayPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["P638ReplayView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "P638ReplayView": {
+          "target_id": string
+          "run_id": string
+          "strategy_snapshot_id": string
+          "strategy_id": string
+          "strategy_version": string
+          "target_draw_number": string
+          "target_draw_date": string
+          "history_boundary_draw_number": string | null
+          "history_boundary_date": string | null
+          "history_length": number
+          "expected_ticket_count": number
+          "status": string
+          "exclusion_reason": string | null
+          "failure_reason": string | null
+          "actual_zone1_numbers": Array<number>
+          "actual_zone2_number": number
+          "source_target_locator": string | null
+          "source_run_id": string | null
+          "source_replay_sha256": string | null
+          "provenance": string
+          "tickets": Array<components['schemas']["P638TicketView"]>
+        }
+    "P638RunPageResponse": {
+          "items": Array<components['schemas']["P638RunView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "P638RunView": {
+          "run_id": string
+          "import_identity_sha256": string
+          "manifest_sha256": string
+          "contract_version": string
+          "source_run_id": string
+          "source_replay_sha256": string
+          "source_draw_db_sha256": string
+          "source_commit_oid": string
+          "source_content_sha256": string
+          "second_zone_ssot_version": string
+          "status": string
+          "started_at": string
+          "completed_at": string
+          "strategy_count": number
+          "draw_count": number
+          "complete_target_count": number
+          "excluded_target_count": number
+          "failed_target_count": number
+          "ticket_count": number
+          "first_draw_number": string
+          "first_draw_date": string
+          "last_draw_number": string
+          "last_draw_date": string
+          "is_idempotent_replay": boolean
+        }
+    "P638StrategyPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["P638StrategyView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "P638StrategyView": {
+          "strategy_snapshot_id": string
+          "run_id": string
+          "strategy_id": string
+          "display_label": string
+          "strategy_version": string
+          "executable": boolean
+          "adapter_path": string | null
+          "native_ticket_count": number | null
+          "min_history": number | null
+          "zone1_contract": string
+          "zone2_contract": string
+          "lifecycle_status": string
+          "replay_status": string
+          "source_run_id": string | null
+          "source_replay_sha256": string | null
+          "source_paths": Array<string>
+          "provenance": string
+          "exclusion_reason": string | null
+          "complete_target_count": number
+          "excluded_target_count": number
+          "failed_target_count": number
+          "ticket_count": number
+          "zone1_hit_distribution": Array<components['schemas']["P638HitDistributionView"]>
+          "zone2_hit_distribution": Array<components['schemas']["P638HitDistributionView"]>
+          "first_draw_number": string | null
+          "first_draw_date": string | null
+          "last_draw_number": string | null
+          "last_draw_date": string | null
+        }
+    "P638TicketView": {
+          "ticket_id": string
+          "ticket_position": number
+          "predicted_zone1_numbers": Array<number>
+          "predicted_zone2_number": number
+          "actual_zone1_numbers": Array<number>
+          "actual_zone2_number": number
+          "zone1_hit_count": number
+          "zone2_hit": boolean
+          "status": string
+          "source_run_id": string
+          "source_replay_sha256": string
+          "source_record_locator": string | null
+          "second_zone_ssot_version": string
+          "provenance": string
+        }
     "ReplayOverallAggregateResponse": {
           "run_payload_sha256": string
           "source_snapshot_count": number

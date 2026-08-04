@@ -52,6 +52,9 @@ _STATUS_MAP = {
         OrderedCandidateMaterializationStatus.INVALID_OUTPUT
     ),
     GenerateOneBetStatus.REPLAY_ERROR: OrderedCandidateMaterializationStatus.REPLAY_ERROR,
+    GenerateOneBetStatus.WRONG_RESPONSE_PATH: (
+        OrderedCandidateMaterializationStatus.STRATEGY_UNAVAILABLE
+    ),
 }
 
 

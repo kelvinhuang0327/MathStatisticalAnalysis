@@ -2,29 +2,38 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import DataCenterPage from './features/data-center/DataCenterPage.vue'
+import B649MultiTicketRecordsPage from './features/b649-multi-ticket-records/B649MultiTicketRecordsPage.vue'
 import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
+import P638HistoricalReplayPage from './features/p638-historical-replay/P638HistoricalReplayPage.vue'
+import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638StrategyAnalysisPage.vue'
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
 import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidencePage.vue'
 
 type Page =
   | 'strategies'
   | 'historical-success-windows'
+  | 'b649-multi-ticket-records'
   | 'data-center'
   | 'history'
   | 'strategy-evidence'
   | 'live-zone-split-bets'
+  | 'p638-historical-replay'
+  | 'p638-strategy-analysis'
 
 const currentPage = ref<Page>(pageFromHash())
 
 function pageFromHash(): Page {
   const route = window.location.hash.replace(/^#\/?/, '')
   if (route === 'historical-success-windows') return 'historical-success-windows'
+  if (route === 'b649-multi-ticket-records') return 'b649-multi-ticket-records'
   if (route === 'data-center') return 'data-center'
   if (route === 'history' || route === 'draw-history') return 'history'
   if (route === 'strategy-evidence') return 'strategy-evidence'
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
+  if (route === 'p638-historical-replay') return 'p638-historical-replay'
+  if (route === 'p638-strategy-analysis') return 'p638-strategy-analysis'
   return 'strategies'
 }
 
@@ -56,6 +65,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           Success Windows
         </a>
+        <a
+          href="#/b649-multi-ticket-records"
+          :aria-current="currentPage === 'b649-multi-ticket-records' ? 'page' : undefined"
+        >
+          B649 Records
+        </a>
         <a href="#/data-center" :aria-current="currentPage === 'data-center' ? 'page' : undefined">
           Data Center
         </a>
@@ -74,6 +89,18 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           Live Zone Split Bets
         </a>
+        <a
+          href="#/p638-historical-replay"
+          :aria-current="currentPage === 'p638-historical-replay' ? 'page' : undefined"
+        >
+          P638 Replay
+        </a>
+        <a
+          href="#/p638-strategy-analysis"
+          :aria-current="currentPage === 'p638-strategy-analysis' ? 'page' : undefined"
+        >
+          P638 Analysis
+        </a>
       </nav>
       <span class="environment-badge">Local workspace</span>
     </header>
@@ -81,10 +108,13 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
     <main>
       <StrategyCatalogPage v-if="currentPage === 'strategies'" />
       <HistoricalSuccessWindowsPage v-else-if="currentPage === 'historical-success-windows'" />
+      <B649MultiTicketRecordsPage v-else-if="currentPage === 'b649-multi-ticket-records'" />
       <DataCenterPage v-else-if="currentPage === 'data-center'" />
       <HistoryPage v-else-if="currentPage === 'history'" />
       <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
-      <LiveZoneSplitBetsPage v-else />
+      <LiveZoneSplitBetsPage v-else-if="currentPage === 'live-zone-split-bets'" />
+      <P638HistoricalReplayPage v-else-if="currentPage === 'p638-historical-replay'" />
+      <P638StrategyAnalysisPage v-else />
     </main>
 
     <footer class="app-footer">
@@ -95,6 +125,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         Historical Success Windows are descriptive, exact-source research evidence—not rankings,
         promotion decisions, or predictions.
       </template>
+      <template v-else-if="currentPage === 'b649-multi-ticket-records'">
+        歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。
+      </template>
       <template v-else-if="currentPage === 'live-zone-split-bets'">
         Target-contract-only view of the merged Live Zone Split API. Legacy LotteryNew consumer
         parity is not claimed or verified here.
@@ -102,6 +135,14 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'strategy-evidence'">
         Evidence availability comes only from committed registries and definitions; unavailable
         values are never inferred.
+      </template>
+      <template v-else-if="currentPage === 'p638-historical-replay'">
+        P638 replay is read-only historical evidence. It does not generate tickets, rank
+        strategies, or make future predictions.
+      </template>
+      <template v-else-if="currentPage === 'p638-strategy-analysis'">
+        P638 analysis reports stored replay coverage and hit distributions only; no betting or
+        predictive claim is made.
       </template>
       <template v-else>
         Local draw data stays outside Git. Import writes occur only after explicit confirmation.

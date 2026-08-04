@@ -15,9 +15,11 @@ from tests.fixtures.historical.builder import (
     build_baseline_envelope,
     build_draw_snapshot,
     build_small_envelope,
+    build_v2_envelope,
     deep_copy,
     envelope_bytes,
     recompute_envelope_hashes,
+    recompute_v2_envelope_hashes,
 )
 
 from lottolab.domain.historical_results import HistoricalRunImport
@@ -448,6 +450,145 @@ def test_valid_canonical_draw_date_is_preserved() -> None:
     }
 
 
+def test_v1_canonical_hashes_remain_frozen() -> None:
+    envelope = build_baseline_envelope()
+    portfolio = envelope["portfolios"][0]
+    assert envelope["import_identity_sha256"] == (
+        "78cad5d6b01c57ea9ef94b0acb75ce80d60c12fc8a6e5cfe2b8fd2c6ff910b0d"
+    )
+    assert envelope["manifest_sha256"] == (
+        "e4ab8ba97b2263ba65812cfb003863c847aa0b3fe146f8703aefb3ebd9d504de"
+    )
+    assert envelope["draw_snapshots"][0]["draw_sha256"] == (
+        "0ecf79665e6f1b3e9d328562c39109e29d2d89f74fb8abda6c805cef49db8930"
+    )
+    assert portfolio["tickets"][0]["ticket_sha256"] == (
+        "5cd1b1faada9f107b252ac5ed0c855d2012be569b320f90307fb5e70040e5a5b"
+    )
+    assert portfolio["portfolio_sha256"] == (
+        "6918c7f39650c784002c201a949fdd37f92d4a28545b5fa088695f4416944979"
+    )
+    assert portfolio["prefix10_sha256"] == (
+        "72654418e7986293d8dec2c6ac79481566e9c72062fc6648f8baf8dbca532ea0"
+    )
+    assert portfolio["prefix15_sha256"] == (
+        "f0f1660c2205ad63ccee05128b21ca2bb38a286cc026ee404fcd9850bb803d00"
+    )
+    assert _verify(envelope).outcome is HistoricalImportOutcome.IMPORT_PASS
+
+
+@pytest.mark.parametrize("lottery_type", ["DAILY_539", "BIG_LOTTO", "POWER_LOTTO"])
+def test_v2_valid_imports_normalize_each_authorized_lottery(lottery_type: str) -> None:
+    envelope = build_v2_envelope(lottery_type)
+    result = _verify(envelope)
+    assert result.outcome is HistoricalImportOutcome.IMPORT_PASS
+    assert result.normalized_import is not None
+    assert result.normalized_import.contract_version == "2.0.0"
+    assert result.normalized_import.dataset.lottery_type.value == lottery_type
+    assert len(result.normalized_import.portfolios[0].tickets) == 20
+
+
+def _v2_with_defect(lottery_type: str, defect: str) -> dict[str, Any]:
+    envelope = build_v2_envelope(lottery_type)
+    draw = envelope["draw_snapshots"][0]
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    if defect == "main_count":
+        draw["main_numbers"].pop()
+    elif defect == "main_range":
+        ticket["main_numbers"][0] = 0
+    elif defect == "main_duplicate":
+        draw["main_numbers"][1] = draw["main_numbers"][0]
+    elif defect == "special_count":
+        if lottery_type == "DAILY_539":
+            ticket["special_numbers"] = [1]
+        else:
+            draw["special_numbers"] = []
+    elif defect == "special_range":
+        ticket["special_numbers"] = [
+            {"DAILY_539": 40, "BIG_LOTTO": 50, "POWER_LOTTO": 9}[lottery_type]
+        ]
+    elif defect == "hit_mismatch":
+        ticket["main_hit_count"] -= 1
+    else:
+        raise AssertionError(f"unknown defect: {defect}")
+    return recompute_v2_envelope_hashes(envelope)
+
+
+@pytest.mark.parametrize("lottery_type", ["DAILY_539", "BIG_LOTTO", "POWER_LOTTO"])
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "main_count",
+        "main_range",
+        "main_duplicate",
+        "special_count",
+        "special_range",
+        "hit_mismatch",
+    ],
+)
+def test_v2_rejects_malformed_numbers_and_declared_hits_for_each_lottery(
+    lottery_type: str, defect: str
+) -> None:
+    result = _verify(_v2_with_defect(lottery_type, defect))
+    expected = (
+        HistoricalImportOutcome.IMPORT_HIT_MISMATCH
+        if defect == "hit_mismatch"
+        else HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+    )
+    assert result.outcome is expected
+
+
+def test_v2_big_lotto_rejects_overlap_but_power_lotto_permits_cross_zone_value() -> None:
+    big = build_v2_envelope("BIG_LOTTO")
+    big["draw_snapshots"][0]["special_numbers"] = [big["draw_snapshots"][0]["main_numbers"][0]]
+    assert (
+        _verify(recompute_v2_envelope_hashes(big)).outcome
+        is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+    )
+    assert _verify(build_v2_envelope("POWER_LOTTO")).outcome is HistoricalImportOutcome.IMPORT_PASS
+
+
+@pytest.mark.parametrize("lottery_type", ["DAILY_539", "BIG_LOTTO", "POWER_LOTTO"])
+def test_v2_cross_lottery_shape_substitution_is_rejected(lottery_type: str) -> None:
+    envelope = build_v2_envelope(lottery_type)
+    draw = envelope["draw_snapshots"][0]
+    ticket = envelope["portfolios"][0]["tickets"][0]
+    if lottery_type == "DAILY_539":
+        draw["main_numbers"] = [1, 2, 3, 4, 5, 6]
+    elif lottery_type == "BIG_LOTTO":
+        draw["special_numbers"] = [draw["main_numbers"][0]]
+    else:
+        ticket["main_numbers"][-1] = 49
+    assert (
+        _verify(recompute_v2_envelope_hashes(envelope)).outcome
+        is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+    )
+
+
+def test_v2_hashes_are_deterministic_and_lottery_domain_separated() -> None:
+    first = build_v2_envelope("BIG_LOTTO")
+    second = build_v2_envelope("BIG_LOTTO")
+    power = build_v2_envelope("POWER_LOTTO")
+    assert first == second
+    assert first["import_identity_sha256"] != power["import_identity_sha256"]
+    assert first["draw_snapshots"][1]["draw_sha256"] != power["draw_snapshots"][1]["draw_sha256"]
+    assert (
+        first["portfolios"][0]["tickets"][0]["ticket_sha256"]
+        != power["portfolios"][0]["tickets"][0]["ticket_sha256"]
+    )
+
+
+@pytest.mark.parametrize("version", ["1", "2", "2.0", "3.0.0", None])
+def test_unknown_or_malformed_contract_versions_fail_closed(version: object) -> None:
+    envelope = build_baseline_envelope()
+    envelope["contract_version"] = version
+    raw = json.dumps(envelope, separators=(",", ":"), sort_keys=True).encode()
+    assert (
+        verify_and_normalize_historical_import(raw).outcome
+        is HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED
+    )
+
+
 # --- BLHQ R1 R3 correction: BIG_LOTTO draw-number invariants -------------------
 
 
@@ -560,9 +701,7 @@ def test_ticket_with_out_of_range_main_number_is_rejected() -> None:
     ("special_numbers", "expected_outcome"),
     [
         pytest.param([], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="empty"),
-        pytest.param(
-            [7, 8], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="multiple_values"
-        ),
+        pytest.param([7, 8], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="multiple_values"),
         pytest.param([0], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="below_range"),
         pytest.param([50], HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, id="above_range"),
         pytest.param(

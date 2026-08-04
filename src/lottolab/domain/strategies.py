@@ -24,6 +24,20 @@ class LifecycleStatus(StrEnum):
 EXECUTABLE_STATUSES: frozenset[LifecycleStatus] = frozenset({LifecycleStatus.ONLINE})
 
 
+class ResponseShape(StrEnum):
+    """Which generate-bet response path a strategy's adapter is executed through.
+
+    SINGLE_TICKET strategies use the original one-ticket path (BetAdapter,
+    GenerateOneBet). PORTFOLIO strategies natively emit an ordered set of two
+    or more causally-computed tickets under one strategy identity and use the
+    dedicated portfolio path (PortfolioBetAdapter, GeneratePortfolio) so their
+    complete native output is reachable — never truncated to one ticket.
+    """
+
+    SINGLE_TICKET = "SINGLE_TICKET"
+    PORTFOLIO = "PORTFOLIO"
+
+
 @dataclass(frozen=True, slots=True)
 class StrategyDescriptor:
     strategy_id: str
@@ -35,6 +49,8 @@ class StrategyDescriptor:
     adapter_path: str | None = None
     min_history: int = 1
     provenance: tuple[str, ...] = ()
+    response_shape: ResponseShape = ResponseShape.SINGLE_TICKET
+    native_ticket_count: int = 1
 
     def __post_init__(self) -> None:
         if not self.strategy_id.strip():
@@ -57,4 +73,14 @@ class StrategyDescriptor:
         if not self.executable and self.adapter_path is not None:
             raise ValueError(
                 f"{self.strategy_id}: non-executable strategy cannot declare adapter_path"
+            )
+        if self.response_shape is ResponseShape.SINGLE_TICKET and self.native_ticket_count != 1:
+            raise ValueError(
+                f"{self.strategy_id}: SINGLE_TICKET strategies must declare "
+                "native_ticket_count=1"
+            )
+        if self.response_shape is ResponseShape.PORTFOLIO and self.native_ticket_count < 2:
+            raise ValueError(
+                f"{self.strategy_id}: PORTFOLIO strategies must declare "
+                "native_ticket_count >= 2"
             )

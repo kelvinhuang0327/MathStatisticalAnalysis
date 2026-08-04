@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
+import type { LotteryType } from '../../api/strategies'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import {
   getHistoricalSuccessFeatureCohortDiagnostics,
   getHistoricalSuccessFeatureCohorts,
@@ -53,6 +55,10 @@ type AnalysisState =
   | 'error'
 type DetailState = 'closed' | 'loading' | 'ready' | 'not-found' | 'invalid' | 'unavailable' | 'malformed' | 'error'
 type MatrixState = 'idle' | 'selected' | 'loading' | 'ready' | 'partial' | 'error'
+
+function lotteryLabel(value: string): string {
+  return lotteryTypeDisplayLabel(value as LotteryType)
+}
 type MatrixSelection = HistoricalSuccessWindowResult
 type MatrixOutcome = {
   selection: MatrixSelection
@@ -1323,7 +1329,7 @@ onBeforeUnmount(() => {
               :key="run.import_identity_sha256"
               :value="run.import_identity_sha256"
             >
-              {{ run.dataset_identity }} · {{ run.lottery_type }} · {{ run.completed_at }}
+              {{ run.dataset_identity }} · {{ lotteryLabel(run.lottery_type) }} · {{ run.completed_at }}
             </option>
           </select>
         </label>
@@ -1346,7 +1352,7 @@ onBeforeUnmount(() => {
               :key="`comparison:${run.import_identity_sha256}`"
               :value="run.import_identity_sha256"
             >
-              {{ run.dataset_identity }} · {{ run.lottery_type }} · {{ run.completed_at }}
+              {{ run.dataset_identity }} · {{ lotteryLabel(run.lottery_type) }} · {{ run.completed_at }}
             </option>
           </select>
         </label>
@@ -1427,7 +1433,7 @@ onBeforeUnmount(() => {
 
       <dl v-if="selectedRun" class="source-facts">
         <div><dt>Dataset</dt><dd>{{ selectedRun.dataset_identity }}</dd></div>
-        <div><dt>Lottery</dt><dd>{{ selectedRun.lottery_type }}</dd></div>
+        <div><dt>Lottery</dt><dd>{{ lotteryLabel(selectedRun.lottery_type) }}</dd></div>
         <div><dt>Completed</dt><dd>{{ selectedRun.completed_at }}</dd></div>
         <div><dt>Source repository</dt><dd>{{ selectedRun.source_repository }}</dd></div>
         <div><dt>Source commit</dt><dd><code>{{ selectedRun.source_commit_oid }}</code></dd></div>
@@ -2590,13 +2596,13 @@ onBeforeUnmount(() => {
               <div class="source-facts__identity"><dt>Primary import SHA</dt><dd><code>{{ outcome.result.metadata.left.import_identity_sha256 }}</code></dd></div>
               <div><dt>Primary source</dt><dd>{{ outcome.result.metadata.left.source_repository }} · {{ outcome.result.metadata.left.source_commit_oid }}</dd></div>
               <div class="source-facts__identity"><dt>Primary source artifact SHA</dt><dd><code>{{ outcome.result.metadata.left.source_artifact_sha256 }}</code></dd></div>
-              <div><dt>Primary dataset</dt><dd>{{ outcome.result.metadata.left.dataset_identity }} · {{ outcome.result.metadata.left.lottery_type }}</dd></div>
+              <div><dt>Primary dataset</dt><dd>{{ outcome.result.metadata.left.dataset_identity }} · {{ lotteryLabel(outcome.result.metadata.left.lottery_type) }}</dd></div>
               <div class="source-facts__identity"><dt>Primary dataset SHA</dt><dd><code>{{ outcome.result.metadata.left.dataset_sha256 }}</code></dd></div>
               <div><dt>Comparison run ID</dt><dd>{{ outcome.result.metadata.right.run_id }}</dd></div>
               <div class="source-facts__identity"><dt>Comparison import SHA</dt><dd><code>{{ outcome.result.metadata.right.import_identity_sha256 }}</code></dd></div>
               <div><dt>Comparison source</dt><dd>{{ outcome.result.metadata.right.source_repository }} · {{ outcome.result.metadata.right.source_commit_oid }}</dd></div>
               <div class="source-facts__identity"><dt>Comparison source artifact SHA</dt><dd><code>{{ outcome.result.metadata.right.source_artifact_sha256 }}</code></dd></div>
-              <div><dt>Comparison dataset</dt><dd>{{ outcome.result.metadata.right.dataset_identity }} · {{ outcome.result.metadata.right.lottery_type }}</dd></div>
+              <div><dt>Comparison dataset</dt><dd>{{ outcome.result.metadata.right.dataset_identity }} · {{ lotteryLabel(outcome.result.metadata.right.lottery_type) }}</dd></div>
               <div class="source-facts__identity"><dt>Comparison dataset SHA</dt><dd><code>{{ outcome.result.metadata.right.dataset_sha256 }}</code></dd></div>
             </dl>
             <dl

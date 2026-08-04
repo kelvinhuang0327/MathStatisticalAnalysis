@@ -154,15 +154,19 @@ def test_invalid_effective_date_range_is_rejected() -> None:
         )
 
 
-def test_registry_contains_one_machine_readable_big_lotto_contract() -> None:
-    assert tuple(LOTTERY_RULE_CONTRACTS) == (LotteryType.BIG_LOTTO,)
-    assert tuple(LOTTERY_RULE_CONTRACTS.values()) == (BIG_LOTTO_RULE_CONTRACT,)
+def test_registry_contains_the_three_importable_machine_readable_contracts() -> None:
+    assert tuple(LOTTERY_RULE_CONTRACTS) == (
+        LotteryType.BIG_LOTTO,
+        LotteryType.DAILY_539,
+        LotteryType.POWER_LOTTO,
+    )
     assert LOTTERY_RULE_CONTRACTS[LotteryType.BIG_LOTTO] is BIG_LOTTO_RULE_CONTRACT
 
 
 def test_prize_rule_is_complete_ordered_source_bound_and_amount_free() -> None:
     contract = BIG_LOTTO_RULE_CONTRACT
     prize_rule = contract.prize_rule
+    assert prize_rule is not None
 
     assert prize_rule.tiers
     assert tuple(tier.tier_id for tier in prize_rule.tiers) == tuple(BigLottoPrizeTierId)
@@ -191,6 +195,7 @@ def test_resolver_uses_the_committed_contract_as_its_only_mapping(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
     first, second, *remaining = prize_rule.tiers
     altered_tiers = (
         replace(first, main_hits=second.main_hits, special_hit=second.special_hit),
@@ -207,7 +212,9 @@ def test_resolver_uses_the_committed_contract_as_its_only_mapping(
         altered_contract,
     )
 
-    for tier in altered_contract.prize_rule.tiers:
+    altered_prize_rule = altered_contract.prize_rule
+    assert altered_prize_rule is not None
+    for tier in altered_prize_rule.tiers:
         assert (
             lottery_rules_module.resolve_big_lotto_prize_tier(
                 tier.main_hits,
@@ -273,6 +280,7 @@ def test_invalid_hit_signatures_fail_closed(
 
 def test_malformed_prize_tier_is_rejected() -> None:
     prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
     malformed = replace(prize_rule.tiers[0], official_label=" ")
 
     with pytest.raises(ValueError, match="official_label"):
@@ -284,6 +292,7 @@ def test_malformed_prize_tier_is_rejected() -> None:
 
 def test_duplicate_tier_identifier_is_rejected() -> None:
     prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
     duplicate = replace(prize_rule.tiers[1], tier_id=BigLottoPrizeTierId.FIRST)
 
     with pytest.raises(ValueError, match="identifier"):
@@ -298,6 +307,7 @@ def test_duplicate_tier_identifier_is_rejected() -> None:
 
 def test_ambiguous_multiple_tier_match_is_rejected() -> None:
     prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
     ambiguous = replace(prize_rule.tiers[1], main_hits=6, special_hit=False)
 
     with pytest.raises(ValueError, match="ambiguous"):
@@ -312,6 +322,7 @@ def test_ambiguous_multiple_tier_match_is_rejected() -> None:
 
 def test_incomplete_official_tier_mapping_is_rejected() -> None:
     prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
 
     with pytest.raises(ValueError, match="every tier identifier"):
         replace(
@@ -322,6 +333,7 @@ def test_incomplete_official_tier_mapping_is_rejected() -> None:
 
 def test_prize_source_digest_must_link_to_primary_provenance() -> None:
     prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
 
     with pytest.raises(ValueError, match="source digest"):
         replace(

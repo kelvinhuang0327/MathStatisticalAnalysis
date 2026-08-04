@@ -83,6 +83,50 @@ LOTTOLAB_HISTORICAL_RESULTS_DB=/absolute/owner-only/historical-results.db \
   LONG / PRIMARY_EVIDENCE / 750、MEDIUM / STABILITY_CONFIRMATION / 300、SHORT / DEGRADATION_VETO / 50；
   alias、replicate 與 zero-observation identity 都保留。
 
+## P638 Historical Replay V2
+
+`#/p638-historical-replay` 與 `#/p638-strategy-analysis` 是 POWER_LOTTO／P638 專用的唯讀 Historical
+Results V2 vertical。前者以 server-side strategy、date、status 與 pagination 查詢完整 replay target、
+ticket、exclusion 與 source provenance；後者顯示目前 registry 的 10 個 identity、8 個可重用 replay
+identity、2 個保留但排除的 identity，以及 stored hit distributions。兩頁都只呈現描述性歷史資料，
+不產生票券、不排名、不預測。
+
+V2 schema extension 由明確指定的離線 forwarder 建立；runtime API construction、OpenAPI generation 與
+frontend build 不會 initialize 或 migrate DB，request 只以 SQLite `mode=ro`／`query_only` 讀取既有 DB。
+forwarder 只寫 task-owned output，會驗證固定來源檔案 bytes／SHA-256、P638 R4 ledger、舊 DB draw authority、
+registry coverage 與 totals，並以 deterministic import identity 保證 rerun idempotence：
+
+```bash
+uv run --no-sync lottolab forward-p638-historical \
+  --source-replay-db /absolute/task-owned/p638_wave1_replay_r4.sqlite3 \
+  --source-draw-db /absolute/task-owned/powerlotto_draws.sqlite3 \
+  --database /absolute/task-owned/historical_results_v2.sqlite3
+```
+
+同一個 exact path 由 `LOTTOLAB_HISTORICAL_RESULTS_DB` 注入 local runtime；canonical／production DB 與來源
+DB 不會被自動採用或修改。P638 API routes 為 `/api/v1/p638-historical/runs`、`/strategies`、`/replay`、
+`/targets/{target_id}` 與 `/metrics`；generic Historical Results runs 也會在 `lottery_type=POWER_LOTTO`
+時顯示 V2 run summary。
+
+## B649 多注歷史紀錄
+
+`#/b649-multi-ticket-records` 是 221 個大樂透研究方法的唯讀聚合紀錄頁。使用者必須明確選擇
+5／10／15／20 注、FULL／RECENT_750／RECENT_300／RECENT_50，以及八項成功標準之一，再按下
+「查詢」；策略搜尋、方法分類與正式復現狀態是額外篩選。頁面不預選第一名、最佳策略、最新報告
+或任何贏家。
+
+- Runtime 只讀固定名稱的 packaged
+  `biglotto_multi_ticket_historical_records_v1.json`，並驗證 projection self-hash 與 final catalog
+  SHA-256；沒有 report directory scan、latest/newest discovery、legacy DB 或 fallback。
+- Offline builder 只接受逐一指定的 `--report` 路徑，並以 final catalog 宣告的 committed evidence
+  checksum 驗證 physical report、internal report self-hash 與策略歸屬。135 個 BACKTESTED 策略若未
+  全數具有 128 組 metric、128 組 ranking 與 16 組官方獎項分布，builder 不會輸出 projection。
+- API 只有 GET summary 與 GET records；HTTP request 不執行策略、不產生票券、不重跑回測，也不載入
+  ordered-20、native tickets 或 execution audit。正式 closed／alias 策略保留未排名原因，所有缺少
+  的數值欄位維持 `null`，不補 0。
+- 固定研究限制為：「歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、
+  上線決策或中獎保證。」
+
 ## Historical Results 明確匯入
 
 本機 operator 可將一個已符合 LottoLab `HistoricalResultImportV1` target envelope 的 JSON 檔案，
@@ -110,25 +154,28 @@ uv run --no-sync lottolab import-historical-results \
 
 ## 非多票 Web 工作區（LotteryNew → LottoLab R1）
 
-前端以 hash navigation 提供 `Strategy Overview`、`Historical Success Windows`、`Data Center`、
-`History`、`Strategy Evidence` 與既有 `Live Zone Split Bets`。本節只描述非多票資料、歷史與
+前端以 hash navigation 提供 `Strategy Overview`、`Historical Success Windows`、
+`B649 Records`、`Data Center`、`History`、`Strategy Evidence` 與既有
+`Live Zone Split Bets`。本節只描述非多票資料、歷史與
 證據可用性；多票 replay／backtest／portfolio／ranking／combination／ticket matrix 一律不在此
 遷移範圍。逐項 legacy 對照與未完成條件見
 [non-multiticket web parity matrix](docs/migration/lotterynew-lottolab-non-multiticket-web-parity-r1.md)。
 
 ### Data Center
 
-`#/data-center` 只接受 LottoLab canonical CSV。檔案選擇器支援多檔；瀏覽器把每個檔案讀成
-UTF-8 文字後，以獨立 preview request 取得後端權威 digest、parser version、valid／invalid／
-duplicate／conflict 統計。使用者可明確 commit 全部有效檔或勾選的有效檔；每檔是獨立 transaction
-與 ingestion run，不宣稱跨檔 atomicity。批次狀態固定為 `NOT_COMMITTED`、`SUCCESS`、`FAILED`
-或 `PARTIAL_SUCCESS`。取消、切換檔案與 unmount 都會中止 request 並使舊 response 失效。
+`#/data-center` 支援 legacy CSV、Daily 539 TXT、ZIP archive，以及現有 canonical CSV。檔案選擇器
+可以一次送入單檔或多檔；瀏覽器把 bounded bytes 轉成 base64，交給同一組 batch preview／commit
+API。後端會 deterministic 展開 ZIP、回報每個檔案或 archive member 的 accepted／partial／
+excluded／invalid 狀態與排除原因，再以一個 manifest digest 鎖定 commit payload。使用者可明確
+commit 全部有效檔或勾選的有效檔；選定內容使用單一 transaction 與 ingestion run，任何 persisted
+draw conflict 都會 rollback 整批。批次狀態固定為 `NOT_COMMITTED`、`SUCCESS`、`FAILED` 或
+`PARTIAL_SUCCESS`。取消、切換檔案與 unmount 都會中止 request 並使舊 response 失效。
 
-瀏覽器不使用 multipart，也不把 CSV 放進 localStorage、sessionStorage 或 IndexedDB；成功 commit
-或取消後會丟棄該頁 session 的 raw text。
+瀏覽器不使用 multipart，也不把輸入檔放進 localStorage、sessionStorage 或 IndexedDB；成功 commit
+或取消後會丟棄該頁 session 的 raw bytes。
 
-Canonical 欄位如下；`special_numbers` 與 `source` 可省略欄位，但目前 BIG_LOTTO 規則要求
-恰好一個特別號，因此有效資料列仍須提供 `special_numbers`。號碼欄以 `|` 分隔：
+Canonical 欄位如下；`special_numbers` 與 `source` 可省略欄位，但 BIG_LOTTO 與 POWER_LOTTO
+分別要求一個特別號／第二區號，DAILY_539 不使用特別號。號碼欄以 `|` 分隔：
 
 ```csv
 lottery_type,draw_number,draw_date,main_numbers,special_numbers,source
@@ -137,16 +184,20 @@ BIG_LOTTO,000001,2026-07-16,1|3|9|17|24|49,7,synthetic-reference
 
 - `preview` 只做後端權威解析、SHA-256 與 bounded preview；不解析 data path、不建立目錄／DB，
   也不寫 ingestion log。
-- `commit` 必須帶回相同內容、preview digest、目前 parser version 與唯一支援的 conflict policy
-  `REJECT`，後端會重新解析。Validation、digest、parser-version、input duplicate 與 input conflict
-  失敗都保持 DB-free，且不會建立 ingestion run。
+- `POST /api/v1/draw-imports/batch/preview` 與 `/batch/commit` 是單檔與多檔共用的 migration
+  boundary；commit 必須帶回相同內容、manifest digest 與目前 batch parser version，後端會重新解析。
+  Validation、digest、parser-version、input duplicate 與 input conflict 失敗都保持 DB-free，且不會
+  建立 ingestion run。
 - 有效 commit 以單一 transaction 寫入 draws、ingestion items 與 SUCCESS run。語意完全相同的
   draw 會記為 `SKIPPED_DUPLICATE`。
 - 已通過驗證的 persisted-draw conflict（同 key 不同內容）會先 rollback draw transaction、永不覆寫
   既有 draw，再以獨立 transaction commit FAILED ingestion audit。此行為同時適用於既有 DB，
   以及 fresh-path 在 schema 初始化後發生的 concurrent first-write conflict。
-- BIG_LOTTO import contract 固定為 6 個不重複主號（1–49）、1 個必要且不與主號重疊的特別號
-  （1–49），canonical storage order 為數字遞增；draw number 是保留前導零的 ASCII digit string。
+- BIG_LOTTO import contract 固定為 6 個不重複主號（1–49）與 1 個不重疊特別號（1–49）；
+  DAILY_539 為 5 個不重複主號（1–39）；POWER_LOTTO 為 6 個不重複主號（1–38）與第二區
+  號碼（1–8）。三者 canonical storage order 為數字遞增；draw number 是保留前導零的 ASCII digit string。
+- CLI `lottolab import-legacy-draw-files --input ... --database ...` 可對明確指定的檔案做 bounded
+  preview 或 task-owned commit；它不會掃描、修改或讀取 reference databases。
 - `DrawDataProvider` 是 application port；預設沒有 provider，automation endpoint 會回傳 sanitized
   `AUTOMATION_NOT_CONFIGURED`。Local runtime 只有在 `LOTTOLAB_DRAW_PROVIDER_URL` 明確設定為不含
   credential 的 absolute HTTPS URL 時，才建立 lazy JSON adapter；app construction、OpenAPI 與

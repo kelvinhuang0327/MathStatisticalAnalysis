@@ -295,10 +295,14 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
     assert operations == {
         ("get", "/api/health"),
         ("get", "/api/v1/strategies"),
-        ("get", "/api/v1/strategy-overview"),
-        ("get", "/api/v1/strategy-evidence"),
+            ("get", "/api/v1/strategy-overview"),
+            ("get", "/api/v1/strategy-evidence"),
+            ("get", "/api/v1/b649-multi-ticket-records"),
+            ("get", "/api/v1/b649-multi-ticket-records/summary"),
         ("post", "/api/v1/draw-imports/preview"),
         ("post", "/api/v1/draw-imports/commit"),
+        ("post", "/api/v1/draw-imports/batch/preview"),
+        ("post", "/api/v1/draw-imports/batch/commit"),
         ("post", "/api/v1/draw-sync/manual"),
         ("post", "/api/v1/draw-sync/missing-scan"),
         ("post", "/api/v1/draw-sync/backfill"),
@@ -313,6 +317,11 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/historical-results/runs/{run_id}/strategies"),
         ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
         ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
+        ("get", "/api/v1/p638-historical/runs"),
+        ("get", "/api/v1/p638-historical/runs/{run_id}/strategies"),
+        ("get", "/api/v1/p638-historical/runs/{run_id}/replay"),
+        ("get", "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}"),
+        ("get", "/api/v1/p638-historical/runs/{run_id}/metrics"),
         ("get", "/api/v1/historical-prefix-analytics/rankings"),
         ("get", "/api/v1/historical-prefix-analytics/strategies"),
         (
@@ -398,7 +407,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 40
+    assert len(operations) == 49
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

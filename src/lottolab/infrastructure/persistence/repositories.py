@@ -6,7 +6,7 @@ import hashlib
 import json
 import sqlite3
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from typing import Never, cast
 
@@ -26,6 +26,11 @@ from lottolab.application.draw_data import (
     InvalidDrawImportError,
     RepositoryBusyError,
     RepositoryUnavailableError,
+)
+from lottolab.application.use_cases.batch_draw_imports import BATCH_PARSER_VERSION
+from lottolab.domain.batch_imports import (
+    BatchDrawImportCommit,
+    BatchDrawImportPreview,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import (
@@ -116,7 +121,7 @@ class SQLiteDrawRepository:
                 encoded_main,
                 encoded_special,
                 row.normalized_record_hash,
-                source_filename,
+                row.source_name or source_filename,
                 row.source,
                 run_id,
                 timestamp_text,
@@ -510,6 +515,22 @@ class SQLiteDrawDataRepository:
         ) as exc:
             _raise_repository_error(exc)
 
+    def apply_valid_batch_import(self, preview: BatchDrawImportPreview) -> BatchDrawImportCommit:
+        if not preview.is_valid:
+            raise RepositoryUnavailableError("batch import preview is not valid")
+
+        try:
+            initialize_schema(self._paths)
+            with open_database(self._paths) as connection:
+                return self._apply_batch_transaction(connection, preview=preview)
+        except (
+            LocalDataError,
+            SchemaMigrationError,
+            sqlite3.DatabaseError,
+            _StoredDataError,
+        ) as exc:
+            _raise_repository_error(exc)
+
     def apply_automation_import(
         self,
         result: DrawCsvParseResult,
@@ -730,6 +751,127 @@ class SQLiteDrawDataRepository:
             raise _StoredDataError("successful ingestion counts are inconsistent")
         return committed
 
+    def _apply_batch_transaction(
+        self,
+        connection: sqlite3.Connection,
+        *,
+        preview: BatchDrawImportPreview,
+    ) -> BatchDrawImportCommit:
+        rows = preview.normalized_rows
+        first_draw_number = rows[0].draw_number if rows else None
+        last_draw_number = rows[-1].draw_number if rows else None
+        lottery_type = _batch_lottery_type(rows)
+        run_id = str(uuid.uuid4())
+        started_at = _utc_now()
+        parse_result = DrawCsvParseResult(
+            source_filename=preview.source_filename,
+            content_sha256=preview.manifest_sha256,
+            parser_version=BATCH_PARSER_VERSION,
+            total_rows=preview.summary.parsed_rows,
+            blank_rows=0,
+            duplicate_input_rows=preview.summary.duplicate_rows,
+            conflicting_input_rows=preview.summary.conflict_rows,
+            ignored_columns=(),
+            normalized_rows=rows,
+            errors=(),
+        )
+        draw_repository = SQLiteDrawRepository(connection)
+        run_repository = SQLiteIngestionRunRepository(connection)
+        item_repository = SQLiteIngestionItemRepository(connection)
+
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            run_repository.create(
+                run_id=run_id,
+                lottery_type=lottery_type,
+                result=parse_result,
+                total_count=len(rows),
+                first_draw_number=first_draw_number,
+                last_draw_number=last_draw_number,
+                started_at=started_at,
+                context=None,
+            )
+            decisions = tuple(
+                _classify(draw_repository.find(row.lottery_type, row.draw_number), row)
+                for row in rows
+            )
+            if any(
+                decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
+            ):
+                connection.rollback()
+                failed = self._record_failed_conflict(
+                    connection,
+                    result=parse_result,
+                    run_id=run_id,
+                    lottery_type=lottery_type,
+                    first_draw_number=first_draw_number,
+                    last_draw_number=last_draw_number,
+                )
+                return _batch_commit_from_import_result(
+                    preview,
+                    failed,
+                    imported_rows=0,
+                    summary_overrides={"conflict_rows": failed.conflict_count},
+                )
+
+            inserted_count = 0
+            skipped_count = 0
+            for decision in decisions:
+                if decision.disposition is IngestionItemDisposition.INSERTED:
+                    draw_repository.insert(
+                        decision.row,
+                        run_id=run_id,
+                        source_filename=preview.source_filename,
+                        timestamp=started_at,
+                    )
+                    inserted_count += 1
+                    message = "Inserted new draw."
+                else:
+                    skipped_count += 1
+                    message = "Existing draw is semantically identical."
+                item_repository.add(
+                    run_id=run_id,
+                    row=decision.row,
+                    disposition=decision.disposition,
+                    message=message,
+                )
+
+            completed_at = _utc_now()
+            run_repository.complete(
+                run_id=run_id,
+                status=IngestionRunStatus.SUCCESS,
+                inserted_count=inserted_count,
+                skipped_count=skipped_count,
+                conflict_count=0,
+                failed_count=0,
+                completed_at=completed_at,
+                error_summary=None,
+            )
+            connection.commit()
+        except BaseException:
+            if connection.in_transaction:
+                connection.rollback()
+            raise
+
+        return _batch_commit_from_import_result(
+            preview,
+            ImportCommitResult(
+                run_id=run_id,
+                status=IngestionRunStatus.SUCCESS,
+                lottery_type=lottery_type,
+                total_count=len(rows),
+                inserted_count=inserted_count,
+                skipped_count=skipped_count,
+                conflict_count=0,
+                failed_count=0,
+                first_draw_number=first_draw_number,
+                last_draw_number=last_draw_number,
+                completed_at=completed_at,
+            ),
+            imported_rows=inserted_count,
+            summary_overrides={"duplicate_rows": skipped_count},
+        )
+
     def _record_failed_conflict(
         self,
         connection: sqlite3.Connection,
@@ -902,6 +1044,38 @@ def _single_lottery_type(rows: tuple[NormalizedDrawInput, ...]) -> LotteryType |
     if len(lottery_types) > 1:
         raise _StoredDataError("one ingestion run cannot mix lottery types")
     return next(iter(lottery_types), None)
+
+
+def _batch_lottery_type(rows: tuple[NormalizedDrawInput, ...]) -> LotteryType | None:
+    lottery_types = {row.lottery_type for row in rows}
+    return next(iter(lottery_types)) if len(lottery_types) == 1 else None
+
+
+def _batch_commit_from_import_result(
+    preview: BatchDrawImportPreview,
+    result: ImportCommitResult,
+    *,
+    imported_rows: int,
+    summary_overrides: dict[str, int],
+) -> BatchDrawImportCommit:
+    summary = preview.summary
+    for field, value in summary_overrides.items():
+        current = getattr(summary, field)
+        summary = replace(summary, **{field: current + value})
+    summary = replace(summary, imported_rows=imported_rows)
+    return BatchDrawImportCommit(
+        run_id=result.run_id,
+        status=result.status.value,
+        manifest_sha256=preview.manifest_sha256,
+        summary=summary,
+        files=preview.files,
+        completed_at=_format_utc(result.completed_at),
+        error_summary=(
+            "Batch rejected because existing draw data conflicts."
+            if result.status is IngestionRunStatus.FAILED
+            else None
+        ),
+    )
 
 
 def _draw_record(row: sqlite3.Row | tuple[object, ...]) -> DrawRecord:

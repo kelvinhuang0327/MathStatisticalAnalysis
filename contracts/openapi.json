@@ -151,6 +151,174 @@
         }
       }
     },
+    "/api/v1/b649-multi-ticket-records/summary": {
+      "get": {
+        "tags": [
+          "b649-multi-ticket-records"
+        ],
+        "summary": "Summary",
+        "operationId": "getB649MultiTicketRecordSummary",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649MultiTicketSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649-multi-ticket-records": {
+      "get": {
+        "tags": [
+          "b649-multi-ticket-records"
+        ],
+        "summary": "Records",
+        "operationId": "listB649MultiTicketRecords",
+        "parameters": [
+          {
+            "name": "prefix_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649PrefixCount"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649HistoryWindow"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649SuccessCriterion"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "method_family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Family"
+            }
+          },
+          {
+            "name": "reproduction_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "BACKTESTED",
+                    "CLOSED_UNEXECUTABLE",
+                    "DUPLICATE_ALIAS"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reproduction Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649MultiTicketRecordPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649MultiTicketApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/strategy-evidence": {
       "get": {
         "tags": [
@@ -267,6 +435,108 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-imports/batch/preview": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Preview Batch Draw Import",
+        "operationId": "previewBatchDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchImportPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-imports/batch/commit": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Commit Batch Draw Import",
+        "operationId": "commitBatchDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchImportCommitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportCommitResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportValidationErrorResponse"
                 }
               }
             }
@@ -1118,6 +1388,22 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/HistoricalLotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
           }
         ],
         "responses": {
@@ -1377,6 +1663,478 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/HistoricalPortfolioView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Runs",
+        "operationId": "listP638HistoricalRuns",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638RunPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/strategies": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Strategies",
+        "operationId": "listP638HistoricalStrategies",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638StrategyPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/replay": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Replay",
+        "operationId": "listP638HistoricalReplay",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "COMPLETE",
+                    "EXCLUDED_INSUFFICIENT_HISTORY",
+                    "FAILED"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638ReplayPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "Get P638 Target",
+        "operationId": "getP638HistoricalTarget",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638ReplayView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/metrics": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "Get P638 Metrics",
+        "operationId": "getP638HistoricalMetrics",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638MetricsResponse"
                 }
               }
             }
@@ -3498,6 +4256,974 @@
         ],
         "title": "ApiValidationErrorResponse"
       },
+      "B649HistoryWindow": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "RECENT_750",
+          "RECENT_300",
+          "RECENT_50"
+        ],
+        "title": "B649HistoryWindow"
+      },
+      "B649MultiTicketApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649MultiTicketApiErrorResponse"
+      },
+      "B649MultiTicketRecordPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649MultiTicketRecordView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649SuccessCriterion"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "prefix_count",
+          "window",
+          "criterion",
+          "research_disclaimer"
+        ],
+        "title": "B649MultiTicketRecordPageResponse"
+      },
+      "B649MultiTicketRecordView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "legacy_method_id": {
+            "type": "string",
+            "title": "Legacy Method Id"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "method_family": {
+            "type": "string",
+            "title": "Method Family"
+          },
+          "reproduction_status": {
+            "type": "string",
+            "enum": [
+              "BACKTESTED",
+              "CLOSED_UNEXECUTABLE",
+              "DUPLICATE_ALIAS"
+            ],
+            "title": "Reproduction Status"
+          },
+          "duplicate_alias_target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Alias Target"
+          },
+          "prefix_count": {
+            "type": "integer",
+            "title": "Prefix Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649SuccessCriterion"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "unranked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unranked Reason"
+          },
+          "success_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Success Count"
+          },
+          "effective_backtest_draw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Backtest Draw Count"
+          },
+          "successful_execution_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successful Execution Count"
+          },
+          "historical_success_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Success Rate"
+          },
+          "random_baseline_success_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Baseline Success Rate"
+          },
+          "random_baseline_rate_difference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Baseline Rate Difference"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "window_available_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Available Draws"
+          },
+          "window_requested_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Requested Draws"
+          },
+          "window_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Complete"
+          },
+          "official_prize_counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/B649OfficialPrizeCountsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "no_prize_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Prize Count"
+          },
+          "report_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report Sha256"
+          },
+          "report_file_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Report File Sha256"
+          },
+          "catalog_sha256": {
+            "type": "string",
+            "title": "Catalog Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "legacy_method_id",
+          "source_path",
+          "method_family",
+          "reproduction_status",
+          "duplicate_alias_target",
+          "prefix_count",
+          "window",
+          "criterion",
+          "rank",
+          "unranked_reason",
+          "success_count",
+          "effective_backtest_draw_count",
+          "successful_execution_count",
+          "historical_success_rate",
+          "random_baseline_success_rate",
+          "random_baseline_rate_difference",
+          "coverage",
+          "window_available_draws",
+          "window_requested_draws",
+          "window_complete",
+          "official_prize_counts",
+          "no_prize_count",
+          "report_sha256",
+          "report_file_sha256",
+          "catalog_sha256"
+        ],
+        "title": "B649MultiTicketRecordView"
+      },
+      "B649MultiTicketSummaryResponse": {
+        "properties": {
+          "progress": {
+            "$ref": "#/components/schemas/B649ResearchProgressView"
+          },
+          "prefix_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Prefix Counts"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/B649HistoryWindow"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "success_criteria": {
+            "items": {
+              "$ref": "#/components/schemas/B649SuccessCriterion"
+            },
+            "type": "array",
+            "title": "Success Criteria"
+          },
+          "method_families": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Method Families"
+          },
+          "reproduction_statuses": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "BACKTESTED",
+                "CLOSED_UNEXECUTABLE",
+                "DUPLICATE_ALIAS"
+              ]
+            },
+            "type": "array",
+            "title": "Reproduction Statuses"
+          },
+          "catalog_sha256": {
+            "type": "string",
+            "title": "Catalog Sha256"
+          },
+          "records_available": {
+            "type": "boolean",
+            "title": "Records Available"
+          },
+          "projection_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projection Sha256"
+          },
+          "source_report_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Report Count"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "progress",
+          "prefix_counts",
+          "windows",
+          "success_criteria",
+          "method_families",
+          "reproduction_statuses",
+          "catalog_sha256",
+          "records_available",
+          "projection_sha256",
+          "source_report_count",
+          "research_disclaimer"
+        ],
+        "title": "B649MultiTicketSummaryResponse"
+      },
+      "B649OfficialPrizeCountsView": {
+        "properties": {
+          "first": {
+            "type": "integer",
+            "title": "First"
+          },
+          "second": {
+            "type": "integer",
+            "title": "Second"
+          },
+          "third": {
+            "type": "integer",
+            "title": "Third"
+          },
+          "fourth": {
+            "type": "integer",
+            "title": "Fourth"
+          },
+          "fifth": {
+            "type": "integer",
+            "title": "Fifth"
+          },
+          "sixth": {
+            "type": "integer",
+            "title": "Sixth"
+          },
+          "seventh": {
+            "type": "integer",
+            "title": "Seventh"
+          },
+          "general": {
+            "type": "integer",
+            "title": "General"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "first",
+          "second",
+          "third",
+          "fourth",
+          "fifth",
+          "sixth",
+          "seventh",
+          "general"
+        ],
+        "title": "B649OfficialPrizeCountsView"
+      },
+      "B649PrefixCount": {
+        "type": "integer",
+        "enum": [
+          5,
+          10,
+          15,
+          20
+        ],
+        "title": "B649PrefixCount"
+      },
+      "B649ResearchProgressView": {
+        "properties": {
+          "total_strategy_count": {
+            "type": "integer",
+            "title": "Total Strategy Count"
+          },
+          "reproduced_count": {
+            "type": "integer",
+            "title": "Reproduced Count"
+          },
+          "backtested_count": {
+            "type": "integer",
+            "title": "Backtested Count"
+          },
+          "closed_count": {
+            "type": "integer",
+            "title": "Closed Count"
+          },
+          "duplicate_alias_count": {
+            "type": "integer",
+            "title": "Duplicate Alias Count"
+          },
+          "owner_decision_required_count": {
+            "type": "integer",
+            "title": "Owner Decision Required Count"
+          },
+          "uncompleted_count": {
+            "type": "integer",
+            "title": "Uncompleted Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total_strategy_count",
+          "reproduced_count",
+          "backtested_count",
+          "closed_count",
+          "duplicate_alias_count",
+          "owner_decision_required_count",
+          "uncompleted_count"
+        ],
+        "title": "B649ResearchProgressView"
+      },
+      "B649SuccessCriterion": {
+        "type": "string",
+        "enum": [
+          "M3_PLUS",
+          "M4_PLUS",
+          "M5_PLUS",
+          "M6",
+          "M2_PLUS_SPECIAL",
+          "M3_PLUS_SPECIAL",
+          "M4_PLUS_SPECIAL",
+          "M5_PLUS_SPECIAL"
+        ],
+        "title": "B649SuccessCriterion"
+      },
+      "BatchImportCommitRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileRequest"
+            },
+            "type": "array",
+            "maxItems": 250,
+            "minItems": 1,
+            "title": "Files"
+          },
+          "expected_manifest_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Manifest Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Parser Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "files",
+          "expected_manifest_sha256",
+          "parser_version"
+        ],
+        "title": "BatchImportCommitRequest"
+      },
+      "BatchImportCommitResponse": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/BatchImportSummaryView"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileView"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "manifest_sha256",
+          "summary",
+          "files",
+          "completed_at",
+          "error_summary"
+        ],
+        "title": "BatchImportCommitResponse"
+      },
+      "BatchImportFileRequest": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "content_base64"
+        ],
+        "title": "BatchImportFileRequest"
+      },
+      "BatchImportFileView": {
+        "properties": {
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "source_locator": {
+            "type": "string",
+            "title": "Source Locator"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "lottery_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LotteryType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discovered_rows": {
+            "type": "integer",
+            "title": "Discovered Rows"
+          },
+          "accepted_rows": {
+            "type": "integer",
+            "title": "Accepted Rows"
+          },
+          "excluded_rows": {
+            "type": "integer",
+            "title": "Excluded Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows": {
+            "type": "integer",
+            "title": "Conflict Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportIssueView"
+            },
+            "type": "array",
+            "title": "Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_filename",
+          "source_locator",
+          "source_sha256",
+          "status",
+          "lottery_type",
+          "discovered_rows",
+          "accepted_rows",
+          "excluded_rows",
+          "duplicate_rows",
+          "conflict_rows",
+          "failed_rows",
+          "issues"
+        ],
+        "title": "BatchImportFileView"
+      },
+      "BatchImportIssueView": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "row_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Number"
+          },
+          "member_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "row_number",
+          "member_name"
+        ],
+        "title": "BatchImportIssueView"
+      },
+      "BatchImportPreviewRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileRequest"
+            },
+            "type": "array",
+            "maxItems": 250,
+            "minItems": 1,
+            "title": "Files"
+          },
+          "declared_parser_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Parser Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "BatchImportPreviewRequest"
+      },
+      "BatchImportPreviewResponse": {
+        "properties": {
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "title": "Parser Version"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileView"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/BatchImportSummaryView"
+          },
+          "normalized_preview": {
+            "items": {
+              "$ref": "#/components/schemas/NormalizedDrawPreviewView"
+            },
+            "type": "array",
+            "title": "Normalized Preview"
+          },
+          "preview_truncated": {
+            "type": "boolean",
+            "title": "Preview Truncated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_filename",
+          "is_valid",
+          "manifest_sha256",
+          "parser_version",
+          "files",
+          "summary",
+          "normalized_preview",
+          "preview_truncated"
+        ],
+        "title": "BatchImportPreviewResponse"
+      },
+      "BatchImportSummaryView": {
+        "properties": {
+          "discovered_files": {
+            "type": "integer",
+            "title": "Discovered Files"
+          },
+          "accepted_files": {
+            "type": "integer",
+            "title": "Accepted Files"
+          },
+          "excluded_files": {
+            "type": "integer",
+            "title": "Excluded Files"
+          },
+          "parsed_rows": {
+            "type": "integer",
+            "title": "Parsed Rows"
+          },
+          "accepted_rows": {
+            "type": "integer",
+            "title": "Accepted Rows"
+          },
+          "excluded_rows": {
+            "type": "integer",
+            "title": "Excluded Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows": {
+            "type": "integer",
+            "title": "Conflict Rows"
+          },
+          "imported_rows": {
+            "type": "integer",
+            "title": "Imported Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "discovered_files",
+          "accepted_files",
+          "excluded_files",
+          "parsed_rows",
+          "accepted_rows",
+          "excluded_rows",
+          "duplicate_rows",
+          "conflict_rows",
+          "imported_rows",
+          "failed_rows"
+        ],
+        "title": "BatchImportSummaryView"
+      },
+      "BatchImportValidationErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BatchImportPreviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/RequestValidationIssueView"
+            },
+            "type": "array",
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "BatchImportValidationErrorResponse"
+      },
       "CommitConflictResponse": {
         "properties": {
           "error_code": {
@@ -4207,7 +5933,8 @@
           "ADAPTER_NOT_INJECTED",
           "UNSUPPORTED_LOTTERY_TYPE",
           "INVALID_OUTPUT",
-          "REPLAY_ERROR"
+          "REPLAY_ERROR",
+          "STRATEGY_IS_PORTFOLIO"
         ],
         "title": "GenerateOneBetReason"
       },
@@ -4219,7 +5946,8 @@
           "INSUFFICIENT_HISTORY",
           "STRATEGY_UNAVAILABLE",
           "INVALID_OUTPUT",
-          "REPLAY_ERROR"
+          "REPLAY_ERROR",
+          "WRONG_RESPONSE_PATH"
         ],
         "title": "GenerateOneBetStatus"
       },
@@ -4261,6 +5989,16 @@
           "draw_sha256"
         ],
         "title": "HistoricalDrawIdentityView"
+      },
+      "HistoricalLotteryType": {
+        "type": "string",
+        "enum": [
+          "DAILY_539",
+          "BIG_LOTTO",
+          "POWER_LOTTO"
+        ],
+        "title": "HistoricalLotteryType",
+        "description": "Closed internal lottery identifiers for historical-results V2."
       },
       "HistoricalPerDrawPrefixMetricsView": {
         "properties": {
@@ -8536,6 +10274,860 @@
           20
         ],
         "title": "OverviewPrefixCount"
+      },
+      "P638HitDistributionView": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "P638HitDistributionView"
+      },
+      "P638MetricsResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Id"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "complete_target_count": {
+            "type": "integer",
+            "title": "Complete Target Count"
+          },
+          "excluded_target_count": {
+            "type": "integer",
+            "title": "Excluded Target Count"
+          },
+          "failed_target_count": {
+            "type": "integer",
+            "title": "Failed Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "combined_zone1_4plus_zone2_hit_count": {
+            "type": "integer",
+            "title": "Combined Zone1 4Plus Zone2 Hit Count"
+          },
+          "zone1_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone1 Hit Distribution"
+          },
+          "zone2_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone2 Hit Distribution"
+          },
+          "first_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Number"
+          },
+          "first_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Date"
+          },
+          "last_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Number"
+          },
+          "last_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_id",
+          "target_count",
+          "complete_target_count",
+          "excluded_target_count",
+          "failed_target_count",
+          "ticket_count",
+          "combined_zone1_4plus_zone2_hit_count",
+          "zone1_hit_distribution",
+          "zone2_hit_distribution",
+          "first_draw_number",
+          "first_draw_date",
+          "last_draw_number",
+          "last_draw_date"
+        ],
+        "title": "P638MetricsResponse"
+      },
+      "P638ReplayPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638ReplayView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638ReplayPageResponse"
+      },
+      "P638ReplayView": {
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "title": "Target Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_snapshot_id": {
+            "type": "string",
+            "title": "Strategy Snapshot Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "target_draw_number": {
+            "type": "string",
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "type": "string",
+            "title": "Target Draw Date"
+          },
+          "history_boundary_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Boundary Draw Number"
+          },
+          "history_boundary_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Boundary Date"
+          },
+          "history_length": {
+            "type": "integer",
+            "title": "History Length"
+          },
+          "expected_ticket_count": {
+            "type": "integer",
+            "title": "Expected Ticket Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
+          "actual_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Actual Zone1 Numbers"
+          },
+          "actual_zone2_number": {
+            "type": "integer",
+            "title": "Actual Zone2 Number"
+          },
+          "source_target_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Target Locator"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Replay Sha256"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/P638TicketView"
+            },
+            "type": "array",
+            "title": "Tickets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_id",
+          "run_id",
+          "strategy_snapshot_id",
+          "strategy_id",
+          "strategy_version",
+          "target_draw_number",
+          "target_draw_date",
+          "history_boundary_draw_number",
+          "history_boundary_date",
+          "history_length",
+          "expected_ticket_count",
+          "status",
+          "exclusion_reason",
+          "failure_reason",
+          "actual_zone1_numbers",
+          "actual_zone2_number",
+          "source_target_locator",
+          "source_run_id",
+          "source_replay_sha256",
+          "provenance",
+          "tickets"
+        ],
+        "title": "P638ReplayView"
+      },
+      "P638RunPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638RunView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638RunPageResponse"
+      },
+      "P638RunView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "import_identity_sha256": {
+            "type": "string",
+            "title": "Import Identity Sha256"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "contract_version": {
+            "type": "string",
+            "title": "Contract Version"
+          },
+          "source_run_id": {
+            "type": "string",
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "type": "string",
+            "title": "Source Replay Sha256"
+          },
+          "source_draw_db_sha256": {
+            "type": "string",
+            "title": "Source Draw Db Sha256"
+          },
+          "source_commit_oid": {
+            "type": "string",
+            "title": "Source Commit Oid"
+          },
+          "source_content_sha256": {
+            "type": "string",
+            "title": "Source Content Sha256"
+          },
+          "second_zone_ssot_version": {
+            "type": "string",
+            "title": "Second Zone Ssot Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "draw_count": {
+            "type": "integer",
+            "title": "Draw Count"
+          },
+          "complete_target_count": {
+            "type": "integer",
+            "title": "Complete Target Count"
+          },
+          "excluded_target_count": {
+            "type": "integer",
+            "title": "Excluded Target Count"
+          },
+          "failed_target_count": {
+            "type": "integer",
+            "title": "Failed Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "first_draw_number": {
+            "type": "string",
+            "title": "First Draw Number"
+          },
+          "first_draw_date": {
+            "type": "string",
+            "title": "First Draw Date"
+          },
+          "last_draw_number": {
+            "type": "string",
+            "title": "Last Draw Number"
+          },
+          "last_draw_date": {
+            "type": "string",
+            "title": "Last Draw Date"
+          },
+          "is_idempotent_replay": {
+            "type": "boolean",
+            "title": "Is Idempotent Replay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "import_identity_sha256",
+          "manifest_sha256",
+          "contract_version",
+          "source_run_id",
+          "source_replay_sha256",
+          "source_draw_db_sha256",
+          "source_commit_oid",
+          "source_content_sha256",
+          "second_zone_ssot_version",
+          "status",
+          "started_at",
+          "completed_at",
+          "strategy_count",
+          "draw_count",
+          "complete_target_count",
+          "excluded_target_count",
+          "failed_target_count",
+          "ticket_count",
+          "first_draw_number",
+          "first_draw_date",
+          "last_draw_number",
+          "last_draw_date",
+          "is_idempotent_replay"
+        ],
+        "title": "P638RunView"
+      },
+      "P638StrategyPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638StrategyView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638StrategyPageResponse"
+      },
+      "P638StrategyView": {
+        "properties": {
+          "strategy_snapshot_id": {
+            "type": "string",
+            "title": "Strategy Snapshot Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "display_label": {
+            "type": "string",
+            "title": "Display Label"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "executable": {
+            "type": "boolean",
+            "title": "Executable"
+          },
+          "adapter_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Path"
+          },
+          "native_ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Ticket Count"
+          },
+          "min_history": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min History"
+          },
+          "zone1_contract": {
+            "type": "string",
+            "title": "Zone1 Contract"
+          },
+          "zone2_contract": {
+            "type": "string",
+            "title": "Zone2 Contract"
+          },
+          "lifecycle_status": {
+            "type": "string",
+            "title": "Lifecycle Status"
+          },
+          "replay_status": {
+            "type": "string",
+            "title": "Replay Status"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Replay Sha256"
+          },
+          "source_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Paths"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "complete_target_count": {
+            "type": "integer",
+            "title": "Complete Target Count"
+          },
+          "excluded_target_count": {
+            "type": "integer",
+            "title": "Excluded Target Count"
+          },
+          "failed_target_count": {
+            "type": "integer",
+            "title": "Failed Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "zone1_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone1 Hit Distribution"
+          },
+          "zone2_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone2 Hit Distribution"
+          },
+          "first_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Number"
+          },
+          "first_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Date"
+          },
+          "last_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Number"
+          },
+          "last_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_snapshot_id",
+          "run_id",
+          "strategy_id",
+          "display_label",
+          "strategy_version",
+          "executable",
+          "adapter_path",
+          "native_ticket_count",
+          "min_history",
+          "zone1_contract",
+          "zone2_contract",
+          "lifecycle_status",
+          "replay_status",
+          "source_run_id",
+          "source_replay_sha256",
+          "source_paths",
+          "provenance",
+          "exclusion_reason",
+          "complete_target_count",
+          "excluded_target_count",
+          "failed_target_count",
+          "ticket_count",
+          "zone1_hit_distribution",
+          "zone2_hit_distribution",
+          "first_draw_number",
+          "first_draw_date",
+          "last_draw_number",
+          "last_draw_date"
+        ],
+        "title": "P638StrategyView"
+      },
+      "P638TicketView": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "ticket_position": {
+            "type": "integer",
+            "title": "Ticket Position"
+          },
+          "predicted_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Predicted Zone1 Numbers"
+          },
+          "predicted_zone2_number": {
+            "type": "integer",
+            "title": "Predicted Zone2 Number"
+          },
+          "actual_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Actual Zone1 Numbers"
+          },
+          "actual_zone2_number": {
+            "type": "integer",
+            "title": "Actual Zone2 Number"
+          },
+          "zone1_hit_count": {
+            "type": "integer",
+            "title": "Zone1 Hit Count"
+          },
+          "zone2_hit": {
+            "type": "boolean",
+            "title": "Zone2 Hit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source_run_id": {
+            "type": "string",
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "type": "string",
+            "title": "Source Replay Sha256"
+          },
+          "source_record_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Record Locator"
+          },
+          "second_zone_ssot_version": {
+            "type": "string",
+            "title": "Second Zone Ssot Version"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "ticket_position",
+          "predicted_zone1_numbers",
+          "predicted_zone2_number",
+          "actual_zone1_numbers",
+          "actual_zone2_number",
+          "zone1_hit_count",
+          "zone2_hit",
+          "status",
+          "source_run_id",
+          "source_replay_sha256",
+          "source_record_locator",
+          "second_zone_ssot_version",
+          "provenance"
+        ],
+        "title": "P638TicketView"
       },
       "ReplayOverallAggregateResponse": {
         "properties": {

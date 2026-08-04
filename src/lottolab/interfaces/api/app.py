@@ -16,9 +16,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
+    P638HistoricalQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
     StrategyEvidenceRegistryReader,
 )
@@ -30,6 +32,10 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
     GenerateLiveZoneSplitBets,
     build_production_generate_live_zone_split_bets,
 )
+from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
+from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    PackagedB649MultiTicketRecordReader,
+)
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
@@ -37,6 +43,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.strategy_evidence_registry import (
     CommittedStrategyEvidenceRegistry,
+)
+from lottolab.interfaces.api.b649_multi_ticket_records import (
+    create_b649_multi_ticket_records_router,
 )
 from lottolab.interfaces.api.draw_data import (
     ApiValidationErrorResponse,
@@ -53,6 +62,7 @@ from lottolab.interfaces.api.historical_prefix_success_windows import (
 )
 from lottolab.interfaces.api.historical_results import create_historical_results_router
 from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
+from lottolab.interfaces.api.p638_historical import create_p638_historical_router
 from lottolab.interfaces.api.replay_portfolio_rankings import (
     create_replay_portfolio_rankings_router,
 )
@@ -75,17 +85,17 @@ def create_app(
     generate_one_bet: GenerateOneBet | None = None,
     generate_live_zone_split_bets: GenerateLiveZoneSplitBets | None = None,
     historical_query_repository_factory: HistoricalResultQueryRepositoryFactory | None = None,
+    p638_historical_query_repository_factory: P638HistoricalQueryRepositoryFactory | None = None,
     historical_prefix_analytics_result_provider: (
         HistoricalPrefixAnalyticsResultProvider | None
     ) = None,
-    replay_scoring_projection_reader_factory: (
-        ReplayScoringProjectionReaderFactory | None
-    ) = None,
+    replay_scoring_projection_reader_factory: (ReplayScoringProjectionReaderFactory | None) = None,
     historical_prefix_success_window_source_reader_factory: (
         HistoricalPrefixSuccessWindowSourceReaderFactory | None
     ) = None,
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
+    b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -104,6 +114,11 @@ def create_app(
         strategy_evidence_registry_reader
         if strategy_evidence_registry_reader is not None
         else CommittedStrategyEvidenceRegistry.default()
+    )
+    resolved_b649_reader_factory = (
+        b649_multi_ticket_record_reader_factory
+        if b649_multi_ticket_record_reader_factory is not None
+        else PackagedB649MultiTicketRecordReader
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -137,6 +152,12 @@ def create_app(
 
     app.include_router(create_strategy_catalog_router(resolved_catalog))
     app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(),
+            resolved_b649_reader_factory,
+        )
+    )
+    app.include_router(
         create_strategy_evidence_router(
             resolved_catalog,
             resolved_strategy_evidence_registry,
@@ -151,10 +172,9 @@ def create_app(
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))
+    app.include_router(create_p638_historical_router(p638_historical_query_repository_factory))
     app.include_router(
-        create_historical_prefix_analytics_router(
-            historical_prefix_analytics_result_provider
-        )
+        create_historical_prefix_analytics_router(historical_prefix_analytics_result_provider)
     )
     app.include_router(
         create_historical_prefix_success_windows_router(
@@ -165,9 +185,7 @@ def create_app(
         create_replay_portfolio_rankings_router(replay_scoring_projection_reader_factory)
     )
     app.include_router(
-        create_replay_scoring_projections_router(
-            replay_scoring_projection_reader_factory
-        )
+        create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
 
     return app

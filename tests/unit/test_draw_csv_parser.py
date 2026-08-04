@@ -72,7 +72,11 @@ def test_valid_official_shape_is_normalized_and_supported() -> None:
     assert result.valid_rows == 1
     assert result.is_valid
     assert result.errors == ()
-    assert SUPPORTED_LOTTERY_TYPES == (LotteryType.BIG_LOTTO,)
+    assert SUPPORTED_LOTTERY_TYPES == (
+        LotteryType.BIG_LOTTO,
+        LotteryType.DAILY_539,
+        LotteryType.POWER_LOTTO,
+    )
 
     row = result.normalized_rows[0]
     assert row.lottery_type is LotteryType.BIG_LOTTO
@@ -255,7 +259,7 @@ def test_main_special_overlap_is_rejected() -> None:
     assert error_codes(result) == [DrawImportErrorCode.MAIN_SPECIAL_OVERLAP]
 
 
-@pytest.mark.parametrize("lottery_type", ["DAILY_539", "POWER_LOTTO", "UNKNOWN"])
+@pytest.mark.parametrize("lottery_type", ["UNKNOWN"])
 def test_unsupported_lottery_type_fails(lottery_type: str) -> None:
     content = HEADER + "\n"
     content += f"{lottery_type},1,2026-07-16,{VALID_MAIN},7\n"

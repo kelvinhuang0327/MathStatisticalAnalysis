@@ -623,9 +623,15 @@ def _fourier_rhythm_fixed_window_scores(
     Nyquist bin, matching NumPy's ``fftfreq`` sign convention exactly), and a
     number only scores when its dominant period falls strictly inside
     ``(2, window / 2)``, exactly as the donor gates it.  This is a distinct
-    algorithm family from :func:`_fourier_scores`: that helper mirrors
-    ``p128_wave2_phase2_adapters.py``'s actual-length (unpadded) Fourier
-    scoring, already used by six of the eight prior Wave 1 strategies.
+    algorithm family from :func:`_fourier_scores`: that helper windows at
+    the donor's actual (unpadded) length, already used by six of the eight
+    prior Wave 1 strategies, but its FFT is a next-power-of-two zero-padded
+    radix-2 transform -- a pre-existing, accepted approximation of the
+    donor's exact-length rfft (it does not reproduce numpy's dominant-bin
+    selection bit-for-bit).  This function needs a different property from
+    that helper -- an exact match to the donor's *fixed* 500-slot window --
+    which is why it uses the exact arbitrary-length :func:`_bluestein_dft`
+    instead of reusing :func:`_fourier_scores`.
     """
 
     window = _FOURIER_RHYTHM_WINDOW

@@ -452,6 +452,108 @@
         }
       }
     },
+    "/api/v1/draw-imports/batch/preview": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Preview Batch Draw Import",
+        "operationId": "previewBatchDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchImportPreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportPreviewResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportValidationErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/draw-imports/batch/commit": {
+      "post": {
+        "tags": [
+          "draw-data"
+        ],
+        "summary": "Commit Batch Draw Import",
+        "operationId": "commitBatchDrawImport",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchImportCommitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportCommitResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchImportValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/draw-sync/manual": {
       "post": {
         "tags": [
@@ -4239,6 +4341,416 @@
           "M5_PLUS_SPECIAL"
         ],
         "title": "B649SuccessCriterion"
+      },
+      "BatchImportCommitRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileRequest"
+            },
+            "type": "array",
+            "maxItems": 250,
+            "minItems": 1,
+            "title": "Files"
+          },
+          "expected_manifest_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$",
+            "title": "Expected Manifest Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Parser Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "files",
+          "expected_manifest_sha256",
+          "parser_version"
+        ],
+        "title": "BatchImportCommitRequest"
+      },
+      "BatchImportCommitResponse": {
+        "properties": {
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Id"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/BatchImportSummaryView"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileView"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "error_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Summary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "status",
+          "manifest_sha256",
+          "summary",
+          "files",
+          "completed_at",
+          "error_summary"
+        ],
+        "title": "BatchImportCommitResponse"
+      },
+      "BatchImportFileRequest": {
+        "properties": {
+          "filename": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Filename"
+          },
+          "content_base64": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Content Base64"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "filename",
+          "content_base64"
+        ],
+        "title": "BatchImportFileRequest"
+      },
+      "BatchImportFileView": {
+        "properties": {
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "source_locator": {
+            "type": "string",
+            "title": "Source Locator"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "lottery_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LotteryType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discovered_rows": {
+            "type": "integer",
+            "title": "Discovered Rows"
+          },
+          "accepted_rows": {
+            "type": "integer",
+            "title": "Accepted Rows"
+          },
+          "excluded_rows": {
+            "type": "integer",
+            "title": "Excluded Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows": {
+            "type": "integer",
+            "title": "Conflict Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          },
+          "issues": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportIssueView"
+            },
+            "type": "array",
+            "title": "Issues"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_filename",
+          "source_locator",
+          "source_sha256",
+          "status",
+          "lottery_type",
+          "discovered_rows",
+          "accepted_rows",
+          "excluded_rows",
+          "duplicate_rows",
+          "conflict_rows",
+          "failed_rows",
+          "issues"
+        ],
+        "title": "BatchImportFileView"
+      },
+      "BatchImportIssueView": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "row_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Row Number"
+          },
+          "member_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Member Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message",
+          "row_number",
+          "member_name"
+        ],
+        "title": "BatchImportIssueView"
+      },
+      "BatchImportPreviewRequest": {
+        "properties": {
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileRequest"
+            },
+            "type": "array",
+            "maxItems": 250,
+            "minItems": 1,
+            "title": "Files"
+          },
+          "declared_parser_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Declared Parser Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "files"
+        ],
+        "title": "BatchImportPreviewRequest"
+      },
+      "BatchImportPreviewResponse": {
+        "properties": {
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "is_valid": {
+            "type": "boolean",
+            "title": "Is Valid"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "parser_version": {
+            "type": "string",
+            "title": "Parser Version"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/BatchImportFileView"
+            },
+            "type": "array",
+            "title": "Files"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/BatchImportSummaryView"
+          },
+          "normalized_preview": {
+            "items": {
+              "$ref": "#/components/schemas/NormalizedDrawPreviewView"
+            },
+            "type": "array",
+            "title": "Normalized Preview"
+          },
+          "preview_truncated": {
+            "type": "boolean",
+            "title": "Preview Truncated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_filename",
+          "is_valid",
+          "manifest_sha256",
+          "parser_version",
+          "files",
+          "summary",
+          "normalized_preview",
+          "preview_truncated"
+        ],
+        "title": "BatchImportPreviewResponse"
+      },
+      "BatchImportSummaryView": {
+        "properties": {
+          "discovered_files": {
+            "type": "integer",
+            "title": "Discovered Files"
+          },
+          "accepted_files": {
+            "type": "integer",
+            "title": "Accepted Files"
+          },
+          "excluded_files": {
+            "type": "integer",
+            "title": "Excluded Files"
+          },
+          "parsed_rows": {
+            "type": "integer",
+            "title": "Parsed Rows"
+          },
+          "accepted_rows": {
+            "type": "integer",
+            "title": "Accepted Rows"
+          },
+          "excluded_rows": {
+            "type": "integer",
+            "title": "Excluded Rows"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "conflict_rows": {
+            "type": "integer",
+            "title": "Conflict Rows"
+          },
+          "imported_rows": {
+            "type": "integer",
+            "title": "Imported Rows"
+          },
+          "failed_rows": {
+            "type": "integer",
+            "title": "Failed Rows"
+          }
+        },
+        "type": "object",
+        "required": [
+          "discovered_files",
+          "accepted_files",
+          "excluded_files",
+          "parsed_rows",
+          "accepted_rows",
+          "excluded_rows",
+          "duplicate_rows",
+          "conflict_rows",
+          "imported_rows",
+          "failed_rows"
+        ],
+        "title": "BatchImportSummaryView"
+      },
+      "BatchImportValidationErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "preview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BatchImportPreviewResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "items": {
+              "$ref": "#/components/schemas/RequestValidationIssueView"
+            },
+            "type": "array",
+            "title": "Fields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "BatchImportValidationErrorResponse"
       },
       "CommitConflictResponse": {
         "properties": {

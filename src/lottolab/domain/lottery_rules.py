@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from collections.abc import Mapping
@@ -205,7 +206,7 @@ class LotteryRuleContract:
     source_locator: str
     source_accessed_at: datetime
     provenance_status: ProvenanceStatus
-    prize_rule: BigLottoPrizeRuleContract
+    prize_rule: BigLottoPrizeRuleContract | None
 
     def __post_init__(self) -> None:
         self.validate()
@@ -221,8 +222,11 @@ class LotteryRuleContract:
             raise ValueError("canonical_number_order must be a CanonicalNumberOrder")
         if type(self.provenance_status) is not ProvenanceStatus:
             raise ValueError("provenance_status must be a ProvenanceStatus")
-        if type(self.prize_rule) is not BigLottoPrizeRuleContract:
-            raise ValueError("prize_rule must be a BigLottoPrizeRuleContract")
+        if self.lottery_type is LotteryType.BIG_LOTTO:
+            if type(self.prize_rule) is not BigLottoPrizeRuleContract:
+                raise ValueError("BIG_LOTTO prize_rule must be a BigLottoPrizeRuleContract")
+        elif self.prize_rule is not None:
+            raise ValueError("non-BIG_LOTTO contracts must not define a prize_rule")
 
         text_fields = {
             "contract_version": self.contract_version,
@@ -301,8 +305,9 @@ class LotteryRuleContract:
             raise ValueError("source_accessed_at must be timezone-aware")
         if self.source_accessed_at.utcoffset() != UTC.utcoffset(self.source_accessed_at):
             raise ValueError("source_accessed_at must use UTC")
-        self.prize_rule.validate(ticket_size=self.main_number_count)
-        if self.prize_rule.source_sha256 != self.source_sha256:
+        if self.prize_rule is not None:
+            self.prize_rule.validate(ticket_size=self.main_number_count)
+        if self.prize_rule is not None and self.prize_rule.source_sha256 != self.source_sha256:
             raise ValueError("prize_rule source digest must match the primary source digest")
 
     def canonical_dict(self) -> dict[str, object]:
@@ -322,7 +327,7 @@ class LotteryRuleContract:
             "main_numbers_unique": self.main_numbers_unique,
             "main_special_overlap_allowed": self.main_special_overlap_allowed,
             "provenance_status": self.provenance_status.value,
-            "prize_rule": self.prize_rule.canonical_dict(),
+            "prize_rule": self.prize_rule.canonical_dict() if self.prize_rule is not None else None,
             "source_accessed_at": accessed_at,
             "source_locator": self.source_locator,
             "source_publisher": self.source_publisher,
@@ -391,8 +396,75 @@ BIG_LOTTO_RULE_CONTRACT = LotteryRuleContract(
     ),
 )
 
+_LEGACY_IMPORT_RULE_SOURCE_BYTES = (
+    b"LEGACY_SINGLE_MULTI_FILE_IMPORT_FULL_VERTICAL_MIGRATION_R1|"
+    b"DAILY_539:5:1:39:0|POWER_LOTTO:6:1:38:1:1:8|"
+    b"POWER_LOTTO_MAIN_SPECIAL_OVERLAP_ALLOWED:true"
+)
+LEGACY_IMPORT_RULE_SOURCE_SHA256 = hashlib.sha256(_LEGACY_IMPORT_RULE_SOURCE_BYTES).hexdigest()
+LEGACY_IMPORT_RULE_SOURCE_URL = "https://www.taiwanlottery.com/"
+LEGACY_IMPORT_RULE_SOURCE_ACCESSED_AT = datetime(2026, 8, 4, tzinfo=UTC)
+
+DAILY_539_RULE_CONTRACT = LotteryRuleContract(
+    lottery_type=LotteryType.DAILY_539,
+    contract_version="2026-08-04.legacy-import-r1",
+    lifecycle_status=LotteryLifecycleStatus.ACTIVE,
+    effective_from=None,
+    effective_to=None,
+    main_number_count=5,
+    main_number_min=1,
+    main_number_max=39,
+    main_numbers_unique=True,
+    special_number_count=0,
+    special_number_min=0,
+    special_number_max=0,
+    special_number_required=False,
+    special_numbers_unique=True,
+    main_special_overlap_allowed=True,
+    canonical_number_order=CanonicalNumberOrder.ASCENDING_NUMERIC,
+    source_publisher="Owner-authorized legacy import packet",
+    source_title="Legacy single/multi-file import lottery contract",
+    source_url=LEGACY_IMPORT_RULE_SOURCE_URL,
+    source_sha256=LEGACY_IMPORT_RULE_SOURCE_SHA256,
+    source_locator="pasted-text-1.txt Phase 7 and existing historical fixtures",
+    source_accessed_at=LEGACY_IMPORT_RULE_SOURCE_ACCESSED_AT,
+    provenance_status=ProvenanceStatus.PRIMARY,
+    prize_rule=None,
+)
+
+POWER_LOTTO_RULE_CONTRACT = LotteryRuleContract(
+    lottery_type=LotteryType.POWER_LOTTO,
+    contract_version="2026-08-04.legacy-import-r1",
+    lifecycle_status=LotteryLifecycleStatus.ACTIVE,
+    effective_from=None,
+    effective_to=None,
+    main_number_count=6,
+    main_number_min=1,
+    main_number_max=38,
+    main_numbers_unique=True,
+    special_number_count=1,
+    special_number_min=1,
+    special_number_max=8,
+    special_number_required=True,
+    special_numbers_unique=True,
+    main_special_overlap_allowed=True,
+    canonical_number_order=CanonicalNumberOrder.ASCENDING_NUMERIC,
+    source_publisher="Owner-authorized legacy import packet",
+    source_title="Legacy single/multi-file import lottery contract",
+    source_url=LEGACY_IMPORT_RULE_SOURCE_URL,
+    source_sha256=LEGACY_IMPORT_RULE_SOURCE_SHA256,
+    source_locator="pasted-text-1.txt Phase 7 and P638 Power Lotto archive contract",
+    source_accessed_at=LEGACY_IMPORT_RULE_SOURCE_ACCESSED_AT,
+    provenance_status=ProvenanceStatus.PRIMARY,
+    prize_rule=None,
+)
+
 LOTTERY_RULE_CONTRACTS: Mapping[LotteryType, LotteryRuleContract] = MappingProxyType(
-    {LotteryType.BIG_LOTTO: BIG_LOTTO_RULE_CONTRACT}
+    {
+        LotteryType.BIG_LOTTO: BIG_LOTTO_RULE_CONTRACT,
+        LotteryType.DAILY_539: DAILY_539_RULE_CONTRACT,
+        LotteryType.POWER_LOTTO: POWER_LOTTO_RULE_CONTRACT,
+    }
 )
 
 
@@ -429,7 +501,9 @@ def resolve_big_lotto_prize_tier(
         special_hit,
         ticket_size=BIG_LOTTO_RULE_CONTRACT.main_number_count,
     )
-    for tier in BIG_LOTTO_RULE_CONTRACT.prize_rule.tiers:
+    prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
+    for tier in prize_rule.tiers:
         if tier.main_hits == main_hits and tier.special_hit is special_hit:
             return tier
     return NoPrizeResult.NO_PRIZE

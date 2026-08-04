@@ -5,6 +5,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from collections.abc import Sequence
 from datetime import date, datetime
 from typing import Annotated
@@ -40,6 +42,13 @@ from lottolab.application.draw_data import (
     RepositoryUnavailableError,
 )
 from lottolab.application.ports import DrawDataProviderFactory, DrawDataRepositoryFactory
+from lottolab.application.use_cases.batch_draw_imports import (
+    BATCH_PARSER_VERSION,
+    BatchImportDigestMismatchError,
+    CommitBatchDrawImport,
+    InvalidBatchDrawImportError,
+    PreviewBatchDrawImport,
+)
 from lottolab.application.use_cases.draw_automation import (
     BackfillDrawRange,
     FetchDrawData,
@@ -56,6 +65,13 @@ from lottolab.application.use_cases.draw_imports import (
     CommitDrawImport,
     PreviewDrawImport,
 )
+from lottolab.domain.batch_imports import (
+    BatchDrawImportCommit,
+    BatchDrawImportPreview,
+    ImportBatchSummary,
+    ImportFilePayload,
+    ImportFileResult,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import (
     ConflictPolicy,
@@ -66,6 +82,7 @@ from lottolab.domain.ingestion import (
     IngestionRunStatus,
     NormalizedDrawInput,
 )
+from lottolab.infrastructure.imports.batch_files import preview_import_batch
 from lottolab.infrastructure.imports.csv_draws import (
     PARSER_VERSION,
     SUPPORTED_LOTTERY_TYPES,
@@ -203,6 +220,167 @@ class DrawImportPreviewResponse(BaseModel):
         )
 
 
+class BatchImportFileRequest(BaseModel):
+    model_config = _STRICT_BODY
+
+    filename: str = Field(min_length=1, max_length=255)
+    content_base64: str = Field(min_length=1)
+
+    @field_validator("filename")
+    @classmethod
+    def filename_is_display_text(cls, value: str) -> str:
+        return DrawImportPreviewRequest.filename_is_display_text(value)
+
+
+class BatchImportPreviewRequest(BaseModel):
+    model_config = _STRICT_BODY
+
+    files: list[BatchImportFileRequest] = Field(min_length=1, max_length=250)
+    declared_parser_version: str | None = Field(default=None, min_length=1, max_length=100)
+
+
+class BatchImportCommitRequest(BaseModel):
+    model_config = _STRICT_BODY
+
+    files: list[BatchImportFileRequest] = Field(min_length=1, max_length=250)
+    expected_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    parser_version: str = Field(min_length=1, max_length=100)
+
+
+class BatchImportIssueView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    code: str
+    message: str
+    row_number: int | None
+    member_name: str | None
+
+
+class BatchImportFileView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    source_filename: str
+    source_locator: str
+    source_sha256: str
+    status: str
+    lottery_type: LotteryType | None
+    discovered_rows: int
+    accepted_rows: int
+    excluded_rows: int
+    duplicate_rows: int
+    conflict_rows: int
+    failed_rows: int
+    issues: list[BatchImportIssueView]
+
+    @classmethod
+    def from_result(cls, result: ImportFileResult) -> BatchImportFileView:
+        return cls(
+            source_filename=result.source_filename,
+            source_locator=result.source_locator,
+            source_sha256=result.source_sha256,
+            status=result.status.value,
+            lottery_type=result.lottery_type,
+            discovered_rows=result.discovered_rows,
+            accepted_rows=result.accepted_rows,
+            excluded_rows=result.excluded_rows,
+            duplicate_rows=result.duplicate_rows,
+            conflict_rows=result.conflict_rows,
+            failed_rows=result.failed_rows,
+            issues=[
+                BatchImportIssueView(
+                    code=issue.code,
+                    message=issue.message,
+                    row_number=issue.row_number,
+                    member_name=issue.member_name,
+                )
+                for issue in result.issues
+            ],
+        )
+
+
+class BatchImportSummaryView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    discovered_files: int
+    accepted_files: int
+    excluded_files: int
+    parsed_rows: int
+    accepted_rows: int
+    excluded_rows: int
+    duplicate_rows: int
+    conflict_rows: int
+    imported_rows: int
+    failed_rows: int
+
+    @classmethod
+    def from_summary(cls, summary: ImportBatchSummary) -> BatchImportSummaryView:
+        return cls(
+            discovered_files=summary.discovered_files,
+            accepted_files=summary.accepted_files,
+            excluded_files=summary.excluded_files,
+            parsed_rows=summary.parsed_rows,
+            accepted_rows=summary.accepted_rows,
+            excluded_rows=summary.excluded_rows,
+            duplicate_rows=summary.duplicate_rows,
+            conflict_rows=summary.conflict_rows,
+            imported_rows=summary.imported_rows,
+            failed_rows=summary.failed_rows,
+        )
+
+
+class BatchImportPreviewResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    source_filename: str
+    is_valid: bool
+    manifest_sha256: str
+    parser_version: str
+    files: list[BatchImportFileView]
+    summary: BatchImportSummaryView
+    normalized_preview: list[NormalizedDrawPreviewView]
+    preview_truncated: bool
+
+    @classmethod
+    def from_preview(cls, preview: BatchDrawImportPreview) -> BatchImportPreviewResponse:
+        return cls(
+            source_filename=preview.source_filename,
+            is_valid=preview.is_valid,
+            manifest_sha256=preview.manifest_sha256,
+            parser_version=BATCH_PARSER_VERSION,
+            files=[BatchImportFileView.from_result(file) for file in preview.files],
+            summary=BatchImportSummaryView.from_summary(preview.summary),
+            normalized_preview=[
+                NormalizedDrawPreviewView.from_row(row)
+                for row in preview.normalized_rows[:MAX_PREVIEW_RECORDS]
+            ],
+            preview_truncated=len(preview.normalized_rows) > MAX_PREVIEW_RECORDS,
+        )
+
+
+class BatchImportCommitResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    run_id: str | None
+    status: str
+    manifest_sha256: str
+    summary: BatchImportSummaryView
+    files: list[BatchImportFileView]
+    completed_at: str
+    error_summary: str | None
+
+    @classmethod
+    def from_commit(cls, commit: BatchDrawImportCommit) -> BatchImportCommitResponse:
+        return cls(
+            run_id=commit.run_id,
+            status=commit.status,
+            manifest_sha256=commit.manifest_sha256,
+            summary=BatchImportSummaryView.from_summary(commit.summary),
+            files=[BatchImportFileView.from_result(file) for file in commit.files],
+            completed_at=commit.completed_at,
+            error_summary=commit.error_summary,
+        )
+
+
 class ApiErrorResponse(BaseModel):
     model_config = _FROZEN_RESPONSE
 
@@ -223,6 +401,11 @@ def _empty_validation_issues() -> list[RequestValidationIssueView]:
 
 class ApiValidationErrorResponse(ApiErrorResponse):
     preview: DrawImportPreviewResponse | None = None
+    fields: list[RequestValidationIssueView] = Field(default_factory=_empty_validation_issues)
+
+
+class BatchImportValidationErrorResponse(ApiErrorResponse):
+    preview: BatchImportPreviewResponse | None = None
     fields: list[RequestValidationIssueView] = Field(default_factory=_empty_validation_issues)
 
 
@@ -489,6 +672,19 @@ DrawNumberFilter = Annotated[
 ]
 
 
+def _decode_batch_payloads(
+    files: Sequence[BatchImportFileRequest],
+) -> tuple[ImportFilePayload, ...]:
+    payloads: list[ImportFilePayload] = []
+    for file in files:
+        try:
+            content = base64.b64decode(file.content_base64, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError(f"content_base64 is invalid for {file.filename}") from exc
+        payloads.append(ImportFilePayload(filename=file.filename, content=content))
+    return tuple(payloads)
+
+
 def create_draw_data_router(
     repository_factory: DrawDataRepositoryFactory,
     provider_factory: DrawDataProviderFactory | None = None,
@@ -499,6 +695,8 @@ def create_draw_data_router(
     )
     preview_import = PreviewDrawImport(parse_draw_csv, PARSER_VERSION)
     commit_import = CommitDrawImport(parse_draw_csv, PARSER_VERSION, repository_factory)
+    preview_batch_import = PreviewBatchDrawImport(preview_import_batch)
+    commit_batch_import = CommitBatchDrawImport(preview_import_batch, repository_factory)
     fetch_draw_data = FetchDrawData(
         resolved_provider_factory, repository_factory, parse_draw_csv
     )
@@ -613,6 +811,101 @@ def create_draw_data_router(
         except RepositoryUnavailableError:
             return _repository_error("REPOSITORY_UNAVAILABLE", "Local draw data is unavailable.")
         return ImportCommitResultView.from_result(result)
+
+    @router.post(
+        "/draw-imports/batch/preview",
+        response_model=BatchImportPreviewResponse,
+        responses={422: {"model": BatchImportValidationErrorResponse}},
+        operation_id="previewBatchDrawImport",
+    )
+    def preview_batch_draw_import(
+        request: BatchImportPreviewRequest,
+    ) -> BatchImportPreviewResponse | JSONResponse:
+        if (
+            request.declared_parser_version is not None
+            and request.declared_parser_version != BATCH_PARSER_VERSION
+        ):
+            return _json_response(
+                422,
+                BatchImportValidationErrorResponse(
+                    error_code="PARSER_VERSION_MISMATCH",
+                    message="The declared batch parser version is not current.",
+                ),
+            )
+        try:
+            payloads = _decode_batch_payloads(request.files)
+        except ValueError as exc:
+            return _json_response(
+                422,
+                BatchImportValidationErrorResponse(
+                    error_code="INVALID_BASE64_PAYLOAD",
+                    message=str(exc),
+                ),
+            )
+        preview = preview_batch_import.execute(payloads)
+        response = BatchImportPreviewResponse.from_preview(preview)
+        if not preview.is_valid:
+            return _json_response(
+                422,
+                BatchImportValidationErrorResponse(
+                    error_code="BATCH_VALIDATION_FAILED",
+                    message="The batch contains no safely importable draw rows or a failed file.",
+                    preview=response,
+                ),
+            )
+        return response
+
+    @router.post(
+        "/draw-imports/batch/commit",
+        response_model=BatchImportCommitResponse,
+        responses={
+            409: {"model": ApiErrorResponse},
+            422: {"model": BatchImportValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="commitBatchDrawImport",
+    )
+    def commit_batch_draw_import(
+        request: BatchImportCommitRequest,
+    ) -> BatchImportCommitResponse | JSONResponse:
+        try:
+            payloads = _decode_batch_payloads(request.files)
+        except ValueError as exc:
+            return _json_response(
+                422,
+                BatchImportValidationErrorResponse(
+                    error_code="INVALID_BASE64_PAYLOAD",
+                    message=str(exc),
+                ),
+            )
+        try:
+            commit = commit_batch_import.execute(
+                payloads=payloads,
+                expected_manifest_sha256=request.expected_manifest_sha256,
+                parser_version=request.parser_version,
+            )
+        except BatchImportDigestMismatchError:
+            return _json_response(
+                409,
+                ApiErrorResponse(
+                    error_code="BATCH_DIGEST_MISMATCH",
+                    message="Batch content does not match the preview manifest.",
+                ),
+            )
+        except InvalidBatchDrawImportError as exc:
+            return _json_response(
+                422,
+                BatchImportValidationErrorResponse(
+                    error_code="BATCH_VALIDATION_FAILED",
+                    message="The batch contains no safely importable draw rows or a failed file.",
+                    preview=BatchImportPreviewResponse.from_preview(exc.preview),
+                ),
+            )
+        except RepositoryBusyError:
+            return _repository_error("REPOSITORY_BUSY", "Local draw data is temporarily busy.")
+        except RepositoryUnavailableError:
+            return _repository_error("REPOSITORY_UNAVAILABLE", "Local draw data is unavailable.")
+        return BatchImportCommitResponse.from_commit(commit)
 
     def run_sync(
         request: DrawSyncRequestView,
@@ -889,6 +1182,8 @@ def response_models() -> Sequence[type[BaseModel]]:
 
     return (
         DrawImportPreviewResponse,
+        BatchImportPreviewResponse,
+        BatchImportCommitResponse,
         ImportCommitResultView,
         DrawSyncResponse,
         DrawHistoryResponse,

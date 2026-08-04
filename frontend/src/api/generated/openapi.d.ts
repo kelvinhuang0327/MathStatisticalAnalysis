@@ -156,6 +156,50 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/draw-imports/batch/preview": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportPreviewResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportValidationErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/draw-imports/batch/commit": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportCommitResponse"]
+                                  }
+                        }
+                  409: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["BatchImportValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/draw-sync/manual": {
       post: {
           parameters: Record<string, never>
@@ -1376,6 +1420,76 @@ export interface components {
           "uncompleted_count": number
         }
     "B649SuccessCriterion": "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
+    "BatchImportCommitRequest": {
+          "files": Array<components['schemas']["BatchImportFileRequest"]>
+          "expected_manifest_sha256": string
+          "parser_version": string
+        }
+    "BatchImportCommitResponse": {
+          "run_id": string | null
+          "status": string
+          "manifest_sha256": string
+          "summary": components['schemas']["BatchImportSummaryView"]
+          "files": Array<components['schemas']["BatchImportFileView"]>
+          "completed_at": string
+          "error_summary": string | null
+        }
+    "BatchImportFileRequest": {
+          "filename": string
+          "content_base64": string
+        }
+    "BatchImportFileView": {
+          "source_filename": string
+          "source_locator": string
+          "source_sha256": string
+          "status": string
+          "lottery_type": components['schemas']["LotteryType"] | null
+          "discovered_rows": number
+          "accepted_rows": number
+          "excluded_rows": number
+          "duplicate_rows": number
+          "conflict_rows": number
+          "failed_rows": number
+          "issues": Array<components['schemas']["BatchImportIssueView"]>
+        }
+    "BatchImportIssueView": {
+          "code": string
+          "message": string
+          "row_number": number | null
+          "member_name": string | null
+        }
+    "BatchImportPreviewRequest": {
+          "files": Array<components['schemas']["BatchImportFileRequest"]>
+          "declared_parser_version"?: string | null
+        }
+    "BatchImportPreviewResponse": {
+          "source_filename": string
+          "is_valid": boolean
+          "manifest_sha256": string
+          "parser_version": string
+          "files": Array<components['schemas']["BatchImportFileView"]>
+          "summary": components['schemas']["BatchImportSummaryView"]
+          "normalized_preview": Array<components['schemas']["NormalizedDrawPreviewView"]>
+          "preview_truncated": boolean
+        }
+    "BatchImportSummaryView": {
+          "discovered_files": number
+          "accepted_files": number
+          "excluded_files": number
+          "parsed_rows": number
+          "accepted_rows": number
+          "excluded_rows": number
+          "duplicate_rows": number
+          "conflict_rows": number
+          "imported_rows": number
+          "failed_rows": number
+        }
+    "BatchImportValidationErrorResponse": {
+          "error_code": string
+          "message": string
+          "preview"?: components['schemas']["BatchImportPreviewResponse"] | null
+          "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
+        }
     "CommitConflictResponse": {
           "error_code": string
           "message": string

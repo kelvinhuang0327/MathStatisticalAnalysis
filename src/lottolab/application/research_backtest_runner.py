@@ -1620,6 +1620,7 @@ def _governance_status(provenance: tuple[str, ...]) -> str:
 
 def _scoring_version() -> str:
     prize = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize is not None
     return (
         f"{BIG_LOTTO_RULE_CONTRACT.contract_version}:"
         f"{prize.schema_version}:{prize.source_sha256}"

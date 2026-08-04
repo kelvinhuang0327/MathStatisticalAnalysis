@@ -18,6 +18,7 @@ from lottolab.application.ports import (
     DrawDataProvider,
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
+    P638HistoricalQueryRepository,
 )
 from lottolab.infrastructure.draw_provider import JsonHttpDrawDataProvider
 from lottolab.infrastructure.persistence.historical_prefix_success_window_reader import (
@@ -27,6 +28,9 @@ from lottolab.infrastructure.persistence.historical_repositories import (
     SQLiteHistoricalResultQueryRepository,
 )
 from lottolab.infrastructure.persistence.historical_schema import verify_schema_read_only
+from lottolab.infrastructure.persistence.p638_historical_repositories import (
+    SQLiteP638HistoricalQueryRepository,
+)
 from lottolab.interfaces.api.app import create_app
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
@@ -48,6 +52,10 @@ class LocalHistoricalComposition:
     ) -> HistoricalPrefixSuccessWindowSourceReader:
         self._require_available(for_success_windows=True)
         return SQLiteHistoricalPrefixSuccessWindowSourceReader(self.database)
+
+    def p638_historical_query_repository(self) -> P638HistoricalQueryRepository:
+        self._require_available(for_success_windows=False)
+        return SQLiteP638HistoricalQueryRepository(self.database)
 
     def _require_available(self, *, for_success_windows: bool) -> None:
         try:
@@ -88,6 +96,7 @@ def create_local_app() -> FastAPI:
     return create_app(
         draw_data_provider_factory=lambda: provider,
         historical_query_repository_factory=composition.historical_query_repository,
+        p638_historical_query_repository_factory=composition.p638_historical_query_repository,
         historical_prefix_success_window_source_reader_factory=(
             composition.historical_prefix_success_window_source_reader
         ),

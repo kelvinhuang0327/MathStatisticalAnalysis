@@ -193,6 +193,9 @@ from lottolab.interfaces.cli.legacy_xgboost_native_batch_wave64 import (
 from lottolab.interfaces.cli.ordered_candidate_materialization import (
     materialize_ordered_candidate_emissions_command,
 )
+from lottolab.interfaces.cli.p638_historical_forward import (
+    forward_p638_historical_command,
+)
 from lottolab.interfaces.cli.replay_backed_batch import (
     materialize_exact_replay_batch_command,
 )
@@ -207,28 +210,19 @@ app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
+app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("research-store")(research_store_command)
-app.command("run-biglotto-research-backtest")(
-    run_biglotto_research_backtest_command
-)
-app.command("import-biglotto-legacy-reference")(
-    import_biglotto_legacy_reference_command
-)
-app.command("inspect-draw-data-integrity")(
-    draw_data_integrity_command
-)
+app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
+app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)
+app.command("inspect-draw-data-integrity")(draw_data_integrity_command)
 app.command("import-legacy-draw-files")(legacy_draw_import_command)
 app.command("materialize-ordered-candidate-emissions")(
     materialize_ordered_candidate_emissions_command
 )
-app.command("export-biglotto-strategy-universe")(
-    export_full_strategy_research_catalog_command
-)
+app.command("export-biglotto-strategy-universe")(export_full_strategy_research_catalog_command)
 app.command("backtest-biglotto-portfolios")(multi_ticket_backtest_command)
-app.command("materialize-biglotto-replay-batch")(
-    materialize_exact_replay_batch_command
-)
+app.command("materialize-biglotto-replay-batch")(materialize_exact_replay_batch_command)
 app.command("materialize-biglotto-random-native-batch")(
     materialize_legacy_random_native_batch_command
 )
@@ -367,9 +361,9 @@ app.command("materialize-biglotto-hpsb-native-wave57-batch")(
 app.command("materialize-biglotto-dual-seeded-native-wave58-batch")(
     materialize_legacy_dual_seeded_native_wave58_batch_command
 )
-app.command(
-    "materialize-biglotto-seeded-benchmark-native-wave60-batch"
-)(materialize_legacy_seeded_benchmark_native_wave60_batch_command)
+app.command("materialize-biglotto-seeded-benchmark-native-wave60-batch")(
+    materialize_legacy_seeded_benchmark_native_wave60_batch_command
+)
 app.command("materialize-biglotto-five-bet-native-wave61-batch")(
     materialize_legacy_five_bet_native_wave61_batch_command
 )

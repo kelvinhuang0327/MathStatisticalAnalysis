@@ -305,6 +305,8 @@ describe('App navigation', () => {
       'History',
       'Strategy Evidence',
       'Live Zone Split Bets',
+      'P638 Replay',
+      'P638 Analysis',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
 
@@ -353,6 +355,133 @@ describe('App navigation', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('discards replay target detail when the selected run changes', async () => {
+    const run = (runId: string) => ({
+      run_id: runId,
+      status: 'COMPLETE',
+      strategy_count: 10,
+      draw_count: 1933,
+      complete_target_count: 1,
+      excluded_target_count: 0,
+      failed_target_count: 0,
+      ticket_count: 1,
+      source_run_id: `source-${runId}`,
+      source_replay_sha256: 'a'.repeat(64),
+      source_draw_db_sha256: 'b'.repeat(64),
+      second_zone_ssot_version: 'p638-powerlotto-second-zone-v1',
+      first_draw_number: '97000001',
+      first_draw_date: '2008-01-24',
+      last_draw_number: '115000061',
+      last_draw_date: '2026-07-30',
+    })
+    const replay = (targetId: string) => ({
+      target_id: targetId,
+      target_draw_number: '97000001',
+      target_draw_date: '2008-01-24',
+      strategy_id: 'zonal_entropy_2bet',
+      strategy_version: 'v0.1-p638-wave1',
+      status: 'COMPLETE',
+      history_boundary_draw_number: '96000001',
+      history_boundary_date: '2008-01-21',
+      history_length: 30,
+      expected_ticket_count: 1,
+      exclusion_reason: null,
+      failure_reason: null,
+      source_target_locator: `source-target-${targetId}`,
+      actual_zone1_numbers: [1, 2, 3, 4, 5, 6],
+      actual_zone2_number: 7,
+      provenance: `provenance-${targetId}`,
+      tickets: [
+        {
+          ticket_id: `ticket-${targetId}`,
+          ticket_position: 1,
+          predicted_zone1_numbers: [1, 2, 3, 4, 5, 6],
+          predicted_zone2_number: 7,
+          zone1_hit_count: 6,
+          zone2_hit: true,
+          source_record_locator: `source-ticket-${targetId}`,
+          source_replay_sha256: 'a'.repeat(64),
+        },
+      ],
+    })
+    const strategies = (runId: string) => ({
+      run_id: runId,
+      items: [
+        {
+          strategy_snapshot_id: `snapshot-${runId}`,
+          strategy_id: 'zonal_entropy_2bet',
+          display_label: 'Zonal entropy',
+          strategy_version: 'v0.1-p638-wave1',
+          lifecycle_status: 'ONLINE',
+          replay_status: 'R4_RESULT_REUSABLE',
+          zone1_contract: '6 numbers',
+          zone2_contract: '1 number',
+          complete_target_count: 1,
+          excluded_target_count: 0,
+          ticket_count: 1,
+          exclusion_reason: null,
+          source_paths: ['fixture'],
+          provenance: 'fixture',
+          executable: true,
+        },
+      ],
+      total_count: 1,
+      limit: 200,
+      offset: 0,
+    })
+    const replayPage = (runId: string, targetId: string) => ({
+      run_id: runId,
+      items: [replay(targetId)],
+      total_count: 1,
+      limit: 25,
+      offset: 0,
+    })
+    let resolveStaleDetail: ((response: Response) => void) | undefined
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/p638-historical/runs?')) {
+        return Promise.resolve(
+          apiResponse({ items: [run('run-a'), run('run-b')], total_count: 2, limit: 25, offset: 0 }),
+        )
+      }
+      if (url.includes('/run-a/strategies')) return Promise.resolve(apiResponse(strategies('run-a')))
+      if (url.includes('/run-b/strategies')) return Promise.resolve(apiResponse(strategies('run-b')))
+      if (url.includes('/run-a/replay')) return Promise.resolve(apiResponse(replayPage('run-a', 'target-a')))
+      if (url.includes('/run-b/replay')) return Promise.resolve(apiResponse(replayPage('run-b', 'target-b')))
+      if (url.includes('/run-a/targets/target-a')) {
+        return new Promise<Response>((resolve) => {
+          resolveStaleDetail = resolve
+        })
+      }
+      if (url.includes('/run-b/targets/target-b')) return Promise.resolve(apiResponse(replay('target-b')))
+      return Promise.resolve(apiResponse({ items: [], total_count: 0, limit: 25, offset: 0 }))
+    })
+
+    window.location.hash = '#/p638-historical-replay'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    const wrapper = mount(App)
+    await flushPromises()
+    await flushPromises()
+    expect(wrapper.find('#p638-replay-title').exists()).toBe(true)
+
+    const openButton = wrapper
+      .findAll('button')
+      .find((button) => button.text().trim() === 'Open')
+    expect(openButton).toBeDefined()
+    await openButton?.trigger('click')
+    await flushPromises()
+    expect(resolveStaleDetail).toBeDefined()
+
+    await wrapper.get('select').setValue('run-b')
+    await flushPromises()
+    resolveStaleDetail?.(apiResponse(replay('target-a')))
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('run-b')
+    expect(wrapper.find('.p638-detail-panel').exists()).toBe(false)
     wrapper.unmount()
   })
 

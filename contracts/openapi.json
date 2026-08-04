@@ -1700,6 +1700,478 @@
         }
       }
     },
+    "/api/v1/p638-historical/runs": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Runs",
+        "operationId": "listP638HistoricalRuns",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638RunPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/strategies": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Strategies",
+        "operationId": "listP638HistoricalStrategies",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638StrategyPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/replay": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Replay",
+        "operationId": "listP638HistoricalReplay",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "COMPLETE",
+                    "EXCLUDED_INSUFFICIENT_HISTORY",
+                    "FAILED"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638ReplayPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "Get P638 Target",
+        "operationId": "getP638HistoricalTarget",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638ReplayView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/metrics": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "Get P638 Metrics",
+        "operationId": "getP638HistoricalMetrics",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638MetricsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-analytics/rankings": {
       "get": {
         "tags": [
@@ -9802,6 +10274,860 @@
           20
         ],
         "title": "OverviewPrefixCount"
+      },
+      "P638HitDistributionView": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "P638HitDistributionView"
+      },
+      "P638MetricsResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Id"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "complete_target_count": {
+            "type": "integer",
+            "title": "Complete Target Count"
+          },
+          "excluded_target_count": {
+            "type": "integer",
+            "title": "Excluded Target Count"
+          },
+          "failed_target_count": {
+            "type": "integer",
+            "title": "Failed Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "combined_zone1_4plus_zone2_hit_count": {
+            "type": "integer",
+            "title": "Combined Zone1 4Plus Zone2 Hit Count"
+          },
+          "zone1_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone1 Hit Distribution"
+          },
+          "zone2_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone2 Hit Distribution"
+          },
+          "first_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Number"
+          },
+          "first_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Date"
+          },
+          "last_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Number"
+          },
+          "last_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_id",
+          "target_count",
+          "complete_target_count",
+          "excluded_target_count",
+          "failed_target_count",
+          "ticket_count",
+          "combined_zone1_4plus_zone2_hit_count",
+          "zone1_hit_distribution",
+          "zone2_hit_distribution",
+          "first_draw_number",
+          "first_draw_date",
+          "last_draw_number",
+          "last_draw_date"
+        ],
+        "title": "P638MetricsResponse"
+      },
+      "P638ReplayPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638ReplayView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638ReplayPageResponse"
+      },
+      "P638ReplayView": {
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "title": "Target Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_snapshot_id": {
+            "type": "string",
+            "title": "Strategy Snapshot Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "target_draw_number": {
+            "type": "string",
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "type": "string",
+            "title": "Target Draw Date"
+          },
+          "history_boundary_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Boundary Draw Number"
+          },
+          "history_boundary_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Boundary Date"
+          },
+          "history_length": {
+            "type": "integer",
+            "title": "History Length"
+          },
+          "expected_ticket_count": {
+            "type": "integer",
+            "title": "Expected Ticket Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failure Reason"
+          },
+          "actual_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Actual Zone1 Numbers"
+          },
+          "actual_zone2_number": {
+            "type": "integer",
+            "title": "Actual Zone2 Number"
+          },
+          "source_target_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Target Locator"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Replay Sha256"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/P638TicketView"
+            },
+            "type": "array",
+            "title": "Tickets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_id",
+          "run_id",
+          "strategy_snapshot_id",
+          "strategy_id",
+          "strategy_version",
+          "target_draw_number",
+          "target_draw_date",
+          "history_boundary_draw_number",
+          "history_boundary_date",
+          "history_length",
+          "expected_ticket_count",
+          "status",
+          "exclusion_reason",
+          "failure_reason",
+          "actual_zone1_numbers",
+          "actual_zone2_number",
+          "source_target_locator",
+          "source_run_id",
+          "source_replay_sha256",
+          "provenance",
+          "tickets"
+        ],
+        "title": "P638ReplayView"
+      },
+      "P638RunPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638RunView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638RunPageResponse"
+      },
+      "P638RunView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "import_identity_sha256": {
+            "type": "string",
+            "title": "Import Identity Sha256"
+          },
+          "manifest_sha256": {
+            "type": "string",
+            "title": "Manifest Sha256"
+          },
+          "contract_version": {
+            "type": "string",
+            "title": "Contract Version"
+          },
+          "source_run_id": {
+            "type": "string",
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "type": "string",
+            "title": "Source Replay Sha256"
+          },
+          "source_draw_db_sha256": {
+            "type": "string",
+            "title": "Source Draw Db Sha256"
+          },
+          "source_commit_oid": {
+            "type": "string",
+            "title": "Source Commit Oid"
+          },
+          "source_content_sha256": {
+            "type": "string",
+            "title": "Source Content Sha256"
+          },
+          "second_zone_ssot_version": {
+            "type": "string",
+            "title": "Second Zone Ssot Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "started_at": {
+            "type": "string",
+            "title": "Started At"
+          },
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "draw_count": {
+            "type": "integer",
+            "title": "Draw Count"
+          },
+          "complete_target_count": {
+            "type": "integer",
+            "title": "Complete Target Count"
+          },
+          "excluded_target_count": {
+            "type": "integer",
+            "title": "Excluded Target Count"
+          },
+          "failed_target_count": {
+            "type": "integer",
+            "title": "Failed Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "first_draw_number": {
+            "type": "string",
+            "title": "First Draw Number"
+          },
+          "first_draw_date": {
+            "type": "string",
+            "title": "First Draw Date"
+          },
+          "last_draw_number": {
+            "type": "string",
+            "title": "Last Draw Number"
+          },
+          "last_draw_date": {
+            "type": "string",
+            "title": "Last Draw Date"
+          },
+          "is_idempotent_replay": {
+            "type": "boolean",
+            "title": "Is Idempotent Replay"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "import_identity_sha256",
+          "manifest_sha256",
+          "contract_version",
+          "source_run_id",
+          "source_replay_sha256",
+          "source_draw_db_sha256",
+          "source_commit_oid",
+          "source_content_sha256",
+          "second_zone_ssot_version",
+          "status",
+          "started_at",
+          "completed_at",
+          "strategy_count",
+          "draw_count",
+          "complete_target_count",
+          "excluded_target_count",
+          "failed_target_count",
+          "ticket_count",
+          "first_draw_number",
+          "first_draw_date",
+          "last_draw_number",
+          "last_draw_date",
+          "is_idempotent_replay"
+        ],
+        "title": "P638RunView"
+      },
+      "P638StrategyPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638StrategyView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638StrategyPageResponse"
+      },
+      "P638StrategyView": {
+        "properties": {
+          "strategy_snapshot_id": {
+            "type": "string",
+            "title": "Strategy Snapshot Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "display_label": {
+            "type": "string",
+            "title": "Display Label"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "executable": {
+            "type": "boolean",
+            "title": "Executable"
+          },
+          "adapter_path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Path"
+          },
+          "native_ticket_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Ticket Count"
+          },
+          "min_history": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min History"
+          },
+          "zone1_contract": {
+            "type": "string",
+            "title": "Zone1 Contract"
+          },
+          "zone2_contract": {
+            "type": "string",
+            "title": "Zone2 Contract"
+          },
+          "lifecycle_status": {
+            "type": "string",
+            "title": "Lifecycle Status"
+          },
+          "replay_status": {
+            "type": "string",
+            "title": "Replay Status"
+          },
+          "source_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Replay Sha256"
+          },
+          "source_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Source Paths"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          },
+          "exclusion_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclusion Reason"
+          },
+          "complete_target_count": {
+            "type": "integer",
+            "title": "Complete Target Count"
+          },
+          "excluded_target_count": {
+            "type": "integer",
+            "title": "Excluded Target Count"
+          },
+          "failed_target_count": {
+            "type": "integer",
+            "title": "Failed Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "zone1_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone1 Hit Distribution"
+          },
+          "zone2_hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/P638HitDistributionView"
+            },
+            "type": "array",
+            "title": "Zone2 Hit Distribution"
+          },
+          "first_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Number"
+          },
+          "first_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Date"
+          },
+          "last_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Number"
+          },
+          "last_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_snapshot_id",
+          "run_id",
+          "strategy_id",
+          "display_label",
+          "strategy_version",
+          "executable",
+          "adapter_path",
+          "native_ticket_count",
+          "min_history",
+          "zone1_contract",
+          "zone2_contract",
+          "lifecycle_status",
+          "replay_status",
+          "source_run_id",
+          "source_replay_sha256",
+          "source_paths",
+          "provenance",
+          "exclusion_reason",
+          "complete_target_count",
+          "excluded_target_count",
+          "failed_target_count",
+          "ticket_count",
+          "zone1_hit_distribution",
+          "zone2_hit_distribution",
+          "first_draw_number",
+          "first_draw_date",
+          "last_draw_number",
+          "last_draw_date"
+        ],
+        "title": "P638StrategyView"
+      },
+      "P638TicketView": {
+        "properties": {
+          "ticket_id": {
+            "type": "string",
+            "title": "Ticket Id"
+          },
+          "ticket_position": {
+            "type": "integer",
+            "title": "Ticket Position"
+          },
+          "predicted_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Predicted Zone1 Numbers"
+          },
+          "predicted_zone2_number": {
+            "type": "integer",
+            "title": "Predicted Zone2 Number"
+          },
+          "actual_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Actual Zone1 Numbers"
+          },
+          "actual_zone2_number": {
+            "type": "integer",
+            "title": "Actual Zone2 Number"
+          },
+          "zone1_hit_count": {
+            "type": "integer",
+            "title": "Zone1 Hit Count"
+          },
+          "zone2_hit": {
+            "type": "boolean",
+            "title": "Zone2 Hit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source_run_id": {
+            "type": "string",
+            "title": "Source Run Id"
+          },
+          "source_replay_sha256": {
+            "type": "string",
+            "title": "Source Replay Sha256"
+          },
+          "source_record_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Record Locator"
+          },
+          "second_zone_ssot_version": {
+            "type": "string",
+            "title": "Second Zone Ssot Version"
+          },
+          "provenance": {
+            "type": "string",
+            "title": "Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_id",
+          "ticket_position",
+          "predicted_zone1_numbers",
+          "predicted_zone2_number",
+          "actual_zone1_numbers",
+          "actual_zone2_number",
+          "zone1_hit_count",
+          "zone2_hit",
+          "status",
+          "source_run_id",
+          "source_replay_sha256",
+          "source_record_locator",
+          "second_zone_ssot_version",
+          "provenance"
+        ],
+        "title": "P638TicketView"
       },
       "ReplayOverallAggregateResponse": {
         "properties": {

@@ -967,6 +967,110 @@ td code {
   color: var(--danger);
 }
 
+.workspace-grid--p638 {
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+  align-items: start;
+}
+
+.p638-page-heading {
+  gap: 24px;
+}
+
+.p638-page-heading > div:first-child {
+  min-width: 0;
+}
+
+.primary-nav {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.filter-grid--p638 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 20px 0;
+}
+
+.filter-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.filter-field select,
+.filter-field input {
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgb(6 17 14 / 72%);
+  color: var(--ink);
+}
+
+.panel__note,
+.provenance-line,
+.distribution-line {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.provenance-list {
+  display: grid;
+  gap: 10px;
+  margin: 20px 0 0;
+}
+
+.provenance-list div {
+  display: grid;
+  grid-template-columns: minmax(125px, 0.35fr) minmax(0, 1fr);
+  gap: 15px;
+  padding-top: 10px;
+  border-top: 1px solid rgb(40 64 57 / 72%);
+}
+
+.provenance-list dt {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.provenance-list dd {
+  margin: 0;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.p638-section-heading {
+  margin-top: 36px;
+}
+
+.p638-pagination {
+  margin-top: 16px;
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 4px 7px;
+  border-radius: 999px;
+  font: 600 10px/1.2 'SFMono-Regular', Consolas, monospace;
+  letter-spacing: 0.04em;
+}
+
+.status-pill--complete {
+  background: rgb(80 189 141 / 14%);
+  color: var(--mint);
+}
+
+.status-pill--excluded {
+  background: rgb(242 197 114 / 14%);
+  color: var(--amber);
+}
+
+.p638-detail-panel {
+  margin-top: 24px;
+}
+
 .table-note {
   margin: 0;
   padding: 10px 15px;
@@ -1582,6 +1686,20 @@ td code {
   .b649-records__heading,
   .records-query__grid {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-grid--p638,
+  .filter-grid--p638 {
+    grid-template-columns: 1fr;
+  }
+
+  .p638-page-heading {
+    gap: 20px;
+  }
+
+  .provenance-list div {
+    grid-template-columns: 1fr;
+    gap: 5px;
   }
 
   .research-progress__grid {

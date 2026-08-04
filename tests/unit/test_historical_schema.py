@@ -133,10 +133,14 @@ def _create_populated_v1_database(database: Path) -> None:
 
 def _application_rows(database: Path) -> dict[str, list[tuple[object, ...]]]:
     with sqlite3.connect(database) as connection:
+        existing = {
+            str(row[0])
+            for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
+        }
         return {
             table: connection.execute(f"SELECT * FROM {table} ORDER BY rowid").fetchall()
             for table in TABLE_NAMES
-            if table != "historical_schema_migrations"
+            if table != "historical_schema_migrations" and table in existing
         }
 
 
@@ -146,7 +150,9 @@ def test_verify_schema_read_only_returns_false_for_absent_database(tmp_path: Pat
     assert not database.exists()
 
 
-def test_initialize_schema_creates_all_six_domain_tables_plus_migrations(tmp_path: Path) -> None:
+def test_initialize_schema_creates_all_historical_domain_tables_plus_migrations(
+    tmp_path: Path,
+) -> None:
     database = tmp_path / "historical.db"
     initialize_schema(database)
     with open_database(database, read_only=True) as connection:
@@ -169,7 +175,7 @@ def test_initialize_schema_creates_all_six_domain_tables_plus_migrations(tmp_pat
     with sqlite3.connect(database) as connection:
         assert connection.execute(
             "SELECT version FROM historical_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,)]
+        ).fetchall() == [(1,), (2,), (3,)]
 
 
 def test_initialize_schema_is_idempotent_and_byte_stable(tmp_path: Path) -> None:
@@ -257,11 +263,12 @@ def test_populated_v1_database_is_readable_then_migrates_with_exact_row_preserva
 
     initialize_schema(database)
 
-    assert _application_rows(database) == before
+    after = _application_rows(database)
+    assert {table: after[table] for table in before} == before
     with open_database(database, read_only=True) as connection:
         assert connection.execute(
             "SELECT version FROM historical_schema_migrations ORDER BY version"
-        ).fetchall() == [(1,), (2,)]
+        ).fetchall() == [(1,), (2,), (3,)]
         assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
         indexes = {row[1] for row in connection.execute("PRAGMA index_list(historical_result_run)")}
         assert "idx_historical_result_run_lottery_completed" in indexes
@@ -387,7 +394,7 @@ def test_newer_unknown_schema_version_fails_closed(tmp_path: Path) -> None:
     initialize_schema(database)
     with sqlite3.connect(database) as connection:
         connection.execute(
-            "INSERT INTO historical_schema_migrations VALUES (3, 'future', 'future', 'future')"
+            "INSERT INTO historical_schema_migrations VALUES (4, 'future', 'future', 'future')"
         )
         connection.commit()
     with pytest.raises(HistoricalSchemaMigrationError):

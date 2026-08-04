@@ -16,7 +16,11 @@ from lottolab.application.local_runtime import (
     RuntimeStatus,
     RuntimeStatusKind,
 )
-from lottolab.application.use_cases.generate_bet import HistoryParseError, run_cli_generate_bet
+from lottolab.application.use_cases.generate_bet import (
+    HistoryParseError,
+    run_cli_generate_bet,
+    run_cli_generate_portfolio,
+)
 from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
 from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     multi_ticket_backtest_command,
@@ -38,6 +42,7 @@ from lottolab.interfaces.cli.legacy_checkpoint_native_batch_wave55 import (
 from lottolab.interfaces.cli.legacy_diversified_native_batch_wave62 import (
     materialize_legacy_diversified_native_wave62_batch_command,
 )
+from lottolab.interfaces.cli.legacy_draw_import import legacy_draw_import_command
 from lottolab.interfaces.cli.legacy_dual_seeded_native_batch_wave58 import (
     materialize_legacy_dual_seeded_native_wave58_batch_command,
 )
@@ -188,6 +193,9 @@ from lottolab.interfaces.cli.legacy_xgboost_native_batch_wave64 import (
 from lottolab.interfaces.cli.ordered_candidate_materialization import (
     materialize_ordered_candidate_emissions_command,
 )
+from lottolab.interfaces.cli.p638_historical_forward import (
+    forward_p638_historical_command,
+)
 from lottolab.interfaces.cli.replay_backed_batch import (
     materialize_exact_replay_batch_command,
 )
@@ -202,27 +210,19 @@ app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
+app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("research-store")(research_store_command)
-app.command("run-biglotto-research-backtest")(
-    run_biglotto_research_backtest_command
-)
-app.command("import-biglotto-legacy-reference")(
-    import_biglotto_legacy_reference_command
-)
-app.command("inspect-draw-data-integrity")(
-    draw_data_integrity_command
-)
+app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
+app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)
+app.command("inspect-draw-data-integrity")(draw_data_integrity_command)
+app.command("import-legacy-draw-files")(legacy_draw_import_command)
 app.command("materialize-ordered-candidate-emissions")(
     materialize_ordered_candidate_emissions_command
 )
-app.command("export-biglotto-strategy-universe")(
-    export_full_strategy_research_catalog_command
-)
+app.command("export-biglotto-strategy-universe")(export_full_strategy_research_catalog_command)
 app.command("backtest-biglotto-portfolios")(multi_ticket_backtest_command)
-app.command("materialize-biglotto-replay-batch")(
-    materialize_exact_replay_batch_command
-)
+app.command("materialize-biglotto-replay-batch")(materialize_exact_replay_batch_command)
 app.command("materialize-biglotto-random-native-batch")(
     materialize_legacy_random_native_batch_command
 )
@@ -361,9 +361,9 @@ app.command("materialize-biglotto-hpsb-native-wave57-batch")(
 app.command("materialize-biglotto-dual-seeded-native-wave58-batch")(
     materialize_legacy_dual_seeded_native_wave58_batch_command
 )
-app.command(
-    "materialize-biglotto-seeded-benchmark-native-wave60-batch"
-)(materialize_legacy_seeded_benchmark_native_wave60_batch_command)
+app.command("materialize-biglotto-seeded-benchmark-native-wave60-batch")(
+    materialize_legacy_seeded_benchmark_native_wave60_batch_command
+)
 app.command("materialize-biglotto-five-bet-native-wave61-batch")(
     materialize_legacy_five_bet_native_wave61_batch_command
 )
@@ -430,6 +430,47 @@ def generate_bet_command(
         )
     except (OSError, HistoryParseError) as exc:
         typer.echo(f"generate-bet input error: {exc}", err=True)
+        raise typer.Exit(code=1) from exc
+    typer.echo(output)
+    if not ok:
+        raise typer.Exit(code=1)
+
+
+@app.command("generate-bet-portfolio")
+def generate_bet_portfolio_command(
+    strategy_id: str,
+    seed: Annotated[
+        int,
+        typer.Option(
+            min=0,
+            help=(
+                "Caller-provided bookkeeping value echoed verbatim in the output; "
+                "does not affect the generated numbers."
+            ),
+        ),
+    ],
+    history_file: Annotated[
+        Path,
+        typer.Option(
+            exists=True,
+            dir_okay=False,
+            help="Path to a JSON array of {draw, date, numbers} rows.",
+        ),
+    ],
+) -> None:
+    """Generate one strategy's complete native ticket portfolio (PORTFOLIO strategies only).
+
+    Returns the full, ordered native ticket set — never truncated to one
+    ticket. For SINGLE_TICKET strategy_ids, use ``generate-bet`` instead;
+    this command fails closed (WRONG_RESPONSE_PATH) for those.
+    """
+    try:
+        history_json = history_file.read_text(encoding="utf-8")
+        output, ok = run_cli_generate_portfolio(
+            strategy_id=strategy_id, seed=seed, history_json=history_json
+        )
+    except (OSError, HistoryParseError) as exc:
+        typer.echo(f"generate-bet-portfolio input error: {exc}", err=True)
         raise typer.Exit(code=1) from exc
     typer.echo(output)
     if not ok:

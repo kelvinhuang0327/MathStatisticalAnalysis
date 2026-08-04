@@ -173,6 +173,90 @@ class BetAdapter(ABC):
         """Return one untrusted prediction for base-class output validation."""
 
 
+class PortfolioBetAdapter(ABC):
+    """Template for one strategy identity whose native output is an ordered,
+    fixed-size set of two or more causally-computed tickets (a "portfolio").
+
+    Kept entirely separate from :class:`BetAdapter` so the eight shipped
+    single-ticket adapters are untouched by this contract's existence. Native
+    ticket order and positional duplicates are preserved exactly as emitted;
+    this class only canonicalizes each ticket's own number ordering for legal
+    validation, never reorders or deduplicates across tickets.
+    """
+
+    strategy_id: ClassVar[str]
+    strategy_name: ClassVar[str]
+    strategy_version: ClassVar[str]
+    min_history: ClassVar[int]
+    supported_lottery_types: ClassVar[tuple[LotteryType, ...]]
+    native_ticket_count: ClassVar[int]
+
+    def get_bets(
+        self,
+        history: object,
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        executions = self.get_bets_with_emission(history, lottery_type)
+        return tuple(execution.legal_main_numbers for execution in executions)
+
+    def get_bets_with_emission(
+        self,
+        history: object,
+        lottery_type: LotteryType,
+    ) -> tuple[BetAdapterExecution, ...]:
+        """Execute the producer once and retain each ticket's pre-canonical tuple."""
+
+        if (
+            type(lottery_type) is not LotteryType
+            or lottery_type not in self.supported_lottery_types
+        ):
+            raise UnsupportedLotteryType(
+                f"{self.strategy_id} does not support the requested lottery type"
+            )
+
+        raw_history = _require_history_tuple(history, self.strategy_id)
+        canonical_history = validated_history(
+            self._history_window(raw_history),
+            self.strategy_id,
+        )
+        if len(canonical_history) < self.min_history:
+            raise InsufficientHistory(
+                f"{self.strategy_id}: needs {self.min_history} draws, "
+                f"got {len(canonical_history)}"
+            )
+
+        predicted = self._predict_all(canonical_history, lottery_type)
+        if type(predicted) is not tuple:
+            raise InvalidOutput(f"{self.strategy_id}: expected a tuple of tickets")
+        if len(predicted) != self.native_ticket_count:
+            raise InvalidOutput(
+                f"{self.strategy_id}: expected {self.native_ticket_count} native tickets, "
+                f"got {len(predicted)}"
+            )
+
+        return tuple(
+            BetAdapterExecution(
+                emitted_main_numbers=ticket,
+                legal_main_numbers=_validated_biglotto_numbers(ticket, self.strategy_id),
+                special_number=None,
+            )
+            for ticket in predicted
+        )
+
+    def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
+        """Select rows that are causally visible to this adapter before row validation."""
+
+        return history
+
+    @abstractmethod
+    def _predict_all(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        """Return the untrusted, ordered native ticket set for base-class validation."""
+
+
 __all__ = [
     "BetAdapter",
     "BetAdapterError",
@@ -180,6 +264,7 @@ __all__ = [
     "CausalDrawRow",
     "InsufficientHistory",
     "InvalidOutput",
+    "PortfolioBetAdapter",
     "RejectPrediction",
     "UnsupportedLotteryType",
 ]

@@ -6,6 +6,7 @@ from lottolab.strategies.adapters.base import (
     CausalDrawRow,
     InsufficientHistory,
     InvalidOutput,
+    PortfolioBetAdapter,
     RejectPrediction,
     UnsupportedLotteryType,
 )
@@ -19,12 +20,24 @@ from lottolab.strategies.adapters.biglotto_selected import (
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
 )
+from lottolab.strategies.adapters.biglotto_wave1 import (
+    BigLottoDynamicFrequencyAdapter,
+    BigLottoEchoPhase2Adapter,
+    BigLottoGraphPredictorAdapter,
+    BigLottoHotCooccurrenceAdapter,
+    BigLottoMustHitTop6Adapter,
+)
 
 __all__ = [
     "BetAdapter",
     "BetAdapterError",
     "BigLottoDeviation2BetAdapter",
     "BigLottoDeviation2BetBet2Adapter",
+    "BigLottoDynamicFrequencyAdapter",
+    "BigLottoEchoPhase2Adapter",
+    "BigLottoGraphPredictorAdapter",
+    "BigLottoHotCooccurrenceAdapter",
+    "BigLottoMustHitTop6Adapter",
     "BigLottoP02BetBet1Adapter",
     "BigLottoP02BetBet2Adapter",
     "BigLottoSocialWisdomAntiPopularityAdapter",
@@ -34,6 +47,7 @@ __all__ = [
     "CausalDrawRow",
     "InsufficientHistory",
     "InvalidOutput",
+    "PortfolioBetAdapter",
     "RejectPrediction",
     "UnsupportedLotteryType",
 ]

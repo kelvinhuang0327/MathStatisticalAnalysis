@@ -6,6 +6,8 @@ import B649MultiTicketRecordsPage from './features/b649-multi-ticket-records/B64
 import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
+import P638HistoricalReplayPage from './features/p638-historical-replay/P638HistoricalReplayPage.vue'
+import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638StrategyAnalysisPage.vue'
 import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
 import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidencePage.vue'
@@ -18,6 +20,8 @@ type Page =
   | 'history'
   | 'strategy-evidence'
   | 'live-zone-split-bets'
+  | 'p638-historical-replay'
+  | 'p638-strategy-analysis'
   | 'replay-history'
 
 const currentPage = ref<Page>(pageFromHash())
@@ -30,6 +34,8 @@ function pageFromHash(): Page {
   if (route === 'history' || route === 'draw-history') return 'history'
   if (route === 'strategy-evidence') return 'strategy-evidence'
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
+  if (route === 'p638-historical-replay') return 'p638-historical-replay'
+  if (route === 'p638-strategy-analysis') return 'p638-strategy-analysis'
   if (route === 'replay-history') return 'replay-history'
   return 'strategies'
 }
@@ -87,6 +93,18 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
           Live Zone Split Bets
         </a>
         <a
+          href="#/p638-historical-replay"
+          :aria-current="currentPage === 'p638-historical-replay' ? 'page' : undefined"
+        >
+          P638 Replay
+        </a>
+        <a
+          href="#/p638-strategy-analysis"
+          :aria-current="currentPage === 'p638-strategy-analysis' ? 'page' : undefined"
+        >
+          P638 Analysis
+        </a>
+        <a
           href="#/replay-history"
           :aria-current="currentPage === 'replay-history' ? 'page' : undefined"
         >
@@ -104,7 +122,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <HistoryPage v-else-if="currentPage === 'history'" />
       <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
       <LiveZoneSplitBetsPage v-else-if="currentPage === 'live-zone-split-bets'" />
-      <ReplayHistoryPage v-else />
+      <P638HistoricalReplayPage v-else-if="currentPage === 'p638-historical-replay'" />
+      <ReplayHistoryPage v-else-if="currentPage === 'replay-history'" />
+      <P638StrategyAnalysisPage v-else />
     </main>
 
     <footer class="app-footer">
@@ -125,6 +145,14 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'strategy-evidence'">
         Evidence availability comes only from committed registries and definitions; unavailable
         values are never inferred.
+      </template>
+      <template v-else-if="currentPage === 'p638-historical-replay'">
+        P638 replay is read-only historical evidence. It does not generate tickets, rank
+        strategies, or make future predictions.
+      </template>
+      <template v-else-if="currentPage === 'p638-strategy-analysis'">
+        P638 analysis reports stored replay coverage and hit distributions only; no betting or
+        predictive claim is made.
       </template>
       <template v-else-if="currentPage === 'replay-history'">
         Historical success rates, rankings, and random-baseline differences are descriptive

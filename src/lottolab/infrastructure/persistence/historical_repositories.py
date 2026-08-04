@@ -281,9 +281,7 @@ def _insert_full_run(
                 ),
             )
 
-        stats = summary_accumulator.setdefault(
-            strategy_snapshot_id, _StrategySummaryAccumulator()
-        )
+        stats = summary_accumulator.setdefault(strategy_snapshot_id, _StrategySummaryAccumulator())
         stats.target_draws.add(portfolio.target_draw_number)
         stats.portfolio_count += 1
         for tier in TICKET_COUNT_TIERS:
@@ -422,28 +420,62 @@ class SQLiteHistoricalResultQueryRepository:
                 items=(), total_count=0, limit=query.limit, offset=query.offset
             )
         with _read_only_connection(self._database) as connection:
+            predicate = "status = 'COMPLETED'"
+            predicate_parameters: tuple[object, ...] = ()
+            if query.lottery_type is not None:
+                predicate += " AND lottery_type = ?"
+                predicate_parameters = (query.lottery_type.value,)
+            p638_tables_available = _has_p638_extension(connection)
+            if p638_tables_available:
+                strategy_count_sql = """
+                       CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
+                            (SELECT COUNT(*) FROM historical_p638_strategy_ledger p638s
+                             WHERE p638s.run_id = r.id)
+                            ELSE
+                            (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                             WHERE s.run_id = r.id)
+                       END
+                """
+                portfolio_count_sql = """
+                       CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
+                            (SELECT COUNT(*) FROM historical_p638_target p638t
+                             WHERE p638t.run_id = r.id)
+                            ELSE
+                            (SELECT COUNT(*) FROM historical_portfolio p
+                             WHERE p.run_id = r.id)
+                       END
+                """
+            else:
+                strategy_count_sql = """
+                       (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                        WHERE s.run_id = r.id)
+                """
+                portfolio_count_sql = """
+                       (SELECT COUNT(*) FROM historical_portfolio p
+                        WHERE p.run_id = r.id)
+                """
             total_count = _scalar(
-                connection, "SELECT COUNT(*) FROM historical_result_run WHERE status = 'COMPLETED'"
+                connection,
+                f"SELECT COUNT(*) FROM historical_result_run WHERE {predicate}",
+                predicate_parameters,
             )
             rows = connection.execute(
-                """
+                f"""
                 SELECT r.id, r.import_identity_sha256, r.manifest_sha256,
                        r.contract_version, r.source_kind, r.source_repository,
                        r.source_commit_oid, r.source_artifact_sha256,
                        r.dataset_identity, r.dataset_sha256, r.legacy_run_id,
                        r.lottery_type, r.started_at, r.completed_at, r.status,
-                       (SELECT COUNT(*) FROM historical_strategy_snapshot s
-                        WHERE s.run_id = r.id),
+                       {strategy_count_sql},
                        (SELECT COUNT(*) FROM historical_draw_snapshot d
                         WHERE d.run_id = r.id),
-                       (SELECT COUNT(*) FROM historical_portfolio p
-                        WHERE p.run_id = r.id)
+                       {portfolio_count_sql}
                 FROM historical_result_run r
-                WHERE r.status = 'COMPLETED'
+                WHERE {predicate}
                 ORDER BY r.completed_at DESC, r.id DESC
                 LIMIT ? OFFSET ?
                 """,
-                (query.limit, query.offset),
+                (*predicate_parameters, query.limit, query.offset),
             ).fetchall()
         items = tuple(_row_to_run_summary(row) for row in rows)
         return HistoricalRunPage(
@@ -514,9 +546,7 @@ class SQLiteHistoricalResultQueryRepository:
                 )
                 for row in portfolio_rows
             ]
-        filtered = (
-            [item for item in candidates if item.m4plus] if query.m4plus_only else candidates
-        )
+        filtered = [item for item in candidates if item.m4plus] if query.m4plus_only else candidates
         total_count = len(filtered)
         page_items = tuple(filtered[query.offset : query.offset + query.limit])
         return HistoricalReplayPage(
@@ -584,11 +614,26 @@ def _read_only_connection(database: Path) -> Generator[sqlite3.Connection]:
         ) from exc
 
 
-def _scalar(connection: sqlite3.Connection, sql: str) -> int:
-    row = connection.execute(sql).fetchone()
+def _scalar(connection: sqlite3.Connection, sql: str, parameters: tuple[object, ...] = ()) -> int:
+    row = connection.execute(sql, parameters).fetchone()
     if row is None:
         raise HistoricalResultsUnavailableError("expected aggregate query result is missing")
     return int(row[0])
+
+
+def _has_p638_extension(connection: sqlite3.Connection) -> bool:
+    names = {
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table'"
+        )
+    }
+    return {
+        "historical_p638_run",
+        "historical_p638_strategy_ledger",
+        "historical_p638_target",
+        "historical_p638_ticket",
+    } <= names
 
 
 def _run_is_completed(connection: sqlite3.Connection, run_id: str) -> bool:
@@ -609,9 +654,7 @@ def _decode_numbers(raw: object) -> tuple[int, ...]:
     try:
         parsed: object = json.loads(str(raw))
     except (TypeError, ValueError) as exc:
-        raise HistoricalResultsUnavailableError(
-            "stored ticket/draw numbers are malformed"
-        ) from exc
+        raise HistoricalResultsUnavailableError("stored ticket/draw numbers are malformed") from exc
     if not isinstance(parsed, list):
         raise HistoricalResultsUnavailableError("stored ticket/draw numbers are malformed")
     numbers: list[int] = []

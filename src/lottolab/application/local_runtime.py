@@ -54,6 +54,8 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/b649-multi-ticket-records": frozenset({"get"}),
     "/api/v1/draw-imports/preview": frozenset({"post"}),
     "/api/v1/draw-imports/commit": frozenset({"post"}),
+    "/api/v1/draw-imports/batch/preview": frozenset({"post"}),
+    "/api/v1/draw-imports/batch/commit": frozenset({"post"}),
     "/api/v1/draw-sync/manual": frozenset({"post"}),
     "/api/v1/draw-sync/missing-scan": frozenset({"post"}),
     "/api/v1/draw-sync/backfill": frozenset({"post"}),
@@ -68,6 +70,11 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/historical-results/runs/{run_id}/strategies": frozenset({"get"}),
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
+    "/api/v1/p638-historical/runs": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/strategies": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/replay": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/metrics": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/rankings": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/strategies": frozenset({"get"}),
     (
@@ -140,6 +147,8 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/generate-bet",
         "/api/v1/draw-sync/backfill",
         "/api/v1/historical-results/runs/{run_id}/replay",
+        "/api/v1/p638-historical/runs/{run_id}/replay",
+        "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}",
         (
             "/api/v1/historical-prefix-analytics/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/replay"

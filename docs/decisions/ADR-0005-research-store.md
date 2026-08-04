@@ -180,3 +180,31 @@ Native historical backtests use `VERSIONED_CURRENT_SCORER`; reference baselines
 remain `LEGACY_REPORTED`. M2a stores audit and per-strategy coverage summaries
 with `rank_value = null` and does not perform promotion, ranking, portfolio
 construction, or current-pointer mutation.
+
+## M2b amendment — explicit, fail-closed production entrypoint
+
+M2b adds an explicit `--production` mode to the M2a runner CLI, alongside the
+existing scratch mode. Exactly one of `--research-data-dir` (scratch) or
+`--production` must be selected; both or neither fails before any database
+access. Production mode never accepts an explicit research-data path and never
+falls back to a caller-supplied scratch path.
+
+Production mode resolves its destination only through the same
+`resolve_research_data_paths()` canonical locator D2 already names, never
+through an ambient-only shortcut or a second entrypoint. It requires an
+already-existing, schema-valid store: `verify_schema_read_only()` runs before
+any writer is constructed, and a missing store fails closed with a distinct
+reason code rather than being created. `SQLiteResearchRepository` is
+constructed with `initialize=False`, so production mode can never create or
+migrate the canonical store — bootstrap remains the separate, separately
+authorised lifecycle task D2 and the Phase 2a amendment already describe.
+
+A disk preflight also runs before writer construction, comparing
+`shutil.disk_usage` on the resolved data directory against
+`max(2 GiB, database size × 8)` free bytes required; insufficient space fails
+closed and the error surfaces only the required and available byte counts.
+
+This amendment is scope-limited to the CLI entrypoint. It does not run an M2b
+pilot, does not open or write either production database, and does not by
+itself authorize one. Actual production execution against the canonical store
+remains a separate, separately authorised task.

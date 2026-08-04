@@ -39,6 +39,7 @@ from lottolab.application.use_cases.query_historical_results import (
     ListHistoricalRuns,
     ListHistoricalStrategies,
 )
+from lottolab.domain.historical_results import HistoricalLotteryType
 from lottolab.interfaces.api.draw_data import ApiErrorResponse, ApiValidationErrorResponse
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
@@ -334,11 +335,16 @@ def create_historical_results_router(
     def list_historical_runs(
         limit: Limit = 50,
         offset: Offset = 0,
+        lottery_type: HistoricalLotteryType | None = None,
     ) -> HistoricalRunPageResponse | JSONResponse:
         if list_runs_use_case is None:
             return _not_configured_error()
         try:
-            page = list_runs_use_case.execute(limit=limit, offset=offset)
+            page = list_runs_use_case.execute(
+                limit=limit,
+                offset=offset,
+                lottery_type=lottery_type,
+            )
         except HistoricalResultsUnavailableError:
             return _unavailable_error()
         return HistoricalRunPageResponse.from_page(page)

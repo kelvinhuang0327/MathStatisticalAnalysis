@@ -24,6 +24,7 @@ from lottolab.application.historical_queries import (
     InvalidHistoricalQueryError,
 )
 from lottolab.application.ports import HistoricalResultQueryRepositoryFactory
+from lottolab.domain.historical_results import HistoricalLotteryType
 
 
 def _validate_pagination(limit: int, offset: int) -> None:
@@ -45,10 +46,20 @@ class ListHistoricalRuns:
         self._repository_factory = repository_factory
 
     def execute(
-        self, *, limit: int = DEFAULT_PAGE_LIMIT, offset: int = DEFAULT_PAGE_OFFSET
+        self,
+        *,
+        limit: int = DEFAULT_PAGE_LIMIT,
+        offset: int = DEFAULT_PAGE_OFFSET,
+        lottery_type: HistoricalLotteryType | None = None,
     ) -> HistoricalRunPage:
         _validate_pagination(limit, offset)
-        return self._repository_factory().list_runs(HistoricalRunQuery(limit=limit, offset=offset))
+        return self._repository_factory().list_runs(
+            HistoricalRunQuery(
+                limit=limit,
+                offset=offset,
+                lottery_type=lottery_type,
+            )
+        )
 
 
 class ListHistoricalStrategies:

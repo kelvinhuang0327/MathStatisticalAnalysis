@@ -13,6 +13,7 @@ import {
   type HistoricalImportRunPage,
 } from '../../api/historicalImports'
 import DrawHistoryPage from '../draw-history/DrawHistoryPage.vue'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 
 type Tab = 'draws' | 'ingestion' | 'imports'
 type State = 'loading' | 'ready' | 'empty' | 'error' | 'not-configured'
@@ -233,7 +234,7 @@ onBeforeUnmount(() => {
             <thead><tr><th>Draw identity</th><th>Source</th><th>Result</th><th>Duplicate / conflict identity</th><th>Sanitized message</th></tr></thead>
             <tbody>
               <tr v-for="item in runDetail.items" :key="`${item.source_row_number}-${item.draw_number}`">
-                <td>{{ item.lottery_type ?? '—' }} / {{ item.draw_number ?? '—' }}</td>
+                <td>{{ item.lottery_type ? lotteryTypeDisplayLabel(item.lottery_type) : '—' }} / {{ item.draw_number ?? '—' }}</td>
                 <td>{{ item.source ?? '—' }}</td><td>{{ item.disposition }}</td>
                 <td><code>{{ item.normalized_record_hash ?? '—' }}</code></td><td>{{ item.message ?? '—' }}</td>
               </tr>

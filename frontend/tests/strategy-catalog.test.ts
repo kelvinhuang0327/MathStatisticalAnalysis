@@ -106,6 +106,8 @@ describe('StrategyCatalogPage', () => {
     expect(wrapper.findAll('.strategy-card')).toHaveLength(1)
     expect(wrapper.text()).toContain(observationStrategy.display_name)
     expect(wrapper.text()).toContain(observationStrategy.strategy_id)
+    expect(wrapper.text()).toContain('L649')
+    expect(wrapper.text()).not.toContain('BIG_LOTTO')
     wrapper.unmount()
   })
 

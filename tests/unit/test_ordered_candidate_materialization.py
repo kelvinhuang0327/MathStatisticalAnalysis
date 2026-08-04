@@ -25,7 +25,7 @@ from lottolab.domain.ordered_candidate_materialization import (
     OrderedCandidateSourceSnapshot,
     build_candidate_source_artifact_identity,
 )
-from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyDescriptor
 from lottolab.evidence.ordered_candidate_emission_package import (
     OrderedCandidateEmissionPackage,
     source_snapshot_sha256,
@@ -123,7 +123,11 @@ class _BetaAdapter(_Adapter):
     strategy_name = f"Fixture {_STRATEGY_IDS[1]}"
 
 
-def _descriptor(strategy_id: str) -> StrategyDescriptor:
+def _descriptor(
+    strategy_id: str,
+    *,
+    response_shape: ResponseShape = ResponseShape.SINGLE_TICKET,
+) -> StrategyDescriptor:
     return StrategyDescriptor(
         strategy_id=strategy_id,
         strategy_name=f"Fixture {strategy_id}",
@@ -133,6 +137,10 @@ def _descriptor(strategy_id: str) -> StrategyDescriptor:
         executable=False,
         min_history=1,
         provenance=("fixture",),
+        response_shape=response_shape,
+        native_ticket_count=(
+            2 if response_shape is ResponseShape.PORTFOLIO else 1
+        ),
     )
 
 
@@ -252,6 +260,53 @@ def test_non_ok_attempt_is_retained_without_artifact_and_package_still_succeeds(
         for attempt in rejected
     )
     assert len(fixture.writer.package.emission_files) == 2
+
+
+def test_portfolio_shaped_strategy_is_retained_as_strategy_unavailable(
+    tmp_path: Path,
+) -> None:
+    """A PORTFOLIO-shaped strategy fails closed with WRONG_RESPONSE_PATH before
+    ever reaching an adapter; this must be retained as an ordinary closed
+    attempt (STRATEGY_UNAVAILABLE), not crash the whole materialization run."""
+    reader = _Reader(_snapshot())
+    writer = _Writer()
+    portfolio_id = "fixture_portfolio"
+    generator = GenerateOrderedCandidateEmission(
+        GenerateOneBet(
+            StrategyCatalog(
+                (_descriptor(portfolio_id, response_shape=ResponseShape.PORTFOLIO),)
+            ),
+            {},
+        )
+    )
+    use_case = MaterializeOrderedCandidateEmissions(
+        reader_factory=lambda: reader,
+        writer_factory=lambda: writer,
+        generate_ordered_candidate_emission=generator,
+    )
+
+    result = use_case.execute(
+        MaterializeOrderedCandidateEmissionsInput(
+            lottery_type=LotteryType.BIG_LOTTO,
+            dataset_id="fixture-dataset",
+            dataset_version="v1",
+            expected_source_snapshot_sha256=_snapshot().source_snapshot_sha256,
+            target_draws=("3", "4"),
+            strategy_ids=(portfolio_id,),
+            minimum_history_draws=1,
+            maximum_history_draws=10,
+            replicate=1,
+            output_directory=tmp_path / "package",
+        )
+    )
+
+    assert result.attempt_count == 2
+    assert result.ok_attempt_count == 0
+    assert writer.package is not None
+    assert all(
+        attempt.status is OrderedCandidateMaterializationStatus.STRATEGY_UNAVAILABLE
+        for attempt in writer.package.attempts
+    )
 
 
 def test_source_hash_mismatch_calls_no_strategy_and_never_accesses_writer(

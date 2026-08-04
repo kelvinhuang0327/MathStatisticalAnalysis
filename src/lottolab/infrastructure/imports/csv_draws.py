@@ -635,6 +635,7 @@ def parse_draw_csv(
                 source=source,
                 normalized_record_hash=normalized_record_hash,
                 rule_status=rule_status,
+                source_name=filename or None,
             )
             normalized_rows.append(candidate)
 

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import hashlib
+from base64 import b64encode
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
 from lottolab.application.draw_data import RepositoryUnavailableError
+from lottolab.application.use_cases.batch_draw_imports import BATCH_PARSER_VERSION
 from lottolab.infrastructure.imports.csv_draws import (
     MAX_CSV_BYTES,
     PARSER_VERSION,
@@ -73,6 +75,18 @@ def commit_body(content: str, *, filename: str = "synthetic.csv") -> dict[str, o
     }
 
 
+def batch_body(*files: tuple[str, bytes]) -> dict[str, object]:
+    return {
+        "files": [
+            {
+                "filename": filename,
+                "content_base64": b64encode(content).decode("ascii"),
+            }
+            for filename, content in files
+        ]
+    }
+
+
 def test_valid_preview_is_bounded_structured_and_db_free(tmp_path: Path) -> None:
     calls = 0
 
@@ -98,7 +112,7 @@ def test_valid_preview_is_bounded_structured_and_db_free(tmp_path: Path) -> None
     assert payload["is_valid"] is True
     assert payload["content_sha256"] == digest(content)
     assert payload["parser_version"] == PARSER_VERSION
-    assert payload["supported_lottery_types"] == ["BIG_LOTTO"]
+    assert payload["supported_lottery_types"] == ["BIG_LOTTO", "DAILY_539", "POWER_LOTTO"]
     assert payload["total_rows"] == payload["valid_rows"] == 1
     assert payload["duplicate_rows"] == payload["conflict_rows_inside_input"] == 0
     assert payload["validation_error_count"] == 0
@@ -106,6 +120,67 @@ def test_valid_preview_is_bounded_structured_and_db_free(tmp_path: Path) -> None
     assert payload["normalized_preview"][0]["source_reference"] == "=1+1"
     assert calls == 0
     assert not Path(display_only).exists()
+
+
+def test_legacy_batch_preview_is_db_free_and_reports_file_statuses(tmp_path: Path) -> None:
+    calls = 0
+
+    def forbidden_paths() -> LocalDataPaths:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("batch preview must not resolve data paths")
+
+    legacy = (
+        "遊戲名稱,期別,開獎日期,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,特別號\n"
+        "大樂透,96000001,2007/01/02,13,21,23,27,31,49,19\n"
+    ).encode("utf-8-sig")
+    client = TestClient(create_app(data_paths_provider=forbidden_paths))
+
+    response = client.post(
+        "/api/v1/draw-imports/batch/preview",
+        json=batch_body(("legacy.csv", legacy)),
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["is_valid"] is True
+    assert payload["parser_version"] == BATCH_PARSER_VERSION
+    assert payload["summary"]["accepted_rows"] == 1
+    assert payload["files"][0]["status"] == "ACCEPTED"
+    assert payload["files"][0]["lottery_type"] == "BIG_LOTTO"
+    assert calls == 0
+    assert not (tmp_path / "legacy.csv").exists()
+
+
+def test_legacy_batch_commit_uses_one_atomic_audit_run(tmp_path: Path) -> None:
+    paths = task_paths(tmp_path)
+    client = client_for(paths)
+    legacy = (
+        "遊戲名稱,期別,開獎日期,獎號1,獎號2,獎號3,獎號4,獎號5,獎號6,特別號\n"
+        "大樂透,96000001,2007/01/02,13,21,23,27,31,49,19\n"
+    ).encode("utf-8-sig")
+    request = batch_body(("legacy.csv", legacy))
+
+    preview_response = client.post("/api/v1/draw-imports/batch/preview", json=request)
+    assert preview_response.status_code == 200
+    preview = preview_response.json()
+    commit_response = client.post(
+        "/api/v1/draw-imports/batch/commit",
+        json={
+            **request,
+            "expected_manifest_sha256": preview["manifest_sha256"],
+            "parser_version": preview["parser_version"],
+        },
+    )
+
+    assert commit_response.status_code == 200
+    commit = commit_response.json()
+    assert commit["status"] == "SUCCESS"
+    assert commit["summary"]["imported_rows"] == 1
+    assert commit["files"][0]["source_filename"] == "legacy.csv"
+    assert client.get("/api/v1/draws?lottery_type=BIG_LOTTO&page_size=10").json()[
+        "total_count"
+    ] == 1
 
 
 @pytest.mark.parametrize(

@@ -1370,6 +1370,8 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                                 "/api/v1/b649-multi-ticket-records/summary": {"get": {}},
                             "/api/v1/draw-imports/preview": {"post": {}},
                             "/api/v1/draw-imports/commit": {"post": {}},
+                            "/api/v1/draw-imports/batch/preview": {"post": {}},
+                            "/api/v1/draw-imports/batch/commit": {"post": {}},
                             "/api/v1/draw-sync/manual": {"post": {}},
                             "/api/v1/draw-sync/missing-scan": {"post": {}},
                             "/api/v1/draw-sync/backfill": {"post": {}},
@@ -1383,6 +1385,13 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/historical-results/runs": {"get": {}},
                         "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
                         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
+                        "/api/v1/p638-historical/runs": {"get": {}},
+                        "/api/v1/p638-historical/runs/{run_id}/strategies": {"get": {}},
+                        "/api/v1/p638-historical/runs/{run_id}/replay": {"get": {}},
+                        "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {
+                            "get": {}
+                        },
+                        "/api/v1/p638-historical/runs/{run_id}/metrics": {"get": {}},
                             "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
                             "/api/v1/historical-prefix-analytics/rankings": {"get": {}},
                             "/api/v1/historical-prefix-analytics/strategies": {"get": {}},

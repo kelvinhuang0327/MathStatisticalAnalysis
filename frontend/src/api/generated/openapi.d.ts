@@ -451,6 +451,7 @@ export interface paths {
             "query": {
               "limit"?: number
               "offset"?: number
+              "lottery_type"?: components['schemas']["HistoricalLotteryType"] | null
             }
           }
           responses: {
@@ -1495,6 +1496,7 @@ export interface components {
           "special_numbers": Array<number>
           "draw_sha256": string
         }
+    "HistoricalLotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
     "HistoricalPerDrawPrefixMetricsView": {
           "identity": components['schemas']["HistoricalPrefixStrategyIdentityView"]
           "prefix_count": number

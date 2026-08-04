@@ -388,3 +388,187 @@ def envelope_bytes(envelope: dict[str, Any]) -> bytes:
 
 def deep_copy(envelope: dict[str, Any]) -> dict[str, Any]:
     return copy.deepcopy(envelope)
+
+
+V2_CONTRACT_VERSION = "2.0.0"
+V2_MECHANICS: dict[str, tuple[int, int, int, int, int | None, int | None]] = {
+    "DAILY_539": (5, 1, 39, 0, None, None),
+    "BIG_LOTTO": (6, 1, 49, 1, 1, 49),
+    "POWER_LOTTO": (6, 1, 38, 1, 1, 8),
+}
+
+
+def _v2_draw_hash(draw: dict[str, Any], lottery_type: str) -> str:
+    return sha256_hex(
+        canonical_bytes(
+            {
+                "lottery_type": lottery_type,
+                "draw_number": draw["draw_number"],
+                "draw_date": draw["draw_date"],
+                "main_numbers": sorted(draw["main_numbers"]),
+                "special_numbers": sorted(draw["special_numbers"]),
+            }
+        )
+    )
+
+
+def _v2_ticket_hash(ticket: dict[str, Any], lottery_type: str) -> str:
+    return sha256_hex(
+        canonical_bytes(
+            {
+                "lottery_type": lottery_type,
+                "portfolio_position": ticket["portfolio_position"],
+                "main_numbers": sorted(ticket["main_numbers"]),
+                "special_numbers": sorted(ticket["special_numbers"]),
+                "main_hit_count": ticket["main_hit_count"],
+                "special_hit": ticket["special_hit"],
+            }
+        )
+    )
+
+
+def recompute_v2_envelope_hashes(envelope: dict[str, Any]) -> dict[str, Any]:
+    updated = copy.deepcopy(envelope)
+    lottery_type = updated["dataset"]["lottery_type"]
+    for draw in updated["draw_snapshots"]:
+        draw["draw_sha256"] = _v2_draw_hash(draw, lottery_type)
+    for portfolio in updated["portfolios"]:
+        for ticket in portfolio["tickets"]:
+            ticket["ticket_sha256"] = _v2_ticket_hash(ticket, lottery_type)
+        ticket_hashes = [ticket["ticket_sha256"] for ticket in portfolio["tickets"]]
+        portfolio["portfolio_sha256"] = sha256_hex(
+            canonical_bytes(
+                {
+                    "lottery_type": lottery_type,
+                    "strategy_id": portfolio["strategy_id"],
+                    "strategy_version": portfolio["strategy_version"],
+                    "replicate": portfolio["replicate"],
+                    "target_draw_number": portfolio["target_draw_number"],
+                    "cutoff_draw_number": portfolio["cutoff_draw_number"],
+                    "constructor_identifier": portfolio["constructor_identifier"],
+                    "ticket_hashes": ticket_hashes,
+                }
+            )
+        )
+        portfolio["prefix10_sha256"] = sha256_hex(
+            canonical_bytes({"lottery_type": lottery_type, "ticket_hashes": ticket_hashes[:10]})
+        )
+        portfolio["prefix15_sha256"] = sha256_hex(
+            canonical_bytes({"lottery_type": lottery_type, "ticket_hashes": ticket_hashes[:15]})
+        )
+    source = updated["source"]
+    dataset = updated["dataset"]
+    draw_hashes = [
+        draw["draw_sha256"]
+        for draw in sorted(updated["draw_snapshots"], key=lambda item: item["draw_number"])
+    ]
+    portfolios = updated["portfolios"]
+    pairs = sorted(
+        {
+            (portfolio["target_draw_number"], portfolio["cutoff_draw_number"])
+            for portfolio in portfolios
+        }
+    )
+    identity_payload = {
+        "contract_version": updated["contract_version"],
+        "lottery_type": lottery_type,
+        "source_kind": source["source_kind"],
+        "source_repository": source["source_repository"],
+        "source_commit_oid": source["source_commit_oid"],
+        "source_artifact_sha256": source["source_artifact_sha256"],
+        "dataset_identity": dataset["dataset_identity"],
+        "dataset_sha256": dataset["dataset_sha256"],
+        "strategy_descriptor_identities": sorted(
+            descriptor["descriptor_sha256"] for descriptor in updated["strategy_descriptors"]
+        ),
+        "draw_snapshot_identities": draw_hashes,
+        "target_draw_numbers": sorted(
+            {portfolio["target_draw_number"] for portfolio in portfolios}
+        ),
+        "target_cutoff_pairs": [[target, cutoff] for target, cutoff in pairs],
+        "portfolio_payload_hashes": sorted(
+            portfolio["portfolio_sha256"] for portfolio in portfolios
+        ),
+    }
+    updated["import_identity_sha256"] = sha256_hex(canonical_bytes(identity_payload))
+    updated["manifest_sha256"] = self_key_removed_sha256(updated, "manifest_sha256")
+    return updated
+
+
+def build_v2_envelope(lottery_type: str) -> dict[str, Any]:
+    main_count, _, main_max, special_count, _, _ = V2_MECHANICS[lottery_type]
+    target_main = tuple(range(1, main_count + 1))
+    cutoff_start = main_max - main_count
+    cutoff_main = tuple(range(cutoff_start, cutoff_start + main_count))
+    if lottery_type == "DAILY_539":
+        target_special: tuple[int, ...] = ()
+        cutoff_special: tuple[int, ...] = ()
+    elif lottery_type == "POWER_LOTTO":
+        target_special = (1,)
+        cutoff_special = (8,)
+    else:
+        target_special = (7,)
+        cutoff_special = (main_max,)
+    assert len(target_special) == special_count
+
+    descriptor = build_strategy_descriptor(strategy_id="SYNTHETIC_V2")
+    draws = [
+        {
+            "draw_number": CUTOFF_DRAW_NUMBER,
+            "draw_date": "2026-01-01",
+            "main_numbers": list(cutoff_main),
+            "special_numbers": list(cutoff_special),
+            "draw_sha256": "0" * 64,
+        },
+        {
+            "draw_number": TARGET_DRAW_NUMBER,
+            "draw_date": "2026-01-10",
+            "main_numbers": list(target_main),
+            "special_numbers": list(target_special),
+            "draw_sha256": "0" * 64,
+        },
+    ]
+    tickets = [
+        {
+            "portfolio_position": position,
+            "main_numbers": list(target_main),
+            "special_numbers": list(target_special),
+            "main_hit_count": main_count,
+            "special_hit": bool(target_special),
+            "ticket_sha256": "0" * 64,
+        }
+        for position in range(1, PORTFOLIO_TICKET_COUNT + 1)
+    ]
+    portfolio = {
+        "strategy_id": "SYNTHETIC_V2",
+        "strategy_version": "v1",
+        "replicate": 1,
+        "target_draw_number": TARGET_DRAW_NUMBER,
+        "cutoff_draw_number": CUTOFF_DRAW_NUMBER,
+        "constructor_identifier": "historical_v2_synthetic_constructor",
+        "tickets": tickets,
+        "portfolio_sha256": "0" * 64,
+        "prefix10_sha256": "0" * 64,
+        "prefix15_sha256": "0" * 64,
+    }
+    envelope = {
+        "contract_version": V2_CONTRACT_VERSION,
+        "generated_at": "2026-07-31T00:00:00.000000Z",
+        "manifest_sha256": "0" * 64,
+        "import_identity_sha256": "0" * 64,
+        "source": {
+            "source_kind": "SYNTHETIC_TEST_ONLY",
+            "source_repository": "github.com/kelvinhuang0327/MathStatisticalAnalysis",
+            "source_commit_oid": "d" * 40,
+            "source_artifact_sha256": "e" * 64,
+        },
+        "dataset": {
+            "dataset_identity": f"historical_v2_{lottery_type.casefold()}",
+            "dataset_sha256": "f" * 64,
+            "lottery_type": lottery_type,
+        },
+        "strategy_descriptors": [descriptor],
+        "draw_snapshots": draws,
+        "portfolios": [portfolio],
+    }
+    return recompute_v2_envelope_hashes(envelope)

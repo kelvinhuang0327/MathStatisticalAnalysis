@@ -17,8 +17,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 MIGRATION_NAME = "create_historical_results_schema"
+V2_MIGRATION_NAME = "expand_historical_lottery_types"
 BUSY_TIMEOUT_MS = 5_000
 
 TABLE_NAMES = (
@@ -189,6 +190,83 @@ MIGRATION_STATEMENTS = (
 MIGRATION_SQL = ";\n".join(statement.strip() for statement in MIGRATION_STATEMENTS) + ";\n"
 MIGRATION_CHECKSUM = hashlib.sha256(MIGRATION_SQL.encode("utf-8")).hexdigest()
 
+V2_RESULT_RUN_TABLE_SQL = """
+CREATE TABLE historical_result_run_v2 (
+    id TEXT PRIMARY KEY,
+    import_identity_sha256 TEXT NOT NULL CHECK (length(import_identity_sha256) = 64),
+    manifest_sha256 TEXT NOT NULL CHECK (length(manifest_sha256) = 64),
+    contract_version TEXT NOT NULL,
+    source_kind TEXT NOT NULL,
+    source_repository TEXT NOT NULL,
+    source_commit_oid TEXT NOT NULL CHECK (length(source_commit_oid) = 40),
+    source_artifact_sha256 TEXT NOT NULL CHECK (length(source_artifact_sha256) = 64),
+    dataset_identity TEXT NOT NULL,
+    dataset_sha256 TEXT NOT NULL CHECK (length(dataset_sha256) = 64),
+    legacy_run_id TEXT NULL,
+    lottery_type TEXT NOT NULL CHECK (
+        lottery_type IN ('DAILY_539', 'BIG_LOTTO', 'POWER_LOTTO')
+    ),
+    status TEXT NOT NULL CHECK (status IN ('IN_PROGRESS', 'COMPLETED', 'FAILED')),
+    started_at TEXT NOT NULL,
+    completed_at TEXT NULL,
+    error_code TEXT NULL,
+    error_summary TEXT NULL,
+    created_at TEXT NOT NULL
+)
+"""
+
+V2_DRAW_SNAPSHOT_TABLE_SQL = """
+CREATE TABLE historical_draw_snapshot_v2 (
+    id INTEGER PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    lottery_type TEXT NOT NULL CHECK (
+        lottery_type IN ('DAILY_539', 'BIG_LOTTO', 'POWER_LOTTO')
+    ),
+    draw_number TEXT NOT NULL,
+    draw_date TEXT NOT NULL,
+    main_numbers_json TEXT NOT NULL,
+    special_numbers_json TEXT NOT NULL,
+    draw_sha256 TEXT NOT NULL CHECK (length(draw_sha256) = 64),
+    created_at TEXT NOT NULL,
+    UNIQUE (run_id, lottery_type, draw_number),
+    FOREIGN KEY (run_id) REFERENCES historical_result_run(id) ON DELETE RESTRICT
+)
+"""
+
+V2_MIGRATION_STATEMENTS = (
+    "PRAGMA defer_foreign_keys = ON",
+    V2_RESULT_RUN_TABLE_SQL,
+    """
+    INSERT INTO historical_result_run_v2
+    SELECT * FROM historical_result_run
+    """,
+    V2_DRAW_SNAPSHOT_TABLE_SQL,
+    """
+    INSERT INTO historical_draw_snapshot_v2
+    SELECT * FROM historical_draw_snapshot
+    """,
+    "DROP TABLE historical_draw_snapshot",
+    "ALTER TABLE historical_draw_snapshot_v2 RENAME TO historical_draw_snapshot",
+    "DROP TABLE historical_result_run",
+    "ALTER TABLE historical_result_run_v2 RENAME TO historical_result_run",
+    """
+    CREATE UNIQUE INDEX idx_historical_result_run_identity_completed
+    ON historical_result_run (import_identity_sha256)
+    WHERE status = 'COMPLETED'
+    """,
+    """
+    CREATE INDEX idx_historical_result_run_history
+    ON historical_result_run (started_at DESC, id DESC)
+    """,
+    """
+    CREATE INDEX idx_historical_result_run_lottery_completed
+    ON historical_result_run (lottery_type, completed_at DESC, id DESC)
+    WHERE status = 'COMPLETED'
+    """,
+)
+V2_MIGRATION_SQL = ";\n".join(statement.strip() for statement in V2_MIGRATION_STATEMENTS) + ";\n"
+V2_MIGRATION_CHECKSUM = hashlib.sha256(V2_MIGRATION_SQL.encode("utf-8")).hexdigest()
+
 _SCHEMA_SQL_TOKEN = re.compile(
     r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^]]*\]|[(),]|[^\s(),]+"
 )
@@ -209,6 +287,18 @@ def _object_name(sql: str) -> str:
 _EXPECTED_SCHEMA_SQL_BY_NAME = {
     _object_name(statement): statement for statement in MIGRATION_STATEMENTS
 }
+_EXPECTED_SCHEMA_SQL_BY_NAME_V2 = {
+    **_EXPECTED_SCHEMA_SQL_BY_NAME,
+    "historical_result_run": V2_RESULT_RUN_TABLE_SQL.replace(
+        "historical_result_run_v2", '"historical_result_run"', 1
+    ),
+    "historical_draw_snapshot": V2_DRAW_SNAPSHOT_TABLE_SQL.replace(
+        "historical_draw_snapshot_v2", '"historical_draw_snapshot"', 1
+    ),
+    "idx_historical_result_run_identity_completed": V2_MIGRATION_STATEMENTS[9],
+    "idx_historical_result_run_history": V2_MIGRATION_STATEMENTS[10],
+    "idx_historical_result_run_lottery_completed": V2_MIGRATION_STATEMENTS[11],
+}
 
 
 def resolve_historical_database_paths(database: Path) -> HistoricalDatabasePaths:
@@ -224,36 +314,73 @@ def resolve_historical_database_paths(database: Path) -> HistoricalDatabasePaths
 
 
 def initialize_schema(database: Path) -> None:
-    """Securely create/verify a version-1 historical-results database.
+    """Securely create or atomically upgrade a historical-results database.
 
-    Idempotent: a call against an already-initialized version-1 database is a
+    Idempotent: a call against an already-initialized current database is a
     read-only semantic verification, not a rewrite.
     """
 
     paths = resolve_historical_database_paths(database)
     paths.database.parent.mkdir(parents=True, exist_ok=True)
     with _raw_connection(paths) as connection:
-        connection.execute("BEGIN IMMEDIATE")
         try:
-            if not _verify_migration_state(connection):
-                for statement in MIGRATION_STATEMENTS:
-                    connection.execute(statement)
-                connection.execute(
-                    """
-                    INSERT INTO historical_schema_migrations (version, name, checksum, applied_at)
-                    VALUES (?, ?, ?, ?)
-                    """,
-                    (CURRENT_SCHEMA_VERSION, MIGRATION_NAME, MIGRATION_CHECKSUM, _utc_now()),
+            connection.execute("PRAGMA foreign_keys = OFF")
+            if connection.execute("PRAGMA foreign_keys").fetchone() != (0,):
+                raise HistoricalSchemaMigrationError(
+                    "cannot suspend foreign keys for atomic table rebuild"
                 )
-                if not _verify_migration_state(connection):
-                    raise HistoricalSchemaMigrationError(
-                        "historical schema migration did not reach version 1"
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                version = _verify_migration_state(connection)
+                if version is None:
+                    for statement in MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO historical_schema_migrations
+                            (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (1, MIGRATION_NAME, MIGRATION_CHECKSUM, _utc_now()),
                     )
-        except BaseException:
-            connection.rollback()
-            raise
-        else:
-            connection.commit()
+                    version = _verify_migration_state(connection)
+                if version == 1:
+                    for statement in V2_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO historical_schema_migrations
+                            (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            V2_MIGRATION_NAME,
+                            V2_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version != CURRENT_SCHEMA_VERSION:
+                    raise HistoricalSchemaMigrationError(
+                        f"historical schema migration did not reach version "
+                        f"{CURRENT_SCHEMA_VERSION}"
+                    )
+                if connection.execute("PRAGMA foreign_key_check").fetchall():
+                    raise HistoricalSchemaMigrationError(
+                        "historical schema migration left foreign-key violations"
+                    )
+            except BaseException:
+                connection.rollback()
+                raise
+            else:
+                connection.commit()
+        finally:
+            connection.execute("PRAGMA foreign_keys = ON")
+            if connection.execute("PRAGMA foreign_keys").fetchone() != (1,):
+                raise HistoricalSchemaMigrationError(
+                    "cannot restore SQLite foreign-key enforcement"
+                )
 
 
 def verify_schema_read_only(database: Path) -> bool:
@@ -271,7 +398,7 @@ def verify_schema_read_only(database: Path) -> bool:
 
 @contextmanager
 def open_database(database: Path, *, read_only: bool = False) -> Generator[sqlite3.Connection]:
-    """Open a fresh, configured connection to an existing verified version-1 DB."""
+    """Open a fresh connection to an existing verified V1 or current database."""
 
     paths = resolve_historical_database_paths(database)
     if not paths.database.exists():
@@ -313,7 +440,7 @@ def _raw_connection(
         connection.close()
 
 
-def _verify_migration_state(connection: sqlite3.Connection) -> bool:
+def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
     table_names = {
         str(row[0])
         for row in connection.execute(
@@ -326,10 +453,8 @@ def _verify_migration_state(connection: sqlite3.Connection) -> bool:
     }
     if "historical_schema_migrations" not in table_names:
         if table_names:
-            raise HistoricalSchemaMigrationError(
-                "unversioned database contains application tables"
-            )
-        return False
+            raise HistoricalSchemaMigrationError("unversioned database contains application tables")
+        return None
 
     rows = connection.execute(
         "SELECT version, name, checksum FROM historical_schema_migrations ORDER BY version"
@@ -339,22 +464,27 @@ def _verify_migration_state(connection: sqlite3.Connection) -> bool:
     except (TypeError, ValueError) as exc:
         raise HistoricalSchemaMigrationError("migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
-        raise HistoricalSchemaMigrationError(
-            "database schema is newer than this LottoLab build"
-        )
-    if versions != [CURRENT_SCHEMA_VERSION]:
+        raise HistoricalSchemaMigrationError("database schema is newer than this LottoLab build")
+    if versions not in ([1], [1, CURRENT_SCHEMA_VERSION]):
         raise HistoricalSchemaMigrationError("migration history is incomplete")
-    _, name, checksum = rows[0]
-    if name != MIGRATION_NAME or checksum != MIGRATION_CHECKSUM:
+    _, initial_name, initial_checksum = rows[0]
+    if initial_name != MIGRATION_NAME or initial_checksum != MIGRATION_CHECKSUM:
         raise HistoricalSchemaChecksumError("migration checksum does not match")
+    if versions == [1, CURRENT_SCHEMA_VERSION]:
+        _, current_name, current_checksum = rows[1]
+        if current_name != V2_MIGRATION_NAME or current_checksum != V2_MIGRATION_CHECKSUM:
+            raise HistoricalSchemaChecksumError("migration checksum does not match")
 
-    _verify_schema_semantics(connection, table_names)
-    return True
+    version = versions[-1]
+    _verify_schema_semantics(connection, table_names, version=version)
+    return version
 
 
-def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[str]) -> None:
+def _verify_schema_semantics(
+    connection: sqlite3.Connection, table_names: set[str], *, version: int
+) -> None:
     if table_names != set(TABLE_NAMES):
-        raise HistoricalSchemaMigrationError("database tables do not match version 1")
+        raise HistoricalSchemaMigrationError(f"database tables do not match version {version}")
 
     schema_rows = connection.execute(
         """
@@ -364,19 +494,26 @@ def _verify_schema_semantics(connection: sqlite3.Connection, table_names: set[st
         """
     ).fetchall()
     seen_names: set[str] = set()
+    expected_sql_by_name = (
+        _EXPECTED_SCHEMA_SQL_BY_NAME_V2
+        if version == CURRENT_SCHEMA_VERSION
+        else _EXPECTED_SCHEMA_SQL_BY_NAME
+    )
     for row in schema_rows:
         name = str(row[1])
         actual_sql = row[3]
         seen_names.add(name)
-        expected_sql = _EXPECTED_SCHEMA_SQL_BY_NAME.get(name)
+        expected_sql = expected_sql_by_name.get(name)
         if expected_sql is None or not isinstance(actual_sql, str):
             raise HistoricalSchemaMigrationError(f"unexpected database schema object: {name}")
         if _canonical_schema_sql(actual_sql) != _canonical_schema_sql(expected_sql):
             raise HistoricalSchemaMigrationError(
-                f"database schema SQL does not match version 1: {name}"
+                f"database schema SQL does not match version {version}: {name}"
             )
-    if seen_names != set(_EXPECTED_SCHEMA_SQL_BY_NAME):
-        raise HistoricalSchemaMigrationError("database schema objects do not match version 1")
+    if seen_names != set(expected_sql_by_name):
+        raise HistoricalSchemaMigrationError(
+            f"database schema objects do not match version {version}"
+        )
 
     for table in TABLE_NAMES:
         foreign_keys = connection.execute(f"PRAGMA foreign_key_list({table})").fetchall()

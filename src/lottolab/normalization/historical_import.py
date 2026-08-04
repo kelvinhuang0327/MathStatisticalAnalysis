@@ -18,6 +18,7 @@ from typing import Annotated, Any, Literal, cast
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from lottolab.domain.historical_results import (
+    HISTORICAL_LOTTERY_MECHANICS,
     HistoricalDatasetDescriptor,
     HistoricalDrawSnapshot,
     HistoricalGovernanceStatus,
@@ -33,6 +34,7 @@ from lottolab.domain.historical_results import (
 from lottolab.evidence import canonical_json
 
 CONTRACT_VERSION = "1.0.0"
+CONTRACT_VERSION_V2 = "2.0.0"
 PORTFOLIO_TICKET_COUNT = 20
 _SYNTHETIC_PREFIX = "SYNTHETIC_"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -132,7 +134,7 @@ class _DatasetWire(BaseModel):
 
     dataset_identity: str = Field(min_length=1)
     dataset_sha256: Sha256Hex
-    lottery_type: HistoricalLotteryType
+    lottery_type: Literal[HistoricalLotteryType.BIG_LOTTO]
 
 
 class _StrategyDescriptorWire(BaseModel):
@@ -186,8 +188,7 @@ class _DrawSnapshotWire(BaseModel):
             )
         if any(n < _BIG_LOTTO_SPECIAL_MIN or n > _BIG_LOTTO_SPECIAL_MAX for n in special):
             raise ValueError(
-                f"a special number must be within "
-                f"{_BIG_LOTTO_SPECIAL_MIN}-{_BIG_LOTTO_SPECIAL_MAX}"
+                f"a special number must be within {_BIG_LOTTO_SPECIAL_MIN}-{_BIG_LOTTO_SPECIAL_MAX}"
             )
         if len(set(special)) != len(special):
             raise ValueError("special numbers must be unique")
@@ -225,8 +226,7 @@ class _TicketWire(BaseModel):
             )
         if any(n < _BIG_LOTTO_SPECIAL_MIN or n > _BIG_LOTTO_SPECIAL_MAX for n in special):
             raise ValueError(
-                f"a special number must be within "
-                f"{_BIG_LOTTO_SPECIAL_MIN}-{_BIG_LOTTO_SPECIAL_MAX}"
+                f"a special number must be within {_BIG_LOTTO_SPECIAL_MIN}-{_BIG_LOTTO_SPECIAL_MAX}"
             )
         if set(main) & set(special):
             raise ValueError("main and special numbers must not overlap")
@@ -274,6 +274,138 @@ class HistoricalResultImportV1(BaseModel):
         draw_numbers = [d.draw_number for d in self.draw_snapshots]
         if len(draw_numbers) != len(set(draw_numbers)):
             raise ValueError("draw_snapshots contains a duplicate draw_number")
+        return self
+
+
+class _DatasetWireV2(BaseModel):
+    model_config = _CLOSED
+
+    dataset_identity: str = Field(min_length=1)
+    dataset_sha256: Sha256Hex
+    lottery_type: HistoricalLotteryType
+
+
+class _DrawSnapshotWireV2(BaseModel):
+    model_config = _CLOSED
+
+    draw_number: int = Field(ge=1)
+    draw_date: IsoDateStr
+    main_numbers: tuple[int, ...]
+    special_numbers: tuple[int, ...]
+    draw_sha256: Sha256Hex
+
+
+class _TicketWireV2(BaseModel):
+    model_config = _CLOSED
+
+    portfolio_position: int = Field(ge=1, le=PORTFOLIO_TICKET_COUNT)
+    main_numbers: tuple[int, ...]
+    special_numbers: tuple[int, ...]
+    main_hit_count: int = Field(ge=0)
+    special_hit: bool
+    ticket_sha256: Sha256Hex
+    legacy_row_id: str | None = None
+    legacy_storage_bet_index: int | None = None
+
+
+class _PortfolioWireV2(BaseModel):
+    model_config = _CLOSED
+
+    strategy_id: str = Field(min_length=1)
+    strategy_version: str = Field(min_length=1)
+    replicate: int = Field(ge=1)
+    target_draw_number: int = Field(ge=1)
+    cutoff_draw_number: int = Field(ge=1)
+    constructor_identifier: str = Field(min_length=1)
+    source_record_locator: str | None = None
+    tickets: tuple[_TicketWireV2, ...] = Field(min_length=1)
+    portfolio_sha256: Sha256Hex
+    prefix10_sha256: Sha256Hex
+    prefix15_sha256: Sha256Hex
+
+
+def _validate_v2_numbers(
+    *,
+    kind: str,
+    main_numbers: tuple[int, ...],
+    special_numbers: tuple[int, ...],
+    lottery_type: HistoricalLotteryType,
+) -> None:
+    mechanics = HISTORICAL_LOTTERY_MECHANICS[lottery_type]
+    if len(main_numbers) != mechanics.main_number_count:
+        raise ValueError(f"a {kind} must have exactly {mechanics.main_number_count} main numbers")
+    if any(
+        number < mechanics.main_number_min or number > mechanics.main_number_max
+        for number in main_numbers
+    ):
+        raise ValueError(
+            f"a main number must be within {mechanics.main_number_min}-{mechanics.main_number_max}"
+        )
+    if mechanics.main_numbers_unique and len(set(main_numbers)) != len(main_numbers):
+        raise ValueError("main numbers must be unique")
+    if len(special_numbers) != mechanics.special_number_count:
+        raise ValueError(
+            f"a {kind} must have exactly {mechanics.special_number_count} special number(s)"
+        )
+    if special_numbers:
+        if mechanics.special_number_min is None or mechanics.special_number_max is None:
+            raise ValueError("special numbers are not supported for this lottery")
+        if any(
+            number < mechanics.special_number_min or number > mechanics.special_number_max
+            for number in special_numbers
+        ):
+            raise ValueError(
+                f"a special number must be within "
+                f"{mechanics.special_number_min}-{mechanics.special_number_max}"
+            )
+    if mechanics.special_numbers_unique and len(set(special_numbers)) != len(special_numbers):
+        raise ValueError("special numbers must be unique")
+    if not mechanics.main_special_overlap_allowed and set(main_numbers) & set(special_numbers):
+        raise ValueError("main and special numbers must not overlap")
+
+
+class HistoricalResultImportV2(BaseModel):
+    """Closed multi-lottery wire contract with rule-aware number validation."""
+
+    model_config = _CLOSED
+
+    contract_version: Literal["2.0.0"]
+    generated_at: str = Field(min_length=1)
+    manifest_sha256: Sha256Hex
+    import_identity_sha256: Sha256Hex
+    source: _SourceWire
+    dataset: _DatasetWireV2
+    strategy_descriptors: tuple[_StrategyDescriptorWire, ...] = Field(min_length=1)
+    draw_snapshots: tuple[_DrawSnapshotWireV2, ...] = Field(min_length=1)
+    portfolios: tuple[_PortfolioWireV2, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _check_identities_and_lottery_mechanics(self) -> HistoricalResultImportV2:
+        strategy_keys = [
+            (descriptor.strategy_id, descriptor.strategy_version, descriptor.replicate)
+            for descriptor in self.strategy_descriptors
+        ]
+        if len(strategy_keys) != len(set(strategy_keys)):
+            raise ValueError("strategy_descriptors contains a duplicate (id, version, replicate)")
+        draw_numbers = [draw.draw_number for draw in self.draw_snapshots]
+        if len(draw_numbers) != len(set(draw_numbers)):
+            raise ValueError("draw_snapshots contains a duplicate draw_number")
+        lottery_type = self.dataset.lottery_type
+        for draw in self.draw_snapshots:
+            _validate_v2_numbers(
+                kind="draw",
+                main_numbers=draw.main_numbers,
+                special_numbers=draw.special_numbers,
+                lottery_type=lottery_type,
+            )
+        for portfolio in self.portfolios:
+            for ticket in portfolio.tickets:
+                _validate_v2_numbers(
+                    kind="ticket",
+                    main_numbers=ticket.main_numbers,
+                    special_numbers=ticket.special_numbers,
+                    lottery_type=lottery_type,
+                )
         return self
 
 
@@ -351,6 +483,87 @@ def _compute_import_identity_sha256(envelope: HistoricalResultImportV1) -> str:
     portfolio_hashes = sorted(p.portfolio_sha256 for p in envelope.portfolios)
     payload = {
         "contract_version": envelope.contract_version,
+        "source_kind": envelope.source.source_kind.value,
+        "source_repository": envelope.source.source_repository,
+        "source_commit_oid": envelope.source.source_commit_oid,
+        "source_artifact_sha256": envelope.source.source_artifact_sha256,
+        "dataset_identity": envelope.dataset.dataset_identity,
+        "dataset_sha256": envelope.dataset.dataset_sha256,
+        "strategy_descriptor_identities": strategy_identities,
+        "draw_snapshot_identities": draw_identities,
+        "target_draw_numbers": target_numbers,
+        "target_cutoff_pairs": [[target, cutoff] for target, cutoff in pairs],
+        "portfolio_payload_hashes": portfolio_hashes,
+    }
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
+def _compute_draw_sha256_v2(draw: _DrawSnapshotWireV2, lottery_type: HistoricalLotteryType) -> str:
+    payload = {
+        "lottery_type": lottery_type.value,
+        "draw_number": draw.draw_number,
+        "draw_date": draw.draw_date,
+        "main_numbers": sorted(draw.main_numbers),
+        "special_numbers": sorted(draw.special_numbers),
+    }
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
+def _compute_ticket_sha256_v2(ticket: _TicketWireV2, lottery_type: HistoricalLotteryType) -> str:
+    payload = {
+        "lottery_type": lottery_type.value,
+        "portfolio_position": ticket.portfolio_position,
+        "main_numbers": sorted(ticket.main_numbers),
+        "special_numbers": sorted(ticket.special_numbers),
+        "main_hit_count": ticket.main_hit_count,
+        "special_hit": ticket.special_hit,
+    }
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
+def _compute_portfolio_sha256_v2(
+    portfolio: _PortfolioWireV2,
+    ticket_hashes: list[str],
+    lottery_type: HistoricalLotteryType,
+) -> str:
+    payload = {
+        "lottery_type": lottery_type.value,
+        "strategy_id": portfolio.strategy_id,
+        "strategy_version": portfolio.strategy_version,
+        "replicate": portfolio.replicate,
+        "target_draw_number": portfolio.target_draw_number,
+        "cutoff_draw_number": portfolio.cutoff_draw_number,
+        "constructor_identifier": portfolio.constructor_identifier,
+        "ticket_hashes": ticket_hashes,
+    }
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
+def _compute_prefix_sha256_v2(ticket_hashes: list[str], lottery_type: HistoricalLotteryType) -> str:
+    payload = {"lottery_type": lottery_type.value, "ticket_hashes": ticket_hashes}
+    return canonical_json.sha256_hex(canonical_json.canonical_bytes(payload))
+
+
+def _compute_import_identity_sha256_v2(envelope: HistoricalResultImportV2) -> str:
+    lottery_type = envelope.dataset.lottery_type
+    strategy_identities = sorted(
+        descriptor.descriptor_sha256 for descriptor in envelope.strategy_descriptors
+    )
+    draw_identities = [
+        _compute_draw_sha256_v2(draw, lottery_type)
+        for draw in sorted(envelope.draw_snapshots, key=lambda item: item.draw_number)
+    ]
+    target_numbers = sorted({portfolio.target_draw_number for portfolio in envelope.portfolios})
+    pairs = sorted(
+        {
+            (portfolio.target_draw_number, portfolio.cutoff_draw_number)
+            for portfolio in envelope.portfolios
+        }
+    )
+    portfolio_hashes = sorted(portfolio.portfolio_sha256 for portfolio in envelope.portfolios)
+    payload = {
+        "contract_version": envelope.contract_version,
+        "lottery_type": lottery_type.value,
         "source_kind": envelope.source.source_kind.value,
         "source_repository": envelope.source.source_repository,
         "source_commit_oid": envelope.source.source_commit_oid,
@@ -445,7 +658,86 @@ def _build_domain_import(envelope: HistoricalResultImportV1) -> HistoricalRunImp
     )
 
 
-def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerificationResult:
+def _build_domain_import_v2(envelope: HistoricalResultImportV2) -> HistoricalRunImport:
+    source = HistoricalSourceDescriptor(
+        source_kind=envelope.source.source_kind,
+        source_repository=envelope.source.source_repository,
+        source_commit_oid=envelope.source.source_commit_oid,
+        source_artifact_sha256=envelope.source.source_artifact_sha256,
+        legacy_run_id=envelope.source.legacy_run_id,
+    )
+    dataset = HistoricalDatasetDescriptor(
+        dataset_identity=envelope.dataset.dataset_identity,
+        dataset_sha256=envelope.dataset.dataset_sha256,
+        lottery_type=envelope.dataset.lottery_type,
+    )
+    strategy_descriptors = tuple(
+        HistoricalStrategyDescriptor(
+            strategy_id=descriptor.strategy_id,
+            effective_strategy_id=descriptor.effective_strategy_id,
+            strategy_version=descriptor.strategy_version,
+            replicate=descriptor.replicate,
+            identity_kind=descriptor.identity_kind,
+            governance_status=descriptor.governance_status,
+            alias_of_strategy_id=descriptor.alias_of_strategy_id,
+            equivalence_group=descriptor.equivalence_group,
+            nested_prefix_supported=descriptor.nested_prefix_supported,
+            descriptor_sha256=descriptor.descriptor_sha256,
+        )
+        for descriptor in envelope.strategy_descriptors
+    )
+    draw_snapshots = tuple(
+        HistoricalDrawSnapshot(
+            draw_number=draw.draw_number,
+            draw_date=draw.draw_date,
+            main_numbers=tuple(sorted(draw.main_numbers)),
+            special_numbers=tuple(sorted(draw.special_numbers)),
+            draw_sha256=draw.draw_sha256,
+        )
+        for draw in envelope.draw_snapshots
+    )
+    portfolios = tuple(
+        HistoricalPortfolio(
+            strategy_id=portfolio.strategy_id,
+            strategy_version=portfolio.strategy_version,
+            replicate=portfolio.replicate,
+            target_draw_number=portfolio.target_draw_number,
+            cutoff_draw_number=portfolio.cutoff_draw_number,
+            constructor_identifier=portfolio.constructor_identifier,
+            source_record_locator=portfolio.source_record_locator,
+            tickets=tuple(
+                HistoricalTicket(
+                    portfolio_position=ticket.portfolio_position,
+                    main_numbers=tuple(sorted(ticket.main_numbers)),
+                    special_numbers=tuple(sorted(ticket.special_numbers)),
+                    main_hit_count=ticket.main_hit_count,
+                    special_hit=ticket.special_hit,
+                    ticket_sha256=ticket.ticket_sha256,
+                    legacy_row_id=ticket.legacy_row_id,
+                    legacy_storage_bet_index=ticket.legacy_storage_bet_index,
+                )
+                for ticket in portfolio.tickets
+            ),
+            portfolio_sha256=portfolio.portfolio_sha256,
+            prefix10_sha256=portfolio.prefix10_sha256,
+            prefix15_sha256=portfolio.prefix15_sha256,
+        )
+        for portfolio in envelope.portfolios
+    )
+    return HistoricalRunImport(
+        contract_version=envelope.contract_version,
+        generated_at=envelope.generated_at,
+        manifest_sha256=envelope.manifest_sha256,
+        import_identity_sha256=envelope.import_identity_sha256,
+        source=source,
+        dataset=dataset,
+        strategy_descriptors=strategy_descriptors,
+        draw_snapshots=draw_snapshots,
+        portfolios=portfolios,
+    )
+
+
+def _verify_v1_historical_import(raw: bytes) -> HistoricalImportVerificationResult:
     """Verify ``raw`` against ``HistoricalResultImportV1`` and normalize it.
 
     Fails closed at the first violation found, in this fixed order: well-typed
@@ -636,4 +928,185 @@ def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerifi
     return HistoricalImportVerificationResult(
         outcome=HistoricalImportOutcome.IMPORT_PASS,
         normalized_import=_build_domain_import(envelope),
+    )
+
+
+def _verify_v2_historical_import(
+    parsed: dict[str, Any],
+) -> HistoricalImportVerificationResult:
+    try:
+        envelope = HistoricalResultImportV2.model_validate(parsed)
+    except ValidationError as exc:
+        return _reject(
+            HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, field="root", message=str(exc)
+        )
+
+    lottery_type = envelope.dataset.lottery_type
+    recomputed_identity = _compute_import_identity_sha256_v2(envelope)
+    if recomputed_identity != envelope.import_identity_sha256:
+        return _reject(
+            HistoricalImportOutcome.IMPORT_IDENTITY_HASH_MISMATCH,
+            field="import_identity_sha256",
+            message="declared import_identity_sha256 does not match independent recomputation",
+        )
+    recomputed_manifest = canonical_json.self_key_removed_sha256(parsed, "manifest_sha256")
+    if recomputed_manifest != envelope.manifest_sha256:
+        return _reject(
+            HistoricalImportOutcome.IMPORT_MANIFEST_HASH_MISMATCH,
+            field="manifest_sha256",
+            message="declared manifest_sha256 does not match independent recomputation",
+        )
+
+    strategy_ids = {descriptor.strategy_id for descriptor in envelope.strategy_descriptors}
+    for descriptor in envelope.strategy_descriptors:
+        if (
+            descriptor.alias_of_strategy_id is not None
+            and descriptor.alias_of_strategy_id not in strategy_ids
+        ):
+            return _reject(
+                HistoricalImportOutcome.IMPORT_ALIAS_TARGET_ABSENT,
+                field="strategy_descriptors.alias_of_strategy_id",
+                message=f"alias target {descriptor.alias_of_strategy_id!r} is absent",
+            )
+    for descriptor in envelope.strategy_descriptors:
+        if _compute_descriptor_sha256(descriptor) != descriptor.descriptor_sha256:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="strategy_descriptors.descriptor_sha256",
+                message="declared descriptor_sha256 does not match independent recomputation",
+            )
+    for draw in envelope.draw_snapshots:
+        if _compute_draw_sha256_v2(draw, lottery_type) != draw.draw_sha256:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="draw_snapshots.draw_sha256",
+                message="declared draw_sha256 does not match independent recomputation",
+            )
+
+    strategy_triples = {
+        (descriptor.strategy_id, descriptor.strategy_version, descriptor.replicate)
+        for descriptor in envelope.strategy_descriptors
+    }
+    draws_by_number = {draw.draw_number: draw for draw in envelope.draw_snapshots}
+    for portfolio in envelope.portfolios:
+        if (
+            portfolio.strategy_id,
+            portfolio.strategy_version,
+            portfolio.replicate,
+        ) not in strategy_triples:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_STRATEGY_REFERENCE_ABSENT,
+                field="portfolios.strategy_id",
+                message="portfolio references a strategy descriptor absent from this manifest",
+            )
+        target = draws_by_number.get(portfolio.target_draw_number)
+        cutoff = draws_by_number.get(portfolio.cutoff_draw_number)
+        if (
+            target is None
+            or cutoff is None
+            or portfolio.cutoff_draw_number >= portfolio.target_draw_number
+        ):
+            return _reject(
+                HistoricalImportOutcome.IMPORT_CAUSAL_VIOLATION,
+                field="portfolios",
+                message="target/cutoff draws must both exist and satisfy cutoff < target",
+            )
+        tickets = portfolio.tickets
+        if len(tickets) != PORTFOLIO_TICKET_COUNT:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_TICKET_SHAPE_VIOLATION,
+                field="portfolios.tickets",
+                message=f"a portfolio must contain exactly {PORTFOLIO_TICKET_COUNT} tickets",
+            )
+        for expected_position, ticket in enumerate(tickets, start=1):
+            if ticket.portfolio_position != expected_position:
+                return _reject(
+                    HistoricalImportOutcome.IMPORT_TICKET_SHAPE_VIOLATION,
+                    field="portfolios.tickets.portfolio_position",
+                    message="ticket positions must be exactly 1..20 in array order",
+                )
+
+        target_main = set(target.main_numbers)
+        target_special = set(target.special_numbers)
+        for ticket in tickets:
+            recomputed_main_hits = len(set(ticket.main_numbers) & target_main)
+            recomputed_special_hit = bool(set(ticket.special_numbers) & target_special)
+            if (
+                recomputed_main_hits != ticket.main_hit_count
+                or recomputed_special_hit != ticket.special_hit
+            ):
+                return _reject(
+                    HistoricalImportOutcome.IMPORT_HIT_MISMATCH,
+                    field="portfolios.tickets",
+                    message="declared hit values do not match recomputation against the target",
+                )
+
+        ticket_hashes: list[str] = []
+        for ticket in tickets:
+            if _compute_ticket_sha256_v2(ticket, lottery_type) != ticket.ticket_sha256:
+                return _reject(
+                    HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                    field="portfolios.tickets.ticket_sha256",
+                    message="declared ticket_sha256 does not match independent recomputation",
+                )
+            ticket_hashes.append(ticket.ticket_sha256)
+        if (
+            _compute_portfolio_sha256_v2(portfolio, ticket_hashes, lottery_type)
+            != portfolio.portfolio_sha256
+        ):
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="portfolios.portfolio_sha256",
+                message="declared portfolio_sha256 does not match independent recomputation",
+            )
+        if _compute_prefix_sha256_v2(ticket_hashes[:10], lottery_type) != portfolio.prefix10_sha256:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="portfolios.prefix10_sha256",
+                message="declared prefix10_sha256 does not match independent recomputation",
+            )
+        if _compute_prefix_sha256_v2(ticket_hashes[:15], lottery_type) != portfolio.prefix15_sha256:
+            return _reject(
+                HistoricalImportOutcome.IMPORT_HASH_MISMATCH,
+                field="portfolios.prefix15_sha256",
+                message="declared prefix15_sha256 does not match independent recomputation",
+            )
+
+    return HistoricalImportVerificationResult(
+        outcome=HistoricalImportOutcome.IMPORT_PASS,
+        normalized_import=_build_domain_import_v2(envelope),
+    )
+
+
+def verify_and_normalize_historical_import(raw: bytes) -> HistoricalImportVerificationResult:
+    """Dispatch explicitly to the frozen V1 or multi-lottery V2 import contract."""
+
+    if type(raw) is not bytes:
+        return _reject(
+            HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED,
+            field="root",
+            message="raw input must be bytes",
+        )
+    try:
+        parsed = canonical_json.loads_canonical(raw)
+    except canonical_json.CanonicalizationError as exc:
+        return _reject(
+            HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED, field="root", message=str(exc)
+        )
+    if not isinstance(parsed, dict):
+        return _reject(
+            HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED,
+            field="root",
+            message="the envelope must be a JSON object",
+        )
+    parsed = cast(dict[str, Any], parsed)
+    contract_version = parsed.get("contract_version")
+    if contract_version == CONTRACT_VERSION:
+        return _verify_v1_historical_import(raw)
+    if contract_version == CONTRACT_VERSION_V2:
+        return _verify_v2_historical_import(parsed)
+    return _reject(
+        HistoricalImportOutcome.IMPORT_INPUT_UNVERIFIED,
+        field="contract_version",
+        message="unsupported or malformed historical import contract_version",
     )

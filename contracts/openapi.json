@@ -1286,6 +1286,22 @@
               "default": 0,
               "title": "Offset"
             }
+          },
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/HistoricalLotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
           }
         ],
         "responses": {
@@ -4989,6 +5005,16 @@
           "draw_sha256"
         ],
         "title": "HistoricalDrawIdentityView"
+      },
+      "HistoricalLotteryType": {
+        "type": "string",
+        "enum": [
+          "DAILY_539",
+          "BIG_LOTTO",
+          "POWER_LOTTO"
+        ],
+        "title": "HistoricalLotteryType",
+        "description": "Closed internal lottery identifiers for historical-results V2."
       },
       "HistoricalPerDrawPrefixMetricsView": {
         "properties": {

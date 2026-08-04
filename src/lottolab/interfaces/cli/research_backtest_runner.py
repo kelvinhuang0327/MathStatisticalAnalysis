@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
 import threading
 from pathlib import Path
@@ -19,6 +20,7 @@ from lottolab.application.research_backtest_runner import (
 )
 from lottolab.application.use_cases.generate_ordered_candidate_emission import (
     build_production_generate_ordered_candidate_emission,
+    build_production_generate_ordered_portfolio_emission,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
     DATABASE_FILENAME as DRAW_DATABASE_FILENAME,
@@ -36,6 +38,8 @@ from lottolab.infrastructure.persistence.research_schema import (
     ResearchDataError,
     ResearchDataPaths,
     ResearchSchemaError,
+    resolve_research_data_paths,
+    verify_schema_read_only,
 )
 from lottolab.infrastructure.strategy_source_provenance import (
     PythonStrategySourceIdentityResolver,
@@ -48,6 +52,8 @@ SAFE_PAUSE_EXIT_CODE = 75
 _PRODUCTION_RESEARCH_DIRECTORY = (
     Path.home() / "Library" / "Application Support" / "LottoLab"
 )
+_MINIMUM_PRODUCTION_FREE_BYTES = 2 * 1024**3
+_PRODUCTION_FREE_BYTES_MULTIPLIER = 8
 
 
 class ResearchBacktestCliError(RuntimeError):
@@ -74,12 +80,23 @@ def run_biglotto_research_backtest_command(
         ),
     ],
     research_data_dir: Annotated[
-        Path,
+        Path | None,
         typer.Option(
             "--research-data-dir",
-            help="Absolute existing task-owned research destination.",
+            help="Absolute existing task-owned research destination (scratch mode).",
         ),
-    ],
+    ] = None,
+    production: Annotated[
+        bool,
+        typer.Option(
+            "--production",
+            help=(
+                "Use the canonical production research store. Requires an "
+                "already-existing, schema-valid store; never creates or "
+                "migrates one."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Run, safely pause, resume, or no-op one explicit manifest."""
 
@@ -91,11 +108,24 @@ def run_biglotto_research_backtest_command(
 
     signal.signal(signal.SIGTERM, request_safe_stop)
     try:
-        manifest_path, draw_directory, research_directory = _validate_paths(
-            manifest_file,
-            draw_data_dir,
-            research_data_dir,
-        )
+        _validate_mode_selection(research_data_dir, production=production)
+        if production:
+            manifest_path, draw_directory = _validate_manifest_and_draw_data_paths(
+                manifest_file,
+                draw_data_dir,
+            )
+            research_paths = _resolve_production_research_paths()
+        else:
+            assert research_data_dir is not None
+            manifest_path, draw_directory, research_directory = _validate_paths(
+                manifest_file,
+                draw_data_dir,
+                research_data_dir,
+            )
+            research_paths = ResearchDataPaths(
+                research_directory,
+                research_directory / RESEARCH_DATABASE_FILENAME,
+            )
         try:
             manifest_bytes = manifest_path.read_bytes()
         except OSError as exc:
@@ -111,16 +141,15 @@ def run_biglotto_research_backtest_command(
             draw_directory,
             draw_directory / DRAW_DATABASE_FILENAME,
         )
-        research_paths = ResearchDataPaths(
-            research_directory,
-            research_directory / RESEARCH_DATABASE_FILENAME,
-        )
         catalog = production_catalog()
         executable_registry = ExecutableRegistry(catalog)
+        repository_factory = (
+            (lambda: SQLiteResearchRepository(research_paths, initialize=False))
+            if production
+            else (lambda: SQLiteResearchRepository(research_paths))
+        )
         result = RunBigLottoResearchBacktest(
-            repository_factory=lambda: SQLiteResearchRepository(
-                research_paths
-            ),
+            repository_factory=repository_factory,
             source_reader=SQLiteOrderedCandidateMaterializationReader(
                 draw_paths
             ),
@@ -128,6 +157,9 @@ def run_biglotto_research_backtest_command(
             executable_registry=executable_registry,
             generate_ordered_candidate_emission=(
                 build_production_generate_ordered_candidate_emission()
+            ),
+            generate_ordered_portfolio_emission=(
+                build_production_generate_ordered_portfolio_emission()
             ),
             source_commit_resolver=lambda: (
                 resolve_repository_source_commit_oid(repository_root)
@@ -183,6 +215,82 @@ def run_biglotto_research_backtest_command(
     typer.echo(_canonical_json(result.as_dict()))
     if result.interrupted:
         raise typer.Exit(code=SAFE_PAUSE_EXIT_CODE)
+
+
+def _validate_mode_selection(
+    research_data_dir: Path | None,
+    *,
+    production: bool,
+) -> None:
+    if production and research_data_dir is not None:
+        raise ResearchBacktestCliError(
+            "RESEARCH_MODE_AMBIGUOUS",
+            "select either --research-data-dir or --production, not both",
+        )
+    if not production and research_data_dir is None:
+        raise ResearchBacktestCliError(
+            "RESEARCH_MODE_REQUIRED",
+            "select either --research-data-dir or --production",
+        )
+
+
+def _validate_manifest_and_draw_data_paths(
+    manifest_file: Path,
+    draw_data_dir: Path,
+) -> tuple[Path, Path]:
+    for value, name in (
+        (manifest_file, "manifest-file"),
+        (draw_data_dir, "draw-data-dir"),
+    ):
+        if not value.is_absolute():
+            raise ResearchBacktestCliError(
+                f"{name.upper().replace('-', '_')}_NOT_ABSOLUTE",
+                f"{name} must be an absolute path",
+            )
+    manifest_path = Path(os.path.abspath(manifest_file))
+    draw_directory = Path(os.path.abspath(draw_data_dir))
+    if not manifest_path.is_file() or manifest_path.is_symlink():
+        raise ResearchBacktestCliError(
+            "MANIFEST_FILE_MISSING",
+            "manifest-file must name an existing regular file",
+        )
+    if not draw_directory.is_dir() or draw_directory.is_symlink():
+        raise ResearchBacktestCliError(
+            "DRAW_DATA_DIR_MISSING",
+            "draw-data-dir must name an existing directory",
+        )
+    manifest_path = manifest_path.resolve(strict=True)
+    draw_directory = draw_directory.resolve(strict=True)
+    return manifest_path, draw_directory
+
+
+def _resolve_production_research_paths() -> ResearchDataPaths:
+    """Resolve the canonical store, requiring it to already exist and verify."""
+
+    paths = resolve_research_data_paths()
+    if not verify_schema_read_only(paths):
+        raise ResearchBacktestCliError(
+            "PRODUCTION_RESEARCH_DATABASE_MISSING",
+            "the canonical production research database does not exist",
+        )
+    _verify_production_disk_space(paths)
+    return paths
+
+
+def _verify_production_disk_space(paths: ResearchDataPaths) -> None:
+    required_bytes = max(
+        _MINIMUM_PRODUCTION_FREE_BYTES,
+        paths.database.stat().st_size * _PRODUCTION_FREE_BYTES_MULTIPLIER,
+    )
+    available_bytes = shutil.disk_usage(paths.data_directory).free
+    if available_bytes < required_bytes:
+        raise ResearchBacktestCliError(
+            "INSUFFICIENT_PRODUCTION_DISK_SPACE",
+            (
+                f"insufficient free disk space: {available_bytes} bytes "
+                f"available, {required_bytes} bytes required"
+            ),
+        )
 
 
 def _validate_paths(

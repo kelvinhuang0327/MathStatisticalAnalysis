@@ -182,6 +182,8 @@ describe('DataCenterPage batch ingestion', () => {
     expect(wrapper.text()).toContain('No CSV selected')
     expect(wrapper.text()).toContain('No ingestion runs have been recorded')
     expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('NOT_COMMITTED')
+    expect(wrapper.text()).toContain('L649')
+    expect(wrapper.text()).not.toContain('BIG_LOTTO')
     expect(wrapper.get('[data-testid="manual-sync"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="csv-file"]').attributes('multiple')).toBeDefined()
     wrapper.unmount()

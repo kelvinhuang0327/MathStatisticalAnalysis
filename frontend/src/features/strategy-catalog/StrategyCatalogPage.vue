@@ -11,6 +11,7 @@ import {
   type StrategyOverviewItem,
   type StrategyOverviewResponse,
 } from '../../api/strategies'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 
 type LoadState = 'loading' | 'ready' | 'filtered-empty' | 'catalog-empty' | 'error'
 type ExecutableFilter = '' | 'true' | 'false'
@@ -140,7 +141,7 @@ onBeforeUnmount(() => {
           <span>Lottery type</span>
           <select v-model="lotteryType" name="lottery_type" @change="loadStrategyOverview">
             <option value="">All lottery types</option>
-            <option v-for="kind in LOTTERY_TYPES" :key="kind" :value="kind">{{ kind }}</option>
+            <option v-for="kind in LOTTERY_TYPES" :key="kind" :value="kind">{{ lotteryTypeDisplayLabel(kind) }}</option>
           </select>
         </label>
         <label>
@@ -261,7 +262,7 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <dt>Lottery types</dt>
-            <dd>{{ strategy.supported_lottery_types.join(', ') }}</dd>
+            <dd>{{ strategy.supported_lottery_types.map(lotteryTypeDisplayLabel).join(', ') }}</dd>
           </div>
           <div>
             <dt>Minimum history</dt>

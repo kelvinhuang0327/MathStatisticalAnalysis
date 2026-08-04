@@ -25,10 +25,15 @@ from lottolab.application.research_store import (
     TicketInput,
     TicketResultInput,
 )
-from lottolab.application.use_cases.generate_bet import GenerateOneBetStatus
+from lottolab.application.use_cases.generate_bet import (
+    GenerateOneBetStatus,
+    GeneratePortfolioStatus,
+)
 from lottolab.application.use_cases.generate_ordered_candidate_emission import (
     GenerateOrderedCandidateEmission,
     GenerateOrderedCandidateEmissionInput,
+    GenerateOrderedPortfolioEmission,
+    GenerateOrderedPortfolioEmissionInput,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import (
@@ -47,6 +52,7 @@ from lottolab.domain.research import (
     ResearchRunStatus,
     StrategyProvenanceAvailability,
 )
+from lottolab.domain.strategies import ResponseShape
 from lottolab.evidence.canonical_json import (
     CanonicalizationError,
     canonical_bytes,
@@ -413,6 +419,7 @@ class _PreparedStrategy:
     governance_status: str
     source_identity: StrategySourceIdentity
     snapshot_id: str
+    response_shape: ResponseShape
 
 
 @dataclass(frozen=True, slots=True)
@@ -491,6 +498,7 @@ class RunBigLottoResearchBacktest:
         catalog: StrategyCatalog,
         executable_registry: ExecutableRegistry,
         generate_ordered_candidate_emission: GenerateOrderedCandidateEmission,
+        generate_ordered_portfolio_emission: GenerateOrderedPortfolioEmission,
         source_commit_resolver: Callable[[], str],
         strategy_source_identity_resolver: StrategySourceIdentityResolver,
     ) -> None:
@@ -499,6 +507,7 @@ class RunBigLottoResearchBacktest:
         self._catalog = catalog
         self._registry = executable_registry
         self._generate = generate_ordered_candidate_emission
+        self._generate_portfolio = generate_ordered_portfolio_emission
         self._source_commit_resolver = source_commit_resolver
         self._strategy_source_identity_resolver = (
             strategy_source_identity_resolver
@@ -588,7 +597,7 @@ class RunBigLottoResearchBacktest:
             )
 
         provisional_strategies: list[
-            tuple[str, str, str, str, str, StrategySourceIdentity]
+            tuple[str, str, str, str, str, StrategySourceIdentity, ResponseShape]
         ] = []
         executable_ids = self._registry.executable_ids()
         for strategy_id in manifest.strategy_ids:
@@ -645,6 +654,7 @@ class RunBigLottoResearchBacktest:
                     descriptor.lifecycle_status.value,
                     _governance_status(descriptor.provenance),
                     source_identity,
+                    descriptor.response_shape,
                 )
             )
 
@@ -685,6 +695,7 @@ class RunBigLottoResearchBacktest:
                     _lifecycle_status,
                     _governance,
                     source,
+                    _response_shape,
                 ) in provisional_strategies
             ],
         }
@@ -710,6 +721,7 @@ class RunBigLottoResearchBacktest:
                         }
                     )
                 ),
+                response_shape=response_shape,
             )
             for (
                 strategy_id,
@@ -718,6 +730,7 @@ class RunBigLottoResearchBacktest:
                 lifecycle_status,
                 governance_status,
                 source_identity,
+                response_shape,
             ) in provisional_strategies
         )
         return _PreparedRun(
@@ -1061,6 +1074,16 @@ class RunBigLottoResearchBacktest:
             )
 
         causal_history = tuple(_causal_row(row) for row in history)
+        if strategy.response_shape is ResponseShape.PORTFOLIO:
+            return self._build_portfolio_attempt_commit(
+                prepared,
+                target,
+                strategy,
+                causal_history,
+                history_cutoff=history_cutoff,
+                target_draw=target_draw,
+                target_order=target_order,
+            )
         try:
             generated = self._generate.execute(
                 GenerateOrderedCandidateEmissionInput(
@@ -1169,6 +1192,159 @@ class RunBigLottoResearchBacktest:
             status=ResearchExecutionStatus.OK,
             ticket_count=1,
             result_count=1,
+        )
+
+    def _build_portfolio_attempt_commit(
+        self,
+        prepared: _PreparedRun,
+        target: _PreparedTarget,
+        strategy: _PreparedStrategy,
+        causal_history: tuple[CausalDrawRow, ...],
+        *,
+        history_cutoff: DrawBindingInput,
+        target_draw: DrawBindingInput,
+        target_order: int,
+    ) -> _AttemptCommit:
+        manifest = prepared.manifest
+        history = target.bounded_history
+        try:
+            generated = self._generate_portfolio.execute(
+                GenerateOrderedPortfolioEmissionInput(
+                    strategy_id=strategy.strategy_id,
+                    lottery_type=LotteryType.BIG_LOTTO,
+                    history=causal_history,
+                    replicate=manifest.replicate,
+                    target_draw=target.row.draw_number,
+                    history_cutoff=history[-1].draw_number,
+                )
+            )
+        except Exception:
+            return self._closed_attempt(
+                prepared,
+                target,
+                strategy,
+                target_order=target_order,
+                status=ResearchExecutionStatus.EXECUTION_ERROR,
+                reason_code="REPLAY_ERROR",
+                sanitized_detail="strategy execution failed safely",
+            )
+        if generated.legal_bets.status is not GeneratePortfolioStatus.OK:
+            mapped_status = _EXECUTION_STATUS_MAP_PORTFOLIO[generated.legal_bets.status]
+            reason = generated.legal_bets.reason_code
+            return self._closed_attempt(
+                prepared,
+                target,
+                strategy,
+                target_order=target_order,
+                status=mapped_status,
+                reason_code=(
+                    generated.legal_bets.status.value
+                    if reason is None
+                    else reason.value
+                ),
+                sanitized_detail=None,
+            )
+
+        numbers = generated.legal_bets.numbers
+        emissions = generated.emissions
+        if (
+            numbers is None  # pragma: no cover - typed invariant
+            or emissions is None
+            or len(numbers) != len(emissions)
+        ):
+            return self._closed_attempt(
+                prepared,
+                target,
+                strategy,
+                target_order=target_order,
+                status=ResearchExecutionStatus.INVALID_OUTPUT,
+                reason_code="INVALID_OUTPUT",
+                sanitized_detail=None,
+            )
+
+        candidate_lengths = {
+            len(emission.emitted_main_numbers) for emission in emissions
+        }
+        if len(candidate_lengths) != 1:
+            return self._closed_attempt(
+                prepared,
+                target,
+                strategy,
+                target_order=target_order,
+                status=ResearchExecutionStatus.INVALID_OUTPUT,
+                reason_code="INVALID_OUTPUT",
+                sanitized_detail=None,
+            )
+        candidate_k = candidate_lengths.pop()
+
+        native_ticket_count = len(numbers)
+        tickets: list[TicketInput] = []
+        ticket_results: list[TicketResultInput] = []
+        for index, ticket_numbers in enumerate(numbers):
+            position = index + 1
+            score = score_big_lotto_ticket(
+                predicted_main_numbers=ticket_numbers,
+                winning_main_numbers=target.row.main_numbers,
+                winning_special_number=target.row.special_numbers[0],
+            )
+            prize = resolve_big_lotto_prize_tier(
+                score.main_hits,
+                score.special_hit,
+            )
+            prize_tier_id = (
+                prize.tier_id.value
+                if isinstance(prize, BigLottoPrizeTier)
+                else prize.value
+            )
+            hit_numbers = tuple(
+                sorted(set(ticket_numbers).intersection(target.row.main_numbers))
+            )
+            tickets.append(
+                TicketInput(
+                    native_position=position,
+                    ordered_portfolio_position=position,
+                    canonical_ticket_json=_canonical_json(
+                        {
+                            "main_numbers": list(ticket_numbers),
+                            "special_numbers": [],
+                        }
+                    ),
+                )
+            )
+            ticket_results.append(
+                TicketResultInput(
+                    ticket_native_position=position,
+                    ticket_count_prefix=native_ticket_count,
+                    main_hit_count=score.main_hits,
+                    special_hit_count=int(score.special_hit),
+                    prize_tier_id=prize_tier_id,
+                    hit_numbers_json=_canonical_json(list(hit_numbers)),
+                )
+            )
+
+        return _AttemptCommit(
+            value=TargetCommitInput(
+                run_id=prepared.run_id,
+                strategy_snapshot_id=strategy.snapshot_id,
+                target_order=target_order,
+                input_dataset_identity=_dataset_identity(manifest),
+                input_dataset_sha256=prepared.snapshot.source_snapshot_sha256,
+                history_cutoff=history_cutoff,
+                history_draw_count=len(history),
+                source_history_order=RESEARCH_BACKTEST_SOURCE_HISTORY_ORDER,
+                target_draw=target_draw,
+                causal_eligible=True,
+                candidate_k=candidate_k,
+                combination_count=native_ticket_count,
+                ticket_count_prefix=native_ticket_count,
+                tickets=tuple(tickets),
+                execution_status=ResearchExecutionStatus.OK,
+                result_draw=target_draw,
+                ticket_results=tuple(ticket_results),
+            ),
+            status=ResearchExecutionStatus.OK,
+            ticket_count=native_ticket_count,
+            result_count=native_ticket_count,
         )
 
     @staticmethod
@@ -1326,8 +1502,29 @@ _EXECUTION_STATUS_MAP: Mapping[
     GenerateOneBetStatus.STRATEGY_UNAVAILABLE: (
         ResearchExecutionStatus.STRATEGY_UNAVAILABLE
     ),
+    GenerateOneBetStatus.WRONG_RESPONSE_PATH: (
+        ResearchExecutionStatus.STRATEGY_UNAVAILABLE
+    ),
     GenerateOneBetStatus.INVALID_OUTPUT: ResearchExecutionStatus.INVALID_OUTPUT,
     GenerateOneBetStatus.REPLAY_ERROR: ResearchExecutionStatus.EXECUTION_ERROR,
+}
+
+
+_EXECUTION_STATUS_MAP_PORTFOLIO: Mapping[
+    GeneratePortfolioStatus,
+    ResearchExecutionStatus,
+] = {
+    GeneratePortfolioStatus.INSUFFICIENT_HISTORY: (
+        ResearchExecutionStatus.INSUFFICIENT_HISTORY
+    ),
+    GeneratePortfolioStatus.STRATEGY_UNAVAILABLE: (
+        ResearchExecutionStatus.STRATEGY_UNAVAILABLE
+    ),
+    GeneratePortfolioStatus.WRONG_RESPONSE_PATH: (
+        ResearchExecutionStatus.STRATEGY_UNAVAILABLE
+    ),
+    GeneratePortfolioStatus.INVALID_OUTPUT: ResearchExecutionStatus.INVALID_OUTPUT,
+    GeneratePortfolioStatus.REPLAY_ERROR: ResearchExecutionStatus.EXECUTION_ERROR,
 }
 
 

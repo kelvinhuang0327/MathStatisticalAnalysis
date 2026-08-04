@@ -381,6 +381,7 @@ def test_status_enum_is_closed_to_authorized_outcomes() -> None:
         "STRATEGY_UNAVAILABLE",
         "INVALID_OUTPUT",
         "REPLAY_ERROR",
+        "WRONG_RESPONSE_PATH",
     }
 
 

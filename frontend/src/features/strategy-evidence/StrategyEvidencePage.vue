@@ -5,6 +5,7 @@ import {
   queryStrategyEvidence,
   type StrategyEvidenceResponse,
 } from '../../api/strategyEvidence'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
 
@@ -129,7 +130,7 @@ onBeforeUnmount(() => {
               <td>
                 {{ item.display_name }}
                 <small>{{ item.lifecycle_status }} · executable {{ item.executable ? 'YES' : 'NO' }}</small>
-                <small>{{ item.supported_lottery_types.join(', ') }} · min {{ item.minimum_history }}</small>
+                <small>{{ item.supported_lottery_types.map(lotteryTypeDisplayLabel).join(', ') }} · min {{ item.minimum_history }}</small>
                 <small>{{ item.provenance.join(' · ') || 'No provenance declared' }}</small>
               </td>
               <td>{{ item.adapter_available ? 'AVAILABLE' : 'UNAVAILABLE' }}</td>

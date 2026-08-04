@@ -10,27 +10,35 @@ from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
     GenerateOneBetReason,
     GenerateOneBetStatus,
+    GeneratePortfolio,
+    GeneratePortfolioReason,
+    GeneratePortfolioStatus,
 )
 from lottolab.application.use_cases.generate_ordered_candidate_emission import (
     GenerateOrderedCandidateEmission,
     GenerateOrderedCandidateEmissionInput,
+    GenerateOrderedPortfolioEmission,
+    GenerateOrderedPortfolioEmissionInput,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ordered_candidate_emission import (
     AuxiliaryOperandAvailability,
     AuxiliaryOperandKind,
 )
-from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyDescriptor
 from lottolab.strategies.adapters.base import (
     BetAdapter,
     CausalDrawRow,
     InvalidOutput,
+    PortfolioBetAdapter,
     RejectPrediction,
 )
 from lottolab.strategies.catalog import StrategyCatalog
 
 _STRATEGY_ID = "fixture_ordered_emission"
 _STRATEGY_VERSION = "v1"
+_PORTFOLIO_STRATEGY_ID = "fixture_ordered_portfolio_emission"
+_PORTFOLIO_NATIVE_COUNT = 3
 
 
 def _descriptor() -> StrategyDescriptor:
@@ -183,3 +191,160 @@ def test_new_input_and_result_are_immutable() -> None:
         request.replicate = 4  # pyright: ignore[reportAttributeAccessIssue]
     with pytest.raises(FrozenInstanceError):
         result.emission = None  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def _portfolio_descriptor() -> StrategyDescriptor:
+    return StrategyDescriptor(
+        strategy_id=_PORTFOLIO_STRATEGY_ID,
+        strategy_name="Fixture Ordered Portfolio Emission",
+        version=_STRATEGY_VERSION,
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.OBSERVATION,
+        executable=False,
+        min_history=1,
+        provenance=("fixture:ordered-portfolio-emission",),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=_PORTFOLIO_NATIVE_COUNT,
+    )
+
+
+def _portfolio_request() -> GenerateOrderedPortfolioEmissionInput:
+    return GenerateOrderedPortfolioEmissionInput(
+        strategy_id=_PORTFOLIO_STRATEGY_ID,
+        lottery_type=LotteryType.BIG_LOTTO,
+        history=_history(),
+        replicate=3,
+        target_draw="101",
+        history_cutoff="100",
+    )
+
+
+class _CountingPortfolioAdapter(PortfolioBetAdapter):
+    strategy_id = _PORTFOLIO_STRATEGY_ID
+    strategy_name = "Fixture Ordered Portfolio Emission"
+    strategy_version = _STRATEGY_VERSION
+    min_history = 1
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    native_ticket_count = _PORTFOLIO_NATIVE_COUNT
+
+    def __init__(self, outcome: str = "ok") -> None:
+        self.outcome = outcome
+        self.calls = 0
+
+    def _predict_all(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        self.calls += 1
+        if self.outcome == "invalid":
+            raise InvalidOutput
+        if self.outcome == "duplicate":
+            return (
+                (6, 1, 5, 2, 4, 3),
+                (6, 1, 5, 2, 4, 3),
+                (12, 11, 10, 9, 8, 7),
+            )
+        return (
+            (6, 1, 5, 2, 4, 3),
+            (1, 2, 3, 4, 5, 6),
+            (12, 11, 10, 9, 8, 7),
+        )
+
+
+def _portfolio_use_case(
+    adapter: _CountingPortfolioAdapter,
+) -> GenerateOrderedPortfolioEmission:
+    generate_portfolio = GeneratePortfolio(
+        StrategyCatalog((_portfolio_descriptor(),)),
+        {_PORTFOLIO_STRATEGY_ID: adapter},
+    )
+    return GenerateOrderedPortfolioEmission(generate_portfolio)
+
+
+def test_portfolio_execution_produces_one_ordered_emission_per_native_ticket() -> None:
+    adapter = _CountingPortfolioAdapter()
+
+    result = _portfolio_use_case(adapter).execute(_portfolio_request())
+
+    assert adapter.calls == 1
+    assert result.legal_bets.status is GeneratePortfolioStatus.OK
+    assert result.legal_bets.numbers == (
+        (1, 2, 3, 4, 5, 6),
+        (1, 2, 3, 4, 5, 6),
+        (7, 8, 9, 10, 11, 12),
+    )
+    assert result.emissions is not None
+    assert len(result.emissions) == 3
+    assert [emission.emitted_main_numbers for emission in result.emissions] == [
+        (6, 1, 5, 2, 4, 3),
+        (1, 2, 3, 4, 5, 6),
+        (12, 11, 10, 9, 8, 7),
+    ]
+    for emission in result.emissions:
+        assert emission.strategy_version == _STRATEGY_VERSION
+        assert emission.replicate == 3
+        assert emission.target_draw == "101"
+        assert emission.history_cutoff == "100"
+
+
+def test_portfolio_execution_preserves_native_order_and_positional_duplicates() -> None:
+    adapter = _CountingPortfolioAdapter("duplicate")
+
+    result = _portfolio_use_case(adapter).execute(_portfolio_request())
+
+    assert result.legal_bets.status is GeneratePortfolioStatus.OK
+    assert result.legal_bets.numbers == (
+        (1, 2, 3, 4, 5, 6),
+        (1, 2, 3, 4, 5, 6),
+        (7, 8, 9, 10, 11, 12),
+    )
+    assert result.emissions is not None
+    assert [emission.emitted_main_numbers for emission in result.emissions] == [
+        (6, 1, 5, 2, 4, 3),
+        (6, 1, 5, 2, 4, 3),
+        (12, 11, 10, 9, 8, 7),
+    ]
+
+
+def test_portfolio_non_ok_legal_outcome_remains_closed_and_emits_nothing() -> None:
+    adapter = _CountingPortfolioAdapter("invalid")
+
+    result = _portfolio_use_case(adapter).execute(_portfolio_request())
+
+    assert adapter.calls == 1
+    assert result.legal_bets.status is GeneratePortfolioStatus.INVALID_OUTPUT
+    assert result.legal_bets.reason_code is GeneratePortfolioReason.INVALID_OUTPUT
+    assert result.legal_bets.numbers is None
+    assert result.emissions is None
+
+
+def test_portfolio_unknown_strategy_preserves_existing_closed_result_and_emits_nothing() -> (
+    None
+):
+    result = GenerateOrderedPortfolioEmission(
+        GeneratePortfolio(StrategyCatalog((_portfolio_descriptor(),)), {})
+    ).execute(
+        GenerateOrderedPortfolioEmissionInput(
+            strategy_id="unknown",
+            lottery_type=LotteryType.BIG_LOTTO,
+            history=_history(),
+            replicate=1,
+            target_draw="101",
+            history_cutoff="100",
+        )
+    )
+
+    assert result.legal_bets.status is GeneratePortfolioStatus.STRATEGY_UNAVAILABLE
+    assert result.legal_bets.reason_code is GeneratePortfolioReason.UNKNOWN_STRATEGY
+    assert result.emissions is None
+
+
+def test_portfolio_new_input_and_result_are_immutable() -> None:
+    request = _portfolio_request()
+    result = _portfolio_use_case(_CountingPortfolioAdapter()).execute(request)
+
+    with pytest.raises(FrozenInstanceError):
+        request.replicate = 4  # pyright: ignore[reportAttributeAccessIssue]
+    with pytest.raises(FrozenInstanceError):
+        result.emissions = None  # pyright: ignore[reportAttributeAccessIssue]

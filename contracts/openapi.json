@@ -4949,7 +4949,8 @@
           "ADAPTER_NOT_INJECTED",
           "UNSUPPORTED_LOTTERY_TYPE",
           "INVALID_OUTPUT",
-          "REPLAY_ERROR"
+          "REPLAY_ERROR",
+          "STRATEGY_IS_PORTFOLIO"
         ],
         "title": "GenerateOneBetReason"
       },
@@ -4961,7 +4962,8 @@
           "INSUFFICIENT_HISTORY",
           "STRATEGY_UNAVAILABLE",
           "INVALID_OUTPUT",
-          "REPLAY_ERROR"
+          "REPLAY_ERROR",
+          "WRONG_RESPONSE_PATH"
         ],
         "title": "GenerateOneBetStatus"
       },

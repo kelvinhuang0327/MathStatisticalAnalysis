@@ -18,6 +18,7 @@ from lottolab.application.research_backtest_runner import (
 from lottolab.application.research_store import ResearchStore
 from lottolab.application.use_cases.generate_ordered_candidate_emission import (
     build_production_generate_ordered_candidate_emission,
+    build_production_generate_ordered_portfolio_emission,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ordered_candidate_materialization import (
@@ -141,6 +142,9 @@ def _runner(
         executable_registry=ExecutableRegistry(selected_catalog),
         generate_ordered_candidate_emission=(
             build_production_generate_ordered_candidate_emission()
+        ),
+        generate_ordered_portfolio_emission=(
+            build_production_generate_ordered_portfolio_emission()
         ),
         source_commit_resolver=commit_resolver,
         strategy_source_identity_resolver=identity_resolver,

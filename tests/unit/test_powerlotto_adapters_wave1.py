@@ -28,7 +28,7 @@ from lottolab.strategies.adapters.powerlotto_wave1 import (
     _cold_ticket,
     _fft_complex_pow2,
     _fourier_rhythm_fixed_window_scores,
-    _fourier_scores,
+    _fourier_scores_exact,
     _ifft_complex_pow2,
     _markov_ticket,
     _midfreq_scores,
@@ -401,6 +401,44 @@ def _oracle_acb_scores(history: tuple[P638HistoryRow, ...], window: int = 100) -
     return {number: (expected - freq.get(number, 0)) / sigma for number in range(1, 39)}
 
 
+def _oracle_fourier_scores_exact(
+    history: tuple[P638HistoryRow, ...], window: int = 500
+) -> dict[int, float]:
+    """Independent reimplementation of the donor's ``_pl_fourier_scores``.
+
+    Built from the naive DFT above, not the production Bluestein path: this
+    proves the *donor formula* -- unpadded, causal-length ``rfft``, dominant
+    bin from the strictly-positive-index one-sided spectrum, smallest-index
+    tie-break -- is transcribed correctly, not just that Bluestein reproduces
+    its own production sibling.
+    """
+
+    recent = history[-window:] if len(history) >= window else history
+    size = len(recent)
+    if size < 10:
+        return {number: 0.0 for number in range(1, 39)}
+    scores: dict[int, float] = {}
+    for number in range(1, 39):
+        raw = [1.0 if number in row.numbers else 0.0 for row in recent]
+        if sum(raw) < 2:
+            scores[number] = 0.0
+            continue
+        mean = sum(raw) / size
+        spectrum = _naive_dft(tuple(complex(value - mean) for value in raw))
+        power = [
+            value.real * value.real + value.imag * value.imag for value in spectrum[: size // 2 + 1]
+        ]
+        if len(power) <= 1:
+            scores[number] = 0.0
+            continue
+        dominant_index = max(range(1, len(power)), key=lambda index: (power[index], -index))
+        period = size / dominant_index
+        last_hit = max(index for index, value in enumerate(raw) if value)
+        gap = (size - 1) - last_hit
+        scores[number] = 1.0 / (abs(gap - period) + 1.0)
+    return scores
+
+
 @pytest.mark.parametrize("history_length", [30, 45, 99, 100, 250])
 def test_power_orthogonal_matches_donor_formula_oracle(history_length: int) -> None:
     rng = random.Random(f"power-orthogonal-{history_length}")
@@ -420,12 +458,12 @@ def test_power_orthogonal_matches_donor_formula_oracle(history_length: int) -> N
     ranked_midfreq = sorted(range(1, 39), key=lambda number: (-oracle_midfreq[number], number))
     assert bet1 == tuple(sorted(ranked_midfreq[:6]))
 
-    # bet2 (Fourier500) reuses the existing accepted radix-2 approximation
-    # already shipped for six sibling strategies -- assert composition, not
-    # a fresh numpy-exactness claim for that one signal.
-    from lottolab.strategies.adapters.powerlotto_wave1 import _FOURIER_LONG_WINDOW, _ranked_ticket
-
-    assert bet2 == _ranked_ticket(_fourier_scores(history, _FOURIER_LONG_WINDOW))
+    # bet2 (Fourier500) is donor-exact: the unpadded rfft dominant-bin
+    # selection, checked against an independent naive-DFT oracle rather than
+    # the production Bluestein path this strategy actually calls.
+    oracle_fourier = _oracle_fourier_scores_exact(history)
+    ranked_fourier = sorted(range(1, 39), key=lambda number: (-oracle_fourier[number], number))
+    assert bet2 == tuple(sorted(ranked_fourier[:6]))
 
     assert bet3 == _oracle_cold_top6(history)
     assert bet4 == _oracle_markov30_top6(history)
@@ -442,9 +480,71 @@ def test_power_orthogonal_reuses_existing_helpers_directly() -> None:
     tickets = _power_orthogonal_tickets(history)
     assert len(tickets) == 5
     assert tickets[0] == _ranked_ticket_helper(_midfreq_scores(history))
+    assert tickets[1] == _ranked_ticket_helper(_fourier_scores_exact(history, 500))
     assert tickets[2] == _cold_ticket(history, 100)
     assert tickets[3] == _markov_ticket(history, 30)
     assert tickets[4] == _ranked_ticket_helper(_acb_scores(history))
+
+
+def test_power_orthogonal_tickets_are_deterministic_across_repeated_calls() -> None:
+    history = _history(60)
+    first = _power_orthogonal_tickets(history)
+    second = _power_orthogonal_tickets(tuple(history))
+    assert first == second
+    assert _fourier_scores_exact(history, 500) == _fourier_scores_exact(tuple(history), 500)
+
+
+def test_power_orthogonal_fourier_score_is_zero_for_short_history() -> None:
+    """Fewer than 10 causal draws must hit the donor's zero-score branch, not raise."""
+
+    rng = random.Random("power-orthogonal-fourier-short")
+    history = tuple(
+        P638HistoryRow(
+            draw=f"{index + 1:09d}",
+            date="2020-01-01",
+            numbers=tuple(sorted(rng.sample(range(1, 39), 6))),
+            second_number=rng.randint(1, 8),
+        )
+        for index in range(5)
+    )
+    scores = _fourier_scores_exact(history, 500)
+    assert scores == {number: 0.0 for number in range(1, 39)}
+    assert scores == _oracle_fourier_scores_exact(history)
+
+
+def test_power_orthogonal_fourier_tie_break_prefers_ascending_number() -> None:
+    """Numbers 1-3 share an identical all-appearances bitstream (tied nonzero
+    score); every other number appears at most once (forced to the donor's
+    zero-score branch), so the top-6 selection must fill its remaining slots
+    by ascending number -- the donor's tie policy, not an accident of order.
+    """
+
+    fillers = iter(range(4, 39))
+    history = tuple(
+        P638HistoryRow(
+            draw=f"{index + 1:09d}",
+            date="2020-01-01",
+            numbers=tuple(sorted((1, 2, 3, next(fillers), next(fillers), next(fillers)))),
+            second_number=(index % 8) + 1,
+        )
+        for index in range(10)
+    )
+    scores = _fourier_scores_exact(history, 500)
+    assert scores == _oracle_fourier_scores_exact(history)
+    assert scores[1] == scores[2] == scores[3] > 0.0
+    for number in range(4, 39):
+        assert scores[number] == 0.0
+    assert _ranked_ticket_helper(scores) == (1, 2, 3, 4, 5, 6)
+
+
+def test_power_orthogonal_module_adds_no_external_dependency() -> None:
+    import inspect
+
+    import lottolab.strategies.adapters.powerlotto_wave1 as module
+
+    source = inspect.getsource(module)
+    assert "import numpy" not in source
+    assert "import scipy" not in source
 
 
 def _ranked_ticket_helper(scores: dict[int, float]) -> tuple[int, ...]:

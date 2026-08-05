@@ -12,10 +12,15 @@ families into a dependency-free strategy boundary:
 * every complete ticket pairs the first-zone port with the shared second-zone
   SSOT; no caller may silently promote a first-zone-only prediction.
 
-The long-window Fourier donor uses a NumPy FFT.  The local port uses a
-deterministic radix-2 real periodogram over a zero-padded power-of-two window.
-It preserves the donor's period-alignment signal and tie policy without adding
-NumPy or any external state to the adapter layer.
+The long-window Fourier donor uses a NumPy FFT.  Most callers (see
+:func:`_fourier_scores`) use a deterministic radix-2 real periodogram over a
+zero-padded power-of-two window: it preserves the donor's period-alignment
+signal and tie policy without adding NumPy, but does not reproduce the
+donor's exact-length dominant-bin selection bit-for-bit.  ``power_fourier_rhythm_2bet``
+and ``power_orthogonal_5bet`` instead need that exact reproduction, so they
+use the arbitrary-length :func:`_bluestein_dft` at the donor's own unpadded
+length (see :func:`_fourier_rhythm_fixed_window_scores` and
+:func:`_fourier_scores_exact`) -- still no NumPy or other external state.
 """
 
 from __future__ import annotations
@@ -686,20 +691,73 @@ def _power_fourier_rhythm_tickets(
 
 
 @lru_cache(maxsize=4096)
+def _fourier_scores_exact(
+    history: tuple[P638HistoryRow, ...],
+    window: int,
+) -> dict[int, float]:
+    """Donor-exact period-alignment scores at the causal window's own length.
+
+    Ported bit-for-bit (up to floating-point rounding) from the donor's
+    ``p128_wave2_phase2_adapters.py::_pl_fourier_scores``: ``np.fft.rfft``
+    runs at ``w = len(recent)`` -- the *actual*, unpadded causal length --
+    never at a padded power-of-two length.  Unlike :func:`_fourier_scores`
+    (whose own FFT pads to the next power of two, a pre-existing accepted
+    approximation kept as-is for the five sibling strategies that already
+    ship with it), this helper reuses the exact arbitrary-length
+    :func:`_bluestein_dft` at that unpadded length and keeps only the
+    one-sided bins ``0 .. size // 2`` NumPy's ``rfft`` would return, so its
+    dominant-bin selection matches the donor's real FFT exactly rather than
+    approximating it.
+    """
+
+    recent = _recent(history, window)
+    size = len(recent)
+    if size < 10:
+        return {number: 0.0 for number in range(1, _POOL + 1)}
+
+    scores: dict[int, float] = {}
+    for number in range(1, _POOL + 1):
+        raw = tuple(1.0 if number in row.numbers else 0.0 for row in recent)
+        if sum(raw) < 2:
+            scores[number] = 0.0
+            continue
+        mean = sum(raw) / size
+        transform = _bluestein_dft(tuple(value - mean for value in raw))
+        power = tuple(
+            value.real * value.real + value.imag * value.imag
+            for value in transform[: size // 2 + 1]
+        )
+        if len(power) <= 1:
+            scores[number] = 0.0
+            continue
+        dominant_index = max(range(1, len(power)), key=lambda index: (power[index], -index))
+        period = size / dominant_index
+        last_hit = max(index for index, value in enumerate(raw) if value)
+        gap = (size - 1) - last_hit
+        scores[number] = 1.0 / (abs(gap - period) + 1.0)
+    return scores
+
+
+@lru_cache(maxsize=4096)
 def _power_orthogonal_tickets(
     history: tuple[P638HistoryRow, ...],
 ) -> P638FirstZoneTicketSet:
-    """Five orthogonal signals: MidFreq, Fourier500, Cold, Markov30, ACB.
+    """Five orthogonal signals: MidFreq, Fourier500 (donor-exact), Cold, Markov30, ACB.
 
     Ported from the donor's ``p128_wave2_phase2_adapters.py::
     get_all_bets_power_orthogonal``, which composes the same building blocks
     already ported for ``pp3_freqort_4bet`` (MidFreq, Fourier500, Cold,
-    Markov30) plus one ACB hedge ticket.
+    Markov30) plus one ACB hedge ticket.  The Fourier ticket uses
+    :func:`_fourier_scores_exact`, not :func:`_fourier_scores`: an
+    independent Judge pass showed the latter's power-of-two-padded FFT does
+    not reproduce the donor's exact-length ``rfft`` dominant-bin selection,
+    so this strategy -- the only Wave 1 caller not already shipped against
+    that approximation -- gets the exact port instead.
     """
 
     return (
         _ranked_ticket(_midfreq_scores(history)),
-        _ranked_ticket(_fourier_scores(history, _FOURIER_LONG_WINDOW)),
+        _ranked_ticket(_fourier_scores_exact(history, _FOURIER_LONG_WINDOW)),
         _cold_ticket(history, _COLD_WINDOW),
         _markov_ticket(history, _MARKOV_WINDOW),
         _ranked_ticket(_acb_scores(history)),

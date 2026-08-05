@@ -1133,6 +1133,78 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__core_satellite__611284461323",
+        strategy_name="大樂透 Core-Satellite（隨機原生3注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave11:"
+            "BigLottoCoreSatelliteRandomNativeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/core_satellite.py",
+            "legacy_source_sha256:"
+            "611284461323dbbca0b5959498bf3f0e86bfaa35c4b902fdb64aabfe5076a6e2",
+            "legacy_symbol:generate_legacy_random_native_portfolio",
+            "full_strategy_catalog_id:legacy_biglotto__core_satellite__611284461323",
+            "migration_task:BIGLOTTO_WAVE11_R1_THREE_RANDOM_NATIVE_ADAPTERS",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__zone_split__b6144f9d479f",
+        strategy_name="大樂透 Zone Split（隨機原生3注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave11:"
+            "BigLottoZoneSplitRandomNativeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/zone_split.py",
+            "legacy_source_sha256:"
+            "b6144f9d479feded3746d81e0d5682e7cfb28ba8d8aa03ff65f3706649996211",
+            "legacy_symbol:generate_legacy_random_native_portfolio",
+            "full_strategy_catalog_id:legacy_biglotto__zone_split__b6144f9d479f",
+            "migration_task:BIGLOTTO_WAVE11_R1_THREE_RANDOM_NATIVE_ADAPTERS",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2",
+        strategy_name="大樂透窮舉稽核（熱/冷/正交3注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave11:BigLottoExhaustiveAuditAdapter"
+        ),
+        min_history=50,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/big_lotto_exhaustive_audit.py",
+            "legacy_source_sha256:"
+            "694d353b7ca230af6a860f5ef8977fdecbab031a30ad4e6c51b3d0c0f98b910c",
+            "legacy_symbol:generate_legacy_history_native_portfolio",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2",
+            "migration_task:BIGLOTTO_WAVE11_R1_THREE_RANDOM_NATIVE_ADAPTERS",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
 )
 
 

@@ -785,6 +785,9 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__enhanced_dual_bet_predictor__d5b3de348d01",
         "legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d",
         "legacy_biglotto__backtest_strategy_1__41ed79a6de62",
+        "legacy_biglotto__core_satellite__611284461323",
+        "legacy_biglotto__zone_split__b6144f9d479f",
+        "legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2",
     }
 
 

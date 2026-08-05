@@ -451,7 +451,7 @@ def test_production_catalog_wave11_descriptors_declare_expected_shapes() -> None
 def test_production_catalog_now_has_fifty_descriptors() -> None:
     """Name pinned at the Wave 11 landing point; later waves append only."""
     catalog = production_catalog()
-    assert len(catalog) == 53
+    assert len(catalog) == 56
 
 
 def test_wave11_core_satellite_and_zone_split_are_not_aliases_of_prior_waves() -> None:

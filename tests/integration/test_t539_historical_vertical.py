@@ -446,7 +446,25 @@ class TestT539HistoricalApi:
 # Real authority DB acceptance: skipped when the sealed Wave 1 DB is absent.
 # ---------------------------------------------------------------------------
 
-WORKSPACE = Path(__file__).parents[5]
+
+def _find_workspace_root(start: Path) -> Path:
+    """Locate the ``VibeCoding-WorkSpace`` ancestor regardless of worktree depth.
+
+    Task worktrees for this repo are checked out at varying depths under
+    ``VibeCoding-WorkSpace`` (a flat ``<repo>-agent`` sibling, or nested
+    ``.worktrees/<repo>/<TASK_DIR>``); a fixed ``parents[N]`` index only
+    matches one of those conventions. Falling back to a path that can never
+    exist keeps the dependent ``.exists()`` checks below false (skip), not a
+    crash, when no such ancestor is present at all.
+    """
+
+    for candidate in (start, *start.parents):
+        if candidate.name == "VibeCoding-WorkSpace":
+            return candidate
+    return Path("/nonexistent-workspace-root-marker")
+
+
+WORKSPACE = _find_workspace_root(Path(__file__).resolve())
 AUTHORITY_DB = (
     WORKSPACE
     / ".runs/MathStatisticalAnalysis/T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2"

@@ -584,18 +584,20 @@ def test_production_catalog_wave9_portfolio_descriptors_declare_expected_shapes(
 
 
 def test_production_catalog_now_has_forty_four_descriptors() -> None:
+    """Name pinned at the Wave 9 landing point; later waves append only."""
     catalog = production_catalog()
-    assert len(catalog) == 44
+    assert len(catalog) == 47
 
 
 def test_production_catalog_has_exactly_forty_four_big_lotto_online_strategies() -> None:
+    """Name pinned at the Wave 9 landing point; later waves append only."""
     from lottolab.domain.strategies import LifecycleStatus
 
     catalog = production_catalog()
     online = catalog.list(
         lottery_type=LotteryType.BIG_LOTTO, lifecycle_status=LifecycleStatus.ONLINE
     )
-    assert len(online) == 44
+    assert len(online) == 47
 
 
 def test_tme_four_bet_is_unaffected_and_still_excludes_wave9() -> None:
@@ -613,9 +615,9 @@ def test_wave1_through_wave8_descriptors_are_unaffected_by_wave9() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 44
+    assert len(all_ids) == 47
     pre_existing_ids = all_ids[:41]
-    wave9_ids_in_order = all_ids[41:]
+    wave9_ids_in_order = all_ids[41:44]
     assert set(pre_existing_ids).isdisjoint(WAVE9_IDS)
     assert set(wave9_ids_in_order) == WAVE9_IDS
     assert wave9_ids_in_order == (

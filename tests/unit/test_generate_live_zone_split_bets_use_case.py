@@ -423,4 +423,7 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__test_cag__7ca5343dfedd",
         "legacy_biglotto__test_cluster_cover__5b43959e7c55",
         "legacy_biglotto__test_zdp__e80cc7e95453",
+        "legacy_biglotto__enhanced_dual_bet_predictor__d5b3de348d01",
+        "legacy_biglotto__biglotto_diversified_ensemble_v6__8caaac8fcb5d",
+        "legacy_biglotto__backtest_strategy_1__41ed79a6de62",
     ]

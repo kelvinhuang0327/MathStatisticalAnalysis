@@ -288,7 +288,7 @@ print(json.dumps([
 
 def test_wave6_catalog_descriptors_and_response_paths() -> None:
     catalog = production_catalog()
-    assert len(catalog) == 44
+    assert len(catalog) == 47
     for adapter_class in WAVE6_ADAPTER_CLASSES:
         descriptor = catalog.get(adapter_class.strategy_id)
         assert descriptor.strategy_name == adapter_class.strategy_name

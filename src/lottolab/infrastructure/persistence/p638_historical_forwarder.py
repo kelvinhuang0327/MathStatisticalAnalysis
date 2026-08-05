@@ -620,20 +620,23 @@ def _current_registry(replay: _ReplayBundle) -> tuple[_RegistryEntry, ...]:
     from lottolab.research.powerlotto_wave1 import WAVE1_DONOR_BLOCKED_STRATEGIES
     from lottolab.strategies.adapters.powerlotto_wave1 import (
         WAVE1_BLOCKED_STRATEGIES,
-        WAVE1_STRATEGIES,
+        WAVE1_STRATEGY_BY_ID,
     )
 
+    # This forwarder is pinned to one frozen R4 source bundle
+    # (SOURCE_REPLAY_RUN_ID) that only ever covered its own strategy set.
+    # The live executable registry may have grown since (e.g. the P638
+    # all-10 vertical added power_fourier_rhythm_2bet and
+    # power_orthogonal_5bet), so this only checks that every strategy the
+    # frozen bundle DOES contain still matches its live identity -- it does
+    # not require the live registry to be limited to that frozen set.
     source_by_id = {strategy.strategy_id: strategy for strategy in replay.strategies}
-    current_ids = {spec.strategy_id for spec in WAVE1_STRATEGIES}
-    if set(source_by_id) != current_ids:
-        raise P638ForwardingError(
-            "P638 current executable registry and R4 source identities do not match"
-        )
     entries: list[_RegistryEntry] = []
-    for spec in WAVE1_STRATEGIES:
-        source = source_by_id.get(spec.strategy_id)
-        if source is None or source.strategy_version != spec.strategy_version:
-            raise P638ForwardingError(f"P638 strategy identity conflict: {spec.strategy_id}")
+    for strategy_id in sorted(source_by_id):
+        source = source_by_id[strategy_id]
+        spec = WAVE1_STRATEGY_BY_ID.get(strategy_id)
+        if spec is None or spec.strategy_version != source.strategy_version:
+            raise P638ForwardingError(f"P638 strategy identity conflict: {strategy_id}")
         entries.append(
             _RegistryEntry(
                 strategy_id=spec.strategy_id,

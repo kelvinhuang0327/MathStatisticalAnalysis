@@ -54,13 +54,25 @@ def test_replay_writes_complete_native_portfolios_and_is_idempotent(tmp_path: Pa
     assert first.ticket_count == second.ticket_count
     assert first_db_sha256 == second_db_sha256
 
-    effective_minimum = max(MIN_HISTORY, *(spec.min_history for spec in WAVE1_STRATEGIES))
-    eligible_per_strategy = max(0, len(draws) - effective_minimum)
-    expected_tickets = eligible_per_strategy * sum(
-        spec.native_ticket_count for spec in WAVE1_STRATEGIES
+    # Each strategy's own effective minimum is the max of its declared
+    # min_history and the second-zone SSOT's MIN_HISTORY; strategies differ
+    # (e.g. power_fourier_rhythm_2bet needs 100), so eligibility is computed
+    # per strategy rather than from one shared global threshold.
+    effective_minimums = {
+        spec.strategy_id: max(MIN_HISTORY, spec.min_history) for spec in WAVE1_STRATEGIES
+    }
+    eligible_counts = {
+        strategy_id: max(0, len(draws) - minimum)
+        for strategy_id, minimum in effective_minimums.items()
+    }
+    expected_tickets = sum(
+        eligible_counts[spec.strategy_id] * spec.native_ticket_count for spec in WAVE1_STRATEGIES
     )
-    assert first.complete_target_count == eligible_per_strategy * len(WAVE1_STRATEGIES)
-    assert first.excluded_target_count == effective_minimum * len(WAVE1_STRATEGIES)
+    expected_excluded = sum(
+        len(draws) - eligible_counts[spec.strategy_id] for spec in WAVE1_STRATEGIES
+    )
+    assert first.complete_target_count == sum(eligible_counts.values())
+    assert first.excluded_target_count == expected_excluded
     assert first.ticket_count == expected_tickets
 
     with sqlite3.connect(first.db_path) as connection:

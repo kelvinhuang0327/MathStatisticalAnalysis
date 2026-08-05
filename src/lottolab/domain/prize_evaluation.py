@@ -1,0 +1,300 @@
+"""Lottery-specific official prize-tier evaluation, dispatched by lottery type.
+
+Each lottery type owns its own versioned, source-bound prize-tier table.
+There is no universal cross-lottery hit threshold: a hit signature that wins
+one lottery's prize tier has no bearing on any other lottery's rules.  Only
+POWER_LOTTO (Super Lotto 638, 威力彩) is implemented here; other lottery
+types must supply their own evaluator rather than reuse this one.
+"""
+
+from __future__ import annotations
+
+import re
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from enum import StrEnum
+
+from lottolab.domain.draws import LotteryType
+
+_SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+
+
+class PowerLottoPrizeTierId(StrEnum):
+    """Stable identifiers for the official POWER_LOTTO prize tiers, highest to lowest."""
+
+    FIRST = "FIRST"
+    SECOND = "SECOND"
+    THIRD = "THIRD"
+    FOURTH = "FOURTH"
+    FIFTH = "FIFTH"
+    SIXTH = "SIXTH"
+    SEVENTH = "SEVENTH"
+    EIGHTH = "EIGHTH"
+    NINTH = "NINTH"
+    GENERAL = "GENERAL"
+
+
+@dataclass(frozen=True, slots=True)
+class PowerLottoPrizeTier:
+    """One official POWER_LOTTO prize tier and its unique hit signature."""
+
+    tier_id: PowerLottoPrizeTierId
+    tier_order: int
+    official_label: str
+    zone1_hits: int
+    zone2_hit: bool
+    prize_amount: int | None
+
+    def validate(self) -> None:
+        if type(self.tier_id) is not PowerLottoPrizeTierId:
+            raise ValueError("tier_id must be a PowerLottoPrizeTierId")
+        if type(self.tier_order) is not int or not 1 <= self.tier_order <= 10:
+            raise ValueError("tier_order must be an integer between 1 and 10")
+        if type(self.official_label) is not str or not self.official_label.strip():
+            raise ValueError("official_label must be a non-empty string")
+        if type(self.zone1_hits) is not int or not 0 <= self.zone1_hits <= 6:
+            raise ValueError("zone1_hits must be an integer between 0 and 6")
+        if type(self.zone2_hit) is not bool:
+            raise ValueError("zone2_hit must be a boolean")
+        if self.prize_amount is not None and (
+            type(self.prize_amount) is not int or self.prize_amount <= 0
+        ):
+            raise ValueError("prize_amount must be a positive integer or None")
+
+    def canonical_dict(self) -> dict[str, object]:
+        return {
+            "official_label": self.official_label,
+            "prize_amount": self.prize_amount,
+            "tier_id": self.tier_id.value,
+            "tier_order": self.tier_order,
+            "zone1_hits": self.zone1_hits,
+            "zone2_hit": self.zone2_hit,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PowerLottoPrizeRuleContract:
+    """Versioned, source-bound collection of official POWER_LOTTO prize tiers."""
+
+    schema_version: str
+    source_sha256: str
+    source_url: str
+    source_locator: str
+    source_accessed_at: datetime
+    tiers: tuple[PowerLottoPrizeTier, ...]
+
+    def validate(self) -> None:
+        for name, value in (
+            ("schema_version", self.schema_version),
+            ("source_sha256", self.source_sha256),
+            ("source_url", self.source_url),
+            ("source_locator", self.source_locator),
+        ):
+            if type(value) is not str or not value.strip():
+                raise ValueError(f"prize_rule.{name} must be a non-empty string")
+        if _SHA256.fullmatch(self.source_sha256) is None:
+            raise ValueError("prize_rule.source_sha256 must be a lowercase SHA-256 digest")
+        if type(self.source_accessed_at) is not datetime:
+            raise ValueError("prize_rule.source_accessed_at must be a datetime")
+        if self.source_accessed_at.tzinfo is None:
+            raise ValueError("prize_rule.source_accessed_at must be timezone-aware")
+        if self.source_accessed_at.utcoffset() != UTC.utcoffset(self.source_accessed_at):
+            raise ValueError("prize_rule.source_accessed_at must use UTC")
+        if type(self.tiers) is not tuple or not self.tiers:
+            raise ValueError("prize_rule.tiers must be a non-empty tuple")
+
+        expected_ids = tuple(PowerLottoPrizeTierId)
+        actual_ids: list[PowerLottoPrizeTierId] = []
+        signatures: set[tuple[int, bool]] = set()
+        orders: set[int] = set()
+        for index, tier in enumerate(self.tiers, start=1):
+            if type(tier) is not PowerLottoPrizeTier:
+                raise ValueError("prize_rule.tiers must contain PowerLottoPrizeTier values")
+            tier.validate()
+            if tier.tier_order != index:
+                raise ValueError("prize_rule.tiers must be listed in official tier_order")
+            actual_ids.append(tier.tier_id)
+            signature = (tier.zone1_hits, tier.zone2_hit)
+            if signature in signatures:
+                raise ValueError("prize_rule.tiers contains an ambiguous hit signature")
+            signatures.add(signature)
+            orders.add(tier.tier_order)
+        if tuple(actual_ids) != expected_ids:
+            raise ValueError(
+                "prize_rule.tiers must contain every tier identifier exactly once "
+                "in canonical order"
+            )
+        if orders != set(range(1, 11)):
+            raise ValueError("prize_rule.tiers must cover tier_order 1 through 10 exactly once")
+
+    def resolve(self, *, zone1_hits: int, zone2_hit: bool) -> PowerLottoPrizeTier | None:
+        """Return the matching official tier, or ``None`` when the signature does not win."""
+
+        for tier in self.tiers:
+            if tier.zone1_hits == zone1_hits and tier.zone2_hit is zone2_hit:
+                return tier
+        return None
+
+    def canonical_dict(self) -> dict[str, object]:
+        accessed_at = self.source_accessed_at.isoformat().replace("+00:00", "Z")
+        return {
+            "schema_version": self.schema_version,
+            "source_accessed_at": accessed_at,
+            "source_locator": self.source_locator,
+            "source_sha256": self.source_sha256,
+            "source_url": self.source_url,
+            "tiers": [tier.canonical_dict() for tier in self.tiers],
+        }
+
+
+POWER_LOTTO_PRIZE_RULE_CONTRACT = PowerLottoPrizeRuleContract(
+    schema_version="power-lotto-prize-rule-2026-08-04.1",
+    source_sha256="a7e3c41b13c6927f333a309725d870b6509bb13e9f71c5995f5ff3bd931f1836",
+    source_url="https://www.taiwanlottery.com/_nuxt/_game_.1_0_8_74.js",
+    source_locator="super_lotto638.tableData, UTF-8 bytes 5277-6339",
+    source_accessed_at=datetime(2026, 8, 4, 13, 57, 20, tzinfo=UTC),
+    tiers=(
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.FIRST, 1, "頭獎", 6, True, None),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.SECOND, 2, "貳獎", 6, False, None),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.THIRD, 3, "參獎", 5, True, 150_000),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.FOURTH, 4, "肆獎", 5, False, 20_000),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.FIFTH, 5, "伍獎", 4, True, 4_000),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.SIXTH, 6, "陸獎", 4, False, 800),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.SEVENTH, 7, "柒獎", 3, True, 400),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.EIGHTH, 8, "捌獎", 2, True, 200),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.NINTH, 9, "玖獎", 3, False, 100),
+        PowerLottoPrizeTier(PowerLottoPrizeTierId.GENERAL, 10, "普獎", 1, True, 100),
+    ),
+)
+POWER_LOTTO_PRIZE_RULE_CONTRACT.validate()
+
+
+@dataclass(frozen=True, slots=True)
+class PrizeEvaluationResult:
+    """One deterministic prize-evaluation outcome for a single ticket vs. one draw."""
+
+    lottery_type: LotteryType
+    is_winner: bool
+    prize_tier: str | None
+    prize_tier_order: int | None
+    zone1_hits: int
+    zone2_hit: bool
+    prize_rule_version: str
+    prize_rule_provenance: str
+
+    def canonical_dict(self) -> dict[str, object]:
+        return {
+            "is_winner": self.is_winner,
+            "lottery_type": self.lottery_type.value,
+            "prize_rule_provenance": self.prize_rule_provenance,
+            "prize_rule_version": self.prize_rule_version,
+            "prize_tier": self.prize_tier,
+            "prize_tier_order": self.prize_tier_order,
+            "zone1_hits": self.zone1_hits,
+            "zone2_hit": self.zone2_hit,
+        }
+
+
+def _validate_zone1_numbers(label: str, numbers: tuple[int, ...]) -> None:
+    if type(numbers) is not tuple:
+        raise ValueError(f"{label} must be a tuple")
+    if len(numbers) != 6:
+        raise ValueError(f"{label} must contain exactly 6 numbers")
+    if any(type(number) is not int for number in numbers):
+        raise ValueError(f"{label} must contain exact built-in integers")
+    if any(not 1 <= number <= 38 for number in numbers):
+        raise ValueError(f"{label} contains an out-of-range number")
+    if len(set(numbers)) != len(numbers):
+        raise ValueError(f"{label} must not contain duplicates")
+    if numbers != tuple(sorted(numbers)):
+        raise ValueError(f"{label} must use canonical ascending order")
+
+
+def _validate_zone2_number(label: str, number: int) -> None:
+    if type(number) is not int:
+        raise ValueError(f"{label} must be an exact built-in integer")
+    if not 1 <= number <= 8:
+        raise ValueError(f"{label} is out of range")
+
+
+def evaluate_power_lotto_ticket(
+    *,
+    predicted_main_numbers: tuple[int, ...],
+    predicted_special_number: int,
+    winning_main_numbers: tuple[int, ...],
+    winning_special_number: int,
+    prize_rule: PowerLottoPrizeRuleContract = POWER_LOTTO_PRIZE_RULE_CONTRACT,
+) -> PrizeEvaluationResult:
+    """Score one canonical POWER_LOTTO ticket against the official prize table.
+
+    POWER_LOTTO permits overlap between a ticket's first-zone (1-38) and
+    second-zone (1-8) numbers, unlike BIG_LOTTO, so no overlap check applies.
+    """
+
+    _validate_zone1_numbers("predicted_main_numbers", predicted_main_numbers)
+    _validate_zone1_numbers("winning_main_numbers", winning_main_numbers)
+    _validate_zone2_number("predicted_special_number", predicted_special_number)
+    _validate_zone2_number("winning_special_number", winning_special_number)
+    if type(prize_rule) is not PowerLottoPrizeRuleContract:
+        raise ValueError("prize_rule must be a PowerLottoPrizeRuleContract")
+
+    zone1_hits = len(set(predicted_main_numbers) & set(winning_main_numbers))
+    zone2_hit = predicted_special_number == winning_special_number
+    tier = prize_rule.resolve(zone1_hits=zone1_hits, zone2_hit=zone2_hit)
+    return PrizeEvaluationResult(
+        lottery_type=LotteryType.POWER_LOTTO,
+        is_winner=tier is not None,
+        prize_tier=tier.tier_id.value if tier is not None else None,
+        prize_tier_order=tier.tier_order if tier is not None else None,
+        zone1_hits=zone1_hits,
+        zone2_hit=zone2_hit,
+        prize_rule_version=prize_rule.schema_version,
+        prize_rule_provenance=f"{prize_rule.source_locator} (sha256={prize_rule.source_sha256})",
+    )
+
+
+def evaluate_lottery_prize(
+    *,
+    lottery_type: LotteryType,
+    predicted_main_numbers: tuple[int, ...],
+    predicted_special_number: int | None,
+    winning_main_numbers: tuple[int, ...],
+    winning_special_number: int | None,
+) -> PrizeEvaluationResult:
+    """Dispatch to the lottery-specific evaluator; there is no universal hit threshold."""
+
+    if lottery_type is LotteryType.POWER_LOTTO:
+        if predicted_special_number is None or winning_special_number is None:
+            raise ValueError("POWER_LOTTO evaluation requires a second-zone number")
+        return evaluate_power_lotto_ticket(
+            predicted_main_numbers=predicted_main_numbers,
+            predicted_special_number=predicted_special_number,
+            winning_main_numbers=winning_main_numbers,
+            winning_special_number=winning_special_number,
+        )
+    raise NotImplementedError(f"no prize evaluator is implemented for {lottery_type.value}")
+
+
+@dataclass(frozen=True, slots=True)
+class DispatchingLotteryPrizeEvaluator:
+    """Default ``LotteryPrizeEvaluator`` port implementation: routes by lottery type."""
+
+    def evaluate(
+        self,
+        *,
+        lottery_type: LotteryType,
+        predicted_main_numbers: tuple[int, ...],
+        predicted_special_number: int | None,
+        winning_main_numbers: tuple[int, ...],
+        winning_special_number: int | None,
+    ) -> PrizeEvaluationResult:
+        return evaluate_lottery_prize(
+            lottery_type=lottery_type,
+            predicted_main_numbers=predicted_main_numbers,
+            predicted_special_number=predicted_special_number,
+            winning_main_numbers=winning_main_numbers,
+            winning_special_number=winning_special_number,
+        )
+
+
+LOTTERY_PRIZE_EVALUATOR = DispatchingLotteryPrizeEvaluator()

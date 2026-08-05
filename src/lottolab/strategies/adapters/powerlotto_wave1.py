@@ -12,14 +12,20 @@ families into a dependency-free strategy boundary:
 * every complete ticket pairs the first-zone port with the shared second-zone
   SSOT; no caller may silently promote a first-zone-only prediction.
 
-The long-window Fourier donor uses a NumPy FFT.  The local port uses a
-deterministic radix-2 real periodogram over a zero-padded power-of-two window.
-It preserves the donor's period-alignment signal and tie policy without adding
-NumPy or any external state to the adapter layer.
+The long-window Fourier donor uses a NumPy FFT.  Most callers (see
+:func:`_fourier_scores`) use a deterministic radix-2 real periodogram over a
+zero-padded power-of-two window: it preserves the donor's period-alignment
+signal and tie policy without adding NumPy, but does not reproduce the
+donor's exact-length dominant-bin selection bit-for-bit.  ``power_fourier_rhythm_2bet``
+and ``power_orthogonal_5bet`` instead need that exact reproduction, so they
+use the arbitrary-length :func:`_bluestein_dft` at the donor's own unpadded
+length (see :func:`_fourier_rhythm_fixed_window_scores` and
+:func:`_fourier_scores_exact`) -- still no NumPy or other external state.
 """
 
 from __future__ import annotations
 
+import cmath
 import itertools
 import math
 from collections import Counter
@@ -363,6 +369,94 @@ def _fft_power_spectrum(series: tuple[float, ...]) -> tuple[float, ...]:
     )
 
 
+def _fft_complex_pow2(values: tuple[complex, ...]) -> tuple[complex, ...]:
+    """Radix-2 complex FFT; ``len(values)`` must already be a power of two."""
+
+    length = len(values)
+    result = list(values)
+
+    reverse_index = 0
+    for index in range(1, length):
+        bit = length >> 1
+        while reverse_index & bit:
+            reverse_index ^= bit
+            bit >>= 1
+        reverse_index ^= bit
+        if index < reverse_index:
+            result[index], result[reverse_index] = result[reverse_index], result[index]
+
+    size = 2
+    while size <= length:
+        angle = -2.0 * math.pi / size
+        unit = complex(math.cos(angle), math.sin(angle))
+        half = size // 2
+        for start in range(0, length, size):
+            factor = 1.0 + 0.0j
+            for offset in range(half):
+                left = result[start + offset]
+                right = factor * result[start + offset + half]
+                result[start + offset] = left + right
+                result[start + offset + half] = left - right
+                factor *= unit
+        size <<= 1
+
+    return tuple(result)
+
+
+def _ifft_complex_pow2(values: tuple[complex, ...]) -> tuple[complex, ...]:
+    """Inverse of :func:`_fft_complex_pow2` via forward-FFT-of-conjugate."""
+
+    length = len(values)
+    conjugated = tuple(value.conjugate() for value in values)
+    transformed = _fft_complex_pow2(conjugated)
+    return tuple(value.conjugate() / length for value in transformed)
+
+
+def _bluestein_dft(signal: tuple[float, ...]) -> tuple[complex, ...]:
+    """Exact discrete Fourier transform of ``signal`` for an arbitrary length.
+
+    The fixed-window Fourier-rhythm donor requires an exact 500-point FFT,
+    which is not a power of two, so the existing radix-2 engine cannot be
+    applied directly without changing the frequency bins.  Bluestein's
+    algorithm rewrites an arbitrary-length DFT as a linear convolution
+    computable with a power-of-two FFT, reproducing NumPy's ``fft`` exactly
+    (up to floating-point rounding) with no new dependency.
+    """
+
+    n = len(signal)
+    if n == 0:
+        return ()
+    if n == 1:
+        return (complex(signal[0]),)
+
+    padded_length = 1
+    while padded_length < 2 * n - 1:
+        padded_length <<= 1
+
+    chirp = tuple(cmath.exp(-1j * math.pi * (index * index) / n) for index in range(n))
+
+    forward = [0j] * padded_length
+    for index in range(n):
+        forward[index] = signal[index] * chirp[index]
+
+    filter_sequence = [0j] * padded_length
+    filter_sequence[0] = complex(1.0, 0.0)
+    for index in range(1, n):
+        value = chirp[index].conjugate()
+        filter_sequence[index] = value
+        filter_sequence[padded_length - index] = value
+
+    transformed_signal = _fft_complex_pow2(tuple(forward))
+    transformed_filter = _fft_complex_pow2(tuple(filter_sequence))
+    convolved = _ifft_complex_pow2(
+        tuple(
+            left * right
+            for left, right in zip(transformed_signal, transformed_filter, strict=True)
+        )
+    )
+    return tuple(convolved[index] * chirp[index] for index in range(n))
+
+
 @lru_cache(maxsize=4096)
 def _fourier_scores(
     history: tuple[P638HistoryRow, ...],
@@ -511,6 +605,162 @@ def _pp3_freqort_tickets(
         _ranked_ticket(_fourier_scores(history, _FOURIER_LONG_WINDOW)),
         _cold_ticket(history, _COLD_WINDOW),
         _markov_ticket(history, _MARKOV_WINDOW),
+    )
+
+
+_FOURIER_RHYTHM_WINDOW: Final = 500
+
+
+@lru_cache(maxsize=4096)
+def _fourier_rhythm_fixed_window_scores(
+    history: tuple[P638HistoryRow, ...],
+) -> dict[int, float]:
+    """Donor-exact period-alignment scores using a fixed, zero-padded window.
+
+    Ported from the donor's ``tools/power_fourier_rhythm.py`` researcher
+    (``fourier_rhythm_predict``/``detect_dominant_period``): every number's
+    appearance bitstream occupies a *fixed*-length
+    ``_FOURIER_RHYTHM_WINDOW``-slot array -- trailing slots stay zero when
+    causal history is shorter than the window, exactly as the donor's
+    ``np.zeros(window)`` bitstream does -- then gets detrended and
+    transformed with a full complex DFT.  Only strictly positive frequency
+    bins count (this excludes both the DC term and, for an even window, the
+    Nyquist bin, matching NumPy's ``fftfreq`` sign convention exactly), and a
+    number only scores when its dominant period falls strictly inside
+    ``(2, window / 2)``, exactly as the donor gates it.  This is a distinct
+    algorithm family from :func:`_fourier_scores`: that helper windows at
+    the donor's actual (unpadded) length, already used by six of the eight
+    prior Wave 1 strategies, but its FFT is a next-power-of-two zero-padded
+    radix-2 transform -- a pre-existing, accepted approximation of the
+    donor's exact-length rfft (it does not reproduce numpy's dominant-bin
+    selection bit-for-bit).  This function needs a different property from
+    that helper -- an exact match to the donor's *fixed* 500-slot window --
+    which is why it uses the exact arbitrary-length :func:`_bluestein_dft`
+    instead of reusing :func:`_fourier_scores`.
+    """
+
+    window = _FOURIER_RHYTHM_WINDOW
+    recent = _recent(history, window)
+    scores: dict[int, float] = {}
+    for number in range(1, _POOL + 1):
+        bitstream = [0.0] * window
+        for index, row in enumerate(recent):
+            if number in row.numbers:
+                bitstream[index] = 1.0
+        if sum(bitstream) < 2:
+            scores[number] = 0.0
+            continue
+        mean = sum(bitstream) / window
+        spectrum = _bluestein_dft(tuple(value - mean for value in bitstream))
+        half = window // 2
+        # Strictly positive frequency bins only: NumPy's even-length
+        # fftfreq marks the Nyquist bin (index `half`) as negative, so the
+        # donor's `xf > 0` filter keeps exactly indices 1..half-1.
+        dominant_index = max(range(1, half), key=lambda index: (abs(spectrum[index]), -index))
+        period = window / dominant_index
+        if not (2 < period < window / 2):
+            scores[number] = 0.0
+            continue
+        last_hit = max(index for index, value in enumerate(bitstream) if value)
+        gap = (window - 1) - last_hit
+        scores[number] = 1.0 / (abs(gap - period) + 1.0)
+    return scores
+
+
+@lru_cache(maxsize=4096)
+def _power_fourier_rhythm_tickets(
+    history: tuple[P638HistoryRow, ...],
+) -> P638FirstZoneTicketSet:
+    """Two consecutive rank-chunks of the donor's single descending score list.
+
+    The donor ranks all 38 numbers by score, descending, then slices the
+    ranking into consecutive 6-number chunks (bet 1 = ranks 1-6, bet 2 =
+    ranks 7-12) via ``numpy.argsort``.  Where many numbers tie at score 0.0
+    (which numpy's unstable default sort resolves in an
+    implementation-defined, version-dependent order that is not part of the
+    donor's substantive algorithm), this port applies the same
+    ascending-number tie-break every other Wave 1 strategy already uses.
+    """
+
+    scores = _fourier_rhythm_fixed_window_scores(history)
+    ranked = sorted(range(1, _POOL + 1), key=lambda number: (-scores[number], number))
+    return (
+        tuple(sorted(ranked[0:_PICK])),
+        tuple(sorted(ranked[_PICK : 2 * _PICK])),
+    )
+
+
+@lru_cache(maxsize=4096)
+def _fourier_scores_exact(
+    history: tuple[P638HistoryRow, ...],
+    window: int,
+) -> dict[int, float]:
+    """Donor-exact period-alignment scores at the causal window's own length.
+
+    Ported bit-for-bit (up to floating-point rounding) from the donor's
+    ``p128_wave2_phase2_adapters.py::_pl_fourier_scores``: ``np.fft.rfft``
+    runs at ``w = len(recent)`` -- the *actual*, unpadded causal length --
+    never at a padded power-of-two length.  Unlike :func:`_fourier_scores`
+    (whose own FFT pads to the next power of two, a pre-existing accepted
+    approximation kept as-is for the five sibling strategies that already
+    ship with it), this helper reuses the exact arbitrary-length
+    :func:`_bluestein_dft` at that unpadded length and keeps only the
+    one-sided bins ``0 .. size // 2`` NumPy's ``rfft`` would return, so its
+    dominant-bin selection matches the donor's real FFT exactly rather than
+    approximating it.
+    """
+
+    recent = _recent(history, window)
+    size = len(recent)
+    if size < 10:
+        return {number: 0.0 for number in range(1, _POOL + 1)}
+
+    scores: dict[int, float] = {}
+    for number in range(1, _POOL + 1):
+        raw = tuple(1.0 if number in row.numbers else 0.0 for row in recent)
+        if sum(raw) < 2:
+            scores[number] = 0.0
+            continue
+        mean = sum(raw) / size
+        transform = _bluestein_dft(tuple(value - mean for value in raw))
+        power = tuple(
+            value.real * value.real + value.imag * value.imag
+            for value in transform[: size // 2 + 1]
+        )
+        if len(power) <= 1:
+            scores[number] = 0.0
+            continue
+        dominant_index = max(range(1, len(power)), key=lambda index: (power[index], -index))
+        period = size / dominant_index
+        last_hit = max(index for index, value in enumerate(raw) if value)
+        gap = (size - 1) - last_hit
+        scores[number] = 1.0 / (abs(gap - period) + 1.0)
+    return scores
+
+
+@lru_cache(maxsize=4096)
+def _power_orthogonal_tickets(
+    history: tuple[P638HistoryRow, ...],
+) -> P638FirstZoneTicketSet:
+    """Five orthogonal signals: MidFreq, Fourier500 (donor-exact), Cold, Markov30, ACB.
+
+    Ported from the donor's ``p128_wave2_phase2_adapters.py::
+    get_all_bets_power_orthogonal``, which composes the same building blocks
+    already ported for ``pp3_freqort_4bet`` (MidFreq, Fourier500, Cold,
+    Markov30) plus one ACB hedge ticket.  The Fourier ticket uses
+    :func:`_fourier_scores_exact`, not :func:`_fourier_scores`: an
+    independent Judge pass showed the latter's power-of-two-padded FFT does
+    not reproduce the donor's exact-length ``rfft`` dominant-bin selection,
+    so this strategy -- the only Wave 1 caller not already shipped against
+    that approximation -- gets the exact port instead.
+    """
+
+    return (
+        _ranked_ticket(_midfreq_scores(history)),
+        _ranked_ticket(_fourier_scores_exact(history, _FOURIER_LONG_WINDOW)),
+        _cold_ticket(history, _COLD_WINDOW),
+        _markov_ticket(history, _MARKOV_WINDOW),
+        _ranked_ticket(_acb_scores(history)),
     )
 
 
@@ -721,18 +971,45 @@ WAVE1_STRATEGIES: tuple[P638StrategySpec, ...] = (
         ),
         _predictor=_pp3_freqort_tickets,
     ),
-)
-
-WAVE1_BLOCKED_STRATEGIES: tuple[P638BlockedStrategy, ...] = (
-    P638BlockedStrategy(
-        strategy_id="power_orthogonal_5bet",
-        reason=(
-            "Excluded from this eight-strategy card because the P128 donor "
-            "retains an RSR-6 20-orphan bet-index=2 apply blocker."
+    P638StrategySpec(
+        strategy_id="power_fourier_rhythm_2bet",
+        strategy_version="v0.1-p638-all10",
+        native_ticket_count=2,
+        min_history=100,
+        source_paths=(
+            "lottery_api/models/p93_tierb_replay_adapters.py",
+            "tools/power_fourier_rhythm.py",
         ),
+        provenance=(
+            f"POWER_LOTTO first-zone port from donor archive {_DONOR_SHA256}; "
+            "P93 Tier B adapter wraps tools/power_fourier_rhythm.py::"
+            "fourier_rhythm_predict(n_bets=2, window=500); fixed-window "
+            "zero-padded bitstream FFT reproduced exactly via Bluestein's "
+            "algorithm (no NumPy/SciPy). Supersedes the prior "
+            "DEFERRED_WAVE_2 research-ledger disposition."
+        ),
+        _predictor=_power_fourier_rhythm_tickets,
+    ),
+    P638StrategySpec(
+        strategy_id="power_orthogonal_5bet",
+        strategy_version="v0.1-p638-all10",
+        native_ticket_count=5,
+        min_history=30,
         source_paths=("lottery_api/models/p128_wave2_phase2_adapters.py",),
+        provenance=(
+            f"POWER_LOTTO first-zone port from donor archive {_DONOR_SHA256}; "
+            "P128 Phase 2 ordered MidFreq, Fourier500, Cold, Markov30, and "
+            "ACB portfolio (get_all_bets_power_orthogonal). The RSR-6 "
+            "20-orphan bet-index=2 rows were a defect in the prior donor "
+            "replay ledger, not this algorithm; this adapter always emits "
+            "all 5 native positions including position 2 (Fourier). "
+            "Supersedes the prior BLOCKED_DEFERRED_WAVE disposition."
+        ),
+        _predictor=_power_orthogonal_tickets,
     ),
 )
+
+WAVE1_BLOCKED_STRATEGIES: tuple[P638BlockedStrategy, ...] = ()
 
 WAVE1_STRATEGY_BY_ID = MappingProxyType({spec.strategy_id: spec for spec in WAVE1_STRATEGIES})
 

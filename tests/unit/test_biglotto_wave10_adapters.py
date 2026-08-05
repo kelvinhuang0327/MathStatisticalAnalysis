@@ -699,7 +699,7 @@ def test_production_catalog_wave10_descriptors_declare_expected_shapes() -> None
 
 def test_production_catalog_now_has_forty_seven_descriptors() -> None:
     catalog = production_catalog()
-    assert len(catalog) == 47
+    assert len(catalog) == 50
 
 
 def test_production_catalog_has_exactly_forty_seven_big_lotto_online_strategies() -> None:
@@ -709,7 +709,7 @@ def test_production_catalog_has_exactly_forty_seven_big_lotto_online_strategies(
     online = catalog.list(
         lottery_type=LotteryType.BIG_LOTTO, lifecycle_status=LifecycleStatus.ONLINE
     )
-    assert len(online) == 47
+    assert len(online) == 50
 
 
 def test_wave1_through_wave9_descriptors_are_unaffected_by_wave10() -> None:
@@ -719,9 +719,9 @@ def test_wave1_through_wave9_descriptors_are_unaffected_by_wave10() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 47
+    assert len(all_ids) == 50
     pre_existing_ids = all_ids[:44]
-    wave10_ids_in_order = all_ids[44:]
+    wave10_ids_in_order = all_ids[44:47]
     assert set(pre_existing_ids).isdisjoint(WAVE10_IDS)
     assert set(wave10_ids_in_order) == WAVE10_IDS
     assert wave10_ids_in_order == (

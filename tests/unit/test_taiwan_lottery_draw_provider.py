@@ -186,6 +186,57 @@ def test_raises_contract_error_on_short_number_list() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("lottery_type", "result_key", "numbers"),
+    [
+        pytest.param(
+            LotteryType.BIG_LOTTO,
+            "lotto649Res",
+            [1, 3, 9, 17, 24, 49],
+            id="big_lotto_missing_special_number",
+        ),
+        pytest.param(
+            LotteryType.POWER_LOTTO,
+            "superLotto638Res",
+            [2, 4, 6, 8, 10, 12],
+            id="power_lotto_missing_second_zone_number",
+        ),
+        pytest.param(
+            LotteryType.BIG_LOTTO,
+            "lotto649Res",
+            [1, 3, 9, 17, 24, 49, 7, 50],
+            id="big_lotto_oversized_array",
+        ),
+        pytest.param(
+            LotteryType.POWER_LOTTO,
+            "superLotto638Res",
+            [2, 4, 6, 8, 10, 12, 5, 30],
+            id="power_lotto_oversized_array",
+        ),
+        pytest.param(
+            LotteryType.DAILY_539,
+            "daily539Res",
+            [1, 2, 3, 4, 5, 6],
+            id="daily_539_extra_trailing_number",
+        ),
+    ],
+)
+def test_raises_contract_error_on_wrong_number_count(
+    lottery_type: LotteryType, result_key: str, numbers: list[object]
+) -> None:
+    transport = _FakeTransport(
+        _envelope(result_key, [_row("113000060", "2026-07-16", numbers)])
+    )
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    with pytest.raises(DrawProviderContractError):
+        provider.fetch_draws(
+            lottery_type=lottery_type,
+            date_from=date(2026, 7, 1),
+            date_to=date(2026, 7, 31),
+        )
+
+
 def test_raises_contract_error_on_non_integer_numbers() -> None:
     transport = _FakeTransport(
         _envelope("lotto649Res", [_row("113000060", "2026-07-16", [1, 3, 9, 17, 24, "x", 7])])

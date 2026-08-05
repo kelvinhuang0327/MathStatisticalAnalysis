@@ -176,11 +176,14 @@ def _record(
     if any(type(item) is not int for item in numbers):
         raise DrawProviderContractError("official API drawNumberSize must contain only integers")
     numbers_int = cast(list[int], numbers)
-    if len(numbers_int) < config.numbers_count:
-        raise DrawProviderContractError("official API drawNumberSize is short")
+    expected_count = config.numbers_count + (1 if config.has_special else 0)
+    if len(numbers_int) != expected_count:
+        raise DrawProviderContractError(
+            "official API drawNumberSize has an unexpected length"
+        )
 
     main_numbers = tuple(sorted(numbers_int[: config.numbers_count]))
-    special_numbers = tuple(numbers_int[config.numbers_count :]) if config.has_special else ()
+    special_numbers = (numbers_int[config.numbers_count],) if config.has_special else ()
 
     if not (date_from <= draw_date <= date_to):
         return None

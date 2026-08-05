@@ -21,7 +21,9 @@ from lottolab.application.ports import (
     P638All10RankingQueryRepository,
     P638HistoricalQueryRepository,
     ReplayScoringProjectionReader,
+    T539HistoricalQueryRepository,
 )
+from lottolab.application.t539_historical import T539HistoricalResultsUnavailableError
 from lottolab.application.use_cases.query_replay_scoring_projection import (
     ReplayScoringQueryUnavailableError,
 )
@@ -48,11 +50,18 @@ from lottolab.infrastructure.persistence.replay_scoring_projection_repository im
 from lottolab.infrastructure.persistence.replay_scoring_schema import (
     verify_schema_read_only as verify_replay_scoring_schema_read_only,
 )
+from lottolab.infrastructure.persistence.t539_historical_repositories import (
+    SQLiteT539HistoricalQueryRepository,
+)
+from lottolab.infrastructure.persistence.t539_historical_repositories import (
+    verify_schema_read_only as verify_t539_historical_schema_read_only,
+)
 from lottolab.infrastructure.taiwan_lottery_draw_provider import TaiwanLotteryDrawProvider
 from lottolab.interfaces.api.app import create_app
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 P638_ALL10_RANKING_DB_ENV = "LOTTOLAB_P638_ALL10_RANKING_DB"
+T539_HISTORICAL_DB_ENV = "LOTTOLAB_T539_HISTORICAL_DB"
 DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
 OFFICIAL_TAIWAN_LOTTERY_SOURCE = "OFFICIAL_TAIWAN_LOTTERY"
@@ -176,12 +185,49 @@ def local_p638_all10_ranking_composition(
     return LocalP638All10RankingComposition(database=Path(configured))
 
 
+@dataclass(frozen=True)
+class LocalT539HistoricalComposition:
+    """One lazy read-only factory bound to the sealed T539 Wave 1 database.
+
+    Distinct from ``LocalHistoricalComposition``: T539 Wave 1 has its own
+    flat schema and its own database file, never the shared Historical
+    Results projection P638 reads.
+    """
+
+    database: Path
+
+    def t539_historical_query_repository(self) -> T539HistoricalQueryRepository:
+        try:
+            available = verify_t539_historical_schema_read_only(self.database)
+        except Exception as exc:
+            raise T539HistoricalResultsUnavailableError(
+                "configured T539 Wave 1 storage is unavailable"
+            ) from exc
+        if not available:
+            raise T539HistoricalResultsUnavailableError(
+                "configured T539 Wave 1 storage is unavailable"
+            )
+        return SQLiteT539HistoricalQueryRepository(self.database)
+
+
+def local_t539_historical_composition(
+    environment: Mapping[str, str],
+) -> LocalT539HistoricalComposition | None:
+    """Resolve one exact optional value without trimming, guessing, or filesystem access."""
+
+    configured = environment.get(T539_HISTORICAL_DB_ENV)
+    if configured is None or configured == "":
+        return None
+    return LocalT539HistoricalComposition(database=Path(configured))
+
+
 def create_local_app() -> FastAPI:
     """Compose the normal local app without opening or modifying any database."""
 
     composition = local_historical_composition(os.environ)
     replay_scoring_composition = local_replay_scoring_composition(os.environ)
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
+    t539_historical_composition = local_t539_historical_composition(os.environ)
     provider = local_draw_provider(os.environ)
     replay_scoring_projection_reader_factory = (
         replay_scoring_composition.replay_scoring_projection_reader
@@ -193,11 +239,17 @@ def create_local_app() -> FastAPI:
         if all10_ranking_composition is None
         else all10_ranking_composition.p638_all10_ranking_query_repository
     )
+    t539_historical_query_repository_factory = (
+        None
+        if t539_historical_composition is None
+        else t539_historical_composition.t539_historical_query_repository
+    )
     if composition is None:
         return create_app(
             draw_data_provider_factory=lambda: provider,
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
             p638_all10_ranking_query_repository_factory=all10_ranking_factory,
+            t539_historical_query_repository_factory=t539_historical_query_repository_factory,
         )
     return create_app(
         draw_data_provider_factory=lambda: provider,
@@ -208,6 +260,7 @@ def create_local_app() -> FastAPI:
         ),
         replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
         p638_all10_ranking_query_repository_factory=all10_ranking_factory,
+        t539_historical_query_repository_factory=t539_historical_query_repository_factory,
     )
 
 
@@ -237,10 +290,13 @@ __all__ = [
     "HISTORICAL_RESULTS_DB_ENV",
     "OFFICIAL_TAIWAN_LOTTERY_SOURCE",
     "REPLAY_SCORING_DB_ENV",
+    "T539_HISTORICAL_DB_ENV",
     "LocalHistoricalComposition",
     "LocalReplayScoringComposition",
+    "LocalT539HistoricalComposition",
     "create_local_app",
     "local_draw_provider",
     "local_historical_composition",
     "local_replay_scoring_composition",
+    "local_t539_historical_composition",
 ]

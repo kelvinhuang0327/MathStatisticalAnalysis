@@ -44,6 +44,16 @@ from lottolab.application.p638_historical import (
     P638TargetDetail,
 )
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
+from lottolab.application.t539_historical import (
+    T539CoverageLedger,
+    T539RankingPage,
+    T539ReplayPage,
+    T539ReplayQuery,
+    T539RunPage,
+    T539StrategyMetrics,
+    T539StrategyPage,
+    T539TargetDetail,
+)
 from lottolab.domain.batch_imports import (
     BatchDrawImportCommit,
     BatchDrawImportPreview,
@@ -285,6 +295,49 @@ class P638All10RankingQueryRepository(Protocol):
 
 
 type P638All10RankingQueryRepositoryFactory = Callable[[], P638All10RankingQueryRepository]
+
+
+class T539HistoricalQueryRepository(Protocol):
+    """Read-only, DAILY_539-scoped query port over the sealed T539 Wave 1 run.
+
+    Unlike the P638 verticals, T539 Wave 1 has no forwarding step and no
+    separate ranking projection: this single port reads directly from the
+    frozen Wave 1 database's own flat schema, including the static coverage
+    ledger (executed and blocked strategy identities).
+    """
+
+    def list_runs(self, *, limit: int, offset: int) -> T539RunPage:
+        """Return the sealed Wave 1 run(s), newest first."""
+        ...
+
+    def list_strategies(self, run_id: str, *, limit: int, offset: int) -> T539StrategyPage | None:
+        """Return the eight executed strategies for one run, or ``None``."""
+        ...
+
+    def list_replay(self, run_id: str, query: T539ReplayQuery) -> T539ReplayPage | None:
+        """Return paginated targets and their tickets for one run, or ``None``."""
+        ...
+
+    def get_target(self, run_id: str, target_id: str) -> T539TargetDetail | None:
+        """Return one target and its ordered tickets, or ``None``."""
+        ...
+
+    def get_metrics(
+        self, run_id: str, *, strategy_id: str | None = None
+    ) -> T539StrategyMetrics | None:
+        """Return server-side target, ticket, and hit distributions."""
+        ...
+
+    def list_rankings(self, run_id: str) -> T539RankingPage | None:
+        """Return exactly 8 official-prize ranking rows, or ``None``."""
+        ...
+
+    def get_coverage_ledger(self, run_id: str) -> T539CoverageLedger | None:
+        """Return the complete Wave 1 coverage ledger, or ``None``."""
+        ...
+
+
+type T539HistoricalQueryRepositoryFactory = Callable[[], T539HistoricalQueryRepository]
 
 
 @runtime_checkable

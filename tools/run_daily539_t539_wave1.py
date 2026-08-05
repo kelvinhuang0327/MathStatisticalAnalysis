@@ -39,6 +39,7 @@ from lottolab.strategies.adapters.daily539_portfolio_phase2 import (
     Daily539AcbMarkovMidfreq3BetAdapter,
 )
 from lottolab.strategies.adapters.daily539_single_legacy import (
+    Daily539Acb1BetAdapter,
     Daily539AcbSingleAdapter,
     Daily539Markov1BetAdapter,
 )
@@ -336,9 +337,55 @@ WAVE2_F4COLD_SINGLE_CONFIG = StrategySetConfig(
     blocked_strategies=WAVE2_F4COLD_SINGLE_BLOCKED_STRATEGIES,
 )
 
+WAVE3_ACB1_ALIAS_RUN_ID = "T539_WAVE3_ACB1_ALIAS_COVERAGE_CLOSURE_R1"
+WAVE3_ACB1_ALIAS_SCHEMA_VERSION = "t539-wave3-acb1-alias-v1"
+WAVE3_ACB1_ALIAS_DB_NAME = "t539_wave3_acb1_alias.sqlite3"
+
+WAVE3_ACB1_ALIAS_STRATEGY_SPECS: tuple[StrategySpec, ...] = (
+    *WAVE2_F4COLD_SINGLE_STRATEGY_SPECS,
+    StrategySpec(
+        strategy_id="acb_1bet",
+        strategy_name="今彩539 ACB 1注",
+        strategy_version="v0.1-p31a",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539Acb1BetAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_single_legacy.py",
+            "LotteryNewMeraged/lottery_api/models/p31a_wave1_retired_adapters.py",
+            "LotteryNewMeraged/lottery_api/models/replay_strategy_registry.py",
+        ),
+        selection_reason=(
+            "Wave 3 alias coverage closure: the P31A-retired acb_1bet donor "
+            "(strategy_version v0.1-p31a) computes the identical ACB formula "
+            "already exposed as acb_single_539's producer, so this identity is "
+            "closed by reusing that one producer without duplicating the "
+            "algorithm under a second name."
+        ),
+    ),
+)
+
+WAVE3_ACB1_ALIAS_BLOCKED_STRATEGIES: tuple[dict[str, str], ...] = tuple(
+    entry
+    for entry in WAVE2_F4COLD_SINGLE_BLOCKED_STRATEGIES
+    if entry["strategy_id"] != "acb_1bet"
+)
+
+WAVE3_ACB1_ALIAS_CONFIG = StrategySetConfig(
+    name="wave3-acb1-alias",
+    run_id=WAVE3_ACB1_ALIAS_RUN_ID,
+    schema_version=WAVE3_ACB1_ALIAS_SCHEMA_VERSION,
+    db_name=WAVE3_ACB1_ALIAS_DB_NAME,
+    default_runtime_root_name=WAVE3_ACB1_ALIAS_RUN_ID,
+    specs=WAVE3_ACB1_ALIAS_STRATEGY_SPECS,
+    blocked_strategies=WAVE3_ACB1_ALIAS_BLOCKED_STRATEGIES,
+)
+
 STRATEGY_SET_CONFIGS: Mapping[str, StrategySetConfig] = {
     WAVE1_CONFIG.name: WAVE1_CONFIG,
     WAVE2_F4COLD_SINGLE_CONFIG.name: WAVE2_F4COLD_SINGLE_CONFIG,
+    WAVE3_ACB1_ALIAS_CONFIG.name: WAVE3_ACB1_ALIAS_CONFIG,
 }
 
 

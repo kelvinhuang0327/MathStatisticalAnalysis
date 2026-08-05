@@ -11,6 +11,7 @@ import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638Stra
 import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
 import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidencePage.vue'
+import T539StrategyAnalysisPage from './features/t539-strategy-analysis/T539StrategyAnalysisPage.vue'
 
 type Page =
   | 'strategies'
@@ -22,6 +23,7 @@ type Page =
   | 'live-zone-split-bets'
   | 'p638-historical-replay'
   | 'p638-strategy-analysis'
+  | 't539-strategy-analysis'
   | 'replay-history'
 
 const currentPage = ref<Page>(pageFromHash())
@@ -36,6 +38,7 @@ function pageFromHash(): Page {
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
   if (route === 'p638-historical-replay') return 'p638-historical-replay'
   if (route === 'p638-strategy-analysis') return 'p638-strategy-analysis'
+  if (route === 't539-strategy-analysis') return 't539-strategy-analysis'
   if (route === 'replay-history') return 'replay-history'
   return 'strategies'
 }
@@ -105,6 +108,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
           P638 Analysis
         </a>
         <a
+          href="#/t539-strategy-analysis"
+          :aria-current="currentPage === 't539-strategy-analysis' ? 'page' : undefined"
+        >
+          T539 Analysis
+        </a>
+        <a
           href="#/replay-history"
           :aria-current="currentPage === 'replay-history' ? 'page' : undefined"
         >
@@ -124,7 +133,8 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <LiveZoneSplitBetsPage v-else-if="currentPage === 'live-zone-split-bets'" />
       <P638HistoricalReplayPage v-else-if="currentPage === 'p638-historical-replay'" />
       <ReplayHistoryPage v-else-if="currentPage === 'replay-history'" />
-      <P638StrategyAnalysisPage v-else />
+      <P638StrategyAnalysisPage v-else-if="currentPage === 'p638-strategy-analysis'" />
+      <T539StrategyAnalysisPage v-else />
     </main>
 
     <footer class="app-footer">
@@ -153,6 +163,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'p638-strategy-analysis'">
         P638 analysis reports stored replay coverage and hit distributions only; no betting or
         predictive claim is made.
+      </template>
+      <template v-else-if="currentPage === 't539-strategy-analysis'">
+        T539 historical rankings are descriptive evidence only, drawn from stored replay results.
+        They do not guarantee future winning.
       </template>
       <template v-else-if="currentPage === 'replay-history'">
         Historical success rates, rankings, and random-baseline differences are descriptive

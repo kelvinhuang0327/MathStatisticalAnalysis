@@ -307,6 +307,7 @@ describe('App navigation', () => {
       'Live Zone Split Bets',
       'P638 Replay',
       'P638 Analysis',
+      'T539 Analysis',
       'Replay History',
     ])
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
@@ -557,6 +558,143 @@ describe('App navigation', () => {
     expect(tabUntil((element) => element.matches('input[type="search"]'))).toBe(
       wrapper.get('input[type="search"]').element,
     )
+    wrapper.unmount()
+  })
+
+  it('reaches the T539 Analysis controls via keyboard, including the run selector and a retry control', async () => {
+    window.location.hash = '#/t539-strategy-analysis'
+    const t539Run = {
+      run_id: 'run-t539-kb',
+      schema_version: 'v1',
+      lottery_type: 'DAILY_539',
+      source_endpoint: 'https://example.invalid/t539',
+      source_sha256: 'a'.repeat(64),
+      as_of_date: '2026-08-01',
+      adapter_source_commit: 'b'.repeat(40),
+      status: 'COMPLETE',
+      strategy_count: 1,
+      draw_count: 100,
+      eligible_target_count: 90,
+      ticket_count: 90,
+      failure_count: 0,
+      first_draw_id: 'draw-1',
+      first_draw_date: '2020-01-01',
+      last_draw_id: 'draw-100',
+      last_draw_date: '2026-07-30',
+    }
+    const strategy = {
+      run_id: 'run-t539-kb',
+      strategy_id: 't539_keyboard_fixture',
+      strategy_version: 'v1',
+      native_ticket_count: 1,
+      min_history: 30,
+      first_eligible_target_draw_id: 'draw-31',
+      expected_target_draw_count: 90,
+      processed_target_draw_count: 90,
+      successful_target_draw_count: 90,
+      failed_target_draw_count: 0,
+      status: 'SUCCESS',
+      ticket_count: 90,
+      winning_ticket_count: 9,
+      hit_distribution: [{ value: 3, count: 9 }],
+      first_target_draw_date: '2020-02-01',
+      last_target_draw_date: '2026-07-30',
+    }
+    const ranking = {
+      run_id: 'run-t539-kb',
+      rank: 1,
+      strategy_id: 't539_keyboard_fixture',
+      strategy_version: 'v1',
+      native_ticket_count: 1,
+      eligible_target_count: 90,
+      winning_target_count: 9,
+      winning_target_rate: 0.1,
+      total_ticket_count: 90,
+      winning_ticket_count: 9,
+      ticket_winning_rate: 0.1,
+      prize_tier_counts: [{ prize_tier: 'sixth', count: 9 }],
+      highest_prize_tier_achieved: 'sixth',
+      first_eligible_draw: 'draw-31',
+      last_eligible_draw: 'draw-100',
+      prize_rule_version: 'v1',
+      prize_rule_provenance: 'fixture',
+    }
+
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/t539-historical/runs?')) {
+        return Promise.resolve(apiResponse({ items: [t539Run], total_count: 1, limit: 25, offset: 0 }))
+      }
+      if (url.includes('/strategies?')) {
+        return Promise.resolve(
+          apiResponse({ run_id: 'run-t539-kb', items: [strategy], total_count: 1, limit: 100, offset: 0 }),
+        )
+      }
+      if (url.includes('/rankings')) {
+        return Promise.resolve(
+          apiResponse({ run_id: 'run-t539-kb', items: [ranking], disclaimer: 'fixture disclaimer' }),
+        )
+      }
+      if (url.includes('/coverage')) {
+        return Promise.resolve(
+          apiResponse({
+            run_id: 'run-t539-kb',
+            executed: [
+              {
+                strategy_id: 't539_keyboard_fixture',
+                strategy_version: 'v1',
+                native_ticket_count: 1,
+                min_history: 30,
+                selection_reason: 'wave1_fixed_scope',
+              },
+            ],
+            blocked: [
+              {
+                strategy_id: 't539_blocked_keyboard_fixture',
+                reason_code: 'INSUFFICIENT_HISTORY',
+                reason: 'not enough history for replay.',
+              },
+            ],
+            coverage_complete: false,
+          }),
+        )
+      }
+      if (url.includes('/metrics')) {
+        return Promise.resolve(
+          apiResponse({ error_code: 'T539_HISTORICAL_UNAVAILABLE', message: 'metrics sanitized unavailable' }, 503),
+        )
+      }
+      return Promise.resolve(
+        apiResponse({ records: [], page: 1, page_size: 25, total_count: 0, total_pages: 0, sort: [] }),
+      )
+    })
+
+    const wrapper = mount(App, { attachTo: document.body })
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.find('#t539-analysis-title').exists()).toBe(true)
+    expect(document.activeElement).toBe(document.body)
+
+    tabUntil(
+      (element) =>
+        element.matches('nav[aria-label="Primary navigation"] a') &&
+        element.textContent?.trim() === 'T539 Analysis',
+    )
+    expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
+
+    expect(keyboardTab().textContent?.trim()).toBe('Replay History')
+    expect(keyboardTab().textContent?.trim()).toBe('Refresh')
+    expect(keyboardTab()).toBe(wrapper.get('[data-testid="t539-run-select"]').element)
+
+    const retry = tabUntil((element) => element.matches('[data-testid="t539-retry-metrics"]'))
+    expect(retry.tagName).toBe('BUTTON')
+
+    const selectStrategyButton = tabUntil((element) =>
+      element.matches('[data-testid="t539-select-strategy-t539_keyboard_fixture"]'),
+    )
+    expect(selectStrategyButton.tagName).toBe('BUTTON')
+
     wrapper.unmount()
   })
 })

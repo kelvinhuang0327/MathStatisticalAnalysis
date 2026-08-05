@@ -20,6 +20,7 @@ from lottolab.application.ports import (
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
+    P638All10RankingQueryRepositoryFactory,
     P638HistoricalQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
     StrategyEvidenceRegistryReader,
@@ -86,6 +87,9 @@ def create_app(
     generate_live_zone_split_bets: GenerateLiveZoneSplitBets | None = None,
     historical_query_repository_factory: HistoricalResultQueryRepositoryFactory | None = None,
     p638_historical_query_repository_factory: P638HistoricalQueryRepositoryFactory | None = None,
+    p638_all10_ranking_query_repository_factory: (
+        P638All10RankingQueryRepositoryFactory | None
+    ) = None,
     historical_prefix_analytics_result_provider: (
         HistoricalPrefixAnalyticsResultProvider | None
     ) = None,
@@ -172,7 +176,12 @@ def create_app(
     app.include_router(create_generate_bet_router(resolved_generate_one_bet))
     app.include_router(create_live_zone_split_router(resolved_generate_live_zone_split_bets))
     app.include_router(create_historical_results_router(historical_query_repository_factory))
-    app.include_router(create_p638_historical_router(p638_historical_query_repository_factory))
+    app.include_router(
+        create_p638_historical_router(
+            p638_historical_query_repository_factory,
+            all10_ranking_repository_factory=p638_all10_ranking_query_repository_factory,
+        )
+    )
     app.include_router(
         create_historical_prefix_analytics_router(historical_prefix_analytics_result_provider)
     )

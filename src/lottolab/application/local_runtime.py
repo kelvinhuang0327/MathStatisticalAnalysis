@@ -75,6 +75,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/p638-historical/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/metrics": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/rankings": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/rankings": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/strategies": frozenset({"get"}),
     (

@@ -194,6 +194,39 @@ class P638StrategyMetrics:
 
 
 @dataclass(frozen=True, slots=True)
+class P638RankingRecord:
+    """One strategy's official-prize historical performance, all 10 always present.
+
+    Ranking describes past replay only; it never predicts future winning.
+    """
+
+    run_id: str
+    rank: int
+    strategy_id: str
+    strategy_version: str
+    native_ticket_count: int
+    eligible_target_count: int
+    winning_target_count: int
+    winning_target_rate: float
+    total_complete_ticket_count: int
+    winning_ticket_count: int
+    ticket_winning_rate: float
+    prize_tier_counts: tuple[tuple[str, int], ...]
+    highest_prize_tier_achieved: str | None
+    first_eligible_draw: str | None
+    last_eligible_draw: str | None
+    prize_rule_version: str
+    prize_rule_provenance: str
+    provenance: str
+
+
+@dataclass(frozen=True, slots=True)
+class P638RankingPage:
+    run_id: str
+    items: tuple[P638RankingRecord, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class P638ForwardingResult:
     run_id: str
     import_identity_sha256: str

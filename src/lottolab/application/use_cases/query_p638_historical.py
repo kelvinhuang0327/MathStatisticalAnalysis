@@ -5,6 +5,7 @@ from __future__ import annotations
 from lottolab.application.p638_historical import (
     P638_ALLOWED_TARGET_STATUSES,
     P638HistoricalQueryError,
+    P638RankingPage,
     P638ReplayPage,
     P638ReplayQuery,
     P638RunPage,
@@ -12,7 +13,10 @@ from lottolab.application.p638_historical import (
     P638StrategyPage,
     P638TargetDetail,
 )
-from lottolab.application.ports import P638HistoricalQueryRepositoryFactory
+from lottolab.application.ports import (
+    P638All10RankingQueryRepositoryFactory,
+    P638HistoricalQueryRepositoryFactory,
+)
 
 MIN_LIMIT = 1
 MAX_LIMIT = 200
@@ -105,3 +109,14 @@ class GetP638Metrics:
         if strategy_id is not None and not strategy_id:
             raise P638HistoricalQueryError("strategy_id is invalid")
         return self._repository_factory().get_metrics(run_id, strategy_id=strategy_id)
+
+
+class ListP638Rankings:
+    """All-10 official-prize historical ranking, distinct from the P638 V2 projection."""
+
+    def __init__(self, repository_factory: P638All10RankingQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str) -> P638RankingPage | None:
+        _validate_run_id(run_id)
+        return self._repository_factory().list_rankings(run_id)

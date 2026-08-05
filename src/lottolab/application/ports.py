@@ -35,6 +35,7 @@ from lottolab.application.historical_queries import (
     HistoricalStrategySummaryList,
 )
 from lottolab.application.p638_historical import (
+    P638RankingPage,
     P638ReplayPage,
     P638ReplayQuery,
     P638RunPage,
@@ -54,6 +55,7 @@ from lottolab.domain.ingestion import DrawCsvParseResult
 from lottolab.domain.ordered_candidate_materialization import (
     OrderedCandidateSourceSnapshot,
 )
+from lottolab.domain.prize_evaluation import PrizeEvaluationResult
 from lottolab.domain.replay_history import ReplayCausalDrawRow
 from lottolab.domain.replay_scoring import (
     ReplayTargetOutcomeReadResult,
@@ -268,6 +270,23 @@ class P638HistoricalQueryRepository(Protocol):
 type P638HistoricalQueryRepositoryFactory = Callable[[], P638HistoricalQueryRepository]
 
 
+class P638All10RankingQueryRepository(Protocol):
+    """Read-only, POWER_LOTTO-scoped query port for the all-10 prize-ranking projection.
+
+    Distinct from :class:`P638HistoricalQueryRepository`: that port reads the
+    frozen 8-strategy P638 Historical Results V2 projection, never mutated by
+    this port's data. This port reads the separate all-10 executable-strategy
+    official-prize ranking projection.
+    """
+
+    def list_rankings(self, run_id: str) -> P638RankingPage | None:
+        """Return exactly 10 ranking rows for one completed run, or ``None``."""
+        ...
+
+
+type P638All10RankingQueryRepositoryFactory = Callable[[], P638All10RankingQueryRepository]
+
+
 @runtime_checkable
 class HistoricalPrefixSuccessWindowSourceReader(Protocol):
     """Narrow read-only boundary for one exact persisted Historical Prefix source."""
@@ -421,3 +440,24 @@ type OrderedCandidateMaterializationReaderFactory = Callable[
     [], OrderedCandidateMaterializationReader
 ]
 type OrderedCandidatePackageWriterFactory = Callable[[], OrderedCandidatePackageWriter]
+
+
+@runtime_checkable
+class LotteryPrizeEvaluator(Protocol):
+    """Official prize-tier evaluation dispatched by lottery type.
+
+    Each lottery type owns its distinct prize rules; this port never applies
+    one lottery's hit signature to another's tiers.
+    """
+
+    def evaluate(
+        self,
+        *,
+        lottery_type: LotteryType,
+        predicted_main_numbers: tuple[int, ...],
+        predicted_special_number: int | None,
+        winning_main_numbers: tuple[int, ...],
+        winning_special_number: int | None,
+    ) -> PrizeEvaluationResult:
+        """Score one ticket against one draw under that lottery's official rules."""
+        ...

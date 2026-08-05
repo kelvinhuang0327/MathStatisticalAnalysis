@@ -314,6 +314,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/p638-historical/runs/{run_id}/replay": {"get": {}},
         "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {"get": {}},
         "/api/v1/p638-historical/runs/{run_id}/metrics": {"get": {}},
+        "/api/v1/p638-historical/runs/{run_id}/rankings": {"get": {}},
         "/api/v1/historical-results/portfolios/{portfolio_id}": {"get": {}},
         "/api/v1/historical-prefix-analytics/rankings": {"get": {}},
         "/api/v1/historical-prefix-analytics/strategies": {"get": {}},

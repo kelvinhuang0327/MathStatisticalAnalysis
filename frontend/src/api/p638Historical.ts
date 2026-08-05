@@ -7,6 +7,9 @@ export type P638StrategyPage = paths['/api/v1/p638-historical/runs/{run_id}/stra
 export type P638Replay = components['schemas']['P638ReplayView']
 export type P638ReplayPage = paths['/api/v1/p638-historical/runs/{run_id}/replay']['get']['responses'][200]['content']['application/json']
 export type P638Metrics = components['schemas']['P638MetricsResponse']
+export type P638Ranking = components['schemas']['P638RankingView']
+export type P638RankingPage =
+  paths['/api/v1/p638-historical/runs/{run_id}/rankings']['get']['responses'][200]['content']['application/json']
 export type P638Status = 'COMPLETE' | 'EXCLUDED_INSUFFICIENT_HISTORY' | 'FAILED'
 export type P638RequestErrorKind =
   | 'NOT_CONFIGURED'
@@ -123,6 +126,12 @@ export async function getP638Target(
   return payload
 }
 
+export async function getP638Rankings(runId: string, signal?: AbortSignal): Promise<P638RankingPage> {
+  const payload = await requestJson(`${RUNS_ENDPOINT}/${encodeURIComponent(runId)}/rankings`, signal)
+  if (!isP638RankingPage(payload)) throw malformedResponse()
+  return payload
+}
+
 async function requestJson(url: string, signal?: AbortSignal): Promise<unknown> {
   let response: Response
   try {
@@ -211,6 +220,25 @@ function isP638Metrics(value: unknown): value is P638Metrics {
     typeof value.target_count === 'number' &&
     Array.isArray(value.zone1_hit_distribution) &&
     Array.isArray(value.zone2_hit_distribution)
+  )
+}
+
+function isP638RankingPage(value: unknown): value is P638RankingPage {
+  return (
+    isRecord(value) &&
+    typeof value.run_id === 'string' &&
+    Array.isArray(value.items) &&
+    value.items.every(isP638Ranking)
+  )
+}
+
+function isP638Ranking(value: unknown): value is P638Ranking {
+  return (
+    isRecord(value) &&
+    typeof value.strategy_id === 'string' &&
+    typeof value.rank === 'number' &&
+    typeof value.winning_target_rate === 'number' &&
+    Array.isArray(value.prize_tier_counts)
   )
 }
 

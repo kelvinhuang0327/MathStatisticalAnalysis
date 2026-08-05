@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict
 
 from lottolab.application.p638_historical import (
     P638HistoricalQueryError,
+    P638RankingPage,
+    P638RankingRecord,
     P638ReplayPage,
     P638ReplayRecord,
     P638RunPage,
@@ -21,12 +23,16 @@ from lottolab.application.p638_historical import (
     P638StrategyRecord,
     P638TicketRecord,
 )
-from lottolab.application.ports import P638HistoricalQueryRepositoryFactory
+from lottolab.application.ports import (
+    P638All10RankingQueryRepositoryFactory,
+    P638HistoricalQueryRepositoryFactory,
+)
 from lottolab.application.use_cases.query_p638_historical import (
     MAX_LIMIT,
     MIN_LIMIT,
     GetP638Metrics,
     GetP638Target,
+    ListP638Rankings,
     ListP638Replay,
     ListP638Runs,
     ListP638Strategies,
@@ -377,8 +383,84 @@ class P638MetricsResponse(BaseModel):
         )
 
 
+class P638PrizeTierCountView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    prize_tier: str
+    count: int
+
+
+class P638RankingView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    run_id: str
+    rank: int
+    strategy_id: str
+    strategy_version: str
+    native_ticket_count: int
+    eligible_target_count: int
+    winning_target_count: int
+    winning_target_rate: float
+    total_complete_ticket_count: int
+    winning_ticket_count: int
+    ticket_winning_rate: float
+    prize_tier_counts: list[P638PrizeTierCountView]
+    highest_prize_tier_achieved: str | None
+    first_eligible_draw: str | None
+    last_eligible_draw: str | None
+    prize_rule_version: str
+    prize_rule_provenance: str
+    provenance: str
+
+    @classmethod
+    def from_record(cls, value: P638RankingRecord) -> P638RankingView:
+        return cls(
+            run_id=value.run_id,
+            rank=value.rank,
+            strategy_id=value.strategy_id,
+            strategy_version=value.strategy_version,
+            native_ticket_count=value.native_ticket_count,
+            eligible_target_count=value.eligible_target_count,
+            winning_target_count=value.winning_target_count,
+            winning_target_rate=value.winning_target_rate,
+            total_complete_ticket_count=value.total_complete_ticket_count,
+            winning_ticket_count=value.winning_ticket_count,
+            ticket_winning_rate=value.ticket_winning_rate,
+            prize_tier_counts=[
+                P638PrizeTierCountView(prize_tier=tier_id, count=count)
+                for tier_id, count in value.prize_tier_counts
+            ],
+            highest_prize_tier_achieved=value.highest_prize_tier_achieved,
+            first_eligible_draw=value.first_eligible_draw,
+            last_eligible_draw=value.last_eligible_draw,
+            prize_rule_version=value.prize_rule_version,
+            prize_rule_provenance=value.prize_rule_provenance,
+            provenance=value.provenance,
+        )
+
+
+class P638RankingPageResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    run_id: str
+    items: list[P638RankingView]
+    disclaimer: str = (
+        "Historical winning rank describes past replay only and does not "
+        "guarantee future winning."
+    )
+
+    @classmethod
+    def from_page(cls, page: P638RankingPage) -> P638RankingPageResponse:
+        return cls(
+            run_id=page.run_id,
+            items=[P638RankingView.from_record(item) for item in page.items],
+        )
+
+
 def create_p638_historical_router(
     repository_factory: P638HistoricalQueryRepositoryFactory | None,
+    *,
+    all10_ranking_repository_factory: P638All10RankingQueryRepositoryFactory | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix=f"{API_PREFIX}/p638-historical", tags=["p638-historical"])
     list_runs = ListP638Runs(repository_factory) if repository_factory is not None else None
@@ -388,6 +470,11 @@ def create_p638_historical_router(
     list_replay = ListP638Replay(repository_factory) if repository_factory is not None else None
     get_target = GetP638Target(repository_factory) if repository_factory is not None else None
     get_metrics = GetP638Metrics(repository_factory) if repository_factory is not None else None
+    list_rankings = (
+        ListP638Rankings(all10_ranking_repository_factory)
+        if all10_ranking_repository_factory is not None
+        else None
+    )
 
     @router.get(
         "/runs",
@@ -526,6 +613,31 @@ def create_p638_historical_router(
             _not_found("P638_RUN_NOT_FOUND")
             if value is None
             else P638MetricsResponse.from_metrics(value)
+        )
+
+    @router.get(
+        "/runs/{run_id}/rankings",
+        response_model=P638RankingPageResponse,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="listP638HistoricalRankings",
+    )
+    def list_p638_rankings(run_id: RunId) -> P638RankingPageResponse | JSONResponse:
+        if list_rankings is None:
+            return _not_configured()
+        try:
+            page = list_rankings.execute(run_id)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_RUN_NOT_FOUND")
+            if page is None
+            else P638RankingPageResponse.from_page(page)
         )
 
     return router

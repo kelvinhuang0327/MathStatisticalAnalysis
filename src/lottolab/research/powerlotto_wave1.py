@@ -36,9 +36,11 @@ SOURCE_START_MONTH = "2008-01"
 SOURCE_END_MONTH = "2026-07"
 BASE_SOURCE_COMMIT = "2573900481c376e3229b4d413f60c91cc54a1295"
 
-# The two RSR-6 identities are retained in the research ledger as explicit
-# blocked alternatives.  Wave 1 selects the eight reconstructable identities
-# with complete first-zone sources after that exclusion.
+# All 10 identities in the P638 exact strategy universe are now
+# reconstructable and executable.  The former RSR-6/DEFERRED_WAVE_2
+# donor-ledger blocks on power_orthogonal_5bet and power_fourier_rhythm_2bet
+# are superseded: both now have native adapters in
+# lottolab.strategies.adapters.powerlotto_wave1.WAVE1_STRATEGIES.
 WAVE1_SELECTED_STRATEGY_IDS = (
     "zonal_entropy_2bet",
     "cold_complement_2bet",
@@ -48,24 +50,11 @@ WAVE1_SELECTED_STRATEGY_IDS = (
     "fourier_rhythm_3bet",
     "power_precision_3bet",
     "pp3_freqort_4bet",
+    "power_fourier_rhythm_2bet",
+    "power_orthogonal_5bet",
 )
 
-WAVE1_DONOR_BLOCKED_STRATEGIES = (
-    {
-        "strategy_id": "power_orthogonal_5bet",
-        "source_paths": ["lottery_api/models/p128_wave2_phase2_adapters.py"],
-        "reason": (
-            "RSR-6 donor ledger retains 20 orphan bet-index=2 rows; deferred until reconciliation"
-        ),
-        "disposition": "BLOCKED_DEFERRED_WAVE",
-    },
-    {
-        "strategy_id": "power_fourier_rhythm_2bet",
-        "source_paths": ["lottery_api/models/p93_tierb_replay_adapters.py"],
-        "reason": "reconstructable donor is outside the bounded P47/P56/P128 adapter wave",
-        "disposition": "DEFERRED_WAVE_2",
-    },
-)
+WAVE1_DONOR_BLOCKED_STRATEGIES: tuple[dict[str, object], ...] = ()
 
 
 class StrategyCallable(Protocol):

@@ -77,6 +77,13 @@ not by reading the source, are load-bearing here and are NOT bugs to "fix":
    ``_v6_frequency_ticket`` below model this exactly for these two donor
    call sites; they are deliberately NOT a drop-in replacement for any other
    caller of the donor's ``bayesian_predict``/``frequency_predict``.
+3. ``BiglottoGraph.build_from_history`` documents that it expects ASC-ordered
+   history, but V6's ``predict_3bets`` calls it with the same raw DESC
+   ``history`` described in point 2 above. Its internal ``lookback``-window
+   slice (``history[-lookback:]`` on that DESC list) therefore selects the
+   OLDEST ``lookback`` draws of the causal window, not the newest --
+   ``_graph_adjacency`` below reproduces this by taking the *front* of this
+   framework's oldest-first window (``history[:500]``) rather than the tail.
 """
 
 # pyright: reportPrivateUsage=false
@@ -600,10 +607,9 @@ class BigLottoDiversifiedEnsembleV6Adapter(PortfolioBetAdapter):
         final_bet3 = tuple(sorted(pool_3[:_PICK]))
         for _attempt in range(200):
             sample = tuple(sorted(rng.sample(pool_3, _PICK)))
-            if (
-                sum(1 for number in sample if number % 2 == 1) >= target_odd_count
-                and _validate_combination(sample, stats)
-            ):
+            if sum(
+                1 for number in sample if number % 2 == 1
+            ) >= target_odd_count and _validate_combination(sample, stats):
                 final_bet3 = sample
                 break
 

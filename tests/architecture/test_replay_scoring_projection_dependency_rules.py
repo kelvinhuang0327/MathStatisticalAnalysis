@@ -97,6 +97,7 @@ def test_projection_query_dependencies_are_confined_to_the_read_only_api() -> No
     api_app = SRC / "interfaces" / "api" / "app.py"
     api_router = SRC / "interfaces" / "api" / "replay_scoring_projections.py"
     ranking_router = SRC / "interfaces" / "api" / "replay_portfolio_rankings.py"
+    local_app = SRC / "interfaces" / "api" / "local_app.py"
     generated_contract = (
         REPO_ROOT / "frontend" / "src" / "api" / "generated" / "openapi.d.ts"
     )
@@ -114,7 +115,7 @@ def test_projection_query_dependencies_are_confined_to_the_read_only_api() -> No
             ):
                 referenced_paths.add(path)
 
-    assert referenced_paths == {api_app, api_router, ranking_router}
+    assert referenced_paths == {api_app, api_router, ranking_router, local_app}
 
     router_imports = _imports(api_router)
     assert "lottolab.application.ports" in router_imports

@@ -20,6 +20,10 @@ from lottolab.application.ports import (
     HistoricalResultQueryRepository,
     P638All10RankingQueryRepository,
     P638HistoricalQueryRepository,
+    ReplayScoringProjectionReader,
+)
+from lottolab.application.use_cases.query_replay_scoring_projection import (
+    ReplayScoringQueryUnavailableError,
 )
 from lottolab.infrastructure.draw_provider import JsonHttpDrawDataProvider
 from lottolab.infrastructure.persistence.historical_prefix_success_window_reader import (
@@ -38,11 +42,18 @@ from lottolab.infrastructure.persistence.p638_all10_ranking_schema import (
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
+from lottolab.infrastructure.persistence.replay_scoring_projection_repository import (
+    SQLiteReplayScoringProjectionRepository,
+)
+from lottolab.infrastructure.persistence.replay_scoring_schema import (
+    verify_schema_read_only as verify_replay_scoring_schema_read_only,
+)
 from lottolab.interfaces.api.app import create_app
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 P638_ALL10_RANKING_DB_ENV = "LOTTOLAB_P638_ALL10_RANKING_DB"
 DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
+REPLAY_SCORING_DB_ENV = "LOTTOLAB_REPLAY_SCORING_DB"
 
 
 @dataclass(frozen=True)
@@ -81,6 +92,37 @@ class LocalHistoricalComposition:
         if for_success_windows:
             raise HistoricalPrefixSuccessWindowsUnavailableError(message) from cause
         raise HistoricalResultsUnavailableError(message) from cause
+
+
+@dataclass(frozen=True)
+class LocalReplayScoringComposition:
+    """One lazy read-only factory bound to one exact configured path."""
+
+    database: Path
+
+    def replay_scoring_projection_reader(self) -> ReplayScoringProjectionReader:
+        try:
+            available = verify_replay_scoring_schema_read_only(self.database)
+        except Exception as exc:
+            raise ReplayScoringQueryUnavailableError(
+                "configured replay-scoring storage is unavailable"
+            ) from exc
+        if not available:
+            raise ReplayScoringQueryUnavailableError(
+                "configured replay-scoring storage is unavailable"
+            )
+        return SQLiteReplayScoringProjectionRepository(self.database)
+
+
+def local_replay_scoring_composition(
+    environment: Mapping[str, str],
+) -> LocalReplayScoringComposition | None:
+    """Resolve one exact optional value without trimming, guessing, or filesystem access."""
+
+    configured = environment.get(REPLAY_SCORING_DB_ENV)
+    if configured is None or configured == "":
+        return None
+    return LocalReplayScoringComposition(database=Path(configured))
 
 
 def local_historical_composition(
@@ -135,8 +177,14 @@ def create_local_app() -> FastAPI:
     """Compose the normal local app without opening or modifying any database."""
 
     composition = local_historical_composition(os.environ)
+    replay_scoring_composition = local_replay_scoring_composition(os.environ)
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
     provider = local_draw_provider(os.environ)
+    replay_scoring_projection_reader_factory = (
+        replay_scoring_composition.replay_scoring_projection_reader
+        if replay_scoring_composition is not None
+        else None
+    )
     all10_ranking_factory = (
         None
         if all10_ranking_composition is None
@@ -145,6 +193,7 @@ def create_local_app() -> FastAPI:
     if composition is None:
         return create_app(
             draw_data_provider_factory=lambda: provider,
+            replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
             p638_all10_ranking_query_repository_factory=all10_ranking_factory,
         )
     return create_app(
@@ -154,6 +203,7 @@ def create_local_app() -> FastAPI:
         historical_prefix_success_window_source_reader_factory=(
             composition.historical_prefix_success_window_source_reader
         ),
+        replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
         p638_all10_ranking_query_repository_factory=all10_ranking_factory,
     )
 
@@ -172,8 +222,11 @@ def local_draw_provider(
 __all__ = [
     "DRAW_PROVIDER_URL_ENV",
     "HISTORICAL_RESULTS_DB_ENV",
+    "REPLAY_SCORING_DB_ENV",
     "LocalHistoricalComposition",
+    "LocalReplayScoringComposition",
     "create_local_app",
     "local_draw_provider",
     "local_historical_composition",
+    "local_replay_scoring_composition",
 ]

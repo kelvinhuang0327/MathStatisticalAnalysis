@@ -8,6 +8,7 @@ import HistoricalSuccessWindowsPage from './features/historical-success-windows/
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
 import P638HistoricalReplayPage from './features/p638-historical-replay/P638HistoricalReplayPage.vue'
 import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638StrategyAnalysisPage.vue'
+import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
 import StrategyEvidencePage from './features/strategy-evidence/StrategyEvidencePage.vue'
 
@@ -21,6 +22,7 @@ type Page =
   | 'live-zone-split-bets'
   | 'p638-historical-replay'
   | 'p638-strategy-analysis'
+  | 'replay-history'
 
 const currentPage = ref<Page>(pageFromHash())
 
@@ -34,6 +36,7 @@ function pageFromHash(): Page {
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
   if (route === 'p638-historical-replay') return 'p638-historical-replay'
   if (route === 'p638-strategy-analysis') return 'p638-strategy-analysis'
+  if (route === 'replay-history') return 'replay-history'
   return 'strategies'
 }
 
@@ -101,6 +104,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           P638 Analysis
         </a>
+        <a
+          href="#/replay-history"
+          :aria-current="currentPage === 'replay-history' ? 'page' : undefined"
+        >
+          Replay History
+        </a>
       </nav>
       <span class="environment-badge">Local workspace</span>
     </header>
@@ -114,6 +123,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
       <LiveZoneSplitBetsPage v-else-if="currentPage === 'live-zone-split-bets'" />
       <P638HistoricalReplayPage v-else-if="currentPage === 'p638-historical-replay'" />
+      <ReplayHistoryPage v-else-if="currentPage === 'replay-history'" />
       <P638StrategyAnalysisPage v-else />
     </main>
 
@@ -143,6 +153,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'p638-strategy-analysis'">
         P638 analysis reports stored replay coverage and hit distributions only; no betting or
         predictive claim is made.
+      </template>
+      <template v-else-if="currentPage === 'replay-history'">
+        Historical success rates, rankings, and random-baseline differences are descriptive
+        research only — not a prediction, recommendation, go-live decision, or winning guarantee.
       </template>
       <template v-else>
         Local draw data stays outside Git. Import writes occur only after explicit confirmation.

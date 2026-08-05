@@ -19,17 +19,6 @@ FRONTEND_PORT = 5173
 HEALTH_PATH = "/api/health"
 STRATEGY_CATALOG_PATH = "/api/v1/strategies"
 OPENAPI_PATH = "/openapi.json"
-EXPECTED_STRATEGY_IDS = (
-    "biglotto_social_wisdom_anti_popularity",
-    "biglotto_zone_split_3bet_bet1",
-    "biglotto_zone_split_3bet_bet2",
-    "biglotto_zone_split_3bet_bet3",
-    "biglotto_deviation_2bet",
-    "biglotto_deviation_2bet_bet2",
-    "biglotto_p0_2bet_bet1",
-    "biglotto_p0_2bet_bet2",
-)
-EXECUTABLE_STRATEGY_IDS = frozenset(EXPECTED_STRATEGY_IDS)
 STATE_VERSION = 2
 _TOKEN_PATTERN = re.compile(r"^[0-9a-f]{32}$")
 _GIT_OBJECT_ID_PATTERN = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
@@ -528,33 +517,70 @@ class SmokeReport:
     frontend_url: str
 
 
+@dataclass(frozen=True)
+class ExpectedStrategy:
+    """A frozen, plain-value runtime-contract snapshot of one catalog entry.
+
+    Built by the composition root from the current source catalog; this
+    module never imports the catalog itself so the runtime baseline can
+    never silently drift from what is actually checked out.
+    """
+
+    strategy_id: str
+    lifecycle_status: str
+    executable: bool
+
+    def __post_init__(self) -> None:
+        if not self.strategy_id:
+            raise LocalRuntimeSafetyError("expected strategy_id must be a non-empty string")
+        if not self.lifecycle_status:
+            raise LocalRuntimeSafetyError(
+                "expected lifecycle_status must be a non-empty string"
+            )
+
+
 def validate_health_payload(payload: object) -> None:
     record = _object_mapping(payload, "health response")
     if record != {"status": "ok", "api_version": "v1"}:
         raise LocalRuntimeSafetyError("backend health payload is not the expected DB-free API")
 
 
-def validate_strategy_payloads(direct: object, proxied: object) -> tuple[str, ...]:
+def validate_strategy_payloads(
+    direct: object, proxied: object, expected: Sequence[ExpectedStrategy]
+) -> tuple[str, ...]:
+    if not expected:
+        raise LocalRuntimeSafetyError("expected Strategy Catalog snapshot must not be empty")
+    expected_ids = tuple(item.strategy_id for item in expected)
+    if len(set(expected_ids)) != len(expected_ids):
+        raise LocalRuntimeSafetyError(
+            "expected Strategy Catalog snapshot contains duplicate strategy IDs"
+        )
+
     if direct != proxied:
         raise LocalRuntimeSafetyError("direct and proxied Strategy Catalog responses differ")
-    if not isinstance(direct, list):
-        raise LocalRuntimeSafetyError("Strategy Catalog response must be a list")
+    if not isinstance(direct, list) or not direct:
+        raise LocalRuntimeSafetyError("Strategy Catalog response must be a non-empty list")
 
     items = cast(list[object], direct)
     records = [_object_mapping(item, "strategy record") for item in items]
     ids = tuple(_required_string(record, "strategy_id") for record in records)
-    if ids != EXPECTED_STRATEGY_IDS:
+    if len(set(ids)) != len(ids):
+        raise LocalRuntimeSafetyError("Strategy Catalog response contains duplicate strategy IDs")
+    if ids != expected_ids:
         raise LocalRuntimeSafetyError("Strategy Catalog IDs or deterministic order changed")
+
+    expected_by_id = {item.strategy_id: item for item in expected}
     for record in records:
         strategy_id = _required_string(record, "strategy_id")
-        executable = strategy_id in EXECUTABLE_STRATEGY_IDS
-        expected_status = "ONLINE" if executable else "OBSERVATION"
-        if record.get("lifecycle_status") != expected_status:
+        expectation = expected_by_id[strategy_id]
+        if record.get("lifecycle_status") != expectation.lifecycle_status:
             raise LocalRuntimeSafetyError(
-                f"{strategy_id} must report lifecycle_status={expected_status}"
+                f"{strategy_id} must report lifecycle_status={expectation.lifecycle_status}"
             )
-        if record.get("executable") is not executable:
-            raise LocalRuntimeSafetyError(f"{strategy_id} must report executable={executable}")
+        if record.get("executable") is not expectation.executable:
+            raise LocalRuntimeSafetyError(
+                f"{strategy_id} must report executable={expectation.executable}"
+            )
         if any(word in str(key).lower() for key in record for word in _FORBIDDEN_ROUTE_WORDS):
             raise LocalRuntimeSafetyError("Strategy Catalog exposed an execution control field")
     return ids

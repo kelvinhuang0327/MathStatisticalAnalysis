@@ -6,9 +6,9 @@ import pytest
 
 from lottolab.application.local_runtime import (
     BACKEND_PORT,
-    EXPECTED_STRATEGY_IDS,
     FRONTEND_PORT,
     LOCAL_HOST,
+    ExpectedStrategy,
     Listener,
     LocalRuntimePolicy,
     LocalRuntimeSafetyError,
@@ -23,6 +23,12 @@ from lottolab.application.local_runtime import (
 
 TOKEN = "a" * 32
 COMMIT = "1" * 40
+TEST_STRATEGY_IDS = (
+    "test_strategy_alpha",
+    "test_strategy_beta",
+    "test_strategy_gamma",
+    "test_strategy_delta",
+)
 
 
 def make_policy(tmp_path: Path) -> LocalRuntimePolicy:
@@ -58,7 +64,9 @@ def make_identity(
     )
 
 
-def expected_catalog() -> list[dict[str, object]]:
+def expected_catalog(
+    strategy_ids: tuple[str, ...] = TEST_STRATEGY_IDS,
+) -> list[dict[str, object]]:
     return [
         {
             "strategy_id": strategy_id,
@@ -69,8 +77,17 @@ def expected_catalog() -> list[dict[str, object]]:
             "lifecycle_status": "ONLINE",
             "executable": True,
         }
-        for strategy_id in EXPECTED_STRATEGY_IDS
+        for strategy_id in strategy_ids
     ]
+
+
+def expected_strategies(
+    strategy_ids: tuple[str, ...] = TEST_STRATEGY_IDS,
+) -> tuple[ExpectedStrategy, ...]:
+    return tuple(
+        ExpectedStrategy(strategy_id=strategy_id, lifecycle_status="ONLINE", executable=True)
+        for strategy_id in strategy_ids
+    )
 
 
 def test_state_serialization_validation_and_service_order(tmp_path: Path) -> None:
@@ -245,9 +262,21 @@ def test_state_rejects_malformed_or_missing_source_commit(
 def test_smoke_payload_contract_and_deterministic_order() -> None:
     direct = expected_catalog()
     proxied = [dict(record) for record in direct]
-    assert validate_strategy_payloads(direct, proxied) == EXPECTED_STRATEGY_IDS
+    assert validate_strategy_payloads(direct, proxied, expected_strategies()) == TEST_STRATEGY_IDS
     validate_health_payload({"status": "ok", "api_version": "v1"})
     validate_frontend_document(b'<!doctype html><div id="app"></div>')
+
+
+def test_smoke_accepts_current_source_snapshot_of_any_size() -> None:
+    """The validator must never hardcode a particular catalog size; a future
+    catalog with more (or fewer) entries than today's must pass automatically
+    as long as the response matches the current-source expected snapshot."""
+    large_ids = tuple(f"strategy_{index:03d}" for index in range(50))
+    direct = expected_catalog(large_ids)
+    proxied = [dict(record) for record in direct]
+    assert (
+        validate_strategy_payloads(direct, proxied, expected_strategies(large_ids)) == large_ids
+    )
 
 
 @pytest.mark.parametrize("mutation", ["order", "lifecycle", "executable", "proxy"])
@@ -266,7 +295,51 @@ def test_smoke_rejects_catalog_contract_drift(mutation: str) -> None:
     else:
         proxied[0]["version"] = "different"
     with pytest.raises(LocalRuntimeSafetyError):
-        validate_strategy_payloads(direct, proxied)
+        validate_strategy_payloads(direct, proxied, expected_strategies())
+
+
+def test_smoke_rejects_missing_strategy_id() -> None:
+    direct = expected_catalog()[:-1]
+    proxied = [dict(record) for record in direct]
+    with pytest.raises(LocalRuntimeSafetyError, match="IDs or deterministic order changed"):
+        validate_strategy_payloads(direct, proxied, expected_strategies())
+
+
+def test_smoke_rejects_extra_strategy_id() -> None:
+    direct = expected_catalog()
+    extra = dict(direct[0])
+    extra["strategy_id"] = "unexpected_extra_strategy"
+    direct = [*direct, extra]
+    proxied = [dict(record) for record in direct]
+    with pytest.raises(LocalRuntimeSafetyError, match="IDs or deterministic order changed"):
+        validate_strategy_payloads(direct, proxied, expected_strategies())
+
+
+def test_smoke_rejects_duplicate_strategy_ids_in_response() -> None:
+    direct = expected_catalog()
+    direct[1] = {**direct[1], "strategy_id": direct[0]["strategy_id"]}
+    proxied = [dict(record) for record in direct]
+    with pytest.raises(LocalRuntimeSafetyError, match="duplicate strategy IDs"):
+        validate_strategy_payloads(direct, proxied, expected_strategies())
+
+
+def test_smoke_rejects_empty_expected_snapshot() -> None:
+    direct = expected_catalog()
+    proxied = [dict(record) for record in direct]
+    with pytest.raises(LocalRuntimeSafetyError, match="must not be empty"):
+        validate_strategy_payloads(direct, proxied, ())
+
+
+def test_smoke_rejects_empty_catalog_response() -> None:
+    with pytest.raises(LocalRuntimeSafetyError, match="non-empty list"):
+        validate_strategy_payloads([], [], expected_strategies())
+
+
+def test_expected_strategy_rejects_blank_id_or_lifecycle_status() -> None:
+    with pytest.raises(LocalRuntimeSafetyError, match="strategy_id"):
+        ExpectedStrategy(strategy_id="", lifecycle_status="ONLINE", executable=True)
+    with pytest.raises(LocalRuntimeSafetyError, match="lifecycle_status"):
+        ExpectedStrategy(strategy_id="s", lifecycle_status="", executable=True)
 
 
 def test_smoke_accepts_exact_authorized_openapi_surface_with_path_metadata() -> None:

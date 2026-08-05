@@ -10,6 +10,7 @@ import typer
 
 from lottolab import __version__
 from lottolab.application.local_runtime import (
+    ExpectedStrategy,
     LocalRuntimeError,
     LocalRuntimePolicy,
     LocalRuntimeSafetyError,
@@ -531,7 +532,18 @@ def local_stop() -> None:
 
 def _local_supervisor() -> LocalRuntimeSupervisor:
     repository_root = Path(__file__).resolve().parents[4]
-    return LocalRuntimeSupervisor(LocalRuntimePolicy.for_repository(repository_root))
+    expected_strategies = tuple(
+        ExpectedStrategy(
+            strategy_id=descriptor.strategy_id,
+            lifecycle_status=descriptor.lifecycle_status.value,
+            executable=descriptor.executable,
+        )
+        for descriptor in production_catalog()
+    )
+    return LocalRuntimeSupervisor(
+        LocalRuntimePolicy.for_repository(repository_root),
+        expected_strategies=expected_strategies,
+    )
 
 
 def _local_failure(error: LocalRuntimeError) -> NoReturn:

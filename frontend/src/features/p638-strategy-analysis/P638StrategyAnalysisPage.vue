@@ -3,10 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
   getP638Metrics,
+  getP638Rankings,
   listP638Runs,
   listP638Strategies,
   P638HistoricalRequestError,
   type P638Metrics,
+  type P638RankingPage,
   type P638Run,
   type P638RunPage,
   type P638Strategy,
@@ -15,6 +17,7 @@ import {
 
 type State = 'loading' | 'ready' | 'empty' | 'not-configured' | 'unavailable' | 'error'
 const PAGE_SIZE = 10
+const LATEST_RANKING_RUN = 'latest'
 
 const runsState = ref<State>('loading')
 const runsPage = ref<P638RunPage | null>(null)
@@ -29,14 +32,19 @@ const metricsState = ref<State>('loading')
 const metricsMessage = ref('')
 const strategyOffset = ref(0)
 const selectedStrategyId = ref('')
+const rankingsState = ref<State>('loading')
+const rankingsPage = ref<P638RankingPage | null>(null)
+const rankingsMessage = ref('')
 
 let mounted = false
 let runsController: AbortController | undefined
 let strategyController: AbortController | undefined
 let metricsController: AbortController | undefined
+let rankingsController: AbortController | undefined
 let runsGeneration = 0
 let strategyGeneration = 0
 let metricsGeneration = 0
+let rankingsGeneration = 0
 
 const selectedRun = computed<P638Run | null>(
   () => runsPage.value?.items.find((run) => run.run_id === selectedRunId.value) ?? null,
@@ -125,6 +133,35 @@ async function loadMetrics(runId: string, strategyId: string | undefined): Promi
   }
 }
 
+async function loadRankings(): Promise<void> {
+  rankingsController?.abort()
+  const controller = new AbortController()
+  rankingsController = controller
+  const generation = ++rankingsGeneration
+  rankingsState.value = 'loading'
+  rankingsMessage.value = ''
+  try {
+    const page = await getP638Rankings(LATEST_RANKING_RUN, controller.signal)
+    if (!mounted || generation !== rankingsGeneration) return
+    rankingsPage.value = page
+    rankingsState.value = page.items.length ? 'ready' : 'empty'
+  } catch (error: unknown) {
+    if (!mounted || generation !== rankingsGeneration || isAbort(error)) return
+    rankingsPage.value = null
+    rankingsState.value = mapState(error)
+    rankingsMessage.value = errorMessage(error)
+  }
+}
+
+function formatRate(value: number): string {
+  return `${(value * 100).toFixed(1)}%`
+}
+
+function formatTierCounts(items: Array<{ prize_tier: string; count: number }>): string {
+  const won = items.filter((item) => item.count > 0)
+  return won.length ? won.map((item) => `${item.prize_tier}: ${item.count.toLocaleString()}`).join(' · ') : 'No wins'
+}
+
 function selectStrategy(strategyId: string): void {
   selectedStrategyId.value = strategyId
   selectedMetrics.value = null
@@ -165,6 +202,7 @@ function distributionText(items: Array<{ value: number; count: number }>): strin
 onMounted(() => {
   mounted = true
   void loadRuns()
+  void loadRankings()
 })
 
 onBeforeUnmount(() => {
@@ -172,6 +210,7 @@ onBeforeUnmount(() => {
   runsController?.abort()
   strategyController?.abort()
   metricsController?.abort()
+  rankingsController?.abort()
 })
 </script>
 
@@ -182,13 +221,67 @@ onBeforeUnmount(() => {
         <p class="eyebrow">Registry coverage · descriptive statistics</p>
         <h1 id="p638-analysis-title">P638 Strategy Analysis</h1>
         <p class="page-intro">
-          Inspect the versioned P638 identity ledger, replay coverage, hit distributions, and
-          provenance. Excluded identities remain visible with their exact exclusion reason. No
-          historical statistic is presented as a forecast, rank, or recommendation.
+          All 10 P638 strategy identities are executable, replayed, and ranked. No strategy is
+          hidden because of low or zero historical performance. No historical statistic is
+          presented as a forecast, rank guarantee, or recommendation.
         </p>
       </div>
-      <div class="scope-card"><span>Analysis scope</span><strong>10 identities</strong><small>8 reusable · 2 excluded</small></div>
+      <div class="scope-card"><span>Analysis scope</span><strong>10 identities</strong><small>10 executable · 0 excluded</small></div>
     </header>
+
+    <section aria-labelledby="p638-ranking-title" class="panel p638-ranking-panel">
+      <div class="panel__heading">
+        <div>
+          <p class="step-label">Historical winning performance</p>
+          <h2 id="p638-ranking-title">All-10 official prize ranking</h2>
+        </div>
+        <button class="button button--quiet" type="button" @click="loadRankings">Refresh</button>
+      </div>
+      <p class="panel__note">
+        Historical winning rank describes past replay only and does not guarantee future
+        winning.
+      </p>
+      <p v-if="rankingsState === 'loading'" class="state-panel">Loading the all-10 ranking…</p>
+      <div v-else-if="rankingsState === 'not-configured'" class="state-panel state-panel--warning">
+        <p>The all-10 ranking projection is not configured for this local runtime.</p>
+      </div>
+      <div v-else-if="rankingsState === 'unavailable' || rankingsState === 'error'" class="state-panel state-panel--error">
+        <p>{{ rankingsMessage }}</p>
+        <button class="button button--quiet" type="button" @click="loadRankings">Retry</button>
+      </div>
+      <p v-else-if="rankingsState === 'empty'" class="state-panel">No all-10 ranking run is available yet.</p>
+      <div v-else-if="rankingsPage" class="table-wrap">
+        <table>
+          <caption>10 executable strategies ranked by historical winning-target rate</caption>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Strategy</th>
+              <th>Tickets</th>
+              <th>Eligible draws</th>
+              <th>Winning draws</th>
+              <th>Winning-target rate</th>
+              <th>Ticket win rate</th>
+              <th>Highest tier</th>
+              <th>Prize tier distribution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rankingsPage.items" :key="row.strategy_id">
+              <td><strong>{{ row.rank }}</strong></td>
+              <td><strong>{{ row.strategy_id }}</strong><small>{{ row.strategy_version }}</small></td>
+              <td>{{ row.native_ticket_count }}</td>
+              <td>{{ formatCount(row.eligible_target_count) }}</td>
+              <td>{{ formatCount(row.winning_target_count) }}</td>
+              <td>{{ formatRate(row.winning_target_rate) }}</td>
+              <td>{{ formatRate(row.ticket_winning_rate) }}</td>
+              <td>{{ row.highest_prize_tier_achieved ?? 'No wins' }}</td>
+              <td><small>{{ formatTierCounts(row.prize_tier_counts) }}</small></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
 
     <p v-if="runsState === 'loading'" class="state-panel">Loading P638 analysis runs…</p>
     <div v-else-if="runsState === 'not-configured'" class="state-panel state-panel--warning"><p>Historical Results storage is not configured for this local runtime.</p></div>
@@ -215,8 +308,8 @@ onBeforeUnmount(() => {
       <div v-else-if="strategiesState === 'unavailable' || strategiesState === 'error'" class="state-panel state-panel--error"><p>{{ strategiesMessage }}</p><button class="button button--quiet" type="button" @click="loadStrategies(selectedRunId, strategyOffset)">Retry</button></div>
       <p v-else-if="strategiesState === 'empty'" class="state-panel">The P638 identity ledger is empty.</p>
       <template v-else-if="strategiesPage">
-        <div class="table-wrap"><table><caption>Versioned P638 strategy identities</caption><thead><tr><th>Identity</th><th>Lifecycle / replay</th><th>Contracts</th><th>Coverage</th><th>Provenance / exclusion</th><th>Analysis</th></tr></thead><tbody>
-          <tr v-for="strategy in strategiesPage.items" :key="strategy.strategy_snapshot_id"><td><strong>{{ strategy.strategy_id }}</strong><small>{{ strategy.display_label }}</small><small>{{ strategy.strategy_version }}</small></td><td>{{ strategy.lifecycle_status }}<small>{{ strategy.replay_status }}</small></td><td>{{ strategy.zone1_contract }}<small>{{ strategy.zone2_contract }}</small></td><td>{{ formatCount(strategy.complete_target_count) }} complete<small>{{ formatCount(strategy.excluded_target_count) }} excluded · {{ formatCount(strategy.ticket_count) }} tickets</small></td><td><code>{{ strategy.exclusion_reason ?? strategy.source_paths.join(' · ') }}</code><small>{{ strategy.provenance }}</small></td><td><button class="button button--quiet" type="button" :disabled="!strategy.executable" @click="selectStrategy(strategy.strategy_id)">{{ strategy.executable ? 'Analyse' : 'Excluded' }}</button></td></tr>
+        <div class="table-wrap"><table><caption>Versioned P638 strategy identities</caption><thead><tr><th>Identity</th><th>Lifecycle / replay</th><th>Contracts</th><th>Coverage</th><th>Provenance</th><th>Analysis</th></tr></thead><tbody>
+          <tr v-for="strategy in strategiesPage.items" :key="strategy.strategy_snapshot_id"><td><strong>{{ strategy.strategy_id }}</strong><small>{{ strategy.display_label }}</small><small>{{ strategy.strategy_version }}</small></td><td>{{ strategy.lifecycle_status }}<small>{{ strategy.replay_status }}</small></td><td>{{ strategy.zone1_contract }}<small>{{ strategy.zone2_contract }}</small></td><td>{{ formatCount(strategy.complete_target_count) }} complete<small>{{ formatCount(strategy.excluded_target_count) }} excluded · {{ formatCount(strategy.ticket_count) }} tickets</small></td><td><code>{{ strategy.source_paths.join(' · ') }}</code><small>{{ strategy.provenance }}</small></td><td><button class="button button--quiet" type="button" @click="selectStrategy(strategy.strategy_id)">Analyse</button></td></tr>
         </tbody></table></div>
         <div class="pagination p638-pagination"><button class="button button--quiet" type="button" :disabled="strategyOffset === 0" @click="changeStrategyPage(-1)">Previous</button><span>Page {{ strategyPageNumber }} / {{ strategyPageCount }}</span><button class="button button--quiet" type="button" :disabled="strategyOffset + PAGE_SIZE >= strategiesPage.total_count" @click="changeStrategyPage(1)">Next</button></div>
       </template>

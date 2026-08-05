@@ -559,7 +559,7 @@ def test_production_catalog_wave3_descriptors_declare_expected_shapes() -> None:
 def test_production_catalog_now_has_nineteen_descriptors() -> None:
     """Name pinned at the Wave 3 landing point; later waves append only."""
     catalog = production_catalog()
-    assert len(catalog) == 41
+    assert len(catalog) == 47
 
 
 def test_wave1_and_wave2_descriptors_are_unaffected_by_wave3() -> None:

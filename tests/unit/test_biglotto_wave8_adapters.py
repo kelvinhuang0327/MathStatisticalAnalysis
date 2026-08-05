@@ -460,7 +460,7 @@ def test_wave8_target_identity_is_deterministic_and_collision_free() -> None:
 def test_wave8_catalog_descriptors_are_canonical_and_exact() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
-    assert len(catalog) == 41
+    assert len(catalog) == 47
     for adapter_class, _method_id in ADAPTER_METHODS:
         source_path, source_symbol, source_sha256 = SOURCE_PROVENANCE[adapter_class]
         descriptor = catalog.get(adapter_class.strategy_id)

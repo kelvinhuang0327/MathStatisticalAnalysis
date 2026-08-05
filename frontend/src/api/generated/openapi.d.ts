@@ -790,6 +790,37 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/p638-historical/runs/{run_id}/rankings": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638RankingPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-analytics/rankings": {
       get: {
           parameters: {
@@ -2543,6 +2574,35 @@ export interface components {
           "first_draw_date": string | null
           "last_draw_number": string | null
           "last_draw_date": string | null
+        }
+    "P638PrizeTierCountView": {
+          "prize_tier": string
+          "count": number
+        }
+    "P638RankingPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["P638RankingView"]>
+          "disclaimer"?: string
+        }
+    "P638RankingView": {
+          "run_id": string
+          "rank": number
+          "strategy_id": string
+          "strategy_version": string
+          "native_ticket_count": number
+          "eligible_target_count": number
+          "winning_target_count": number
+          "winning_target_rate": number
+          "total_complete_ticket_count": number
+          "winning_ticket_count": number
+          "ticket_winning_rate": number
+          "prize_tier_counts": Array<components['schemas']["P638PrizeTierCountView"]>
+          "highest_prize_tier_achieved": string | null
+          "first_eligible_draw": string | null
+          "last_eligible_draw": string | null
+          "prize_rule_version": string
+          "prize_rule_provenance": string
+          "provenance": string
         }
     "P638ReplayPageResponse": {
           "run_id": string

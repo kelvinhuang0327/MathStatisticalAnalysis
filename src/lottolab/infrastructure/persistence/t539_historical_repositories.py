@@ -8,10 +8,13 @@ schema: it reads the frozen Wave 1 run's own flat tables directly
 (``mode=ro`` plus ``PRAGMA query_only = ON``) and is never created,
 migrated, or written to by this module.
 
-The static coverage ledger below (executed selection reasons and blocked
-identities) is transcribed from ``tools/run_daily539_t539_wave1.py``'s
-``DEFAULT_STRATEGY_SPECS``/``BLOCKED_DAILY539_STRATEGIES``, which is a
-task-owned runner script, not an importable package module.
+The static coverage ledger below (executed selection reasons and the full
+blocked catalog) is transcribed from ``tools/run_daily539_t539_wave1.py``'s
+strategy-set configurations, which is a task-owned runner script, not an
+importable package module. Which catalog identities are actually blocked for
+a given run is derived at read time against that run's own
+``strategy_coverage`` rows, so one sealed database's blocked list shrinks as
+later named configurations execute more of the catalog.
 """
 
 from __future__ import annotations
@@ -76,9 +79,13 @@ _EXECUTED_SELECTION_REASONS: Mapping[str, str] = {
     "acb_markov_midfreq_3bet": "Complete P128 Phase 2 native three-ticket output.",
     "daily539_f4cold_3bet": "Complete native first-three tickets from the P93 F4Cold source.",
     "daily539_f4cold_5bet": "Complete native five-ticket output from the P93 F4Cold source.",
+    "daily539_f4cold": (
+        "Wave 2 single-ticket coverage closure: equals native ticket 1 of the same "
+        "complete F4Cold portfolio selected for the 3-bet and 5-bet identities."
+    ),
 }
 
-_BLOCKED_STRATEGIES: tuple[T539CoverageBlockedEntry, ...] = (
+_ALL_BLOCKED_STRATEGIES: tuple[T539CoverageBlockedEntry, ...] = (
     T539CoverageBlockedEntry(
         strategy_id="daily539_f4cold",
         reason_code="WAVE1_SELECTION_CAP_DERIVED_DUPLICATE",
@@ -775,9 +782,13 @@ class SQLiteT539HistoricalQueryRepository:
             )
             for strategy_id, strategy_version, native_ticket_count, min_history in rows
         )
+        executed_ids = {entry.strategy_id for entry in executed}
+        blocked = tuple(
+            entry for entry in _ALL_BLOCKED_STRATEGIES if entry.strategy_id not in executed_ids
+        )
         return T539CoverageLedger(
             run_id=run_id,
             executed=executed,
-            blocked=_BLOCKED_STRATEGIES,
-            coverage_complete=len(_BLOCKED_STRATEGIES) == 0,
+            blocked=blocked,
+            coverage_complete=len(blocked) == 0,
         )

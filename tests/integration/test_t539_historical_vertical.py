@@ -234,6 +234,27 @@ def fixture_database(tmp_path: Path) -> Path:
     return path
 
 
+def _build_fixture_database_with_f4cold_single(path: Path) -> None:
+    _build_fixture_database(path)
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "INSERT INTO strategy_coverage VALUES (?, 'daily539_f4cold', 'v0.1', 'DAILY_539', "
+            "1, 100, '90000002', 2, 2, 2, 0, 'COMPLETE')",
+            (RUN_ID,),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+@pytest.fixture
+def fixture_database_with_f4cold_single(tmp_path: Path) -> Path:
+    path = tmp_path / "t539_wave1_fixture_with_f4cold.sqlite3"
+    _build_fixture_database_with_f4cold_single(path)
+    return path
+
+
 class TestSQLiteT539HistoricalQueryRepository:
     def test_list_runs_reports_aggregate_counts(self, fixture_database: Path) -> None:
         repo = SQLiteT539HistoricalQueryRepository(fixture_database)
@@ -365,6 +386,27 @@ class TestSQLiteT539HistoricalQueryRepository:
         executed_ids = {item.strategy_id for item in ledger.executed}
         assert blocked_ids.isdisjoint(executed_ids)
 
+    def test_coverage_ledger_suppresses_blocked_entry_once_executed_in_this_db(
+        self, fixture_database_with_f4cold_single: Path
+    ) -> None:
+        repo = SQLiteT539HistoricalQueryRepository(fixture_database_with_f4cold_single)
+        ledger = repo.get_coverage_ledger(RUN_ID)
+        assert ledger is not None
+        executed_ids = {item.strategy_id for item in ledger.executed}
+        assert executed_ids == {"strat_a", "strat_b", "daily539_f4cold"}
+        blocked_ids = {item.strategy_id for item in ledger.blocked}
+        assert "daily539_f4cold" not in blocked_ids
+        assert len(ledger.blocked) == 6
+        assert ledger.coverage_complete is False
+        assert blocked_ids.isdisjoint(executed_ids)
+
+        f4cold_entry = next(
+            item for item in ledger.executed if item.strategy_id == "daily539_f4cold"
+        )
+        assert f4cold_entry.native_ticket_count == 1
+        assert f4cold_entry.min_history == 100
+        assert f4cold_entry.selection_reason != ""
+
 
 class TestT539HistoricalApi:
     def test_reports_unconfigured_without_opening_a_database(self) -> None:
@@ -452,3 +494,81 @@ def test_real_authority_database_is_read_only_and_byte_invariant() -> None:
         AUTHORITY_DB.parent.glob(f"{AUTHORITY_DB.name}-shm")
     )
     assert sidecars == []
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 F4Cold-single acceptance: skipped when the sealed Wave 2 DB is
+# absent. Nine-strategy coverage, blocked-ledger closure, and ticket-1
+# parity with both F4Cold siblings are all derived from the sealed DB
+# itself, never hardcoded.
+# ---------------------------------------------------------------------------
+
+WAVE2_F4COLD_SINGLE_DB = (
+    WORKSPACE
+    / ".runs/MathStatisticalAnalysis/T539_WAVE2_F4COLD_SINGLE_COVERAGE_CLOSURE_R1"
+    / "t539_f4cold_single_wave2.sqlite3"
+)
+
+
+def _ticket1_rows(connection: sqlite3.Connection, strategy_id: str) -> list[tuple[object, ...]]:
+    return connection.execute(
+        "SELECT pt.target_draw_id, pt.main_numbers_json, ps.hits "
+        "FROM prediction_tickets pt JOIN prediction_scores ps "
+        "ON ps.run_id = pt.run_id AND ps.strategy_id = pt.strategy_id "
+        "AND ps.strategy_version = pt.strategy_version "
+        "AND ps.target_draw_id = pt.target_draw_id "
+        "AND ps.ticket_position = pt.ticket_position "
+        "WHERE pt.strategy_id = ? AND pt.ticket_position = 1 "
+        "ORDER BY CAST(pt.target_draw_id AS INTEGER)",
+        (strategy_id,),
+    ).fetchall()
+
+
+def test_wave2_f4cold_single_projection_nine_strategies_and_ticket_parity() -> None:
+    if not WAVE2_F4COLD_SINGLE_DB.exists():
+        pytest.skip("the sealed Wave 2 F4Cold-single database is not present locally")
+
+    repo = SQLiteT539HistoricalQueryRepository(WAVE2_F4COLD_SINGLE_DB)
+    run_page = repo.list_runs(limit=10, offset=0)
+    assert run_page.total_count == 1
+    run = run_page.items[0]
+    assert run.strategy_count == 9
+    assert run.failure_count == 0
+
+    ledger = repo.get_coverage_ledger(run.run_id)
+    assert ledger is not None
+    assert len(ledger.executed) == 9
+    assert len(ledger.blocked) == 6
+    assert ledger.coverage_complete is False
+    blocked_ids = {item.strategy_id for item in ledger.blocked}
+    executed_ids = {item.strategy_id for item in ledger.executed}
+    assert "daily539_f4cold" not in blocked_ids
+    assert "daily539_f4cold" in executed_ids
+    assert blocked_ids.isdisjoint(executed_ids)
+
+    strategies = repo.list_strategies(run.run_id, limit=20, offset=0)
+    assert strategies is not None
+    by_id = {item.strategy_id: item for item in strategies.items}
+    single, three, five = by_id["daily539_f4cold"], by_id["daily539_f4cold_3bet"], by_id[
+        "daily539_f4cold_5bet"
+    ]
+    assert single.native_ticket_count == 1
+    assert single.expected_target_draw_count == three.expected_target_draw_count
+    assert single.expected_target_draw_count == five.expected_target_draw_count
+    assert single.ticket_count == single.expected_target_draw_count > 0
+
+    connection = sqlite3.connect(
+        f"{WAVE2_F4COLD_SINGLE_DB.resolve().as_uri()}?mode=ro", uri=True
+    )
+    try:
+        single_rows = _ticket1_rows(connection, "daily539_f4cold")
+        assert len(single_rows) == single.expected_target_draw_count
+        for sibling_id in ("daily539_f4cold_3bet", "daily539_f4cold_5bet"):
+            assert single_rows == _ticket1_rows(connection, sibling_id)
+    finally:
+        connection.close()
+
+    rankings = repo.list_rankings(run.run_id)
+    assert rankings is not None
+    assert len(rankings.items) == 9
+    assert "daily539_f4cold" in {item.strategy_id for item in rankings.items}

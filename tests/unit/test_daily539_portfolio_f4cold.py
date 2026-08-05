@@ -22,6 +22,7 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import (
     Daily539F4Cold3BetAdapter,
     Daily539F4Cold5BetAdapter,
+    Daily539F4ColdAdapter,
 )
 
 _POOL = 39
@@ -146,9 +147,25 @@ def test_three_ticket_output_is_exact_first_three_ticket_slice(
     )
 
 
+def test_single_ticket_output_equals_first_ticket_of_both_siblings(
+    parity_history: tuple[CausalDrawRow, ...],
+) -> None:
+    five = Daily539F4Cold5BetAdapter().get_bets(parity_history, LotteryType.DAILY_539)
+    three = Daily539F4Cold3BetAdapter().get_bets(parity_history, LotteryType.DAILY_539)
+    single = Daily539F4ColdAdapter().get_bets(parity_history, LotteryType.DAILY_539)
+    assert single == (five[0],) == (three[0],)
+    assert single == ((2, 3, 10, 25, 33),)
+
+
 @pytest.mark.parametrize(
     ("adapter_class", "strategy_id", "strategy_name", "native_count"),
     [
+        (
+            Daily539F4ColdAdapter,
+            "daily539_f4cold",
+            "今彩539 F4Cold 1注",
+            1,
+        ),
         (
             Daily539F4Cold3BetAdapter,
             "daily539_f4cold_3bet",
@@ -164,7 +181,9 @@ def test_three_ticket_output_is_exact_first_three_ticket_slice(
     ],
 )
 def test_identity_native_count_and_ticket_shape(
-    adapter_class: type[Daily539F4Cold3BetAdapter | Daily539F4Cold5BetAdapter],
+    adapter_class: type[
+        Daily539F4ColdAdapter | Daily539F4Cold3BetAdapter | Daily539F4Cold5BetAdapter
+    ],
     strategy_id: str,
     strategy_name: str,
     native_count: int,
@@ -190,14 +209,20 @@ def test_identity_native_count_and_ticket_shape(
         assert ticket == tuple(sorted(ticket))
 
 
-@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+@pytest.mark.parametrize(
+    "adapter_class",
+    [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
+)
 def test_insufficient_history_rejected(adapter_class: type[object]) -> None:
     adapter = adapter_class()
     with pytest.raises(InsufficientHistory):
         adapter.get_bets(_history(_MIN_HISTORY - 1), LotteryType.DAILY_539)  # type: ignore[attr-defined]
 
 
-@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+@pytest.mark.parametrize(
+    "adapter_class",
+    [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
+)
 @pytest.mark.parametrize("lottery_type", [LotteryType.BIG_LOTTO, LotteryType.POWER_LOTTO])
 def test_wrong_lottery_type_rejected(
     adapter_class: type[object], lottery_type: LotteryType
@@ -207,7 +232,10 @@ def test_wrong_lottery_type_rejected(
         adapter.get_bets(_history(), lottery_type)  # type: ignore[attr-defined]
 
 
-@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+@pytest.mark.parametrize(
+    "adapter_class",
+    [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
+)
 def test_malformed_history_container_rejected(adapter_class: type[object]) -> None:
     adapter = adapter_class()
     with pytest.raises(InvalidOutput):
@@ -227,7 +255,10 @@ def test_malformed_history_container_rejected(adapter_class: type[object]) -> No
         CausalDrawRow("d539-bad", "2024-01-01", [1, 2, 3, 4, 5]),  # type: ignore[arg-type]
     ],
 )
-@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+@pytest.mark.parametrize(
+    "adapter_class",
+    [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
+)
 def test_malformed_history_or_numbers_rejected(
     adapter_class: type[object], bad_row: object
 ) -> None:

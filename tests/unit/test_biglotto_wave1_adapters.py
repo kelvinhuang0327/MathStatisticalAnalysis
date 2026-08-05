@@ -791,6 +791,9 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__social_wisdom_predictor__a00829b5d875",
         "legacy_biglotto__negative_selection_biglotto__98f860c52cc2",
         "legacy_biglotto__quick_ml_predict__8b7ba0b52e2d",
+        "legacy_biglotto__test_asm__d39a233a4c75",
+        "legacy_biglotto__test_dcb__c3299c25ca59",
+        "legacy_biglotto__test_4bet_dcb__3c7e3e661ad8",
     }
 
 

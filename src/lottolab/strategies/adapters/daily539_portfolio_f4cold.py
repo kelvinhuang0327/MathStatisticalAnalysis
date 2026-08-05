@@ -274,4 +274,32 @@ class Daily539F4Cold5BetAdapter:
         return _get_bets(history, lottery_type, self.strategy_id, self.native_ticket_count)
 
 
-__all__ = ["Daily539F4Cold3BetAdapter", "Daily539F4Cold5BetAdapter"]
+class Daily539F4ColdAdapter:
+    """The single first ticket of the native F4Cold portfolio.
+
+    Equals ticket position 1 of both :class:`Daily539F4Cold3BetAdapter` and
+    :class:`Daily539F4Cold5BetAdapter`: all three identities share the same
+    complete ``_predict_f4cold_all`` producer and only slice a different
+    prefix of its five native tickets.
+    """
+
+    strategy_id = "daily539_f4cold"
+    strategy_name = "今彩539 F4Cold 1注"
+    strategy_version = "v0.1"
+    min_history = _MIN_HISTORY
+    supported_lottery_types = (LotteryType.DAILY_539,)
+    native_ticket_count = 1
+
+    def get_bets(
+        self,
+        history: object,
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        return _get_bets(history, lottery_type, self.strategy_id, self.native_ticket_count)
+
+
+__all__ = [
+    "Daily539F4Cold3BetAdapter",
+    "Daily539F4Cold5BetAdapter",
+    "Daily539F4ColdAdapter",
+]

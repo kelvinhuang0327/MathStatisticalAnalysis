@@ -15,7 +15,7 @@ import hashlib
 import json
 import sqlite3
 import subprocess
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -29,6 +29,7 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import (
     Daily539F4Cold3BetAdapter,
     Daily539F4Cold5BetAdapter,
+    Daily539F4ColdAdapter,
 )
 from lottolab.strategies.adapters.daily539_portfolio_frequency import (
     Daily539MidfreqAcb2BetAdapter,
@@ -272,6 +273,75 @@ BLOCKED_DAILY539_STRATEGIES: tuple[dict[str, str], ...] = (
 )
 
 
+@dataclass(frozen=True, slots=True)
+class StrategySetConfig:
+    """A named, resumable run identity bundling specs and blocked ledger."""
+
+    name: str
+    run_id: str
+    schema_version: str
+    db_name: str
+    default_runtime_root_name: str
+    specs: tuple[StrategySpec, ...]
+    blocked_strategies: tuple[dict[str, str], ...]
+
+
+WAVE1_CONFIG = StrategySetConfig(
+    name="wave1",
+    run_id=RUN_ID,
+    schema_version=SCHEMA_VERSION,
+    db_name=DB_NAME,
+    default_runtime_root_name=DEFAULT_RUNTIME_ROOT_NAME,
+    specs=DEFAULT_STRATEGY_SPECS,
+    blocked_strategies=BLOCKED_DAILY539_STRATEGIES,
+)
+
+WAVE2_F4COLD_SINGLE_RUN_ID = "T539_WAVE2_F4COLD_SINGLE_COVERAGE_CLOSURE_R1"
+WAVE2_F4COLD_SINGLE_SCHEMA_VERSION = "t539-wave2-f4cold-single-v1"
+WAVE2_F4COLD_SINGLE_DB_NAME = "t539_f4cold_single_wave2.sqlite3"
+
+WAVE2_F4COLD_SINGLE_STRATEGY_SPECS: tuple[StrategySpec, ...] = (
+    *DEFAULT_STRATEGY_SPECS,
+    StrategySpec(
+        strategy_id="daily539_f4cold",
+        strategy_name="今彩539 F4Cold 1注",
+        strategy_version="v0.1",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539F4ColdAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_portfolio_f4cold.py",
+            "LotteryNewMeraged/tools/predict_539_5bet_f4cold.py",
+            "LotteryNewMeraged/lottery_api/models/p93_tierb_replay_adapters.py",
+        ),
+        selection_reason=(
+            "Wave 2 single-ticket coverage closure: equals native ticket 1 of the "
+            "same complete F4Cold portfolio selected for the 3-bet and 5-bet identities."
+        ),
+    ),
+)
+
+WAVE2_F4COLD_SINGLE_BLOCKED_STRATEGIES: tuple[dict[str, str], ...] = tuple(
+    entry for entry in BLOCKED_DAILY539_STRATEGIES if entry["strategy_id"] != "daily539_f4cold"
+)
+
+WAVE2_F4COLD_SINGLE_CONFIG = StrategySetConfig(
+    name="wave2-f4cold-single",
+    run_id=WAVE2_F4COLD_SINGLE_RUN_ID,
+    schema_version=WAVE2_F4COLD_SINGLE_SCHEMA_VERSION,
+    db_name=WAVE2_F4COLD_SINGLE_DB_NAME,
+    default_runtime_root_name=WAVE2_F4COLD_SINGLE_RUN_ID,
+    specs=WAVE2_F4COLD_SINGLE_STRATEGY_SPECS,
+    blocked_strategies=WAVE2_F4COLD_SINGLE_BLOCKED_STRATEGIES,
+)
+
+STRATEGY_SET_CONFIGS: Mapping[str, StrategySetConfig] = {
+    WAVE1_CONFIG.name: WAVE1_CONFIG,
+    WAVE2_F4COLD_SINGLE_CONFIG.name: WAVE2_F4COLD_SINGLE_CONFIG,
+}
+
+
 def _canonical_json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -405,39 +475,40 @@ def fetch_official_daily539(as_of_date: str) -> tuple[SourceDraw, ...]:
     return _normalise_source_records(raw_records, as_of_date)
 
 
-def default_runtime_root() -> Path:
-    repo_root = Path(__file__).resolve().parents[1]
-    return repo_root.parents[2] / ".runs" / "MathStatisticalAnalysis" / DEFAULT_RUNTIME_ROOT_NAME
+def _read_source_cache_file(cache_path: Path, as_of_date: str) -> tuple[SourceDraw, ...]:
+    """Parse and validate one sealed source cache file; performs no writes."""
+
+    payload_value: object = json.loads(cache_path.read_text(encoding="utf-8"))
+    if not isinstance(payload_value, dict):
+        raise ValueError("source cache must be a JSON object")
+    payload = cast(dict[str, object], payload_value)
+    if payload.get("source_endpoint") != OFFICIAL_SOURCE_ENDPOINT:
+        raise ValueError("source cache endpoint mismatch")
+    if payload.get("as_of_date") != as_of_date:
+        raise ValueError("source cache as_of_date mismatch; use a new runtime root")
+    raw_draws: object = payload.get("draws")
+    if not isinstance(raw_draws, list):
+        raise ValueError("source cache has no draws list")
+    cached_draws = cast(list[dict[str, Any]], raw_draws)
+    records = [
+        {
+            "period": item.get("draw_id"),
+            "lotteryDate": item.get("draw_date"),
+            "drawNumberSize": item.get("main_numbers"),
+        }
+        for item in cached_draws
+    ]
+    draws = _normalise_source_records(records, as_of_date)
+    if payload.get("source_sha256") != source_payload_sha256(draws):
+        raise ValueError("source cache digest mismatch")
+    return draws
 
 
 def load_or_fetch_source(runtime_root: Path, as_of_date: str) -> tuple[SourceDraw, ...]:
     runtime_root.mkdir(parents=True, exist_ok=True)
     cache_path = runtime_root / SOURCE_CACHE_NAME
     if cache_path.exists():
-        payload_value: object = json.loads(cache_path.read_text(encoding="utf-8"))
-        if not isinstance(payload_value, dict):
-            raise ValueError("source cache must be a JSON object")
-        payload = cast(dict[str, object], payload_value)
-        if payload.get("source_endpoint") != OFFICIAL_SOURCE_ENDPOINT:
-            raise ValueError("source cache endpoint mismatch")
-        if payload.get("as_of_date") != as_of_date:
-            raise ValueError("source cache as_of_date mismatch; use a new runtime root")
-        raw_draws: object = payload.get("draws")
-        if not isinstance(raw_draws, list):
-            raise ValueError("source cache has no draws list")
-        cached_draws = cast(list[dict[str, Any]], raw_draws)
-        records = [
-            {
-                "period": item.get("draw_id"),
-                "lotteryDate": item.get("draw_date"),
-                "drawNumberSize": item.get("main_numbers"),
-            }
-            for item in cached_draws
-        ]
-        draws = _normalise_source_records(records, as_of_date)
-        if payload.get("source_sha256") != source_payload_sha256(draws):
-            raise ValueError("source cache digest mismatch")
-        return draws
+        return _read_source_cache_file(cache_path, as_of_date)
 
     draws = fetch_official_daily539(as_of_date)
     cache_payload = {
@@ -453,6 +524,19 @@ def load_or_fetch_source(runtime_root: Path, as_of_date: str) -> tuple[SourceDra
     }
     cache_path.write_text(_canonical_json(cache_payload) + "\n", encoding="utf-8")
     return draws
+
+
+def load_external_source_cache(cache_path: Path, as_of_date: str) -> tuple[SourceDraw, ...]:
+    """Read a sealed external source cache read-only.
+
+    Unlike :func:`load_or_fetch_source`, this never fetches from the official
+    API and never writes a local copy of the cache: it is for a task runtime
+    root that must reuse another task's sealed cache in place, byte-invariant.
+    """
+
+    if not cache_path.is_file():
+        raise ValueError(f"external source cache not found: {cache_path}")
+    return _read_source_cache_file(cache_path, as_of_date)
 
 
 def _adapter_tickets(
@@ -495,9 +579,9 @@ def _git_source_commit(repo_root: Path) -> str:
     return result.stdout.strip()
 
 
-def _connect(db_path: Path, runtime_root: Path) -> sqlite3.Connection:
-    if db_path != runtime_root / DB_NAME:
-        raise ValueError(f"task DB must be exactly {runtime_root / DB_NAME}")
+def _connect(db_path: Path, runtime_root: Path, db_name: str) -> sqlite3.Connection:
+    if db_path != runtime_root / db_name:
+        raise ValueError(f"task DB must be exactly {runtime_root / db_name}")
     runtime_root.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
@@ -617,6 +701,8 @@ def _strategy_set_payload(specs: Sequence[StrategySpec]) -> list[dict[str, objec
 
 def _ensure_run_metadata(
     connection: sqlite3.Connection,
+    run_id: str,
+    schema_version: str,
     source_sha256: str,
     as_of_date: str,
     adapter_source_commit: str,
@@ -626,11 +712,11 @@ def _ensure_run_metadata(
     existing = connection.execute(
         "SELECT schema_version, lottery_type, source_endpoint, source_sha256, as_of_date, "
         "adapter_source_commit, strategy_set_json FROM run_metadata WHERE run_id = ?",
-        (RUN_ID,),
+        (run_id,),
     ).fetchone()
     if existing is not None:
         expected = (
-            SCHEMA_VERSION,
+            schema_version,
             LOTTERY_TYPE,
             OFFICIAL_SOURCE_ENDPOINT,
             source_sha256,
@@ -644,8 +730,8 @@ def _ensure_run_metadata(
     connection.execute(
         "INSERT INTO run_metadata VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
-            RUN_ID,
-            SCHEMA_VERSION,
+            run_id,
+            schema_version,
             LOTTERY_TYPE,
             OFFICIAL_SOURCE_ENDPOINT,
             source_sha256,
@@ -677,6 +763,7 @@ def _insert_source_draws(connection: sqlite3.Connection, draws: Sequence[SourceD
 
 def _ensure_coverage_rows(
     connection: sqlite3.Connection,
+    run_id: str,
     draws: Sequence[SourceDraw],
     specs: Sequence[StrategySpec],
 ) -> None:
@@ -686,7 +773,7 @@ def _ensure_coverage_rows(
         connection.execute(
             "INSERT OR IGNORE INTO strategy_coverage VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)",
             (
-                RUN_ID,
+                run_id,
                 spec.strategy_id,
                 spec.strategy_version,
                 spec.lottery_type,
@@ -701,6 +788,7 @@ def _ensure_coverage_rows(
 
 
 def _provenance(
+    run_id: str,
     spec: StrategySpec,
     source_sha256: str,
     adapter_source_commit: str,
@@ -710,7 +798,7 @@ def _provenance(
 ) -> str:
     return _canonical_json(
         {
-            "run_id": RUN_ID,
+            "run_id": run_id,
             "lottery_type": LOTTERY_TYPE,
             "strategy_id": spec.strategy_id,
             "strategy_version": spec.strategy_version,
@@ -733,6 +821,7 @@ def _provenance(
 
 def _target_rows(
     connection: sqlite3.Connection,
+    run_id: str,
     draws: Sequence[SourceDraw],
     spec: StrategySpec,
     adapter_source_commit: str,
@@ -746,7 +835,7 @@ def _target_rows(
         for draw in draws[:target_index]
     )
     provenance = _provenance(
-        spec, source_sha256, adapter_source_commit, target, cutoff, len(history)
+        run_id, spec, source_sha256, adapter_source_commit, target, cutoff, len(history)
     )
     status = "SUCCESS"
     failure: Exception | None = None
@@ -770,7 +859,7 @@ def _target_rows(
             "INSERT INTO prediction_tickets VALUES "
             "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                RUN_ID,
+                run_id,
                 spec.strategy_id,
                 spec.strategy_version,
                 LOTTERY_TYPE,
@@ -793,7 +882,7 @@ def _target_rows(
             connection.execute(
                 "INSERT INTO prediction_scores VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-                    RUN_ID,
+                    run_id,
                     spec.strategy_id,
                     spec.strategy_version,
                     target.draw_id,
@@ -808,7 +897,7 @@ def _target_rows(
         connection.execute(
             "INSERT INTO failure_ledger VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-                RUN_ID,
+                run_id,
                 spec.strategy_id,
                 spec.strategy_version,
                 target.draw_id,
@@ -824,7 +913,7 @@ def _target_rows(
     connection.execute(
         "INSERT INTO target_completion VALUES (?, ?, ?, ?, ?, ?)",
         (
-            RUN_ID,
+            run_id,
             spec.strategy_id,
             spec.strategy_version,
             target.draw_id,
@@ -834,19 +923,21 @@ def _target_rows(
     )
 
 
-def _refresh_coverage(connection: sqlite3.Connection, specs: Sequence[StrategySpec]) -> None:
+def _refresh_coverage(
+    connection: sqlite3.Connection, run_id: str, specs: Sequence[StrategySpec]
+) -> None:
     for spec in specs:
         row = connection.execute(
             "SELECT COUNT(*), COALESCE(SUM(status = 'SUCCESS'), 0), "
             "COALESCE(SUM(status = 'FAILED'), 0) FROM target_completion "
             "WHERE run_id = ? AND strategy_id = ? AND strategy_version = ?",
-            (RUN_ID, spec.strategy_id, spec.strategy_version),
+            (run_id, spec.strategy_id, spec.strategy_version),
         ).fetchone()
         processed, successful, failed = cast(tuple[int, int, int], row)
         expected = connection.execute(
             "SELECT expected_target_draw_count FROM strategy_coverage "
             "WHERE run_id = ? AND strategy_id = ? AND strategy_version = ?",
-            (RUN_ID, spec.strategy_id, spec.strategy_version),
+            (run_id, spec.strategy_id, spec.strategy_version),
         ).fetchone()[0]
         status = "COMPLETE" if processed == expected else "PARTIAL"
         connection.execute(
@@ -858,7 +949,7 @@ def _refresh_coverage(connection: sqlite3.Connection, specs: Sequence[StrategySp
                 successful,
                 failed,
                 status,
-                RUN_ID,
+                run_id,
                 spec.strategy_id,
                 spec.strategy_version,
             ),
@@ -874,6 +965,10 @@ def _write_reports(
     source_sha256: str,
     adapter_source_commit: str,
     as_of_date: str,
+    *,
+    run_id: str,
+    schema_version: str,
+    blocked_strategies: Sequence[dict[str, str]],
 ) -> dict[str, object]:
     coverage_rows = connection.execute(
         "SELECT strategy_id, strategy_version, lottery_type, native_ticket_count, min_history, "
@@ -911,8 +1006,8 @@ def _write_reports(
     selected = _strategy_set_payload(specs)
     all_complete = all(item["status"] == "COMPLETE" for item in coverage)
     run_summary: dict[str, object] = {
-        "run_id": RUN_ID,
-        "schema_version": SCHEMA_VERSION,
+        "run_id": run_id,
+        "schema_version": schema_version,
         "lottery_type": LOTTERY_TYPE,
         "as_of_date": as_of_date,
         "source_endpoint": OFFICIAL_SOURCE_ENDPOINT,
@@ -921,12 +1016,12 @@ def _write_reports(
         "draw_count": len(draws),
         "selected_strategy_count": len(specs),
         "selected_strategies": selected,
-        "blocked_strategies": list(BLOCKED_DAILY539_STRATEGIES),
+        "blocked_strategies": list(blocked_strategies),
         "failure_count": len(failures),
         "status": "COMPLETE" if all_complete else "PARTIAL",
     }
     source_ledger = {
-        "run_id": RUN_ID,
+        "run_id": run_id,
         "lottery_type": LOTTERY_TYPE,
         "source_kind": "OFFICIAL_PUBLIC_TAIWAN_LOTTERY_API",
         "source_endpoint": OFFICIAL_SOURCE_ENDPOINT,
@@ -963,8 +1058,18 @@ def run_batch(
     as_of_date: str,
     specs: Sequence[StrategySpec] = DEFAULT_STRATEGY_SPECS,
     max_targets_per_strategy: int | None = None,
+    run_id: str = RUN_ID,
+    schema_version: str = SCHEMA_VERSION,
+    db_name: str = DB_NAME,
+    blocked_strategies: Sequence[dict[str, str]] = BLOCKED_DAILY539_STRATEGIES,
 ) -> dict[str, object]:
-    """Run or resume a deterministic batch against a task-owned SQLite file."""
+    """Run or resume a deterministic batch against a task-owned SQLite file.
+
+    Defaults reproduce the historical Wave 1 configuration exactly; a caller
+    passing ``run_id``/``schema_version``/``db_name``/``specs``/
+    ``blocked_strategies`` together runs an independent named configuration
+    against its own SQLite file, e.g. :data:`WAVE2_F4COLD_SINGLE_CONFIG`.
+    """
 
     if not draws:
         raise ValueError("DAILY_539 source history cannot be empty")
@@ -972,14 +1077,17 @@ def run_batch(
         raise ValueError("source contains a draw after the authorized as-of date")
     if any(spec.lottery_type != LOTTERY_TYPE for spec in specs):
         raise ValueError("T539 runner accepts DAILY_539 strategies only")
-    db_path = runtime_root / DB_NAME
+    db_path = runtime_root / db_name
     source_sha256 = source_payload_sha256(draws)
-    connection = _connect(db_path, runtime_root)
+    connection = _connect(db_path, runtime_root, db_name)
     try:
         _init_schema(connection)
-        _ensure_run_metadata(connection, source_sha256, as_of_date, adapter_source_commit, specs)
+        _ensure_run_metadata(
+            connection, run_id, schema_version, source_sha256, as_of_date,
+            adapter_source_commit, specs,
+        )
         _insert_source_draws(connection, draws)
-        _ensure_coverage_rows(connection, draws, specs)
+        _ensure_coverage_rows(connection, run_id, draws, specs)
         for spec in specs:
             processed_this_invocation = 0
             for target_index in range(spec.min_history, len(draws)):
@@ -987,13 +1095,14 @@ def run_batch(
                 already_done = connection.execute(
                     "SELECT 1 FROM target_completion WHERE run_id = ? AND strategy_id = ? "
                     "AND strategy_version = ? AND target_draw_id = ?",
-                    (RUN_ID, spec.strategy_id, spec.strategy_version, target_id),
+                    (run_id, spec.strategy_id, spec.strategy_version, target_id),
                 ).fetchone()
                 if already_done is not None:
                     continue
                 with connection:
                     _target_rows(
                         connection,
+                        run_id,
                         draws,
                         spec,
                         adapter_source_commit,
@@ -1006,7 +1115,7 @@ def run_batch(
                     and processed_this_invocation >= max_targets_per_strategy
                 ):
                     break
-        _refresh_coverage(connection, specs)
+        _refresh_coverage(connection, run_id, specs)
         summary = _write_reports(
             runtime_root,
             connection,
@@ -1015,10 +1124,13 @@ def run_batch(
             source_sha256,
             adapter_source_commit,
             as_of_date,
+            run_id=run_id,
+            schema_version=schema_version,
+            blocked_strategies=blocked_strategies,
         )
         connection.execute(
             "UPDATE run_metadata SET status = ? WHERE run_id = ?",
-            (summary["status"], RUN_ID),
+            (summary["status"], run_id),
         )
         connection.commit()
         return summary
@@ -1028,10 +1140,24 @@ def run_batch(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--runtime-root", type=Path, default=default_runtime_root())
+    parser.add_argument("--runtime-root", type=Path, default=None)
     parser.add_argument("--as-of-date", default=DEFAULT_AS_OF_DATE)
     parser.add_argument("--adapter-source-commit")
     parser.add_argument("--max-targets-per-strategy", type=int)
+    parser.add_argument(
+        "--strategy-set",
+        choices=tuple(STRATEGY_SET_CONFIGS),
+        default=WAVE1_CONFIG.name,
+        help="Named strategy-set configuration to run (default preserves Wave 1).",
+    )
+    parser.add_argument(
+        "--source-cache",
+        type=Path,
+        help=(
+            "Path to a sealed external source cache to read directly, read-only, "
+            "with no network fetch and no local copy written."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -1039,8 +1165,21 @@ def main() -> int:
     args = _parse_args()
     if args.max_targets_per_strategy is not None and args.max_targets_per_strategy < 1:
         raise SystemExit("--max-targets-per-strategy must be positive")
-    runtime_root = cast(Path, args.runtime_root)
-    draws = load_or_fetch_source(runtime_root, cast(str, args.as_of_date))
+    config = STRATEGY_SET_CONFIGS[cast(str, args.strategy_set)]
+    as_of_date = cast(str, args.as_of_date)
+    runtime_root = cast(Path | None, args.runtime_root)
+    if runtime_root is None:
+        repo_root = Path(__file__).resolve().parents[1]
+        runtime_root = (
+            repo_root.parents[2] / ".runs" / "MathStatisticalAnalysis"
+            / config.default_runtime_root_name
+        )
+    source_cache = cast(Path | None, args.source_cache)
+    draws = (
+        load_external_source_cache(source_cache, as_of_date)
+        if source_cache is not None
+        else load_or_fetch_source(runtime_root, as_of_date)
+    )
     source_commit = args.adapter_source_commit
     if source_commit is None:
         source_commit = _git_source_commit(Path(__file__).resolve().parents[1])
@@ -1048,8 +1187,13 @@ def main() -> int:
         runtime_root,
         draws,
         adapter_source_commit=source_commit,
-        as_of_date=cast(str, args.as_of_date),
+        as_of_date=as_of_date,
+        specs=config.specs,
         max_targets_per_strategy=args.max_targets_per_strategy,
+        run_id=config.run_id,
+        schema_version=config.schema_version,
+        db_name=config.db_name,
+        blocked_strategies=config.blocked_strategies,
     )
     print(_canonical_json(summary))
     return 0

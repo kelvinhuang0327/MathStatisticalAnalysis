@@ -1526,6 +1526,235 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/t539-historical/runs": {
+      get: {
+          parameters: {
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539RunPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/strategies": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539StrategyPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/replay": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "strategy_id"?: string | null
+              "date_from"?: string | null
+              "date_to"?: string | null
+              "status"?: "SUCCESS" | "FAILED" | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539ReplayPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+              "target_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539ReplayView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/metrics": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "strategy_id"?: string | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539MetricsResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/rankings": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539RankingPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/coverage": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539CoverageLedgerResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -2915,6 +3144,149 @@ export interface components {
           "minimum_history": number
           "lifecycle_status": components['schemas']["LifecycleStatus"]
           "executable": boolean
+        }
+    "T539CoverageBlockedView": {
+          "strategy_id": string
+          "reason_code": string
+          "reason": string
+        }
+    "T539CoverageExecutedView": {
+          "strategy_id": string
+          "strategy_version": string
+          "native_ticket_count": number
+          "min_history": number
+          "selection_reason": string
+        }
+    "T539CoverageLedgerResponse": {
+          "run_id": string
+          "executed": Array<components['schemas']["T539CoverageExecutedView"]>
+          "blocked": Array<components['schemas']["T539CoverageBlockedView"]>
+          "coverage_complete": boolean
+        }
+    "T539HitDistributionView": {
+          "value": number
+          "count": number
+        }
+    "T539MetricsResponse": {
+          "run_id": string
+          "strategy_id": string | null
+          "target_count": number
+          "ticket_count": number
+          "winning_ticket_count": number
+          "winning_target_count": number
+          "hit_distribution": Array<components['schemas']["T539HitDistributionView"]>
+          "prize_tier_counts": Array<components['schemas']["T539PrizeTierCountView"]>
+          "first_target_draw_date": string | null
+          "last_target_draw_date": string | null
+        }
+    "T539PrizeTierCountView": {
+          "prize_tier": string
+          "count": number
+        }
+    "T539RankingPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["T539RankingView"]>
+          "disclaimer"?: string
+        }
+    "T539RankingView": {
+          "run_id": string
+          "rank": number
+          "strategy_id": string
+          "strategy_version": string
+          "native_ticket_count": number
+          "eligible_target_count": number
+          "winning_target_count": number
+          "winning_target_rate": number
+          "total_ticket_count": number
+          "winning_ticket_count": number
+          "ticket_winning_rate": number
+          "prize_tier_counts": Array<components['schemas']["T539PrizeTierCountView"]>
+          "highest_prize_tier_achieved": string | null
+          "first_eligible_draw": string | null
+          "last_eligible_draw": string | null
+          "prize_rule_version": string
+          "prize_rule_provenance": string
+        }
+    "T539ReplayPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["T539ReplayView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "T539ReplayView": {
+          "target_id": string
+          "run_id": string
+          "strategy_id": string
+          "strategy_version": string
+          "target_draw_id": string
+          "target_draw_date": string | null
+          "cutoff_draw_id": string | null
+          "cutoff_draw_date": string | null
+          "status": string
+          "native_ticket_count": number
+          "tickets": Array<components['schemas']["T539TicketView"]>
+        }
+    "T539RunPageResponse": {
+          "items": Array<components['schemas']["T539RunView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "T539RunView": {
+          "run_id": string
+          "schema_version": string
+          "lottery_type": string
+          "source_endpoint": string
+          "source_sha256": string
+          "as_of_date": string
+          "adapter_source_commit": string
+          "status": string
+          "strategy_count": number
+          "draw_count": number
+          "eligible_target_count": number
+          "ticket_count": number
+          "failure_count": number
+          "first_draw_id": string | null
+          "first_draw_date": string | null
+          "last_draw_id": string | null
+          "last_draw_date": string | null
+        }
+    "T539StrategyPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["T539StrategyView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "T539StrategyView": {
+          "run_id": string
+          "strategy_id": string
+          "strategy_version": string
+          "native_ticket_count": number
+          "min_history": number
+          "first_eligible_target_draw_id": string | null
+          "expected_target_draw_count": number
+          "processed_target_draw_count": number
+          "successful_target_draw_count": number
+          "failed_target_draw_count": number
+          "status": string
+          "ticket_count": number
+          "winning_ticket_count": number
+          "hit_distribution": Array<components['schemas']["T539HitDistributionView"]>
+          "first_target_draw_date": string | null
+          "last_target_draw_date": string | null
+        }
+    "T539TicketView": {
+          "ticket_position": number
+          "predicted_numbers": Array<number>
+          "actual_numbers": Array<number>
+          "hit_numbers": Array<number>
+          "hits": number
+          "is_winner": boolean
+          "prize_tier": string | null
+          "prize_tier_order": number | null
+          "prize_amount": number | null
         }
     "TicketCount": 10 | 15 | 20
     "WindowEvaluationStatus": "COMPLETE" | "INSUFFICIENT_DRAWS" | "NO_ELIGIBLE_DRAWS"

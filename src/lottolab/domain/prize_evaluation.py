@@ -3,8 +3,9 @@
 Each lottery type owns its own versioned, source-bound prize-tier table.
 There is no universal cross-lottery hit threshold: a hit signature that wins
 one lottery's prize tier has no bearing on any other lottery's rules.  Only
-POWER_LOTTO (Super Lotto 638, 威力彩) is implemented here; other lottery
-types must supply their own evaluator rather than reuse this one.
+POWER_LOTTO (Super Lotto 638, 威力彩) and DAILY_539 (今彩539) are implemented
+here; other lottery types must supply their own evaluator rather than reuse
+either of these.
 """
 
 from __future__ import annotations
@@ -169,6 +170,144 @@ POWER_LOTTO_PRIZE_RULE_CONTRACT = PowerLottoPrizeRuleContract(
 POWER_LOTTO_PRIZE_RULE_CONTRACT.validate()
 
 
+class DailyFive39PrizeTierId(StrEnum):
+    """Stable identifiers for the official DAILY_539 prize tiers, highest to lowest."""
+
+    FIRST = "FIRST"
+    SECOND = "SECOND"
+    THIRD = "THIRD"
+    FOURTH = "FOURTH"
+
+
+@dataclass(frozen=True, slots=True)
+class DailyFive39PrizeTier:
+    """One official DAILY_539 prize tier and its unique hit signature.
+
+    DAILY_539 has a single 39-number zone and no second zone, unlike
+    POWER_LOTTO; ``match_count`` is the only hit signature component.
+    """
+
+    tier_id: DailyFive39PrizeTierId
+    tier_order: int
+    official_label: str
+    match_count: int
+    prize_amount: int
+
+    def validate(self) -> None:
+        if type(self.tier_id) is not DailyFive39PrizeTierId:
+            raise ValueError("tier_id must be a DailyFive39PrizeTierId")
+        if type(self.tier_order) is not int or not 1 <= self.tier_order <= 4:
+            raise ValueError("tier_order must be an integer between 1 and 4")
+        if type(self.official_label) is not str or not self.official_label.strip():
+            raise ValueError("official_label must be a non-empty string")
+        if type(self.match_count) is not int or not 2 <= self.match_count <= 5:
+            raise ValueError("match_count must be an integer between 2 and 5")
+        if type(self.prize_amount) is not int or self.prize_amount <= 0:
+            raise ValueError("prize_amount must be a positive integer")
+
+    def canonical_dict(self) -> dict[str, object]:
+        return {
+            "match_count": self.match_count,
+            "official_label": self.official_label,
+            "prize_amount": self.prize_amount,
+            "tier_id": self.tier_id.value,
+            "tier_order": self.tier_order,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class DailyFive39PrizeRuleContract:
+    """Versioned, source-bound collection of official DAILY_539 prize tiers."""
+
+    schema_version: str
+    source_sha256: str
+    source_url: str
+    source_locator: str
+    source_accessed_at: datetime
+    tiers: tuple[DailyFive39PrizeTier, ...]
+
+    def validate(self) -> None:
+        for name, value in (
+            ("schema_version", self.schema_version),
+            ("source_sha256", self.source_sha256),
+            ("source_url", self.source_url),
+            ("source_locator", self.source_locator),
+        ):
+            if type(value) is not str or not value.strip():
+                raise ValueError(f"prize_rule.{name} must be a non-empty string")
+        if _SHA256.fullmatch(self.source_sha256) is None:
+            raise ValueError("prize_rule.source_sha256 must be a lowercase SHA-256 digest")
+        if type(self.source_accessed_at) is not datetime:
+            raise ValueError("prize_rule.source_accessed_at must be a datetime")
+        if self.source_accessed_at.tzinfo is None:
+            raise ValueError("prize_rule.source_accessed_at must be timezone-aware")
+        if self.source_accessed_at.utcoffset() != UTC.utcoffset(self.source_accessed_at):
+            raise ValueError("prize_rule.source_accessed_at must use UTC")
+        if type(self.tiers) is not tuple or not self.tiers:
+            raise ValueError("prize_rule.tiers must be a non-empty tuple")
+
+        expected_ids = tuple(DailyFive39PrizeTierId)
+        actual_ids: list[DailyFive39PrizeTierId] = []
+        signatures: set[int] = set()
+        orders: set[int] = set()
+        for index, tier in enumerate(self.tiers, start=1):
+            if type(tier) is not DailyFive39PrizeTier:
+                raise ValueError("prize_rule.tiers must contain DailyFive39PrizeTier values")
+            tier.validate()
+            if tier.tier_order != index:
+                raise ValueError("prize_rule.tiers must be listed in official tier_order")
+            actual_ids.append(tier.tier_id)
+            if tier.match_count in signatures:
+                raise ValueError("prize_rule.tiers contains an ambiguous hit signature")
+            signatures.add(tier.match_count)
+            orders.add(tier.tier_order)
+        if tuple(actual_ids) != expected_ids:
+            raise ValueError(
+                "prize_rule.tiers must contain every tier identifier exactly once "
+                "in canonical order"
+            )
+        if orders != set(range(1, 5)):
+            raise ValueError("prize_rule.tiers must cover tier_order 1 through 4 exactly once")
+
+    def resolve(self, *, match_count: int) -> DailyFive39PrizeTier | None:
+        """Return the matching official tier, or ``None`` when the signature does not win."""
+
+        for tier in self.tiers:
+            if tier.match_count == match_count:
+                return tier
+        return None
+
+    def canonical_dict(self) -> dict[str, object]:
+        accessed_at = self.source_accessed_at.isoformat().replace("+00:00", "Z")
+        return {
+            "schema_version": self.schema_version,
+            "source_accessed_at": accessed_at,
+            "source_locator": self.source_locator,
+            "source_sha256": self.source_sha256,
+            "source_url": self.source_url,
+            "tiers": [tier.canonical_dict() for tier in self.tiers],
+        }
+
+
+DAILY_FIVE39_PRIZE_RULE_CONTRACT = DailyFive39PrizeRuleContract(
+    schema_version="daily-539-prize-rule-2026-08-05.1",
+    source_sha256="a7e3c41b13c6927f333a309725d870b6509bb13e9f71c5995f5ff3bd931f1836",
+    source_url="https://www.taiwanlottery.com/_nuxt/_game_.1_0_8_74.js",
+    source_locator=(
+        "daily_cash.tableData (BaseRule award/type), UTF-8 bytes 8406-9404, combined with "
+        "daily_cash bonus table (BonusDistribution unit prize amounts), UTF-8 bytes 23483-24422"
+    ),
+    source_accessed_at=datetime(2026, 8, 5, 6, 17, 34, tzinfo=UTC),
+    tiers=(
+        DailyFive39PrizeTier(DailyFive39PrizeTierId.FIRST, 1, "頭獎", 5, 8_000_000),
+        DailyFive39PrizeTier(DailyFive39PrizeTierId.SECOND, 2, "貳獎", 4, 20_000),
+        DailyFive39PrizeTier(DailyFive39PrizeTierId.THIRD, 3, "參獎", 3, 300),
+        DailyFive39PrizeTier(DailyFive39PrizeTierId.FOURTH, 4, "肆獎", 2, 50),
+    ),
+)
+DAILY_FIVE39_PRIZE_RULE_CONTRACT.validate()
+
+
 @dataclass(frozen=True, slots=True)
 class PrizeEvaluationResult:
     """One deterministic prize-evaluation outcome for a single ticket vs. one draw."""
@@ -217,6 +356,21 @@ def _validate_zone2_number(label: str, number: int) -> None:
         raise ValueError(f"{label} is out of range")
 
 
+def _validate_daily539_numbers(label: str, numbers: tuple[int, ...]) -> None:
+    if type(numbers) is not tuple:
+        raise ValueError(f"{label} must be a tuple")
+    if len(numbers) != 5:
+        raise ValueError(f"{label} must contain exactly 5 numbers")
+    if any(type(number) is not int for number in numbers):
+        raise ValueError(f"{label} must contain exact built-in integers")
+    if any(not 1 <= number <= 39 for number in numbers):
+        raise ValueError(f"{label} contains an out-of-range number")
+    if len(set(numbers)) != len(numbers):
+        raise ValueError(f"{label} must not contain duplicates")
+    if numbers != tuple(sorted(numbers)):
+        raise ValueError(f"{label} must use canonical ascending order")
+
+
 def evaluate_power_lotto_ticket(
     *,
     predicted_main_numbers: tuple[int, ...],
@@ -253,6 +407,38 @@ def evaluate_power_lotto_ticket(
     )
 
 
+def evaluate_daily_539_ticket(
+    *,
+    predicted_main_numbers: tuple[int, ...],
+    winning_main_numbers: tuple[int, ...],
+    prize_rule: DailyFive39PrizeRuleContract = DAILY_FIVE39_PRIZE_RULE_CONTRACT,
+) -> PrizeEvaluationResult:
+    """Score one canonical DAILY_539 ticket against the official prize table.
+
+    DAILY_539 draws a single 5-of-39 set with no second zone, so the shared
+    ``PrizeEvaluationResult.zone2_hit`` field is always ``False`` here: it is
+    not a "no match" signal, it simply does not apply to this lottery type.
+    """
+
+    _validate_daily539_numbers("predicted_main_numbers", predicted_main_numbers)
+    _validate_daily539_numbers("winning_main_numbers", winning_main_numbers)
+    if type(prize_rule) is not DailyFive39PrizeRuleContract:
+        raise ValueError("prize_rule must be a DailyFive39PrizeRuleContract")
+
+    match_count = len(set(predicted_main_numbers) & set(winning_main_numbers))
+    tier = prize_rule.resolve(match_count=match_count)
+    return PrizeEvaluationResult(
+        lottery_type=LotteryType.DAILY_539,
+        is_winner=tier is not None,
+        prize_tier=tier.tier_id.value if tier is not None else None,
+        prize_tier_order=tier.tier_order if tier is not None else None,
+        zone1_hits=match_count,
+        zone2_hit=False,
+        prize_rule_version=prize_rule.schema_version,
+        prize_rule_provenance=f"{prize_rule.source_locator} (sha256={prize_rule.source_sha256})",
+    )
+
+
 def evaluate_lottery_prize(
     *,
     lottery_type: LotteryType,
@@ -271,6 +457,11 @@ def evaluate_lottery_prize(
             predicted_special_number=predicted_special_number,
             winning_main_numbers=winning_main_numbers,
             winning_special_number=winning_special_number,
+        )
+    if lottery_type is LotteryType.DAILY_539:
+        return evaluate_daily_539_ticket(
+            predicted_main_numbers=predicted_main_numbers,
+            winning_main_numbers=winning_main_numbers,
         )
     raise NotImplementedError(f"no prize evaluator is implemented for {lottery_type.value}")
 

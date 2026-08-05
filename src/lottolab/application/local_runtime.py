@@ -76,6 +76,13 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/metrics": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/rankings": frozenset({"get"}),
+    "/api/v1/t539-historical/runs": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/strategies": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/replay": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/metrics": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/rankings": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/coverage": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/rankings": frozenset({"get"}),
     "/api/v1/historical-prefix-analytics/strategies": frozenset({"get"}),
     (
@@ -150,6 +157,7 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
         "/api/v1/historical-results/runs/{run_id}/replay",
         "/api/v1/p638-historical/runs/{run_id}/replay",
         "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}",
+        "/api/v1/t539-historical/runs/{run_id}/replay",
         (
             "/api/v1/historical-prefix-analytics/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/replay"
@@ -179,7 +187,10 @@ path segment likewise contains "replay". The four exact
 queries over saved Replay-scoring projections. They execute no strategy,
 generate no numbers, perform no rescoring, write no database state, and offer
 no latest or fallback selection. The Historical Prefix strategy replay path is
-also a GET-only projection over one exact strategy identity. Only the exact
+also a GET-only projection over one exact strategy identity.
+``/api/v1/t539-historical/runs/{run_id}/replay`` is the same kind of GET-only
+read over the sealed T539 Wave 1 database as the P638 replay path above; it
+executes no strategy and reruns no replay. Only the exact
 paths above are exempted;
 every other path containing a forbidden word (including
 "/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",

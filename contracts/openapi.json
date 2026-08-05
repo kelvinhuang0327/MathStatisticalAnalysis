@@ -4263,6 +4263,605 @@
           }
         }
       }
+    },
+    "/api/v1/t539-historical/runs": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "List T539 Runs",
+        "operationId": "listT539HistoricalRuns",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539RunPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/strategies": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "List T539 Strategies",
+        "operationId": "listT539HistoricalStrategies",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539StrategyPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/replay": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "List T539 Replay",
+        "operationId": "listT539HistoricalReplay",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "date_from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date From"
+            }
+          },
+          {
+            "name": "date_to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 10,
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Date To"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "SUCCESS",
+                    "FAILED"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539ReplayPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "Get T539 Target",
+        "operationId": "getT539HistoricalTarget",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539ReplayView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/metrics": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "Get T539 Metrics",
+        "operationId": "getT539HistoricalMetrics",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Strategy Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539MetricsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/rankings": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "List T539 Rankings",
+        "operationId": "listT539HistoricalRankings",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539RankingPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/coverage": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "Get T539 Coverage",
+        "operationId": "getT539HistoricalCoverage",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539CoverageLedgerResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12472,6 +13071,866 @@
           "executable"
         ],
         "title": "StrategyView"
+      },
+      "T539CoverageBlockedView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "reason_code": {
+            "type": "string",
+            "title": "Reason Code"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "reason_code",
+          "reason"
+        ],
+        "title": "T539CoverageBlockedView"
+      },
+      "T539CoverageExecutedView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "min_history": {
+            "type": "integer",
+            "title": "Min History"
+          },
+          "selection_reason": {
+            "type": "string",
+            "title": "Selection Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "native_ticket_count",
+          "min_history",
+          "selection_reason"
+        ],
+        "title": "T539CoverageExecutedView"
+      },
+      "T539CoverageLedgerResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "executed": {
+            "items": {
+              "$ref": "#/components/schemas/T539CoverageExecutedView"
+            },
+            "type": "array",
+            "title": "Executed"
+          },
+          "blocked": {
+            "items": {
+              "$ref": "#/components/schemas/T539CoverageBlockedView"
+            },
+            "type": "array",
+            "title": "Blocked"
+          },
+          "coverage_complete": {
+            "type": "boolean",
+            "title": "Coverage Complete"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "executed",
+          "blocked",
+          "coverage_complete"
+        ],
+        "title": "T539CoverageLedgerResponse"
+      },
+      "T539HitDistributionView": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "title": "Value"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "count"
+        ],
+        "title": "T539HitDistributionView"
+      },
+      "T539MetricsResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Id"
+          },
+          "target_count": {
+            "type": "integer",
+            "title": "Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "winning_target_count": {
+            "type": "integer",
+            "title": "Winning Target Count"
+          },
+          "hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/T539HitDistributionView"
+            },
+            "type": "array",
+            "title": "Hit Distribution"
+          },
+          "prize_tier_counts": {
+            "items": {
+              "$ref": "#/components/schemas/T539PrizeTierCountView"
+            },
+            "type": "array",
+            "title": "Prize Tier Counts"
+          },
+          "first_target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Target Draw Date"
+          },
+          "last_target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Target Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_id",
+          "target_count",
+          "ticket_count",
+          "winning_ticket_count",
+          "winning_target_count",
+          "hit_distribution",
+          "prize_tier_counts",
+          "first_target_draw_date",
+          "last_target_draw_date"
+        ],
+        "title": "T539MetricsResponse"
+      },
+      "T539PrizeTierCountView": {
+        "properties": {
+          "prize_tier": {
+            "type": "string",
+            "title": "Prize Tier"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "prize_tier",
+          "count"
+        ],
+        "title": "T539PrizeTierCountView"
+      },
+      "T539RankingPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/T539RankingView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Historical winning rank describes past replay only and does not guarantee future winning. There is no universal cross-lottery hit threshold."
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items"
+        ],
+        "title": "T539RankingPageResponse"
+      },
+      "T539RankingView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "eligible_target_count": {
+            "type": "integer",
+            "title": "Eligible Target Count"
+          },
+          "winning_target_count": {
+            "type": "integer",
+            "title": "Winning Target Count"
+          },
+          "winning_target_rate": {
+            "type": "number",
+            "title": "Winning Target Rate"
+          },
+          "total_ticket_count": {
+            "type": "integer",
+            "title": "Total Ticket Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "ticket_winning_rate": {
+            "type": "number",
+            "title": "Ticket Winning Rate"
+          },
+          "prize_tier_counts": {
+            "items": {
+              "$ref": "#/components/schemas/T539PrizeTierCountView"
+            },
+            "type": "array",
+            "title": "Prize Tier Counts"
+          },
+          "highest_prize_tier_achieved": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Prize Tier Achieved"
+          },
+          "first_eligible_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Eligible Draw"
+          },
+          "last_eligible_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Eligible Draw"
+          },
+          "prize_rule_version": {
+            "type": "string",
+            "title": "Prize Rule Version"
+          },
+          "prize_rule_provenance": {
+            "type": "string",
+            "title": "Prize Rule Provenance"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "rank",
+          "strategy_id",
+          "strategy_version",
+          "native_ticket_count",
+          "eligible_target_count",
+          "winning_target_count",
+          "winning_target_rate",
+          "total_ticket_count",
+          "winning_ticket_count",
+          "ticket_winning_rate",
+          "prize_tier_counts",
+          "highest_prize_tier_achieved",
+          "first_eligible_draw",
+          "last_eligible_draw",
+          "prize_rule_version",
+          "prize_rule_provenance"
+        ],
+        "title": "T539RankingView"
+      },
+      "T539ReplayPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/T539ReplayView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "T539ReplayPageResponse"
+      },
+      "T539ReplayView": {
+        "properties": {
+          "target_id": {
+            "type": "string",
+            "title": "Target Id"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "target_draw_id": {
+            "type": "string",
+            "title": "Target Draw Id"
+          },
+          "target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Draw Date"
+          },
+          "cutoff_draw_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff Draw Id"
+          },
+          "cutoff_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff Draw Date"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "tickets": {
+            "items": {
+              "$ref": "#/components/schemas/T539TicketView"
+            },
+            "type": "array",
+            "title": "Tickets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "target_id",
+          "run_id",
+          "strategy_id",
+          "strategy_version",
+          "target_draw_id",
+          "target_draw_date",
+          "cutoff_draw_id",
+          "cutoff_draw_date",
+          "status",
+          "native_ticket_count",
+          "tickets"
+        ],
+        "title": "T539ReplayView"
+      },
+      "T539RunPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/T539RunView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "T539RunPageResponse"
+      },
+      "T539RunView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "source_endpoint": {
+            "type": "string",
+            "title": "Source Endpoint"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "as_of_date": {
+            "type": "string",
+            "title": "As Of Date"
+          },
+          "adapter_source_commit": {
+            "type": "string",
+            "title": "Adapter Source Commit"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "draw_count": {
+            "type": "integer",
+            "title": "Draw Count"
+          },
+          "eligible_target_count": {
+            "type": "integer",
+            "title": "Eligible Target Count"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "failure_count": {
+            "type": "integer",
+            "title": "Failure Count"
+          },
+          "first_draw_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Id"
+          },
+          "first_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Draw Date"
+          },
+          "last_draw_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Id"
+          },
+          "last_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "schema_version",
+          "lottery_type",
+          "source_endpoint",
+          "source_sha256",
+          "as_of_date",
+          "adapter_source_commit",
+          "status",
+          "strategy_count",
+          "draw_count",
+          "eligible_target_count",
+          "ticket_count",
+          "failure_count",
+          "first_draw_id",
+          "first_draw_date",
+          "last_draw_id",
+          "last_draw_date"
+        ],
+        "title": "T539RunView"
+      },
+      "T539StrategyPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/T539StrategyView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "T539StrategyPageResponse"
+      },
+      "T539StrategyView": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "min_history": {
+            "type": "integer",
+            "title": "Min History"
+          },
+          "first_eligible_target_draw_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Eligible Target Draw Id"
+          },
+          "expected_target_draw_count": {
+            "type": "integer",
+            "title": "Expected Target Draw Count"
+          },
+          "processed_target_draw_count": {
+            "type": "integer",
+            "title": "Processed Target Draw Count"
+          },
+          "successful_target_draw_count": {
+            "type": "integer",
+            "title": "Successful Target Draw Count"
+          },
+          "failed_target_draw_count": {
+            "type": "integer",
+            "title": "Failed Target Draw Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "winning_ticket_count": {
+            "type": "integer",
+            "title": "Winning Ticket Count"
+          },
+          "hit_distribution": {
+            "items": {
+              "$ref": "#/components/schemas/T539HitDistributionView"
+            },
+            "type": "array",
+            "title": "Hit Distribution"
+          },
+          "first_target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Target Draw Date"
+          },
+          "last_target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Target Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_id",
+          "strategy_version",
+          "native_ticket_count",
+          "min_history",
+          "first_eligible_target_draw_id",
+          "expected_target_draw_count",
+          "processed_target_draw_count",
+          "successful_target_draw_count",
+          "failed_target_draw_count",
+          "status",
+          "ticket_count",
+          "winning_ticket_count",
+          "hit_distribution",
+          "first_target_draw_date",
+          "last_target_draw_date"
+        ],
+        "title": "T539StrategyView"
+      },
+      "T539TicketView": {
+        "properties": {
+          "ticket_position": {
+            "type": "integer",
+            "title": "Ticket Position"
+          },
+          "predicted_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Predicted Numbers"
+          },
+          "actual_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Actual Numbers"
+          },
+          "hit_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Hit Numbers"
+          },
+          "hits": {
+            "type": "integer",
+            "title": "Hits"
+          },
+          "is_winner": {
+            "type": "boolean",
+            "title": "Is Winner"
+          },
+          "prize_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Tier"
+          },
+          "prize_tier_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Tier Order"
+          },
+          "prize_amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Amount"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ticket_position",
+          "predicted_numbers",
+          "actual_numbers",
+          "hit_numbers",
+          "hits",
+          "is_winner",
+          "prize_tier",
+          "prize_tier_order",
+          "prize_amount"
+        ],
+        "title": "T539TicketView"
       },
       "TicketCount": {
         "type": "integer",

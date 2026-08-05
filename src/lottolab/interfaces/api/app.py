@@ -24,6 +24,7 @@ from lottolab.application.ports import (
     P638HistoricalQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
     StrategyEvidenceRegistryReader,
+    T539HistoricalQueryRepositoryFactory,
 )
 from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
@@ -75,6 +76,7 @@ from lottolab.interfaces.api.strategy_catalog import (
     create_strategy_catalog_router,
 )
 from lottolab.interfaces.api.strategy_evidence import create_strategy_evidence_router
+from lottolab.interfaces.api.t539_historical import create_t539_historical_router
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
 LocalDataPathsProvider = Callable[[], LocalDataPaths]
@@ -100,6 +102,9 @@ def create_app(
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
+    t539_historical_query_repository_factory: (
+        T539HistoricalQueryRepositoryFactory | None
+    ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -196,5 +201,6 @@ def create_app(
     app.include_router(
         create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
+    app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))
 
     return app

@@ -33,6 +33,7 @@ from lottolab.application.local_runtime import (
     OPENAPI_PATH,
     STRATEGY_CATALOG_PATH,
     ConcurrentLocalRuntimeOperation,
+    ExpectedStrategy,
     Listener,
     LocalRuntimeError,
     LocalRuntimePolicy,
@@ -433,11 +434,13 @@ class LocalRuntimeSupervisor:
         self,
         policy: LocalRuntimePolicy,
         *,
+        expected_strategies: Sequence[ExpectedStrategy] = (),
         state_store: RuntimeStateStore | None = None,
         inspector: ProcessInspector | None = None,
         revision_reader: RevisionReader | None = None,
     ) -> None:
         self.policy = policy
+        self._expected_strategies = tuple(expected_strategies)
         self.store = state_store or RuntimeStateStore(policy)
         self.inspector = inspector or ProcessInspector()
         self._revision_reader = revision_reader or _read_git_revision
@@ -522,6 +525,7 @@ class LocalRuntimeSupervisor:
             strategy_ids = validate_strategy_payloads(
                 _json_payload(direct, "direct Strategy Catalog"),
                 _json_payload(proxied, "proxied Strategy Catalog"),
+                self._expected_strategies,
             )
 
             openapi = self._required_http_get(f"{backend_url}{OPENAPI_PATH}")
@@ -704,6 +708,7 @@ class LocalRuntimeSupervisor:
             validate_strategy_payloads(
                 _json_payload(direct, "direct Strategy Catalog"),
                 _json_payload(proxied, "proxied Strategy Catalog"),
+                self._expected_strategies,
             )
             return self._owned_listener_ready(identity)
 

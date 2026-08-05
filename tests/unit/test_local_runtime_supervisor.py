@@ -22,9 +22,9 @@ import lottolab.infrastructure.local_runtime as local_infra
 import lottolab.interfaces.cli.main as cli_main
 from lottolab.application.local_runtime import (
     BACKEND_PORT,
-    EXPECTED_STRATEGY_IDS,
     FRONTEND_PORT,
     ConcurrentLocalRuntimeOperation,
+    ExpectedStrategy,
     Listener,
     LocalRuntimeError,
     LocalRuntimePolicy,
@@ -49,6 +49,21 @@ from lottolab.infrastructure.local_runtime import (
 
 TOKEN = "c" * 32
 COMMIT = "2" * 40
+KNOWN_STRATEGY_ID = "biglotto_social_wisdom_anti_popularity"
+TEST_STRATEGY_IDS = (
+    "test_strategy_alpha",
+    "test_strategy_beta",
+    "test_strategy_gamma",
+)
+
+
+def make_expected_strategies(
+    strategy_ids: tuple[str, ...] = TEST_STRATEGY_IDS,
+) -> tuple[ExpectedStrategy, ...]:
+    return tuple(
+        ExpectedStrategy(strategy_id=strategy_id, lifecycle_status="ONLINE", executable=True)
+        for strategy_id in strategy_ids
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -768,6 +783,25 @@ def test_cli_start_defensively_rejects_non_running_result(
     assert failure.value.exit_code == 1
 
 
+def test_cli_supervisor_derives_expected_strategies_from_current_source_catalog() -> None:
+    """The composition root must bind the runtime's catalog expectation to the
+    live ``production_catalog()`` rather than any hardcoded baseline, so a
+    committed catalog change takes effect without touching this module."""
+    from lottolab.strategies.catalog import production_catalog
+
+    catalog = production_catalog()
+    supervisor = cli_main._local_supervisor()  # pyright: ignore[reportPrivateUsage]
+
+    assert supervisor._expected_strategies == tuple(  # pyright: ignore[reportPrivateUsage]
+        ExpectedStrategy(
+            strategy_id=descriptor.strategy_id,
+            lifecycle_status=descriptor.lifecycle_status.value,
+            executable=descriptor.executable,
+        )
+        for descriptor in catalog
+    )
+
+
 def _write_history_file(tmp_path: Path) -> Path:
     history_file = tmp_path / "history.json"
     history_file.write_text(
@@ -783,14 +817,14 @@ def test_generate_bet_command_prints_ok_result_and_exits_cleanly(
     history_file = _write_history_file(tmp_path)
 
     cli_main.generate_bet_command(
-        strategy_id=EXPECTED_STRATEGY_IDS[0],
+        strategy_id=KNOWN_STRATEGY_ID,
         seed=7,
         history_file=history_file,
     )
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["status"] == "OK"
-    assert payload["strategy_id"] == EXPECTED_STRATEGY_IDS[0]
+    assert payload["strategy_id"] == KNOWN_STRATEGY_ID
     assert payload["seed"] == 7
     assert len(payload["numbers"]) == 6
 
@@ -821,7 +855,7 @@ def test_generate_bet_command_reports_malformed_history_on_stderr(
 
     with pytest.raises(typer.Exit) as failure:
         cli_main.generate_bet_command(
-            strategy_id=EXPECTED_STRATEGY_IDS[0],
+            strategy_id=KNOWN_STRATEGY_ID,
             seed=1,
             history_file=history_file,
         )
@@ -1341,7 +1375,7 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
             "lifecycle_status": "ONLINE",
             "executable": True,
         }
-        for strategy_id in EXPECTED_STRATEGY_IDS
+        for strategy_id in TEST_STRATEGY_IDS
     ]
     backend_headers = {"x-lottolab-owner": TOKEN}
     responses = {
@@ -1491,14 +1525,17 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
         return responses[url]
 
     supervisor = LocalRuntimeSupervisor(
-        policy, state_store=store, inspector=ProcessInspector(read_snapshot)
+        policy,
+        expected_strategies=make_expected_strategies(),
+        state_store=store,
+        inspector=ProcessInspector(read_snapshot),
     )
     monkeypatch.setattr(supervisor, "_listeners", listeners)
     monkeypatch.setattr(local_infra.os, "getpgid", pgid)
     monkeypatch.setattr(local_infra, "_http_get", http_get)
 
     report = supervisor.smoke()
-    assert report.strategy_ids == EXPECTED_STRATEGY_IDS
+    assert report.strategy_ids == TEST_STRATEGY_IDS
 
 
 @pytest.mark.parametrize(

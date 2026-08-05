@@ -1205,6 +1205,79 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=3,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__social_wisdom_predictor__a00829b5d875",
+        strategy_name="大樂透社群智慧預測器（8注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave12:"
+            "BigLottoSocialWisdomPredictorAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/social_wisdom_predictor.py",
+            "legacy_source_sha256:"
+            "a00829b5d875cb8202c3bbd90ad7202fa6b95f568e3e8d821a6cdbffe6a95e3b",
+            "legacy_symbol:generate_legacy_history_native_portfolio",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__social_wisdom_predictor__a00829b5d875",
+            "migration_task:BIGLOTTO_WAVE12_R1_SOCIAL_NEGATIVE_QUICKML",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=8,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__negative_selection_biglotto__98f860c52cc2",
+        strategy_name="大樂透負向篩選（增強版）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave12:"
+            "BigLottoNegativeSelectionBiglottoAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/negative_selection_biglotto.py",
+            "legacy_source_sha256:"
+            "98f860c52cc2f01552690b7903679961a263909fae844896860442909dca1294",
+            "legacy_symbol:generate_legacy_history_native_wave3_portfolio",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__negative_selection_biglotto__98f860c52cc2",
+            "migration_task:BIGLOTTO_WAVE12_R1_SOCIAL_NEGATIVE_QUICKML",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=8,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__quick_ml_predict__8b7ba0b52e2d",
+        strategy_name="大樂透快速機器學習預測（2注）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave12:BigLottoQuickMlPredictAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/quick_ml_predict.py",
+            "legacy_source_sha256:"
+            "8b7ba0b52e2dfcb7bd39997be9dbfab90a81f6e44c3fcf269ac5c9ddaa266d80",
+            "legacy_symbol:generate_legacy_history_native_portfolio",
+            "full_strategy_catalog_id:legacy_biglotto__quick_ml_predict__8b7ba0b52e2d",
+            "migration_task:BIGLOTTO_WAVE12_R1_SOCIAL_NEGATIVE_QUICKML",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

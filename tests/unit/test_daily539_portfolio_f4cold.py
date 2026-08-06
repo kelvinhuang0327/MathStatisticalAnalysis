@@ -22,7 +22,10 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import (
     Daily539F4Cold3BetAdapter,
     Daily539F4Cold5BetAdapter,
+<<<<<<< HEAD
     Daily539F4ColdAdapter,
+=======
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 )
 
 _POOL = 39
@@ -147,6 +150,7 @@ def test_three_ticket_output_is_exact_first_three_ticket_slice(
     )
 
 
+<<<<<<< HEAD
 def test_single_ticket_output_equals_first_ticket_of_both_siblings(
     parity_history: tuple[CausalDrawRow, ...],
 ) -> None:
@@ -157,16 +161,21 @@ def test_single_ticket_output_equals_first_ticket_of_both_siblings(
     assert single == ((2, 3, 10, 25, 33),)
 
 
+=======
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 @pytest.mark.parametrize(
     ("adapter_class", "strategy_id", "strategy_name", "native_count"),
     [
         (
+<<<<<<< HEAD
             Daily539F4ColdAdapter,
             "daily539_f4cold",
             "今彩539 F4Cold 1注",
             1,
         ),
         (
+=======
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
             Daily539F4Cold3BetAdapter,
             "daily539_f4cold_3bet",
             "今彩539 F4Cold 3注",
@@ -181,9 +190,13 @@ def test_single_ticket_output_equals_first_ticket_of_both_siblings(
     ],
 )
 def test_identity_native_count_and_ticket_shape(
+<<<<<<< HEAD
     adapter_class: type[
         Daily539F4ColdAdapter | Daily539F4Cold3BetAdapter | Daily539F4Cold5BetAdapter
     ],
+=======
+    adapter_class: type[Daily539F4Cold3BetAdapter | Daily539F4Cold5BetAdapter],
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     strategy_id: str,
     strategy_name: str,
     native_count: int,
@@ -209,20 +222,28 @@ def test_identity_native_count_and_ticket_shape(
         assert ticket == tuple(sorted(ticket))
 
 
+<<<<<<< HEAD
 @pytest.mark.parametrize(
     "adapter_class",
     [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
 )
+=======
+@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def test_insufficient_history_rejected(adapter_class: type[object]) -> None:
     adapter = adapter_class()
     with pytest.raises(InsufficientHistory):
         adapter.get_bets(_history(_MIN_HISTORY - 1), LotteryType.DAILY_539)  # type: ignore[attr-defined]
 
 
+<<<<<<< HEAD
 @pytest.mark.parametrize(
     "adapter_class",
     [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
 )
+=======
+@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 @pytest.mark.parametrize("lottery_type", [LotteryType.BIG_LOTTO, LotteryType.POWER_LOTTO])
 def test_wrong_lottery_type_rejected(
     adapter_class: type[object], lottery_type: LotteryType
@@ -232,10 +253,14 @@ def test_wrong_lottery_type_rejected(
         adapter.get_bets(_history(), lottery_type)  # type: ignore[attr-defined]
 
 
+<<<<<<< HEAD
 @pytest.mark.parametrize(
     "adapter_class",
     [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
 )
+=======
+@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def test_malformed_history_container_rejected(adapter_class: type[object]) -> None:
     adapter = adapter_class()
     with pytest.raises(InvalidOutput):
@@ -255,10 +280,14 @@ def test_malformed_history_container_rejected(adapter_class: type[object]) -> No
         CausalDrawRow("d539-bad", "2024-01-01", [1, 2, 3, 4, 5]),  # type: ignore[arg-type]
     ],
 )
+<<<<<<< HEAD
 @pytest.mark.parametrize(
     "adapter_class",
     [Daily539F4ColdAdapter, Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter],
 )
+=======
+@pytest.mark.parametrize("adapter_class", [Daily539F4Cold3BetAdapter, Daily539F4Cold5BetAdapter])
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def test_malformed_history_or_numbers_rejected(
     adapter_class: type[object], bad_row: object
 ) -> None:

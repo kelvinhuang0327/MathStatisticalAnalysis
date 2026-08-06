@@ -274,6 +274,7 @@ class Daily539F4Cold5BetAdapter:
         return _get_bets(history, lottery_type, self.strategy_id, self.native_ticket_count)
 
 
+<<<<<<< HEAD
 class Daily539F4ColdAdapter:
     """The single first ticket of the native F4Cold portfolio.
 
@@ -303,3 +304,6 @@ __all__ = [
     "Daily539F4Cold5BetAdapter",
     "Daily539F4ColdAdapter",
 ]
+=======
+__all__ = ["Daily539F4Cold3BetAdapter", "Daily539F4Cold5BetAdapter"]
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1

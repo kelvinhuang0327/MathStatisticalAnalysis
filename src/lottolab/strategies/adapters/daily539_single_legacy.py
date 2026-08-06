@@ -1,5 +1,6 @@
 """Pure DAILY_539 ports of the complete P36 single-ticket producers.
 
+<<<<<<< HEAD
 These identities are kept separate from the existing PR #85 Markov Cold
 adapter because the donor registry treats them as distinct strategies.  The
 implementations are intentionally DB-free and use only the immutable causal
@@ -9,6 +10,12 @@ history supplied by the caller.
 ``acb_1bet`` identity onto the same ``_acb_predict`` producer that backs
 ``acb_single_539``, since both compute the identical ACB formula under
 different strategy_ids.
+=======
+These two identities are kept separate from the existing PR #85 Markov Cold
+adapter because the donor registry treats them as distinct strategies.  The
+implementations are intentionally DB-free and use only the immutable causal
+history supplied by the caller.
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 """
 
 from __future__ import annotations
@@ -201,6 +208,7 @@ class Daily539AcbSingleAdapter:
         return _validated_ticket(_acb_predict(canonical), self.strategy_id), None
 
 
+<<<<<<< HEAD
 class Daily539Acb1BetAdapter:
     """P31A-retired ACB single-ticket identity, aliased onto the shared producer.
 
@@ -238,3 +246,6 @@ class Daily539Acb1BetAdapter:
 
 
 __all__ = ["Daily539Acb1BetAdapter", "Daily539AcbSingleAdapter", "Daily539Markov1BetAdapter"]
+=======
+__all__ = ["Daily539AcbSingleAdapter", "Daily539Markov1BetAdapter"]
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1

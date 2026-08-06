@@ -1,16 +1,23 @@
+<<<<<<< HEAD
 # pyright: reportPrivateUsage=false
 
+=======
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 from __future__ import annotations
 
 import json
 import sqlite3
+<<<<<<< HEAD
 import subprocess
 import sys
+=======
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 from datetime import date, timedelta
 from pathlib import Path
 from typing import cast
 
 import pytest
+<<<<<<< HEAD
 import tools.run_daily539_t539_wave1 as runner_module
 from tools.run_daily539_t539_wave1 import (
     BLOCKED_DAILY539_STRATEGIES,
@@ -26,6 +33,14 @@ from tools.run_daily539_t539_wave1 import (
     load_external_source_cache,
     run_batch,
     source_payload_sha256,
+=======
+from tools.run_daily539_t539_wave1 import (
+    LOTTERY_TYPE,
+    RUN_ID,
+    SourceDraw,
+    StrategySpec,
+    run_batch,
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 )
 
 from lottolab.domain.draws import LotteryType
@@ -202,6 +217,7 @@ def test_runner_rejects_non_daily539_specs_and_future_draws(tmp_path: Path) -> N
             as_of_date="2020-01-09",
             specs=_run_specs(),
         )
+<<<<<<< HEAD
 
 
 def test_wave2_config_appends_single_ticket_and_shrinks_blocked_ledger() -> None:
@@ -409,3 +425,5 @@ def test_parse_args_accepts_wave2_strategy_set_and_source_cache(
     args = runner_module._parse_args()
     assert args.strategy_set == WAVE2_F4COLD_SINGLE_CONFIG.name
     assert args.source_cache == cache_path
+=======
+>>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1

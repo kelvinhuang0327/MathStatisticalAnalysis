@@ -276,6 +276,37 @@ def fixture_database_with_wave3_acb1(tmp_path: Path) -> Path:
     return path
 
 
+_WAVE4_REMAINING5_ROWS: tuple[tuple[str, str], ...] = (
+    ("acb_markov_midfreq", "v0.1-p31a"),
+    ("zone_gap_3bet_539", "v0.1-p36"),
+    ("539_3bet_orthogonal", "v0.1-p36"),
+    ("p0b_539_3bet_f_cold_fmid", "v0.1-p36"),
+    ("p0c_539_3bet_f_cold_x2", "v0.1-p36"),
+)
+
+
+def _build_fixture_database_with_wave4_remaining5(path: Path) -> None:
+    _build_fixture_database_with_wave3_acb1(path)
+    connection = sqlite3.connect(path)
+    try:
+        for strategy_id, strategy_version in _WAVE4_REMAINING5_ROWS:
+            connection.execute(
+                "INSERT INTO strategy_coverage VALUES (?, ?, ?, 'DAILY_539', "
+                "1, 100, '90000002', 2, 2, 2, 0, 'COMPLETE')",
+                (RUN_ID, strategy_id, strategy_version),
+            )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+@pytest.fixture
+def fixture_database_with_wave4_remaining5(tmp_path: Path) -> Path:
+    path = tmp_path / "t539_wave1_fixture_with_wave4_remaining5.sqlite3"
+    _build_fixture_database_with_wave4_remaining5(path)
+    return path
+
+
 class TestSQLiteT539HistoricalQueryRepository:
     def test_list_runs_reports_aggregate_counts(self, fixture_database: Path) -> None:
         repo = SQLiteT539HistoricalQueryRepository(fixture_database)
@@ -448,6 +479,28 @@ class TestSQLiteT539HistoricalQueryRepository:
         assert acb1_entry.native_ticket_count == 1
         assert acb1_entry.min_history == 100
         assert acb1_entry.selection_reason != ""
+
+    def test_coverage_ledger_closes_wave4_remaining5_and_completes_coverage(
+        self, fixture_database_with_wave4_remaining5: Path
+    ) -> None:
+        repo = SQLiteT539HistoricalQueryRepository(fixture_database_with_wave4_remaining5)
+        ledger = repo.get_coverage_ledger(RUN_ID)
+        assert ledger is not None
+        executed_ids = {item.strategy_id for item in ledger.executed}
+        wave4_ids = {strategy_id for strategy_id, _ in _WAVE4_REMAINING5_ROWS}
+        assert executed_ids == {
+            "strat_a", "strat_b", "daily539_f4cold", "acb_1bet", *wave4_ids,
+        }
+        assert ledger.blocked == ()
+        assert ledger.coverage_complete is True
+
+        by_id = {item.strategy_id: item for item in ledger.executed}
+        for strategy_id, strategy_version in _WAVE4_REMAINING5_ROWS:
+            entry = by_id[strategy_id]
+            assert entry.strategy_version == strategy_version
+            assert entry.native_ticket_count == 1
+            assert entry.min_history == 100
+            assert entry.selection_reason != ""
 
 
 class TestT539HistoricalApi:
@@ -694,3 +747,70 @@ def test_wave3_acb1_alias_projection_ten_strategies_and_ticket_parity() -> None:
     assert rankings is not None
     assert len(rankings.items) == 10
     assert "acb_1bet" in {item.strategy_id for item in rankings.items}
+
+
+# ---------------------------------------------------------------------------
+# Wave 4 remaining5-batch acceptance: skipped when the sealed Wave 4 DB is
+# absent. Fifteen-strategy coverage, full blocked-ledger closure (the entire
+# DAILY_539/T539 catalog), and the 539_3bet_orthogonal/acb_single_539 alias
+# ticket parity are all derived from the sealed DB itself.
+# ---------------------------------------------------------------------------
+
+WAVE4_REMAINING5_BATCH_DB = (
+    WORKSPACE
+    / ".runs/MathStatisticalAnalysis/T539_WAVE4_REMAINING5_BATCH_COVERAGE_CLOSURE_R1"
+    / "t539_wave4_remaining5_batch.sqlite3"
+)
+
+
+def test_wave4_remaining5_batch_projection_fifteen_strategies_and_full_closure() -> None:
+    if not WAVE4_REMAINING5_BATCH_DB.exists():
+        pytest.skip("the sealed Wave 4 remaining5-batch database is not present locally")
+
+    repo = SQLiteT539HistoricalQueryRepository(WAVE4_REMAINING5_BATCH_DB)
+    run_page = repo.list_runs(limit=10, offset=0)
+    assert run_page.total_count == 1
+    run = run_page.items[0]
+    assert run.strategy_count == 15
+    assert run.failure_count == 0
+
+    ledger = repo.get_coverage_ledger(run.run_id)
+    assert ledger is not None
+    assert len(ledger.executed) == 15
+    assert ledger.blocked == ()
+    assert ledger.coverage_complete is True
+    executed_ids = {item.strategy_id for item in ledger.executed}
+    for strategy_id, _ in _WAVE4_REMAINING5_ROWS:
+        assert strategy_id in executed_ids
+
+    strategies = repo.list_strategies(run.run_id, limit=20, offset=0)
+    assert strategies is not None
+    by_id = {item.strategy_id: item for item in strategies.items}
+    for strategy_id, strategy_version in _WAVE4_REMAINING5_ROWS:
+        entry = by_id[strategy_id]
+        assert entry.strategy_version == strategy_version
+        assert entry.native_ticket_count == 1
+        assert entry.ticket_count == entry.expected_target_draw_count > 0
+
+    alias, single = by_id["539_3bet_orthogonal"], by_id["acb_single_539"]
+    assert alias.expected_target_draw_count == single.expected_target_draw_count
+    assert alias.hit_distribution == single.hit_distribution
+    assert alias.winning_ticket_count == single.winning_ticket_count
+
+    connection = sqlite3.connect(
+        f"{WAVE4_REMAINING5_BATCH_DB.resolve().as_uri()}?mode=ro", uri=True
+    )
+    try:
+        alias_rows = _ticket1_rows(connection, "539_3bet_orthogonal")
+        single_rows = _ticket1_rows(connection, "acb_single_539")
+        assert len(alias_rows) == alias.expected_target_draw_count
+        assert alias_rows == single_rows
+    finally:
+        connection.close()
+
+    rankings = repo.list_rankings(run.run_id)
+    assert rankings is not None
+    assert len(rankings.items) == 15
+    ranked_ids = {item.strategy_id for item in rankings.items}
+    for strategy_id, _ in _WAVE4_REMAINING5_ROWS:
+        assert strategy_id in ranked_ids

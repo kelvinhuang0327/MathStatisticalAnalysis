@@ -9,6 +9,14 @@ history supplied by the caller.
 ``acb_1bet`` identity onto the same ``_acb_predict`` producer that backs
 ``acb_single_539``, since both compute the identical ACB formula under
 different strategy_ids.
+
+``Daily539Orthogonal3BetAdapter`` is a remaining-5 recovery addition for
+``539_3bet_orthogonal``. Its P36 donor (``predict_acb_markov_fourier_bet1`` in
+``p36_wave2_daily539_adapters.py``) documents bet-1 of the orthogonal 3-bet
+portfolio as literally ``predict_acb_single`` -- the donor never recorded or
+implemented bet-2 (Markov) or bet-3 (Fourier) in replay, so only the proven
+bet-1 identity is ported here. It reuses the same ``_acb_predict`` producer
+for the same reason ``acb_1bet`` does.
 """
 
 from __future__ import annotations
@@ -237,4 +245,45 @@ class Daily539Acb1BetAdapter:
         return _validated_ticket(_acb_predict(canonical), self.strategy_id), None
 
 
-__all__ = ["Daily539Acb1BetAdapter", "Daily539AcbSingleAdapter", "Daily539Markov1BetAdapter"]
+class Daily539Orthogonal3BetAdapter:
+    """P36 orthogonal-3bet identity, bet-1 aliased onto the shared ACB producer.
+
+    The donor executable for ``539_3bet_orthogonal``
+    (``Orthogonal3Bet539Adapter`` in ``p36_wave2_daily539_adapters.py``,
+    ``strategy_version=v0.1-p36``) implements bet-1 as
+    ``predict_acb_markov_fourier_bet1``, which is itself defined as exactly
+    ``predict_acb_single`` -- the identical freq-deficit/gap/boundary/mod3 ACB
+    formula this module already exposes as ``_acb_predict``.
+    """
+
+    strategy_id = "539_3bet_orthogonal"
+    strategy_name = "今彩539 ACB+Markov+Fourier 正交 3注"
+    strategy_version = "v0.1-p36"
+    min_history = _ACB_WINDOW
+    native_ticket_count = 1
+    supported_lottery_types = (LotteryType.DAILY_539,)
+
+    def get_one_bet(
+        self, history: object, lottery_type: LotteryType
+    ) -> tuple[tuple[int, ...], None]:
+        if (
+            type(lottery_type) is not LotteryType
+            or lottery_type not in self.supported_lottery_types
+        ):
+            raise UnsupportedLotteryType(
+                f"{self.strategy_id} does not support the requested lottery type"
+            )
+        canonical = _validated_history(history, self.strategy_id)
+        if len(canonical) < self.min_history:
+            raise InsufficientHistory(
+                f"{self.strategy_id}: needs {self.min_history} draws, got {len(canonical)}"
+            )
+        return _validated_ticket(_acb_predict(canonical), self.strategy_id), None
+
+
+__all__ = [
+    "Daily539Acb1BetAdapter",
+    "Daily539AcbSingleAdapter",
+    "Daily539Markov1BetAdapter",
+    "Daily539Orthogonal3BetAdapter",
+]

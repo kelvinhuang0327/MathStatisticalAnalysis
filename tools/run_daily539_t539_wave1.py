@@ -15,11 +15,7 @@ import hashlib
 import json
 import sqlite3
 import subprocess
-<<<<<<< HEAD
 from collections.abc import Callable, Iterable, Mapping, Sequence
-=======
-from collections.abc import Callable, Iterable, Sequence
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol, cast
@@ -33,10 +29,7 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import (
     Daily539F4Cold3BetAdapter,
     Daily539F4Cold5BetAdapter,
-<<<<<<< HEAD
     Daily539F4ColdAdapter,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 )
 from lottolab.strategies.adapters.daily539_portfolio_frequency import (
     Daily539MidfreqAcb2BetAdapter,
@@ -46,10 +39,7 @@ from lottolab.strategies.adapters.daily539_portfolio_phase2 import (
     Daily539AcbMarkovMidfreq3BetAdapter,
 )
 from lottolab.strategies.adapters.daily539_single_legacy import (
-<<<<<<< HEAD
     Daily539Acb1BetAdapter,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     Daily539AcbSingleAdapter,
     Daily539Markov1BetAdapter,
 )
@@ -284,7 +274,6 @@ BLOCKED_DAILY539_STRATEGIES: tuple[dict[str, str], ...] = (
 )
 
 
-<<<<<<< HEAD
 @dataclass(frozen=True, slots=True)
 class StrategySetConfig:
     """A named, resumable run identity bundling specs and blocked ledger."""
@@ -400,8 +389,6 @@ STRATEGY_SET_CONFIGS: Mapping[str, StrategySetConfig] = {
 }
 
 
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def _canonical_json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -535,7 +522,6 @@ def fetch_official_daily539(as_of_date: str) -> tuple[SourceDraw, ...]:
     return _normalise_source_records(raw_records, as_of_date)
 
 
-<<<<<<< HEAD
 def _read_source_cache_file(cache_path: Path, as_of_date: str) -> tuple[SourceDraw, ...]:
     """Parse and validate one sealed source cache file; performs no writes."""
 
@@ -563,45 +549,13 @@ def _read_source_cache_file(cache_path: Path, as_of_date: str) -> tuple[SourceDr
     if payload.get("source_sha256") != source_payload_sha256(draws):
         raise ValueError("source cache digest mismatch")
     return draws
-=======
-def default_runtime_root() -> Path:
-    repo_root = Path(__file__).resolve().parents[1]
-    return repo_root.parents[2] / ".runs" / "MathStatisticalAnalysis" / DEFAULT_RUNTIME_ROOT_NAME
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 
 
 def load_or_fetch_source(runtime_root: Path, as_of_date: str) -> tuple[SourceDraw, ...]:
     runtime_root.mkdir(parents=True, exist_ok=True)
     cache_path = runtime_root / SOURCE_CACHE_NAME
     if cache_path.exists():
-<<<<<<< HEAD
         return _read_source_cache_file(cache_path, as_of_date)
-=======
-        payload_value: object = json.loads(cache_path.read_text(encoding="utf-8"))
-        if not isinstance(payload_value, dict):
-            raise ValueError("source cache must be a JSON object")
-        payload = cast(dict[str, object], payload_value)
-        if payload.get("source_endpoint") != OFFICIAL_SOURCE_ENDPOINT:
-            raise ValueError("source cache endpoint mismatch")
-        if payload.get("as_of_date") != as_of_date:
-            raise ValueError("source cache as_of_date mismatch; use a new runtime root")
-        raw_draws: object = payload.get("draws")
-        if not isinstance(raw_draws, list):
-            raise ValueError("source cache has no draws list")
-        cached_draws = cast(list[dict[str, Any]], raw_draws)
-        records = [
-            {
-                "period": item.get("draw_id"),
-                "lotteryDate": item.get("draw_date"),
-                "drawNumberSize": item.get("main_numbers"),
-            }
-            for item in cached_draws
-        ]
-        draws = _normalise_source_records(records, as_of_date)
-        if payload.get("source_sha256") != source_payload_sha256(draws):
-            raise ValueError("source cache digest mismatch")
-        return draws
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 
     draws = fetch_official_daily539(as_of_date)
     cache_payload = {
@@ -619,7 +573,6 @@ def load_or_fetch_source(runtime_root: Path, as_of_date: str) -> tuple[SourceDra
     return draws
 
 
-<<<<<<< HEAD
 def load_external_source_cache(cache_path: Path, as_of_date: str) -> tuple[SourceDraw, ...]:
     """Read a sealed external source cache read-only.
 
@@ -633,8 +586,6 @@ def load_external_source_cache(cache_path: Path, as_of_date: str) -> tuple[Sourc
     return _read_source_cache_file(cache_path, as_of_date)
 
 
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def _adapter_tickets(
     adapter: object, history: tuple[CausalDrawRow, ...]
 ) -> tuple[tuple[int, ...], ...]:
@@ -675,15 +626,9 @@ def _git_source_commit(repo_root: Path) -> str:
     return result.stdout.strip()
 
 
-<<<<<<< HEAD
 def _connect(db_path: Path, runtime_root: Path, db_name: str) -> sqlite3.Connection:
     if db_path != runtime_root / db_name:
         raise ValueError(f"task DB must be exactly {runtime_root / db_name}")
-=======
-def _connect(db_path: Path, runtime_root: Path) -> sqlite3.Connection:
-    if db_path != runtime_root / DB_NAME:
-        raise ValueError(f"task DB must be exactly {runtime_root / DB_NAME}")
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     runtime_root.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(db_path)
     connection.row_factory = sqlite3.Row
@@ -803,11 +748,8 @@ def _strategy_set_payload(specs: Sequence[StrategySpec]) -> list[dict[str, objec
 
 def _ensure_run_metadata(
     connection: sqlite3.Connection,
-<<<<<<< HEAD
     run_id: str,
     schema_version: str,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     source_sha256: str,
     as_of_date: str,
     adapter_source_commit: str,
@@ -817,19 +759,11 @@ def _ensure_run_metadata(
     existing = connection.execute(
         "SELECT schema_version, lottery_type, source_endpoint, source_sha256, as_of_date, "
         "adapter_source_commit, strategy_set_json FROM run_metadata WHERE run_id = ?",
-<<<<<<< HEAD
         (run_id,),
     ).fetchone()
     if existing is not None:
         expected = (
             schema_version,
-=======
-        (RUN_ID,),
-    ).fetchone()
-    if existing is not None:
-        expected = (
-            SCHEMA_VERSION,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
             LOTTERY_TYPE,
             OFFICIAL_SOURCE_ENDPOINT,
             source_sha256,
@@ -843,13 +777,8 @@ def _ensure_run_metadata(
     connection.execute(
         "INSERT INTO run_metadata VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (
-<<<<<<< HEAD
             run_id,
             schema_version,
-=======
-            RUN_ID,
-            SCHEMA_VERSION,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
             LOTTERY_TYPE,
             OFFICIAL_SOURCE_ENDPOINT,
             source_sha256,
@@ -881,10 +810,7 @@ def _insert_source_draws(connection: sqlite3.Connection, draws: Sequence[SourceD
 
 def _ensure_coverage_rows(
     connection: sqlite3.Connection,
-<<<<<<< HEAD
     run_id: str,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     draws: Sequence[SourceDraw],
     specs: Sequence[StrategySpec],
 ) -> None:
@@ -894,11 +820,7 @@ def _ensure_coverage_rows(
         connection.execute(
             "INSERT OR IGNORE INTO strategy_coverage VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, 0, 0, ?)",
             (
-<<<<<<< HEAD
                 run_id,
-=======
-                RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                 spec.strategy_id,
                 spec.strategy_version,
                 spec.lottery_type,
@@ -913,10 +835,7 @@ def _ensure_coverage_rows(
 
 
 def _provenance(
-<<<<<<< HEAD
     run_id: str,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     spec: StrategySpec,
     source_sha256: str,
     adapter_source_commit: str,
@@ -926,11 +845,7 @@ def _provenance(
 ) -> str:
     return _canonical_json(
         {
-<<<<<<< HEAD
             "run_id": run_id,
-=======
-            "run_id": RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
             "lottery_type": LOTTERY_TYPE,
             "strategy_id": spec.strategy_id,
             "strategy_version": spec.strategy_version,
@@ -953,10 +868,7 @@ def _provenance(
 
 def _target_rows(
     connection: sqlite3.Connection,
-<<<<<<< HEAD
     run_id: str,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     draws: Sequence[SourceDraw],
     spec: StrategySpec,
     adapter_source_commit: str,
@@ -970,11 +882,7 @@ def _target_rows(
         for draw in draws[:target_index]
     )
     provenance = _provenance(
-<<<<<<< HEAD
         run_id, spec, source_sha256, adapter_source_commit, target, cutoff, len(history)
-=======
-        spec, source_sha256, adapter_source_commit, target, cutoff, len(history)
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     )
     status = "SUCCESS"
     failure: Exception | None = None
@@ -998,11 +906,7 @@ def _target_rows(
             "INSERT INTO prediction_tickets VALUES "
             "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-<<<<<<< HEAD
                 run_id,
-=======
-                RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                 spec.strategy_id,
                 spec.strategy_version,
                 LOTTERY_TYPE,
@@ -1025,11 +929,7 @@ def _target_rows(
             connection.execute(
                 "INSERT INTO prediction_scores VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
-<<<<<<< HEAD
                     run_id,
-=======
-                    RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                     spec.strategy_id,
                     spec.strategy_version,
                     target.draw_id,
@@ -1044,11 +944,7 @@ def _target_rows(
         connection.execute(
             "INSERT INTO failure_ledger VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
-<<<<<<< HEAD
                 run_id,
-=======
-                RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                 spec.strategy_id,
                 spec.strategy_version,
                 target.draw_id,
@@ -1064,11 +960,7 @@ def _target_rows(
     connection.execute(
         "INSERT INTO target_completion VALUES (?, ?, ?, ?, ?, ?)",
         (
-<<<<<<< HEAD
             run_id,
-=======
-            RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
             spec.strategy_id,
             spec.strategy_version,
             target.draw_id,
@@ -1078,33 +970,21 @@ def _target_rows(
     )
 
 
-<<<<<<< HEAD
 def _refresh_coverage(
     connection: sqlite3.Connection, run_id: str, specs: Sequence[StrategySpec]
 ) -> None:
-=======
-def _refresh_coverage(connection: sqlite3.Connection, specs: Sequence[StrategySpec]) -> None:
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     for spec in specs:
         row = connection.execute(
             "SELECT COUNT(*), COALESCE(SUM(status = 'SUCCESS'), 0), "
             "COALESCE(SUM(status = 'FAILED'), 0) FROM target_completion "
             "WHERE run_id = ? AND strategy_id = ? AND strategy_version = ?",
-<<<<<<< HEAD
             (run_id, spec.strategy_id, spec.strategy_version),
-=======
-            (RUN_ID, spec.strategy_id, spec.strategy_version),
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         ).fetchone()
         processed, successful, failed = cast(tuple[int, int, int], row)
         expected = connection.execute(
             "SELECT expected_target_draw_count FROM strategy_coverage "
             "WHERE run_id = ? AND strategy_id = ? AND strategy_version = ?",
-<<<<<<< HEAD
             (run_id, spec.strategy_id, spec.strategy_version),
-=======
-            (RUN_ID, spec.strategy_id, spec.strategy_version),
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         ).fetchone()[0]
         status = "COMPLETE" if processed == expected else "PARTIAL"
         connection.execute(
@@ -1116,11 +996,7 @@ def _refresh_coverage(connection: sqlite3.Connection, specs: Sequence[StrategySp
                 successful,
                 failed,
                 status,
-<<<<<<< HEAD
                 run_id,
-=======
-                RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                 spec.strategy_id,
                 spec.strategy_version,
             ),
@@ -1136,13 +1012,10 @@ def _write_reports(
     source_sha256: str,
     adapter_source_commit: str,
     as_of_date: str,
-<<<<<<< HEAD
     *,
     run_id: str,
     schema_version: str,
     blocked_strategies: Sequence[dict[str, str]],
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 ) -> dict[str, object]:
     coverage_rows = connection.execute(
         "SELECT strategy_id, strategy_version, lottery_type, native_ticket_count, min_history, "
@@ -1180,13 +1053,8 @@ def _write_reports(
     selected = _strategy_set_payload(specs)
     all_complete = all(item["status"] == "COMPLETE" for item in coverage)
     run_summary: dict[str, object] = {
-<<<<<<< HEAD
         "run_id": run_id,
         "schema_version": schema_version,
-=======
-        "run_id": RUN_ID,
-        "schema_version": SCHEMA_VERSION,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         "lottery_type": LOTTERY_TYPE,
         "as_of_date": as_of_date,
         "source_endpoint": OFFICIAL_SOURCE_ENDPOINT,
@@ -1195,20 +1063,12 @@ def _write_reports(
         "draw_count": len(draws),
         "selected_strategy_count": len(specs),
         "selected_strategies": selected,
-<<<<<<< HEAD
         "blocked_strategies": list(blocked_strategies),
-=======
-        "blocked_strategies": list(BLOCKED_DAILY539_STRATEGIES),
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         "failure_count": len(failures),
         "status": "COMPLETE" if all_complete else "PARTIAL",
     }
     source_ledger = {
-<<<<<<< HEAD
         "run_id": run_id,
-=======
-        "run_id": RUN_ID,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         "lottery_type": LOTTERY_TYPE,
         "source_kind": "OFFICIAL_PUBLIC_TAIWAN_LOTTERY_API",
         "source_endpoint": OFFICIAL_SOURCE_ENDPOINT,
@@ -1245,7 +1105,6 @@ def run_batch(
     as_of_date: str,
     specs: Sequence[StrategySpec] = DEFAULT_STRATEGY_SPECS,
     max_targets_per_strategy: int | None = None,
-<<<<<<< HEAD
     run_id: str = RUN_ID,
     schema_version: str = SCHEMA_VERSION,
     db_name: str = DB_NAME,
@@ -1258,10 +1117,6 @@ def run_batch(
     ``blocked_strategies`` together runs an independent named configuration
     against its own SQLite file, e.g. :data:`WAVE2_F4COLD_SINGLE_CONFIG`.
     """
-=======
-) -> dict[str, object]:
-    """Run or resume a deterministic batch against a task-owned SQLite file."""
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 
     if not draws:
         raise ValueError("DAILY_539 source history cannot be empty")
@@ -1269,7 +1124,6 @@ def run_batch(
         raise ValueError("source contains a draw after the authorized as-of date")
     if any(spec.lottery_type != LOTTERY_TYPE for spec in specs):
         raise ValueError("T539 runner accepts DAILY_539 strategies only")
-<<<<<<< HEAD
     db_path = runtime_root / db_name
     source_sha256 = source_payload_sha256(draws)
     connection = _connect(db_path, runtime_root, db_name)
@@ -1281,16 +1135,6 @@ def run_batch(
         )
         _insert_source_draws(connection, draws)
         _ensure_coverage_rows(connection, run_id, draws, specs)
-=======
-    db_path = runtime_root / DB_NAME
-    source_sha256 = source_payload_sha256(draws)
-    connection = _connect(db_path, runtime_root)
-    try:
-        _init_schema(connection)
-        _ensure_run_metadata(connection, source_sha256, as_of_date, adapter_source_commit, specs)
-        _insert_source_draws(connection, draws)
-        _ensure_coverage_rows(connection, draws, specs)
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         for spec in specs:
             processed_this_invocation = 0
             for target_index in range(spec.min_history, len(draws)):
@@ -1298,21 +1142,14 @@ def run_batch(
                 already_done = connection.execute(
                     "SELECT 1 FROM target_completion WHERE run_id = ? AND strategy_id = ? "
                     "AND strategy_version = ? AND target_draw_id = ?",
-<<<<<<< HEAD
                     (run_id, spec.strategy_id, spec.strategy_version, target_id),
-=======
-                    (RUN_ID, spec.strategy_id, spec.strategy_version, target_id),
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                 ).fetchone()
                 if already_done is not None:
                     continue
                 with connection:
                     _target_rows(
                         connection,
-<<<<<<< HEAD
                         run_id,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
                         draws,
                         spec,
                         adapter_source_commit,
@@ -1325,11 +1162,7 @@ def run_batch(
                     and processed_this_invocation >= max_targets_per_strategy
                 ):
                     break
-<<<<<<< HEAD
         _refresh_coverage(connection, run_id, specs)
-=======
-        _refresh_coverage(connection, specs)
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         summary = _write_reports(
             runtime_root,
             connection,
@@ -1338,7 +1171,6 @@ def run_batch(
             source_sha256,
             adapter_source_commit,
             as_of_date,
-<<<<<<< HEAD
             run_id=run_id,
             schema_version=schema_version,
             blocked_strategies=blocked_strategies,
@@ -1346,12 +1178,6 @@ def run_batch(
         connection.execute(
             "UPDATE run_metadata SET status = ? WHERE run_id = ?",
             (summary["status"], run_id),
-=======
-        )
-        connection.execute(
-            "UPDATE run_metadata SET status = ? WHERE run_id = ?",
-            (summary["status"], RUN_ID),
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
         )
         connection.commit()
         return summary
@@ -1361,7 +1187,6 @@ def run_batch(
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-<<<<<<< HEAD
     parser.add_argument("--runtime-root", type=Path, default=None)
     parser.add_argument("--as-of-date", default=DEFAULT_AS_OF_DATE)
     parser.add_argument("--adapter-source-commit")
@@ -1380,12 +1205,6 @@ def _parse_args() -> argparse.Namespace:
             "with no network fetch and no local copy written."
         ),
     )
-=======
-    parser.add_argument("--runtime-root", type=Path, default=default_runtime_root())
-    parser.add_argument("--as-of-date", default=DEFAULT_AS_OF_DATE)
-    parser.add_argument("--adapter-source-commit")
-    parser.add_argument("--max-targets-per-strategy", type=int)
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     return parser.parse_args()
 
 
@@ -1393,7 +1212,6 @@ def main() -> int:
     args = _parse_args()
     if args.max_targets_per_strategy is not None and args.max_targets_per_strategy < 1:
         raise SystemExit("--max-targets-per-strategy must be positive")
-<<<<<<< HEAD
     config = STRATEGY_SET_CONFIGS[cast(str, args.strategy_set)]
     as_of_date = cast(str, args.as_of_date)
     runtime_root = cast(Path | None, args.runtime_root)
@@ -1409,10 +1227,6 @@ def main() -> int:
         if source_cache is not None
         else load_or_fetch_source(runtime_root, as_of_date)
     )
-=======
-    runtime_root = cast(Path, args.runtime_root)
-    draws = load_or_fetch_source(runtime_root, cast(str, args.as_of_date))
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     source_commit = args.adapter_source_commit
     if source_commit is None:
         source_commit = _git_source_commit(Path(__file__).resolve().parents[1])
@@ -1420,7 +1234,6 @@ def main() -> int:
         runtime_root,
         draws,
         adapter_source_commit=source_commit,
-<<<<<<< HEAD
         as_of_date=as_of_date,
         specs=config.specs,
         max_targets_per_strategy=args.max_targets_per_strategy,
@@ -1428,10 +1241,6 @@ def main() -> int:
         schema_version=config.schema_version,
         db_name=config.db_name,
         blocked_strategies=config.blocked_strategies,
-=======
-        as_of_date=cast(str, args.as_of_date),
-        max_targets_per_strategy=args.max_targets_per_strategy,
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     )
     print(_canonical_json(summary))
     return 0

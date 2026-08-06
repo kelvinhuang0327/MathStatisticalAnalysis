@@ -14,10 +14,7 @@ from lottolab.strategies.adapters.base import (
     UnsupportedLotteryType,
 )
 from lottolab.strategies.adapters.daily539_single_legacy import (
-<<<<<<< HEAD
     Daily539Acb1BetAdapter,
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
     Daily539AcbSingleAdapter,
     Daily539Markov1BetAdapter,
 )
@@ -123,7 +120,6 @@ def test_acb_identity_and_donor_parity() -> None:
     assert adapter.get_one_bet(history, LotteryType.DAILY_539) == (_acb_oracle(history), None)
 
 
-<<<<<<< HEAD
 def test_acb_1bet_alias_identity_and_donor_version() -> None:
     adapter = Daily539Acb1BetAdapter()
     assert adapter.strategy_id == "acb_1bet"
@@ -146,9 +142,6 @@ def test_acb_1bet_alias_matches_acb_single_539_on_every_target() -> None:
 @pytest.mark.parametrize(
     "adapter", [Daily539Markov1BetAdapter(), Daily539AcbSingleAdapter(), Daily539Acb1BetAdapter()]
 )
-=======
-@pytest.mark.parametrize("adapter", [Daily539Markov1BetAdapter(), Daily539AcbSingleAdapter()])
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def test_single_adapters_are_deterministic_and_causal(adapter: SingleAdapter) -> None:
     history = _history()
     get_one_bet = adapter.get_one_bet
@@ -177,15 +170,11 @@ def test_prefix_before_window_does_not_change_acb() -> None:
 
 @pytest.mark.parametrize(
     ("adapter", "minimum"),
-<<<<<<< HEAD
     [
         (Daily539Markov1BetAdapter(), 30),
         (Daily539AcbSingleAdapter(), 100),
         (Daily539Acb1BetAdapter(), 100),
     ],
-=======
-    [(Daily539Markov1BetAdapter(), 30), (Daily539AcbSingleAdapter(), 100)],
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 )
 def test_minimum_history_boundary(adapter: SingleAdapter, minimum: int) -> None:
     get_one_bet = adapter.get_one_bet
@@ -196,13 +185,9 @@ def test_minimum_history_boundary(adapter: SingleAdapter, minimum: int) -> None:
     assert special is None
 
 
-<<<<<<< HEAD
 @pytest.mark.parametrize(
     "adapter", [Daily539Markov1BetAdapter(), Daily539AcbSingleAdapter(), Daily539Acb1BetAdapter()]
 )
-=======
-@pytest.mark.parametrize("adapter", [Daily539Markov1BetAdapter(), Daily539AcbSingleAdapter()])
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 def test_wrong_lottery_and_malformed_history_fail_closed(adapter: SingleAdapter) -> None:
     get_one_bet = adapter.get_one_bet
     with pytest.raises(UnsupportedLotteryType):
@@ -223,17 +208,11 @@ def test_no_external_state_is_used(monkeypatch: pytest.MonkeyPatch) -> None:
     history = _history()
     assert Daily539Markov1BetAdapter().get_one_bet(history, LotteryType.DAILY_539)[1] is None
     assert Daily539AcbSingleAdapter().get_one_bet(history, LotteryType.DAILY_539)[1] is None
-<<<<<<< HEAD
     assert Daily539Acb1BetAdapter().get_one_bet(history, LotteryType.DAILY_539)[1] is None
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1
 
 
 def test_no_nan_is_emitted() -> None:
     numbers, _ = Daily539AcbSingleAdapter().get_one_bet(_history(), LotteryType.DAILY_539)
     assert not any(math.isnan(float(number)) for number in numbers)
-<<<<<<< HEAD
     alias_numbers, _ = Daily539Acb1BetAdapter().get_one_bet(_history(), LotteryType.DAILY_539)
     assert not any(math.isnan(float(number)) for number in alias_numbers)
-=======
->>>>>>> codex/t539-all-strategies-migration-backtest-wave1-r1

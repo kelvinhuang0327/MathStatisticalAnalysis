@@ -83,6 +83,12 @@ _EXECUTED_SELECTION_REASONS: Mapping[str, str] = {
         "Wave 2 single-ticket coverage closure: equals native ticket 1 of the same "
         "complete F4Cold portfolio selected for the 3-bet and 5-bet identities."
     ),
+    "acb_1bet": (
+        "Wave 3 alias coverage closure: the P31A-retired donor (strategy_version "
+        "v0.1-p31a) computes the identical ACB formula already exposed as "
+        "acb_single_539's producer, so this identity reuses that one producer "
+        "without duplicating the algorithm under a second name."
+    ),
 }
 
 _ALL_BLOCKED_STRATEGIES: tuple[T539CoverageBlockedEntry, ...] = (

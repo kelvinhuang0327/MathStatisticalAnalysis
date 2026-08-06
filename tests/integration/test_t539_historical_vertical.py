@@ -255,6 +255,27 @@ def fixture_database_with_f4cold_single(tmp_path: Path) -> Path:
     return path
 
 
+def _build_fixture_database_with_wave3_acb1(path: Path) -> None:
+    _build_fixture_database_with_f4cold_single(path)
+    connection = sqlite3.connect(path)
+    try:
+        connection.execute(
+            "INSERT INTO strategy_coverage VALUES (?, 'acb_1bet', 'v0.1-p31a', 'DAILY_539', "
+            "1, 100, '90000002', 2, 2, 2, 0, 'COMPLETE')",
+            (RUN_ID,),
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+
+@pytest.fixture
+def fixture_database_with_wave3_acb1(tmp_path: Path) -> Path:
+    path = tmp_path / "t539_wave1_fixture_with_wave3_acb1.sqlite3"
+    _build_fixture_database_with_wave3_acb1(path)
+    return path
+
+
 class TestSQLiteT539HistoricalQueryRepository:
     def test_list_runs_reports_aggregate_counts(self, fixture_database: Path) -> None:
         repo = SQLiteT539HistoricalQueryRepository(fixture_database)
@@ -406,6 +427,27 @@ class TestSQLiteT539HistoricalQueryRepository:
         assert f4cold_entry.native_ticket_count == 1
         assert f4cold_entry.min_history == 100
         assert f4cold_entry.selection_reason != ""
+
+    def test_coverage_ledger_suppresses_acb1_blocked_entry_once_executed_in_this_db(
+        self, fixture_database_with_wave3_acb1: Path
+    ) -> None:
+        repo = SQLiteT539HistoricalQueryRepository(fixture_database_with_wave3_acb1)
+        ledger = repo.get_coverage_ledger(RUN_ID)
+        assert ledger is not None
+        executed_ids = {item.strategy_id for item in ledger.executed}
+        assert executed_ids == {"strat_a", "strat_b", "daily539_f4cold", "acb_1bet"}
+        blocked_ids = {item.strategy_id for item in ledger.blocked}
+        assert "acb_1bet" not in blocked_ids
+        assert "daily539_f4cold" not in blocked_ids
+        assert len(ledger.blocked) == 5
+        assert ledger.coverage_complete is False
+        assert blocked_ids.isdisjoint(executed_ids)
+
+        acb1_entry = next(item for item in ledger.executed if item.strategy_id == "acb_1bet")
+        assert acb1_entry.strategy_version == "v0.1-p31a"
+        assert acb1_entry.native_ticket_count == 1
+        assert acb1_entry.min_history == 100
+        assert acb1_entry.selection_reason != ""
 
 
 class TestT539HistoricalApi:
@@ -590,3 +632,65 @@ def test_wave2_f4cold_single_projection_nine_strategies_and_ticket_parity() -> N
     assert rankings is not None
     assert len(rankings.items) == 9
     assert "daily539_f4cold" in {item.strategy_id for item in rankings.items}
+
+
+# ---------------------------------------------------------------------------
+# Wave 3 acb_1bet-alias acceptance: skipped when the sealed Wave 3 DB is
+# absent. Ten-strategy coverage, blocked-ledger closure, and full ticket
+# parity with acb_single_539 are all derived from the sealed DB itself.
+# ---------------------------------------------------------------------------
+
+WAVE3_ACB1_ALIAS_DB = (
+    WORKSPACE
+    / ".runs/MathStatisticalAnalysis/T539_WAVE3_ACB1_ALIAS_COVERAGE_CLOSURE_R1"
+    / "t539_wave3_acb1_alias.sqlite3"
+)
+
+
+def test_wave3_acb1_alias_projection_ten_strategies_and_ticket_parity() -> None:
+    if not WAVE3_ACB1_ALIAS_DB.exists():
+        pytest.skip("the sealed Wave 3 acb_1bet-alias database is not present locally")
+
+    repo = SQLiteT539HistoricalQueryRepository(WAVE3_ACB1_ALIAS_DB)
+    run_page = repo.list_runs(limit=10, offset=0)
+    assert run_page.total_count == 1
+    run = run_page.items[0]
+    assert run.strategy_count == 10
+    assert run.failure_count == 0
+
+    ledger = repo.get_coverage_ledger(run.run_id)
+    assert ledger is not None
+    assert len(ledger.executed) == 10
+    assert len(ledger.blocked) == 5
+    assert ledger.coverage_complete is False
+    blocked_ids = {item.strategy_id for item in ledger.blocked}
+    executed_ids = {item.strategy_id for item in ledger.executed}
+    assert "acb_1bet" not in blocked_ids
+    assert "acb_1bet" in executed_ids
+    assert blocked_ids.isdisjoint(executed_ids)
+
+    strategies = repo.list_strategies(run.run_id, limit=20, offset=0)
+    assert strategies is not None
+    by_id = {item.strategy_id: item for item in strategies.items}
+    alias, single = by_id["acb_1bet"], by_id["acb_single_539"]
+    assert alias.strategy_version == "v0.1-p31a"
+    assert single.strategy_version == "v0.1-p36"
+    assert alias.native_ticket_count == 1
+    assert alias.expected_target_draw_count == single.expected_target_draw_count
+    assert alias.ticket_count == alias.expected_target_draw_count > 0
+    assert alias.hit_distribution == single.hit_distribution
+    assert alias.winning_ticket_count == single.winning_ticket_count
+
+    connection = sqlite3.connect(f"{WAVE3_ACB1_ALIAS_DB.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        alias_rows = _ticket1_rows(connection, "acb_1bet")
+        single_rows = _ticket1_rows(connection, "acb_single_539")
+        assert len(alias_rows) == alias.expected_target_draw_count
+        assert alias_rows == single_rows
+    finally:
+        connection.close()
+
+    rankings = repo.list_rankings(run.run_id)
+    assert rankings is not None
+    assert len(rankings.items) == 10
+    assert "acb_1bet" in {item.strategy_id for item in rankings.items}

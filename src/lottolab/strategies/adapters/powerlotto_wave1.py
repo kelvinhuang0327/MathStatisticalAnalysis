@@ -18,7 +18,7 @@ zero-padded power-of-two window: it preserves the donor's period-alignment
 signal and tie policy without adding NumPy, but does not reproduce the
 donor's exact-length dominant-bin selection bit-for-bit.  ``power_fourier_rhythm_2bet``
 and ``power_orthogonal_5bet`` instead need that exact reproduction, so they
-use the arbitrary-length :func:`_bluestein_dft` at the donor's own unpadded
+use the arbitrary-length :func:`bluestein_dft` at the donor's own unpadded
 length (see :func:`_fourier_rhythm_fixed_window_scores` and
 :func:`_fourier_scores_exact`) -- still no NumPy or other external state.
 """
@@ -412,7 +412,7 @@ def _ifft_complex_pow2(values: tuple[complex, ...]) -> tuple[complex, ...]:
     return tuple(value.conjugate() / length for value in transformed)
 
 
-def _bluestein_dft(signal: tuple[float, ...]) -> tuple[complex, ...]:
+def bluestein_dft(signal: tuple[float, ...]) -> tuple[complex, ...]:
     """Exact discrete Fourier transform of ``signal`` for an arbitrary length.
 
     The fixed-window Fourier-rhythm donor requires an exact 500-point FFT,
@@ -635,7 +635,7 @@ def _fourier_rhythm_fixed_window_scores(
     donor's exact-length rfft (it does not reproduce numpy's dominant-bin
     selection bit-for-bit).  This function needs a different property from
     that helper -- an exact match to the donor's *fixed* 500-slot window --
-    which is why it uses the exact arbitrary-length :func:`_bluestein_dft`
+    which is why it uses the exact arbitrary-length :func:`bluestein_dft`
     instead of reusing :func:`_fourier_scores`.
     """
 
@@ -651,7 +651,7 @@ def _fourier_rhythm_fixed_window_scores(
             scores[number] = 0.0
             continue
         mean = sum(bitstream) / window
-        spectrum = _bluestein_dft(tuple(value - mean for value in bitstream))
+        spectrum = bluestein_dft(tuple(value - mean for value in bitstream))
         half = window // 2
         # Strictly positive frequency bins only: NumPy's even-length
         # fftfreq marks the Nyquist bin (index `half`) as negative, so the
@@ -704,7 +704,7 @@ def _fourier_scores_exact(
     (whose own FFT pads to the next power of two, a pre-existing accepted
     approximation kept as-is for the five sibling strategies that already
     ship with it), this helper reuses the exact arbitrary-length
-    :func:`_bluestein_dft` at that unpadded length and keeps only the
+    :func:`bluestein_dft` at that unpadded length and keeps only the
     one-sided bins ``0 .. size // 2`` NumPy's ``rfft`` would return, so its
     dominant-bin selection matches the donor's real FFT exactly rather than
     approximating it.
@@ -722,7 +722,7 @@ def _fourier_scores_exact(
             scores[number] = 0.0
             continue
         mean = sum(raw) / size
-        transform = _bluestein_dft(tuple(value - mean for value in raw))
+        transform = bluestein_dft(tuple(value - mean for value in raw))
         power = tuple(
             value.real * value.real + value.imag * value.imag
             for value in transform[: size // 2 + 1]
@@ -1024,5 +1024,6 @@ __all__ = [
     "P638StrategySpec",
     "P638Ticket",
     "P638TicketSet",
+    "bluestein_dft",
     "coerce_p638_history",
 ]

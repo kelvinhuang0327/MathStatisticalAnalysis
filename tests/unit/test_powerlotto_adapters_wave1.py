@@ -24,7 +24,6 @@ from lottolab.strategies.adapters.powerlotto_wave1 import (
     P638HistoryRow,
     P638StrategySpec,
     _acb_scores,
-    _bluestein_dft,
     _cold_ticket,
     _fft_complex_pow2,
     _fourier_rhythm_fixed_window_scores,
@@ -34,6 +33,7 @@ from lottolab.strategies.adapters.powerlotto_wave1 import (
     _midfreq_scores,
     _power_fourier_rhythm_tickets,
     _power_orthogonal_tickets,
+    bluestein_dft,
     coerce_p638_history,
 )
 from lottolab.strategies.powerlotto_second_zone import second_zone_predict
@@ -196,7 +196,7 @@ def _naive_dft(values: tuple[complex, ...]) -> tuple[complex, ...]:
 def test_bluestein_dft_matches_naive_dft(length: int) -> None:
     rng = random.Random(f"bluestein-{length}")
     signal = tuple(rng.uniform(-1.0, 1.0) for _ in range(length))
-    got = _bluestein_dft(signal)
+    got = bluestein_dft(signal)
     want = _naive_dft(tuple(complex(value) for value in signal))
     assert len(got) == length
     for actual, expected in zip(got, want, strict=True):

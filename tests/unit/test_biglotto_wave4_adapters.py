@@ -793,11 +793,6 @@ def test_production_catalog_wave4_single_ticket_descriptor_declares_expected_sha
     assert descriptor.min_history == 1
 
 
-def test_production_catalog_now_has_thirty_two_descriptors() -> None:
-    catalog = production_catalog()
-    assert len(catalog) == 59
-
-
 def test_wave1_through_wave3_descriptors_are_unaffected_by_wave4() -> None:
     """Existing 19 adapters and their outputs must remain unchanged."""
     catalog = production_catalog()

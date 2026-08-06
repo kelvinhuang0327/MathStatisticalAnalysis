@@ -696,7 +696,7 @@ def test_production_catalog_wave12_descriptors_declare_expected_shapes() -> None
 def test_production_catalog_now_has_fifty_three_descriptors() -> None:
     """Name pinned at the Wave 12 landing point; later waves append only."""
     catalog = production_catalog()
-    assert len(catalog) == 56
+    assert len(catalog) == 59
 
 
 def test_wave12_social_wisdom_is_not_an_alias_of_the_pre_existing_strategy() -> None:

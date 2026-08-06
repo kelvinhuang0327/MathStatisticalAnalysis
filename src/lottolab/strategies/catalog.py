@@ -1353,6 +1353,76 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=4,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_ecp__c9d5ac6decdd",
+        strategy_name="大樂透 ECP 菁英共識池預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=("lottolab.strategies.adapters.biglotto_wave14:BigLottoTestEcpAdapter"),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_ecp.py",
+            "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source:tools/negative_selector.py",
+            "legacy_source_sha256:"
+            "c9d5ac6decddac7940a6ad90739069afd4b13d181dddd4336586e3f718d8e6a2",
+            "legacy_symbol:ECPOptimizer.predict_3bets_ecp",
+            "full_strategy_catalog_id:legacy_biglotto__test_ecp__c9d5ac6decdd",
+            "migration_task:BIGLOTTO_WAVE14_R1_ECP_PCE_HPSB",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__test_pce__9c0cf22b4217",
+        strategy_name="大樂透 PCE 配對共識集成預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=("lottolab.strategies.adapters.biglotto_wave14:BigLottoTestPceAdapter"),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/test_pce.py",
+            "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source:tools/negative_selector.py",
+            "legacy_source_sha256:"
+            "9c0cf22b42179ffc496f7fb93cbc3cfc902a7ff60a43095e3fe1f44168b6d28c",
+            "legacy_symbol:PCEOptimizer.predict_3bets_pce",
+            "full_strategy_catalog_id:legacy_biglotto__test_pce__9c0cf22b4217",
+            "migration_task:BIGLOTTO_WAVE14_R1_ECP_PCE_HPSB",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+        strategy_name="大樂透 HPSB 超精準單注預測器（V2 動態方法選擇）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave14:BigLottoHpsbOptimizerAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/hpsb_optimizer.py",
+            "legacy_source:lottery_api/models/unified_predictor.py",
+            "legacy_source_sha256:"
+            "cf5cd7d971e8bf2f1854d2196824278de957b3eae3697dff197ab9a3c8b78bcc",
+            "legacy_symbol:HPSBOptimizer.predict_hpsb_v2",
+            "full_strategy_catalog_id:legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+            "migration_task:BIGLOTTO_WAVE14_R1_ECP_PCE_HPSB",
+        ),
+    ),
 )
 
 

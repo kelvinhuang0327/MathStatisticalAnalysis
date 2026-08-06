@@ -794,6 +794,8 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__test_asm__d39a233a4c75",
         "legacy_biglotto__test_dcb__c3299c25ca59",
         "legacy_biglotto__test_4bet_dcb__3c7e3e661ad8",
+        "legacy_biglotto__test_ecp__c9d5ac6decdd",
+        "legacy_biglotto__test_pce__9c0cf22b4217",
     }
 
 

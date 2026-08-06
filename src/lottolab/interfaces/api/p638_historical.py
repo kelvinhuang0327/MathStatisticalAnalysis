@@ -25,6 +25,7 @@ from lottolab.application.p638_historical import (
 )
 from lottolab.application.ports import (
     P638All10RankingQueryRepositoryFactory,
+    P638All23RankingQueryRepositoryFactory,
     P638HistoricalQueryRepositoryFactory,
 )
 from lottolab.application.use_cases.query_p638_historical import (
@@ -32,6 +33,7 @@ from lottolab.application.use_cases.query_p638_historical import (
     MIN_LIMIT,
     GetP638Metrics,
     GetP638Target,
+    ListP638All23Rankings,
     ListP638Rankings,
     ListP638Replay,
     ListP638Runs,
@@ -461,6 +463,7 @@ def create_p638_historical_router(
     repository_factory: P638HistoricalQueryRepositoryFactory | None,
     *,
     all10_ranking_repository_factory: P638All10RankingQueryRepositoryFactory | None = None,
+    all23_ranking_repository_factory: P638All23RankingQueryRepositoryFactory | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix=f"{API_PREFIX}/p638-historical", tags=["p638-historical"])
     list_runs = ListP638Runs(repository_factory) if repository_factory is not None else None
@@ -473,6 +476,11 @@ def create_p638_historical_router(
     list_rankings = (
         ListP638Rankings(all10_ranking_repository_factory)
         if all10_ranking_repository_factory is not None
+        else None
+    )
+    list_all23_rankings = (
+        ListP638All23Rankings(all23_ranking_repository_factory)
+        if all23_ranking_repository_factory is not None
         else None
     )
 
@@ -636,6 +644,31 @@ def create_p638_historical_router(
             return _invalid()
         return (
             _not_found("P638_RUN_NOT_FOUND")
+            if page is None
+            else P638RankingPageResponse.from_page(page)
+        )
+
+    @router.get(
+        "/all23-runs/{run_id}/rankings",
+        response_model=P638RankingPageResponse,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="listP638HistoricalAll23Rankings",
+    )
+    def list_p638_all23_rankings(run_id: RunId) -> P638RankingPageResponse | JSONResponse:
+        if list_all23_rankings is None:
+            return _not_configured()
+        try:
+            page = list_all23_rankings.execute(run_id)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_ALL23_RUN_NOT_FOUND")
             if page is None
             else P638RankingPageResponse.from_page(page)
         )

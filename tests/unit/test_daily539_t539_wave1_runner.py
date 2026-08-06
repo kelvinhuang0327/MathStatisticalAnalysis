@@ -21,6 +21,7 @@ from tools.run_daily539_t539_wave1 import (
     WAVE1_CONFIG,
     WAVE2_F4COLD_SINGLE_CONFIG,
     WAVE3_ACB1_ALIAS_CONFIG,
+    WAVE4_REMAINING5_BATCH_CONFIG,
     SourceDraw,
     StrategySpec,
     load_external_source_cache,
@@ -272,6 +273,63 @@ def test_wave3_config_appends_acb1_alias_and_shrinks_blocked_ledger() -> None:
     assert [spec.strategy_id for spec in WAVE2_F4COLD_SINGLE_CONFIG.specs] == [
         *[spec.strategy_id for spec in DEFAULT_STRATEGY_SPECS],
         "daily539_f4cold",
+    ]
+
+
+def test_wave4_config_appends_remaining5_batch_and_empties_blocked_ledger() -> None:
+    wave3_ids = [spec.strategy_id for spec in WAVE3_ACB1_ALIAS_CONFIG.specs]
+    wave4_ids = [spec.strategy_id for spec in WAVE4_REMAINING5_BATCH_CONFIG.specs]
+    added_ids = [
+        "acb_markov_midfreq",
+        "zone_gap_3bet_539",
+        "539_3bet_orthogonal",
+        "p0b_539_3bet_f_cold_fmid",
+        "p0c_539_3bet_f_cold_x2",
+    ]
+    assert wave4_ids == [*wave3_ids, *added_ids]
+    assert len(wave3_ids) == 10
+    assert len(wave4_ids) == 15
+
+    added_specs = {spec.strategy_id: spec for spec in WAVE4_REMAINING5_BATCH_CONFIG.specs[-5:]}
+    for strategy_id in added_ids:
+        spec = added_specs[strategy_id]
+        assert spec.native_ticket_count == 1
+        assert spec.min_history == 100
+        assert spec.lottery_type == LOTTERY_TYPE
+    assert added_specs["acb_markov_midfreq"].strategy_version == "v0.1-p31a"
+    for strategy_id in (
+        "zone_gap_3bet_539",
+        "539_3bet_orthogonal",
+        "p0b_539_3bet_f_cold_fmid",
+        "p0c_539_3bet_f_cold_x2",
+    ):
+        assert added_specs[strategy_id].strategy_version == "v0.1-p36"
+
+    wave3_blocked_ids = {
+        entry["strategy_id"] for entry in WAVE3_ACB1_ALIAS_CONFIG.blocked_strategies
+    }
+    wave4_blocked_ids = {
+        entry["strategy_id"] for entry in WAVE4_REMAINING5_BATCH_CONFIG.blocked_strategies
+    }
+    assert wave3_blocked_ids - wave4_blocked_ids == set(added_ids)
+    assert wave4_blocked_ids == set()
+    assert len(WAVE3_ACB1_ALIAS_CONFIG.blocked_strategies) == 5
+    assert len(WAVE4_REMAINING5_BATCH_CONFIG.blocked_strategies) == 0
+
+    assert STRATEGY_SET_CONFIGS["wave4-remaining5-batch"] is WAVE4_REMAINING5_BATCH_CONFIG
+    assert WAVE4_REMAINING5_BATCH_CONFIG.run_id != WAVE3_ACB1_ALIAS_CONFIG.run_id
+    assert WAVE4_REMAINING5_BATCH_CONFIG.db_name != WAVE3_ACB1_ALIAS_CONFIG.db_name
+    assert WAVE4_REMAINING5_BATCH_CONFIG.schema_version != WAVE3_ACB1_ALIAS_CONFIG.schema_version
+
+    # Wave 1, Wave 2, and Wave 3 configurations are untouched by the Wave 4 addition.
+    assert WAVE1_CONFIG.specs == DEFAULT_STRATEGY_SPECS
+    assert WAVE1_CONFIG.blocked_strategies == BLOCKED_DAILY539_STRATEGIES
+    assert len(WAVE2_F4COLD_SINGLE_CONFIG.specs) == 9
+    assert len(WAVE3_ACB1_ALIAS_CONFIG.specs) == 10
+    assert [spec.strategy_id for spec in WAVE3_ACB1_ALIAS_CONFIG.specs] == [
+        *[spec.strategy_id for spec in DEFAULT_STRATEGY_SPECS],
+        "daily539_f4cold",
+        "acb_1bet",
     ]
 
 

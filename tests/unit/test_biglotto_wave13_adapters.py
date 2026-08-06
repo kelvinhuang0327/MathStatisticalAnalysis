@@ -775,7 +775,7 @@ def test_production_catalog_wave13_descriptors_declare_expected_shapes() -> None
 
 def test_production_catalog_now_has_fifty_six_descriptors() -> None:
     catalog = production_catalog()
-    assert len(catalog) == 56
+    assert len(catalog) == 59
 
 
 def test_wave1_through_wave12_descriptors_are_unaffected_by_wave13() -> None:
@@ -785,7 +785,7 @@ def test_wave1_through_wave12_descriptors_are_unaffected_by_wave13() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 56
+    assert len(all_ids) == 59
     pre_existing_ids = all_ids[:53]
     wave13_ids_in_order = all_ids[53:56]
     assert set(pre_existing_ids).isdisjoint(WAVE13_IDS)

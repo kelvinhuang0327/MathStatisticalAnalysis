@@ -821,6 +821,37 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/p638-historical/all23-runs/{run_id}/rankings": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638RankingPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/historical-prefix-analytics/rankings": {
       get: {
           parameters: {

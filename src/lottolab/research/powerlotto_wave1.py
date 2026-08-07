@@ -403,8 +403,17 @@ def coerce_strategy_metadata(obj: object) -> StrategyMetadata:
     )
 
 
-def select_wave1_strategies(strategy_objects: Iterable[object]) -> tuple[StrategyMetadata, ...]:
-    """Select the packet's stable eight-ID wave while surfacing missing/blocked entries."""
+def select_wave1_strategies(
+    strategy_objects: Iterable[object],
+    *,
+    selected_ids: Sequence[str] = WAVE1_SELECTED_STRATEGY_IDS,
+) -> tuple[StrategyMetadata, ...]:
+    """Select the caller-provided strategy-id allowlist, surfacing missing/blocked entries.
+
+    Defaults to Wave 1's stable ten-ID allowlist; a caller with a larger
+    executable universe (e.g. Wave 1 + Wave 2) may pass its own superset
+    ``selected_ids`` instead.
+    """
 
     by_id: dict[str, object] = {}
     for obj in strategy_objects:
@@ -413,7 +422,7 @@ def select_wave1_strategies(strategy_objects: Iterable[object]) -> tuple[Strateg
             raise ValueError(f"duplicate P638 strategy id {metadata.strategy_id}")
         by_id[metadata.strategy_id] = obj
     selected: list[StrategyMetadata] = []
-    for strategy_id in WAVE1_SELECTED_STRATEGY_IDS:
+    for strategy_id in selected_ids:
         obj = by_id.get(strategy_id)
         if obj is None:
             selected.append(
@@ -932,8 +941,13 @@ def run_replay(
     runtime_root: Path,
     db_path: Path | None = None,
     source_manifest: Mapping[str, object] | None = None,
+    selected_strategy_ids: Sequence[str] | None = None,
 ) -> ReplayResult:
-    """Run/resume the complete selected Wave 1 replay into the task DB."""
+    """Run/resume the complete selected replay into the task DB.
+
+    ``selected_strategy_ids`` defaults to Wave 1's stable ten-ID allowlist;
+    pass a superset (e.g. Wave 1 + Wave 2) to replay a larger universe.
+    """
 
     normalized_draws = normalize_draws(draws)
     runtime_root = runtime_root.resolve()
@@ -942,7 +956,14 @@ def run_replay(
         db_path or runtime_root / "p638_wave1.sqlite3",
         runtime_root,
     )
-    strategies = select_wave1_strategies(strategy_objects)
+    strategies = select_wave1_strategies(
+        strategy_objects,
+        selected_ids=(
+            WAVE1_SELECTED_STRATEGY_IDS
+            if selected_strategy_ids is None
+            else selected_strategy_ids
+        ),
+    )
     ssot_version, ssot_provenance, ssot_min_history, ssot_predict = _import_ssot()
     strategies = tuple(
         replace(

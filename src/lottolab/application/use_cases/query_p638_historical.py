@@ -15,6 +15,7 @@ from lottolab.application.p638_historical import (
 )
 from lottolab.application.ports import (
     P638All10RankingQueryRepositoryFactory,
+    P638All23RankingQueryRepositoryFactory,
     P638HistoricalQueryRepositoryFactory,
 )
 
@@ -115,6 +116,17 @@ class ListP638Rankings:
     """All-10 official-prize historical ranking, distinct from the P638 V2 projection."""
 
     def __init__(self, repository_factory: P638All10RankingQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str) -> P638RankingPage | None:
+        _validate_run_id(run_id)
+        return self._repository_factory().list_rankings(run_id)
+
+
+class ListP638All23Rankings:
+    """All-23 official-prize historical ranking, distinct from the V2 and all-10 projections."""
+
+    def __init__(self, repository_factory: P638All23RankingQueryRepositoryFactory) -> None:
         self._repository_factory = repository_factory
 
     def execute(self, run_id: str) -> P638RankingPage | None:

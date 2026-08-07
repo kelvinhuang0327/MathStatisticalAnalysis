@@ -21,6 +21,7 @@ from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
     P638All10RankingQueryRepositoryFactory,
+    P638All23RankingQueryRepositoryFactory,
     P638HistoricalQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
     StrategyEvidenceRegistryReader,
@@ -91,6 +92,9 @@ def create_app(
     p638_historical_query_repository_factory: P638HistoricalQueryRepositoryFactory | None = None,
     p638_all10_ranking_query_repository_factory: (
         P638All10RankingQueryRepositoryFactory | None
+    ) = None,
+    p638_all23_ranking_query_repository_factory: (
+        P638All23RankingQueryRepositoryFactory | None
     ) = None,
     historical_prefix_analytics_result_provider: (
         HistoricalPrefixAnalyticsResultProvider | None
@@ -185,6 +189,7 @@ def create_app(
         create_p638_historical_router(
             p638_historical_query_repository_factory,
             all10_ranking_repository_factory=p638_all10_ranking_query_repository_factory,
+            all23_ranking_repository_factory=p638_all23_ranking_query_repository_factory,
         )
     )
     app.include_router(

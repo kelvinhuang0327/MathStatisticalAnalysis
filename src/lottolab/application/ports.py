@@ -297,6 +297,23 @@ class P638All10RankingQueryRepository(Protocol):
 type P638All10RankingQueryRepositoryFactory = Callable[[], P638All10RankingQueryRepository]
 
 
+class P638All23RankingQueryRepository(Protocol):
+    """Read-only, POWER_LOTTO-scoped query port for the all-23 prize-ranking projection.
+
+    Distinct from :class:`P638HistoricalQueryRepository` and from
+    :class:`P638All10RankingQueryRepository`: this port reads the separate
+    all-23 executable-strategy (Wave 1's 10 plus Wave 2's 13) official-prize
+    ranking projection, never the all-10 or V2 database.
+    """
+
+    def list_rankings(self, run_id: str) -> P638RankingPage | None:
+        """Return exactly 23 ranking rows for one completed run, or ``None``."""
+        ...
+
+
+type P638All23RankingQueryRepositoryFactory = Callable[[], P638All23RankingQueryRepository]
+
+
 class T539HistoricalQueryRepository(Protocol):
     """Read-only, DAILY_539-scoped query port over the sealed T539 Wave 1 run.
 

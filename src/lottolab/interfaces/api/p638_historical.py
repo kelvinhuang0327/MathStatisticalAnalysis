@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
 from lottolab.application.p638_historical import (
+    P638CurrentRankingPage,
     P638HistoricalQueryError,
     P638RankingPage,
     P638RankingRecord,
@@ -25,6 +26,8 @@ from lottolab.application.p638_historical import (
 )
 from lottolab.application.ports import (
     P638All10RankingQueryRepositoryFactory,
+    P638All23RankingQueryRepositoryFactory,
+    P638CurrentRankingQueryRepositoryFactory,
     P638HistoricalQueryRepositoryFactory,
 )
 from lottolab.application.use_cases.query_p638_historical import (
@@ -32,6 +35,8 @@ from lottolab.application.use_cases.query_p638_historical import (
     MIN_LIMIT,
     GetP638Metrics,
     GetP638Target,
+    ListP638All23Rankings,
+    ListP638CurrentRankings,
     ListP638Rankings,
     ListP638Replay,
     ListP638Runs,
@@ -457,10 +462,32 @@ class P638RankingPageResponse(BaseModel):
         )
 
 
+class P638CurrentRankingPageResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    run_id: str
+    strategy_set_fingerprint: str
+    items: list[P638RankingView]
+    disclaimer: str = (
+        "Historical winning rank describes past replay only and does not "
+        "guarantee future winning."
+    )
+
+    @classmethod
+    def from_page(cls, page: P638CurrentRankingPage) -> P638CurrentRankingPageResponse:
+        return cls(
+            run_id=page.run_id,
+            strategy_set_fingerprint=page.strategy_set_fingerprint,
+            items=[P638RankingView.from_record(item) for item in page.items],
+        )
+
+
 def create_p638_historical_router(
     repository_factory: P638HistoricalQueryRepositoryFactory | None,
     *,
     all10_ranking_repository_factory: P638All10RankingQueryRepositoryFactory | None = None,
+    all23_ranking_repository_factory: P638All23RankingQueryRepositoryFactory | None = None,
+    current_ranking_repository_factory: P638CurrentRankingQueryRepositoryFactory | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix=f"{API_PREFIX}/p638-historical", tags=["p638-historical"])
     list_runs = ListP638Runs(repository_factory) if repository_factory is not None else None
@@ -473,6 +500,16 @@ def create_p638_historical_router(
     list_rankings = (
         ListP638Rankings(all10_ranking_repository_factory)
         if all10_ranking_repository_factory is not None
+        else None
+    )
+    list_all23_rankings = (
+        ListP638All23Rankings(all23_ranking_repository_factory)
+        if all23_ranking_repository_factory is not None
+        else None
+    )
+    list_current_rankings = (
+        ListP638CurrentRankings(current_ranking_repository_factory)
+        if current_ranking_repository_factory is not None
         else None
     )
 
@@ -638,6 +675,58 @@ def create_p638_historical_router(
             _not_found("P638_RUN_NOT_FOUND")
             if page is None
             else P638RankingPageResponse.from_page(page)
+        )
+
+    @router.get(
+        "/all23-runs/{run_id}/rankings",
+        response_model=P638RankingPageResponse,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="listP638HistoricalAll23Rankings",
+    )
+    def list_p638_all23_rankings(run_id: RunId) -> P638RankingPageResponse | JSONResponse:
+        if list_all23_rankings is None:
+            return _not_configured()
+        try:
+            page = list_all23_rankings.execute(run_id)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_ALL23_RUN_NOT_FOUND")
+            if page is None
+            else P638RankingPageResponse.from_page(page)
+        )
+
+    @router.get(
+        "/current-runs/{run_id}/rankings",
+        response_model=P638CurrentRankingPageResponse,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="listP638HistoricalCurrentRankings",
+    )
+    def list_p638_current_rankings(
+        run_id: RunId,
+    ) -> P638CurrentRankingPageResponse | JSONResponse:
+        if list_current_rankings is None:
+            return _not_configured()
+        try:
+            page = list_current_rankings.execute(run_id)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_CURRENT_RUN_NOT_FOUND")
+            if page is None
+            else P638CurrentRankingPageResponse.from_page(page)
         )
 
     return router

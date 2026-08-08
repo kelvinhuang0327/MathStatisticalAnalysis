@@ -89,6 +89,33 @@ _EXECUTED_SELECTION_REASONS: Mapping[str, str] = {
         "acb_single_539's producer, so this identity reuses that one producer "
         "without duplicating the algorithm under a second name."
     ),
+    "acb_markov_midfreq": (
+        "Wave 4 batch coverage closure: standalone ACB+Markov midfreq-boosted "
+        "fusion, a new distinct producer from the already-migrated "
+        "acb_markov_midfreq_3bet family, donor-parity verified against real "
+        "numpy execution."
+    ),
+    "zone_gap_3bet_539": (
+        "Wave 4 batch coverage closure: a new distinct producer, bet-1 only -- no "
+        "donor script anywhere in the archive implements a bet-2/bet-3 algorithm "
+        "for this named 3-bet identity, so nothing was invented to fill that gap."
+    ),
+    "539_3bet_orthogonal": (
+        "Wave 4 batch coverage closure: bet-1 is an exact alias of acb_single_539's "
+        "producer -- the donor's own predict_acb_markov_fourier_bet1 is defined as "
+        "exactly predict_acb_single -- so this identity reuses that one producer "
+        "instead of duplicating the algorithm under a second name."
+    ),
+    "p0b_539_3bet_f_cold_fmid": (
+        "Wave 4 batch coverage closure: a new distinct producer, bet-1 only -- no "
+        "donor script anywhere in the archive implements a bet-2/bet-3 algorithm "
+        "for this named 3-bet identity, so nothing was invented to fill that gap."
+    ),
+    "p0c_539_3bet_f_cold_x2": (
+        "Wave 4 batch coverage closure: a new distinct producer, bet-1 only -- no "
+        "donor script anywhere in the archive implements a bet-2/bet-3 algorithm "
+        "for this named 3-bet identity, so nothing was invented to fill that gap."
+    ),
 }
 
 _ALL_BLOCKED_STRATEGIES: tuple[T539CoverageBlockedEntry, ...] = (

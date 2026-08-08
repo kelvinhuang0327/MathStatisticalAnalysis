@@ -193,6 +193,7 @@ def verify_frozen_parity(
     pinned = load_pinned_biglotto_history(
         database=database,
         expected_database_sha256=expected_database_sha256,
+        require_replay_authority=False,
     )
     source_rows: list[dict[str, object]] = []
     parity_cases: list[dict[str, object]] = []

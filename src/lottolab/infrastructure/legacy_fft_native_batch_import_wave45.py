@@ -86,6 +86,7 @@ def materialize_legacy_fft_native_wave45_batch(
         pinned_history = load_pinned_biglotto_history(
             database=database,
             expected_database_sha256=expected_database_sha256,
+            require_replay_authority=False,
         )
     except ReplayBatchImportError as exc:
         raise LegacyFftNativeWave45BatchImportError(str(exc)) from exc

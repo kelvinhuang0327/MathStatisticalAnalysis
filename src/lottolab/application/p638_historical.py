@@ -227,6 +227,21 @@ class P638RankingPage:
 
 
 @dataclass(frozen=True, slots=True)
+class P638CurrentRankingPage:
+    """Like :class:`P638RankingPage`, plus the active strategy-set fingerprint.
+
+    The current-universe projection's strategy count is not fixed, so callers
+    that need to detect "the active strategy set changed" compare this
+    fingerprint (a SHA-256 of the sorted ``strategy_id@strategy_version``
+    list) rather than a count.
+    """
+
+    run_id: str
+    strategy_set_fingerprint: str
+    items: tuple[P638RankingRecord, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class P638ForwardingResult:
     run_id: str
     import_identity_sha256: str

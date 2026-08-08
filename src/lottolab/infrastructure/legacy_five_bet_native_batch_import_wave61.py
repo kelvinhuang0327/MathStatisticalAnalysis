@@ -124,6 +124,7 @@ def materialize_legacy_five_bet_native_wave61_batch(
         pinned_history = load_pinned_biglotto_history(
             database=database,
             expected_database_sha256=expected_database_sha256,
+            require_replay_authority=False,
         )
     except ReplayBatchImportError as exc:
         raise LegacyFiveBetNativeWave61BatchImportError(

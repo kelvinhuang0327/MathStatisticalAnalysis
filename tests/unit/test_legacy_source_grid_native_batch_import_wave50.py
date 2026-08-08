@@ -53,6 +53,7 @@ def test_wave50_batch_preserves_minimums_native_positions_and_ordered20(
         *,
         database: Path,
         expected_database_sha256: str,
+        require_replay_authority: bool = False,
     ) -> PinnedBigLottoHistory:
         del database, expected_database_sha256
         return _fake_history()

@@ -28,13 +28,35 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from lottolab.domain.draws import LotteryType
+from lottolab.strategies.adapters.base import SourceNativePortfolioClosure
 
 LOTTERY_TYPE = LotteryType.POWER_LOTTO.value
-RUNNER_VERSION = "p638-wave1-runner-v1"
+RUNNER_VERSION = "p638-wave1-runner-v2"
 SOURCE_API_URL = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/SuperLotto638Result"
 SOURCE_START_MONTH = "2008-01"
 SOURCE_END_MONTH = "2026-07"
 BASE_SOURCE_COMMIT = "2573900481c376e3229b4d413f60c91cc54a1295"
+
+TARGET_STATUS_COMPLETE = "COMPLETE"
+TARGET_STATUS_EXCLUDED_INSUFFICIENT_HISTORY = "EXCLUDED_INSUFFICIENT_HISTORY"
+TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE = (
+    "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE"
+)
+TARGET_STATUS_FAILED = "FAILED"
+TERMINAL_TARGET_STATUSES = frozenset(
+    {
+        TARGET_STATUS_COMPLETE,
+        TARGET_STATUS_EXCLUDED_INSUFFICIENT_HISTORY,
+        TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE,
+        TARGET_STATUS_FAILED,
+    }
+)
+EXCLUDED_TARGET_STATUSES = frozenset(
+    {
+        TARGET_STATUS_EXCLUDED_INSUFFICIENT_HISTORY,
+        TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE,
+    }
+)
 
 # All 10 identities in the P638 exact strategy universe are now
 # reconstructable and executable.  The former RSR-6/DEFERRED_WAVE_2
@@ -403,8 +425,17 @@ def coerce_strategy_metadata(obj: object) -> StrategyMetadata:
     )
 
 
-def select_wave1_strategies(strategy_objects: Iterable[object]) -> tuple[StrategyMetadata, ...]:
-    """Select the packet's stable eight-ID wave while surfacing missing/blocked entries."""
+def select_wave1_strategies(
+    strategy_objects: Iterable[object],
+    *,
+    selected_ids: Sequence[str] = WAVE1_SELECTED_STRATEGY_IDS,
+) -> tuple[StrategyMetadata, ...]:
+    """Select the caller-provided strategy-id allowlist, surfacing missing/blocked entries.
+
+    Defaults to Wave 1's stable ten-ID allowlist; a caller with a larger
+    executable universe (e.g. Wave 1 + Wave 2) may pass its own superset
+    ``selected_ids`` instead.
+    """
 
     by_id: dict[str, object] = {}
     for obj in strategy_objects:
@@ -413,7 +444,7 @@ def select_wave1_strategies(strategy_objects: Iterable[object]) -> tuple[Strateg
             raise ValueError(f"duplicate P638 strategy id {metadata.strategy_id}")
         by_id[metadata.strategy_id] = obj
     selected: list[StrategyMetadata] = []
-    for strategy_id in WAVE1_SELECTED_STRATEGY_IDS:
+    for strategy_id in selected_ids:
         obj = by_id.get(strategy_id)
         if obj is None:
             selected.append(
@@ -932,8 +963,13 @@ def run_replay(
     runtime_root: Path,
     db_path: Path | None = None,
     source_manifest: Mapping[str, object] | None = None,
+    selected_strategy_ids: Sequence[str] | None = None,
 ) -> ReplayResult:
-    """Run/resume the complete selected Wave 1 replay into the task DB."""
+    """Run/resume the complete selected replay into the task DB.
+
+    ``selected_strategy_ids`` defaults to Wave 1's stable ten-ID allowlist;
+    pass a superset (e.g. Wave 1 + Wave 2) to replay a larger universe.
+    """
 
     normalized_draws = normalize_draws(draws)
     runtime_root = runtime_root.resolve()
@@ -942,7 +978,14 @@ def run_replay(
         db_path or runtime_root / "p638_wave1.sqlite3",
         runtime_root,
     )
-    strategies = select_wave1_strategies(strategy_objects)
+    strategies = select_wave1_strategies(
+        strategy_objects,
+        selected_ids=(
+            WAVE1_SELECTED_STRATEGY_IDS
+            if selected_strategy_ids is None
+            else selected_strategy_ids
+        ),
+    )
     ssot_version, ssot_provenance, ssot_min_history, ssot_predict = _import_ssot()
     strategies = tuple(
         replace(
@@ -1030,20 +1073,16 @@ def run_replay(
                     """,
                     (run_id, strategy.strategy_id, strategy.strategy_version, target.draw_number),
                 ).fetchone()
-                if existing is not None and existing[0] in {
-                    "COMPLETE",
-                    "EXCLUDED_INSUFFICIENT_HISTORY",
-                    "FAILED",
-                }:
+                if existing is not None and existing[0] in TERMINAL_TARGET_STATUSES:
                     status = str(existing[0])
-                    if status == "COMPLETE":
+                    if status == TARGET_STATUS_COMPLETE:
                         strategy_complete += 1
                         strategy_tickets += strategy.native_ticket_count
-                    elif status == "EXCLUDED_INSUFFICIENT_HISTORY":
+                    elif status in EXCLUDED_TARGET_STATUSES:
                         strategy_excluded += 1
                     else:
                         strategy_failed += 1
-                    if status != "COMPLETE":
+                    if status != TARGET_STATUS_COMPLETE:
                         failure_rows.append(
                             {
                                 "strategy_id": strategy.strategy_id,
@@ -1225,6 +1264,61 @@ def run_replay(
                     complete_targets += 1
                     strategy_tickets += len(tickets)
                     ticket_count += len(tickets)
+                except SourceNativePortfolioClosure as exc:
+                    reason = f"{type(exc).__name__}: {exc}"
+                    connection.rollback()
+                    connection.execute(
+                        """
+                        INSERT OR REPLACE INTO strategy_targets (
+                            run_id, strategy_id, strategy_version, lottery_type,
+                            target_draw_number,
+                            cutoff_draw_number, cutoff_index, expected_ticket_count,
+                            status, failure_reason
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            run_id,
+                            strategy.strategy_id,
+                            strategy.strategy_version,
+                            LOTTERY_TYPE,
+                            target.draw_number,
+                            cutoff,
+                            target_index,
+                            strategy.native_ticket_count,
+                            TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE,
+                            reason,
+                        ),
+                    )
+                    connection.execute(
+                        """
+                        INSERT OR REPLACE INTO failures (
+                            run_id, strategy_id, strategy_version, lottery_type,
+                            target_draw_number,
+                            status, failure_reason
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            run_id,
+                            strategy.strategy_id,
+                            strategy.strategy_version,
+                            LOTTERY_TYPE,
+                            target.draw_number,
+                            TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE,
+                            reason,
+                        ),
+                    )
+                    connection.commit()
+                    strategy_excluded += 1
+                    excluded_targets += 1
+                    failure_rows.append(
+                        {
+                            "strategy_id": strategy.strategy_id,
+                            "strategy_version": strategy.strategy_version,
+                            "target_draw_number": target.draw_number,
+                            "status": TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE,
+                            "failure_reason": reason,
+                        }
+                    )
                 except Exception as exc:
                     reason = f"{type(exc).__name__}: {exc}"
                     connection.rollback()
@@ -1344,8 +1438,14 @@ def run_replay(
                 ).fetchone()[0]
             )
             strategy_complete = counts.get("COMPLETE", 0)
-            strategy_excluded = counts.get("EXCLUDED_INSUFFICIENT_HISTORY", 0)
-            strategy_failed = counts.get("FAILED", 0)
+            strategy_source_native_closure = counts.get(
+                TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE, 0
+            )
+            strategy_excluded = (
+                counts.get(TARGET_STATUS_EXCLUDED_INSUFFICIENT_HISTORY, 0)
+                + strategy_source_native_closure
+            )
+            strategy_failed = counts.get(TARGET_STATUS_FAILED, 0)
             coverage_rows.append(
                 {
                     "strategy_id": strategy.strategy_id,
@@ -1356,7 +1456,9 @@ def run_replay(
                     "algorithm_family": strategy.algorithm_family,
                     "provenance": strategy.provenance,
                     "total_targets": len(normalized_draws),
-                    "eligible_targets": strategy_complete + strategy_failed,
+                    "eligible_targets": (
+                        strategy_complete + strategy_source_native_closure + strategy_failed
+                    ),
                     "complete_targets": strategy_complete,
                     "excluded_targets": strategy_excluded,
                     "failed_targets": strategy_failed,
@@ -1386,7 +1488,9 @@ def run_replay(
             connection.execute(
                 """
                 SELECT COUNT(*) FROM strategy_targets
-                WHERE run_id = ? AND status IN ('COMPLETE', 'FAILED')
+                WHERE run_id = ? AND status IN (
+                    'COMPLETE', 'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', 'FAILED'
+                )
                 """,
                 (run_id,),
             ).fetchone()[0]
@@ -1401,7 +1505,10 @@ def run_replay(
             connection.execute(
                 """
                 SELECT COUNT(*) FROM strategy_targets
-                WHERE run_id = ? AND status = 'EXCLUDED_INSUFFICIENT_HISTORY'
+                WHERE run_id = ? AND status IN (
+                    'EXCLUDED_INSUFFICIENT_HISTORY',
+                    'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE'
+                )
                 """,
                 (run_id,),
             ).fetchone()[0]
@@ -1494,6 +1601,7 @@ __all__ = [
     "LOTTERY_TYPE",
     "RUNNER_VERSION",
     "SOURCE_API_URL",
+    "TARGET_STATUS_EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE",
     "WAVE1_DONOR_BLOCKED_STRATEGIES",
     "WAVE1_SELECTED_STRATEGY_IDS",
     "PowerLottoDrawRecord",

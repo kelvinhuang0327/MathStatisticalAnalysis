@@ -100,6 +100,7 @@ def materialize_legacy_source_native_wave14_batch(
         pinned_history = load_pinned_biglotto_history(
             database=database,
             expected_database_sha256=expected_database_sha256,
+            require_replay_authority=False,
         )
     except ReplayBatchImportError as exc:
         raise LegacySourceNativeWave14BatchImportError(str(exc)) from exc

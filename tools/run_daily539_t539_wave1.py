@@ -26,6 +26,13 @@ from lottolab.strategies.adapters.base import (
     BetAdapterError,
     CausalDrawRow,
 )
+from lottolab.strategies.adapters.daily539_acb_markov_midfreq import (
+    Daily539AcbMarkovMidfreqAdapter,
+)
+from lottolab.strategies.adapters.daily539_fourier4 import (
+    Daily539P0bFourierColdFmidAdapter,
+    Daily539P0cFourierColdX2Adapter,
+)
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import (
     Daily539F4Cold3BetAdapter,
     Daily539F4Cold5BetAdapter,
@@ -42,8 +49,10 @@ from lottolab.strategies.adapters.daily539_single_legacy import (
     Daily539Acb1BetAdapter,
     Daily539AcbSingleAdapter,
     Daily539Markov1BetAdapter,
+    Daily539Orthogonal3BetAdapter,
 )
 from lottolab.strategies.adapters.daily539_wave1 import Daily539MarkovColdAdapter
+from lottolab.strategies.adapters.daily539_zone_gap import Daily539ZoneGap3BetAdapter
 
 RUN_ID = "T539_ALL_STRATEGIES_MIGRATION_BACKTEST_WAVE1_R1"
 LOTTERY_TYPE = LotteryType.DAILY_539.value
@@ -382,10 +391,138 @@ WAVE3_ACB1_ALIAS_CONFIG = StrategySetConfig(
     blocked_strategies=WAVE3_ACB1_ALIAS_BLOCKED_STRATEGIES,
 )
 
+WAVE4_REMAINING5_BATCH_RUN_ID = "T539_WAVE4_REMAINING5_BATCH_COVERAGE_CLOSURE_R1"
+WAVE4_REMAINING5_BATCH_SCHEMA_VERSION = "t539-wave4-remaining5-batch-v1"
+WAVE4_REMAINING5_BATCH_DB_NAME = "t539_wave4_remaining5_batch.sqlite3"
+
+WAVE4_REMAINING5_BATCH_STRATEGY_SPECS: tuple[StrategySpec, ...] = (
+    *WAVE3_ACB1_ALIAS_STRATEGY_SPECS,
+    StrategySpec(
+        strategy_id="acb_markov_midfreq",
+        strategy_name="今彩539 ACB+Markov 中頻",
+        strategy_version="v0.1-p31a",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539AcbMarkovMidfreqAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_acb_markov_midfreq.py",
+            "LotteryNewMeraged/lottery_api/models/p31a_wave1_retired_adapters.py",
+        ),
+        selection_reason=(
+            "Wave 4 batch coverage closure: standalone ACB+Markov midfreq-boosted "
+            "fusion, a new distinct producer from the already-migrated "
+            "acb_markov_midfreq_3bet family, donor-parity verified against real "
+            "numpy execution."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="zone_gap_3bet_539",
+        strategy_name="今彩539 Zone+Gap 3注",
+        strategy_version="v0.1-p36",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539ZoneGap3BetAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_zone_gap.py",
+            "LotteryNewMeraged/lottery_api/models/p36_wave2_daily539_adapters.py",
+        ),
+        selection_reason=(
+            "Wave 4 batch coverage closure: a new distinct producer, bet-1 only -- "
+            "no donor script anywhere in the archive implements a bet-2/bet-3 "
+            "algorithm for this named 3-bet identity, so nothing was invented to "
+            "fill that gap."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="539_3bet_orthogonal",
+        strategy_name="今彩539 ACB+Markov+Fourier 正交 3注",
+        strategy_version="v0.1-p36",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539Orthogonal3BetAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_single_legacy.py",
+            "LotteryNewMeraged/lottery_api/models/p36_wave2_daily539_adapters.py",
+        ),
+        selection_reason=(
+            "Wave 4 batch coverage closure: bet-1 is an exact alias of "
+            "acb_single_539's producer -- the donor's own "
+            "predict_acb_markov_fourier_bet1 is defined as exactly "
+            "predict_acb_single -- so this identity reuses that one producer "
+            "instead of duplicating the algorithm under a second name."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="p0b_539_3bet_f_cold_fmid",
+        strategy_name="今彩539 Fourier4正交 cold+midfreq 3注",
+        strategy_version="v0.1-p36",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539P0bFourierColdFmidAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_fourier4.py",
+            "LotteryNewMeraged/lottery_api/models/p36_wave2_daily539_adapters.py",
+        ),
+        selection_reason=(
+            "Wave 4 batch coverage closure: a new distinct producer, bet-1 only -- "
+            "no donor script anywhere in the archive implements a bet-2/bet-3 "
+            "algorithm for this named 3-bet identity, so nothing was invented to "
+            "fill that gap."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="p0c_539_3bet_f_cold_x2",
+        strategy_name="今彩539 Fourier4正交 x2 cold 3注",
+        strategy_version="v0.1-p36",
+        lottery_type=LOTTERY_TYPE,
+        min_history=100,
+        native_ticket_count=1,
+        adapter_factory=Daily539P0cFourierColdX2Adapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_fourier4.py",
+            "LotteryNewMeraged/lottery_api/models/p36_wave2_daily539_adapters.py",
+        ),
+        selection_reason=(
+            "Wave 4 batch coverage closure: a new distinct producer, bet-1 only -- "
+            "no donor script anywhere in the archive implements a bet-2/bet-3 "
+            "algorithm for this named 3-bet identity, so nothing was invented to "
+            "fill that gap."
+        ),
+    ),
+)
+
+WAVE4_REMAINING5_BATCH_BLOCKED_STRATEGIES: tuple[dict[str, str], ...] = tuple(
+    entry
+    for entry in WAVE3_ACB1_ALIAS_BLOCKED_STRATEGIES
+    if entry["strategy_id"]
+    not in {
+        "acb_markov_midfreq",
+        "zone_gap_3bet_539",
+        "539_3bet_orthogonal",
+        "p0b_539_3bet_f_cold_fmid",
+        "p0c_539_3bet_f_cold_x2",
+    }
+)
+
+WAVE4_REMAINING5_BATCH_CONFIG = StrategySetConfig(
+    name="wave4-remaining5-batch",
+    run_id=WAVE4_REMAINING5_BATCH_RUN_ID,
+    schema_version=WAVE4_REMAINING5_BATCH_SCHEMA_VERSION,
+    db_name=WAVE4_REMAINING5_BATCH_DB_NAME,
+    default_runtime_root_name=WAVE4_REMAINING5_BATCH_RUN_ID,
+    specs=WAVE4_REMAINING5_BATCH_STRATEGY_SPECS,
+    blocked_strategies=WAVE4_REMAINING5_BATCH_BLOCKED_STRATEGIES,
+)
+
 STRATEGY_SET_CONFIGS: Mapping[str, StrategySetConfig] = {
     WAVE1_CONFIG.name: WAVE1_CONFIG,
     WAVE2_F4COLD_SINGLE_CONFIG.name: WAVE2_F4COLD_SINGLE_CONFIG,
     WAVE3_ACB1_ALIAS_CONFIG.name: WAVE3_ACB1_ALIAS_CONFIG,
+    WAVE4_REMAINING5_BATCH_CONFIG.name: WAVE4_REMAINING5_BATCH_CONFIG,
 }
 
 

@@ -19,6 +19,7 @@ from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
     P638All10RankingQueryRepository,
+    P638All23RankingQueryRepository,
     P638HistoricalQueryRepository,
     ReplayScoringProjectionReader,
     T539HistoricalQueryRepository,
@@ -41,6 +42,12 @@ from lottolab.infrastructure.persistence.p638_all10_ranking_repositories import 
 from lottolab.infrastructure.persistence.p638_all10_ranking_schema import (
     verify_schema_read_only as verify_p638_all10_ranking_schema_read_only,
 )
+from lottolab.infrastructure.persistence.p638_all23_ranking_repositories import (
+    SQLiteP638All23RankingQueryRepository,
+)
+from lottolab.infrastructure.persistence.p638_all23_ranking_schema import (
+    verify_schema_read_only as verify_p638_all23_ranking_schema_read_only,
+)
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
@@ -61,6 +68,7 @@ from lottolab.interfaces.api.app import create_app
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 P638_ALL10_RANKING_DB_ENV = "LOTTOLAB_P638_ALL10_RANKING_DB"
+P638_ALL23_RANKING_DB_ENV = "LOTTOLAB_P638_ALL23_RANKING_DB"
 T539_HISTORICAL_DB_ENV = "LOTTOLAB_T539_HISTORICAL_DB"
 DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
@@ -186,6 +194,43 @@ def local_p638_all10_ranking_composition(
 
 
 @dataclass(frozen=True)
+class LocalP638All23RankingComposition:
+    """One lazy read-only factory bound to the separate all-23 ranking database.
+
+    Distinct from ``LocalHistoricalComposition`` and from
+    ``LocalP638All10RankingComposition``: this composition reads the
+    separate all-23 executable-strategy (Wave 1's 10 plus Wave 2's 13)
+    official-prize ranking database, never the V2 or all-10 file.
+    """
+
+    database: Path
+
+    def p638_all23_ranking_query_repository(self) -> P638All23RankingQueryRepository:
+        try:
+            available = verify_p638_all23_ranking_schema_read_only(self.database)
+        except Exception as exc:
+            raise HistoricalResultsUnavailableError(
+                "configured P638 all-23 ranking storage is unavailable"
+            ) from exc
+        if not available:
+            raise HistoricalResultsUnavailableError(
+                "configured P638 all-23 ranking storage is unavailable"
+            )
+        return SQLiteP638All23RankingQueryRepository(self.database)
+
+
+def local_p638_all23_ranking_composition(
+    environment: Mapping[str, str],
+) -> LocalP638All23RankingComposition | None:
+    """Resolve one exact optional value without trimming, guessing, or filesystem access."""
+
+    configured = environment.get(P638_ALL23_RANKING_DB_ENV)
+    if configured is None or configured == "":
+        return None
+    return LocalP638All23RankingComposition(database=Path(configured))
+
+
+@dataclass(frozen=True)
 class LocalT539HistoricalComposition:
     """One lazy read-only factory bound to the sealed T539 Wave 1 database.
 
@@ -227,6 +272,7 @@ def create_local_app() -> FastAPI:
     composition = local_historical_composition(os.environ)
     replay_scoring_composition = local_replay_scoring_composition(os.environ)
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
+    all23_ranking_composition = local_p638_all23_ranking_composition(os.environ)
     t539_historical_composition = local_t539_historical_composition(os.environ)
     provider = local_draw_provider(os.environ)
     replay_scoring_projection_reader_factory = (
@@ -239,6 +285,11 @@ def create_local_app() -> FastAPI:
         if all10_ranking_composition is None
         else all10_ranking_composition.p638_all10_ranking_query_repository
     )
+    all23_ranking_factory = (
+        None
+        if all23_ranking_composition is None
+        else all23_ranking_composition.p638_all23_ranking_query_repository
+    )
     t539_historical_query_repository_factory = (
         None
         if t539_historical_composition is None
@@ -249,6 +300,7 @@ def create_local_app() -> FastAPI:
             draw_data_provider_factory=lambda: provider,
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
             p638_all10_ranking_query_repository_factory=all10_ranking_factory,
+            p638_all23_ranking_query_repository_factory=all23_ranking_factory,
             t539_historical_query_repository_factory=t539_historical_query_repository_factory,
         )
     return create_app(
@@ -260,6 +312,7 @@ def create_local_app() -> FastAPI:
         ),
         replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
         p638_all10_ranking_query_repository_factory=all10_ranking_factory,
+        p638_all23_ranking_query_repository_factory=all23_ranking_factory,
         t539_historical_query_repository_factory=t539_historical_query_repository_factory,
     )
 

@@ -12,14 +12,22 @@ memoize pure causal-history functions and cannot change ticket order or values.
 
 from __future__ import annotations
 
+# pyright: reportPrivateUsage=false
 import math
 import random
+import threading
 from collections import Counter, defaultdict
+from collections.abc import Generator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import Final, cast
 
 from lottolab.domain.lottery_rules import POWER_LOTTO_RULE_CONTRACT
+from lottolab.strategies.adapters.biglotto_batch15_cross_lottery_core import (
+    DAILY539_GAME,
+    TargetGameSpec,
+)
 from lottolab.strategies.adapters.powerlotto_wave1 import P638HistoryRow
 
 
@@ -48,6 +56,86 @@ MINIMUM: Final = POWER_LOTTO_FIRST_ZONE_GAME.minimum
 MAXIMUM: Final = POWER_LOTTO_FIRST_ZONE_GAME.maximum
 PICK_COUNT: Final = POWER_LOTTO_FIRST_ZONE_GAME.pick_count
 HIGH_HALF_START: Final = (MINIMUM + MAXIMUM) // 2 + 1
+
+DAILY539_FIRST_ZONE_GAME: Final = FirstZoneGameSpec(
+    minimum=DAILY539_GAME.minimum,
+    maximum=DAILY539_GAME.maximum,
+    pick_count=DAILY539_GAME.pick_count,
+)
+
+_GAME_PATCH_LOCK = threading.RLock()
+
+
+def _clear_cached_core_functions() -> None:
+    """Drop cached outputs before changing the active target GameSpec.
+
+    The legacy portable core predates the cross-target runner and its cached
+    functions key only on causal history.  Clearing those caches at the
+    target boundary prevents a DAILY_539 result from being reused by a
+    POWER_LOTTO call (or the reverse) while retaining the existing P638
+    default behavior and its performance within one replay.
+    """
+
+    for function_name in (
+        "bayesian_ticket",
+        "deviation_ticket",
+        "frequency_ticket",
+        "hot_cold_mix_ticket",
+        "markov_ticket",
+        "statistical_ticket",
+        "trend_ticket",
+    ):
+        function = globals().get(function_name)
+        if function is not None and hasattr(function, "cache_clear"):
+            function.cache_clear()
+
+
+@contextmanager
+def use_first_zone_game(game: FirstZoneGameSpec | TargetGameSpec) -> Generator[None]:
+    """Run the shared portable formulas against one target-native GameSpec.
+
+    The existing P638 adapters import these constants as module-local values,
+    so the boundary patches only the already shared core and its thin wave
+    wrappers for the duration of one serialized prediction.  The default
+    outside this context remains the authoritative P638 6-of-38 contract.
+    """
+
+    minimum = game.minimum
+    maximum = game.maximum
+    pick_count = game.pick_count
+    with _GAME_PATCH_LOCK:
+        import lottolab.strategies.adapters.powerlotto_wave3 as wave3
+        import lottolab.strategies.adapters.powerlotto_wave4 as wave4
+        import lottolab.strategies.adapters.powerlotto_wave5 as wave5
+
+        core_values = (MINIMUM, MAXIMUM, PICK_COUNT, HIGH_HALF_START)
+        wave3_values = (wave3._MIN_NUM, wave3._POOL, wave3._PICK)
+        wave4_values = (wave4.MINIMUM, wave4.MAXIMUM, wave4.PICK_COUNT)
+        wave5_values = (wave5.MINIMUM, wave5.MAXIMUM, wave5.PICK_COUNT)
+        _clear_cached_core_functions()
+        globals().update(
+            MINIMUM=minimum,
+            MAXIMUM=maximum,
+            PICK_COUNT=pick_count,
+            HIGH_HALF_START=(minimum + maximum) // 2 + 1,
+        )
+        wave3._MIN_NUM, wave3._POOL, wave3._PICK = minimum, maximum, pick_count
+        wave4.MINIMUM, wave4.MAXIMUM, wave4.PICK_COUNT = minimum, maximum, pick_count
+        wave5.MINIMUM, wave5.MAXIMUM, wave5.PICK_COUNT = minimum, maximum, pick_count
+        try:
+            yield
+        finally:
+            globals().update(
+                MINIMUM=core_values[0],
+                MAXIMUM=core_values[1],
+                PICK_COUNT=core_values[2],
+                HIGH_HALF_START=core_values[3],
+            )
+            wave3._MIN_NUM, wave3._POOL, wave3._PICK = wave3_values
+            wave4.MINIMUM, wave4.MAXIMUM, wave4.PICK_COUNT = wave4_values
+            wave5.MINIMUM, wave5.MAXIMUM, wave5.PICK_COUNT = wave5_values
+            _clear_cached_core_functions()
+
 
 _DEVIATION_WEIGHTS: Final = {
     "frequency": 0.30,
@@ -165,8 +253,7 @@ def deviation_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
             raw_scores[number] += 0.4
     maximum_score = max(raw_scores)
     scores = [
-        value / (maximum_score + 1e-10) * _DEVIATION_WEIGHTS["frequency"]
-        for value in raw_scores
+        value / (maximum_score + 1e-10) * _DEVIATION_WEIGHTS["frequency"] for value in raw_scores
     ]
 
     zone_size = total_numbers // 5
@@ -214,9 +301,7 @@ def deviation_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
     maximum_gap = max(gaps.values()) if gaps else 1
     for number in range(MINIMUM, MAXIMUM + 1):
         scores[number] += (
-            gaps[number] / maximum_gap * _DEVIATION_WEIGHTS["gap"]
-            if maximum_gap > 0
-            else 0.0
+            gaps[number] / maximum_gap * _DEVIATION_WEIGHTS["gap"] if maximum_gap > 0 else 0.0
         )
     ranked = sorted(range(MINIMUM, MAXIMUM + 1), key=lambda number: scores[number], reverse=True)
     return ticket(ranked[:PICK_COUNT])
@@ -359,8 +444,7 @@ def statistical_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
     pool: list[int] = []
     for number in range(MINIMUM, MAXIMUM + 1):
         weight = int(
-            math.pow(max(1, frequency.get(number, 0)), _STATISTICAL_PARAMS["weight_power"])
-            * 10
+            math.pow(max(1, frequency.get(number, 0)), _STATISTICAL_PARAMS["weight_power"]) * 10
         )
         pool.extend([number] * weight)
     rng = random.Random(len(history))
@@ -466,8 +550,7 @@ def hot_cold_mix_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
         frequency = Counter(number for draw in history for number in draw.numbers)
         maximum = max(frequency.values()) if frequency else 1
         window_scores = {
-            number: frequency.get(number, 0) / maximum
-            for number in range(MINIMUM, MAXIMUM + 1)
+            number: frequency.get(number, 0) / maximum for number in range(MINIMUM, MAXIMUM + 1)
         }
     else:
         window_scores_by_name: dict[str, dict[int, float]] = {}
@@ -476,8 +559,7 @@ def hot_cold_mix_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
             frequency = Counter(number for draw in recent for number in draw.numbers)
             maximum = max(frequency.values()) if frequency else 1
             window_scores_by_name[name] = {
-                number: frequency.get(number, 0) / maximum
-                for number in range(MINIMUM, MAXIMUM + 1)
+                number: frequency.get(number, 0) / maximum for number in range(MINIMUM, MAXIMUM + 1)
             }
         window_scores = {
             number: window_scores_by_name["short"][number] * 0.5
@@ -490,16 +572,17 @@ def hot_cold_mix_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
     else:
         periods = (history[-30:-20], history[-20:-10], history[-10:])
         frequencies = [
-            Counter(number for draw in period for number in draw.numbers)
-            for period in periods
+            Counter(number for draw in period for number in draw.numbers) for period in periods
         ]
         raw = {
             number: max(
                 -1.0,
                 min(
                     1.0,
-                    ((frequencies[2].get(number, 0) - frequencies[1].get(number, 0))
-                    - (frequencies[1].get(number, 0) - frequencies[0].get(number, 0)))
+                    (
+                        (frequencies[2].get(number, 0) - frequencies[1].get(number, 0))
+                        - (frequencies[1].get(number, 0) - frequencies[0].get(number, 0))
+                    )
                     / 10,
                 ),
             )
@@ -554,10 +637,7 @@ def zone_balance_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
     total, recent_total = sum(zone_counts) or 1, sum(recent_counts) or 1
     targets = [
         round(
-            (
-                zone_counts[index] / total * 0.7
-                + recent_counts[index] / recent_total * 0.3
-            )
+            (zone_counts[index] / total * 0.7 + recent_counts[index] / recent_total * 0.3)
             * PICK_COUNT
         )
         for index in range(len(zones))
@@ -625,9 +705,7 @@ def kill_numbers(history: tuple[P638HistoryRow, ...], count: int = 10) -> tuple[
         for number in draw.numbers:
             zone_counts[min(int((number - 1) / zone_size), 4)] += 1
     total = sum(zone_counts)
-    entropy = -sum(
-        (value / total) * math.log2(value / total) for value in zone_counts if value
-    )
+    entropy = -sum((value / total) * math.log2(value / total) for value in zone_counts if value)
     if entropy < 2.0:
         dynamic_count = min(15, count + 2)
     elif entropy > 2.2:
@@ -715,21 +793,16 @@ def repeat_booster_ticket(history: tuple[P638HistoryRow, ...]) -> tuple[int, ...
     for number in scores:
         scores[number] *= 1 + frequency.get(number, 0) / 10.0
     predicted = [
-        number
-        for number, _score in sorted(scores.items(), key=lambda item: -item[1])[:PICK_COUNT]
+        number for number, _score in sorted(scores.items(), key=lambda item: -item[1])[:PICK_COUNT]
     ]
     if len(predicted) < PICK_COUNT:
         predicted.extend(
-            number
-            for number, _count in frequency.most_common(20)
-            if number not in predicted
+            number for number, _count in frequency.most_common(20) if number not in predicted
         )
     return ticket(predicted[:PICK_COUNT])
 
 
-def echo_scores(
-    history: tuple[P638HistoryRow, ...], max_lag: int = 5
-) -> dict[int, float]:
+def echo_scores(history: tuple[P638HistoryRow, ...], max_lag: int = 5) -> dict[int, float]:
     if len(history) < max_lag + 1:
         return {}
     latest = set(history[-1].numbers)
@@ -788,6 +861,7 @@ def continuous_temperature(
 
 
 __all__ = [
+    "DAILY539_FIRST_ZONE_GAME",
     "HIGH_HALF_START",
     "MAXIMUM",
     "MINIMUM",
@@ -809,6 +883,7 @@ __all__ = [
     "statistical_ticket",
     "ticket",
     "trend_ticket",
+    "use_first_zone_game",
     "weighted_candidates",
     "zone_balance_ticket",
 ]

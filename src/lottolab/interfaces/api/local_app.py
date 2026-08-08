@@ -20,6 +20,7 @@ from lottolab.application.ports import (
     HistoricalResultQueryRepository,
     P638All10RankingQueryRepository,
     P638All23RankingQueryRepository,
+    P638CurrentRankingQueryRepository,
     P638HistoricalQueryRepository,
     ReplayScoringProjectionReader,
     T539HistoricalQueryRepository,
@@ -48,6 +49,12 @@ from lottolab.infrastructure.persistence.p638_all23_ranking_repositories import 
 from lottolab.infrastructure.persistence.p638_all23_ranking_schema import (
     verify_schema_read_only as verify_p638_all23_ranking_schema_read_only,
 )
+from lottolab.infrastructure.persistence.p638_current_ranking_repositories import (
+    SQLiteP638CurrentRankingQueryRepository,
+)
+from lottolab.infrastructure.persistence.p638_current_ranking_schema import (
+    verify_schema_read_only as verify_p638_current_ranking_schema_read_only,
+)
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
@@ -69,6 +76,7 @@ from lottolab.interfaces.api.app import create_app
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 P638_ALL10_RANKING_DB_ENV = "LOTTOLAB_P638_ALL10_RANKING_DB"
 P638_ALL23_RANKING_DB_ENV = "LOTTOLAB_P638_ALL23_RANKING_DB"
+P638_CURRENT_RANKING_DB_ENV = "LOTTOLAB_P638_CURRENT_RANKING_DB"
 T539_HISTORICAL_DB_ENV = "LOTTOLAB_T539_HISTORICAL_DB"
 DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
@@ -231,6 +239,37 @@ def local_p638_all23_ranking_composition(
 
 
 @dataclass(frozen=True)
+class LocalP638CurrentRankingComposition:
+    """One lazy read-only factory bound to the current-universe ranking database."""
+
+    database: Path
+
+    def p638_current_ranking_query_repository(self) -> P638CurrentRankingQueryRepository:
+        try:
+            available = verify_p638_current_ranking_schema_read_only(self.database)
+        except Exception as exc:
+            raise HistoricalResultsUnavailableError(
+                "configured P638 current ranking storage is unavailable"
+            ) from exc
+        if not available:
+            raise HistoricalResultsUnavailableError(
+                "configured P638 current ranking storage is unavailable"
+            )
+        return SQLiteP638CurrentRankingQueryRepository(self.database)
+
+
+def local_p638_current_ranking_composition(
+    environment: Mapping[str, str],
+) -> LocalP638CurrentRankingComposition | None:
+    """Resolve the explicit current-universe ranking database path."""
+
+    configured = environment.get(P638_CURRENT_RANKING_DB_ENV)
+    if configured is None or configured == "":
+        return None
+    return LocalP638CurrentRankingComposition(database=Path(configured))
+
+
+@dataclass(frozen=True)
 class LocalT539HistoricalComposition:
     """One lazy read-only factory bound to the sealed T539 Wave 1 database.
 
@@ -273,6 +312,7 @@ def create_local_app() -> FastAPI:
     replay_scoring_composition = local_replay_scoring_composition(os.environ)
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
     all23_ranking_composition = local_p638_all23_ranking_composition(os.environ)
+    current_ranking_composition = local_p638_current_ranking_composition(os.environ)
     t539_historical_composition = local_t539_historical_composition(os.environ)
     provider = local_draw_provider(os.environ)
     replay_scoring_projection_reader_factory = (
@@ -290,6 +330,11 @@ def create_local_app() -> FastAPI:
         if all23_ranking_composition is None
         else all23_ranking_composition.p638_all23_ranking_query_repository
     )
+    current_ranking_factory = (
+        None
+        if current_ranking_composition is None
+        else current_ranking_composition.p638_current_ranking_query_repository
+    )
     t539_historical_query_repository_factory = (
         None
         if t539_historical_composition is None
@@ -301,6 +346,7 @@ def create_local_app() -> FastAPI:
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
             p638_all10_ranking_query_repository_factory=all10_ranking_factory,
             p638_all23_ranking_query_repository_factory=all23_ranking_factory,
+            p638_current_ranking_query_repository_factory=current_ranking_factory,
             t539_historical_query_repository_factory=t539_historical_query_repository_factory,
         )
     return create_app(
@@ -313,6 +359,7 @@ def create_local_app() -> FastAPI:
         replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
         p638_all10_ranking_query_repository_factory=all10_ranking_factory,
         p638_all23_ranking_query_repository_factory=all23_ranking_factory,
+        p638_current_ranking_query_repository_factory=current_ranking_factory,
         t539_historical_query_repository_factory=t539_historical_query_repository_factory,
     )
 
@@ -342,14 +389,19 @@ __all__ = [
     "DRAW_PROVIDER_URL_ENV",
     "HISTORICAL_RESULTS_DB_ENV",
     "OFFICIAL_TAIWAN_LOTTERY_SOURCE",
+    "P638_ALL10_RANKING_DB_ENV",
+    "P638_ALL23_RANKING_DB_ENV",
+    "P638_CURRENT_RANKING_DB_ENV",
     "REPLAY_SCORING_DB_ENV",
     "T539_HISTORICAL_DB_ENV",
     "LocalHistoricalComposition",
+    "LocalP638CurrentRankingComposition",
     "LocalReplayScoringComposition",
     "LocalT539HistoricalComposition",
     "create_local_app",
     "local_draw_provider",
     "local_historical_composition",
+    "local_p638_current_ranking_composition",
     "local_replay_scoring_composition",
     "local_t539_historical_composition",
 ]

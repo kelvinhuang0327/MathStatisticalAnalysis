@@ -1,7 +1,7 @@
-"""Read-only SQLite repository over the sealed T539 Wave 1 DAILY_539 database.
+"""Read-only SQLite repository over a sealed T539 DAILY_539 database.
 
 This vertical has no forwarding step and no shared migration-versioned
-schema: it reads the frozen Wave 1 run's own flat tables directly
+schema: it reads the frozen run's own flat tables directly
 (``run_metadata``/``source_draws``/``strategy_coverage``/
 ``prediction_tickets``/``prediction_scores``/``failure_ledger``/
 ``target_completion``). The database is opened strictly read-only
@@ -44,6 +44,7 @@ from lottolab.application.t539_historical import (
     T539StrategyRecord,
     T539TargetDetail,
     T539TicketRecord,
+    t539_strategy_set_fingerprint,
 )
 from lottolab.domain.prize_evaluation import DAILY_FIVE39_PRIZE_RULE_CONTRACT
 
@@ -118,6 +119,21 @@ _EXECUTED_SELECTION_REASONS: Mapping[str, str] = {
     ),
 }
 
+
+def _selection_reason(strategy_id: str) -> str:
+    """Return a stable explanation for legacy and R2 target identities."""
+
+    configured = _EXECUTED_SELECTION_REASONS.get(strategy_id)
+    if configured is not None:
+        return configured
+    if strategy_id.startswith("t539_biglotto_"):
+        return (
+            "BIGLOTTO68 R2 exhaustive closure: target-native DAILY_539 GameSpec "
+            "port of a verified portable BIG_LOTTO donor family."
+        )
+    return ""
+
+
 _ALL_BLOCKED_STRATEGIES: tuple[T539CoverageBlockedEntry, ...] = (
     T539CoverageBlockedEntry(
         strategy_id="daily539_f4cold",
@@ -177,6 +193,7 @@ _ALL_BLOCKED_STRATEGIES: tuple[T539CoverageBlockedEntry, ...] = (
     ),
 )
 
+
 @dataclass(frozen=True, slots=True)
 class _RankingCandidate:
     """Internal, strictly-typed intermediate for one strategy's ranking inputs."""
@@ -228,9 +245,7 @@ def _read_only_connection(database: Path) -> Generator[sqlite3.Connection]:
             connection.execute("PRAGMA query_only = ON")
             table_names = {
                 str(row[0])
-                for row in connection.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table'"
-                )
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
             }
             if not REQUIRED_TABLES.issubset(table_names):
                 raise T539HistoricalResultsUnavailableError(
@@ -287,6 +302,36 @@ def _optional_text(value: object) -> str | None:
     if value is None:
         return None
     return _text(value)
+
+
+def _strategy_set_fingerprint_from_json(value: object) -> str:
+    """Decode the runner's canonical strategy payload without trusting its order."""
+
+    raw = _text(value)
+    try:
+        decoded = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise T539HistoricalResultsUnavailableError(
+            "T539 database has malformed strategy-set JSON"
+        ) from exc
+    if not isinstance(decoded, list):
+        raise T539HistoricalResultsUnavailableError("T539 database strategy-set JSON is not a list")
+    identities: list[str] = []
+    items = cast(list[object], decoded)
+    for raw_item in items:
+        if not isinstance(raw_item, Mapping):
+            raise T539HistoricalResultsUnavailableError(
+                "T539 database strategy-set JSON has an invalid entry"
+            )
+        item = cast(Mapping[str, object], raw_item)
+        strategy_id = item.get("strategy_id")
+        strategy_version = item.get("strategy_version")
+        if not isinstance(strategy_id, str) or not isinstance(strategy_version, str):
+            raise T539HistoricalResultsUnavailableError(
+                "T539 database strategy-set JSON has an invalid identity"
+            )
+        identities.append(f"{strategy_id}@{strategy_version}")
+    return t539_strategy_set_fingerprint(identities)
 
 
 def _decode_numbers_json(value: object) -> tuple[int, ...]:
@@ -350,7 +395,7 @@ def _replay_predicate(run_id: str, query: T539ReplayQuery) -> tuple[str, tuple[o
 
 
 class SQLiteT539HistoricalQueryRepository:
-    """Read-only :class:`T539HistoricalQueryRepository` over the sealed Wave 1 DB."""
+    """Read-only :class:`T539HistoricalQueryRepository` over a sealed T539 DB."""
 
     def __init__(self, database: Path) -> None:
         self._database = database
@@ -360,7 +405,8 @@ class SQLiteT539HistoricalQueryRepository:
             total_count = _scalar(connection, "SELECT COUNT(*) FROM run_metadata")
             rows = connection.execute(
                 "SELECT run_id, schema_version, lottery_type, source_endpoint, source_sha256, "
-                "as_of_date, adapter_source_commit, status FROM run_metadata "
+                "as_of_date, adapter_source_commit, status, strategy_set_json "
+                "FROM run_metadata "
                 "ORDER BY run_id ASC LIMIT ? OFFSET ?",
                 (limit, offset),
             ).fetchall()
@@ -379,6 +425,7 @@ class SQLiteT539HistoricalQueryRepository:
             as_of_date,
             adapter_source_commit,
             status,
+            strategy_set_json,
         ) = row
         strategy_count = _scalar(
             connection, "SELECT COUNT(*) FROM strategy_coverage WHERE run_id = ?", (run_id,)
@@ -407,6 +454,7 @@ class SQLiteT539HistoricalQueryRepository:
             source_sha256=_text(source_sha256),
             as_of_date=_text(as_of_date),
             adapter_source_commit=_text(adapter_source_commit),
+            strategy_set_fingerprint=_strategy_set_fingerprint_from_json(strategy_set_json),
             status=_text(status),
             strategy_count=strategy_count,
             draw_count=draw_count,
@@ -419,13 +467,14 @@ class SQLiteT539HistoricalQueryRepository:
             last_draw_date=_optional_text(last[1]) if last is not None else None,
         )
 
-    def list_strategies(
-        self, run_id: str, *, limit: int, offset: int
-    ) -> T539StrategyPage | None:
+    def list_strategies(self, run_id: str, *, limit: int, offset: int) -> T539StrategyPage | None:
         with _read_only_connection(self._database) as connection:
-            if connection.execute(
-                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
-            ).fetchone() is None:
+            if (
+                connection.execute(
+                    "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+                ).fetchone()
+                is None
+            ):
                 return None
             total_count = _scalar(
                 connection, "SELECT COUNT(*) FROM strategy_coverage WHERE run_id = ?", (run_id,)
@@ -438,9 +487,7 @@ class SQLiteT539HistoricalQueryRepository:
                 "ORDER BY strategy_id ASC, strategy_version ASC LIMIT ? OFFSET ?",
                 (run_id, limit, offset),
             ).fetchall()
-            items = tuple(
-                self._row_to_strategy_record(connection, run_id, row) for row in rows
-            )
+            items = tuple(self._row_to_strategy_record(connection, run_id, row) for row in rows)
         return T539StrategyPage(
             run_id=run_id, items=items, total_count=total_count, limit=limit, offset=offset
         )
@@ -502,9 +549,12 @@ class SQLiteT539HistoricalQueryRepository:
 
     def list_replay(self, run_id: str, query: T539ReplayQuery) -> T539ReplayPage | None:
         with _read_only_connection(self._database) as connection:
-            if connection.execute(
-                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
-            ).fetchone() is None:
+            if (
+                connection.execute(
+                    "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+                ).fetchone()
+                is None
+            ):
                 return None
             where_sql, params = _replay_predicate(run_id, query)
             total_count = _scalar(
@@ -527,8 +577,11 @@ class SQLiteT539HistoricalQueryRepository:
             ).fetchall()
             items = tuple(self._row_to_replay_record(connection, run_id, row) for row in rows)
         return T539ReplayPage(
-            run_id=run_id, items=items, total_count=total_count,
-            limit=query.limit, offset=query.offset,
+            run_id=run_id,
+            items=items,
+            total_count=total_count,
+            limit=query.limit,
+            offset=query.offset,
         )
 
     def get_target(self, run_id: str, target_id: str) -> T539TargetDetail | None:
@@ -619,14 +672,21 @@ class SQLiteT539HistoricalQueryRepository:
         self, run_id: str, *, strategy_id: str | None = None
     ) -> T539StrategyMetrics | None:
         with _read_only_connection(self._database) as connection:
-            if connection.execute(
-                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
-            ).fetchone() is None:
+            if (
+                connection.execute(
+                    "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+                ).fetchone()
+                is None
+            ):
                 return None
-            if strategy_id is not None and connection.execute(
-                "SELECT 1 FROM strategy_coverage WHERE run_id = ? AND strategy_id = ?",
-                (run_id, strategy_id),
-            ).fetchone() is None:
+            if (
+                strategy_id is not None
+                and connection.execute(
+                    "SELECT 1 FROM strategy_coverage WHERE run_id = ? AND strategy_id = ?",
+                    (run_id, strategy_id),
+                ).fetchone()
+                is None
+            ):
                 return None
 
             clauses = ["run_id = ?"]
@@ -680,9 +740,12 @@ class SQLiteT539HistoricalQueryRepository:
 
     def list_rankings(self, run_id: str) -> T539RankingPage | None:
         with _read_only_connection(self._database) as connection:
-            if connection.execute(
-                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
-            ).fetchone() is None:
+            if (
+                connection.execute(
+                    "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+                ).fetchone()
+                is None
+            ):
                 return None
             strategy_rows = connection.execute(
                 "SELECT strategy_id, strategy_version, native_ticket_count, "
@@ -690,9 +753,7 @@ class SQLiteT539HistoricalQueryRepository:
                 "ORDER BY strategy_id ASC",
                 (run_id,),
             ).fetchall()
-            candidates = [
-                self._ranking_candidate(connection, run_id, row) for row in strategy_rows
-            ]
+            candidates = [self._ranking_candidate(connection, run_id, row) for row in strategy_rows]
 
         def sort_key(candidate: _RankingCandidate) -> tuple[object, ...]:
             tier_vector = tuple(-count for _, count in candidate.prize_tier_counts)
@@ -768,9 +829,7 @@ class SQLiteT539HistoricalQueryRepository:
         ).fetchone()
         eligible_target_count_int = _db_int(eligible_target_count)
         winning_target_rate = (
-            winning_target_count / eligible_target_count_int
-            if eligible_target_count_int
-            else 0.0
+            winning_target_count / eligible_target_count_int if eligible_target_count_int else 0.0
         )
         ticket_winning_rate = winning_ticket_count / ticket_count if ticket_count else 0.0
         tier_counts_by_id = dict(prize_tier_counts)
@@ -796,9 +855,12 @@ class SQLiteT539HistoricalQueryRepository:
 
     def get_coverage_ledger(self, run_id: str) -> T539CoverageLedger | None:
         with _read_only_connection(self._database) as connection:
-            if connection.execute(
-                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
-            ).fetchone() is None:
+            if (
+                connection.execute(
+                    "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+                ).fetchone()
+                is None
+            ):
                 return None
             rows = connection.execute(
                 "SELECT strategy_id, strategy_version, native_ticket_count, min_history "
@@ -811,7 +873,7 @@ class SQLiteT539HistoricalQueryRepository:
                 strategy_version=_text(strategy_version),
                 native_ticket_count=_db_int(native_ticket_count),
                 min_history=_db_int(min_history),
-                selection_reason=_EXECUTED_SELECTION_REASONS.get(_text(strategy_id), ""),
+                selection_reason=_selection_reason(_text(strategy_id)),
             )
             for strategy_id, strategy_version, native_ticket_count, min_history in rows
         )

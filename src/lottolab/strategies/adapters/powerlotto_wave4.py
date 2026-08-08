@@ -121,11 +121,12 @@ def _core_satellite_12bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneT
         pool = _core_satellite_pool(history, method)
         anchors = pool[:3]
         satellites = [number for number in pool if number not in anchors]
+        satellite_count = PICK_COUNT - len(anchors)
         used: set[int] = set()
         for _ in range(3):
             selected: list[int] = []
             for number in satellites:
-                if number not in used and len(selected) < 3:
+                if number not in used and len(selected) < satellite_count:
                     selected.append(number)
                     used.add(number)
             rows.append(ticket(anchors + selected))
@@ -161,7 +162,7 @@ def _two_bet_optimizer(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTick
         ),
         limit=12,
     )
-    return (ticket(candidates[:6]), ticket(candidates[3:9]))
+    return (ticket(candidates[:PICK_COUNT]), ticket(candidates[3 : 3 + PICK_COUNT]))
 
 
 def _two_bet_optimizer_v2(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
@@ -175,7 +176,7 @@ def _two_bet_optimizer_v2(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneT
         ),
         limit=18,
     )
-    return (ticket(candidates[:6]), ticket(candidates[4:10]))
+    return (ticket(candidates[:PICK_COUNT]), ticket(candidates[4 : 4 + PICK_COUNT]))
 
 
 def _tme_optimizer(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
@@ -199,8 +200,12 @@ def _two_bet_elite(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSe
         limit=20,
         excluded=kill_numbers(history, 8),
     )
-    second = candidates[6:12] if len(candidates) >= 12 else candidates[:6]
-    return (ticket(candidates[:6]), ticket(second))
+    second = (
+        candidates[PICK_COUNT : 2 * PICK_COUNT]
+        if len(candidates) >= 2 * PICK_COUNT
+        else candidates[:PICK_COUNT]
+    )
+    return (ticket(candidates[:PICK_COUNT]), ticket(second))
 
 
 def _optimized_ensemble(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
@@ -252,7 +257,12 @@ def _elite_7bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
     if rows:
         rows.append(
             ticket(
-                [number for number, _value in Counter(n for r in rows for n in r).most_common(6)]
+                [
+                    number
+                    for number, _value in Counter(n for r in rows for n in r).most_common(
+                        PICK_COUNT
+                    )
+                ]
             )
         )
     return tuple(rows)
@@ -316,7 +326,9 @@ def _ewma_ticket(history: tuple[P638HistoryRow, ...], value: float) -> tuple[int
     probabilities = {
         number: weighted.get(number, 0.0) / total for number in range(MINIMUM, MAXIMUM + 1)
     }
-    return ticket(sorted(probabilities, key=lambda number: probabilities[number], reverse=True)[:6])
+    return ticket(
+        sorted(probabilities, key=lambda number: probabilities[number], reverse=True)[:PICK_COUNT]
+    )
 
 
 def _backtest_10bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
@@ -356,7 +368,7 @@ def _gemini_v1_2bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketS
         ),
         limit=12,
     )
-    return (ticket(candidates[:6]), ticket(candidates[3:9]))
+    return (ticket(candidates[:PICK_COUNT]), ticket(candidates[3 : 3 + PICK_COUNT]))
 
 
 def _five_me_5bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:

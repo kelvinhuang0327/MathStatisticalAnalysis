@@ -1,10 +1,10 @@
-"""Application-owned read models for the T539 Wave 1 Strategy Analysis vertical.
+"""Application-owned read models for the sealed T539 Strategy Analysis vertical.
 
 The models in this module are deliberately independent of SQLite and FastAPI.
 The read-only repository and the HTTP adapter translate their own storage and
 wire representations into these immutable, lottery-scoped records.
 
-T539 replays the sealed Wave 1 DAILY_539 run directly from its own flat
+T539 replays a sealed DAILY_539 run directly from its own flat
 schema (``run_metadata``/``source_draws``/``strategy_coverage``/
 ``prediction_tickets``/``prediction_scores``/``failure_ledger``/
 ``target_completion``) rather than the shared ``historical_*`` projection
@@ -13,6 +13,9 @@ P638 reads; there is no forwarding step for this vertical.
 
 from __future__ import annotations
 
+import hashlib
+import json
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 T539_LOTTERY_TYPE = "DAILY_539"
@@ -26,12 +29,20 @@ T539_STRATEGY_SORT = ("strategy_id:asc", "strategy_version:asc")
 T539_ALLOWED_TARGET_STATUSES = ("SUCCESS", "FAILED")
 
 
+def t539_strategy_set_fingerprint(strategy_identities: Sequence[str]) -> str:
+    """Return the order-independent SHA-256 for one sealed T539 strategy set."""
+
+    identities = sorted(str(identity) for identity in strategy_identities)
+    canonical = json.dumps(identities, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 class T539HistoricalQueryError(RuntimeError):
     """Base class for sanitized T539 historical-query failures."""
 
 
 class T539HistoricalResultsUnavailableError(T539HistoricalQueryError):
-    """The configured T539 Wave 1 analysis database is unavailable."""
+    """The configured T539 analysis database is unavailable."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,6 +54,7 @@ class T539RunSummary:
     source_sha256: str
     as_of_date: str
     adapter_source_commit: str
+    strategy_set_fingerprint: str
     status: str
     strategy_count: int
     draw_count: int
@@ -190,7 +202,7 @@ class T539RankingPage:
 
 @dataclass(frozen=True, slots=True)
 class T539CoverageExecutedEntry:
-    """One of the exactly eight strategies replayed and ranked in Wave 1."""
+    """One strategy replayed and ranked in a sealed T539 run."""
 
     strategy_id: str
     strategy_version: str
@@ -201,7 +213,7 @@ class T539CoverageExecutedEntry:
 
 @dataclass(frozen=True, slots=True)
 class T539CoverageBlockedEntry:
-    """One catalog identity deferred out of Wave 1, never executed or ranked."""
+    """One catalog identity deferred from a run, never executed or ranked."""
 
     strategy_id: str
     reason_code: str
@@ -210,11 +222,10 @@ class T539CoverageBlockedEntry:
 
 @dataclass(frozen=True, slots=True)
 class T539CoverageLedger:
-    """The complete Wave 1 DAILY_539 strategy coverage ledger.
+    """The complete DAILY_539 strategy coverage ledger for one run.
 
     ``coverage_complete`` is always ``False`` while any blocked identity
-    remains unresolved: Wave 1 never claims to cover every historical T539
-    strategy, only the eight it actually replayed and ranked.
+    remains unresolved. A complete closure run has no blocked identities.
     """
 
     run_id: str

@@ -103,10 +103,19 @@ def _mwsc_3bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
                 consensus.update(_engine_output(method, sample))
             except Exception:
                 continue
-    for number in kill_numbers(history, 10):
+    killed = set(kill_numbers(history, 10))
+    for number in killed:
         consensus[number] = -9999
-    pool = [number for number, _score in consensus.most_common(18)]
-    return tuple(ticket(pool[start:end]) for start, end in ((0, 6), (4, 10), (8, 14)))
+    starts = (0, 4, 8)
+    required_pool_size = max(start + PICK_COUNT for start in starts)
+    pool = [number for number, _score in consensus.most_common(PICK_COUNT * 3)]
+    pool.extend(
+        number
+        for number in range(MINIMUM, MAXIMUM + 1)
+        if number not in killed and number not in pool
+    )
+    pool = pool[:required_pool_size]
+    return tuple(ticket(pool[start : start + PICK_COUNT]) for start in starts)
 
 
 def _diversified_top18(history: tuple[P638HistoryRow, ...]) -> list[int]:
@@ -116,7 +125,7 @@ def _diversified_top18(history: tuple[P638HistoryRow, ...]) -> list[int]:
             (markov_ticket(history), 1.5),
             (statistical_ticket(history), 1.0),
         ),
-        limit=18,
+        limit=PICK_COUNT * 3,
         excluded=kill_numbers(history, 10),
     )
 
@@ -145,7 +154,7 @@ def _cag_3bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
             key=lambda entry: (entry[1], -top_18.index(entry[0])),
             reverse=True,
         )
-        rows.append(ticket([anchor, *(entry[0] for entry in companions[:5])]))
+        rows.append(ticket([anchor, *(entry[0] for entry in companions[: PICK_COUNT - 1])]))
     return tuple(rows)
 
 
@@ -511,7 +520,11 @@ def _random_core_satellite(history: tuple[P638HistoryRow, ...]) -> P638FirstZone
     rng.shuffle(pool)
     core = sorted(pool[:2])
     satellites = pool[2:]
-    return tuple(ticket(core + satellites[index * 4 : (index + 1) * 4]) for index in range(3))
+    satellite_count = PICK_COUNT - len(core)
+    return tuple(
+        ticket(core + satellites[index * satellite_count : (index + 1) * satellite_count])
+        for index in range(3)
+    )
 
 
 def _random_zone_split(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
@@ -561,9 +574,15 @@ def _exhaustive_audit_3bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZone
 
 def _asm_3bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:
     top = _diversified_top18(history)
+    first_indexes = tuple(range(PICK_COUNT))
+    second_indexes = (*range(0, 2), *range(PICK_COUNT, 2 * PICK_COUNT - 2))
+    third_indexes = (
+        *range(2, min(5, PICK_COUNT)),
+        *range(2 * PICK_COUNT - 2, 2 * PICK_COUNT - 2 + PICK_COUNT - 3),
+    )
     return tuple(
         ticket([top[index] for index in indexes])
-        for indexes in ((0, 1, 2, 3, 4, 5), (0, 1, 6, 7, 8, 9), (2, 3, 4, 10, 11, 12))
+        for indexes in (first_indexes, second_indexes, third_indexes)
     )
 
 

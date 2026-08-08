@@ -8,7 +8,10 @@ from lottolab.interfaces.api.local_app import (
     DRAW_PROVIDER_SOURCE_ENV,
     DRAW_PROVIDER_URL_ENV,
     OFFICIAL_TAIWAN_LOTTERY_SOURCE,
+    P638_CURRENT_RANKING_DB_ENV,
+    LocalP638CurrentRankingComposition,
     local_draw_provider,
+    local_p638_current_ranking_composition,
 )
 
 
@@ -38,3 +41,12 @@ def test_explicit_url_wins_over_the_official_source_toggle() -> None:
 def test_explicit_url_alone_still_resolves_the_json_provider() -> None:
     provider = local_draw_provider({DRAW_PROVIDER_URL_ENV: "https://example.test/draws"})
     assert isinstance(provider, JsonHttpDrawDataProvider)
+
+
+def test_current_ranking_database_path_is_explicit_and_untrimmed() -> None:
+    configured = " /absolute/current-ranking.sqlite3 "
+
+    composition = local_p638_current_ranking_composition({P638_CURRENT_RANKING_DB_ENV: configured})
+
+    assert isinstance(composition, LocalP638CurrentRankingComposition)
+    assert str(composition.database) == configured

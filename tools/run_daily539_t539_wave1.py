@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import Any, Protocol, cast
 from urllib.parse import urlencode
 
+from lottolab.application.t539_historical import t539_strategy_set_fingerprint
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import (
     BetAdapterError,
@@ -39,6 +40,11 @@ from lottolab.strategies.adapters.daily539_biglotto_batch15 import (
     Daily539BigLottoReboundAwareAdapter,
     Daily539BigLottoShortWindowDeviationAdapter,
     Daily539BigLottoZoneMomentumAdapter,
+)
+from lottolab.strategies.adapters.daily539_biglotto_portable import (
+    DAILY539_BIGLOTTO_PORTABLE_SPECS,
+    Daily539BigLottoPortableAdapter,
+    Daily539BigLottoPortableSpec,
 )
 from lottolab.strategies.adapters.daily539_fourier4 import (
     Daily539P0bFourierColdFmidAdapter,
@@ -387,9 +393,7 @@ WAVE3_ACB1_ALIAS_STRATEGY_SPECS: tuple[StrategySpec, ...] = (
 )
 
 WAVE3_ACB1_ALIAS_BLOCKED_STRATEGIES: tuple[dict[str, str], ...] = tuple(
-    entry
-    for entry in WAVE2_F4COLD_SINGLE_BLOCKED_STRATEGIES
-    if entry["strategy_id"] != "acb_1bet"
+    entry for entry in WAVE2_F4COLD_SINGLE_BLOCKED_STRATEGIES if entry["strategy_id"] != "acb_1bet"
 )
 
 WAVE3_ACB1_ALIAS_CONFIG = StrategySetConfig(
@@ -712,12 +716,57 @@ BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG = StrategySetConfig(
     blocked_strategies=(),
 )
 
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_RUN_ID = "BIGLOTTO68_TO_T539_CROSS_LOTTERY_CLOSURE_R2"
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_SCHEMA_VERSION = "t539-biglotto68-cross-lottery-r2-v1"
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_DB_NAME = "t539_biglotto68_cross_lottery_r2.sqlite3"
+
+
+def _daily539_biglotto_portable_factory(
+    portable_spec: Daily539BigLottoPortableSpec,
+) -> AdapterFactory:
+    return lambda: Daily539BigLottoPortableAdapter(portable_spec)
+
+
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_STRATEGY_SPECS: tuple[StrategySpec, ...] = (
+    *BIGLOTTO68_TO_T539_CROSS_LOTTERY_STRATEGY_SPECS,
+    *tuple(
+        StrategySpec(
+            strategy_id=portable_spec.strategy_id,
+            strategy_name=portable_spec.strategy_name,
+            strategy_version=portable_spec.strategy_version,
+            lottery_type=LOTTERY_TYPE,
+            min_history=portable_spec.min_history,
+            native_ticket_count=portable_spec.native_ticket_count,
+            adapter_factory=_daily539_biglotto_portable_factory(portable_spec),
+            adapter_source_paths=portable_spec.source_paths,
+            selection_reason=(
+                "BIGLOTTO68 R2 exhaustive cross-lottery closure: target-native "
+                "DAILY_539 GameSpec execution of the verified portable donor "
+                f"{portable_spec.source_strategy_id}; native ticket positions "
+                "and donor ordering are preserved."
+            ),
+        )
+        for portable_spec in DAILY539_BIGLOTTO_PORTABLE_SPECS
+    ),
+)
+
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_CONFIG = StrategySetConfig(
+    name="biglotto68-to-t539-cross-lottery-r2",
+    run_id=BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_RUN_ID,
+    schema_version=BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_SCHEMA_VERSION,
+    db_name=BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_DB_NAME,
+    default_runtime_root_name=BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_RUN_ID,
+    specs=BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_STRATEGY_SPECS,
+    blocked_strategies=(),
+)
+
 STRATEGY_SET_CONFIGS: Mapping[str, StrategySetConfig] = {
     WAVE1_CONFIG.name: WAVE1_CONFIG,
     WAVE2_F4COLD_SINGLE_CONFIG.name: WAVE2_F4COLD_SINGLE_CONFIG,
     WAVE3_ACB1_ALIAS_CONFIG.name: WAVE3_ACB1_ALIAS_CONFIG,
     WAVE4_REMAINING5_BATCH_CONFIG.name: WAVE4_REMAINING5_BATCH_CONFIG,
     BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.name: BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG,
+    BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_CONFIG.name: BIGLOTTO68_TO_T539_CROSS_LOTTERY_R2_CONFIG,
 }
 
 
@@ -1383,6 +1432,9 @@ def _write_reports(
     for item in failures:
         item["provenance"] = json.loads(cast(str, item.pop("provenance_json")))
     selected = _strategy_set_payload(specs)
+    strategy_set_fingerprint = t539_strategy_set_fingerprint(
+        tuple(f"{spec.strategy_id}@{spec.strategy_version}" for spec in specs)
+    )
     all_complete = all(item["status"] == "COMPLETE" for item in coverage)
     run_summary: dict[str, object] = {
         "run_id": run_id,
@@ -1392,6 +1444,7 @@ def _write_reports(
         "source_endpoint": OFFICIAL_SOURCE_ENDPOINT,
         "source_sha256": source_sha256,
         "adapter_source_commit": adapter_source_commit,
+        "strategy_set_fingerprint": strategy_set_fingerprint,
         "draw_count": len(draws),
         "selected_strategy_count": len(specs),
         "selected_strategies": selected,
@@ -1414,6 +1467,8 @@ def _write_reports(
         "last_draw": draws[-1].draw_id,
         "last_draw_date": draws[-1].draw_date,
         "source_sha256": source_sha256,
+        "strategy_set_fingerprint": strategy_set_fingerprint,
+        "selected_strategy_count": len(specs),
         "donor_archive_sha256": DONOR_ARCHIVE_SHA256,
         "adapter_source_commit": adapter_source_commit,
         "future_draws_included": False,
@@ -1437,6 +1492,7 @@ def run_batch(
     as_of_date: str,
     specs: Sequence[StrategySpec] = DEFAULT_STRATEGY_SPECS,
     max_targets_per_strategy: int | None = None,
+    retry_failed: bool = False,
     run_id: str = RUN_ID,
     schema_version: str = SCHEMA_VERSION,
     db_name: str = DB_NAME,
@@ -1448,6 +1504,9 @@ def run_batch(
     passing ``run_id``/``schema_version``/``db_name``/``specs``/
     ``blocked_strategies`` together runs an independent named configuration
     against its own SQLite file, e.g. :data:`WAVE2_F4COLD_SINGLE_CONFIG`.
+    Set ``retry_failed`` only when a corrected adapter should repair durable
+    FAILED target rows in the same task-owned database; the default preserves
+    byte-for-byte resume idempotence for an unchanged run.
     """
 
     if not draws:
@@ -1462,8 +1521,13 @@ def run_batch(
     try:
         _init_schema(connection)
         _ensure_run_metadata(
-            connection, run_id, schema_version, source_sha256, as_of_date,
-            adapter_source_commit, specs,
+            connection,
+            run_id,
+            schema_version,
+            source_sha256,
+            as_of_date,
+            adapter_source_commit,
+            specs,
         )
         _insert_source_draws(connection, draws)
         _ensure_coverage_rows(connection, run_id, draws, specs)
@@ -1472,12 +1536,39 @@ def run_batch(
             for target_index in range(spec.min_history, len(draws)):
                 target_id = draws[target_index].draw_id
                 already_done = connection.execute(
-                    "SELECT 1 FROM target_completion WHERE run_id = ? AND strategy_id = ? "
+                    "SELECT status FROM target_completion WHERE run_id = ? AND strategy_id = ? "
                     "AND strategy_version = ? AND target_draw_id = ?",
                     (run_id, spec.strategy_id, spec.strategy_version, target_id),
                 ).fetchone()
                 if already_done is not None:
-                    continue
+                    if already_done[0] == "SUCCESS":
+                        continue
+                    if already_done[0] != "FAILED":
+                        raise ValueError(
+                            f"unexpected existing T539 target status {already_done[0]!r}"
+                        )
+                    if not retry_failed:
+                        continue
+                    connection.execute(
+                        "DELETE FROM prediction_scores WHERE run_id = ? AND strategy_id = ? "
+                        "AND strategy_version = ? AND target_draw_id = ?",
+                        (run_id, spec.strategy_id, spec.strategy_version, target_id),
+                    )
+                    connection.execute(
+                        "DELETE FROM prediction_tickets WHERE run_id = ? AND strategy_id = ? "
+                        "AND strategy_version = ? AND target_draw_id = ?",
+                        (run_id, spec.strategy_id, spec.strategy_version, target_id),
+                    )
+                    connection.execute(
+                        "DELETE FROM failure_ledger WHERE run_id = ? AND strategy_id = ? "
+                        "AND strategy_version = ? AND target_draw_id = ?",
+                        (run_id, spec.strategy_id, spec.strategy_version, target_id),
+                    )
+                    connection.execute(
+                        "DELETE FROM target_completion WHERE run_id = ? AND strategy_id = ? "
+                        "AND strategy_version = ? AND target_draw_id = ?",
+                        (run_id, spec.strategy_id, spec.strategy_version, target_id),
+                    )
                 with connection:
                     _target_rows(
                         connection,
@@ -1524,6 +1615,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--adapter-source-commit")
     parser.add_argument("--max-targets-per-strategy", type=int)
     parser.add_argument(
+        "--retry-failed",
+        action="store_true",
+        help="Retry durable FAILED target rows after an adapter correction.",
+    )
+    parser.add_argument(
         "--strategy-set",
         choices=tuple(STRATEGY_SET_CONFIGS),
         default=WAVE1_CONFIG.name,
@@ -1550,7 +1646,9 @@ def main() -> int:
     if runtime_root is None:
         repo_root = Path(__file__).resolve().parents[1]
         runtime_root = (
-            repo_root.parents[2] / ".runs" / "MathStatisticalAnalysis"
+            repo_root.parents[2]
+            / ".runs"
+            / "MathStatisticalAnalysis"
             / config.default_runtime_root_name
         )
     source_cache = cast(Path | None, args.source_cache)
@@ -1569,6 +1667,7 @@ def main() -> int:
         as_of_date=as_of_date,
         specs=config.specs,
         max_targets_per_strategy=args.max_targets_per_strategy,
+        retry_failed=args.retry_failed,
         run_id=config.run_id,
         schema_version=config.schema_version,
         db_name=config.db_name,

@@ -1,4 +1,4 @@
-"""FastAPI adapters for the T539 Wave 1 Strategy Analysis vertical."""
+"""FastAPI adapters for the sealed T539 Strategy Analysis vertical."""
 
 # pyright: reportUnusedFunction=false
 
@@ -63,6 +63,7 @@ class T539RunView(BaseModel):
     source_sha256: str
     as_of_date: str
     adapter_source_commit: str
+    strategy_set_fingerprint: str
     status: str
     strategy_count: int
     draw_count: int
@@ -84,6 +85,7 @@ class T539RunView(BaseModel):
             source_sha256=value.source_sha256,
             as_of_date=value.as_of_date,
             adapter_source_commit=value.adapter_source_commit,
+            strategy_set_fingerprint=value.strategy_set_fingerprint,
             status=value.status,
             strategy_count=value.strategy_count,
             draw_count=value.draw_count,
@@ -440,9 +442,7 @@ def create_t539_historical_router(
     list_replay = ListT539Replay(repository_factory) if repository_factory is not None else None
     get_target = GetT539Target(repository_factory) if repository_factory is not None else None
     get_metrics = GetT539Metrics(repository_factory) if repository_factory is not None else None
-    list_rankings = (
-        ListT539Rankings(repository_factory) if repository_factory is not None else None
-    )
+    list_rankings = ListT539Rankings(repository_factory) if repository_factory is not None else None
     get_coverage_ledger = (
         GetT539CoverageLedger(repository_factory) if repository_factory is not None else None
     )

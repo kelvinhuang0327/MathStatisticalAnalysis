@@ -23,6 +23,11 @@ from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     CHECKSUM_FILENAME,
     EXECUTION_AUDIT_CSV_FILENAME,
     METRICS_CSV_FILENAME,
+    OFFICIAL_PRIZE_DISTRIBUTION_CSV_FILENAME,
+    OFFICIAL_RANKINGS_CSV_FILENAME,
+    OFFICIAL_REVIEW_FILENAME,
+    OFFICIAL_STABILITY_CSV_FILENAME,
+    OFFICIAL_TOP20_CSV_FILENAME,
     PRIZES_CSV_FILENAME,
     RANKINGS_CSV_FILENAME,
     REPORT_JSON_FILENAME,
@@ -136,6 +141,78 @@ def test_report_uses_all_four_prefixes_windows_and_eight_criteria(
     assert len(rankings) == 4 * 4 * 8 * 221
     assert len(top_10) == 4 * 4 * 8
     assert all(len(metric["execution_status_counts"]) >= 1 for metric in metrics)
+
+
+def test_report_exposes_official_primary_metrics_and_isolates_ticket_windows(
+    report: dict[str, object],
+) -> None:
+    official_metrics = cast(list[dict[str, Any]], report["official_metrics"])
+    official_rankings = cast(list[dict[str, Any]], report["official_rankings"])
+    official_top_20 = cast(list[dict[str, Any]], report["official_top_20"])
+
+    assert len(official_metrics) == 4 * 4
+    assert len(official_rankings) == 4 * 4 * 221
+    assert {row["criterion"] for row in official_rankings} == {
+        "OFFICIAL_ANY_PRIZE"
+    }
+    assert all(
+        len(
+            [
+                row
+                for row in official_rankings
+                if row["prefix_count"] == prefix_count
+                and row["window"] == window
+            ]
+        )
+        == 221
+        for prefix_count in (5, 10, 15, 20)
+        for window in ("FULL", "RECENT_750", "RECENT_300", "RECENT_50")
+    )
+    assert len(official_top_20) == 4 * 4
+
+    metric = next(
+        row
+        for row in official_metrics
+        if row["prefix_count"] == 5 and row["window"] == "FULL"
+    )
+    assert metric["official_any_prize_count"] == 1
+    assert metric["official_any_prize_rate"] == {
+        "decimal_18": "0.500000000000000000",
+        "denominator": 2,
+        "numerator": 1,
+    }
+    assert metric["official_random_baseline_probability"]["numerator"] > 0
+    assert metric["official_random_baseline_delta"]["numerator"] > 0
+
+
+def test_two_main_plus_special_is_official_success_but_not_m3_plus() -> None:
+    document = _input_document()
+    two_main_plus_special = [1, 2, 7, 10, 11, 12]
+    targets = cast(list[dict[str, object]], document["targets"])
+    targets[1]["winning_main_numbers"] = [20, 21, 22, 23, 24, 25]
+    targets[1]["winning_special_number"] = 26
+    for execution in cast(list[dict[str, object]], document["executions"]):
+        execution["native_tickets"] = [two_main_plus_special, two_main_plus_special]
+        execution["ordered_portfolio"] = [two_main_plus_special for _ in range(20)]
+
+    report = evaluate_biglotto_multi_ticket_backtest(_input_bytes(document))
+    metrics = cast(list[dict[str, Any]], report["metrics"])
+    official_metrics = cast(list[dict[str, Any]], report["official_metrics"])
+    m3 = next(
+        row
+        for row in metrics
+        if row["prefix_count"] == 5
+        and row["window"] == "FULL"
+        and row["criterion"] == "M3_PLUS"
+    )
+    official = next(
+        row
+        for row in official_metrics
+        if row["prefix_count"] == 5 and row["window"] == "FULL"
+    )
+
+    assert m3["observed_success_count"] == 0
+    assert official["official_any_prize_count"] == 1
 
 
 def test_complete_ranking_retains_closed_strategies_and_reasons(
@@ -334,6 +411,11 @@ def test_cli_exports_json_csv_and_checksums(tmp_path: Path) -> None:
         PRIZES_CSV_FILENAME,
         RANKINGS_CSV_FILENAME,
         TOP10_CSV_FILENAME,
+        OFFICIAL_RANKINGS_CSV_FILENAME,
+        OFFICIAL_TOP20_CSV_FILENAME,
+        OFFICIAL_PRIZE_DISTRIBUTION_CSV_FILENAME,
+        OFFICIAL_STABILITY_CSV_FILENAME,
+        OFFICIAL_REVIEW_FILENAME,
     }
     checksums = {
         filename: digest

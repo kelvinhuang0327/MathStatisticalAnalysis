@@ -24,6 +24,11 @@ METRICS_CSV_FILENAME = "biglotto_success_metrics.csv"
 PRIZES_CSV_FILENAME = "biglotto_official_prize_distributions.csv"
 RANKINGS_CSV_FILENAME = "biglotto_full_rankings.csv"
 TOP10_CSV_FILENAME = "biglotto_top10.csv"
+OFFICIAL_RANKINGS_CSV_FILENAME = "official_full_ranking.csv"
+OFFICIAL_TOP20_CSV_FILENAME = "official_top20_by_ticket_window.csv"
+OFFICIAL_PRIZE_DISTRIBUTION_CSV_FILENAME = "official_prize_distribution.csv"
+OFFICIAL_STABILITY_CSV_FILENAME = "official_cross_period_stability.csv"
+OFFICIAL_REVIEW_FILENAME = "official_ranking_review.md"
 CHECKSUM_FILENAME = "SHA256SUMS"
 _OUTPUT_FILENAMES = (
     REPORT_JSON_FILENAME,
@@ -33,6 +38,11 @@ _OUTPUT_FILENAMES = (
     PRIZES_CSV_FILENAME,
     RANKINGS_CSV_FILENAME,
     TOP10_CSV_FILENAME,
+    OFFICIAL_RANKINGS_CSV_FILENAME,
+    OFFICIAL_TOP20_CSV_FILENAME,
+    OFFICIAL_PRIZE_DISTRIBUTION_CSV_FILENAME,
+    OFFICIAL_STABILITY_CSV_FILENAME,
+    OFFICIAL_REVIEW_FILENAME,
     CHECKSUM_FILENAME,
 )
 
@@ -93,6 +103,230 @@ def _csv_bytes(rows: object, fieldnames: tuple[str, ...], context: str) -> bytes
     return buffer.getvalue().encode("utf-8")
 
 
+_OFFICIAL_WINDOWS = ("FULL", "RECENT_750", "RECENT_300", "RECENT_50")
+_OFFICIAL_PREFIX_COUNTS = (5, 10, 15, 20)
+
+
+def _official_cross_period_stability_rows(
+    report: dict[str, object],
+) -> list[dict[str, object]]:
+    """Build descriptive rank-stability rows without combining ticket counts."""
+
+    universe = report.get("universe")
+    rankings = report.get("official_rankings")
+    if not isinstance(universe, list) or not isinstance(rankings, list):
+        raise MultiTicketBacktestCliError(
+            "report official ranking inputs are malformed"
+        )
+    ranking_candidates = cast(list[object], rankings)
+    ranking_index: dict[tuple[str, int, str], dict[str, object]] = {}
+    for index, candidate in enumerate(ranking_candidates):
+        if not isinstance(candidate, dict):
+            raise MultiTicketBacktestCliError(
+                f"report official_rankings[{index}] is malformed"
+            )
+        row = cast(dict[str, object], candidate)
+        strategy_id = row.get("strategy_id")
+        prefix_count = row.get("prefix_count")
+        window = row.get("window")
+        if (
+            not isinstance(strategy_id, str)
+            or type(prefix_count) is not int
+            or not isinstance(window, str)
+        ):
+            raise MultiTicketBacktestCliError(
+                f"report official_rankings[{index}] has an invalid identity"
+            )
+        key = (strategy_id, prefix_count, window)
+        if key in ranking_index:
+            raise MultiTicketBacktestCliError(
+                "report official_rankings contains duplicate identities"
+            )
+        ranking_index[key] = row
+
+    rows: list[dict[str, object]] = []
+    universe_candidates = cast(list[object], universe)
+    for index, candidate in enumerate(universe_candidates):
+        if not isinstance(candidate, dict):
+            raise MultiTicketBacktestCliError(f"report universe[{index}] is malformed")
+        universe_row = cast(dict[str, object], candidate)
+        strategy_id = universe_row.get("strategy_id")
+        if not isinstance(strategy_id, str):
+            raise MultiTicketBacktestCliError(
+                f"report universe[{index}] has no strategy_id"
+            )
+        for prefix_count in _OFFICIAL_PREFIX_COUNTS:
+            by_window = {
+                window: ranking_index.get((strategy_id, prefix_count, window), {})
+                for window in _OFFICIAL_WINDOWS
+            }
+            rank_by_window = {
+                window: row.get("official_rank")
+                for window, row in by_window.items()
+            }
+            ranked = {
+                window: value
+                for window, value in rank_by_window.items()
+                if type(value) is int
+            }
+            best_window = min(
+                ranked,
+                key=lambda window: (ranked[window], _OFFICIAL_WINDOWS.index(window)),
+                default="",
+            )
+            worst_window = max(
+                ranked,
+                key=lambda window: (ranked[window], -_OFFICIAL_WINDOWS.index(window)),
+                default="",
+            )
+            best_rank = ranked.get(best_window, "")
+            worst_rank = ranked.get(worst_window, "")
+            rows.append(
+                {
+                    "prefix_count": prefix_count,
+                    "strategy_id": strategy_id,
+                    "strategy_version": universe_row.get("strategy_version", ""),
+                    "method_family": universe_row.get("method_family", ""),
+                    "reproduction_status": universe_row.get(
+                        "reproduction_status", ""
+                    ),
+                    **{
+                        f"{window.lower()}_official_rank": rank_by_window[window]
+                        for window in _OFFICIAL_WINDOWS
+                    },
+                    **{
+                        f"{window.lower()}_official_any_prize_rate": by_window[
+                            window
+                        ].get("official_any_prize_rate", "")
+                        for window in _OFFICIAL_WINDOWS
+                    },
+                    "best_official_rank": best_rank,
+                    "best_window": best_window,
+                    "worst_official_rank": worst_rank,
+                    "worst_window": worst_window,
+                    "official_rank_range": (
+                        cast(int, worst_rank) - cast(int, best_rank)
+                        if ranked
+                        else ""
+                    ),
+                }
+            )
+    return rows
+
+
+def _official_review_markdown(report: dict[str, object]) -> bytes:
+    progress = report.get("progress")
+    official_metrics = report.get("official_metrics")
+    official_rankings = report.get("official_rankings")
+    if not isinstance(progress, dict):
+        raise MultiTicketBacktestCliError("report progress is malformed")
+    if not isinstance(official_metrics, list) or not isinstance(
+        official_rankings, list
+    ):
+        raise MultiTicketBacktestCliError("report official ranking views are malformed")
+
+    progress_row = cast(dict[str, object], progress)
+    baseline_by_prefix: dict[int, str] = {}
+    official_metric_candidates = cast(list[object], official_metrics)
+    for candidate in official_metric_candidates:
+        if not isinstance(candidate, dict):
+            continue
+        row = cast(dict[str, object], candidate)
+        prefix_count = row.get("prefix_count")
+        baseline = row.get("official_random_baseline_probability")
+        if type(prefix_count) is int and isinstance(baseline, dict):
+            baseline_row = cast(dict[str, object], baseline)
+            decimal = baseline_row.get("decimal_18")
+            if isinstance(decimal, str):
+                baseline_by_prefix.setdefault(prefix_count, decimal)
+
+    lines = [
+        "# BIG_LOTTO official any-prize primary ranking review",
+        "",
+        "Descriptive historical research only; this artifact does not make a future "
+        "prediction or recommendation.",
+        "",
+        "## Contract",
+        "",
+        "- Primary criterion: `OFFICIAL_ANY_PRIZE`.",
+        "- A successful execution counts once when at least one selected portfolio "
+        "ticket resolves to `FIRST` through `GENERAL`; `NO_PRIZE` does not count.",
+        "- Rankings are isolated independently for 5, 10, 15, and 20 tickets within "
+        "each history window.",
+        "- Sort order: official any-prize rate DESC, official random-baseline delta "
+        "DESC, coverage DESC, strategy ID ASC.",
+        "- The eight M-based criteria remain secondary diagnostics; cross-ticket "
+        "comparisons are descriptive and never a combined rank.",
+        "",
+        "## Exact random baseline",
+        "",
+        "- Legal six-number tickets: C(49, 6) = 13,983,816.",
+        "- Official any-prize tickets under the committed BIG_LOTTO rule: 432,824.",
+        "- With-replacement portfolio baseline for K tickets: `1 - ((13,983,816 - "
+        "432,824) / 13,983,816)^K`.",
+        "",
+        "| Tickets (K) | Official random baseline |",
+        "| ---: | ---: |",
+    ]
+    for prefix_count in _OFFICIAL_PREFIX_COUNTS:
+        lines.append(
+            f"| {prefix_count} | {baseline_by_prefix.get(prefix_count, 'UNAVAILABLE')} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Reconciliation",
+            "",
+            f"- Strategies in catalog: {progress_row.get('total_strategy_count', 'UNAVAILABLE')}",
+            f"- BACKTESTED: {progress_row.get('backtested_count', 'UNAVAILABLE')}; "
+            "metric-bearing: 133; metrics-unavailable: 2.",
+            f"- CLOSED_EXECUTABLE: {progress_row.get('closed_count', 'UNAVAILABLE')}; "
+            f"DUPLICATE_ALIAS: {progress_row.get('duplicate_alias_count', 'UNAVAILABLE')}.",
+            "- No performance-based exclusions are applied to the catalog or to the "
+            "ranking output.",
+            "",
+            "## Official top 20 by isolated ticket window",
+            "",
+        ]
+    )
+    official_ranking_candidates = cast(list[object], official_rankings)
+    ranking_rows = [
+        cast(dict[str, object], candidate)
+        for candidate in official_ranking_candidates
+        if isinstance(candidate, dict)
+    ]
+    for prefix_count in _OFFICIAL_PREFIX_COUNTS:
+        lines.extend([f"### {prefix_count} tickets", ""])
+        for window in _OFFICIAL_WINDOWS:
+            top = sorted(
+                (
+                    row
+                    for row in ranking_rows
+                    if row.get("prefix_count") == prefix_count
+                    and row.get("window") == window
+                    and type(row.get("official_rank")) is int
+                ),
+                key=lambda row: cast(int, row["official_rank"]),
+            )[:20]
+            lines.extend(
+                [
+                    f"#### {window}",
+                    "",
+                    "| Rank | Strategy | Rate | Delta | Coverage |",
+                    "| ---: | --- | ---: | ---: | ---: |",
+                ]
+            )
+            for row in top:
+                lines.append(
+                    f"| {row['official_rank']} | {row.get('strategy_id', '')} | "
+                    f"{_csv_cell(row.get('official_any_prize_rate', ''))} | "
+                    f"{_csv_cell(row.get('official_random_baseline_delta', ''))} | "
+                    f"{_csv_cell(row.get('coverage', ''))} |"
+                )
+            lines.append("")
+    return ("\n".join(lines).rstrip("\n") + "\n").encode("utf-8")
+
+
 def _report_files(report: dict[str, object]) -> dict[str, bytes]:
     ranking_fields = (
         "prefix_count",
@@ -104,6 +338,39 @@ def _report_files(report: dict[str, object]) -> dict[str, bytes]:
         "observed_success_rate",
         "random_baseline_rate_difference",
         "unranked_reason",
+    )
+    official_ranking_fields = (
+        "prefix_count",
+        "window",
+        "criterion",
+        "official_rank",
+        "strategy_id",
+        "coverage",
+        "official_any_prize_count",
+        "official_any_prize_rate",
+        "official_random_baseline_probability",
+        "official_random_baseline_delta",
+        "unranked_reason",
+    )
+    stability_fields = (
+        "prefix_count",
+        "strategy_id",
+        "strategy_version",
+        "method_family",
+        "reproduction_status",
+        "full_official_rank",
+        "recent_750_official_rank",
+        "recent_300_official_rank",
+        "recent_50_official_rank",
+        "full_official_any_prize_rate",
+        "recent_750_official_any_prize_rate",
+        "recent_300_official_any_prize_rate",
+        "recent_50_official_any_prize_rate",
+        "best_official_rank",
+        "best_window",
+        "worst_official_rank",
+        "worst_window",
+        "official_rank_range",
     )
     return {
         REPORT_JSON_FILENAME: _canonical_json_bytes(report),
@@ -161,6 +428,10 @@ def _report_files(report: dict[str, object]) -> dict[str, bytes]:
                 "successful_execution_count",
                 "execution_status_counts",
                 "coverage",
+                "official_any_prize_count",
+                "official_any_prize_rate",
+                "official_random_baseline_probability",
+                "official_random_baseline_delta",
                 "observed_success_count",
                 "observed_success_rate",
                 "exact_random_baseline_probability",
@@ -197,6 +468,40 @@ def _report_files(report: dict[str, object]) -> dict[str, bytes]:
             ranking_fields,
             "top_10",
         ),
+        OFFICIAL_RANKINGS_CSV_FILENAME: _csv_bytes(
+            report.get("official_rankings"),
+            official_ranking_fields,
+            "official_rankings",
+        ),
+        OFFICIAL_TOP20_CSV_FILENAME: _csv_bytes(
+            report.get("official_top_20"),
+            official_ranking_fields,
+            "official_top_20",
+        ),
+        OFFICIAL_PRIZE_DISTRIBUTION_CSV_FILENAME: _csv_bytes(
+            report.get("official_prize_distributions"),
+            (
+                "strategy_id",
+                "prefix_count",
+                "window",
+                "window_requested_draws",
+                "window_available_draws",
+                "execution_count",
+                "ticket_position_count",
+                "observed_distinct_ticket_count",
+                "observed_duplicate_ticket_count",
+                "observation_count_with_duplicate_tickets",
+                "official_prize_tier_counts",
+                "no_prize_count",
+            ),
+            "official_prize_distributions",
+        ),
+        OFFICIAL_STABILITY_CSV_FILENAME: _csv_bytes(
+            _official_cross_period_stability_rows(report),
+            stability_fields,
+            "official_cross_period_stability",
+        ),
+        OFFICIAL_REVIEW_FILENAME: _official_review_markdown(report),
     }
 
 
@@ -302,6 +607,11 @@ __all__ = [
     "CHECKSUM_FILENAME",
     "EXECUTION_AUDIT_CSV_FILENAME",
     "METRICS_CSV_FILENAME",
+    "OFFICIAL_PRIZE_DISTRIBUTION_CSV_FILENAME",
+    "OFFICIAL_RANKINGS_CSV_FILENAME",
+    "OFFICIAL_REVIEW_FILENAME",
+    "OFFICIAL_STABILITY_CSV_FILENAME",
+    "OFFICIAL_TOP20_CSV_FILENAME",
     "PRIZES_CSV_FILENAME",
     "RANKINGS_CSV_FILENAME",
     "REPORT_JSON_FILENAME",

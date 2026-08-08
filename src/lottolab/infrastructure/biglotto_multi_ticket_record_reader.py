@@ -39,7 +39,8 @@ from lottolab.infrastructure.b649_dataset_authority import (
 )
 
 PROJECTION_RESOURCE_NAME = "biglotto_multi_ticket_historical_records_v1.json"
-PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V1"
+PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V2"
+_LEGACY_PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V1"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$", flags=re.ASCII)
 _DECIMAL_18 = re.compile(r"^-?[0-9]+\.[0-9]{18}$", flags=re.ASCII)
 _COMBINATION_KEYS = frozenset(
@@ -48,7 +49,7 @@ _COMBINATION_KEYS = frozenset(
     for window in B649_HISTORY_WINDOWS
     for criterion in B649_SUCCESS_CRITERIA
 )
-_COMBINATION_FIELDS = {
+_LEGACY_COMBINATION_FIELDS = {
     "coverage",
     "effective_backtest_draw_count",
     "historical_success_rate",
@@ -63,6 +64,13 @@ _COMBINATION_FIELDS = {
     "window_available_draws",
     "window_complete",
     "window_requested_draws",
+}
+_COMBINATION_FIELDS = _LEGACY_COMBINATION_FIELDS | {
+    "official_any_prize_count",
+    "official_any_prize_rate",
+    "official_random_baseline_probability",
+    "official_random_baseline_delta",
+    "official_rank",
 }
 _PRIZE_FIELDS = {
     "first",
@@ -120,7 +128,11 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
         },
         "projection",
     )
-    if document["projection_schema_version"] != PROJECTION_SCHEMA_VERSION:
+    projection_schema_version = document["projection_schema_version"]
+    if projection_schema_version not in (
+        _LEGACY_PROJECTION_SCHEMA_VERSION,
+        PROJECTION_SCHEMA_VERSION,
+    ):
         raise B649MultiTicketRecordProjectionError(
             "the B649 aggregate projection schema is unsupported"
         )
@@ -193,6 +205,7 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
                 catalog_record,
                 catalog.catalog_sha256,
                 report_by_strategy,
+                projection_schema_version=projection_schema_version,
             )
         )
 
@@ -336,6 +349,8 @@ def _expand_record(
     catalog_record: FullStrategyCatalogRecord,
     catalog_sha256: str,
     report_by_strategy: dict[str, tuple[tuple[str, str], str]],
+    *,
+    projection_schema_version: object,
 ) -> list[B649MultiTicketRecord]:
     combinations = _mapping(record["combinations"], "record combinations")
     metrics_unavailable_reason = record["metrics_unavailable_reason"]
@@ -407,6 +422,7 @@ def _expand_record(
                             f"{prefix_count}|{window.value}|{criterion.value}"
                         ],
                         catalog_record.strategy_id,
+                        projection_schema_version=projection_schema_version,
                     )
                     if has_metrics
                     else None
@@ -432,11 +448,44 @@ def _expand_record(
     return result
 
 
-def _parse_combination(value: object, strategy_id: str) -> dict[str, object]:
+def _parse_combination(
+    value: object,
+    strategy_id: str,
+    *,
+    projection_schema_version: object,
+) -> dict[str, object]:
     combination = _mapping(value, f"{strategy_id} combination")
-    _exact_keys(combination, _COMBINATION_FIELDS, f"{strategy_id} combination")
+    if projection_schema_version == _LEGACY_PROJECTION_SCHEMA_VERSION:
+        _exact_keys(
+            combination,
+            _LEGACY_COMBINATION_FIELDS,
+            f"{strategy_id} combination",
+        )
+        official_fields: dict[str, object] = {
+            "official_any_prize_count": None,
+            "official_any_prize_rate": None,
+            "official_random_baseline_probability": None,
+            "official_random_baseline_delta": None,
+            "official_rank": None,
+        }
+    else:
+        _exact_keys(combination, _COMBINATION_FIELDS, f"{strategy_id} combination")
+        official_fields = {
+            field_name: combination[field_name]
+            for field_name in (
+                "official_any_prize_count",
+                "official_any_prize_rate",
+                "official_random_baseline_probability",
+                "official_random_baseline_delta",
+                "official_rank",
+            )
+        }
     rank = combination["rank"]
+    official_rank = official_fields["official_rank"]
     reason = combination["unranked_reason"]
+    legacy_projection = (
+        projection_schema_version == _LEGACY_PROJECTION_SCHEMA_VERSION
+    )
     if rank is not None:
         _positive_integer(rank, "rank")
         if reason is not None:
@@ -447,6 +496,13 @@ def _parse_combination(value: object, strategy_id: str) -> dict[str, object]:
         raise B649MultiTicketRecordProjectionError(
             "unranked combinations require a formal reason"
         )
+    if not legacy_projection:
+        if official_rank is not None:
+            _positive_integer(official_rank, "official_rank")
+        elif reason is None:
+            raise B649MultiTicketRecordProjectionError(
+                "unranked official combinations require a formal reason"
+            )
     for field_name in (
         "success_count",
         "effective_backtest_draw_count",
@@ -456,6 +512,25 @@ def _parse_combination(value: object, strategy_id: str) -> dict[str, object]:
         "no_prize_count",
     ):
         _nonnegative_integer(combination[field_name], field_name)
+    if not legacy_projection and official_fields["official_any_prize_count"] is None:
+        raise B649MultiTicketRecordProjectionError(
+            "official_any_prize_count is required in projection V2"
+        )
+    if official_fields["official_any_prize_count"] is not None:
+        _nonnegative_integer(
+            official_fields["official_any_prize_count"],
+            "official_any_prize_count",
+        )
+        for field_name in (
+            "official_any_prize_rate",
+            "official_random_baseline_probability",
+            "official_random_baseline_delta",
+        ):
+            value = official_fields[field_name]
+            if not isinstance(value, str) or _DECIMAL_18.fullmatch(value) is None:
+                raise B649MultiTicketRecordProjectionError(
+                    f"{field_name} must be an exact decimal_18 string"
+                )
     for field_name in (
         "historical_success_rate",
         "random_baseline_success_rate",
@@ -475,7 +550,7 @@ def _parse_combination(value: object, strategy_id: str) -> dict[str, object]:
     _exact_keys(prizes, _PRIZE_FIELDS, "official_prize_counts")
     for field_name in _PRIZE_FIELDS:
         _nonnegative_integer(prizes[field_name], field_name)
-    return combination
+    return {**combination, **official_fields}
 
 
 def _build_record(
@@ -504,6 +579,11 @@ def _build_record(
             window=window,
             criterion=criterion,
             rank=None,
+            official_rank=None,
+            official_any_prize_count=None,
+            official_any_prize_rate=None,
+            official_random_baseline_probability=None,
+            official_random_baseline_delta=None,
             unranked_reason=catalog_record.unranked_reason,
             success_count=None,
             effective_backtest_draw_count=None,
@@ -536,6 +616,23 @@ def _build_record(
         window=window,
         criterion=criterion,
         rank=cast(int | None, combination["rank"]),
+        official_rank=cast(int | None, combination["official_rank"]),
+        official_any_prize_count=cast(
+            int | None,
+            combination["official_any_prize_count"],
+        ),
+        official_any_prize_rate=cast(
+            str | None,
+            combination["official_any_prize_rate"],
+        ),
+        official_random_baseline_probability=cast(
+            str | None,
+            combination["official_random_baseline_probability"],
+        ),
+        official_random_baseline_delta=cast(
+            str | None,
+            combination["official_random_baseline_delta"],
+        ),
         unranked_reason=cast(str | None, combination["unranked_reason"]),
         success_count=cast(int, combination["success_count"]),
         effective_backtest_draw_count=cast(

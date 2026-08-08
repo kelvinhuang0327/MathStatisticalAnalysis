@@ -91,7 +91,7 @@ def test_packaged_projection_preserves_sealed_and_fresh_provenance() -> None:
 
     assert dataset.source_report_count == 52
     assert dataset.projection_sha256 == (
-        "3390c28e2c2ef9bf728e94fc5f1420cd86c3940aacf50723f2a73af4a1e1d605"
+        "82f69939716e82d5896769b58886a300d890247c263f29f4df0c0eac534be2c4"
     )
     assert sum(
         authority == "HISTORICAL_SEALED_EVIDENCE_V1"

@@ -61,6 +61,15 @@ def _record(
         window=B649HistoryWindow.FULL,
         criterion=B649SuccessCriterion.M3_PLUS,
         rank=3 if backtested else None,
+        official_rank=2 if backtested else None,
+        official_any_prize_count=4 if backtested else None,
+        official_any_prize_rate="0.400000000000000000" if backtested else None,
+        official_random_baseline_probability=(
+            "0.300000000000000000" if backtested else None
+        ),
+        official_random_baseline_delta=(
+            "0.100000000000000000" if backtested else None
+        ),
         unranked_reason=None if backtested else "FORMALLY_CLOSED",
         success_count=4 if backtested else None,
         effective_backtest_draw_count=10 if backtested else None,
@@ -172,6 +181,7 @@ def test_summary_exposes_exact_progress_and_closed_query_sets() -> None:
     assert payload["records_available"] is True
     assert payload["metrics_available_strategy_count"] == 1
     assert payload["metrics_unavailable_strategy_count"] == 0
+    assert payload["primary_ranking_criterion"] == "OFFICIAL_ANY_PRIZE"
     assert payload["research_disclaimer"] == DISCLAIMER
 
 
@@ -210,6 +220,11 @@ def test_query_filters_then_orders_by_strategy_id_not_rank() -> None:
     assert payload["items"][0]["historical_success_rate"] is None
     assert payload["items"][0]["unranked_reason"] == "FORMALLY_CLOSED"
     assert payload["items"][1]["official_prize_counts"]["fourth"] == 1
+    assert payload["items"][1]["official_rank"] == 2
+    assert payload["items"][1]["official_any_prize_count"] == 4
+    assert payload["items"][1]["official_any_prize_rate"] == (
+        "0.400000000000000000"
+    )
     assert payload["research_disclaimer"] == DISCLAIMER
 
 

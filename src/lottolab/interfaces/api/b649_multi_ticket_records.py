@@ -71,6 +71,7 @@ class B649MultiTicketSummaryResponse(BaseModel):
     source_report_count: int | None
     metrics_available_strategy_count: int | None
     metrics_unavailable_strategy_count: int | None
+    primary_ranking_criterion: Literal["OFFICIAL_ANY_PRIZE"]
     research_disclaimer: str
 
 
@@ -101,6 +102,11 @@ class B649MultiTicketRecordView(BaseModel):
     window: B649HistoryWindow
     criterion: B649SuccessCriterion
     rank: int | None
+    official_rank: int | None
+    official_any_prize_count: int | None
+    official_any_prize_rate: str | None
+    official_random_baseline_probability: str | None
+    official_random_baseline_delta: str | None
     unranked_reason: str | None
     success_count: int | None
     effective_backtest_draw_count: int | None
@@ -204,6 +210,7 @@ def create_b649_multi_ticket_records_router(
             source_report_count=source_report_count,
             metrics_available_strategy_count=metrics_available_strategy_count,
             metrics_unavailable_strategy_count=metrics_unavailable_strategy_count,
+            primary_ranking_criterion="OFFICIAL_ANY_PRIZE",
             research_disclaimer=B649_RESEARCH_DISCLAIMER_ZH_TW,
         )
 

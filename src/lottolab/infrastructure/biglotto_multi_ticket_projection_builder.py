@@ -10,6 +10,7 @@ import hashlib
 import json
 import stat
 from dataclasses import dataclass
+from fractions import Fraction
 from importlib.resources import files
 from pathlib import Path
 from typing import cast
@@ -30,6 +31,8 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
     load_full_strategy_catalog,
 )
 from lottolab.infrastructure.b649_dataset_authority import (
+    APPROVED_FRESH_LOGICAL_DATASET_SHA256,
+    LEGACY_PINNED_DATASET_SHA256,
     B649DatasetAuthorityError,
     validate_b649_dataset_sha256,
 )
@@ -60,6 +63,7 @@ def build_b649_projection_bytes(
     *,
     fresh_report_paths: tuple[Path, ...] = (),
     fresh_authority: str | None = None,
+    official_recomputed_report_paths: tuple[Path, ...] = (),
 ) -> bytes:
     """Build when explicit reports cover all BACKTESTED strategies except the
     fixed, Owner-approved METRICS_UNAVAILABLE_STRATEGY_IDS exception set.
@@ -71,10 +75,21 @@ def build_b649_projection_bytes(
     ``FRESH_CURRENT_CATALOG_REPRODUCTION_V1``. They are not required to match
     a historical pinned checksum, but must use the one approved fresh logical
     dataset identity, be evaluated against the exact current catalog, and pass
-    the same report self-hash contract. A strategy may be supplied by exactly
-    one of the two sources, never both.
+    the same report self-hash contract. ``official_recomputed_report_paths``
+    is an explicit task-scoped route for reports recomputed from ordered
+    portfolios. It accepts either authorized dataset identity, preserves the
+    corresponding historical/fresh authority per strategy, and bypasses only
+    the old physical report checksum manifest. A strategy may be supplied by
+    exactly one source.
     """
 
+    if official_recomputed_report_paths and (
+        report_paths or fresh_report_paths or fresh_authority is not None
+    ):
+        raise B649ProjectionBuildError(
+            "official recomputed reports cannot be combined with sealed or fresh "
+            "report inputs"
+        )
     if fresh_report_paths and fresh_authority != AUTHORITY_MODE_FRESH_REPRODUCTION:
         raise B649ProjectionBuildError(
             "fresh reports require explicit FRESH_CURRENT_CATALOG_REPRODUCTION_V1 authority"
@@ -151,6 +166,63 @@ def build_b649_projection_bytes(
         )
         fresh_supplied[file_sha256] = (expected, document)
 
+    official_recomputed_supplied: dict[
+        str, tuple[ExpectedReport, dict[str, object], str]
+    ] = {}
+    for path in official_recomputed_report_paths:
+        raw = _read_regular_file(path)
+        file_sha256 = hashlib.sha256(raw).hexdigest()
+        if file_sha256 in official_recomputed_supplied:
+            raise B649ProjectionBuildError(
+                "official recomputed report "
+                f"{file_sha256} was supplied more than once"
+            )
+        document = _report_document(raw, path)
+        _verify_report_self_hash(document, path)
+        if document.get("catalog_sha256") != catalog.catalog_sha256:
+            raise B649ProjectionBuildError(
+                f"{path} was not evaluated against the current catalog"
+            )
+        dataset_sha256 = document.get("dataset_sha256")
+        if dataset_sha256 == LEGACY_PINNED_DATASET_SHA256:
+            authority_mode = AUTHORITY_MODE_HISTORICAL_SEALED
+        elif dataset_sha256 == APPROVED_FRESH_LOGICAL_DATASET_SHA256:
+            authority_mode = AUTHORITY_MODE_FRESH_REPRODUCTION
+        else:
+            raise B649ProjectionBuildError(
+                f"{path} does not carry an authorized B649 dataset identity"
+            )
+        try:
+            validate_b649_dataset_sha256(
+                dataset_sha256,
+                authority_mode=authority_mode,
+            )
+        except B649DatasetAuthorityError as exc:
+            raise B649ProjectionBuildError(f"{path}: {exc}") from exc
+        report_sha256 = document.get("report_sha256")
+        if not isinstance(report_sha256, str):
+            raise B649ProjectionBuildError(f"{path} has no report_sha256")
+        strategy_ids = tuple(
+            sorted(
+                {
+                    _string(row.get("strategy_id"), "metric strategy_id")
+                    for row in _list_of_mappings(
+                        document.get("metrics"), "report metrics"
+                    )
+                }
+            )
+        )
+        expected = ExpectedReport(
+            report_file_sha256=file_sha256,
+            report_sha256=_sha256(report_sha256, f"{path} report_sha256"),
+            strategy_ids=strategy_ids,
+        )
+        official_recomputed_supplied[file_sha256] = (
+            expected,
+            document,
+            authority_mode,
+        )
+
     required_strategy_ids = {
         row.strategy_id
         for row in catalog.records
@@ -166,11 +238,22 @@ def build_b649_projection_bytes(
         for expected, _document in fresh_supplied.values()
         for strategy_id in expected.strategy_ids
     }
+    official_recomputed_strategy_ids = {
+        strategy_id
+        for expected, _document, _authority_mode in official_recomputed_supplied.values()
+        for strategy_id in expected.strategy_ids
+    }
     if supplied_strategy_ids & fresh_strategy_ids:
         raise B649ProjectionBuildError(
             "a strategy was supplied by both historical and fresh reports"
         )
-    combined_supplied_strategy_ids = supplied_strategy_ids | fresh_strategy_ids
+    if (supplied_strategy_ids | fresh_strategy_ids) & official_recomputed_strategy_ids:
+        raise B649ProjectionBuildError(
+            "a strategy was supplied by both ordinary and official recomputed reports"
+        )
+    combined_supplied_strategy_ids = (
+        supplied_strategy_ids | fresh_strategy_ids | official_recomputed_strategy_ids
+    )
     if combined_supplied_strategy_ids & METRICS_UNAVAILABLE_STRATEGY_IDS:
         raise B649ProjectionBuildError(
             "metrics-unavailable strategies must not be supplied via report_paths"
@@ -228,6 +311,27 @@ def build_b649_projection_bytes(
                 "strategy_ids": list(expected.strategy_ids),
             }
         )
+    for file_sha256 in sorted(official_recomputed_supplied):
+        expected, document, authority_mode = official_recomputed_supplied[file_sha256]
+        _collect_report(
+            document,
+            expected,
+            combinations_by_strategy,
+            provenance_by_strategy,
+        )
+        for strategy_id in expected.strategy_ids:
+            authority_mode_by_strategy[strategy_id] = authority_mode
+        source_report: dict[str, object] = {
+            "authority_mode": authority_mode,
+            "report_file_sha256": expected.report_file_sha256,
+            "report_sha256": expected.report_sha256,
+            "strategy_ids": list(expected.strategy_ids),
+        }
+        if authority_mode == AUTHORITY_MODE_FRESH_REPRODUCTION:
+            source_report["dataset_sha256"] = document["dataset_sha256"]
+        source_reports.append(source_report)
+
+    _assign_official_ranks(combinations_by_strategy)
 
     metrics_unavailable_provenance: dict[str, tuple[str, str]] = {
         strategy_id: (report.report_file_sha256, report.report_sha256)
@@ -487,6 +591,65 @@ def _collect_report(
         )
 
 
+def _decimal_fraction(value: object, label: str) -> Fraction:
+    if not isinstance(value, str):
+        raise B649ProjectionBuildError(f"{label} must be a decimal string")
+    try:
+        return Fraction(value)
+    except (TypeError, ValueError, ZeroDivisionError) as exc:
+        raise B649ProjectionBuildError(f"{label} is not an exact decimal") from exc
+
+
+def _assign_official_ranks(
+    combinations_by_strategy: dict[str, dict[str, object]],
+) -> None:
+    """Re-rank the complete metric-bearing universe after report collection."""
+
+    ranking_criterion = B649_SUCCESS_CRITERIA[0].value
+    for prefix_count in B649_PREFIX_COUNTS:
+        for window in B649_HISTORY_WINDOWS:
+            candidates: list[tuple[Fraction, Fraction, Fraction, str]] = []
+            for strategy_id, combinations in combinations_by_strategy.items():
+                combination = combinations.get(
+                    f"{prefix_count}|{window.value}|{ranking_criterion}"
+                )
+                if not isinstance(combination, dict):
+                    continue
+                combination_row = cast(dict[str, object], combination)
+                if type(combination_row.get("official_rank")) is not int:
+                    continue
+                candidates.append(
+                    (
+                        _decimal_fraction(
+                            combination_row.get("official_any_prize_rate"),
+                            "official_any_prize_rate",
+                        ),
+                        _decimal_fraction(
+                            combination_row.get("official_random_baseline_delta"),
+                            "official_random_baseline_delta",
+                        ),
+                        _decimal_fraction(
+                            combination_row.get("coverage"),
+                            "coverage",
+                        ),
+                        strategy_id,
+                    )
+                )
+            candidates.sort(key=lambda item: (-item[0], -item[1], -item[2], item[3]))
+            rank_by_strategy = {
+                item[3]: rank for rank, item in enumerate(candidates, start=1)
+            }
+            prefix = f"{prefix_count}|{window.value}|"
+            for strategy_id, combinations in combinations_by_strategy.items():
+                rank = rank_by_strategy.get(strategy_id)
+                for key, combination in combinations.items():
+                    if not key.startswith(prefix) or not isinstance(combination, dict):
+                        continue
+                    combination_row = cast(dict[str, object], combination)
+                    if type(combination_row.get("official_rank")) is int:
+                        combination_row["official_rank"] = rank
+
+
 def _combination(
     metric: dict[str, object],
     ranking: dict[str, object],
@@ -500,6 +663,18 @@ def _combination(
     difference = _rational(
         metric.get("random_baseline_rate_difference"),
         "random baseline difference",
+    )
+    official_rate = _rational(
+        metric.get("official_any_prize_rate"),
+        "official any-prize rate",
+    )
+    official_baseline = _rational(
+        metric.get("official_random_baseline_probability"),
+        "official random baseline",
+    )
+    official_difference = _rational(
+        metric.get("official_random_baseline_delta"),
+        "official random baseline difference",
     )
     coverage = _rational(metric.get("coverage"), "coverage")
     prize_counts = _mapping(
@@ -517,6 +692,14 @@ def _combination(
     if (rank is None) is (unranked_reason is None):
         raise B649ProjectionBuildError(
             "ranking must contain exactly one of rank or unranked_reason"
+        )
+    official_rank_value = ranking.get("official_rank")
+    official_rank = (
+        official_rank_value if type(official_rank_value) is int else None
+    )
+    if (official_rank is None) is (unranked_reason is None):
+        raise B649ProjectionBuildError(
+            "ranking must contain exactly one of official_rank or unranked_reason"
         )
     return {
         "coverage": coverage["decimal_18"],
@@ -536,6 +719,16 @@ def _combination(
         "random_baseline_rate_difference": difference["decimal_18"],
         "random_baseline_success_rate": baseline["decimal_18"],
         "rank": rank,
+        "official_any_prize_count": _integer(
+            metric.get("official_any_prize_count"),
+            "official_any_prize_count",
+        ),
+        "official_any_prize_rate": official_rate["decimal_18"],
+        "official_random_baseline_probability": official_baseline[
+            "decimal_18"
+        ],
+        "official_random_baseline_delta": official_difference["decimal_18"],
+        "official_rank": official_rank,
         "success_count": _integer(
             metric.get("observed_success_count"),
             "observed_success_count",

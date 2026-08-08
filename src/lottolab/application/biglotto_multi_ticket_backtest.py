@@ -20,6 +20,7 @@ from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessCriterion,
 )
 from lottolab.application.historical_success_random_baseline import (
+    official_any_prize_probability,
     portfolio_success_probability,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import (
@@ -35,7 +36,7 @@ from lottolab.domain.lottery_rules import (
 )
 
 INPUT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_INPUT_V1"
-REPORT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_REPORT_V1"
+REPORT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_REPORT_V2"
 BACKTEST_POLICY_VERSION = "BIG_LOTTO_CAUSAL_ORDERED_20_PREFIX_5_10_15_20_V1"
 PREFIX_COUNTS = (5, 10, 15, 20)
 WINDOWS = (
@@ -658,8 +659,12 @@ def evaluate_biglotto_multi_ticket_backtest(
         execution_audit.append(audit_row)
 
     metrics: list[dict[str, object]] = []
+    official_metrics: list[dict[str, object]] = []
     prizes: list[dict[str, object]] = []
     metric_by_identity: dict[tuple[str, int, str, str], dict[str, object]] = {}
+    official_metric_by_identity: dict[
+        tuple[str, int, str], dict[str, object]
+    ] = {}
     for record in active_catalog.records:
         strategy_executions = tuple(
             execution
@@ -730,6 +735,63 @@ def evaluate_biglotto_multi_ticket_backtest(
                     }
                 )
 
+                observation_count = len(successful)
+                official_any_prize_count = sum(
+                    any(
+                        prize != NoPrizeResult.NO_PRIZE.value
+                        for _main_hits, _special_hit, prize in ticket_scores
+                    )
+                    for ticket_scores in scored_by_execution
+                )
+                official_any_prize_rate = (
+                    Fraction(official_any_prize_count, observation_count)
+                    if observation_count
+                    else Fraction(0, 1)
+                )
+                official_baseline = official_any_prize_probability(prefix_count)
+                official_baseline_fraction = official_baseline.as_fraction()
+                official_rate_delta = (
+                    official_any_prize_rate - official_baseline_fraction
+                )
+                official_fields: dict[str, object] = {
+                    "official_any_prize_count": official_any_prize_count,
+                    "official_any_prize_rate": _exact_fraction_payload(
+                        official_any_prize_rate
+                    ),
+                    "official_random_baseline_probability": (
+                        _exact_fraction_payload(official_baseline_fraction)
+                    ),
+                    "official_random_baseline_delta": _exact_fraction_payload(
+                        official_rate_delta
+                    ),
+                }
+                official_metric_payload: dict[str, object] = {
+                    **official_fields,
+                    "coverage": _exact_fraction_payload(
+                        Fraction(observation_count, window_target_count)
+                    ),
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "execution_status_counts": dict(
+                        sorted(execution_status_counts.items())
+                    ),
+                    "prefix_count": prefix_count,
+                    "rankable": observation_count > 0,
+                    "strategy_id": record.strategy_id,
+                    "strategy_version": record.strategy_version,
+                    "successful_execution_count": observation_count,
+                    "window": window_name,
+                    "window_available_draws": window_target_count,
+                    "window_complete": (
+                        requested_draws is None
+                        or window_target_count == requested_draws
+                    ),
+                    "window_requested_draws": requested_draws or window_target_count,
+                }
+                official_metrics.append(official_metric_payload)
+                official_metric_by_identity[
+                    (record.strategy_id, prefix_count, window_name)
+                ] = official_metric_payload
+
                 for criterion in SUCCESS_CRITERIA:
                     success_count = sum(
                         any(
@@ -753,6 +815,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                     rate_delta = observed_rate - baseline_fraction
                     coverage = Fraction(observation_count, window_target_count)
                     metric_payload: dict[str, object] = {
+                        **official_fields,
                         "coverage": _exact_fraction_payload(coverage),
                         "criterion": criterion.value,
                         "exact_random_baseline_probability": (
@@ -810,6 +873,100 @@ def evaluate_biglotto_multi_ticket_backtest(
                 "unranked_reason": unranked_reason,
             }
         )
+
+    official_rankings: list[dict[str, object]] = []
+    official_top_twenty: list[dict[str, object]] = []
+    official_rank_by_identity: dict[tuple[str, int, str], int] = {}
+    for prefix_count in PREFIX_COUNTS:
+        for window_name, _requested_draws in WINDOWS:
+            rankable: list[
+                tuple[Fraction, Fraction, Fraction, str, dict[str, object]]
+            ] = []
+            for record in active_catalog.records:
+                cell_metric = official_metric_by_identity.get(
+                    (record.strategy_id, prefix_count, window_name)
+                )
+                if cell_metric is None or cell_metric["rankable"] is not True:
+                    continue
+                observed = cast(
+                    dict[str, object], cell_metric["official_any_prize_rate"]
+                )
+                delta = cast(
+                    dict[str, object], cell_metric["official_random_baseline_delta"]
+                )
+                coverage = cast(dict[str, object], cell_metric["coverage"])
+                rankable.append(
+                    (
+                        Fraction(
+                            cast(int, observed["numerator"]),
+                            cast(int, observed["denominator"]),
+                        ),
+                        Fraction(
+                            cast(int, delta["numerator"]),
+                            cast(int, delta["denominator"]),
+                        ),
+                        Fraction(
+                            cast(int, coverage["numerator"]),
+                            cast(int, coverage["denominator"]),
+                        ),
+                        record.strategy_id,
+                        cell_metric,
+                    )
+                )
+            rankable.sort(
+                key=lambda item: (-item[0], -item[1], -item[2], item[3])
+            )
+            rank_by_id = {
+                item[3]: index for index, item in enumerate(rankable, start=1)
+            }
+            for record in active_catalog.records:
+                cell_metric = official_metric_by_identity.get(
+                    (record.strategy_id, prefix_count, window_name)
+                )
+                rank = rank_by_id.get(record.strategy_id)
+                if rank is not None:
+                    official_rank_by_identity[
+                        (record.strategy_id, prefix_count, window_name)
+                    ] = rank
+                if cell_metric is None:
+                    reason = (
+                        "NO_EXECUTIONS_IN_THIS_REPORT_INPUT"
+                        if record.reproduction_status is ReproductionStatus.BACKTESTED
+                        else record.unranked_reason
+                    )
+                elif cell_metric["rankable"] is not True:
+                    reason = "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW"
+                else:
+                    reason = ""
+                row: dict[str, object] = {
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "official_rank": rank or "",
+                    "prefix_count": prefix_count,
+                    "strategy_id": record.strategy_id,
+                    "unranked_reason": reason,
+                    "window": window_name,
+                }
+                if cell_metric is not None:
+                    row.update(
+                        {
+                            "coverage": cell_metric["coverage"],
+                            "official_any_prize_count": cell_metric[
+                                "official_any_prize_count"
+                            ],
+                            "official_any_prize_rate": cell_metric[
+                                "official_any_prize_rate"
+                            ],
+                            "official_random_baseline_probability": cell_metric[
+                                "official_random_baseline_probability"
+                            ],
+                            "official_random_baseline_delta": cell_metric[
+                                "official_random_baseline_delta"
+                            ],
+                        }
+                    )
+                official_rankings.append(row)
+                if type(rank) is int and rank <= 20:
+                    official_top_twenty.append(row)
 
     rankings: list[dict[str, object]] = []
     top_ten: list[dict[str, object]] = []
@@ -890,6 +1047,9 @@ def evaluate_biglotto_multi_ticket_backtest(
                         reason = ""
                     row: dict[str, object] = {
                         "criterion": criterion.value,
+                        "official_rank": official_rank_by_identity.get(
+                            (record.strategy_id, prefix_count, window_name), ""
+                        ),
                         "prefix_count": prefix_count,
                         "rank": rank or "",
                         "strategy_id": record.strategy_id,
@@ -897,6 +1057,18 @@ def evaluate_biglotto_multi_ticket_backtest(
                         "window": window_name,
                     }
                     if cell_metric is not None:
+                        row["official_any_prize_count"] = cell_metric[
+                            "official_any_prize_count"
+                        ]
+                        row["official_any_prize_rate"] = cell_metric[
+                            "official_any_prize_rate"
+                        ]
+                        row["official_random_baseline_probability"] = (
+                            cell_metric["official_random_baseline_probability"]
+                        )
+                        row["official_random_baseline_delta"] = cell_metric[
+                            "official_random_baseline_delta"
+                        ]
                         row["coverage"] = cell_metric["coverage"]
                         row["observed_success_rate"] = cell_metric[
                             "observed_success_rate"
@@ -958,6 +1130,7 @@ def evaluate_biglotto_multi_ticket_backtest(
         "input_raw_sha256": hashlib.sha256(raw_input).hexdigest(),
         "lottery_type": "BIG_LOTTO",
         "metrics": metrics,
+        "official_metrics": official_metrics,
         "official_prize_distributions": prizes,
         "portfolio_contract": {
             "candidate_k_is_ticket_count": False,
@@ -967,6 +1140,8 @@ def evaluate_biglotto_multi_ticket_backtest(
         },
         "progress": progress,
         "rankings": rankings,
+        "official_rankings": official_rankings,
+        "official_top_20": official_top_twenty,
         "report_schema_version": REPORT_SCHEMA_VERSION,
         "research_disclaimer": RESEARCH_DISCLAIMER,
         "source_provenance": source_provenance or {},

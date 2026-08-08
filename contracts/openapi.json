@@ -5125,6 +5125,61 @@
             ],
             "title": "Rank"
           },
+          "official_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Rank"
+          },
+          "official_any_prize_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Count"
+          },
+          "official_any_prize_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Rate"
+          },
+          "official_random_baseline_probability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Random Baseline Probability"
+          },
+          "official_random_baseline_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Random Baseline Delta"
+          },
           "unranked_reason": {
             "anyOf": [
               {
@@ -5330,6 +5385,11 @@
           "window",
           "criterion",
           "rank",
+          "official_rank",
+          "official_any_prize_count",
+          "official_any_prize_rate",
+          "official_random_baseline_probability",
+          "official_random_baseline_delta",
           "unranked_reason",
           "success_count",
           "effective_backtest_draw_count",
@@ -5448,6 +5508,11 @@
             ],
             "title": "Metrics Unavailable Strategy Count"
           },
+          "primary_ranking_criterion": {
+            "type": "string",
+            "const": "OFFICIAL_ANY_PRIZE",
+            "title": "Primary Ranking Criterion"
+          },
           "research_disclaimer": {
             "type": "string",
             "title": "Research Disclaimer"
@@ -5468,6 +5533,7 @@
           "source_report_count",
           "metrics_available_strategy_count",
           "metrics_unavailable_strategy_count",
+          "primary_ranking_criterion",
           "research_disclaimer"
         ],
         "title": "B649MultiTicketSummaryResponse"

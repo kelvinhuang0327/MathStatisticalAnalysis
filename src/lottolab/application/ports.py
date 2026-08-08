@@ -35,6 +35,7 @@ from lottolab.application.historical_queries import (
     HistoricalStrategySummaryList,
 )
 from lottolab.application.p638_historical import (
+    P638CurrentRankingPage,
     P638RankingPage,
     P638ReplayPage,
     P638ReplayQuery,
@@ -312,6 +313,24 @@ class P638All23RankingQueryRepository(Protocol):
 
 
 type P638All23RankingQueryRepositoryFactory = Callable[[], P638All23RankingQueryRepository]
+
+
+class P638CurrentRankingQueryRepository(Protocol):
+    """Read-only, POWER_LOTTO-scoped query port for the current-universe prize-ranking projection.
+
+    Distinct from :class:`P638HistoricalQueryRepository`,
+    :class:`P638All10RankingQueryRepository`, and
+    :class:`P638All23RankingQueryRepository`: this port reads the
+    strategy-count-agnostic current-universe official-prize ranking
+    projection, which grows across waves rather than being fixed.
+    """
+
+    def list_rankings(self, run_id: str) -> P638CurrentRankingPage | None:
+        """Return every current-universe ranking row for one completed run, or ``None``."""
+        ...
+
+
+type P638CurrentRankingQueryRepositoryFactory = Callable[[], P638CurrentRankingQueryRepository]
 
 
 class T539HistoricalQueryRepository(Protocol):

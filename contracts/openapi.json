@@ -2300,6 +2300,70 @@
         }
       }
     },
+    "/api/v1/p638-historical/current-runs/{run_id}/rankings": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Current Rankings",
+        "operationId": "listP638HistoricalCurrentRankings",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638CurrentRankingPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/historical-prefix-analytics/rankings": {
       "get": {
         "tags": [
@@ -11001,6 +11065,37 @@
           20
         ],
         "title": "OverviewPrefixCount"
+      },
+      "P638CurrentRankingPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_set_fingerprint": {
+            "type": "string",
+            "title": "Strategy Set Fingerprint"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638RankingView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "disclaimer": {
+            "type": "string",
+            "title": "Disclaimer",
+            "default": "Historical winning rank describes past replay only and does not guarantee future winning."
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "strategy_set_fingerprint",
+          "items"
+        ],
+        "title": "P638CurrentRankingPageResponse"
       },
       "P638HitDistributionView": {
         "properties": {

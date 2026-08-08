@@ -180,10 +180,10 @@ def _apriori_ext_tickets(
     each bet outward from one top pair by repeatedly adding the number that
     most often co-occurs with that pair, then rejects a candidate bet if it
     shares more than 2 numbers with any earlier accepted bet. This can
-    legitimately yield fewer than ``n_bets`` tickets for some histories; the
-    strategy contract's own ``native_ticket_count`` check turns that into a
-    fail-closed :class:`InvalidOutput`, matching every other adapter's
-    handling of a native ticket-count mismatch.
+    legitimately yield fewer than ``n_bets`` tickets for some histories. The
+    four-bet strategy explicitly reports the donor's observed three-ticket
+    case as a source-native portfolio closure; it never pads, extends, or
+    otherwise fabricates a fourth ticket.
     """
 
     recent = _recent(history, _APRIORI_EXT_WINDOW)
@@ -713,16 +713,19 @@ WAVE2_STRATEGIES: tuple[P638StrategySpec, ...] = (
     ),
     P638StrategySpec(
         strategy_id="power_apriori_ext_4bet",
-        strategy_version="v0.1-p638-wave2",
+        strategy_version="v0.2-p638-wave2",
         native_ticket_count=4,
         min_history=_APRIORI_EXT_MIN_HISTORY,
         source_paths=("tools/predict_power_best.py",),
         provenance=(
             f"POWER_LOTTO first-zone port from donor archive {_DONOR_SHA256}; "
             "apriori_nbets_power's iterative pair-extension with an overlap "
-            "cap, at the donor script's own documented 4-bet default."
+            "cap, at the donor script's own documented 4-bet default; a "
+            "donor-native three-ticket closure is explicitly excluded rather "
+            "than padded or classified as a replay failure."
         ),
         _predictor=_apriori_ext_4bet_tickets,
+        source_native_closure_ticket_counts=(3,),
     ),
     P638StrategySpec(
         strategy_id="lag_reversion_2bet",

@@ -30,6 +30,25 @@ class InsufficientHistory(BetAdapterError):
     """The strategy requires more causal history than it received."""
 
 
+class SourceNativePortfolioClosure(BetAdapterError):
+    """The donor legitimately closed a portfolio below its advertised maximum."""
+
+    def __init__(
+        self,
+        *,
+        strategy_id: str,
+        expected_ticket_count: int,
+        actual_ticket_count: int,
+    ) -> None:
+        self.strategy_id = strategy_id
+        self.expected_ticket_count = expected_ticket_count
+        self.actual_ticket_count = actual_ticket_count
+        super().__init__(
+            f"{strategy_id}: source-native portfolio closure emitted "
+            f"{actual_ticket_count} of {expected_ticket_count} native tickets"
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class CausalDrawRow:
     """One immutable draw strictly preceding the draw being predicted."""
@@ -266,5 +285,6 @@ __all__ = [
     "InvalidOutput",
     "PortfolioBetAdapter",
     "RejectPrediction",
+    "SourceNativePortfolioClosure",
     "UnsupportedLotteryType",
 ]

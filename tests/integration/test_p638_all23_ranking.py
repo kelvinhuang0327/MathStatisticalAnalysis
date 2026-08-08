@@ -19,6 +19,11 @@ from lottolab.infrastructure.persistence.p638_all23_ranking_repositories import 
     SQLiteP638All23RankingQueryRepository,
 )
 from lottolab.infrastructure.persistence.p638_all23_ranking_schema import (
+    CONTRACT_VERSION,
+    CURRENT_SCHEMA_VERSION,
+    MIGRATION_CHECKSUM,
+    MIGRATION_NAME,
+    MIGRATION_STATEMENTS,
     initialize_schema,
     verify_schema_read_only,
 )
@@ -123,9 +128,20 @@ def test_all23_strategy_universe_is_wave1_plus_wave2() -> None:
     assert len({spec.strategy_id for spec in ALL23_STRATEGIES}) == _STRATEGY_COUNT
 
 
-def test_all23_replay_has_zero_exclusions_and_zero_failures(
+def test_all23_replay_has_zero_strategy_exclusions_and_zero_failed_targets(
     built_projection: tuple[Path, str],
 ) -> None:
+    """Zero *strategy*-level exclusions and zero *target*-level failures are required.
+
+    Per-target history exclusions and donor-native portfolio closures are
+    legitimate outcomes and are NOT asserted to be zero here -- two strategies have
+    ``min_history`` >= 500 and this fixture's 160-draw history causally
+    excludes every one of their targets. Only ``FAILED`` targets (an
+    unexplained replay error) and whole-strategy exclusions are required to
+    be zero; see ``status NOT IN (...)`` below, which explicitly allows
+    both explicit exclusion statuses through.
+    """
+
     output_db, run_id = built_projection
     assert verify_schema_read_only(output_db) is True
     connection = sqlite3.connect(f"file:{output_db}?mode=ro", uri=True)
@@ -149,7 +165,11 @@ def test_all23_replay_has_zero_exclusions_and_zero_failures(
         failed_targets = connection.execute(
             """
             SELECT COUNT(*) FROM p638_all23_target
-            WHERE run_id = ? AND status NOT IN ('COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY')
+            WHERE run_id = ? AND status NOT IN (
+                'COMPLETE',
+                'EXCLUDED_INSUFFICIENT_HISTORY',
+                'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE'
+            )
             """,
             (run_id,),
         ).fetchone()[0]
@@ -264,6 +284,120 @@ def test_p638_all23_ranking_schema_initializes_idempotently(tmp_path: Path) -> N
     initialize_schema(database)
     initialize_schema(database)
     assert verify_schema_read_only(database) is True
+
+
+def test_p638_all23_ranking_schema_upgrades_v1_without_rewriting_v1_contract(
+    tmp_path: Path,
+) -> None:
+    assert MIGRATION_CHECKSUM == "c63435c56aff19334d15478f3f5d60114724f1a06282935c63d3acf1b8ca0b11"
+    database = tmp_path / "schema-v1.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        for statement in MIGRATION_STATEMENTS:
+            connection.execute(statement)
+        connection.execute(
+            """
+            INSERT INTO p638_all23_schema_migrations (version, name, checksum, applied_at)
+            VALUES (1, ?, ?, '2026-08-08T00:00:00Z')
+            """,
+            (MIGRATION_NAME, MIGRATION_CHECKSUM),
+        )
+        connection.execute(
+            """
+            INSERT INTO p638_all23_run (
+                run_id, contract_version, lottery_type, source_replay_db_sha256,
+                source_draw_db_sha256, draw_count, first_draw_number, last_draw_number,
+                strategy_count, excluded_strategy_count, eligible_target_failure_count,
+                prize_rule_version, prize_rule_provenance, created_at, completed_at
+            ) VALUES (
+                'v1-run', ?, 'POWER_LOTTO', ?, ?, 1, '1', '1', 23, 0, 0,
+                'test-v1', 'test', '2026-08-08T00:00:00Z', '2026-08-08T00:00:00Z'
+            )
+            """,
+            (CONTRACT_VERSION, "a" * 64, "b" * 64),
+        )
+        connection.execute(
+            """
+            INSERT INTO p638_all23_strategy (
+                run_id, strategy_id, strategy_version, native_ticket_count,
+                min_history, source_paths_json, provenance
+            ) VALUES ('v1-run', 'strategy', 'v1', 4, 50, '[]', 'test')
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO p638_all23_target (
+                id, run_id, strategy_id, strategy_version, target_draw_number,
+                target_draw_date, cutoff_draw_number, history_length,
+                expected_ticket_count, status, target_is_winner
+            ) VALUES (
+                'v1-target', 'v1-run', 'strategy', 'v1', '1', '2026-08-08',
+                NULL, 0, 4, 'COMPLETE', 0
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO p638_all23_target (
+                id, run_id, strategy_id, strategy_version, target_draw_number,
+                target_draw_date, cutoff_draw_number, history_length,
+                expected_ticket_count, status, target_is_winner
+            ) VALUES (
+                'v1-excluded', 'v1-run', 'strategy', 'v1', '2', '2026-08-09',
+                '1', 1, 4, 'EXCLUDED_INSUFFICIENT_HISTORY', NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO p638_all23_ticket (
+                id, target_id, run_id, strategy_id, target_draw_number,
+                ticket_position, predicted_zone1_numbers_json, predicted_zone2_number,
+                actual_zone1_numbers_json, actual_zone2_number, zone1_hit_count,
+                zone2_hit, is_winner, prize_tier, prize_tier_order
+            ) VALUES (
+                'v1-ticket', 'v1-target', 'v1-run', 'strategy', '1', 1,
+                '[1,2,3,4,5,6]', 1, '[1,2,3,4,5,6]', 2, 6, 0, 0, NULL, NULL
+            )
+            """
+        )
+
+    initialize_schema(database)
+    assert verify_schema_read_only(database) is True
+    with sqlite3.connect(database) as connection:
+        connection.execute("PRAGMA foreign_keys = ON")
+        assert connection.execute(
+            "SELECT version FROM p638_all23_schema_migrations ORDER BY version"
+        ).fetchall() == [(1,), (CURRENT_SCHEMA_VERSION,)]
+        assert connection.execute(
+            "SELECT status FROM p638_all23_target WHERE id = 'v1-target'"
+        ).fetchone() == ("COMPLETE",)
+        assert connection.execute(
+            "SELECT status FROM p638_all23_target WHERE id = 'v1-excluded'"
+        ).fetchone() == ("EXCLUDED_INSUFFICIENT_HISTORY",)
+        assert connection.execute(
+            "SELECT target_id FROM p638_all23_ticket WHERE id = 'v1-ticket'"
+        ).fetchone() == ("v1-target",)
+        connection.execute(
+            """
+            INSERT INTO p638_all23_target (
+                id, run_id, strategy_id, strategy_version, target_draw_number,
+                target_draw_date, cutoff_draw_number, history_length,
+                expected_ticket_count, status, target_is_winner
+            ) VALUES (
+                'v2-target', 'v1-run', 'strategy', 'v1', '3', '2026-08-10',
+                '2', 2, 4, 'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', NULL
+            )
+            """
+        )
+        assert connection.execute("PRAGMA foreign_key_check").fetchall() == []
+        ticket_parents = {
+            str(row[2])
+            for row in connection.execute(
+                "PRAGMA foreign_key_list(p638_all23_ticket)"
+            ).fetchall()
+        }
+        assert "p638_all23_target" in ticket_parents
 
 
 def test_all23_rankings_api_returns_exactly_23_rows_and_404s_for_unknown_run(

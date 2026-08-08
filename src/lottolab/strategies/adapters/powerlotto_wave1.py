@@ -39,6 +39,7 @@ from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import (
     InsufficientHistory,
     InvalidOutput,
+    SourceNativePortfolioClosure,
     UnsupportedLotteryType,
 )
 from lottolab.strategies.powerlotto_second_zone import (
@@ -766,7 +767,7 @@ def _power_orthogonal_tickets(
 
 @dataclass(frozen=True, slots=True)
 class P638StrategySpec:
-    """Immutable metadata and callable boundary for one Wave 1 portfolio."""
+    """Immutable metadata and callable boundary for one P638 portfolio."""
 
     strategy_id: str
     strategy_version: str
@@ -775,6 +776,7 @@ class P638StrategySpec:
     source_paths: tuple[str, ...]
     provenance: str
     _predictor: Callable[[tuple[P638HistoryRow, ...]], P638FirstZoneTicketSet]
+    source_native_closure_ticket_counts: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if type(self.strategy_id) is not str or not self.strategy_id:
@@ -795,6 +797,17 @@ class P638StrategySpec:
             raise InvalidOutput("P638 provenance must be a non-empty string")
         if not callable(self._predictor):
             raise InvalidOutput("P638 predictor must be callable")
+        closure_counts = self.source_native_closure_ticket_counts
+        if type(closure_counts) is not tuple:
+            raise InvalidOutput("P638 source-native closure counts must be a tuple")
+        if any(type(count) is not int for count in closure_counts):
+            raise InvalidOutput("P638 source-native closure counts must be exact integers")
+        if len(set(closure_counts)) != len(closure_counts):
+            raise InvalidOutput("P638 source-native closure counts must be unique")
+        if any(count < 0 or count >= self.native_ticket_count for count in closure_counts):
+            raise InvalidOutput(
+                "P638 source-native closure counts must be below native_ticket_count"
+            )
 
     def predict_tickets(
         self,
@@ -814,6 +827,14 @@ class P638StrategySpec:
         if type(tickets) is not tuple:
             raise InvalidOutput(f"{self.strategy_id}: predictor must return a tuple")
         if len(tickets) != self.native_ticket_count:
+            if len(tickets) in self.source_native_closure_ticket_counts:
+                for index, ticket in enumerate(tickets):
+                    _validated_numbers(ticket, f"{self.strategy_id} ticket {index}")
+                raise SourceNativePortfolioClosure(
+                    strategy_id=self.strategy_id,
+                    expected_ticket_count=self.native_ticket_count,
+                    actual_ticket_count=len(tickets),
+                )
             raise InvalidOutput(
                 f"{self.strategy_id}: expected {self.native_ticket_count} native tickets, "
                 f"got {len(tickets)}"

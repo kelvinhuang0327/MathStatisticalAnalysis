@@ -13,8 +13,9 @@ import statistics
 import time
 import urllib.request
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from itertools import combinations, pairwise
+from typing import cast
 
 import pytest
 
@@ -23,6 +24,7 @@ from lottolab.strategies.adapters import powerlotto_wave2 as module
 from lottolab.strategies.adapters.base import (
     InsufficientHistory,
     InvalidOutput,
+    SourceNativePortfolioClosure,
     UnsupportedLotteryType,
 )
 from lottolab.strategies.adapters.powerlotto_wave1 import P638HistoryRow, P638StrategySpec
@@ -64,6 +66,18 @@ def _row(index: int) -> P638HistoryRow:
 
 def _history(count: int) -> tuple[P638HistoryRow, ...]:
     return tuple(_row(index) for index in range(count))
+
+
+def _source_native_closure_history() -> tuple[P638HistoryRow, ...]:
+    return tuple(
+        P638HistoryRow(
+            draw=f"{index + 1:09d}",
+            date=f"2026-{(index % 12) + 1:02d}-{(index % 28) + 1:02d}",
+            numbers=tuple(sorted(((index + offset * 3) % 38) + 1 for offset in range(6))),
+            second_number=(index % 8) + 1,
+        )
+        for index in range(50)
+    )
 
 
 def _first_zones(tickets: object) -> tuple[tuple[int, ...], ...]:
@@ -127,6 +141,11 @@ def test_wave2_selection_metadata_is_ordered_and_provenanced() -> None:
     assert tuple(spec.native_ticket_count for spec in WAVE2_STRATEGIES) == _EXPECTED_COUNTS
     assert tuple(spec.min_history for spec in WAVE2_STRATEGIES) == _EXPECTED_MIN_HISTORY
     assert all(spec.source_paths and spec.provenance for spec in WAVE2_STRATEGIES)
+    assert {
+        spec.strategy_id: spec.source_native_closure_ticket_counts
+        for spec in WAVE2_STRATEGIES
+        if spec.source_native_closure_ticket_counts
+    } == {"power_apriori_ext_4bet": (3,)}
     assert len(WAVE2_BLOCKED_STRATEGIES) == 2
     assert all(entry.reason and entry.source_paths for entry in WAVE2_BLOCKED_STRATEGIES)
 
@@ -272,6 +291,30 @@ def test_power_apriori_ext_4bet_matches_oracle() -> None:
 
     spec = _SPEC_BY_ID["power_apriori_ext_4bet"]
     assert _first_zones(spec.predict_tickets(history, LotteryType.POWER_LOTTO)) == oracle(history)
+
+
+def test_power_apriori_ext_preserves_three_ticket_source_native_closure() -> None:
+    history = _source_native_closure_history()
+    raw_predictor = cast(
+        Callable[
+            [tuple[P638HistoryRow, ...], int],
+            tuple[tuple[int, ...], ...],
+        ],
+        module.__dict__["_apriori_ext_tickets"],
+    )
+    assert raw_predictor(history, 4) == (
+        (4, 7, 10, 13, 16, 19),
+        (5, 8, 11, 14, 17, 20),
+        (6, 9, 12, 15, 18, 21),
+    )
+
+    spec = _SPEC_BY_ID["power_apriori_ext_4bet"]
+    with pytest.raises(SourceNativePortfolioClosure) as caught:
+        spec.predict_tickets(history, LotteryType.POWER_LOTTO)
+
+    assert caught.value.strategy_id == spec.strategy_id
+    assert caught.value.expected_ticket_count == 4
+    assert caught.value.actual_ticket_count == 3
 
 
 def test_lag_reversion_2bet_matches_oracle() -> None:

@@ -14,11 +14,43 @@ from typer.testing import CliRunner
 from lottolab.application.biglotto_multi_ticket_backtest import INPUT_SCHEMA_VERSION
 from lottolab.infrastructure.replay_backed_batch_import import (
     ReplayBatchImportError,
+    load_pinned_biglotto_history,
     materialize_exact_replay_batch,
 )
 from lottolab.interfaces.cli.main import app
 
 runner = CliRunner()
+
+
+def _draws_only_fixture_database(path: Path) -> str:
+    """A database with draw history but no strategy_prediction_replays table."""
+
+    connection = sqlite3.connect(path)
+    connection.executescript(
+        """
+        CREATE TABLE draws (
+            draw TEXT, date TEXT, lottery_type TEXT, numbers TEXT, special INTEGER
+        );
+        CREATE VIEW draws_big_lotto_canonical_main AS
+        SELECT * FROM draws WHERE lottery_type = 'BIG_LOTTO';
+        """
+    )
+    for index in range(1, 11):
+        numbers = sorted(((index + offset * 7) % 49) + 1 for offset in range(6))
+        special = next(number for number in range(1, 50) if number not in numbers)
+        connection.execute(
+            "INSERT INTO draws VALUES (?,?,?,?,?)",
+            (
+                str(index),
+                f"2020/01/{index:02d}",
+                "BIG_LOTTO",
+                json.dumps(numbers),
+                special,
+            ),
+        )
+    connection.commit()
+    connection.close()
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _fixture_database(path: Path, *, noncausal: bool = False) -> str:
@@ -180,6 +212,50 @@ def test_noncausal_replay_and_wrong_database_pin_are_rejected(tmp_path: Path) ->
         materialize_exact_replay_batch(
             database=database,
             expected_database_sha256="0" * 64,
+        )
+
+
+def test_load_pinned_biglotto_history_defaults_to_requiring_replay_authority(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "draws_only.db"
+    database_sha256 = _draws_only_fixture_database(database)
+
+    with pytest.raises(ReplayBatchImportError, match="strategy replay table"):
+        load_pinned_biglotto_history(
+            database=database,
+            expected_database_sha256=database_sha256,
+        )
+
+
+def test_load_pinned_biglotto_history_without_replay_authority_reads_draws_only(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "draws_only.db"
+    database_sha256 = _draws_only_fixture_database(database)
+
+    history = load_pinned_biglotto_history(
+        database=database,
+        expected_database_sha256=database_sha256,
+        require_replay_authority=False,
+    )
+
+    assert len(history.draws) == 10
+    assert history.replay_truth_supplemented_draw_count == 0
+    assert history.database_sha256_before == database_sha256
+    assert history.database_sha256_after == database_sha256
+
+
+def test_materialize_exact_replay_batch_still_requires_replay_authority(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "draws_only.db"
+    database_sha256 = _draws_only_fixture_database(database)
+
+    with pytest.raises(ReplayBatchImportError, match="strategy replay table"):
+        materialize_exact_replay_batch(
+            database=database,
+            expected_database_sha256=database_sha256,
         )
 
 

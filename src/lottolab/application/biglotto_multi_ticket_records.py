@@ -13,6 +13,22 @@ B649_RESEARCH_DISCLAIMER_ZH_TW = (
 )
 B649_PREFIX_COUNTS = (5, 10, 15, 20)
 
+B649_METRICS_UNAVAILABLE_STRATEGY_IDS = frozenset(
+    {
+        # replay_batch_exact2: pinned replay reproduction over a narrow,
+        # non-causal-ordered draw window (1,500 / 1,550 executions each,
+        # not the full 2,149-draw causal history every other BACKTESTED
+        # strategy uses), so rolling 5/10/15/20-window metrics cannot be
+        # computed under the same methodology. Owner-approved exception;
+        # never regenerate, never expand this set.
+        "legacy_biglotto__backtest_biglotto_5bet_ts3markov__25760472baa0",
+        "legacy_biglotto__predict_biglotto_triple_strike__236fe529c01f",
+    }
+)
+B649_METRICS_UNAVAILABLE_REASON = "FROZEN_PREDICTION_OUTPUT_AND_PRODUCER_UNAVAILABLE"
+B649_AUTHORITY_MODE_HISTORICAL_SEALED = "HISTORICAL_SEALED_EVIDENCE_V1"
+B649_AUTHORITY_MODE_FRESH_REPRODUCTION = "FRESH_CURRENT_CATALOG_REPRODUCTION_V1"
+
 
 class B649HistoryWindow(StrEnum):
     FULL = "FULL"
@@ -82,6 +98,8 @@ class B649MultiTicketRecord:
     report_sha256: str | None
     report_file_sha256: str | None
     catalog_sha256: str
+    authority_mode: str | None
+    metrics_unavailable_reason: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +108,8 @@ class B649MultiTicketRecordDataset:
     catalog_sha256: str
     projection_sha256: str
     source_report_count: int
+    metrics_available_strategy_count: int
+    metrics_unavailable_strategy_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,7 +170,11 @@ def query_b649_multi_ticket_records(
 
 
 __all__ = [
+    "B649_AUTHORITY_MODE_FRESH_REPRODUCTION",
+    "B649_AUTHORITY_MODE_HISTORICAL_SEALED",
     "B649_HISTORY_WINDOWS",
+    "B649_METRICS_UNAVAILABLE_REASON",
+    "B649_METRICS_UNAVAILABLE_STRATEGY_IDS",
     "B649_PREFIX_COUNTS",
     "B649_REPRODUCTION_STATUSES",
     "B649_RESEARCH_DISCLAIMER_ZH_TW",

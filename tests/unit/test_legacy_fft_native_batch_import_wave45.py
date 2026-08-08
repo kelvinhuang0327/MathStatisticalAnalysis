@@ -54,8 +54,9 @@ def test_wave45_batch_preserves_minimums_counts_and_ordered20(
         *,
         database: Path,
         expected_database_sha256: str,
+        require_replay_authority: bool = True,
     ) -> PinnedBigLottoHistory:
-        del database, expected_database_sha256
+        del database, expected_database_sha256, require_replay_authority
         return _fake_history()
 
     def fake_context(history: object) -> str:

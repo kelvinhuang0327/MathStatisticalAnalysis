@@ -89,8 +89,9 @@ def test_wave44_batch_preserves_causal_checkpoint_coverage(
         *,
         database: Path,
         expected_database_sha256: str,
+        require_replay_authority: bool = True,
     ) -> PinnedBigLottoHistory:
-        del database, expected_database_sha256
+        del database, expected_database_sha256, require_replay_authority
         return _fake_history()
 
     monkeypatch.setattr(

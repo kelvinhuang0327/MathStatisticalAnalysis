@@ -65,6 +65,7 @@ def test_wave63_batch_preserves_closure_native_order_and_one_ordered20(
         *,
         database: Path,
         expected_database_sha256: str,
+        require_replay_authority: bool = False,
     ) -> PinnedBigLottoHistory:
         del database, expected_database_sha256
         return _fake_history()

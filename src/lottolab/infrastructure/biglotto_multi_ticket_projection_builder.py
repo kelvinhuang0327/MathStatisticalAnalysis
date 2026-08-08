@@ -29,6 +29,10 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
     ReproductionStatus,
     load_full_strategy_catalog,
 )
+from lottolab.infrastructure.b649_dataset_authority import (
+    B649DatasetAuthorityError,
+    validate_b649_dataset_sha256,
+)
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PROJECTION_SCHEMA_VERSION,
 )
@@ -55,19 +59,30 @@ def build_b649_projection_bytes(
     report_paths: tuple[Path, ...] = (),
     *,
     fresh_report_paths: tuple[Path, ...] = (),
+    fresh_authority: str | None = None,
 ) -> bytes:
     """Build when explicit reports cover all BACKTESTED strategies except the
     fixed, Owner-approved METRICS_UNAVAILABLE_STRATEGY_IDS exception set.
 
     ``report_paths`` are checksum-pinned historical evidence (validated
     against ``expected_report_manifest``). ``fresh_report_paths`` are
-    self-consistent reports freshly computed against the current catalog
-    under authority ``FRESH_CURRENT_CATALOG_REPRODUCTION_V1`` — they are not
-    required to match any historical pinned checksum, but must have been
-    evaluated against the exact current catalog and pass the same report
-    self-hash contract. A strategy may be supplied by exactly one of the two
-    sources, never both.
+    self-consistent reports freshly computed against the current catalog only
+    when ``fresh_authority`` explicitly equals
+    ``FRESH_CURRENT_CATALOG_REPRODUCTION_V1``. They are not required to match
+    a historical pinned checksum, but must use the one approved fresh logical
+    dataset identity, be evaluated against the exact current catalog, and pass
+    the same report self-hash contract. A strategy may be supplied by exactly
+    one of the two sources, never both.
     """
+
+    if fresh_report_paths and fresh_authority != AUTHORITY_MODE_FRESH_REPRODUCTION:
+        raise B649ProjectionBuildError(
+            "fresh reports require explicit FRESH_CURRENT_CATALOG_REPRODUCTION_V1 authority"
+        )
+    if not fresh_report_paths and fresh_authority is not None:
+        raise B649ProjectionBuildError(
+            "fresh authority cannot be supplied without fresh reports"
+        )
 
     catalog = load_full_strategy_catalog()
     manifest = expected_report_manifest(catalog)
@@ -109,6 +124,13 @@ def build_b649_projection_bytes(
             raise B649ProjectionBuildError(
                 f"{path} was not evaluated against the current catalog"
             )
+        try:
+            validate_b649_dataset_sha256(
+                document.get("dataset_sha256"),
+                authority_mode=fresh_authority,
+            )
+        except B649DatasetAuthorityError as exc:
+            raise B649ProjectionBuildError(f"{path}: {exc}") from exc
         report_sha256 = document.get("report_sha256")
         if not isinstance(report_sha256, str):
             raise B649ProjectionBuildError(f"{path} has no report_sha256")
@@ -200,9 +222,7 @@ def build_b649_projection_bytes(
         source_reports.append(
             {
                 "authority_mode": AUTHORITY_MODE_FRESH_REPRODUCTION,
-                "dataset_sha256": _string(
-                    document.get("dataset_sha256"), "fresh report dataset_sha256"
-                ),
+                "dataset_sha256": cast(str, document["dataset_sha256"]),
                 "report_file_sha256": expected.report_file_sha256,
                 "report_sha256": expected.report_sha256,
                 "strategy_ids": list(expected.strategy_ids),

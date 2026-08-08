@@ -14,6 +14,9 @@ from lottolab.infrastructure.biglotto_multi_ticket_projection_builder import (
     build_b649_projection_bytes,
     expected_report_manifest,
 )
+from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    PackagedB649MultiTicketRecordReader,
+)
 
 
 def test_committed_evidence_pins_all_135_backtested_strategies() -> None:
@@ -77,3 +80,24 @@ def test_builder_rejects_symlinked_report_before_reading_it(
         match="regular non-symlink file",
     ):
         build_b649_projection_bytes((link,))
+
+
+def test_packaged_projection_preserves_sealed_and_fresh_provenance() -> None:
+    dataset = PackagedB649MultiTicketRecordReader().read()
+    authority_by_strategy = {
+        record.strategy_id: record.authority_mode
+        for record in dataset.records
+    }
+
+    assert dataset.source_report_count == 52
+    assert dataset.projection_sha256 == (
+        "3390c28e2c2ef9bf728e94fc5f1420cd86c3940aacf50723f2a73af4a1e1d605"
+    )
+    assert sum(
+        authority == "HISTORICAL_SEALED_EVIDENCE_V1"
+        for authority in authority_by_strategy.values()
+    ) == 36
+    assert sum(
+        authority == "FRESH_CURRENT_CATALOG_REPRODUCTION_V1"
+        for authority in authority_by_strategy.values()
+    ) == 97

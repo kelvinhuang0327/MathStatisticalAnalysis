@@ -495,7 +495,7 @@ def _validate_request(
         or type(request.replicate_id) is not int
         or request.replicate_id < 0
         or type(request.user_seed) not in (str, int)
-        or type(request.dataset_sha256) is not str or not request.dataset_sha256
+        or request.dataset_sha256 != PINNED_DATASET_SHA256
     ):
         raise LegacyCheckpointNativeWave55Error(
             "invalid frozen checkpoint request identity"

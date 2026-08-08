@@ -33,6 +33,10 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
     ReproductionStatus,
     load_full_strategy_catalog,
 )
+from lottolab.infrastructure.b649_dataset_authority import (
+    B649DatasetAuthorityError,
+    validate_b649_dataset_sha256,
+)
 
 PROJECTION_RESOURCE_NAME = "biglotto_multi_ticket_historical_records_v1.json"
 PROJECTION_SCHEMA_VERSION = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V1"
@@ -270,7 +274,15 @@ def _parse_source_reports(
                 },
                 f"source_reports[{index}]",
             )
-            _sha256(report["dataset_sha256"], "source report dataset_sha256")
+            try:
+                validate_b649_dataset_sha256(
+                    report["dataset_sha256"],
+                    authority_mode=AUTHORITY_MODE_FRESH_REPRODUCTION,
+                )
+            except B649DatasetAuthorityError as exc:
+                raise B649MultiTicketRecordProjectionError(
+                    f"source_reports[{index}] dataset authority is invalid"
+                ) from exc
         else:
             raise B649MultiTicketRecordProjectionError(
                 f"source_reports[{index}] has an unknown authority_mode"

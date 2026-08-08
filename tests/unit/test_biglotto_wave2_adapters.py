@@ -887,12 +887,6 @@ def test_production_catalog_wave2_descriptors_declare_expected_shapes() -> None:
         assert descriptor.executable is True
 
 
-def test_production_catalog_now_has_sixteen_descriptors() -> None:
-    """Name pinned at the Wave 2 landing point; later waves append only."""
-    catalog = production_catalog()
-    assert len(catalog) == 59
-
-
 def test_wave1_and_pre_wave1_descriptors_are_unaffected_by_wave2() -> None:
     """Existing 13 adapters and their outputs must remain unchanged."""
     catalog = production_catalog()

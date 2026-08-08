@@ -438,4 +438,13 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__test_ecp__c9d5ac6decdd",
         "legacy_biglotto__test_pce__9c0cf22b4217",
         "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+        "legacy_biglotto__cold_hunter_predict__9e89f2b41add",
+        "legacy_biglotto__short_window_deviation_predict__9e89f2b41add",
+        "legacy_biglotto__rebound_aware_predict__9e89f2b41add",
+        "legacy_biglotto__zone_momentum_predict__9e89f2b41add",
+        "legacy_biglotto__pure_cold_predict__9e89f2b41add",
+        "legacy_biglotto__moderate_rank_predict__9e89f2b41add",
+        "legacy_biglotto__gap_pressure_scorer__5e862ef27ee6",
+        "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
+        "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     ]

@@ -284,6 +284,7 @@ def verify_wave34_parity(
     pinned = load_pinned_biglotto_history(
         database=database,
         expected_database_sha256=expected_database_sha256,
+        require_replay_authority=False,
     )
     all_history = tuple(
         LegacyHistoryDraw(

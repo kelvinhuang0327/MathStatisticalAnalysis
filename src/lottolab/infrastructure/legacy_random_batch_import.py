@@ -74,6 +74,7 @@ def materialize_legacy_random_native_batch(
         history = load_pinned_biglotto_history(
             database=database,
             expected_database_sha256=expected_database_sha256,
+            require_replay_authority=False,
         )
     except ReplayBatchImportError as exc:
         raise LegacyRandomBatchImportError(str(exc)) from exc

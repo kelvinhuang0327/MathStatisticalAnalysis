@@ -631,6 +631,7 @@ def verify_wave46_parity(
     pinned = load_pinned_biglotto_history(
         database=database,
         expected_database_sha256=expected_database_sha256,
+        require_replay_authority=False,
     )
     if len(pinned.draws) != 2149:
         raise ParityError("pinned BIG_LOTTO target count changed")

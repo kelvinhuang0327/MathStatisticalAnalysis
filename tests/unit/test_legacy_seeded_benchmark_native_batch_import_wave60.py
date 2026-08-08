@@ -66,6 +66,7 @@ def test_wave60_batch_preserves_config_and_native_counts(
         *,
         database: Path,
         expected_database_sha256: str,
+        require_replay_authority: bool = False,
     ) -> PinnedBigLottoHistory:
         del database, expected_database_sha256
         return _fake_history()

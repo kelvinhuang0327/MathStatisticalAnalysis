@@ -5356,6 +5356,28 @@
           "catalog_sha256": {
             "type": "string",
             "title": "Catalog Sha256"
+          },
+          "authority_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authority Mode"
+          },
+          "metrics_unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics Unavailable Reason"
           }
         },
         "additionalProperties": false,
@@ -5387,7 +5409,9 @@
           "no_prize_count",
           "report_sha256",
           "report_file_sha256",
-          "catalog_sha256"
+          "catalog_sha256",
+          "authority_mode",
+          "metrics_unavailable_reason"
         ],
         "title": "B649MultiTicketRecordView"
       },
@@ -5466,6 +5490,28 @@
             ],
             "title": "Source Report Count"
           },
+          "metrics_available_strategy_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics Available Strategy Count"
+          },
+          "metrics_unavailable_strategy_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics Unavailable Strategy Count"
+          },
           "research_disclaimer": {
             "type": "string",
             "title": "Research Disclaimer"
@@ -5484,6 +5530,8 @@
           "records_available",
           "projection_sha256",
           "source_report_count",
+          "metrics_available_strategy_count",
+          "metrics_unavailable_strategy_count",
           "research_disclaimer"
         ],
         "title": "B649MultiTicketSummaryResponse"

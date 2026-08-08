@@ -87,6 +87,7 @@ def _canonical_bytes(value: object) -> bytes:
     ).encode("utf-8")
 
 
+
 def _parse_date(value: object, context: str) -> date:
     if type(value) is not str:
         raise LegacyEvolutionNativeWave65BatchImportError(

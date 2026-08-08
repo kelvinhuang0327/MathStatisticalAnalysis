@@ -1874,6 +1874,8 @@ export interface components {
           "report_sha256": string | null
           "report_file_sha256": string | null
           "catalog_sha256": string
+          "authority_mode": string | null
+          "metrics_unavailable_reason": string | null
         }
     "B649MultiTicketSummaryResponse": {
           "progress": components['schemas']["B649ResearchProgressView"]
@@ -1886,6 +1888,8 @@ export interface components {
           "records_available": boolean
           "projection_sha256": string | null
           "source_report_count": number | null
+          "metrics_available_strategy_count": number | null
+          "metrics_unavailable_strategy_count": number | null
           "research_disclaimer": string
         }
     "B649OfficialPrizeCountsView": {

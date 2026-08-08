@@ -15,7 +15,11 @@ from pathlib import Path
 from typing import cast
 
 from lottolab.application.biglotto_multi_ticket_records import (
+    B649_AUTHORITY_MODE_FRESH_REPRODUCTION,
+    B649_AUTHORITY_MODE_HISTORICAL_SEALED,
     B649_HISTORY_WINDOWS,
+    B649_METRICS_UNAVAILABLE_REASON,
+    B649_METRICS_UNAVAILABLE_STRATEGY_IDS,
     B649_PREFIX_COUNTS,
     B649_SUCCESS_CRITERIA,
 )
@@ -24,6 +28,10 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
     FullStrategyCatalogRecord,
     ReproductionStatus,
     load_full_strategy_catalog,
+)
+from lottolab.infrastructure.b649_dataset_authority import (
+    B649DatasetAuthorityError,
+    validate_b649_dataset_sha256,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PROJECTION_SCHEMA_VERSION,
@@ -34,6 +42,12 @@ class B649ProjectionBuildError(RuntimeError):
     """Explicit pinned inputs cannot produce a complete aggregate projection."""
 
 
+METRICS_UNAVAILABLE_STRATEGY_IDS = B649_METRICS_UNAVAILABLE_STRATEGY_IDS
+METRICS_UNAVAILABLE_REASON = B649_METRICS_UNAVAILABLE_REASON
+AUTHORITY_MODE_HISTORICAL_SEALED = B649_AUTHORITY_MODE_HISTORICAL_SEALED
+AUTHORITY_MODE_FRESH_REPRODUCTION = B649_AUTHORITY_MODE_FRESH_REPRODUCTION
+
+
 @dataclass(frozen=True, slots=True)
 class ExpectedReport:
     report_file_sha256: str
@@ -41,8 +55,34 @@ class ExpectedReport:
     strategy_ids: tuple[str, ...]
 
 
-def build_b649_projection_bytes(report_paths: tuple[Path, ...]) -> bytes:
-    """Build only when explicit reports cover all 135 BACKTESTED strategies."""
+def build_b649_projection_bytes(
+    report_paths: tuple[Path, ...] = (),
+    *,
+    fresh_report_paths: tuple[Path, ...] = (),
+    fresh_authority: str | None = None,
+) -> bytes:
+    """Build when explicit reports cover all BACKTESTED strategies except the
+    fixed, Owner-approved METRICS_UNAVAILABLE_STRATEGY_IDS exception set.
+
+    ``report_paths`` are checksum-pinned historical evidence (validated
+    against ``expected_report_manifest``). ``fresh_report_paths`` are
+    self-consistent reports freshly computed against the current catalog only
+    when ``fresh_authority`` explicitly equals
+    ``FRESH_CURRENT_CATALOG_REPRODUCTION_V1``. They are not required to match
+    a historical pinned checksum, but must use the one approved fresh logical
+    dataset identity, be evaluated against the exact current catalog, and pass
+    the same report self-hash contract. A strategy may be supplied by exactly
+    one of the two sources, never both.
+    """
+
+    if fresh_report_paths and fresh_authority != AUTHORITY_MODE_FRESH_REPRODUCTION:
+        raise B649ProjectionBuildError(
+            "fresh reports require explicit FRESH_CURRENT_CATALOG_REPRODUCTION_V1 authority"
+        )
+    if not fresh_report_paths and fresh_authority is not None:
+        raise B649ProjectionBuildError(
+            "fresh authority cannot be supplied without fresh reports"
+        )
 
     catalog = load_full_strategy_catalog()
     manifest = expected_report_manifest(catalog)
@@ -70,6 +110,47 @@ def build_b649_projection_bytes(report_paths: tuple[Path, ...]) -> bytes:
         _verify_report_self_hash(document, path)
         supplied[file_sha256] = (expected, document)
 
+    fresh_supplied: dict[str, tuple[ExpectedReport, dict[str, object]]] = {}
+    for path in fresh_report_paths:
+        raw = _read_regular_file(path)
+        file_sha256 = hashlib.sha256(raw).hexdigest()
+        if file_sha256 in supplied or file_sha256 in fresh_supplied:
+            raise B649ProjectionBuildError(
+                f"report {file_sha256} was supplied more than once"
+            )
+        document = _report_document(raw, path)
+        _verify_report_self_hash(document, path)
+        if document.get("catalog_sha256") != catalog.catalog_sha256:
+            raise B649ProjectionBuildError(
+                f"{path} was not evaluated against the current catalog"
+            )
+        try:
+            validate_b649_dataset_sha256(
+                document.get("dataset_sha256"),
+                authority_mode=fresh_authority,
+            )
+        except B649DatasetAuthorityError as exc:
+            raise B649ProjectionBuildError(f"{path}: {exc}") from exc
+        report_sha256 = document.get("report_sha256")
+        if not isinstance(report_sha256, str):
+            raise B649ProjectionBuildError(f"{path} has no report_sha256")
+        strategy_ids = tuple(
+            sorted(
+                {
+                    _string(row.get("strategy_id"), "metric strategy_id")
+                    for row in _list_of_mappings(
+                        document.get("metrics"), "report metrics"
+                    )
+                }
+            )
+        )
+        expected = ExpectedReport(
+            report_file_sha256=file_sha256,
+            report_sha256=_sha256(report_sha256, f"{path} report_sha256"),
+            strategy_ids=strategy_ids,
+        )
+        fresh_supplied[file_sha256] = (expected, document)
+
     required_strategy_ids = {
         row.strategy_id
         for row in catalog.records
@@ -80,16 +161,35 @@ def build_b649_projection_bytes(report_paths: tuple[Path, ...]) -> bytes:
         for expected, _document in supplied.values()
         for strategy_id in expected.strategy_ids
     }
-    missing = sorted(required_strategy_ids - supplied_strategy_ids)
-    unexpected = sorted(supplied_strategy_ids - required_strategy_ids)
+    fresh_strategy_ids = {
+        strategy_id
+        for expected, _document in fresh_supplied.values()
+        for strategy_id in expected.strategy_ids
+    }
+    if supplied_strategy_ids & fresh_strategy_ids:
+        raise B649ProjectionBuildError(
+            "a strategy was supplied by both historical and fresh reports"
+        )
+    combined_supplied_strategy_ids = supplied_strategy_ids | fresh_strategy_ids
+    if combined_supplied_strategy_ids & METRICS_UNAVAILABLE_STRATEGY_IDS:
+        raise B649ProjectionBuildError(
+            "metrics-unavailable strategies must not be supplied via report_paths"
+        )
+    missing = sorted(
+        required_strategy_ids
+        - combined_supplied_strategy_ids
+        - METRICS_UNAVAILABLE_STRATEGY_IDS
+    )
+    unexpected = sorted(combined_supplied_strategy_ids - required_strategy_ids)
     if missing or unexpected:
         raise B649ProjectionBuildError(
-            "explicit reports do not cover exactly all 135 BACKTESTED strategies; "
-            f"missing={len(missing)} unexpected={len(unexpected)}"
+            "explicit reports do not cover exactly all metrics-eligible "
+            f"BACKTESTED strategies; missing={len(missing)} unexpected={len(unexpected)}"
         )
 
     combinations_by_strategy: dict[str, dict[str, object]] = {}
     provenance_by_strategy: dict[str, tuple[str, str]] = {}
+    authority_mode_by_strategy: dict[str, str] = {}
     source_reports: list[dict[str, object]] = []
     for file_sha256 in sorted(supplied):
         expected, document = supplied[file_sha256]
@@ -99,24 +199,60 @@ def build_b649_projection_bytes(report_paths: tuple[Path, ...]) -> bytes:
             combinations_by_strategy,
             provenance_by_strategy,
         )
+        for strategy_id in expected.strategy_ids:
+            authority_mode_by_strategy[strategy_id] = AUTHORITY_MODE_HISTORICAL_SEALED
         source_reports.append(
             {
+                "authority_mode": AUTHORITY_MODE_HISTORICAL_SEALED,
+                "report_file_sha256": expected.report_file_sha256,
+                "report_sha256": expected.report_sha256,
+                "strategy_ids": list(expected.strategy_ids),
+            }
+        )
+    for file_sha256 in sorted(fresh_supplied):
+        expected, document = fresh_supplied[file_sha256]
+        _collect_report(
+            document,
+            expected,
+            combinations_by_strategy,
+            provenance_by_strategy,
+        )
+        for strategy_id in expected.strategy_ids:
+            authority_mode_by_strategy[strategy_id] = AUTHORITY_MODE_FRESH_REPRODUCTION
+        source_reports.append(
+            {
+                "authority_mode": AUTHORITY_MODE_FRESH_REPRODUCTION,
+                "dataset_sha256": cast(str, document["dataset_sha256"]),
                 "report_file_sha256": expected.report_file_sha256,
                 "report_sha256": expected.report_sha256,
                 "strategy_ids": list(expected.strategy_ids),
             }
         )
 
+    metrics_unavailable_provenance: dict[str, tuple[str, str]] = {
+        strategy_id: (report.report_file_sha256, report.report_sha256)
+        for report in manifest
+        for strategy_id in report.strategy_ids
+        if strategy_id in METRICS_UNAVAILABLE_STRATEGY_IDS
+    }
+
     records = [
         _projection_record(
             catalog_record,
             combinations_by_strategy,
             provenance_by_strategy,
+            metrics_unavailable_provenance,
+            authority_mode_by_strategy,
         )
         for catalog_record in catalog.records
     ]
     document: dict[str, object] = {
         "catalog_sha256": catalog.catalog_sha256,
+        "metrics_available_strategy_count": len(required_strategy_ids)
+        - len(METRICS_UNAVAILABLE_STRATEGY_IDS & required_strategy_ids),
+        "metrics_unavailable_strategy_count": len(
+            METRICS_UNAVAILABLE_STRATEGY_IDS & required_strategy_ids
+        ),
         "projection_schema_version": PROJECTION_SCHEMA_VERSION,
         "records": records,
         "source_reports": source_reports,
@@ -425,24 +561,49 @@ def _projection_record(
     catalog_record: FullStrategyCatalogRecord,
     combinations_by_strategy: dict[str, dict[str, object]],
     provenance_by_strategy: dict[str, tuple[str, str]],
+    metrics_unavailable_provenance: dict[str, tuple[str, str]],
+    authority_mode_by_strategy: dict[str, str],
 ) -> dict[str, object]:
-    provenance = provenance_by_strategy.get(catalog_record.strategy_id)
-    if catalog_record.reproduction_status is ReproductionStatus.BACKTESTED:
+    metrics_unavailable_reason: str | None = None
+    authority_mode: str | None = None
+    if catalog_record.strategy_id in METRICS_UNAVAILABLE_STRATEGY_IDS:
+        if catalog_record.reproduction_status is not ReproductionStatus.BACKTESTED:
+            raise B649ProjectionBuildError(
+                f"{catalog_record.strategy_id} is a pinned metrics-unavailable "
+                "exception but is no longer BACKTESTED in the catalog"
+            )
+        provenance = metrics_unavailable_provenance.get(catalog_record.strategy_id)
+        if provenance is None:
+            raise B649ProjectionBuildError(
+                f"{catalog_record.strategy_id} has no pinned evidence provenance"
+            )
+        report_file_sha256, report_sha256 = provenance
+        combinations = {}
+        metrics_unavailable_reason = METRICS_UNAVAILABLE_REASON
+    elif catalog_record.reproduction_status is ReproductionStatus.BACKTESTED:
+        provenance = provenance_by_strategy.get(catalog_record.strategy_id)
         if provenance is None:
             raise B649ProjectionBuildError(
                 f"{catalog_record.strategy_id} has no pinned report provenance"
             )
         report_file_sha256, report_sha256 = provenance
         combinations = combinations_by_strategy[catalog_record.strategy_id]
+        authority_mode = authority_mode_by_strategy.get(catalog_record.strategy_id)
+        if authority_mode is None:
+            raise B649ProjectionBuildError(
+                f"{catalog_record.strategy_id} has no recorded authority mode"
+            )
     else:
         report_file_sha256 = None
         report_sha256 = None
         combinations = {}
     return {
+        "authority_mode": authority_mode,
         "combinations": combinations,
         "duplicate_alias_target": catalog_record.duplicate_alias_target,
         "legacy_method_id": catalog_record.legacy_method_id,
         "method_family": catalog_record.method_family,
+        "metrics_unavailable_reason": metrics_unavailable_reason,
         "report_file_sha256": report_file_sha256,
         "report_sha256": report_sha256,
         "reproduction_status": catalog_record.reproduction_status.value,
@@ -567,6 +728,8 @@ def _canonical_json(value: object) -> bytes:
 
 
 __all__ = [
+    "AUTHORITY_MODE_FRESH_REPRODUCTION",
+    "AUTHORITY_MODE_HISTORICAL_SEALED",
     "B649ProjectionBuildError",
     "ExpectedReport",
     "build_b649_projection_bytes",

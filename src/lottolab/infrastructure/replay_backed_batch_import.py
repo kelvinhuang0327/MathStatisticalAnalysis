@@ -270,6 +270,7 @@ def _load_pinned_replay_source(
     *,
     database: Path,
     expected_database_sha256: str,
+    require_replay_authority: bool = True,
 ) -> tuple[PinnedBigLottoHistory, tuple[_Replay, ...]]:
     if database.is_symlink() or not database.is_file():
         raise ReplayBatchImportError("database must be a regular non-symlink file")
@@ -284,7 +285,7 @@ def _load_pinned_replay_source(
 
     try:
         with _readonly_connection(database) as connection:
-            replays = _read_replays(connection)
+            replays = _read_replays(connection) if require_replay_authority else ()
             draws, supplemented_draw_count = _read_draws(connection, replays)
     except sqlite3.Error as exc:
         raise ReplayBatchImportError("legacy database read failed") from exc
@@ -306,12 +307,24 @@ def load_pinned_biglotto_history(
     *,
     database: Path,
     expected_database_sha256: str,
+    require_replay_authority: bool = True,
 ) -> PinnedBigLottoHistory:
-    """Read all validated draws without exposing replay prediction outputs."""
+    """Read all validated draws without exposing replay prediction outputs.
+
+    ``require_replay_authority`` defaults to True, preserving the original
+    strict gate: the database must carry a valid ``strategy_prediction_replays``
+    table for the two exact-mapped replay strategies. ``PinnedBigLottoHistory``
+    has no field that can carry replay ticket data, so callers that only ever
+    read draw history may pass ``require_replay_authority=False`` to read a
+    database that carries no replay table at all (e.g. a draw-history-only
+    reconstruction source). ``materialize_exact_replay_batch`` never sets this
+    and always requires replay authority.
+    """
 
     history, _replays = _load_pinned_replay_source(
         database=database,
         expected_database_sha256=expected_database_sha256,
+        require_replay_authority=require_replay_authority,
     )
     return history
 

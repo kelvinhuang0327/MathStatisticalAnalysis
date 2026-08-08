@@ -94,6 +94,8 @@ def _record(
         report_sha256="a" * 64 if backtested else None,
         report_file_sha256="b" * 64 if backtested else None,
         catalog_sha256="c" * 64,
+        authority_mode="HISTORICAL_SEALED_EVIDENCE_V1" if backtested else None,
+        metrics_unavailable_reason=None,
     )
 
 
@@ -118,6 +120,8 @@ def _dataset() -> B649MultiTicketRecordDataset:
         catalog_sha256="c" * 64,
         projection_sha256="d" * 64,
         source_report_count=1,
+        metrics_available_strategy_count=1,
+        metrics_unavailable_strategy_count=0,
     )
 
 
@@ -166,6 +170,8 @@ def test_summary_exposes_exact_progress_and_closed_query_sets() -> None:
         "DUPLICATE_ALIAS",
     ]
     assert payload["records_available"] is True
+    assert payload["metrics_available_strategy_count"] == 1
+    assert payload["metrics_unavailable_strategy_count"] == 0
     assert payload["research_disclaimer"] == DISCLAIMER
 
 

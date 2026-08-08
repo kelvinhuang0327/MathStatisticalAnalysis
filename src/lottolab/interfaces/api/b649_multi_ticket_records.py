@@ -69,6 +69,8 @@ class B649MultiTicketSummaryResponse(BaseModel):
     records_available: bool
     projection_sha256: str | None
     source_report_count: int | None
+    metrics_available_strategy_count: int | None
+    metrics_unavailable_strategy_count: int | None
     research_disclaimer: str
 
 
@@ -115,6 +117,8 @@ class B649MultiTicketRecordView(BaseModel):
     report_sha256: str | None
     report_file_sha256: str | None
     catalog_sha256: str
+    authority_mode: str | None
+    metrics_unavailable_reason: str | None
 
 
 class B649MultiTicketRecordPageResponse(BaseModel):
@@ -166,6 +170,8 @@ def create_b649_multi_ticket_records_router(
     def summary() -> B649MultiTicketSummaryResponse:
         projection_sha256: str | None = None
         source_report_count: int | None = None
+        metrics_available_strategy_count: int | None = None
+        metrics_unavailable_strategy_count: int | None = None
         records_available = False
         if reader_factory is not None:
             try:
@@ -176,6 +182,12 @@ def create_b649_multi_ticket_records_router(
                 records_available = True
                 projection_sha256 = dataset.projection_sha256
                 source_report_count = dataset.source_report_count
+                metrics_available_strategy_count = (
+                    dataset.metrics_available_strategy_count
+                )
+                metrics_unavailable_strategy_count = (
+                    dataset.metrics_unavailable_strategy_count
+                )
         progress = catalog.progress
         return B649MultiTicketSummaryResponse(
             progress=B649ResearchProgressView(**progress.canonical_dict()),
@@ -190,6 +202,8 @@ def create_b649_multi_ticket_records_router(
             records_available=records_available,
             projection_sha256=projection_sha256,
             source_report_count=source_report_count,
+            metrics_available_strategy_count=metrics_available_strategy_count,
+            metrics_unavailable_strategy_count=metrics_unavailable_strategy_count,
             research_disclaimer=B649_RESEARCH_DISCLAIMER_ZH_TW,
         )
 

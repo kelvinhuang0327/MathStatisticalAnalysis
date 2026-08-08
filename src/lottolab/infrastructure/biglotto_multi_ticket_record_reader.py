@@ -10,6 +10,12 @@ from importlib.resources import files
 from typing import cast
 
 from lottolab.application.biglotto_multi_ticket_records import (
+    B649_AUTHORITY_MODE_FRESH_REPRODUCTION as AUTHORITY_MODE_FRESH_REPRODUCTION,
+)
+from lottolab.application.biglotto_multi_ticket_records import (
+    B649_AUTHORITY_MODE_HISTORICAL_SEALED as AUTHORITY_MODE_HISTORICAL_SEALED,
+)
+from lottolab.application.biglotto_multi_ticket_records import (
     B649_HISTORY_WINDOWS,
     B649_PREFIX_COUNTS,
     B649_SUCCESS_CRITERIA,
@@ -18,6 +24,9 @@ from lottolab.application.biglotto_multi_ticket_records import (
     B649MultiTicketRecordDataset,
     B649OfficialPrizeCounts,
     B649SuccessCriterion,
+)
+from lottolab.application.biglotto_multi_ticket_records import (
+    B649_METRICS_UNAVAILABLE_STRATEGY_IDS as METRICS_UNAVAILABLE_STRATEGY_IDS,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import (
     FullStrategyCatalogRecord,
@@ -98,6 +107,8 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
         document,
         {
             "catalog_sha256",
+            "metrics_available_strategy_count",
+            "metrics_unavailable_strategy_count",
             "projection_schema_version",
             "projection_sha256",
             "records",
@@ -148,10 +159,12 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
         _exact_keys(
             record,
             {
+                "authority_mode",
                 "combinations",
                 "duplicate_alias_target",
                 "legacy_method_id",
                 "method_family",
+                "metrics_unavailable_reason",
                 "report_file_sha256",
                 "report_sha256",
                 "reproduction_status",
@@ -183,37 +196,85 @@ def _parse_projection(raw: bytes) -> B649MultiTicketRecordDataset:
         raise B649MultiTicketRecordProjectionError(
             "projection strategy identities do not cover the catalog"
         )
-    if set(report_by_strategy) != {
+    backtested_ids = {
         row.strategy_id
         for row in catalog.records
         if row.reproduction_status is ReproductionStatus.BACKTESTED
-    }:
+    }
+    if set(report_by_strategy) != backtested_ids - METRICS_UNAVAILABLE_STRATEGY_IDS:
         raise B649MultiTicketRecordProjectionError(
-            "source reports do not cover exactly all 135 BACKTESTED strategies"
+            "source reports do not cover exactly all metrics-eligible "
+            "BACKTESTED strategies"
+        )
+    metrics_available_strategy_count = _nonnegative_integer(
+        document["metrics_available_strategy_count"],
+        "metrics_available_strategy_count",
+    )
+    metrics_unavailable_strategy_count = _nonnegative_integer(
+        document["metrics_unavailable_strategy_count"],
+        "metrics_unavailable_strategy_count",
+    )
+    if (
+        metrics_available_strategy_count + metrics_unavailable_strategy_count
+        != len(backtested_ids)
+    ):
+        raise B649MultiTicketRecordProjectionError(
+            "metrics completeness counts do not sum to the BACKTESTED total"
+        )
+    if metrics_unavailable_strategy_count != len(
+        METRICS_UNAVAILABLE_STRATEGY_IDS & backtested_ids
+    ):
+        raise B649MultiTicketRecordProjectionError(
+            "metrics_unavailable_strategy_count does not match the pinned exception set"
         )
     return B649MultiTicketRecordDataset(
         records=tuple(projected),
         catalog_sha256=catalog.catalog_sha256,
         projection_sha256=projection_sha256,
-        source_report_count=len(set(report_by_strategy.values())),
+        source_report_count=len(
+            {pair for pair, _mode in report_by_strategy.values()}
+        ),
+        metrics_available_strategy_count=metrics_available_strategy_count,
+        metrics_unavailable_strategy_count=metrics_unavailable_strategy_count,
     )
 
 
-def _parse_source_reports(value: object) -> dict[str, tuple[str, str]]:
+def _parse_source_reports(
+    value: object,
+) -> dict[str, tuple[tuple[str, str], str]]:
     if not isinstance(value, list):
         raise B649MultiTicketRecordProjectionError(
             "projection source_reports must be a list"
         )
     source_reports = cast(list[object], value)
-    report_by_strategy: dict[str, tuple[str, str]] = {}
+    report_by_strategy: dict[str, tuple[tuple[str, str], str]] = {}
     report_pairs: set[tuple[str, str]] = set()
     for index, candidate in enumerate(source_reports):
         report = _mapping(candidate, f"source_reports[{index}]")
-        _exact_keys(
-            report,
-            {"report_file_sha256", "report_sha256", "strategy_ids"},
-            f"source_reports[{index}]",
-        )
+        authority_mode = _string(report.get("authority_mode"), "authority_mode")
+        if authority_mode == AUTHORITY_MODE_HISTORICAL_SEALED:
+            _exact_keys(
+                report,
+                {"authority_mode", "report_file_sha256", "report_sha256", "strategy_ids"},
+                f"source_reports[{index}]",
+            )
+        elif authority_mode == AUTHORITY_MODE_FRESH_REPRODUCTION:
+            _exact_keys(
+                report,
+                {
+                    "authority_mode",
+                    "dataset_sha256",
+                    "report_file_sha256",
+                    "report_sha256",
+                    "strategy_ids",
+                },
+                f"source_reports[{index}]",
+            )
+            _sha256(report["dataset_sha256"], "source report dataset_sha256")
+        else:
+            raise B649MultiTicketRecordProjectionError(
+                f"source_reports[{index}] has an unknown authority_mode"
+            )
         pair = (
             _sha256(report["report_file_sha256"], "report_file_sha256"),
             _sha256(report["report_sha256"], "report_sha256"),
@@ -234,7 +295,7 @@ def _parse_source_reports(value: object) -> dict[str, tuple[str, str]]:
                 raise B649MultiTicketRecordProjectionError(
                     "a BACKTESTED strategy is claimed by multiple source reports"
                 )
-            report_by_strategy[strategy_id] = pair
+            report_by_strategy[strategy_id] = (pair, authority_mode)
     return report_by_strategy
 
 
@@ -262,30 +323,61 @@ def _expand_record(
     record: dict[str, object],
     catalog_record: FullStrategyCatalogRecord,
     catalog_sha256: str,
-    report_by_strategy: dict[str, tuple[str, str]],
+    report_by_strategy: dict[str, tuple[tuple[str, str], str]],
 ) -> list[B649MultiTicketRecord]:
     combinations = _mapping(record["combinations"], "record combinations")
+    metrics_unavailable_reason = record["metrics_unavailable_reason"]
+    if metrics_unavailable_reason is not None and (
+        catalog_record.strategy_id not in METRICS_UNAVAILABLE_STRATEGY_IDS
+        or not isinstance(metrics_unavailable_reason, str)
+    ):
+        raise B649MultiTicketRecordProjectionError(
+            f"{catalog_record.strategy_id} may not claim a metrics-unavailable reason"
+        )
     backtested = catalog_record.reproduction_status is ReproductionStatus.BACKTESTED
-    if backtested:
+    has_metrics = backtested and metrics_unavailable_reason is None
+    authority_mode: str | None = None
+    if has_metrics:
         if frozenset(combinations) != _COMBINATION_KEYS:
             raise B649MultiTicketRecordProjectionError(
                 f"{catalog_record.strategy_id} must contain all 128 aggregate combinations"
             )
-        expected_pair = report_by_strategy.get(catalog_record.strategy_id)
+        expected = report_by_strategy.get(catalog_record.strategy_id)
         pair = (
             _sha256(record["report_file_sha256"], "report_file_sha256"),
             _sha256(record["report_sha256"], "report_sha256"),
         )
-        if expected_pair != pair:
+        if expected is None or expected[0] != pair:
             raise B649MultiTicketRecordProjectionError(
                 f"{catalog_record.strategy_id} report provenance does not match"
             )
         report_file_sha256, report_sha256 = pair
+        authority_mode = expected[1]
+        if record["authority_mode"] != authority_mode:
+            raise B649MultiTicketRecordProjectionError(
+                f"{catalog_record.strategy_id} authority_mode does not match its source report"
+            )
+    elif backtested:
+        if combinations:
+            raise B649MultiTicketRecordProjectionError(
+                f"{catalog_record.strategy_id} is metrics-unavailable and may not "
+                "carry aggregate combinations"
+            )
+        report_file_sha256 = _sha256(
+            record["report_file_sha256"], "report_file_sha256"
+        )
+        report_sha256 = _sha256(record["report_sha256"], "report_sha256")
+        if record["authority_mode"] is not None:
+            raise B649MultiTicketRecordProjectionError(
+                f"{catalog_record.strategy_id} is metrics-unavailable and may not "
+                "carry an authority_mode"
+            )
     else:
         if (
             combinations
             or record["report_file_sha256"] is not None
             or record["report_sha256"] is not None
+            or record["authority_mode"] is not None
         ):
             raise B649MultiTicketRecordProjectionError(
                 f"{catalog_record.strategy_id} may not claim aggregate report data"
@@ -304,7 +396,7 @@ def _expand_record(
                         ],
                         catalog_record.strategy_id,
                     )
-                    if backtested
+                    if has_metrics
                     else None
                 )
                 result.append(
@@ -317,6 +409,12 @@ def _expand_record(
                         report_sha256=report_sha256,
                         report_file_sha256=report_file_sha256,
                         catalog_sha256=catalog_sha256,
+                        authority_mode=authority_mode,
+                        metrics_unavailable_reason=(
+                            metrics_unavailable_reason
+                            if isinstance(metrics_unavailable_reason, str)
+                            else None
+                        ),
                     )
                 )
     return result
@@ -378,6 +476,8 @@ def _build_record(
     report_sha256: str | None,
     report_file_sha256: str | None,
     catalog_sha256: str,
+    authority_mode: str | None,
+    metrics_unavailable_reason: str | None,
 ) -> B649MultiTicketRecord:
     if combination is None:
         return B649MultiTicketRecord(
@@ -405,9 +505,11 @@ def _build_record(
             window_complete=None,
             official_prize_counts=None,
             no_prize_count=None,
-            report_sha256=None,
-            report_file_sha256=None,
+            report_sha256=report_sha256,
+            report_file_sha256=report_file_sha256,
             catalog_sha256=catalog_sha256,
+            authority_mode=authority_mode,
+            metrics_unavailable_reason=metrics_unavailable_reason,
         )
     prizes = cast(dict[str, object], combination["official_prize_counts"])
     return B649MultiTicketRecord(
@@ -455,6 +557,8 @@ def _build_record(
         report_sha256=report_sha256,
         report_file_sha256=report_file_sha256,
         catalog_sha256=catalog_sha256,
+        authority_mode=authority_mode,
+        metrics_unavailable_reason=metrics_unavailable_reason,
     )
 
 

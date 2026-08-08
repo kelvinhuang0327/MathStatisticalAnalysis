@@ -18,6 +18,7 @@
 | 遷移帳本（哪些 capability 已遷/退役） | [migration/migration-ledger.yaml](migration/migration-ledger.yaml) | P600A INVENTORIED · P600B MIGRATING |
 | LotteryNew → LottoLab 非多票 Web parity R1 | [migration/lotterynew-lottolab-non-multiticket-web-parity-r1.md](migration/lotterynew-lottolab-non-multiticket-web-parity-r1.md) | LOCAL IMPLEMENTATION COMPLETE · LEGACY PARITY PARTIAL |
 | Legacy single-/multi-file import full vertical migration R1 | [migration/legacy-single-multifile-import-full-vertical-migration-r1.md](migration/legacy-single-multifile-import-full-vertical-migration-r1.md) | OWNER-AUTHORIZED · IMPLEMENTATION |
+| BIGLOTTO68 → T539/P638 cross-lottery closure R1 | [migration/biglotto68-to-t539-p638-cross-lottery-closure-r1.md](migration/biglotto68-to-t539-p638-cross-lottery-closure-r1.md) | LOCAL IMPLEMENTATION · DETERMINISTIC FIXTURE VERIFIED |
 | API 契約 | [../contracts/](../contracts/) | CURRENT |
 | AI agent context（repo-local Worker context、安全邊界、runbook） | [../.ai/ai-context/PROJECT_PROFILE.md](../.ai/ai-context/PROJECT_PROFILE.md) | CURRENT |
 

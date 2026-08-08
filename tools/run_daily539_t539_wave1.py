@@ -29,6 +29,17 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.adapters.daily539_acb_markov_midfreq import (
     Daily539AcbMarkovMidfreqAdapter,
 )
+from lottolab.strategies.adapters.daily539_biglotto_batch15 import (
+    Daily539BigLottoColdHunterAdapter,
+    Daily539BigLottoDmDmsAdapter,
+    Daily539BigLottoDmsAdapter,
+    Daily539BigLottoGapPressureAdapter,
+    Daily539BigLottoModerateRankAdapter,
+    Daily539BigLottoPureColdAdapter,
+    Daily539BigLottoReboundAwareAdapter,
+    Daily539BigLottoShortWindowDeviationAdapter,
+    Daily539BigLottoZoneMomentumAdapter,
+)
 from lottolab.strategies.adapters.daily539_fourier4 import (
     Daily539P0bFourierColdFmidAdapter,
     Daily539P0cFourierColdX2Adapter,
@@ -518,11 +529,195 @@ WAVE4_REMAINING5_BATCH_CONFIG = StrategySetConfig(
     blocked_strategies=WAVE4_REMAINING5_BATCH_BLOCKED_STRATEGIES,
 )
 
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_RUN_ID = "BIGLOTTO68_TO_T539_CROSS_LOTTERY_CLOSURE_R1"
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_SCHEMA_VERSION = "t539-biglotto68-cross-lottery-v1"
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_DB_NAME = "t539_biglotto68_cross_lottery.sqlite3"
+
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_STRATEGY_SPECS: tuple[StrategySpec, ...] = (
+    *WAVE4_REMAINING5_BATCH_STRATEGY_SPECS,
+    StrategySpec(
+        strategy_id="t539_biglotto_cold_hunter_1bet",
+        strategy_name="今彩539 BigLotto Cold Hunter 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoColdHunterAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 5-of-39 "
+            "GameSpec port of the Batch-15 Cold Hunter producer; preserve the "
+            "donor's causal history order and surface any native closure."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_short_window_deviation_1bet",
+        strategy_name="今彩539 BigLotto Short-Window Deviation 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoShortWindowDeviationAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 5-of-39 "
+            "port of the donor's 50-draw short-window deviation producer."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_rebound_aware_1bet",
+        strategy_name="今彩539 BigLotto Rebound-Aware 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoReboundAwareAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 5-of-39 "
+            "port of the donor's rebound-aware low/high split producer."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_zone_momentum_1bet",
+        strategy_name="今彩539 BigLotto Zone-Momentum 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoZoneMomentumAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 zone "
+            "momentum producer; a result shorter than five is recorded as the "
+            "donor-preserved source-native closure instead of padded."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_pure_cold_1bet",
+        strategy_name="今彩539 BigLotto Pure Cold 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoPureColdAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 pure-cold "
+            "producer with the donor's gap ranking preserved."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_moderate_rank_1bet",
+        strategy_name="今彩539 BigLotto Moderate-Rank 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoModerateRankAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 moderate- "
+            "rank producer with the donor's hot/warm/cold ranking preserved."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_gap_pressure_1bet",
+        strategy_name="今彩539 BigLotto Gap-Pressure 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoGapPressureAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 gap- "
+            "pressure producer with target bounds substituted for BigLotto bounds."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_dm_dms_2bet",
+        strategy_name="今彩539 BigLotto DM-DMS 2注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=2,
+        adapter_factory=Daily539BigLottoDmDmsAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 two-ticket "
+            "DM-DMS portfolio; preserve method ranking and record a one-ticket "
+            "source-native closure when one audited producer cannot emit."
+        ),
+    ),
+    StrategySpec(
+        strategy_id="t539_biglotto_dms_1bet",
+        strategy_name="今彩539 BigLotto DMS 1注",
+        strategy_version="v0.1-t539-batch15",
+        lottery_type=LOTTERY_TYPE,
+        min_history=1,
+        native_ticket_count=1,
+        adapter_factory=Daily539BigLottoDmsAdapter,
+        adapter_source_paths=(
+            "src/lottolab/strategies/adapters/daily539_biglotto_batch15.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15_cross_lottery_core.py",
+            "src/lottolab/strategies/adapters/biglotto_batch15.py",
+        ),
+        selection_reason=(
+            "BIGLOTTO68 cross-lottery closure: target-native DAILY_539 DMS solo "
+            "producer with the donor's low-history hot/cold fallback and audit gate."
+        ),
+    ),
+)
+
+BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG = StrategySetConfig(
+    name="biglotto68-to-t539-cross-lottery",
+    run_id=BIGLOTTO68_TO_T539_CROSS_LOTTERY_RUN_ID,
+    schema_version=BIGLOTTO68_TO_T539_CROSS_LOTTERY_SCHEMA_VERSION,
+    db_name=BIGLOTTO68_TO_T539_CROSS_LOTTERY_DB_NAME,
+    default_runtime_root_name=BIGLOTTO68_TO_T539_CROSS_LOTTERY_RUN_ID,
+    specs=BIGLOTTO68_TO_T539_CROSS_LOTTERY_STRATEGY_SPECS,
+    blocked_strategies=(),
+)
+
 STRATEGY_SET_CONFIGS: Mapping[str, StrategySetConfig] = {
     WAVE1_CONFIG.name: WAVE1_CONFIG,
     WAVE2_F4COLD_SINGLE_CONFIG.name: WAVE2_F4COLD_SINGLE_CONFIG,
     WAVE3_ACB1_ALIAS_CONFIG.name: WAVE3_ACB1_ALIAS_CONFIG,
     WAVE4_REMAINING5_BATCH_CONFIG.name: WAVE4_REMAINING5_BATCH_CONFIG,
+    BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.name: BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG,
 }
 
 

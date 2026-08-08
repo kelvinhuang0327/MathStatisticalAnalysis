@@ -7,7 +7,7 @@ executable-strategy contract (Wave 1 only), and from
 ``p638_all23_ranking_forwarder.py``'s all-23 contract (Wave 1 plus Wave 2,
 also never mutated by this module): this module runs a fresh causal replay
 of every currently executable POWER_LOTTO strategy across Wave 1, Wave 2,
-through Wave 5 (the exhaustive BIG_LOTTO cross-lottery portable set) against
+through Wave 6 (the exhaustive BIG_LOTTO cross-lottery portable set) against
 the reconciled draw authority,
 evaluates every complete ticket under the official POWER_LOTTO prize-tier
 table, ranks every strategy by historical winning-target rate, and writes
@@ -54,11 +54,17 @@ from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave3 import WAVE3_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave4 import WAVE4_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave5 import WAVE5_STRATEGIES
+from lottolab.strategies.adapters.powerlotto_wave6 import WAVE6_STRATEGIES
 
 DRAW_DB_MIGRATION_ID = "P638_OLD_DB_DRAW_MIGRATION_R1"
 
 CURRENT_STRATEGIES: tuple[P638StrategySpec, ...] = (
-    WAVE1_STRATEGIES + WAVE2_STRATEGIES + WAVE3_STRATEGIES + WAVE4_STRATEGIES + WAVE5_STRATEGIES
+    WAVE1_STRATEGIES
+    + WAVE2_STRATEGIES
+    + WAVE3_STRATEGIES
+    + WAVE4_STRATEGIES
+    + WAVE5_STRATEGIES
+    + WAVE6_STRATEGIES
 )
 CURRENT_SELECTED_STRATEGY_IDS: tuple[str, ...] = tuple(
     spec.strategy_id for spec in CURRENT_STRATEGIES

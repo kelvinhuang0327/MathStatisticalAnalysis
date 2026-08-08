@@ -30,6 +30,7 @@ from lottolab.strategies.adapters.powerlotto_wave2 import WAVE2_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave3 import WAVE3_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave4 import WAVE4_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave5 import WAVE5_STRATEGIES
+from lottolab.strategies.adapters.powerlotto_wave6 import WAVE6_STRATEGIES
 
 _DRAW_COUNT = 160
 _STRATEGY_COUNT = len(CURRENT_STRATEGIES)
@@ -125,12 +126,17 @@ def built_projection(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, st
     return output_db, result.run_id
 
 
-def test_current_strategy_universe_is_all_five_registered_waves() -> None:
+def test_current_strategy_universe_is_all_six_registered_waves() -> None:
     assert CURRENT_STRATEGIES == (
-        WAVE1_STRATEGIES + WAVE2_STRATEGIES + WAVE3_STRATEGIES + WAVE4_STRATEGIES + WAVE5_STRATEGIES
+        WAVE1_STRATEGIES
+        + WAVE2_STRATEGIES
+        + WAVE3_STRATEGIES
+        + WAVE4_STRATEGIES
+        + WAVE5_STRATEGIES
+        + WAVE6_STRATEGIES
     )
     assert len({spec.strategy_id for spec in CURRENT_STRATEGIES}) == _STRATEGY_COUNT
-    assert _STRATEGY_COUNT == 61
+    assert _STRATEGY_COUNT == 70
 
 
 def test_strategy_set_fingerprint_is_stable_order_independent_sha256() -> None:

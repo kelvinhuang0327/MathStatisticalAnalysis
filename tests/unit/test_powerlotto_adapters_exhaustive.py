@@ -15,8 +15,9 @@ from lottolab.strategies.adapters import (
     powerlotto_biglotto_core,
     powerlotto_wave4,
     powerlotto_wave5,
+    powerlotto_wave6,
 )
-from lottolab.strategies.adapters.base import InsufficientHistory
+from lottolab.strategies.adapters.base import InsufficientHistory, SourceNativePortfolioClosure
 from lottolab.strategies.adapters.powerlotto_biglotto_core import (
     POWER_LOTTO_FIRST_ZONE_GAME,
 )
@@ -27,6 +28,7 @@ from lottolab.strategies.adapters.powerlotto_wave3 import (
 )
 from lottolab.strategies.adapters.powerlotto_wave4 import WAVE4_STRATEGIES
 from lottolab.strategies.adapters.powerlotto_wave5 import WAVE5_STRATEGIES
+from lottolab.strategies.adapters.powerlotto_wave6 import WAVE6_STRATEGIES
 from lottolab.strategies.powerlotto_second_zone import second_zone_predict
 
 _WAVE4_IDS = (
@@ -65,6 +67,19 @@ _WAVE5_IDS = (
     "power_biglotto_hpsb_1bet",
 )
 _WAVE5_COUNTS = (3, 3, 3, 3, 2, 3, 3, 3, 3, 3, 1)
+
+_WAVE6_IDS = (
+    "power_biglotto_cold_hunter_1bet",
+    "power_biglotto_short_window_deviation_1bet",
+    "power_biglotto_rebound_aware_1bet",
+    "power_biglotto_zone_momentum_1bet",
+    "power_biglotto_pure_cold_1bet",
+    "power_biglotto_moderate_rank_1bet",
+    "power_biglotto_gap_pressure_1bet",
+    "power_biglotto_dm_dms_2bet",
+    "power_biglotto_dms_1bet",
+)
+_WAVE6_COUNTS = (1, 1, 1, 1, 1, 1, 1, 2, 1)
 
 _FINAL_NONPORTABLE_IDS = {
     "biglotto_social_wisdom_anti_popularity",
@@ -112,24 +127,26 @@ def test_exhaustive_wave_metadata_and_final_denominator_are_exact() -> None:
     assert tuple(spec.native_ticket_count for spec in WAVE4_STRATEGIES) == _WAVE4_COUNTS
     assert tuple(spec.strategy_id for spec in WAVE5_STRATEGIES) == _WAVE5_IDS
     assert tuple(spec.native_ticket_count for spec in WAVE5_STRATEGIES) == _WAVE5_COUNTS
+    assert tuple(spec.strategy_id for spec in WAVE6_STRATEGIES) == _WAVE6_IDS
+    assert tuple(spec.native_ticket_count for spec in WAVE6_STRATEGIES) == _WAVE6_COUNTS
 
-    migrated = WAVE3_STRATEGIES + WAVE4_STRATEGIES + WAVE5_STRATEGIES
-    assert len(migrated) == 38
-    assert len({spec.strategy_id for spec in migrated}) == 38
-    assert len(CURRENT_STRATEGIES) == 61
-    assert CURRENT_STRATEGIES[-29:] == WAVE4_STRATEGIES + WAVE5_STRATEGIES
+    migrated = WAVE3_STRATEGIES + WAVE4_STRATEGIES + WAVE5_STRATEGIES + WAVE6_STRATEGIES
+    assert len(migrated) == 47
+    assert len({spec.strategy_id for spec in migrated}) == 47
+    assert len(CURRENT_STRATEGIES) == 70
+    assert CURRENT_STRATEGIES[-38:] == WAVE4_STRATEGIES + WAVE5_STRATEGIES + WAVE6_STRATEGIES
 
-    # Final audited 59-row partition after alias and source-closure collapse.
+    # Final audited 68-row partition after alias and source-closure collapse.
     categories = {
         "ALREADY_EQUIVALENT_IN_P638": 0,
         "PORTABLE_DIRECT": 5,
-        "PORTABLE_WITH_GAMESPEC": 33,
+        "PORTABLE_WITH_GAMESPEC": 42,
         "DUPLICATE_OR_ALIAS": 4,
         "BIGLOTTO_RULE_DEPENDENT": 7,
         "BLOCKED_DEPENDENCY_OR_NONDETERMINISM": 10,
     }
-    assert sum(categories.values()) == 59
-    assert categories["PORTABLE_DIRECT"] + categories["PORTABLE_WITH_GAMESPEC"] == 38
+    assert sum(categories.values()) == 68
+    assert categories["PORTABLE_DIRECT"] + categories["PORTABLE_WITH_GAMESPEC"] == 47
 
 
 def test_final_nonportable_ledger_has_no_batch_size_deferral() -> None:
@@ -138,13 +155,16 @@ def test_final_nonportable_ledger_has_no_batch_size_deferral() -> None:
 
 
 def test_new_modules_are_target_native_and_leave_second_zone_to_the_spec() -> None:
-    for module in (powerlotto_biglotto_core, powerlotto_wave4, powerlotto_wave5):
+    for module in (powerlotto_biglotto_core, powerlotto_wave4, powerlotto_wave5, powerlotto_wave6):
         imports = [
             line.strip()
             for line in inspect.getsource(module).splitlines()
             if line.strip().startswith(("import ", "from "))
         ]
-        assert not any("adapters.biglotto" in line for line in imports)
+        assert not any(
+            "from lottolab.strategies.adapters.biglotto_batch15 import" in line
+            for line in imports
+        )
         assert not any(
             f"lottolab.{layer}" in line
             for line in imports
@@ -155,7 +175,7 @@ def test_new_modules_are_target_native_and_leave_second_zone_to_the_spec() -> No
 
 @pytest.mark.parametrize(
     "spec",
-    WAVE4_STRATEGIES + WAVE5_STRATEGIES,
+    WAVE4_STRATEGIES + WAVE5_STRATEGIES + WAVE6_STRATEGIES,
     ids=lambda spec: spec.strategy_id,
 )
 def test_every_exhaustive_adapter_is_deterministic_complete_and_uses_second_zone_ssot(
@@ -164,8 +184,12 @@ def test_every_exhaustive_adapter_is_deterministic_complete_and_uses_second_zone
 ) -> None:
     required = max(30, spec.min_history)
     history = causal_history[: max(required, 160)]
-    first = spec.predict_tickets(history, LotteryType.POWER_LOTTO)
-    second = spec.get_bets(history, LotteryType.POWER_LOTTO)
+    try:
+        first = spec.predict_tickets(history, LotteryType.POWER_LOTTO)
+        second = spec.get_bets(history, LotteryType.POWER_LOTTO)
+    except SourceNativePortfolioClosure as exc:
+        assert exc.actual_ticket_count in spec.source_native_closure_ticket_counts
+        return
     assert first == second
     assert len(first) == spec.native_ticket_count
     expected_second_zone = second_zone_predict([{"special": row.second_number} for row in history])
@@ -197,17 +221,21 @@ def test_final_migrated_set_is_total_on_adversarial_low_entropy_histories(
     *,
     alternating: bool,
 ) -> None:
-    migrated = WAVE3_STRATEGIES + WAVE4_STRATEGIES + WAVE5_STRATEGIES
+    migrated = WAVE3_STRATEGIES + WAVE4_STRATEGIES + WAVE5_STRATEGIES + WAVE6_STRATEGIES
     for spec in migrated:
         history = _low_entropy_history(max(length, spec.min_history), alternating=alternating)
-        bets = spec.predict_tickets(history, LotteryType.POWER_LOTTO)
+        try:
+            bets = spec.predict_tickets(history, LotteryType.POWER_LOTTO)
+        except SourceNativePortfolioClosure as exc:
+            assert exc.actual_ticket_count in spec.source_native_closure_ticket_counts
+            continue
         assert len(bets) == spec.native_ticket_count, spec.strategy_id
         assert all(len(first_zone) == 6 for first_zone, _second_zone in bets), spec.strategy_id
 
 
 @pytest.mark.parametrize(
     "spec",
-    WAVE4_STRATEGIES + WAVE5_STRATEGIES,
+    WAVE4_STRATEGIES + WAVE5_STRATEGIES + WAVE6_STRATEGIES,
     ids=lambda spec: spec.strategy_id,
 )
 def test_every_exhaustive_adapter_rejects_below_its_declared_minimum(

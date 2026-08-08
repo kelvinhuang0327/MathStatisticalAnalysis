@@ -13,6 +13,7 @@ from typing import cast
 import pytest
 import tools.run_daily539_t539_wave1 as runner_module
 from tools.run_daily539_t539_wave1 import (
+    BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG,
     BLOCKED_DAILY539_STRATEGIES,
     DEFAULT_STRATEGY_SPECS,
     LOTTERY_TYPE,
@@ -331,6 +332,43 @@ def test_wave4_config_appends_remaining5_batch_and_empties_blocked_ledger() -> N
         "daily539_f4cold",
         "acb_1bet",
     ]
+
+
+def test_biglotto68_cross_lottery_config_appends_nine_target_native_specs() -> None:
+    wave4_ids = [spec.strategy_id for spec in WAVE4_REMAINING5_BATCH_CONFIG.specs]
+    closure_ids = [
+        "t539_biglotto_cold_hunter_1bet",
+        "t539_biglotto_short_window_deviation_1bet",
+        "t539_biglotto_rebound_aware_1bet",
+        "t539_biglotto_zone_momentum_1bet",
+        "t539_biglotto_pure_cold_1bet",
+        "t539_biglotto_moderate_rank_1bet",
+        "t539_biglotto_gap_pressure_1bet",
+        "t539_biglotto_dm_dms_2bet",
+        "t539_biglotto_dms_1bet",
+    ]
+    closure_ids_in_config = [
+        spec.strategy_id for spec in BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.specs[-9:]
+    ]
+    assert closure_ids_in_config == closure_ids
+    assert [
+        spec.strategy_id for spec in BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.specs[:-9]
+    ] == wave4_ids
+    assert len(BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.specs) == 24
+    assert tuple(
+        spec.min_history for spec in BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.specs[-9:]
+    ) == (1,) * 9
+    assert tuple(
+        spec.native_ticket_count for spec in BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.specs[-9:]
+    ) == (1, 1, 1, 1, 1, 1, 1, 2, 1)
+    assert BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.blocked_strategies == ()
+    assert (
+        STRATEGY_SET_CONFIGS["biglotto68-to-t539-cross-lottery"]
+        is BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG
+    )
+    assert BIGLOTTO68_TO_T539_CROSS_LOTTERY_CONFIG.run_id == (
+        "BIGLOTTO68_TO_T539_CROSS_LOTTERY_CLOSURE_R1"
+    )
 
 
 def test_run_batch_named_configuration_uses_its_own_run_identity_and_db(

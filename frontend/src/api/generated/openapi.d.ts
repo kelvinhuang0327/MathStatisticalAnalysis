@@ -1858,6 +1858,11 @@ export interface components {
           "window": components['schemas']["B649HistoryWindow"]
           "criterion": components['schemas']["B649SuccessCriterion"]
           "rank": number | null
+          "official_rank": number | null
+          "official_any_prize_count": number | null
+          "official_any_prize_rate": string | null
+          "official_random_baseline_probability": string | null
+          "official_random_baseline_delta": string | null
           "unranked_reason": string | null
           "success_count": number | null
           "effective_backtest_draw_count": number | null
@@ -1890,6 +1895,7 @@ export interface components {
           "source_report_count": number | null
           "metrics_available_strategy_count": number | null
           "metrics_unavailable_strategy_count": number | null
+          "primary_ranking_criterion": string
           "research_disclaimer": string
         }
     "B649OfficialPrizeCountsView": {

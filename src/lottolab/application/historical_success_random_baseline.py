@@ -18,6 +18,10 @@ from lottolab.application.historical_prefix_success_windows import (
     SUPPORTED_PREFIX_COUNTS,
     HistoricalPrefixSuccessCriterion,
 )
+from lottolab.domain.lottery_rules import (
+    BIG_LOTTO_RULE_CONTRACT,
+    BigLottoPrizeTier,
+)
 from lottolab.domain.strategy_success_evaluation import WindowKind
 from lottolab.domain.strategy_success_measurement import DEFAULT_WINDOW_POLICY_VERSION
 
@@ -26,6 +30,9 @@ RANDOM_BASELINE_POLICY_VERSION = (
 )
 LEGAL_TICKET_COUNT = comb(49, 6)
 NOMINAL_TICKET_COUNT_EQUIVALENT = "nominal-ticket-count equivalent"
+OFFICIAL_ANY_PRIZE_BASELINE_POLICY_VERSION = (
+    "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1"
+)
 INTERPRETATION_CAVEAT = (
     "Descriptive official-six-number IID random benchmark only. This result does not "
     "establish statistical significance, ranking, promotion, rejection, prediction "
@@ -144,6 +151,65 @@ def criterion_success_ticket_count(criterion: HistoricalPrefixSuccessCriterion) 
     if derived != frozen:
         raise ArithmeticError("frozen criterion count does not match exact combinatorics")
     return frozen
+
+
+def official_prize_ticket_count(tier: BigLottoPrizeTier) -> int:
+    """Count legal six-number tickets matching one committed prize signature.
+
+    A BIG_LOTTO ticket is a six-number set.  When ``special_hit`` is true, the
+    winning special number occupies one of those six positions; otherwise the
+    ticket selects its remaining numbers from the 42 values that are neither
+    winning main numbers nor the winning special number.  The hit signatures
+    themselves come only from ``BIG_LOTTO_RULE_CONTRACT``.
+    """
+
+    if type(tier) is not BigLottoPrizeTier:
+        raise _contract_error("tier must be a BigLottoPrizeTier")
+    prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    if prize_rule is None or tier not in prize_rule.tiers:
+        raise _contract_error("tier is not part of the committed BIG_LOTTO prize rule")
+
+    ticket_size = BIG_LOTTO_RULE_CONTRACT.main_number_count
+    winning_main_count = BIG_LOTTO_RULE_CONTRACT.main_number_count
+    non_main_non_special_count = (
+        BIG_LOTTO_RULE_CONTRACT.main_number_max
+        - BIG_LOTTO_RULE_CONTRACT.main_number_min
+        + 1
+        - BIG_LOTTO_RULE_CONTRACT.main_number_count
+        - BIG_LOTTO_RULE_CONTRACT.special_number_count
+    )
+    remaining_count = ticket_size - tier.main_hits - int(tier.special_hit)
+    if not 0 <= remaining_count <= non_main_non_special_count:
+        raise _contract_error("committed prize signature cannot fit a legal ticket")
+    return comb(winning_main_count, tier.main_hits) * comb(
+        non_main_non_special_count,
+        remaining_count,
+    )
+
+
+def official_any_prize_ticket_count() -> int:
+    """Return the exact legal-ticket count for any official prize tier."""
+
+    prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    if prize_rule is None:
+        raise _contract_error("BIG_LOTTO has no committed prize rule")
+    return sum(official_prize_ticket_count(tier) for tier in prize_rule.tiers)
+
+
+def official_any_prize_probability(
+    prefix_count: int,
+) -> HistoricalSuccessExactRational:
+    """Return the exact with-replacement portfolio baseline for any prize."""
+
+    if type(prefix_count) is not int or prefix_count <= 0:
+        raise _contract_error("prefix_count must be a positive integer")
+    success_count = official_any_prize_ticket_count()
+    failure_count = LEGAL_TICKET_COUNT - success_count
+    probability = Fraction(
+        LEGAL_TICKET_COUNT**prefix_count - failure_count**prefix_count,
+        LEGAL_TICKET_COUNT**prefix_count,
+    )
+    return HistoricalSuccessExactRational.from_fraction(probability)
 
 
 def portfolio_success_probability(
@@ -692,6 +758,7 @@ __all__ = [
     "INTERPRETATION_CAVEAT",
     "LEGAL_TICKET_COUNT",
     "NOMINAL_TICKET_COUNT_EQUIVALENT",
+    "OFFICIAL_ANY_PRIZE_BASELINE_POLICY_VERSION",
     "RANDOM_BASELINE_POLICY_VERSION",
     "HistoricalSuccessExactRational",
     "HistoricalSuccessRandomBaselineCellIdentity",
@@ -705,6 +772,9 @@ __all__ = [
     "binomial_upper_tail",
     "criterion_success_ticket_count",
     "evaluate_historical_success_random_baseline",
+    "official_any_prize_probability",
+    "official_any_prize_ticket_count",
+    "official_prize_ticket_count",
     "portfolio_success_probability",
     "render_exact_decimal_18",
 ]

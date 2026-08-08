@@ -82,6 +82,11 @@ class B649MultiTicketRecord:
     window: B649HistoryWindow
     criterion: B649SuccessCriterion
     rank: int | None
+    official_rank: int | None
+    official_any_prize_count: int | None
+    official_any_prize_rate: str | None
+    official_random_baseline_probability: str | None
+    official_random_baseline_delta: str | None
     unranked_reason: str | None
     success_count: int | None
     effective_backtest_draw_count: int | None

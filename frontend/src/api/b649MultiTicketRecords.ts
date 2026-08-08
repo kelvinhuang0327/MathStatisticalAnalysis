@@ -8,6 +8,7 @@ export type B649MultiTicketRecord = B649MultiTicketRecordPage['items'][number]
 export type B649PrefixCount = components['schemas']['B649PrefixCount']
 export type B649HistoryWindow = components['schemas']['B649HistoryWindow']
 export type B649SuccessCriterion = components['schemas']['B649SuccessCriterion']
+export type B649PrimaryRankingCriterion = 'OFFICIAL_ANY_PRIZE'
 export type B649ReproductionStatus =
   | 'BACKTESTED'
   | 'CLOSED_UNEXECUTABLE'
@@ -30,6 +31,8 @@ export const B649_SUCCESS_CRITERIA = [
   'M4_PLUS_SPECIAL',
   'M5_PLUS_SPECIAL',
 ] as const satisfies readonly B649SuccessCriterion[]
+export const B649_PRIMARY_RANKING_CRITERION: B649PrimaryRankingCriterion =
+  'OFFICIAL_ANY_PRIZE'
 export const B649_REPRODUCTION_STATUSES = [
   'BACKTESTED',
   'CLOSED_UNEXECUTABLE',
@@ -166,6 +169,7 @@ function isSummary(value: unknown): value is B649MultiTicketSummary {
     isExactNumberArray(value.prefix_counts, B649_PREFIX_COUNTS) &&
     isExactStringArray(value.windows, B649_HISTORY_WINDOWS) &&
     isExactStringArray(value.success_criteria, B649_SUCCESS_CRITERIA) &&
+    value.primary_ranking_criterion === B649_PRIMARY_RANKING_CRITERION &&
     Array.isArray(value.method_families) &&
     value.method_families.every(isString) &&
     isExactStringArray(value.reproduction_statuses, B649_REPRODUCTION_STATUSES) &&
@@ -211,6 +215,11 @@ function isMultiTicketRecord(value: unknown): value is B649MultiTicketRecord {
     B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
     B649_SUCCESS_CRITERIA.includes(value.criterion as B649SuccessCriterion) &&
     nullableInteger(value.rank) &&
+    nullableInteger(value.official_rank) &&
+    nullableInteger(value.official_any_prize_count) &&
+    nullableString(value.official_any_prize_rate) &&
+    nullableString(value.official_random_baseline_probability) &&
+    nullableString(value.official_random_baseline_delta) &&
     nullableString(value.unranked_reason) &&
     nullableInteger(value.success_count) &&
     nullableInteger(value.effective_backtest_draw_count) &&

@@ -197,6 +197,12 @@ function rankText(record: B649MultiTicketRecord): string {
   return record.rank === null ? record.unranked_reason ?? '—' : `#${record.rank}`
 }
 
+function officialRankText(record: B649MultiTicketRecord): string {
+  return record.official_rank === null
+    ? record.unranked_reason ?? '—'
+    : `#${record.official_rank}`
+}
+
 function isAbortError(error: unknown): boolean {
   return error instanceof DOMException && error.name === 'AbortError'
 }
@@ -405,11 +411,15 @@ onBeforeUnmount(() => {
                 <th scope="col">歷史方法身分</th>
                 <th scope="col">復現狀態</th>
                 <th scope="col">查詢條件</th>
-                <th scope="col">排名／原因</th>
+                <th scope="col">官方任一獎排名</th>
+                <th scope="col">官方任一獎率</th>
+                <th scope="col">官方隨機基準</th>
+                <th scope="col">官方相對差異</th>
+                <th scope="col">次要 M 排名／原因</th>
                 <th scope="col">成功／有效期數</th>
-                <th scope="col">歷史成功率</th>
-                <th scope="col">隨機基準</th>
-                <th scope="col">相對差異</th>
+                <th scope="col">次要 M 成功率</th>
+                <th scope="col">次要 M 隨機基準</th>
+                <th scope="col">次要 M 相對差異</th>
                 <th scope="col">覆蓋率</th>
                 <th scope="col">一獎</th>
                 <th scope="col">二獎</th>
@@ -444,6 +454,10 @@ onBeforeUnmount(() => {
                 <td>
                   {{ record.prefix_count }} / {{ record.window }} / {{ record.criterion }}
                 </td>
+                <td>{{ officialRankText(record) }}</td>
+                <td>{{ percentage(record.official_any_prize_rate) }}</td>
+                <td>{{ percentage(record.official_random_baseline_probability) }}</td>
+                <td>{{ signedPercentage(record.official_random_baseline_delta) }}</td>
                 <td>{{ rankText(record) }}</td>
                 <td>
                   <template v-if="record.success_count !== null">

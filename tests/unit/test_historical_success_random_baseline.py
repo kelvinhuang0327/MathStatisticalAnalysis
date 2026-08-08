@@ -25,8 +25,18 @@ from lottolab.application.historical_success_random_baseline import (
     binomial_upper_tail,
     criterion_success_ticket_count,
     evaluate_historical_success_random_baseline,
+    official_any_prize_probability,
+    official_any_prize_ticket_count,
+    official_prize_ticket_count,
     portfolio_success_probability,
     render_exact_decimal_18,
+)
+from lottolab.domain.lottery_rules import (
+    BIG_LOTTO_RULE_CONTRACT,
+    BigLottoPrizeTier,
+    BigLottoPrizeTierId,
+    NoPrizeResult,
+    resolve_big_lotto_prize_tier,
 )
 from lottolab.domain.strategy_success_evaluation import WindowKind
 
@@ -52,6 +62,59 @@ def test_all_official_criterion_counts_are_exact(
     assert criterion_success_ticket_count(criterion) == expected_count
     probability = portfolio_success_probability(criterion, 1)
     assert probability.as_fraction() == Fraction(expected_count, LEGAL_TICKET_COUNT)
+
+
+def test_official_prize_resolver_and_ticket_count_are_authoritative() -> None:
+    seventh = resolve_big_lotto_prize_tier(2, True)
+    general = resolve_big_lotto_prize_tier(3, False)
+    assert isinstance(seventh, BigLottoPrizeTier)
+    assert isinstance(general, BigLottoPrizeTier)
+    assert seventh.tier_id is BigLottoPrizeTierId.SEVENTH
+    assert general.tier_id is BigLottoPrizeTierId.GENERAL
+    assert resolve_big_lotto_prize_tier(2, False) is NoPrizeResult.NO_PRIZE
+    prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
+    expected_counts = {
+        BigLottoPrizeTierId.FIRST: 1,
+        BigLottoPrizeTierId.SECOND: 6,
+        BigLottoPrizeTierId.THIRD: 252,
+        BigLottoPrizeTierId.FOURTH: 630,
+        BigLottoPrizeTierId.FIFTH: 12_915,
+        BigLottoPrizeTierId.SIXTH: 17_220,
+        BigLottoPrizeTierId.SEVENTH: 172_200,
+        BigLottoPrizeTierId.GENERAL: 229_600,
+    }
+    for tier in prize_rule.tiers:
+        assert official_prize_ticket_count(tier) == expected_counts[tier.tier_id]
+    assert official_any_prize_ticket_count() == 432_824
+    assert official_any_prize_ticket_count() != criterion_success_ticket_count(
+        HistoricalPrefixSuccessCriterion.M3_PLUS
+    )
+
+
+@pytest.mark.parametrize("prefix_count", [5, 10, 15, 20])
+def test_official_any_prize_baseline_uses_ticket_count_and_prefix_count(
+    prefix_count: int,
+) -> None:
+    expected = 1 - Fraction(
+        LEGAL_TICKET_COUNT - official_any_prize_ticket_count(),
+        LEGAL_TICKET_COUNT,
+    ) ** prefix_count
+
+    assert official_any_prize_probability(prefix_count).as_fraction() == expected
+    assert official_any_prize_probability(prefix_count) != portfolio_success_probability(
+        HistoricalPrefixSuccessCriterion.M3_PLUS,
+        prefix_count,
+    )
+
+
+def test_official_any_prize_baseline_differs_by_ticket_count() -> None:
+    assert len(
+        {
+            official_any_prize_probability(prefix_count).as_fraction()
+            for prefix_count in (5, 10, 15, 20)
+        }
+    ) == 4
 
 
 @pytest.mark.parametrize("prefix_count", [1, 2, 5, 10, 15, 20])

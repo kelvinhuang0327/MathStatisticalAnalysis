@@ -1817,6 +1817,68 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/t539-historical/runs/{run_id}/success-windows": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["MultiWindowSuccessWindowsResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/current-runs/{run_id}/success-windows": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["MultiWindowSuccessWindowsResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -2079,6 +2141,11 @@ export interface components {
           "numerator": number
           "denominator": number
           "is_available": boolean
+        }
+    "ExactRationalView": {
+          "numerator": string
+          "denominator": string
+          "decimal_18": string
         }
     "GenerateBetHistoryRow": {
           "draw": string
@@ -2845,6 +2912,59 @@ export interface components {
         }
     "LotteryType": "DAILY_539" | "BIG_LOTTO" | "POWER_LOTTO"
     "MeasurementMode": "CANDIDATE_COVERAGE" | "LEGAL_TICKET_PRIZE" | "OFFICIAL_PRIZE_TIER"
+    "MultiWindowRowView": {
+          "lottery_type": string
+          "run_id": string
+          "strategy_id": string
+          "strategy_version": string
+          "native_ticket_count": number
+          "window_kind": string
+          "window_role": string
+          "status": string
+          "source_target_count": number
+          "requested_target_count": number | null
+          "actual_target_count": number
+          "first_target_id": string | null
+          "first_target_date": string | null
+          "last_target_id": string | null
+          "last_target_date": string | null
+          "observed_winning_target_count": number
+          "observed_winning_target_rate": components['schemas']["ExactRationalView"] | null
+          "observed_ticket_count": number
+          "observed_winning_ticket_count": number
+          "observed_ticket_winning_rate": components['schemas']["ExactRationalView"] | null
+          "prize_tier_vector": Array<components['schemas']["TierCountView"]>
+          "highest_prize_tier": string | null
+          "null_single_ticket_probability": components['schemas']["ExactRationalView"]
+          "null_portfolio_probability": components['schemas']["ExactRationalView"]
+          "expected_null_target_successes": components['schemas']["ExactRationalView"] | null
+          "observed_minus_null_rate": components['schemas']["ExactRationalView"] | null
+          "lift_vs_null": components['schemas']["ExactRationalView"] | null
+          "raw_p_value": components['schemas']["ExactRationalView"] | null
+          "by_adjusted_p_value": components['schemas']["ExactRationalView"] | null
+          "evidence_status": string
+        }
+    "MultiWindowSuccessWindowsResponse": {
+          "lottery_type": string
+          "run_id": string
+          "schema_version": string
+          "source_sha256": string
+          "source_commit": string
+          "strategy_set_fingerprint": string
+          "status": string
+          "draw_count": number
+          "event": string
+          "evidence_status": string
+          "research_only": boolean
+          "promotion_allowed": boolean
+          "window_definitions": Array<components['schemas']["WindowDefinitionView"]>
+          "null_contract": components['schemas']["NullContractView"]
+          "strategy_count": number
+          "family_size": number
+          "rows": Array<components['schemas']["MultiWindowRowView"]>
+          "stability": Array<components['schemas']["StabilityDeltaView"]>
+          "source_authority": string
+        }
     "NormalizedDrawPreviewView": {
           "source_row_number": number
           "lottery_type": components['schemas']["LotteryType"]
@@ -2854,6 +2974,19 @@ export interface components {
           "special_numbers": Array<number>
           "source_reference": string | null
           "normalized_record_hash": string
+        }
+    "NullContractView": {
+          "lottery_type": string
+          "game_spec": string
+          "sampling_policy": string
+          "official_evaluator": string
+          "prize_rule_version": string
+          "prize_rule_source_sha256": string
+          "legal_ticket_count": number
+          "any_prize_ticket_count": number
+          "single_ticket_any_prize_probability": components['schemas']["ExactRationalView"]
+          "portfolio_formula": string
+          "hit_state_weights": Array<Record<string, unknown>>
         }
     "OverviewPrefixCount": 10 | 15 | 20
     "P638CurrentRankingPageResponse": {
@@ -3155,6 +3288,14 @@ export interface components {
           "location": string
           "type": string
         }
+    "StabilityDeltaView": {
+          "strategy_id": string
+          "strategy_version": string
+          "from_window": string
+          "to_window": string
+          "delta_observed_winning_target_rate": components['schemas']["ExactRationalView"] | null
+          "relation": string
+        }
     "StrategyCombinationHitRateBlock": {
           "status": string
           "value": string
@@ -3368,6 +3509,17 @@ export interface components {
           "prize_amount": number | null
         }
     "TicketCount": 10 | 15 | 20
+    "TierCountView": {
+          "tier_id": string
+          "tier_order": number
+          "count": number
+        }
+    "WindowDefinitionView": {
+          "window_kind": string
+          "requested_target_count": number | null
+          "selection": string
+          "window_role": string
+        }
     "WindowEvaluationStatus": "COMPLETE" | "INSUFFICIENT_DRAWS" | "NO_ELIGIBLE_DRAWS"
     "WindowKind": "FULL_HISTORY" | "LONG" | "MEDIUM" | "SHORT"
     "WindowRole": "REFERENCE_ONLY" | "PRIMARY_EVIDENCE" | "STABILITY_CONFIRMATION" | "DEGRADATION_VETO" | "PROMOTION_FILTER"

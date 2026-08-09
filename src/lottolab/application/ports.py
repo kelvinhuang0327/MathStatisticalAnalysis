@@ -34,6 +34,7 @@ from lottolab.application.historical_queries import (
     HistoricalRunQuery,
     HistoricalStrategySummaryList,
 )
+from lottolab.application.multiwindow_success_windows import MultiWindowSource
 from lottolab.application.p638_historical import (
     P638CurrentRankingPage,
     P638RankingPage,
@@ -374,6 +375,18 @@ class T539HistoricalQueryRepository(Protocol):
 
 
 type T539HistoricalQueryRepositoryFactory = Callable[[], T539HistoricalQueryRepository]
+
+
+@runtime_checkable
+class MultiWindowSuccessSourceReader(Protocol):
+    """Read one exact persisted T539 or P638 replay source without side effects."""
+
+    def load_source(self, run_id: str) -> MultiWindowSource | None:
+        """Return one complete source, or ``None`` for an unknown run identity."""
+        ...
+
+
+type MultiWindowSuccessSourceReaderFactory = Callable[[], MultiWindowSuccessSourceReader]
 
 
 @runtime_checkable

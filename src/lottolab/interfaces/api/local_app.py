@@ -18,6 +18,7 @@ from lottolab.application.ports import (
     DrawDataProvider,
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
+    MultiWindowSuccessSourceReader,
     P638All10RankingQueryRepository,
     P638All23RankingQueryRepository,
     P638CurrentRankingQueryRepository,
@@ -37,6 +38,9 @@ from lottolab.infrastructure.persistence.historical_repositories import (
     SQLiteHistoricalResultQueryRepository,
 )
 from lottolab.infrastructure.persistence.historical_schema import verify_schema_read_only
+from lottolab.infrastructure.persistence.multiwindow_success_windows_repositories import (
+    SQLiteMultiWindowSuccessSourceReader,
+)
 from lottolab.infrastructure.persistence.p638_all10_ranking_repositories import (
     SQLiteP638All10RankingQueryRepository,
 )
@@ -77,6 +81,7 @@ HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 P638_ALL10_RANKING_DB_ENV = "LOTTOLAB_P638_ALL10_RANKING_DB"
 P638_ALL23_RANKING_DB_ENV = "LOTTOLAB_P638_ALL23_RANKING_DB"
 P638_CURRENT_RANKING_DB_ENV = "LOTTOLAB_P638_CURRENT_RANKING_DB"
+P638_CURRENT_REPLAY_DB_ENV = "LOTTOLAB_P638_CURRENT_REPLAY_DB"
 T539_HISTORICAL_DB_ENV = "LOTTOLAB_T539_HISTORICAL_DB"
 DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
@@ -293,6 +298,9 @@ class LocalT539HistoricalComposition:
             )
         return SQLiteT539HistoricalQueryRepository(self.database)
 
+    def t539_multiwindow_success_source_reader(self) -> MultiWindowSuccessSourceReader:
+        return SQLiteMultiWindowSuccessSourceReader(self.database, "DAILY_539")
+
 
 def local_t539_historical_composition(
     environment: Mapping[str, str],
@@ -305,6 +313,27 @@ def local_t539_historical_composition(
     return LocalT539HistoricalComposition(database=Path(configured))
 
 
+@dataclass(frozen=True)
+class LocalP638CurrentReplayComposition:
+    """One lazy read-only factory bound to the current P638 replay database."""
+
+    database: Path
+
+    def p638_multiwindow_success_source_reader(self) -> MultiWindowSuccessSourceReader:
+        return SQLiteMultiWindowSuccessSourceReader(self.database, "POWER_LOTTO")
+
+
+def local_p638_current_replay_composition(
+    environment: Mapping[str, str],
+) -> LocalP638CurrentReplayComposition | None:
+    """Resolve the explicit current-universe replay database path."""
+
+    configured = environment.get(P638_CURRENT_REPLAY_DB_ENV)
+    if configured is None or configured == "":
+        return None
+    return LocalP638CurrentReplayComposition(database=Path(configured))
+
+
 def create_local_app() -> FastAPI:
     """Compose the normal local app without opening or modifying any database."""
 
@@ -313,6 +342,7 @@ def create_local_app() -> FastAPI:
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
     all23_ranking_composition = local_p638_all23_ranking_composition(os.environ)
     current_ranking_composition = local_p638_current_ranking_composition(os.environ)
+    current_replay_composition = local_p638_current_replay_composition(os.environ)
     t539_historical_composition = local_t539_historical_composition(os.environ)
     provider = local_draw_provider(os.environ)
     replay_scoring_projection_reader_factory = (
@@ -340,6 +370,16 @@ def create_local_app() -> FastAPI:
         if t539_historical_composition is None
         else t539_historical_composition.t539_historical_query_repository
     )
+    t539_multiwindow_factory = (
+        None
+        if t539_historical_composition is None
+        else t539_historical_composition.t539_multiwindow_success_source_reader
+    )
+    p638_multiwindow_factory = (
+        None
+        if current_replay_composition is None
+        else current_replay_composition.p638_multiwindow_success_source_reader
+    )
     if composition is None:
         return create_app(
             draw_data_provider_factory=lambda: provider,
@@ -348,6 +388,8 @@ def create_local_app() -> FastAPI:
             p638_all23_ranking_query_repository_factory=all23_ranking_factory,
             p638_current_ranking_query_repository_factory=current_ranking_factory,
             t539_historical_query_repository_factory=t539_historical_query_repository_factory,
+            t539_multiwindow_success_source_reader_factory=t539_multiwindow_factory,
+            p638_multiwindow_success_source_reader_factory=p638_multiwindow_factory,
         )
     return create_app(
         draw_data_provider_factory=lambda: provider,
@@ -361,6 +403,8 @@ def create_local_app() -> FastAPI:
         p638_all23_ranking_query_repository_factory=all23_ranking_factory,
         p638_current_ranking_query_repository_factory=current_ranking_factory,
         t539_historical_query_repository_factory=t539_historical_query_repository_factory,
+        t539_multiwindow_success_source_reader_factory=t539_multiwindow_factory,
+        p638_multiwindow_success_source_reader_factory=p638_multiwindow_factory,
     )
 
 
@@ -392,16 +436,19 @@ __all__ = [
     "P638_ALL10_RANKING_DB_ENV",
     "P638_ALL23_RANKING_DB_ENV",
     "P638_CURRENT_RANKING_DB_ENV",
+    "P638_CURRENT_REPLAY_DB_ENV",
     "REPLAY_SCORING_DB_ENV",
     "T539_HISTORICAL_DB_ENV",
     "LocalHistoricalComposition",
     "LocalP638CurrentRankingComposition",
+    "LocalP638CurrentReplayComposition",
     "LocalReplayScoringComposition",
     "LocalT539HistoricalComposition",
     "create_local_app",
     "local_draw_provider",
     "local_historical_composition",
     "local_p638_current_ranking_composition",
+    "local_p638_current_replay_composition",
     "local_replay_scoring_composition",
     "local_t539_historical_composition",
 ]

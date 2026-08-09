@@ -325,6 +325,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/p638-historical/runs/{run_id}/rankings"),
         ("get", "/api/v1/p638-historical/all23-runs/{run_id}/rankings"),
         ("get", "/api/v1/p638-historical/current-runs/{run_id}/rankings"),
+        ("get", "/api/v1/p638-historical/current-runs/{run_id}/success-windows"),
         ("get", "/api/v1/t539-historical/runs"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/strategies"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/replay"),
@@ -332,6 +333,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/t539-historical/runs/{run_id}/metrics"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/rankings"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/coverage"),
+        ("get", "/api/v1/t539-historical/runs/{run_id}/success-windows"),
         ("get", "/api/v1/historical-prefix-analytics/rankings"),
         ("get", "/api/v1/historical-prefix-analytics/strategies"),
         (
@@ -417,7 +419,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 59
+    assert len(operations) == 61
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

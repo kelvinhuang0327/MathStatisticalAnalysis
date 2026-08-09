@@ -20,6 +20,7 @@ from lottolab.application.ports import (
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
+    MultiWindowSuccessSourceReaderFactory,
     P638All10RankingQueryRepositoryFactory,
     P638All23RankingQueryRepositoryFactory,
     P638CurrentRankingQueryRepositoryFactory,
@@ -66,6 +67,9 @@ from lottolab.interfaces.api.historical_prefix_success_windows import (
 )
 from lottolab.interfaces.api.historical_results import create_historical_results_router
 from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
+from lottolab.interfaces.api.multiwindow_success_windows import (
+    create_multiwindow_success_windows_router,
+)
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
 from lottolab.interfaces.api.replay_portfolio_rankings import (
     create_replay_portfolio_rankings_router,
@@ -112,6 +116,12 @@ def create_app(
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
     t539_historical_query_repository_factory: (
         T539HistoricalQueryRepositoryFactory | None
+    ) = None,
+    t539_multiwindow_success_source_reader_factory: (
+        MultiWindowSuccessSourceReaderFactory | None
+    ) = None,
+    p638_multiwindow_success_source_reader_factory: (
+        MultiWindowSuccessSourceReaderFactory | None
     ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
@@ -212,5 +222,11 @@ def create_app(
         create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
     app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))
+    app.include_router(
+        create_multiwindow_success_windows_router(
+            t539_multiwindow_success_source_reader_factory,
+            p638_multiwindow_success_source_reader_factory,
+        )
+    )
 
     return app

@@ -4990,6 +4990,134 @@
           }
         }
       }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/success-windows": {
+      "get": {
+        "tags": [
+          "multiwindow-success-windows"
+        ],
+        "summary": "Get T539 Success Windows",
+        "operationId": "getT539HistoricalSuccessWindows",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiWindowSuccessWindowsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/current-runs/{run_id}/success-windows": {
+      "get": {
+        "tags": [
+          "multiwindow-success-windows"
+        ],
+        "summary": "Get P638 Success Windows",
+        "operationId": "getP638HistoricalCurrentSuccessWindows",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MultiWindowSuccessWindowsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -6694,6 +6822,31 @@
           "is_available"
         ],
         "title": "ExactRatioView"
+      },
+      "ExactRationalView": {
+        "properties": {
+          "numerator": {
+            "type": "string",
+            "pattern": "^-?(?:0|[1-9][0-9]*)$",
+            "title": "Numerator"
+          },
+          "denominator": {
+            "type": "string",
+            "pattern": "^[1-9][0-9]*$",
+            "title": "Denominator"
+          },
+          "decimal_18": {
+            "type": "string",
+            "title": "Decimal 18"
+          }
+        },
+        "type": "object",
+        "required": [
+          "numerator",
+          "denominator",
+          "decimal_18"
+        ],
+        "title": "ExactRationalView"
       },
       "GenerateBetHistoryRow": {
         "properties": {
@@ -11110,6 +11263,360 @@
         "title": "MeasurementMode",
         "description": "The mutually exclusive meaning of one measurement result."
       },
+      "MultiWindowRowView": {
+        "properties": {
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "window_kind": {
+            "type": "string",
+            "title": "Window Kind"
+          },
+          "window_role": {
+            "type": "string",
+            "title": "Window Role"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "source_target_count": {
+            "type": "integer",
+            "title": "Source Target Count"
+          },
+          "requested_target_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Target Count"
+          },
+          "actual_target_count": {
+            "type": "integer",
+            "title": "Actual Target Count"
+          },
+          "first_target_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Target Id"
+          },
+          "first_target_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Target Date"
+          },
+          "last_target_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Target Id"
+          },
+          "last_target_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Target Date"
+          },
+          "observed_winning_target_count": {
+            "type": "integer",
+            "title": "Observed Winning Target Count"
+          },
+          "observed_winning_target_rate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_ticket_count": {
+            "type": "integer",
+            "title": "Observed Ticket Count"
+          },
+          "observed_winning_ticket_count": {
+            "type": "integer",
+            "title": "Observed Winning Ticket Count"
+          },
+          "observed_ticket_winning_rate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "prize_tier_vector": {
+            "items": {
+              "$ref": "#/components/schemas/TierCountView"
+            },
+            "type": "array",
+            "title": "Prize Tier Vector"
+          },
+          "highest_prize_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Highest Prize Tier"
+          },
+          "null_single_ticket_probability": {
+            "$ref": "#/components/schemas/ExactRationalView"
+          },
+          "null_portfolio_probability": {
+            "$ref": "#/components/schemas/ExactRationalView"
+          },
+          "expected_null_target_successes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "observed_minus_null_rate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lift_vs_null": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw_p_value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "by_adjusted_p_value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_status": {
+            "type": "string",
+            "title": "Evidence Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "run_id",
+          "strategy_id",
+          "strategy_version",
+          "native_ticket_count",
+          "window_kind",
+          "window_role",
+          "status",
+          "source_target_count",
+          "requested_target_count",
+          "actual_target_count",
+          "first_target_id",
+          "first_target_date",
+          "last_target_id",
+          "last_target_date",
+          "observed_winning_target_count",
+          "observed_winning_target_rate",
+          "observed_ticket_count",
+          "observed_winning_ticket_count",
+          "observed_ticket_winning_rate",
+          "prize_tier_vector",
+          "highest_prize_tier",
+          "null_single_ticket_probability",
+          "null_portfolio_probability",
+          "expected_null_target_successes",
+          "observed_minus_null_rate",
+          "lift_vs_null",
+          "raw_p_value",
+          "by_adjusted_p_value",
+          "evidence_status"
+        ],
+        "title": "MultiWindowRowView"
+      },
+      "MultiWindowSuccessWindowsResponse": {
+        "properties": {
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "source_commit": {
+            "type": "string",
+            "title": "Source Commit"
+          },
+          "strategy_set_fingerprint": {
+            "type": "string",
+            "title": "Strategy Set Fingerprint"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "draw_count": {
+            "type": "integer",
+            "title": "Draw Count"
+          },
+          "event": {
+            "type": "string",
+            "title": "Event"
+          },
+          "evidence_status": {
+            "type": "string",
+            "title": "Evidence Status"
+          },
+          "research_only": {
+            "type": "boolean",
+            "title": "Research Only"
+          },
+          "promotion_allowed": {
+            "type": "boolean",
+            "title": "Promotion Allowed"
+          },
+          "window_definitions": {
+            "items": {
+              "$ref": "#/components/schemas/WindowDefinitionView"
+            },
+            "type": "array",
+            "title": "Window Definitions"
+          },
+          "null_contract": {
+            "$ref": "#/components/schemas/NullContractView"
+          },
+          "strategy_count": {
+            "type": "integer",
+            "title": "Strategy Count"
+          },
+          "family_size": {
+            "type": "integer",
+            "title": "Family Size"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/MultiWindowRowView"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "stability": {
+            "items": {
+              "$ref": "#/components/schemas/StabilityDeltaView"
+            },
+            "type": "array",
+            "title": "Stability"
+          },
+          "source_authority": {
+            "type": "string",
+            "title": "Source Authority"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "run_id",
+          "schema_version",
+          "source_sha256",
+          "source_commit",
+          "strategy_set_fingerprint",
+          "status",
+          "draw_count",
+          "event",
+          "evidence_status",
+          "research_only",
+          "promotion_allowed",
+          "window_definitions",
+          "null_contract",
+          "strategy_count",
+          "family_size",
+          "rows",
+          "stability",
+          "source_authority"
+        ],
+        "title": "MultiWindowSuccessWindowsResponse"
+      },
       "NormalizedDrawPreviewView": {
         "properties": {
           "source_row_number": {
@@ -11170,6 +11677,72 @@
           "normalized_record_hash"
         ],
         "title": "NormalizedDrawPreviewView"
+      },
+      "NullContractView": {
+        "properties": {
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "game_spec": {
+            "type": "string",
+            "title": "Game Spec"
+          },
+          "sampling_policy": {
+            "type": "string",
+            "title": "Sampling Policy"
+          },
+          "official_evaluator": {
+            "type": "string",
+            "title": "Official Evaluator"
+          },
+          "prize_rule_version": {
+            "type": "string",
+            "title": "Prize Rule Version"
+          },
+          "prize_rule_source_sha256": {
+            "type": "string",
+            "title": "Prize Rule Source Sha256"
+          },
+          "legal_ticket_count": {
+            "type": "integer",
+            "title": "Legal Ticket Count"
+          },
+          "any_prize_ticket_count": {
+            "type": "integer",
+            "title": "Any Prize Ticket Count"
+          },
+          "single_ticket_any_prize_probability": {
+            "$ref": "#/components/schemas/ExactRationalView"
+          },
+          "portfolio_formula": {
+            "type": "string",
+            "title": "Portfolio Formula"
+          },
+          "hit_state_weights": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Hit State Weights"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "game_spec",
+          "sampling_policy",
+          "official_evaluator",
+          "prize_rule_version",
+          "prize_rule_source_sha256",
+          "legal_ticket_count",
+          "any_prize_ticket_count",
+          "single_ticket_any_prize_probability",
+          "portfolio_formula",
+          "hit_state_weights"
+        ],
+        "title": "NullContractView"
       },
       "OverviewPrefixCount": {
         "type": "integer",
@@ -12963,6 +13536,50 @@
         ],
         "title": "RequestValidationIssueView"
       },
+      "StabilityDeltaView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "from_window": {
+            "type": "string",
+            "title": "From Window"
+          },
+          "to_window": {
+            "type": "string",
+            "title": "To Window"
+          },
+          "delta_observed_winning_target_rate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExactRationalView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "relation": {
+            "type": "string",
+            "title": "Relation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "from_window",
+          "to_window",
+          "delta_observed_winning_target_rate",
+          "relation"
+        ],
+        "title": "StabilityDeltaView"
+      },
       "StrategyCombinationHitRateBlock": {
         "properties": {
           "status": {
@@ -14219,6 +14836,64 @@
         ],
         "title": "TicketCount",
         "description": "The closed ticket_count set (10/15/20).\n\nA bare ``Literal[10, 15, 20]`` does not coerce a query string like\n\"10\" to the matching int literal and always 422s; ``IntEnum`` does\ncoerce correctly and still round-trips as a plain int in responses."
+      },
+      "TierCountView": {
+        "properties": {
+          "tier_id": {
+            "type": "string",
+            "title": "Tier Id"
+          },
+          "tier_order": {
+            "type": "integer",
+            "title": "Tier Order"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tier_id",
+          "tier_order",
+          "count"
+        ],
+        "title": "TierCountView"
+      },
+      "WindowDefinitionView": {
+        "properties": {
+          "window_kind": {
+            "type": "string",
+            "title": "Window Kind"
+          },
+          "requested_target_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Target Count"
+          },
+          "selection": {
+            "type": "string",
+            "title": "Selection"
+          },
+          "window_role": {
+            "type": "string",
+            "title": "Window Role"
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_kind",
+          "requested_target_count",
+          "selection",
+          "window_role"
+        ],
+        "title": "WindowDefinitionView"
       },
       "WindowEvaluationStatus": {
         "type": "string",

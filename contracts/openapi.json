@@ -13883,6 +13883,10 @@
             "type": "string",
             "title": "Adapter Source Commit"
           },
+          "strategy_set_fingerprint": {
+            "type": "string",
+            "title": "Strategy Set Fingerprint"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -13961,6 +13965,7 @@
           "source_sha256",
           "as_of_date",
           "adapter_source_commit",
+          "strategy_set_fingerprint",
           "status",
           "strategy_count",
           "draw_count",

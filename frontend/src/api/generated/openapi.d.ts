@@ -3319,6 +3319,7 @@ export interface components {
           "source_sha256": string
           "as_of_date": string
           "adapter_source_commit": string
+          "strategy_set_fingerprint": string
           "status": string
           "strategy_count": number
           "draw_count": number

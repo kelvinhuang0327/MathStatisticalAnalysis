@@ -18,7 +18,10 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from lottolab.application.t539_historical import T539ReplayQuery
+from lottolab.application.t539_historical import (
+    T539ReplayQuery,
+    t539_strategy_set_fingerprint,
+)
 from lottolab.infrastructure.persistence.t539_historical_repositories import (
     SQLiteT539HistoricalQueryRepository,
 )
@@ -176,35 +179,92 @@ def _build_fixture_database(path: Path) -> None:
         tickets = (
             # (strategy_id, target_draw_id, target_draw_date, cutoff_id, cutoff_date,
             #  predicted, actual, hits)
-            ("strat_a", "90000002", "2020-02-01", "90000001", "2020-01-01",
-             [1, 2, 3, 4, 5], [1, 2, 3, 4, 5], 5),
-            ("strat_a", "90000003", "2020-02-02", "90000002", "2020-02-01",
-             [1, 2, 3, 20, 21], [1, 2, 3, 6, 7], 3),
-            ("strat_a", "90000004", "2020-02-03", "90000003", "2020-02-02",
-             [30, 31, 32, 33, 34], [1, 2, 3, 4, 5], 0),
-            ("strat_b", "90000002", "2020-02-01", "90000001", "2020-01-01",
-             [1, 2, 3, 4, 6], [1, 2, 3, 4, 5], 4),
-            ("strat_b", "90000003", "2020-02-02", "90000002", "2020-02-01",
-             [1, 2, 10, 11, 12], [1, 2, 3, 6, 7], 2),
+            (
+                "strat_a",
+                "90000002",
+                "2020-02-01",
+                "90000001",
+                "2020-01-01",
+                [1, 2, 3, 4, 5],
+                [1, 2, 3, 4, 5],
+                5,
+            ),
+            (
+                "strat_a",
+                "90000003",
+                "2020-02-02",
+                "90000002",
+                "2020-02-01",
+                [1, 2, 3, 20, 21],
+                [1, 2, 3, 6, 7],
+                3,
+            ),
+            (
+                "strat_a",
+                "90000004",
+                "2020-02-03",
+                "90000003",
+                "2020-02-02",
+                [30, 31, 32, 33, 34],
+                [1, 2, 3, 4, 5],
+                0,
+            ),
+            (
+                "strat_b",
+                "90000002",
+                "2020-02-01",
+                "90000001",
+                "2020-01-01",
+                [1, 2, 3, 4, 6],
+                [1, 2, 3, 4, 5],
+                4,
+            ),
+            (
+                "strat_b",
+                "90000003",
+                "2020-02-02",
+                "90000002",
+                "2020-02-01",
+                [1, 2, 10, 11, 12],
+                [1, 2, 3, 6, 7],
+                2,
+            ),
         )
         for (
-            strategy_id, target_id, target_date, cutoff_id, cutoff_date, predicted, actual, hits,
+            strategy_id,
+            target_id,
+            target_date,
+            cutoff_id,
+            cutoff_date,
+            predicted,
+            actual,
+            hits,
         ) in tickets:
             connection.execute(
                 "INSERT INTO prediction_tickets VALUES "
                 "(?, ?, 'v1', 'DAILY_539', ?, ?, ?, ?, 1, 1, ?, NULL, ?, 'SUCCESS', NULL, '{}', "
                 "'testcommit')",
                 (
-                    RUN_ID, strategy_id, target_id, target_date, cutoff_id, cutoff_date,
-                    json.dumps(predicted), hits,
+                    RUN_ID,
+                    strategy_id,
+                    target_id,
+                    target_date,
+                    cutoff_id,
+                    cutoff_date,
+                    json.dumps(predicted),
+                    hits,
                 ),
             )
             hit_numbers = sorted(set(predicted) & set(actual))
             connection.execute(
                 "INSERT INTO prediction_scores VALUES (?, ?, 'v1', ?, 1, ?, ?, ?, 'test-v1')",
                 (
-                    RUN_ID, strategy_id, target_id,
-                    json.dumps(actual), json.dumps(hit_numbers), hits,
+                    RUN_ID,
+                    strategy_id,
+                    target_id,
+                    json.dumps(actual),
+                    json.dumps(hit_numbers),
+                    hits,
                 ),
             )
             connection.execute(
@@ -319,6 +379,7 @@ class TestSQLiteT539HistoricalQueryRepository:
         assert run.eligible_target_count == 6  # 4 (strat_a) + 2 (strat_b)
         assert run.ticket_count == 5
         assert run.failure_count == 1
+        assert run.strategy_set_fingerprint == t539_strategy_set_fingerprint(())
         assert run.first_draw_id == "90000001"
         assert run.last_draw_id == "90000003"
 
@@ -341,13 +402,9 @@ class TestSQLiteT539HistoricalQueryRepository:
         assert dict(by_id["strat_a"].hit_distribution) == {0: 1, 3: 1, 5: 1}
         assert by_id["strat_b"].winning_ticket_count == 2
 
-    def test_list_replay_status_filter_exposes_failed_target(
-        self, fixture_database: Path
-    ) -> None:
+    def test_list_replay_status_filter_exposes_failed_target(self, fixture_database: Path) -> None:
         repo = SQLiteT539HistoricalQueryRepository(fixture_database)
-        page = repo.list_replay(
-            RUN_ID, T539ReplayQuery(strategy_id="strat_a", status="FAILED")
-        )
+        page = repo.list_replay(RUN_ID, T539ReplayQuery(strategy_id="strat_a", status="FAILED"))
         assert page is not None
         assert page.total_count == 1
         failed = page.items[0]
@@ -355,13 +412,9 @@ class TestSQLiteT539HistoricalQueryRepository:
         assert failed.tickets == ()
         assert failed.target_draw_id == "90000005"
 
-    def test_list_replay_success_targets_carry_prize_tiers(
-        self, fixture_database: Path
-    ) -> None:
+    def test_list_replay_success_targets_carry_prize_tiers(self, fixture_database: Path) -> None:
         repo = SQLiteT539HistoricalQueryRepository(fixture_database)
-        page = repo.list_replay(
-            RUN_ID, T539ReplayQuery(strategy_id="strat_a", status="SUCCESS")
-        )
+        page = repo.list_replay(RUN_ID, T539ReplayQuery(strategy_id="strat_a", status="SUCCESS"))
         assert page is not None
         assert page.total_count == 3
         by_target = {item.target_draw_id: item for item in page.items}
@@ -489,7 +542,11 @@ class TestSQLiteT539HistoricalQueryRepository:
         executed_ids = {item.strategy_id for item in ledger.executed}
         wave4_ids = {strategy_id for strategy_id, _ in _WAVE4_REMAINING5_ROWS}
         assert executed_ids == {
-            "strat_a", "strat_b", "daily539_f4cold", "acb_1bet", *wave4_ids,
+            "strat_a",
+            "strat_b",
+            "daily539_f4cold",
+            "acb_1bet",
+            *wave4_ids,
         }
         assert ledger.blocked == ()
         assert ledger.coverage_complete is True
@@ -519,6 +576,9 @@ class TestT539HistoricalApi:
         runs = client.get("/api/v1/t539-historical/runs")
         assert runs.status_code == 200
         assert runs.json()["total_count"] == 1
+        assert runs.json()["items"][0]["strategy_set_fingerprint"] == (
+            t539_strategy_set_fingerprint(())
+        )
 
         rankings = client.get(f"/api/v1/t539-historical/runs/{RUN_ID}/rankings")
         assert rankings.status_code == 200
@@ -565,9 +625,7 @@ AUTHORITY_DB = (
     / ".runs/MathStatisticalAnalysis/T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2"
     / "t539_wave1.sqlite3"
 )
-EXPECTED_AUTHORITY_SHA256 = (
-    "cddfd82e39359bbff1e781f624fca42afd26849c38dab628223e7afd857b9b81"
-)
+EXPECTED_AUTHORITY_SHA256 = "cddfd82e39359bbff1e781f624fca42afd26849c38dab628223e7afd857b9b81"
 
 
 def _sha256(path: Path) -> str:
@@ -662,17 +720,17 @@ def test_wave2_f4cold_single_projection_nine_strategies_and_ticket_parity() -> N
     strategies = repo.list_strategies(run.run_id, limit=20, offset=0)
     assert strategies is not None
     by_id = {item.strategy_id: item for item in strategies.items}
-    single, three, five = by_id["daily539_f4cold"], by_id["daily539_f4cold_3bet"], by_id[
-        "daily539_f4cold_5bet"
-    ]
+    single, three, five = (
+        by_id["daily539_f4cold"],
+        by_id["daily539_f4cold_3bet"],
+        by_id["daily539_f4cold_5bet"],
+    )
     assert single.native_ticket_count == 1
     assert single.expected_target_draw_count == three.expected_target_draw_count
     assert single.expected_target_draw_count == five.expected_target_draw_count
     assert single.ticket_count == single.expected_target_draw_count > 0
 
-    connection = sqlite3.connect(
-        f"{WAVE2_F4COLD_SINGLE_DB.resolve().as_uri()}?mode=ro", uri=True
-    )
+    connection = sqlite3.connect(f"{WAVE2_F4COLD_SINGLE_DB.resolve().as_uri()}?mode=ro", uri=True)
     try:
         single_rows = _ticket1_rows(connection, "daily539_f4cold")
         assert len(single_rows) == single.expected_target_draw_count

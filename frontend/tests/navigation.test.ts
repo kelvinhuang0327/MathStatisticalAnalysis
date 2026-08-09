@@ -301,6 +301,7 @@ describe('App navigation', () => {
       'Strategy Overview',
       'Success Windows',
       'B649 Records',
+      'B649 Ranking',
       'Data Center',
       'History',
       'Strategy Evidence',
@@ -330,6 +331,14 @@ describe('App navigation', () => {
       navigation
         .find('a[href="#/b649-multi-ticket-records"]')
         .attributes('aria-current'),
+    ).toBe('page')
+
+    window.location.hash = '#/b649-owner-ranking'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.text()).toContain('B649 R2 ranking projection 無法載入')
+    expect(
+      navigation.find('a[href="#/b649-owner-ranking"]').attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/data-center'
@@ -502,6 +511,7 @@ describe('App navigation', () => {
     expect(keyboardTab().textContent?.trim()).toBe('Strategy Overview')
     expect(keyboardTab().textContent?.trim()).toBe('Success Windows')
     expect(keyboardTab().textContent?.trim()).toBe('B649 Records')
+    expect(keyboardTab().textContent?.trim()).toBe('B649 Ranking')
     expect(keyboardTab().textContent?.trim()).toBe('Data Center')
     await activateFocused('Enter')
 

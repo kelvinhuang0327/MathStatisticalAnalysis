@@ -2,9 +2,15 @@ import type { components, paths } from './generated/openapi'
 
 export type T539Run = components['schemas']['T539RunView']
 export type T539RunPage = paths['/api/v1/t539-historical/runs']['get']['responses'][200]['content']['application/json']
+export type T539Draw = components['schemas']['T539DrawView']
+export type T539DrawPage =
+  paths['/api/v1/t539-historical/runs/{run_id}/draws']['get']['responses'][200]['content']['application/json']
 export type T539Strategy = components['schemas']['T539StrategyView']
 export type T539StrategyPage =
   paths['/api/v1/t539-historical/runs/{run_id}/strategies']['get']['responses'][200]['content']['application/json']
+export type T539Replay = components['schemas']['T539ReplayView']
+export type T539ReplayPage =
+  paths['/api/v1/t539-historical/runs/{run_id}/replay']['get']['responses'][200]['content']['application/json']
 export type T539Metrics = components['schemas']['T539MetricsResponse']
 export type T539Ranking = components['schemas']['T539RankingView']
 export type T539RankingPage =
@@ -72,6 +78,38 @@ export async function listT539Strategies(
     signal,
   )
   if (!isT539StrategyPage(payload)) throw malformedResponse()
+  return payload
+}
+
+export async function listT539Draws(
+  runId: string,
+  query: T539RunQuery,
+  signal?: AbortSignal,
+): Promise<T539DrawPage> {
+  const parameters = new URLSearchParams({
+    limit: String(query.limit),
+    offset: String(query.offset),
+  })
+  const payload = await requestJson(
+    `${RUNS_ENDPOINT}/${encodeURIComponent(runId)}/draws?${parameters.toString()}`,
+    signal,
+  )
+  if (!isT539DrawPage(payload)) throw malformedResponse()
+  return payload
+}
+
+export async function getT539StrategyTarget(
+  runId: string,
+  strategyId: string,
+  strategyVersion: string,
+  drawId: string,
+  signal?: AbortSignal,
+): Promise<T539Replay> {
+  const payload = await requestJson(
+    `${RUNS_ENDPOINT}/${encodeURIComponent(runId)}/strategies/${encodeURIComponent(strategyId)}/${encodeURIComponent(strategyVersion)}/targets/${encodeURIComponent(drawId)}`,
+    signal,
+  )
+  if (!isT539Replay(payload)) throw malformedResponse()
   return payload
 }
 
@@ -153,6 +191,28 @@ function isT539StrategyPage(value: unknown): value is T539StrategyPage {
     isRecord(value) &&
     typeof value.run_id === 'string' &&
     value.items.every(isT539Strategy)
+  )
+}
+
+function isT539DrawPage(value: unknown): value is T539DrawPage {
+  return isPage(value) && isRecord(value) && typeof value.run_id === 'string' && value.items.every(isT539Draw)
+}
+
+function isT539Draw(value: unknown): value is T539Draw {
+  return (
+    isRecord(value) &&
+    typeof value.draw_id === 'string' &&
+    typeof value.draw_date === 'string' &&
+    Array.isArray(value.winning_numbers)
+  )
+}
+
+function isT539Replay(value: unknown): value is T539Replay {
+  return (
+    isRecord(value) &&
+    typeof value.target_id === 'string' &&
+    typeof value.strategy_id === 'string' &&
+    Array.isArray(value.tickets)
   )
 }
 

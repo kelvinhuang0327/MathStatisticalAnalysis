@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from lottolab.application.p638_historical import (
-    P638_ALLOWED_TARGET_STATUSES,
+    P638_QUERY_STATUS_ALIASES,
     P638CurrentRankingPage,
+    P638DrawPage,
+    P638DrawRecord,
     P638HistoricalQueryError,
     P638RankingPage,
     P638ReplayPage,
@@ -56,6 +58,27 @@ class ListP638Strategies:
         return self._repository_factory().list_strategies(run_id, limit=limit, offset=offset)
 
 
+class ListP638Draws:
+    def __init__(self, repository_factory: P638HistoricalQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str, *, limit: int = 50, offset: int = 0) -> P638DrawPage | None:
+        _validate_run_id(run_id)
+        _validate_page(limit, offset)
+        return self._repository_factory().list_draws(run_id, limit=limit, offset=offset)
+
+
+class GetP638Draw:
+    def __init__(self, repository_factory: P638HistoricalQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str, draw_number: str) -> P638DrawRecord | None:
+        _validate_run_id(run_id)
+        if not draw_number or len(draw_number) > 128:
+            raise P638HistoricalQueryError("draw_number is invalid")
+        return self._repository_factory().get_draw(run_id, draw_number)
+
+
 class ListP638Replay:
     def __init__(self, repository_factory: P638HistoricalQueryRepositoryFactory) -> None:
         self._repository_factory = repository_factory
@@ -77,7 +100,7 @@ class ListP638Replay:
             raise P638HistoricalQueryError("strategy_id is invalid")
         if date_from is not None and date_to is not None and date_from > date_to:
             raise P638HistoricalQueryError("date_from must not be after date_to")
-        if status is not None and status not in P638_ALLOWED_TARGET_STATUSES:
+        if status is not None and status not in P638_QUERY_STATUS_ALIASES:
             raise P638HistoricalQueryError("status is invalid")
         return self._repository_factory().list_replay(
             run_id,
@@ -101,6 +124,25 @@ class GetP638Target:
         if not target_id or len(target_id) > 128:
             raise P638HistoricalQueryError("target_id is invalid")
         return self._repository_factory().get_target(run_id, target_id)
+
+
+class GetP638TargetByIdentity:
+    def __init__(self, repository_factory: P638HistoricalQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(
+        self, run_id: str, strategy_id: str, strategy_version: str, draw_number: str
+    ) -> P638TargetDetail | None:
+        _validate_run_id(run_id)
+        if not strategy_id or len(strategy_id) > 200:
+            raise P638HistoricalQueryError("strategy_id is invalid")
+        if not strategy_version or len(strategy_version) > 200:
+            raise P638HistoricalQueryError("strategy_version is invalid")
+        if not draw_number or len(draw_number) > 128:
+            raise P638HistoricalQueryError("draw_number is invalid")
+        return self._repository_factory().get_target_by_identity(
+            run_id, strategy_id, strategy_version, draw_number
+        )
 
 
 class GetP638Metrics:

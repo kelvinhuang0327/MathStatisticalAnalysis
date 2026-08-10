@@ -318,7 +318,14 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/historical-results/runs/{run_id}/replay"),
         ("get", "/api/v1/historical-results/portfolios/{portfolio_id}"),
         ("get", "/api/v1/p638-historical/runs"),
+        ("get", "/api/v1/p638-historical/runs/{run_id}/draws"),
+        ("get", "/api/v1/p638-historical/runs/{run_id}/draws/{draw_number}"),
         ("get", "/api/v1/p638-historical/runs/{run_id}/strategies"),
+        (
+            "get",
+            "/api/v1/p638-historical/runs/{run_id}/strategies/"
+            "{strategy_id}/{strategy_version}/targets/{draw_number}",
+        ),
         ("get", "/api/v1/p638-historical/runs/{run_id}/replay"),
         ("get", "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}"),
         ("get", "/api/v1/p638-historical/runs/{run_id}/metrics"),
@@ -327,7 +334,14 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
         ("get", "/api/v1/p638-historical/current-runs/{run_id}/rankings"),
         ("get", "/api/v1/p638-historical/current-runs/{run_id}/success-windows"),
         ("get", "/api/v1/t539-historical/runs"),
+        ("get", "/api/v1/t539-historical/runs/{run_id}/draws"),
+        ("get", "/api/v1/t539-historical/runs/{run_id}/draws/{draw_id}"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/strategies"),
+        (
+            "get",
+            "/api/v1/t539-historical/runs/{run_id}/strategies/"
+            "{strategy_id}/{strategy_version}/targets/{draw_id}",
+        ),
         ("get", "/api/v1/t539-historical/runs/{run_id}/replay"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}"),
         ("get", "/api/v1/t539-historical/runs/{run_id}/metrics"),
@@ -419,7 +433,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 61
+    assert len(operations) == 67
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

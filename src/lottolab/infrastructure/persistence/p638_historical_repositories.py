@@ -12,6 +12,8 @@ from typing import cast
 from lottolab.application.p638_historical import (
     P638_ALLOWED_TARGET_STATUSES,
     P638_LOTTERY_TYPE,
+    P638DrawPage,
+    P638DrawRecord,
     P638HistoricalResultsUnavailableError,
     P638ReplayPage,
     P638ReplayQuery,
@@ -24,6 +26,7 @@ from lottolab.application.p638_historical import (
     P638TargetDetail,
     P638TicketRecord,
 )
+from lottolab.domain.prize_evaluation import POWER_LOTTO_PRIZE_RULE_CONTRACT
 from lottolab.infrastructure.persistence.historical_schema import (
     HistoricalSchemaError,
     open_database,
@@ -202,6 +205,62 @@ class SQLiteP638HistoricalQueryRepository:
             offset=offset,
         )
 
+    def list_draws(self, run_id: str, *, limit: int, offset: int) -> P638DrawPage | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            if not _run_is_completed(connection, run_id):
+                return None
+            total_count = _scalar(
+                connection,
+                "SELECT COUNT(*) FROM historical_draw_snapshot "
+                "WHERE run_id = ? AND lottery_type = ?",
+                (run_id, P638_LOTTERY_TYPE),
+            )
+            rows = connection.execute(
+                "SELECT draw_number, draw_date, main_numbers_json, special_numbers_json "
+                "FROM historical_draw_snapshot WHERE run_id = ? AND lottery_type = ? "
+                "ORDER BY draw_date ASC, CAST(draw_number AS INTEGER) ASC "
+                "LIMIT ? OFFSET ?",
+                (run_id, P638_LOTTERY_TYPE, limit, offset),
+            ).fetchall()
+        return P638DrawPage(
+            run_id=run_id,
+            items=tuple(
+                P638DrawRecord(
+                    draw_number=str(draw_number),
+                    draw_date=str(draw_date),
+                    winning_zone1_numbers=_decode_numbers(main_numbers),
+                    winning_zone2_number=_decode_numbers(special_numbers)[0],
+                )
+                for draw_number, draw_date, main_numbers, special_numbers in rows
+            ),
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+        )
+
+    def get_draw(self, run_id: str, draw_number: str) -> P638DrawRecord | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            if not _run_is_completed(connection, run_id):
+                return None
+            row = connection.execute(
+                "SELECT draw_number, draw_date, main_numbers_json, special_numbers_json "
+                "FROM historical_draw_snapshot WHERE run_id = ? AND lottery_type = ? "
+                "AND draw_number = ?",
+                (run_id, P638_LOTTERY_TYPE, draw_number),
+            ).fetchone()
+        if row is None:
+            return None
+        return P638DrawRecord(
+            draw_number=str(row[0]),
+            draw_date=str(row[1]),
+            winning_zone1_numbers=_decode_numbers(row[2]),
+            winning_zone2_number=_decode_numbers(row[3])[0],
+        )
+
     def list_replay(self, run_id: str, query: P638ReplayQuery) -> P638ReplayPage | None:
         if not _verify_available(self._database):
             return None
@@ -281,6 +340,21 @@ class SQLiteP638HistoricalQueryRepository:
             if row is None:
                 return None
             return _row_to_replay_record(connection, row)
+
+    def get_target_by_identity(
+        self, run_id: str, strategy_id: str, strategy_version: str, draw_number: str
+    ) -> P638TargetDetail | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            if not _run_is_completed(connection, run_id):
+                return None
+            row = connection.execute(
+                "SELECT id FROM historical_p638_target WHERE run_id = ? "
+                "AND strategy_id = ? AND strategy_version = ? AND target_draw_number = ?",
+                (run_id, strategy_id, strategy_version, draw_number),
+            ).fetchone()
+        return None if row is None else self.get_target(run_id, str(row[0]))
 
     def get_metrics(
         self, run_id: str, *, strategy_id: str | None = None
@@ -393,7 +467,13 @@ def _target_predicate(run_id: str, query: P638ReplayQuery) -> tuple[str, tuple[o
         parameters.append(query.date_to)
     if query.status is not None:
         clauses.append("t.status = ?")
-        parameters.append(query.status)
+        parameters.append(
+            {
+                "COMPLETE_CAUSAL_REPLAY": "COMPLETE",
+                "PRE_ELIGIBILITY": "EXCLUDED_INSUFFICIENT_HISTORY",
+                "SOURCE_NATIVE_TYPED_CLOSURE": "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE",
+            }.get(query.status, query.status)
+        )
     return " AND ".join(clauses), tuple(parameters)
 
 
@@ -689,6 +769,9 @@ def _row_to_ticket(row: sqlite3.Row | tuple[object, ...]) -> P638TicketRecord:
         ssot_version,
         provenance,
     ) = row
+    tier = POWER_LOTTO_PRIZE_RULE_CONTRACT.resolve(
+        zone1_hits=_db_int(zone1_hits), zone2_hit=bool(zone2_hit)
+    )
     return P638TicketRecord(
         ticket_id=str(ticket_id),
         ticket_position=_db_int(position),
@@ -704,6 +787,10 @@ def _row_to_ticket(row: sqlite3.Row | tuple[object, ...]) -> P638TicketRecord:
         source_record_locator=_optional_text(source_locator),
         second_zone_ssot_version=str(ssot_version),
         provenance=str(provenance),
+        is_winner=tier is not None,
+        prize_tier=None if tier is None else tier.tier_id.value,
+        prize_tier_order=None if tier is None else tier.tier_order,
+        prize_amount=None if tier is None else tier.prize_amount,
     )
 
 

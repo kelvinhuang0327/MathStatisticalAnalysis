@@ -27,6 +27,11 @@ T539_REPLAY_SORT = (
 )
 T539_STRATEGY_SORT = ("strategy_id:asc", "strategy_version:asc")
 T539_ALLOWED_TARGET_STATUSES = ("SUCCESS", "FAILED")
+T539_QUERY_STATUS_ALIASES = (
+    *T539_ALLOWED_TARGET_STATUSES,
+    "COMPLETE_CAUSAL_REPLAY",
+    "PRE_ELIGIBILITY",
+)
 
 
 def t539_strategy_set_fingerprint(strategy_identities: Sequence[str]) -> str:
@@ -70,6 +75,22 @@ class T539RunSummary:
 @dataclass(frozen=True, slots=True)
 class T539RunPage:
     items: tuple[T539RunSummary, ...]
+    total_count: int
+    limit: int
+    offset: int
+
+
+@dataclass(frozen=True, slots=True)
+class T539DrawRecord:
+    draw_id: str
+    draw_date: str
+    winning_numbers: tuple[int, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class T539DrawPage:
+    run_id: str
+    items: tuple[T539DrawRecord, ...]
     total_count: int
     limit: int
     offset: int
@@ -130,6 +151,10 @@ class T539ReplayRecord:
     status: str
     native_ticket_count: int
     tickets: tuple[T539TicketRecord, ...]
+    history_length: int | None = None
+    reason_type: str | None = None
+    reason: str | None = None
+    target_success: bool | None = None
 
 
 T539TargetDetail = T539ReplayRecord

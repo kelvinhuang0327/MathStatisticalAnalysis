@@ -60,7 +60,13 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/historical-results/portfolios/{portfolio_id}": frozenset({"get"}),
     "/api/v1/p638-historical/runs": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/draws": frozenset({"get"}),
+    "/api/v1/p638-historical/runs/{run_id}/draws/{draw_number}": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/strategies": frozenset({"get"}),
+    (
+        "/api/v1/p638-historical/runs/{run_id}/strategies/"
+        "{strategy_id}/{strategy_version}/targets/{draw_number}"
+    ): frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
     "/api/v1/p638-historical/runs/{run_id}/metrics": frozenset({"get"}),
@@ -69,7 +75,13 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/p638-historical/current-runs/{run_id}/rankings": frozenset({"get"}),
     "/api/v1/p638-historical/current-runs/{run_id}/success-windows": frozenset({"get"}),
     "/api/v1/t539-historical/runs": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/draws": frozenset({"get"}),
+    "/api/v1/t539-historical/runs/{run_id}/draws/{draw_id}": frozenset({"get"}),
     "/api/v1/t539-historical/runs/{run_id}/strategies": frozenset({"get"}),
+    (
+        "/api/v1/t539-historical/runs/{run_id}/strategies/"
+        "{strategy_id}/{strategy_version}/targets/{draw_id}"
+    ): frozenset({"get"}),
     "/api/v1/t539-historical/runs/{run_id}/replay": frozenset({"get"}),
     "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}": frozenset({"get"}),
     "/api/v1/t539-historical/runs/{run_id}/metrics": frozenset({"get"}),

@@ -53,6 +53,9 @@ from lottolab.infrastructure.persistence.p638_all23_ranking_repositories import 
 from lottolab.infrastructure.persistence.p638_all23_ranking_schema import (
     verify_schema_read_only as verify_p638_all23_ranking_schema_read_only,
 )
+from lottolab.infrastructure.persistence.p638_base_data_repositories import (
+    SQLiteP638BaseDataQueryRepository,
+)
 from lottolab.infrastructure.persistence.p638_current_ranking_repositories import (
     SQLiteP638CurrentRankingQueryRepository,
 )
@@ -248,6 +251,7 @@ class LocalP638CurrentRankingComposition:
     """One lazy read-only factory bound to the current-universe ranking database."""
 
     database: Path
+    replay_database: Path | None = None
 
     def p638_current_ranking_query_repository(self) -> P638CurrentRankingQueryRepository:
         try:
@@ -262,6 +266,9 @@ class LocalP638CurrentRankingComposition:
             )
         return SQLiteP638CurrentRankingQueryRepository(self.database)
 
+    def p638_historical_query_repository(self) -> SQLiteP638BaseDataQueryRepository:
+        return SQLiteP638BaseDataQueryRepository(self.database, self.replay_database)
+
 
 def local_p638_current_ranking_composition(
     environment: Mapping[str, str],
@@ -271,7 +278,11 @@ def local_p638_current_ranking_composition(
     configured = environment.get(P638_CURRENT_RANKING_DB_ENV)
     if configured is None or configured == "":
         return None
-    return LocalP638CurrentRankingComposition(database=Path(configured))
+    replay_configured = environment.get(P638_CURRENT_REPLAY_DB_ENV)
+    replay_database = None if not replay_configured else Path(replay_configured)
+    return LocalP638CurrentRankingComposition(
+        database=Path(configured), replay_database=replay_database
+    )
 
 
 @dataclass(frozen=True)
@@ -380,10 +391,18 @@ def create_local_app() -> FastAPI:
         if current_replay_composition is None
         else current_replay_composition.p638_multiwindow_success_source_reader
     )
+    p638_historical_query_repository_factory = (
+        None
+        if current_ranking_composition is None
+        else current_ranking_composition.p638_historical_query_repository
+    )
+    if p638_historical_query_repository_factory is None and composition is not None:
+        p638_historical_query_repository_factory = composition.p638_historical_query_repository
     if composition is None:
         return create_app(
             draw_data_provider_factory=lambda: provider,
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
+            p638_historical_query_repository_factory=p638_historical_query_repository_factory,
             p638_all10_ranking_query_repository_factory=all10_ranking_factory,
             p638_all23_ranking_query_repository_factory=all23_ranking_factory,
             p638_current_ranking_query_repository_factory=current_ranking_factory,
@@ -394,7 +413,7 @@ def create_local_app() -> FastAPI:
     return create_app(
         draw_data_provider_factory=lambda: provider,
         historical_query_repository_factory=composition.historical_query_repository,
-        p638_historical_query_repository_factory=composition.p638_historical_query_repository,
+        p638_historical_query_repository_factory=p638_historical_query_repository_factory,
         historical_prefix_success_window_source_reader_factory=(
             composition.historical_prefix_success_window_source_reader
         ),

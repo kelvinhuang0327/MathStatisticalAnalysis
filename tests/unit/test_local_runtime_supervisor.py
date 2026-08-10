@@ -1420,7 +1420,15 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                         "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
                         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
                         "/api/v1/p638-historical/runs": {"get": {}},
+                        "/api/v1/p638-historical/runs/{run_id}/draws": {"get": {}},
+                        "/api/v1/p638-historical/runs/{run_id}/draws/{draw_number}": {
+                            "get": {}
+                        },
                         "/api/v1/p638-historical/runs/{run_id}/strategies": {"get": {}},
+                        (
+                            "/api/v1/p638-historical/runs/{run_id}/strategies/"
+                            "{strategy_id}/{strategy_version}/targets/{draw_number}"
+                        ): {"get": {}},
                         "/api/v1/p638-historical/runs/{run_id}/replay": {"get": {}},
                         "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {
                             "get": {}
@@ -1433,7 +1441,15 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                             "get": {}
                         },
                         "/api/v1/t539-historical/runs": {"get": {}},
+                        "/api/v1/t539-historical/runs/{run_id}/draws": {"get": {}},
+                        "/api/v1/t539-historical/runs/{run_id}/draws/{draw_id}": {
+                            "get": {}
+                        },
                         "/api/v1/t539-historical/runs/{run_id}/strategies": {"get": {}},
+                        (
+                            "/api/v1/t539-historical/runs/{run_id}/strategies/"
+                            "{strategy_id}/{strategy_version}/targets/{draw_id}"
+                        ): {"get": {}},
                         "/api/v1/t539-historical/runs/{run_id}/replay": {"get": {}},
                         "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}": {
                             "get": {}

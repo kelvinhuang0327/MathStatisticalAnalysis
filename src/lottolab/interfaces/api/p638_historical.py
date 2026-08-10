@@ -12,6 +12,8 @@ from pydantic import BaseModel, ConfigDict
 
 from lottolab.application.p638_historical import (
     P638CurrentRankingPage,
+    P638DrawPage,
+    P638DrawRecord,
     P638HistoricalQueryError,
     P638RankingPage,
     P638RankingRecord,
@@ -33,10 +35,13 @@ from lottolab.application.ports import (
 from lottolab.application.use_cases.query_p638_historical import (
     MAX_LIMIT,
     MIN_LIMIT,
+    GetP638Draw,
     GetP638Metrics,
     GetP638Target,
+    GetP638TargetByIdentity,
     ListP638All23Rankings,
     ListP638CurrentRankings,
+    ListP638Draws,
     ListP638Rankings,
     ListP638Replay,
     ListP638Runs,
@@ -49,13 +54,23 @@ from lottolab.interfaces.api.draw_data import ApiErrorResponse, ApiValidationErr
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
-P638Status = Literal["COMPLETE", "EXCLUDED_INSUFFICIENT_HISTORY", "FAILED"]
+P638Status = Literal[
+    "COMPLETE",
+    "EXCLUDED_INSUFFICIENT_HISTORY",
+    "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE",
+    "FAILED",
+    "COMPLETE_CAUSAL_REPLAY",
+    "PRE_ELIGIBILITY",
+    "SOURCE_NATIVE_TYPED_CLOSURE",
+]
 StatusFilter = Annotated[P638Status | None, Query()]
 Limit = Annotated[int, Query(ge=MIN_LIMIT, le=MAX_LIMIT)]
 Offset = Annotated[int, Query(ge=0)]
 RunId = Annotated[str, Path(min_length=1, max_length=128)]
 TargetId = Annotated[str, Path(min_length=1, max_length=128)]
 StrategyFilter = Annotated[str | None, Query(min_length=1, max_length=200)]
+StrategyId = Annotated[str, Path(min_length=1, max_length=200)]
+StrategyVersion = Annotated[str, Path(min_length=1, max_length=200)]
 DateFilter = Annotated[str | None, Query(min_length=10, max_length=10)]
 
 
@@ -129,6 +144,44 @@ class P638RunPageResponse(BaseModel):
     def from_page(cls, page: P638RunPage) -> P638RunPageResponse:
         return cls(
             items=[P638RunView.from_summary(item) for item in page.items],
+            total_count=page.total_count,
+            limit=page.limit,
+            offset=page.offset,
+        )
+
+
+class P638DrawView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    draw_number: str
+    draw_date: str
+    winning_zone1_numbers: list[int]
+    winning_zone2_number: int
+
+    @classmethod
+    def from_record(cls, value: P638DrawRecord) -> P638DrawView:
+        return cls(
+            draw_number=value.draw_number,
+            draw_date=value.draw_date,
+            winning_zone1_numbers=list(value.winning_zone1_numbers),
+            winning_zone2_number=value.winning_zone2_number,
+        )
+
+
+class P638DrawPageResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    run_id: str
+    items: list[P638DrawView]
+    total_count: int
+    limit: int
+    offset: int
+
+    @classmethod
+    def from_page(cls, page: P638DrawPage) -> P638DrawPageResponse:
+        return cls(
+            run_id=page.run_id,
+            items=[P638DrawView.from_record(item) for item in page.items],
             total_count=page.total_count,
             limit=page.limit,
             offset=page.offset,
@@ -251,6 +304,10 @@ class P638TicketView(BaseModel):
     source_record_locator: str | None
     second_zone_ssot_version: str
     provenance: str
+    is_winner: bool
+    prize_tier: str | None
+    prize_tier_order: int | None
+    prize_amount: int | None
 
     @classmethod
     def from_record(cls, value: P638TicketRecord) -> P638TicketView:
@@ -269,6 +326,10 @@ class P638TicketView(BaseModel):
             source_record_locator=value.source_record_locator,
             second_zone_ssot_version=value.second_zone_ssot_version,
             provenance=value.provenance,
+            is_winner=value.is_winner,
+            prize_tier=value.prize_tier,
+            prize_tier_order=value.prize_tier_order,
+            prize_amount=value.prize_amount,
         )
 
 
@@ -295,6 +356,9 @@ class P638ReplayView(BaseModel):
     source_run_id: str | None
     source_replay_sha256: str | None
     provenance: str
+    reason_type: str | None
+    reason: str | None
+    target_success: bool | None
     tickets: list[P638TicketView]
 
     @classmethod
@@ -311,7 +375,7 @@ class P638ReplayView(BaseModel):
             history_boundary_date=value.history_boundary_date,
             history_length=value.history_length,
             expected_ticket_count=value.expected_ticket_count,
-            status=value.status,
+            status=_public_status(value.status),
             exclusion_reason=value.exclusion_reason,
             failure_reason=value.failure_reason,
             actual_zone1_numbers=list(value.actual_zone1_numbers),
@@ -320,6 +384,9 @@ class P638ReplayView(BaseModel):
             source_run_id=value.source_run_id,
             source_replay_sha256=value.source_replay_sha256,
             provenance=value.provenance,
+            reason_type=value.reason_type,
+            reason=value.reason,
+            target_success=value.target_success,
             tickets=[P638TicketView.from_record(ticket) for ticket in value.tickets],
         )
 
@@ -491,11 +558,16 @@ def create_p638_historical_router(
 ) -> APIRouter:
     router = APIRouter(prefix=f"{API_PREFIX}/p638-historical", tags=["p638-historical"])
     list_runs = ListP638Runs(repository_factory) if repository_factory is not None else None
+    list_draws = ListP638Draws(repository_factory) if repository_factory is not None else None
+    get_draw = GetP638Draw(repository_factory) if repository_factory is not None else None
     list_strategies = (
         ListP638Strategies(repository_factory) if repository_factory is not None else None
     )
     list_replay = ListP638Replay(repository_factory) if repository_factory is not None else None
     get_target = GetP638Target(repository_factory) if repository_factory is not None else None
+    get_target_by_identity = (
+        GetP638TargetByIdentity(repository_factory) if repository_factory is not None else None
+    )
     get_metrics = GetP638Metrics(repository_factory) if repository_factory is not None else None
     list_rankings = (
         ListP638Rankings(all10_ranking_repository_factory)
@@ -560,6 +632,58 @@ def create_p638_historical_router(
         )
 
     @router.get(
+        "/runs/{run_id}/draws",
+        response_model=P638DrawPageResponse,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="listP638HistoricalDraws",
+    )
+    def list_p638_draws(
+        run_id: RunId, limit: Limit = 50, offset: Offset = 0
+    ) -> P638DrawPageResponse | JSONResponse:
+        if list_draws is None:
+            return _not_configured()
+        try:
+            page = list_draws.execute(run_id, limit=limit, offset=offset)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_RUN_NOT_FOUND")
+            if page is None
+            else P638DrawPageResponse.from_page(page)
+        )
+
+    @router.get(
+        "/runs/{run_id}/draws/{draw_number}",
+        response_model=P638DrawView,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="getP638HistoricalDraw",
+    )
+    def get_p638_draw(run_id: RunId, draw_number: TargetId) -> P638DrawView | JSONResponse:
+        if get_draw is None:
+            return _not_configured()
+        try:
+            value = get_draw.execute(run_id, draw_number)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_DRAW_NOT_FOUND")
+            if value is None
+            else P638DrawView.from_record(value)
+        )
+
+    @router.get(
         "/runs/{run_id}/replay",
         response_model=P638ReplayPageResponse,
         responses={
@@ -615,6 +739,38 @@ def create_p638_historical_router(
             return _not_configured()
         try:
             value = get_target.execute(run_id, target_id)
+        except P638HistoricalResultsUnavailableError:
+            return _unavailable()
+        except P638HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("P638_TARGET_NOT_FOUND")
+            if value is None
+            else P638ReplayView.from_record(value)
+        )
+
+    @router.get(
+        "/runs/{run_id}/strategies/{strategy_id}/{strategy_version}/targets/{draw_number}",
+        response_model=P638ReplayView,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="getP638HistoricalStrategyTarget",
+    )
+    def get_p638_strategy_target(
+        run_id: RunId,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        draw_number: TargetId,
+    ) -> P638ReplayView | JSONResponse:
+        if get_target_by_identity is None:
+            return _not_configured()
+        try:
+            value = get_target_by_identity.execute(
+                run_id, strategy_id, strategy_version, draw_number
+            )
         except P638HistoricalResultsUnavailableError:
             return _unavailable()
         except P638HistoricalQueryError:
@@ -759,6 +915,17 @@ def _json_error(status_code: int, code: str, message: str) -> JSONResponse:
         status_code=status_code,
         content=ApiErrorResponse(error_code=code, message=message).model_dump(mode="json"),
     )
+
+
+def _public_status(status: str) -> str:
+    return {
+        "COMPLETE": "COMPLETE_CAUSAL_REPLAY",
+        "COMPLETE_CAUSAL_REPLAY": "COMPLETE_CAUSAL_REPLAY",
+        "EXCLUDED_INSUFFICIENT_HISTORY": "PRE_ELIGIBILITY",
+        "PRE_ELIGIBILITY": "PRE_ELIGIBILITY",
+        "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE": "SOURCE_NATIVE_TYPED_CLOSURE",
+        "SOURCE_NATIVE_TYPED_CLOSURE": "SOURCE_NATIVE_TYPED_CLOSURE",
+    }.get(status, status)
 
 
 __all__ = ["create_p638_historical_router"]

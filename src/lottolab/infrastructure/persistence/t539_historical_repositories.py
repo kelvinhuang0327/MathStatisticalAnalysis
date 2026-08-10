@@ -31,6 +31,8 @@ from lottolab.application.t539_historical import (
     T539CoverageBlockedEntry,
     T539CoverageExecutedEntry,
     T539CoverageLedger,
+    T539DrawPage,
+    T539DrawRecord,
     T539HistoricalResultsUnavailableError,
     T539RankingPage,
     T539RankingRecord,
@@ -384,7 +386,14 @@ def _replay_predicate(run_id: str, query: T539ReplayQuery) -> tuple[str, tuple[o
         params.append(query.strategy_id)
     if query.status is not None:
         clauses.append("tc.status = ?")
-        params.append(query.status)
+        params.append(
+            {
+                "COMPLETE_CAUSAL_REPLAY": "SUCCESS",
+                # Pre-eligibility cells are derived from coverage plus draws
+                # and are intentionally not present in target_completion.
+                "PRE_ELIGIBILITY": "__PRE_ELIGIBILITY_NOT_PERSISTED__",
+            }.get(query.status, query.status)
+        )
     if query.date_from is not None:
         clauses.append("COALESCE(pt.target_draw_date, fl.target_draw_date) >= ?")
         params.append(query.date_from)
@@ -490,6 +499,51 @@ class SQLiteT539HistoricalQueryRepository:
             items = tuple(self._row_to_strategy_record(connection, run_id, row) for row in rows)
         return T539StrategyPage(
             run_id=run_id, items=items, total_count=total_count, limit=limit, offset=offset
+        )
+
+    def list_draws(self, run_id: str, *, limit: int, offset: int) -> T539DrawPage | None:
+        with _read_only_connection(self._database) as connection:
+            if connection.execute(
+                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+            ).fetchone() is None:
+                return None
+            total_count = _scalar(connection, "SELECT COUNT(*) FROM source_draws")
+            rows = connection.execute(
+                "SELECT draw_id, draw_date, main_numbers_json FROM source_draws "
+                "ORDER BY draw_order ASC LIMIT ? OFFSET ?",
+                (limit, offset),
+            ).fetchall()
+        return T539DrawPage(
+            run_id=run_id,
+            items=tuple(
+                T539DrawRecord(
+                    draw_id=_text(draw_id),
+                    draw_date=_text(draw_date),
+                    winning_numbers=_decode_numbers_json(numbers_json),
+                )
+                for draw_id, draw_date, numbers_json in rows
+            ),
+            total_count=total_count,
+            limit=limit,
+            offset=offset,
+        )
+
+    def get_draw(self, run_id: str, draw_id: str) -> T539DrawRecord | None:
+        with _read_only_connection(self._database) as connection:
+            if connection.execute(
+                "SELECT 1 FROM run_metadata WHERE run_id = ?", (run_id,)
+            ).fetchone() is None:
+                return None
+            row = connection.execute(
+                "SELECT draw_id, draw_date, main_numbers_json FROM source_draws WHERE draw_id = ?",
+                (draw_id,),
+            ).fetchone()
+        if row is None:
+            return None
+        return T539DrawRecord(
+            draw_id=_text(row[0]),
+            draw_date=_text(row[1]),
+            winning_numbers=_decode_numbers_json(row[2]),
         )
 
     def _row_to_strategy_record(
@@ -604,7 +658,49 @@ class SQLiteT539HistoricalQueryRepository:
                 (run_id, strategy_id, strategy_version, target_draw_id),
             ).fetchone()
             if row is None:
-                return None
+                strategy_row = connection.execute(
+                    "SELECT strategy_id, strategy_version, native_ticket_count, min_history, "
+                    "first_eligible_target_draw_id FROM strategy_coverage "
+                    "WHERE run_id = ? AND strategy_id = ? AND strategy_version = ?",
+                    (run_id, strategy_id, strategy_version),
+                ).fetchone()
+                draw_row = connection.execute(
+                    "SELECT draw_id, draw_date, draw_order FROM source_draws WHERE draw_id = ?",
+                    (target_draw_id,),
+                ).fetchone()
+                if strategy_row is None or draw_row is None:
+                    return None
+                first_eligible = strategy_row[4]
+                first_eligible_row = connection.execute(
+                    "SELECT draw_order FROM source_draws WHERE draw_id = ?",
+                    (first_eligible,),
+                ).fetchone()
+                if first_eligible_row is None or int(draw_row[2]) >= int(first_eligible_row[0]):
+                    return None
+                cutoff = connection.execute(
+                    "SELECT draw_id, draw_date FROM source_draws "
+                    "WHERE draw_order < ? ORDER BY draw_order DESC LIMIT 1",
+                    (draw_row[2],),
+                ).fetchone()
+                return T539ReplayRecord(
+                    target_id=f"{strategy_id}:{strategy_version}:{target_draw_id}",
+                    run_id=run_id,
+                    strategy_id=_text(strategy_id),
+                    strategy_version=_text(strategy_version),
+                    target_draw_id=_text(target_draw_id),
+                    target_draw_date=_text(draw_row[1]),
+                    cutoff_draw_id=None if cutoff is None else _text(cutoff[0]),
+                    cutoff_draw_date=None if cutoff is None else _text(cutoff[1]),
+                    status="PRE_ELIGIBILITY",
+                    native_ticket_count=_db_int(strategy_row[2]),
+                    tickets=(),
+                    history_length=int(draw_row[2]),
+                    reason_type="INSUFFICIENT_CAUSAL_HISTORY",
+                    reason=(
+                        f"strategy requires {_db_int(strategy_row[3])} historical draws "
+                        f"before this target"
+                    ),
+                )
             return self._row_to_replay_record(connection, run_id, row)
 
     def _row_to_replay_record(
@@ -647,6 +743,7 @@ class SQLiteT539HistoricalQueryRepository:
             status=_text(status),
             native_ticket_count=_db_int(native_ticket_count),
             tickets=tickets,
+            target_success=_text(status) == "SUCCESS",
         )
 
     def _row_to_ticket_record(self, row: Sequence[object]) -> T539TicketRecord:

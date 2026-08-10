@@ -685,6 +685,73 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/p638-historical/runs/{run_id}/draws": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638DrawPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs/{run_id}/draws/{draw_number}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+              "draw_number": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638DrawView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/p638-historical/runs/{run_id}/replay": {
       get: {
           parameters: {
@@ -695,7 +762,7 @@ export interface paths {
               "strategy_id"?: string | null
               "date_from"?: string | null
               "date_to"?: string | null
-              "status"?: "COMPLETE" | "EXCLUDED_INSUFFICIENT_HISTORY" | "FAILED" | null
+              "status"?: "COMPLETE" | "EXCLUDED_INSUFFICIENT_HISTORY" | "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE" | "FAILED" | "COMPLETE_CAUSAL_REPLAY" | "PRE_ELIGIBILITY" | "SOURCE_NATIVE_TYPED_CLOSURE" | null
               "limit"?: number
               "offset"?: number
             }
@@ -730,6 +797,40 @@ export interface paths {
             "path": {
               "run_id": string
               "target_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["P638ReplayView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/p638-historical/runs/{run_id}/strategies/{strategy_id}/{strategy_version}/targets/{draw_number}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+              "strategy_id": string
+              "strategy_version": string
+              "draw_number": string
             }
           }
           responses: {
@@ -1650,6 +1751,73 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/t539-historical/runs/{run_id}/draws": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+            }
+            "query": {
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539DrawPageResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/draws/{draw_id}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+              "draw_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539DrawView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/t539-historical/runs/{run_id}/replay": {
       get: {
           parameters: {
@@ -1660,7 +1828,7 @@ export interface paths {
               "strategy_id"?: string | null
               "date_from"?: string | null
               "date_to"?: string | null
-              "status"?: "SUCCESS" | "FAILED" | null
+              "status"?: "SUCCESS" | "FAILED" | "COMPLETE_CAUSAL_REPLAY" | "PRE_ELIGIBILITY" | null
               "limit"?: number
               "offset"?: number
             }
@@ -1695,6 +1863,40 @@ export interface paths {
             "path": {
               "run_id": string
               "target_id": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["T539ReplayView"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/t539-historical/runs/{run_id}/strategies/{strategy_id}/{strategy_version}/targets/{draw_id}": {
+      get: {
+          parameters: {
+            "path": {
+              "run_id": string
+              "strategy_id": string
+              "strategy_version": string
+              "draw_id": string
             }
           }
           responses: {
@@ -2995,6 +3197,19 @@ export interface components {
           "items": Array<components['schemas']["P638RankingView"]>
           "disclaimer"?: string
         }
+    "P638DrawPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["P638DrawView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "P638DrawView": {
+          "draw_number": string
+          "draw_date": string
+          "winning_zone1_numbers": Array<number>
+          "winning_zone2_number": number
+        }
     "P638HitDistributionView": {
           "value": number
           "count": number
@@ -3072,6 +3287,9 @@ export interface components {
           "source_run_id": string | null
           "source_replay_sha256": string | null
           "provenance": string
+          "reason_type": string | null
+          "reason": string | null
+          "target_success": boolean | null
           "tickets": Array<components['schemas']["P638TicketView"]>
         }
     "P638RunPageResponse": {
@@ -3158,6 +3376,10 @@ export interface components {
           "source_record_locator": string | null
           "second_zone_ssot_version": string
           "provenance": string
+          "is_winner": boolean
+          "prize_tier": string | null
+          "prize_tier_order": number | null
+          "prize_amount": number | null
         }
     "ReplayOverallAggregateResponse": {
           "run_payload_sha256": string
@@ -3382,6 +3604,18 @@ export interface components {
           "blocked": Array<components['schemas']["T539CoverageBlockedView"]>
           "coverage_complete": boolean
         }
+    "T539DrawPageResponse": {
+          "run_id": string
+          "items": Array<components['schemas']["T539DrawView"]>
+          "total_count": number
+          "limit": number
+          "offset": number
+        }
+    "T539DrawView": {
+          "draw_id": string
+          "draw_date": string
+          "winning_numbers": Array<number>
+        }
     "T539HitDistributionView": {
           "value": number
           "count": number
@@ -3444,6 +3678,10 @@ export interface components {
           "cutoff_draw_date": string | null
           "status": string
           "native_ticket_count": number
+          "history_length": number | null
+          "reason_type": string | null
+          "reason": string | null
+          "target_success": boolean | null
           "tickets": Array<components['schemas']["T539TicketView"]>
         }
     "T539RunPageResponse": {

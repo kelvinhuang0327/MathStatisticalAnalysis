@@ -383,7 +383,13 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/historical-results/runs/{run_id}/strategies": {"get": {}},
         "/api/v1/historical-results/runs/{run_id}/replay": {"get": {}},
         "/api/v1/p638-historical/runs": {"get": {}},
+        "/api/v1/p638-historical/runs/{run_id}/draws": {"get": {}},
+        "/api/v1/p638-historical/runs/{run_id}/draws/{draw_number}": {"get": {}},
         "/api/v1/p638-historical/runs/{run_id}/strategies": {"get": {}},
+        (
+            "/api/v1/p638-historical/runs/{run_id}/strategies/"
+            "{strategy_id}/{strategy_version}/targets/{draw_number}"
+        ): {"get": {}},
         "/api/v1/p638-historical/runs/{run_id}/replay": {"get": {}},
         "/api/v1/p638-historical/runs/{run_id}/targets/{target_id}": {"get": {}},
         "/api/v1/p638-historical/runs/{run_id}/metrics": {"get": {}},
@@ -392,7 +398,13 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/p638-historical/current-runs/{run_id}/rankings": {"get": {}},
         "/api/v1/p638-historical/current-runs/{run_id}/success-windows": {"get": {}},
         "/api/v1/t539-historical/runs": {"get": {}},
+        "/api/v1/t539-historical/runs/{run_id}/draws": {"get": {}},
+        "/api/v1/t539-historical/runs/{run_id}/draws/{draw_id}": {"get": {}},
         "/api/v1/t539-historical/runs/{run_id}/strategies": {"get": {}},
+        (
+            "/api/v1/t539-historical/runs/{run_id}/strategies/"
+            "{strategy_id}/{strategy_version}/targets/{draw_id}"
+        ): {"get": {}},
         "/api/v1/t539-historical/runs/{run_id}/replay": {"get": {}},
         "/api/v1/t539-historical/runs/{run_id}/targets/{target_id}": {"get": {}},
         "/api/v1/t539-historical/runs/{run_id}/metrics": {"get": {}},

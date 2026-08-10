@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from lottolab.application.ports import T539HistoricalQueryRepositoryFactory
 from lottolab.application.t539_historical import (
-    T539_ALLOWED_TARGET_STATUSES,
+    T539_QUERY_STATUS_ALIASES,
     T539CoverageLedger,
+    T539DrawPage,
+    T539DrawRecord,
     T539HistoricalQueryError,
     T539RankingPage,
     T539ReplayPage,
@@ -51,6 +53,27 @@ class ListT539Strategies:
         return self._repository_factory().list_strategies(run_id, limit=limit, offset=offset)
 
 
+class ListT539Draws:
+    def __init__(self, repository_factory: T539HistoricalQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str, *, limit: int = 50, offset: int = 0) -> T539DrawPage | None:
+        _validate_run_id(run_id)
+        _validate_page(limit, offset)
+        return self._repository_factory().list_draws(run_id, limit=limit, offset=offset)
+
+
+class GetT539Draw:
+    def __init__(self, repository_factory: T539HistoricalQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str, draw_id: str) -> T539DrawRecord | None:
+        _validate_run_id(run_id)
+        if not draw_id or len(draw_id) > 128:
+            raise T539HistoricalQueryError("draw_id is invalid")
+        return self._repository_factory().get_draw(run_id, draw_id)
+
+
 class ListT539Replay:
     def __init__(self, repository_factory: T539HistoricalQueryRepositoryFactory) -> None:
         self._repository_factory = repository_factory
@@ -72,7 +95,7 @@ class ListT539Replay:
             raise T539HistoricalQueryError("strategy_id is invalid")
         if date_from is not None and date_to is not None and date_from > date_to:
             raise T539HistoricalQueryError("date_from must not be after date_to")
-        if status is not None and status not in T539_ALLOWED_TARGET_STATUSES:
+        if status is not None and status not in T539_QUERY_STATUS_ALIASES:
             raise T539HistoricalQueryError("status is invalid")
         return self._repository_factory().list_replay(
             run_id,

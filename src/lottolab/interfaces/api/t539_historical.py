@@ -15,6 +15,8 @@ from lottolab.application.t539_historical import (
     T539CoverageBlockedEntry,
     T539CoverageExecutedEntry,
     T539CoverageLedger,
+    T539DrawPage,
+    T539DrawRecord,
     T539HistoricalQueryError,
     T539HistoricalResultsUnavailableError,
     T539RankingPage,
@@ -32,8 +34,10 @@ from lottolab.application.use_cases.query_t539_historical import (
     MAX_LIMIT,
     MIN_LIMIT,
     GetT539CoverageLedger,
+    GetT539Draw,
     GetT539Metrics,
     GetT539Target,
+    ListT539Draws,
     ListT539Rankings,
     ListT539Replay,
     ListT539Runs,
@@ -43,13 +47,20 @@ from lottolab.interfaces.api.draw_data import ApiErrorResponse, ApiValidationErr
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
 
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
-T539Status = Literal["SUCCESS", "FAILED"]
+T539Status = Literal[
+    "SUCCESS",
+    "FAILED",
+    "COMPLETE_CAUSAL_REPLAY",
+    "PRE_ELIGIBILITY",
+]
 StatusFilter = Annotated[T539Status | None, Query()]
 Limit = Annotated[int, Query(ge=MIN_LIMIT, le=MAX_LIMIT)]
 Offset = Annotated[int, Query(ge=0)]
 RunId = Annotated[str, Path(min_length=1, max_length=128)]
 TargetId = Annotated[str, Path(min_length=1, max_length=128)]
 StrategyFilter = Annotated[str | None, Query(min_length=1, max_length=200)]
+StrategyId = Annotated[str, Path(min_length=1, max_length=200)]
+StrategyVersion = Annotated[str, Path(min_length=1, max_length=200)]
 DateFilter = Annotated[str | None, Query(min_length=10, max_length=10)]
 
 
@@ -111,6 +122,42 @@ class T539RunPageResponse(BaseModel):
     def from_page(cls, page: T539RunPage) -> T539RunPageResponse:
         return cls(
             items=[T539RunView.from_summary(item) for item in page.items],
+            total_count=page.total_count,
+            limit=page.limit,
+            offset=page.offset,
+        )
+
+
+class T539DrawView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    draw_id: str
+    draw_date: str
+    winning_numbers: list[int]
+
+    @classmethod
+    def from_record(cls, value: T539DrawRecord) -> T539DrawView:
+        return cls(
+            draw_id=value.draw_id,
+            draw_date=value.draw_date,
+            winning_numbers=list(value.winning_numbers),
+        )
+
+
+class T539DrawPageResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    run_id: str
+    items: list[T539DrawView]
+    total_count: int
+    limit: int
+    offset: int
+
+    @classmethod
+    def from_page(cls, page: T539DrawPage) -> T539DrawPageResponse:
+        return cls(
+            run_id=page.run_id,
+            items=[T539DrawView.from_record(item) for item in page.items],
             total_count=page.total_count,
             limit=page.limit,
             offset=page.offset,
@@ -230,6 +277,10 @@ class T539ReplayView(BaseModel):
     cutoff_draw_date: str | None
     status: str
     native_ticket_count: int
+    history_length: int | None
+    reason_type: str | None
+    reason: str | None
+    target_success: bool | None
     tickets: list[T539TicketView]
 
     @classmethod
@@ -243,8 +294,12 @@ class T539ReplayView(BaseModel):
             target_draw_date=value.target_draw_date,
             cutoff_draw_id=value.cutoff_draw_id,
             cutoff_draw_date=value.cutoff_draw_date,
-            status=value.status,
+            status=_public_status(value.status),
             native_ticket_count=value.native_ticket_count,
+            history_length=value.history_length,
+            reason_type=value.reason_type,
+            reason=value.reason,
+            target_success=value.target_success,
             tickets=[T539TicketView.from_record(ticket) for ticket in value.tickets],
         )
 
@@ -436,6 +491,8 @@ def create_t539_historical_router(
 ) -> APIRouter:
     router = APIRouter(prefix=f"{API_PREFIX}/t539-historical", tags=["t539-historical"])
     list_runs = ListT539Runs(repository_factory) if repository_factory is not None else None
+    list_draws = ListT539Draws(repository_factory) if repository_factory is not None else None
+    get_draw = GetT539Draw(repository_factory) if repository_factory is not None else None
     list_strategies = (
         ListT539Strategies(repository_factory) if repository_factory is not None else None
     )
@@ -494,6 +551,58 @@ def create_t539_historical_router(
         )
 
     @router.get(
+        "/runs/{run_id}/draws",
+        response_model=T539DrawPageResponse,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="listT539HistoricalDraws",
+    )
+    def list_t539_draws(
+        run_id: RunId, limit: Limit = 50, offset: Offset = 0
+    ) -> T539DrawPageResponse | JSONResponse:
+        if list_draws is None:
+            return _not_configured()
+        try:
+            page = list_draws.execute(run_id, limit=limit, offset=offset)
+        except T539HistoricalResultsUnavailableError:
+            return _unavailable()
+        except T539HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("T539_RUN_NOT_FOUND")
+            if page is None
+            else T539DrawPageResponse.from_page(page)
+        )
+
+    @router.get(
+        "/runs/{run_id}/draws/{draw_id}",
+        response_model=T539DrawView,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="getT539HistoricalDraw",
+    )
+    def get_t539_draw(run_id: RunId, draw_id: TargetId) -> T539DrawView | JSONResponse:
+        if get_draw is None:
+            return _not_configured()
+        try:
+            value = get_draw.execute(run_id, draw_id)
+        except T539HistoricalResultsUnavailableError:
+            return _unavailable()
+        except T539HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("T539_DRAW_NOT_FOUND")
+            if value is None
+            else T539DrawView.from_record(value)
+        )
+
+    @router.get(
         "/runs/{run_id}/replay",
         response_model=T539ReplayPageResponse,
         responses={
@@ -549,6 +658,38 @@ def create_t539_historical_router(
             return _not_configured()
         try:
             value = get_target.execute(run_id, target_id)
+        except T539HistoricalResultsUnavailableError:
+            return _unavailable()
+        except T539HistoricalQueryError:
+            return _invalid()
+        return (
+            _not_found("T539_TARGET_NOT_FOUND")
+            if value is None
+            else T539ReplayView.from_record(value)
+        )
+
+    @router.get(
+        "/runs/{run_id}/strategies/{strategy_id}/{strategy_version}/targets/{draw_id}",
+        response_model=T539ReplayView,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        operation_id="getT539HistoricalStrategyTarget",
+    )
+    def get_t539_strategy_target(
+        run_id: RunId,
+        strategy_id: StrategyId,
+        strategy_version: StrategyVersion,
+        draw_id: TargetId,
+    ) -> T539ReplayView | JSONResponse:
+        if get_target is None:
+            return _not_configured()
+        try:
+            value = get_target.execute(
+                run_id, f"{strategy_id}:{strategy_version}:{draw_id}"
+            )
         except T539HistoricalResultsUnavailableError:
             return _unavailable()
         except T539HistoricalQueryError:
@@ -666,6 +807,15 @@ def _json_error(status_code: int, code: str, message: str) -> JSONResponse:
         status_code=status_code,
         content=ApiErrorResponse(error_code=code, message=message).model_dump(mode="json"),
     )
+
+
+def _public_status(status: str) -> str:
+    return {
+        "SUCCESS": "COMPLETE_CAUSAL_REPLAY",
+        "COMPLETE_CAUSAL_REPLAY": "COMPLETE_CAUSAL_REPLAY",
+        "PRE_ELIGIBILITY": "PRE_ELIGIBILITY",
+        "FAILED": "FAILED",
+    }.get(status, status)
 
 
 __all__ = ["create_t539_historical_router"]

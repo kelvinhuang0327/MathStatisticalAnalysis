@@ -37,6 +37,8 @@ from lottolab.application.historical_queries import (
 from lottolab.application.multiwindow_success_windows import MultiWindowSource
 from lottolab.application.p638_historical import (
     P638CurrentRankingPage,
+    P638DrawPage,
+    P638DrawRecord,
     P638RankingPage,
     P638ReplayPage,
     P638ReplayQuery,
@@ -48,6 +50,8 @@ from lottolab.application.p638_historical import (
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
 from lottolab.application.t539_historical import (
     T539CoverageLedger,
+    T539DrawPage,
+    T539DrawRecord,
     T539RankingPage,
     T539ReplayPage,
     T539ReplayQuery,
@@ -264,12 +268,26 @@ class P638HistoricalQueryRepository(Protocol):
         """Return the complete current P638 ledger for one completed run."""
         ...
 
+    def list_draws(self, run_id: str, *, limit: int, offset: int) -> P638DrawPage | None:
+        """Return the official draw page for one completed run."""
+        ...
+
+    def get_draw(self, run_id: str, draw_number: str) -> P638DrawRecord | None:
+        """Return one official draw for a completed run."""
+        ...
+
     def list_replay(self, run_id: str, query: P638ReplayQuery) -> P638ReplayPage | None:
         """Return paginated targets and their tickets for one completed run."""
         ...
 
     def get_target(self, run_id: str, target_id: str) -> P638TargetDetail | None:
         """Return one target and its ordered tickets, or ``None``."""
+        ...
+
+    def get_target_by_identity(
+        self, run_id: str, strategy_id: str, strategy_version: str, draw_number: str
+    ) -> P638TargetDetail | None:
+        """Return one target by its stable run/strategy/draw identity."""
         ...
 
     def get_metrics(
@@ -349,6 +367,14 @@ class T539HistoricalQueryRepository(Protocol):
 
     def list_strategies(self, run_id: str, *, limit: int, offset: int) -> T539StrategyPage | None:
         """Return the eight executed strategies for one run, or ``None``."""
+        ...
+
+    def list_draws(self, run_id: str, *, limit: int, offset: int) -> T539DrawPage | None:
+        """Return the official draw page for one completed run."""
+        ...
+
+    def get_draw(self, run_id: str, draw_id: str) -> T539DrawRecord | None:
+        """Return one official draw for a completed run."""
         ...
 
     def list_replay(self, run_id: str, query: T539ReplayQuery) -> T539ReplayPage | None:

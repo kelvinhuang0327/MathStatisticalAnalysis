@@ -21,7 +21,14 @@ P638_STRATEGY_SORT = ("strategy_id:asc", "strategy_version:asc")
 P638_ALLOWED_TARGET_STATUSES = (
     "COMPLETE",
     "EXCLUDED_INSUFFICIENT_HISTORY",
+    "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE",
     "FAILED",
+)
+P638_QUERY_STATUS_ALIASES = (
+    *P638_ALLOWED_TARGET_STATUSES,
+    "COMPLETE_CAUSAL_REPLAY",
+    "PRE_ELIGIBILITY",
+    "SOURCE_NATIVE_TYPED_CLOSURE",
 )
 
 
@@ -64,6 +71,23 @@ class P638RunSummary:
 @dataclass(frozen=True, slots=True)
 class P638RunPage:
     items: tuple[P638RunSummary, ...]
+    total_count: int
+    limit: int
+    offset: int
+
+
+@dataclass(frozen=True, slots=True)
+class P638DrawRecord:
+    draw_number: str
+    draw_date: str
+    winning_zone1_numbers: tuple[int, ...]
+    winning_zone2_number: int
+
+
+@dataclass(frozen=True, slots=True)
+class P638DrawPage:
+    run_id: str
+    items: tuple[P638DrawRecord, ...]
     total_count: int
     limit: int
     offset: int
@@ -126,6 +150,10 @@ class P638TicketRecord:
     source_record_locator: str | None
     second_zone_ssot_version: str
     provenance: str
+    is_winner: bool = False
+    prize_tier: str | None = None
+    prize_tier_order: int | None = None
+    prize_amount: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +179,9 @@ class P638ReplayRecord:
     source_replay_sha256: str | None
     provenance: str
     tickets: tuple[P638TicketRecord, ...]
+    reason_type: str | None = None
+    reason: str | None = None
+    target_success: bool | None = None
 
 
 P638TargetDetail = P638ReplayRecord

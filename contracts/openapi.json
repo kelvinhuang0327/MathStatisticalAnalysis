@@ -1853,6 +1853,168 @@
         }
       }
     },
+    "/api/v1/p638-historical/runs/{run_id}/draws": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "List P638 Draws",
+        "operationId": "listP638HistoricalDraws",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638DrawPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/draws/{draw_number}": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "Get P638 Draw",
+        "operationId": "getP638HistoricalDraw",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "draw_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Draw Number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638DrawView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/p638-historical/runs/{run_id}/replay": {
       "get": {
         "tags": [
@@ -1936,7 +2098,11 @@
                   "enum": [
                     "COMPLETE",
                     "EXCLUDED_INSUFFICIENT_HISTORY",
-                    "FAILED"
+                    "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE",
+                    "FAILED",
+                    "COMPLETE_CAUSAL_REPLAY",
+                    "PRE_ELIGIBILITY",
+                    "SOURCE_NATIVE_TYPED_CLOSURE"
                   ],
                   "type": "string"
                 },
@@ -2043,6 +2209,103 @@
               "minLength": 1,
               "maxLength": 128,
               "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/P638ReplayView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/p638-historical/runs/{run_id}/strategies/{strategy_id}/{strategy_version}/targets/{draw_number}": {
+      "get": {
+        "tags": [
+          "p638-historical"
+        ],
+        "summary": "Get P638 Strategy Target",
+        "operationId": "getP638HistoricalStrategyTarget",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "draw_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Draw Number"
             }
           }
         ],
@@ -4545,6 +4808,168 @@
         }
       }
     },
+    "/api/v1/t539-historical/runs/{run_id}/draws": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "List T539 Draws",
+        "operationId": "listT539HistoricalDraws",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539DrawPageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/draws/{draw_id}": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "Get T539 Draw",
+        "operationId": "getT539HistoricalDraw",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "draw_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Draw Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539DrawView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/t539-historical/runs/{run_id}/replay": {
       "get": {
         "tags": [
@@ -4627,7 +5052,9 @@
                 {
                   "enum": [
                     "SUCCESS",
-                    "FAILED"
+                    "FAILED",
+                    "COMPLETE_CAUSAL_REPLAY",
+                    "PRE_ELIGIBILITY"
                   ],
                   "type": "string"
                 },
@@ -4734,6 +5161,103 @@
               "minLength": 1,
               "maxLength": 128,
               "title": "Target Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/T539ReplayView"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/t539-historical/runs/{run_id}/strategies/{strategy_id}/{strategy_version}/targets/{draw_id}": {
+      "get": {
+        "tags": [
+          "t539-historical"
+        ],
+        "summary": "Get T539 Strategy Target",
+        "operationId": "getT539HistoricalStrategyTarget",
+        "parameters": [
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Run Id"
+            }
+          },
+          {
+            "name": "strategy_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Id"
+            }
+          },
+          {
+            "name": "strategy_version",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "title": "Strategy Version"
+            }
+          },
+          {
+            "name": "draw_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "title": "Draw Id"
             }
           }
         ],
@@ -11784,6 +12308,73 @@
         ],
         "title": "P638CurrentRankingPageResponse"
       },
+      "P638DrawPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/P638DrawView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "P638DrawPageResponse"
+      },
+      "P638DrawView": {
+        "properties": {
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          },
+          "winning_zone1_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Winning Zone1 Numbers"
+          },
+          "winning_zone2_number": {
+            "type": "integer",
+            "title": "Winning Zone2 Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draw_number",
+          "draw_date",
+          "winning_zone1_numbers",
+          "winning_zone2_number"
+        ],
+        "title": "P638DrawView"
+      },
       "P638HitDistributionView": {
         "properties": {
           "value": {
@@ -12257,6 +12848,39 @@
             "type": "string",
             "title": "Provenance"
           },
+          "reason_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Type"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "target_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Success"
+          },
           "tickets": {
             "items": {
               "$ref": "#/components/schemas/P638TicketView"
@@ -12287,6 +12911,9 @@
           "source_run_id",
           "source_replay_sha256",
           "provenance",
+          "reason_type",
+          "reason",
+          "target_success",
           "tickets"
         ],
         "title": "P638ReplayView"
@@ -12783,6 +13410,43 @@
           "provenance": {
             "type": "string",
             "title": "Provenance"
+          },
+          "is_winner": {
+            "type": "boolean",
+            "title": "Is Winner"
+          },
+          "prize_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Tier"
+          },
+          "prize_tier_order": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Tier Order"
+          },
+          "prize_amount": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Amount"
           }
         },
         "type": "object",
@@ -12800,7 +13464,11 @@
           "source_replay_sha256",
           "source_record_locator",
           "second_zone_ssot_version",
-          "provenance"
+          "provenance",
+          "is_winner",
+          "prize_tier",
+          "prize_tier_order",
+          "prize_amount"
         ],
         "title": "P638TicketView"
       },
@@ -14052,6 +14720,68 @@
         ],
         "title": "T539CoverageLedgerResponse"
       },
+      "T539DrawPageResponse": {
+        "properties": {
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/T539DrawView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          }
+        },
+        "type": "object",
+        "required": [
+          "run_id",
+          "items",
+          "total_count",
+          "limit",
+          "offset"
+        ],
+        "title": "T539DrawPageResponse"
+      },
+      "T539DrawView": {
+        "properties": {
+          "draw_id": {
+            "type": "string",
+            "title": "Draw Id"
+          },
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          },
+          "winning_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Winning Numbers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draw_id",
+          "draw_date",
+          "winning_numbers"
+        ],
+        "title": "T539DrawView"
+      },
       "T539HitDistributionView": {
         "properties": {
           "value": {
@@ -14415,6 +15145,50 @@
             "type": "integer",
             "title": "Native Ticket Count"
           },
+          "history_length": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Length"
+          },
+          "reason_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Type"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "target_success": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Success"
+          },
           "tickets": {
             "items": {
               "$ref": "#/components/schemas/T539TicketView"
@@ -14435,6 +15209,10 @@
           "cutoff_draw_date",
           "status",
           "native_ticket_count",
+          "history_length",
+          "reason_type",
+          "reason",
+          "target_success",
           "tickets"
         ],
         "title": "T539ReplayView"

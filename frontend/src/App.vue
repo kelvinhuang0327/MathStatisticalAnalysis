@@ -6,6 +6,7 @@ import B649MultiTicketRecordsPage from './features/b649-multi-ticket-records/B64
 import B649OwnerRankingPage from './features/b649-owner-ranking/B649OwnerRankingPage.vue'
 import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
+import HistoricalBaseDataPage from './features/historical-base-data/HistoricalBaseDataPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
 import P638HistoricalReplayPage from './features/p638-historical-replay/P638HistoricalReplayPage.vue'
 import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638StrategyAnalysisPage.vue'
@@ -17,6 +18,7 @@ import T539StrategyAnalysisPage from './features/t539-strategy-analysis/T539Stra
 type Page =
   | 'strategies'
   | 'historical-success-windows'
+  | 'historical-base-data'
   | 'b649-multi-ticket-records'
   | 'b649-owner-ranking'
   | 'data-center'
@@ -33,6 +35,7 @@ const currentPage = ref<Page>(pageFromHash())
 function pageFromHash(): Page {
   const route = window.location.hash.replace(/^#\/?/, '')
   if (route === 'historical-success-windows') return 'historical-success-windows'
+  if (route === 'historical-base-data') return 'historical-base-data'
   if (route === 'b649-multi-ticket-records') return 'b649-multi-ticket-records'
   if (route === 'b649-owner-ranking') return 'b649-owner-ranking'
   if (route === 'data-center') return 'data-center'
@@ -73,6 +76,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
           :aria-current="currentPage === 'historical-success-windows' ? 'page' : undefined"
         >
           Success Windows
+        </a>
+        <a
+          href="#/historical-base-data"
+          :aria-current="currentPage === 'historical-base-data' ? 'page' : undefined"
+        >
+          Base Data Browser
         </a>
         <a
           href="#/b649-multi-ticket-records"
@@ -135,6 +144,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
     <main>
       <StrategyCatalogPage v-if="currentPage === 'strategies'" />
       <HistoricalSuccessWindowsPage v-else-if="currentPage === 'historical-success-windows'" />
+      <HistoricalBaseDataPage v-else-if="currentPage === 'historical-base-data'" />
       <B649MultiTicketRecordsPage v-else-if="currentPage === 'b649-multi-ticket-records'" />
       <B649OwnerRankingPage v-else-if="currentPage === 'b649-owner-ranking'" />
       <DataCenterPage v-else-if="currentPage === 'data-center'" />
@@ -154,6 +164,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <template v-else-if="currentPage === 'historical-success-windows'">
         Historical Success Windows are descriptive, exact-source research evidence—not rankings,
         promotion decisions, or predictions.
+      </template>
+      <template v-else-if="currentPage === 'historical-base-data'">
+        Historical T539/P638 base data is read-only historical evidence; no prediction, ranking, or
+        recommendation is produced.
       </template>
       <template v-else-if="currentPage === 'b649-multi-ticket-records'">
         歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。

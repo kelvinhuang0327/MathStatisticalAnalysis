@@ -2,6 +2,9 @@ import type { components, paths } from './generated/openapi'
 
 export type P638Run = components['schemas']['P638RunView']
 export type P638RunPage = paths['/api/v1/p638-historical/runs']['get']['responses'][200]['content']['application/json']
+export type P638Draw = components['schemas']['P638DrawView']
+export type P638DrawPage =
+  paths['/api/v1/p638-historical/runs/{run_id}/draws']['get']['responses'][200]['content']['application/json']
 export type P638Strategy = components['schemas']['P638StrategyView']
 export type P638StrategyPage = paths['/api/v1/p638-historical/runs/{run_id}/strategies']['get']['responses'][200]['content']['application/json']
 export type P638Replay = components['schemas']['P638ReplayView']
@@ -76,6 +79,23 @@ export async function listP638Strategies(
   return payload
 }
 
+export async function listP638Draws(
+  runId: string,
+  query: P638RunQuery,
+  signal?: AbortSignal,
+): Promise<P638DrawPage> {
+  const parameters = new URLSearchParams({
+    limit: String(query.limit),
+    offset: String(query.offset),
+  })
+  const payload = await requestJson(
+    `${RUNS_ENDPOINT}/${encodeURIComponent(runId)}/draws?${parameters.toString()}`,
+    signal,
+  )
+  if (!isP638DrawPage(payload)) throw malformedResponse()
+  return payload
+}
+
 export async function listP638Replay(
   runId: string,
   query: P638ReplayQuery,
@@ -120,6 +140,21 @@ export async function getP638Target(
 ): Promise<P638Replay> {
   const payload = await requestJson(
     `${RUNS_ENDPOINT}/${encodeURIComponent(runId)}/targets/${encodeURIComponent(targetId)}`,
+    signal,
+  )
+  if (!isP638Replay(payload)) throw malformedResponse()
+  return payload
+}
+
+export async function getP638StrategyTarget(
+  runId: string,
+  strategyId: string,
+  strategyVersion: string,
+  drawNumber: string,
+  signal?: AbortSignal,
+): Promise<P638Replay> {
+  const payload = await requestJson(
+    `${RUNS_ENDPOINT}/${encodeURIComponent(runId)}/strategies/${encodeURIComponent(strategyId)}/${encodeURIComponent(strategyVersion)}/targets/${encodeURIComponent(drawNumber)}`,
     signal,
   )
   if (!isP638Replay(payload)) throw malformedResponse()
@@ -172,6 +207,20 @@ function isP638RunPage(value: unknown): value is P638RunPage {
 
 function isP638StrategyPage(value: unknown): value is P638StrategyPage {
   return isPage(value) && isRecord(value) && typeof value.run_id === 'string' && value.items.every(isP638Strategy)
+}
+
+function isP638DrawPage(value: unknown): value is P638DrawPage {
+  return isPage(value) && isRecord(value) && typeof value.run_id === 'string' && value.items.every(isP638Draw)
+}
+
+function isP638Draw(value: unknown): value is P638Draw {
+  return (
+    isRecord(value) &&
+    typeof value.draw_number === 'string' &&
+    typeof value.draw_date === 'string' &&
+    Array.isArray(value.winning_zone1_numbers) &&
+    typeof value.winning_zone2_number === 'number'
+  )
 }
 
 function isP638ReplayPage(value: unknown): value is P638ReplayPage {

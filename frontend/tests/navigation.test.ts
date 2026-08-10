@@ -300,6 +300,7 @@ describe('App navigation', () => {
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
       'Strategy Overview',
       'Success Windows',
+      'Base Data Browser',
       'B649 Records',
       'B649 Ranking',
       'Data Center',
@@ -321,6 +322,14 @@ describe('App navigation', () => {
       navigation
         .find('a[href="#/historical-success-windows"]')
         .attributes('aria-current'),
+    ).toBe('page')
+
+    window.location.hash = '#/historical-base-data'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#historical-base-data-title').exists()).toBe(true)
+    expect(
+      navigation.find('a[href="#/historical-base-data"]').attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/b649-multi-ticket-records'
@@ -510,6 +519,7 @@ describe('App navigation', () => {
     expect(keyboardTab().getAttribute('aria-label')).toBe('LottoLab home')
     expect(keyboardTab().textContent?.trim()).toBe('Strategy Overview')
     expect(keyboardTab().textContent?.trim()).toBe('Success Windows')
+    expect(keyboardTab().textContent?.trim()).toBe('Base Data Browser')
     expect(keyboardTab().textContent?.trim()).toBe('B649 Records')
     expect(keyboardTab().textContent?.trim()).toBe('B649 Ranking')
     expect(keyboardTab().textContent?.trim()).toBe('Data Center')

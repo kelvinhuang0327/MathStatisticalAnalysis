@@ -11,6 +11,7 @@ from lottolab.application.historical_replay_adapters import (
     PowerLottoReplayAdapter,
     binding_from_implementation,
     binding_from_p638_spec,
+    t539_replay_bindings,
 )
 from lottolab.application.use_cases.historical_replay_controller import (
     HistoricalReplayContractError,
@@ -167,15 +168,15 @@ def test_reconcile_repairs_only_missing_and_partial_cells() -> None:
         strategy_version=strategy.strategy_version,
         ticket_position=1,
     )
-    result = HistoricalReplayController(_FakeDailyAdapter(native_ticket_count=2)).execute(
-        _request(
-            HistoricalReplayMode.RECONCILE,
-            historical=(_draw(1), _draw(2), _draw(3)),
-            strategies=(strategy,),
-            stored_targets=(stored_target,),
-            stored_tickets=(stored_ticket,),
-        )
+    request = _request(
+        HistoricalReplayMode.RECONCILE,
+        historical=(_draw(1), _draw(2), _draw(3)),
+        strategies=(strategy,),
+        stored_targets=(stored_target,),
+        stored_tickets=(stored_ticket,),
     )
+    controller = HistoricalReplayController(_FakeDailyAdapter(native_ticket_count=2))
+    result = controller.execute(request)
 
     assert result.partial_count == 1
     assert result.missing_count == 2
@@ -187,6 +188,16 @@ def test_reconcile_repairs_only_missing_and_partial_cells() -> None:
     }
     first_cell = next(cell for cell in result.repair_plan if cell.target_draw_number == "1")
     assert first_cell.missing_ticket_positions == (2,)
+    repaired = controller.generate_repair_records(request, result.repair_plan)
+    assert [(record.target.draw_number, record.status) for record in repaired] == [
+        ("1", ReplayCellStatus.COMPLETE),
+        ("2", ReplayCellStatus.COMPLETE),
+        ("3", ReplayCellStatus.COMPLETE),
+    ]
+    assert all(
+        all(draw.sort_key < record.target.sort_key for draw in record.causal_history)
+        for record in repaired
+    )
 
 
 def test_full_replay_uses_strictly_prior_history_and_does_not_need_persistence() -> None:
@@ -377,6 +388,21 @@ def test_t539_single_ticket_adapter_defaults_to_one_native_position() -> None:
     record = next(record for record in result.records if record.target.draw_number == "101")
     assert record.status is ReplayCellStatus.COMPLETE
     assert tuple(ticket.ticket_position for ticket in record.tickets) == (1,)
+
+
+def test_t539_binding_catalog_preserves_all_existing_source_identities_and_behavior() -> None:
+    bindings = t539_replay_bindings()
+    assert len(bindings) == 62
+    assert len({binding.strategy.strategy_id for binding in bindings}) == 62
+    seeded = {
+        binding.strategy.strategy_id
+        for binding in bindings
+        if binding.strategy.behavior is ReplayBehavior.SEEDED_STOCHASTIC
+    }
+    assert seeded == {
+        "t539_biglotto_random_core_satellite_3bet",
+        "t539_biglotto_random_zone_split_3bet",
+    }
 
 
 def _power_draw(number: int) -> ReplayDraw:

@@ -249,6 +249,58 @@ class HistoricalReplayController:
             repair_plan=_repair_plan(accumulator),
         )
 
+    def generate_repair_records(
+        self,
+        request: HistoricalReplayRequest,
+        repair_plan: Iterable[ReplayRepairCell],
+    ) -> tuple[ReplayTargetRecord, ...]:
+        """Regenerate exactly the cells selected by a RECONCILE result.
+
+        Reconciliation deliberately separates comparison from mutation.  This
+        method is the controller-owned bridge used by a candidate writer: it
+        reuses the same merged source, pinned cutoff, strict causal history,
+        adapter, and native-ticket checks as normal generation, while refusing
+        to broaden the repair set beyond the caller-supplied plan.
+        """
+
+        if request.mode is not HistoricalReplayMode.RECONCILE:
+            raise HistoricalReplayContractError(
+                "repair records require a RECONCILE request"
+            )
+        if request.lottery_type is not self._lottery_type:
+            raise HistoricalReplayContractError("request and adapter lottery types differ")
+
+        historical = _ordered_unique_draws(request.source.historical_draws)
+        official = _ordered_unique_draws(request.source.official_draws)
+        history_pool = _merge_draws(historical, official)
+        targets, _cutoff, _added_draws = self._select_targets(
+            request,
+            historical=historical,
+            official=official,
+        )
+        targets_by_number = {target.draw_number: target for target in targets}
+        strategies_by_id = {strategy.strategy_id: strategy for strategy in request.strategies}
+
+        records: list[ReplayTargetRecord] = []
+        seen_keys: set[tuple[str, str]] = set()
+        for cell in repair_plan:
+            key = (cell.target_draw_number, cell.strategy_id)
+            if key in seen_keys:
+                raise HistoricalReplayContractError(
+                    f"repair plan contains duplicate cell {key!r}"
+                )
+            seen_keys.add(key)
+            try:
+                target = targets_by_number[cell.target_draw_number]
+                strategy = strategies_by_id[cell.strategy_id]
+            except KeyError as exc:
+                raise HistoricalReplayContractError(
+                    f"repair plan cell is outside the pinned replay universe: {key!r}"
+                ) from exc
+            history = _history_before(history_pool, target)
+            records.append(self._generate_cell(strategy, target, history))
+        return tuple(records)
+
     def _select_targets(
         self,
         request: HistoricalReplayRequest,

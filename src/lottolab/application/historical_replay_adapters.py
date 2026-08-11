@@ -8,7 +8,7 @@ this module.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 from typing import Protocol, cast
@@ -256,6 +256,115 @@ def binding_from_implementation(
     return ReplayStrategyBinding(strategy=strategy, implementation=implementation)
 
 
+def t539_replay_bindings(
+    *,
+    strategy_ids: Sequence[str] | None = None,
+    behavior_by_strategy: Mapping[str, ReplayBehavior] | None = None,
+) -> tuple[ReplayStrategyBinding, ...]:
+    """Return bindings for the existing sealed T539 adapter families.
+
+    The list is assembled from the target-native DAILY_539 adapters already in
+    the repository: fifteen direct identities, nine Batch15 identities, and
+    the 38 portable BIG_LOTTO families.  No strategy is synthesized when an
+    identity is absent.  Seeded families retain their explicit stochastic
+    classification; callers may provide an audited behavior map for a pinned
+    source configuration.
+    """
+
+    from lottolab.strategies.adapters.daily539_acb_markov_midfreq import (
+        Daily539AcbMarkovMidfreqAdapter,
+    )
+    from lottolab.strategies.adapters.daily539_biglotto_batch15 import (
+        DAILY539_BATCH15_ADAPTERS,
+    )
+    from lottolab.strategies.adapters.daily539_biglotto_portable import (
+        DAILY539_BIGLOTTO_PORTABLE_SPECS,
+        Daily539BigLottoPortableAdapter,
+    )
+    from lottolab.strategies.adapters.daily539_fourier4 import (
+        Daily539P0bFourierColdFmidAdapter,
+        Daily539P0cFourierColdX2Adapter,
+    )
+    from lottolab.strategies.adapters.daily539_portfolio_f4cold import (
+        Daily539F4Cold3BetAdapter,
+        Daily539F4Cold5BetAdapter,
+        Daily539F4ColdAdapter,
+    )
+    from lottolab.strategies.adapters.daily539_portfolio_frequency import (
+        Daily539MidfreqAcb2BetAdapter,
+        Daily539MidfreqFourier2BetAdapter,
+    )
+    from lottolab.strategies.adapters.daily539_portfolio_phase2 import (
+        Daily539AcbMarkovMidfreq3BetAdapter,
+    )
+    from lottolab.strategies.adapters.daily539_single_legacy import (
+        Daily539Acb1BetAdapter,
+        Daily539AcbSingleAdapter,
+        Daily539Markov1BetAdapter,
+        Daily539Orthogonal3BetAdapter,
+    )
+    from lottolab.strategies.adapters.daily539_wave1 import Daily539MarkovColdAdapter
+    from lottolab.strategies.adapters.daily539_zone_gap import Daily539ZoneGap3BetAdapter
+
+    implementations: list[object] = [
+        Daily539Orthogonal3BetAdapter(),
+        Daily539Acb1BetAdapter(),
+        Daily539AcbMarkovMidfreqAdapter(),
+        Daily539AcbMarkovMidfreq3BetAdapter(),
+        Daily539AcbSingleAdapter(),
+        Daily539F4ColdAdapter(),
+        Daily539F4Cold3BetAdapter(),
+        Daily539F4Cold5BetAdapter(),
+        Daily539MarkovColdAdapter(),
+        Daily539Markov1BetAdapter(),
+        Daily539MidfreqAcb2BetAdapter(),
+        Daily539MidfreqFourier2BetAdapter(),
+        Daily539P0bFourierColdFmidAdapter(),
+        Daily539P0cFourierColdX2Adapter(),
+        Daily539ZoneGap3BetAdapter(),
+        *(adapter() for adapter in DAILY539_BATCH15_ADAPTERS),
+        *(Daily539BigLottoPortableAdapter(spec) for spec in DAILY539_BIGLOTTO_PORTABLE_SPECS),
+    ]
+    requested = None if strategy_ids is None else frozenset(strategy_ids)
+    behavior_overrides = behavior_by_strategy or {}
+    seeded_ids = frozenset(
+        {
+            "t539_biglotto_random_core_satellite_3bet",
+            "t539_biglotto_random_zone_split_3bet",
+        }
+    )
+    bindings: list[ReplayStrategyBinding] = []
+    for implementation in implementations:
+        typed_implementation = cast(ReplayStrategyImplementation, implementation)
+        strategy_id = typed_implementation.strategy_id
+        if requested is not None and strategy_id not in requested:
+            continue
+        behavior = behavior_overrides.get(
+            strategy_id,
+            ReplayBehavior.SEEDED_STOCHASTIC
+            if strategy_id in seeded_ids
+            else ReplayBehavior.DETERMINISTIC,
+        )
+        bindings.append(
+            binding_from_implementation(
+                typed_implementation,
+                behavior=behavior,
+                seed_contract=(
+                    "legacy_random_native/cpython_mt19937_v1"
+                    if behavior is ReplayBehavior.SEEDED_STOCHASTIC
+                    else None
+                ),
+            )
+        )
+    available_ids = {binding.strategy.strategy_id for binding in bindings}
+    if requested is not None and frozenset(available_ids) != requested:
+        missing = sorted(requested - available_ids)
+        raise ValueError(f"T539 strategy identity has no existing adapter: {missing}")
+    if not bindings:
+        raise ValueError("T539 replay binding selection is empty")
+    return tuple(bindings)
+
+
 def binding_from_p638_spec(
     spec: P638StrategySpec,
     *,
@@ -322,4 +431,5 @@ __all__ = [
     "ReplayStrategyBinding",
     "binding_from_implementation",
     "binding_from_p638_spec",
+    "t539_replay_bindings",
 ]

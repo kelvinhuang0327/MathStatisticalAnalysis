@@ -136,23 +136,29 @@ class SQLiteP638HistoricalQueryRepository:
                     SELECT
                         strategy_snapshot_id,
                         SUM(status = 'COMPLETE') AS complete_target_count,
-                        SUM(status = 'EXCLUDED_INSUFFICIENT_HISTORY')
-                            AS excluded_target_count,
+                        SUM(status IN (
+                            'EXCLUDED_INSUFFICIENT_HISTORY',
+                            'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE'
+                        )) AS excluded_target_count,
                         SUM(status = 'FAILED') AS failed_target_count,
                         MIN(CASE WHEN status IN (
-                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY', 'FAILED'
+                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY',
+                            'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', 'FAILED'
                         )
                             THEN target_draw_number END) AS first_draw_number,
                         MIN(CASE WHEN status IN (
-                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY', 'FAILED'
+                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY',
+                            'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', 'FAILED'
                         )
                             THEN target_draw_date END) AS first_draw_date,
                         MAX(CASE WHEN status IN (
-                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY', 'FAILED'
+                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY',
+                            'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', 'FAILED'
                         )
                             THEN target_draw_number END) AS last_draw_number,
                         MAX(CASE WHEN status IN (
-                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY', 'FAILED'
+                            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY',
+                            'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', 'FAILED'
                         )
                             THEN target_draw_date END) AS last_draw_date
                     FROM historical_p638_target
@@ -374,7 +380,10 @@ class SQLiteP638HistoricalQueryRepository:
                 SELECT
                     COUNT(*),
                     SUM(t.status = 'COMPLETE'),
-                    SUM(t.status = 'EXCLUDED_INSUFFICIENT_HISTORY'),
+                    SUM(t.status IN (
+                        'EXCLUDED_INSUFFICIENT_HISTORY',
+                        'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE'
+                    )),
                     SUM(t.status = 'FAILED'),
                     MIN(CASE WHEN t.status IN {P638_ALLOWED_TARGET_STATUSES!s}
                         THEN t.target_draw_number END),

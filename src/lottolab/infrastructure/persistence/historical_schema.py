@@ -17,10 +17,11 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 MIGRATION_NAME = "create_historical_results_schema"
 V2_MIGRATION_NAME = "expand_historical_lottery_types"
 P638_MIGRATION_NAME = "add_powerlotto_replay_extension"
+V4_MIGRATION_NAME = "allow_p638_source_native_portfolio_closure"
 BUSY_TIMEOUT_MS = 5_000
 
 BASE_TABLE_NAMES = (
@@ -418,6 +419,75 @@ P638_MIGRATION_SQL = (
 )
 P638_MIGRATION_CHECKSUM = hashlib.sha256(P638_MIGRATION_SQL.encode("utf-8")).hexdigest()
 
+V4_P638_TARGET_TABLE_SQL = """
+CREATE TABLE historical_p638_target_v4 (
+    id TEXT PRIMARY KEY,
+    run_id TEXT NOT NULL,
+    strategy_snapshot_id TEXT NOT NULL,
+    strategy_id TEXT NOT NULL,
+    strategy_version TEXT NOT NULL,
+    target_draw_snapshot_id INTEGER NOT NULL,
+    cutoff_draw_snapshot_id INTEGER NULL,
+    target_draw_number TEXT NOT NULL,
+    target_draw_date TEXT NOT NULL,
+    history_boundary_draw_number TEXT NULL,
+    history_boundary_date TEXT NULL,
+    history_length INTEGER NOT NULL CHECK (history_length >= 0),
+    expected_ticket_count INTEGER NOT NULL CHECK (expected_ticket_count > 0),
+    status TEXT NOT NULL CHECK (
+        status IN (
+            'COMPLETE', 'EXCLUDED_INSUFFICIENT_HISTORY',
+            'EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE', 'FAILED'
+        )
+    ),
+    exclusion_reason TEXT NULL,
+    failure_reason TEXT NULL,
+    source_target_locator TEXT NULL,
+    UNIQUE (run_id, strategy_id, strategy_version, target_draw_number),
+    FOREIGN KEY (run_id) REFERENCES historical_result_run(id) ON DELETE RESTRICT,
+    FOREIGN KEY (strategy_snapshot_id) REFERENCES historical_p638_strategy_ledger(
+        strategy_snapshot_id
+    ) ON DELETE RESTRICT,
+    FOREIGN KEY (target_draw_snapshot_id) REFERENCES historical_draw_snapshot(id)
+        ON DELETE RESTRICT,
+    FOREIGN KEY (cutoff_draw_snapshot_id) REFERENCES historical_draw_snapshot(id)
+        ON DELETE RESTRICT
+)
+"""
+
+V4_MIGRATION_STATEMENTS = (
+    "PRAGMA defer_foreign_keys = ON",
+    V4_P638_TARGET_TABLE_SQL,
+    """
+    INSERT INTO historical_p638_target_v4 (
+        id, run_id, strategy_snapshot_id, strategy_id, strategy_version,
+        target_draw_snapshot_id, cutoff_draw_snapshot_id, target_draw_number,
+        target_draw_date, history_boundary_draw_number, history_boundary_date,
+        history_length, expected_ticket_count, status, exclusion_reason,
+        failure_reason, source_target_locator
+    )
+    SELECT
+        id, run_id, strategy_snapshot_id, strategy_id, strategy_version,
+        target_draw_snapshot_id, cutoff_draw_snapshot_id, target_draw_number,
+        target_draw_date, history_boundary_draw_number, history_boundary_date,
+        history_length, expected_ticket_count, status, exclusion_reason,
+        failure_reason, source_target_locator
+    FROM historical_p638_target
+    """,
+    "DROP TABLE historical_p638_target",
+    "ALTER TABLE historical_p638_target_v4 RENAME TO historical_p638_target",
+    """
+    CREATE INDEX idx_historical_p638_target_query
+    ON historical_p638_target (
+        run_id, strategy_id, target_draw_date, target_draw_number, status
+    )
+    """,
+)
+V4_MIGRATION_SQL = (
+    ";\n".join(statement.strip() for statement in V4_MIGRATION_STATEMENTS) + ";\n"
+)
+V4_MIGRATION_CHECKSUM = hashlib.sha256(V4_MIGRATION_SQL.encode("utf-8")).hexdigest()
+
 _SCHEMA_SQL_TOKEN = re.compile(
     r"'(?:''|[^'])*'|\"(?:\"\"|[^\"])*\"|`(?:``|[^`])*`|\[[^]]*\]|[(),]|[^\s(),]+"
 )
@@ -453,6 +523,12 @@ _EXPECTED_SCHEMA_SQL_BY_NAME_V2 = {
 _EXPECTED_SCHEMA_SQL_BY_NAME_V3 = {
     **_EXPECTED_SCHEMA_SQL_BY_NAME_V2,
     **{_object_name(statement): statement for statement in P638_MIGRATION_STATEMENTS},
+}
+_EXPECTED_SCHEMA_SQL_BY_NAME_V4 = {
+    **_EXPECTED_SCHEMA_SQL_BY_NAME_V3,
+    "historical_p638_target": V4_P638_TARGET_TABLE_SQL.replace(
+        "historical_p638_target_v4", '"historical_p638_target"', 1
+    ),
 }
 
 
@@ -526,9 +602,26 @@ def initialize_schema(database: Path) -> None:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            CURRENT_SCHEMA_VERSION,
+                            3,
                             P638_MIGRATION_NAME,
                             P638_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version == 3:
+                    for statement in V4_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO historical_schema_migrations
+                            (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            V4_MIGRATION_NAME,
+                            V4_MIGRATION_CHECKSUM,
                             _utc_now(),
                         ),
                     )
@@ -637,7 +730,7 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
         raise HistoricalSchemaMigrationError("migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise HistoricalSchemaMigrationError("database schema is newer than this LottoLab build")
-    if versions not in ([1], [1, 2], [1, 2, CURRENT_SCHEMA_VERSION]):
+    if versions not in ([1], [1, 2], [1, 2, 3], [1, 2, 3, CURRENT_SCHEMA_VERSION]):
         raise HistoricalSchemaMigrationError("migration history is incomplete")
     _, initial_name, initial_checksum = rows[0]
     if initial_name != MIGRATION_NAME or initial_checksum != MIGRATION_CHECKSUM:
@@ -646,9 +739,13 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
         _, current_name, current_checksum = rows[1]
         if current_name != V2_MIGRATION_NAME or current_checksum != V2_MIGRATION_CHECKSUM:
             raise HistoricalSchemaChecksumError("migration checksum does not match")
-    if versions == [1, 2, CURRENT_SCHEMA_VERSION]:
+    if len(versions) >= 3:
         _, current_name, current_checksum = rows[2]
         if current_name != P638_MIGRATION_NAME or current_checksum != P638_MIGRATION_CHECKSUM:
+            raise HistoricalSchemaChecksumError("migration checksum does not match")
+    if versions == [1, 2, 3, CURRENT_SCHEMA_VERSION]:
+        _, current_name, current_checksum = rows[3]
+        if current_name != V4_MIGRATION_NAME or current_checksum != V4_MIGRATION_CHECKSUM:
             raise HistoricalSchemaChecksumError("migration checksum does not match")
 
     version = versions[-1]
@@ -659,9 +756,7 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
 def _verify_schema_semantics(
     connection: sqlite3.Connection, table_names: set[str], *, version: int
 ) -> None:
-    expected_table_names = (
-        set(TABLE_NAMES) if version == CURRENT_SCHEMA_VERSION else set(BASE_TABLE_NAMES)
-    )
+    expected_table_names = set(TABLE_NAMES) if version >= 3 else set(BASE_TABLE_NAMES)
     if table_names != expected_table_names:
         raise HistoricalSchemaMigrationError(f"database tables do not match version {version}")
 
@@ -676,8 +771,10 @@ def _verify_schema_semantics(
     expected_sql_by_name = _EXPECTED_SCHEMA_SQL_BY_NAME
     if version >= 2:
         expected_sql_by_name = {**expected_sql_by_name, **_EXPECTED_SCHEMA_SQL_BY_NAME_V2}
-    if version == CURRENT_SCHEMA_VERSION:
+    if version == 3:
         expected_sql_by_name = {**expected_sql_by_name, **_EXPECTED_SCHEMA_SQL_BY_NAME_V3}
+    if version >= CURRENT_SCHEMA_VERSION:
+        expected_sql_by_name = {**expected_sql_by_name, **_EXPECTED_SCHEMA_SQL_BY_NAME_V4}
     for row in schema_rows:
         name = str(row[1])
         actual_sql = row[3]
@@ -694,7 +791,7 @@ def _verify_schema_semantics(
             f"database schema objects do not match version {version}"
         )
 
-    tables_to_check = TABLE_NAMES if version == CURRENT_SCHEMA_VERSION else BASE_TABLE_NAMES
+    tables_to_check = TABLE_NAMES if version >= 3 else BASE_TABLE_NAMES
     for table in tables_to_check:
         foreign_keys = connection.execute(f"PRAGMA foreign_key_list({table})").fetchall()
         for fk_row in foreign_keys:

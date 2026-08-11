@@ -150,6 +150,13 @@ class P638HistoricalForwarder:
         self._expected_source_draw_bytes = expected_source_draw_bytes
 
     def forward(self) -> P638ForwardingResult:
+        _validate_output_path(self._output_db)
+        output_resolved = self._output_db.resolve()
+        if output_resolved in {
+            self._source_replay_db.resolve(),
+            self._source_draw_db.resolve(),
+        }:
+            raise P638ForwardingError("P638 output must not alias a source database")
         replay_sha256 = _verify_source_file(
             self._source_replay_db,
             expected_sha256=self._expected_source_replay_sha256,
@@ -190,7 +197,6 @@ class P638HistoricalForwarder:
             }
         )
 
-        _validate_output_path(self._output_db)
         initialize_schema(self._output_db)
         with open_database(self._output_db) as connection:
             existing = connection.execute(
@@ -910,7 +916,13 @@ def _insert_targets_and_tickets(
                 target.cutoff_index,
                 target.expected_ticket_count,
                 target.status,
-                target.failure_reason if target.status == "EXCLUDED_INSUFFICIENT_HISTORY" else None,
+                target.failure_reason
+                if target.status
+                in (
+                    "EXCLUDED_INSUFFICIENT_HISTORY",
+                    "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE",
+                )
+                else None,
                 target.failure_reason if target.status == "FAILED" else None,
                 (
                     f"p638_wave1_replay_r4.sqlite3::strategy_targets::"
@@ -1067,7 +1079,10 @@ def _result_from_output(
         ),
         forwarded_target_count=sum(target_counts.values()),
         forwarded_complete_target_count=target_counts.get("COMPLETE", 0),
-        forwarded_excluded_target_count=target_counts.get("EXCLUDED_INSUFFICIENT_HISTORY", 0),
+        forwarded_excluded_target_count=(
+            target_counts.get("EXCLUDED_INSUFFICIENT_HISTORY", 0)
+            + target_counts.get("EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE", 0)
+        ),
         forwarded_failed_target_count=target_counts.get("FAILED", 0),
         forwarded_ticket_count=ticket_count,
         excluded_strategy_count=excluded_strategy_count,
@@ -1113,17 +1128,28 @@ def _validate_replay_totals(
         "EXCLUDED_INSUFFICIENT_HISTORY": sum(
             target.status == "EXCLUDED_INSUFFICIENT_HISTORY" for target in targets
         ),
+        "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE": sum(
+            target.status == "EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE" for target in targets
+        ),
         "FAILED": sum(target.status == "FAILED" for target in targets),
     }
     if counts["COMPLETE"] != int(completion["complete_targets"]):
         raise P638ForwardingError("P638 R4 COMPLETE target count does not reconcile")
-    if counts["EXCLUDED_INSUFFICIENT_HISTORY"] != int(completion["excluded_targets"]):
+    if (
+        counts["EXCLUDED_INSUFFICIENT_HISTORY"]
+        + counts["EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE"]
+        != int(completion["excluded_targets"])
+    ):
         raise P638ForwardingError("P638 R4 exclusion count does not reconcile")
     if counts["FAILED"] != int(completion["failed_targets"]):
         raise P638ForwardingError("P638 R4 failure count does not reconcile")
     if counts["FAILED"] != 0:
         raise P638ForwardingError("P638 R4 source contains failed targets")
-    if int(completion["eligible_attempts"]) != counts["COMPLETE"] + counts["FAILED"]:
+    if int(completion["eligible_attempts"]) != (
+        counts["COMPLETE"]
+        + counts["EXCLUDED_SOURCE_NATIVE_PORTFOLIO_CLOSURE"]
+        + counts["FAILED"]
+    ):
         raise P638ForwardingError("P638 R4 eligible-attempt total does not reconcile")
     if len(tickets) != int(completion["ticket_rows"]):
         raise P638ForwardingError("P638 R4 ticket total does not reconcile")

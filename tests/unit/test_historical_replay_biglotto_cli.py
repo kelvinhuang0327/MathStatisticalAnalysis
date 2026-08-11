@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, date, datetime, timedelta
 from gzip import open as gzip_open
 from pathlib import Path
@@ -126,10 +127,11 @@ def test_command_is_registered_and_defaults_to_bounded_summary() -> None:
     result = runner.invoke(app, ["historical-replay-biglotto", "--help"])
 
     assert result.exit_code == 0
-    assert "--raw-history-root" in result.stdout
-    assert "--strategy-id" in result.stdout
-    assert "--cutoff-draw-number" in result.stdout
-    assert "--output-mode" in result.stdout
+    help_text = re.sub(r"\s+", "", re.sub(r"\x1b\[[0-9;]*m", "", result.stdout))
+    assert "--raw-history-root" in help_text
+    assert "--strategy-id" in help_text
+    assert "--cutoff-draw-number" in help_text
+    assert "--output-mode" in help_text
 
 
 def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(

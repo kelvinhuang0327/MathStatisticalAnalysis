@@ -7,13 +7,13 @@ from datetime import date, timedelta
 import pytest
 
 from lottolab.application.historical_replay_adapters import (
+    BigLottoReplayAdapter,
     Daily539ReplayAdapter,
     PowerLottoReplayAdapter,
     binding_from_implementation,
     binding_from_p638_spec,
 )
 from lottolab.application.use_cases.historical_replay_controller import (
-    HistoricalReplayContractError,
     HistoricalReplayController,
 )
 from lottolab.domain.draws import LotteryType
@@ -207,6 +207,49 @@ def test_full_replay_uses_strictly_prior_history_and_does_not_need_persistence()
     assert adapter.histories == [("1",), ("1", "2")]
     assert result.native_ticket_count == 2
     assert all(record.evaluations for record in result.records if record.tickets)
+
+
+def test_target_specific_native_ticket_counts_are_preserved() -> None:
+    class _VariableCountAdapter(_FakeDailyAdapter):
+        def expected_native_ticket_count(
+            self,
+            strategy: ReplayStrategy,
+            history: tuple[ReplayDraw, ...],
+            target: ReplayDraw,
+        ) -> int:
+            del strategy, history
+            return int(target.draw_number)
+
+        def generate(
+            self,
+            strategy: ReplayStrategy,
+            history: tuple[ReplayDraw, ...],
+            target: ReplayDraw,
+        ) -> tuple[ReplayTicket, ...]:
+            del strategy, history
+            count = int(target.draw_number)
+            return tuple(
+                ReplayTicket(
+                    ticket_position=position,
+                    main_numbers=tuple(range(position, position + 5)),
+                )
+                for position in range(1, count + 1)
+            )
+
+    strategy = _strategy(native_ticket_count=1)
+    result = HistoricalReplayController(_VariableCountAdapter()).execute(
+        _request(
+            HistoricalReplayMode.FULL_REPLAY,
+            historical=(_draw(1), _draw(2), _draw(3)),
+            strategies=(strategy,),
+            cutoff="3",
+        )
+    )
+
+    assert result.expected_native_ticket_count == 6
+    assert result.native_ticket_count == 6
+    assert [record.expected_native_ticket_count for record in result.records] == [1, 2, 3]
+    assert [len(record.tickets) for record in result.records] == [1, 2, 3]
 
 
 def test_deterministic_mismatch_is_abnormal() -> None:
@@ -415,9 +458,54 @@ def test_p638_adapter_preserves_every_native_position_and_second_zone() -> None:
     assert len({ticket.special_number for ticket in record.tickets}) == 1
 
 
-def test_big_lotto_remains_deferred_and_protected() -> None:
-    class _B649Adapter:
-        lottery_type = LotteryType.BIG_LOTTO
+def test_big_lotto_enters_shared_replay_controller() -> None:
+    class _B649Implementation:
+        strategy_id = "b649-fixture"
+        strategy_name = "B649 fixture"
+        strategy_version = "v1"
+        min_history = 0
 
-    with pytest.raises(HistoricalReplayContractError, match="protected deferred"):
-        HistoricalReplayController(_B649Adapter())  # type: ignore[arg-type]
+        def get_one_bet(
+            self,
+            history: object,
+            lottery_type: LotteryType,
+        ) -> tuple[tuple[int, ...], None]:
+            del history, lottery_type
+            return (1, 2, 3, 4, 5, 6), None
+
+    binding = binding_from_implementation(_B649Implementation())
+    adapter = BigLottoReplayAdapter((binding,))
+    draws = (
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number="1",
+            draw_date=date(2026, 1, 1),
+            main_numbers=(7, 8, 9, 10, 11, 12),
+            special_number=13,
+        ),
+        ReplayDraw(
+            lottery_type=LotteryType.BIG_LOTTO,
+            draw_number="2",
+            draw_date=date(2026, 1, 2),
+            main_numbers=(1, 2, 3, 4, 5, 6),
+            special_number=7,
+        ),
+    )
+    result = HistoricalReplayController(adapter).execute(
+        HistoricalReplayRequest(
+            lottery_type=LotteryType.BIG_LOTTO,
+            mode=HistoricalReplayMode.FULL_REPLAY,
+            source=ReplaySourceSnapshot(
+                lottery_type=LotteryType.BIG_LOTTO,
+                historical_draws=draws,
+            ),
+            strategies=adapter.strategies,
+            cutoff_draw_number="2",
+        )
+    )
+
+    record = result.records[-1]
+    assert record.status is ReplayCellStatus.COMPLETE
+    assert tuple(ticket.ticket_position for ticket in record.tickets) == (1,)
+    assert record.evaluations[0].is_winner is True
+    assert record.evaluations[0].prize_tier == "FIRST"

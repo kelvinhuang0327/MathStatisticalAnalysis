@@ -158,10 +158,6 @@ class HistoricalReplayController:
             raise HistoricalReplayContractError(
                 "adapter must expose an exact LotteryType lottery_type"
             )
-        if lottery_type is LotteryType.BIG_LOTTO:
-            raise HistoricalReplayContractError(
-                "BIG_LOTTO is a protected deferred integration boundary"
-            )
         self._adapter = adapter
         self._lottery_type = lottery_type
 
@@ -301,7 +297,10 @@ class HistoricalReplayController:
             ):
                 accumulator.strategy_version_change_count += 1
                 accumulator.reason("STRATEGY_IDENTITY_CHANGED")
-            if any(row.expected_ticket_count != strategy.native_ticket_count for row in rows):
+            if (
+                not _supports_target_native_ticket_count(self._adapter)
+                and any(row.expected_ticket_count != strategy.native_ticket_count for row in rows)
+            ):
                 accumulator.native_ticket_count_change_count += 1
                 accumulator.reason("NATIVE_TICKET_COUNT_CHANGED")
         return added
@@ -319,9 +318,9 @@ class HistoricalReplayController:
         for target in targets:
             history = _history_before(history_pool, target)
             for strategy in request.strategies:
-                if len(history) >= strategy.min_history:
-                    expected_native_ticket_count += strategy.native_ticket_count
                 record = self._generate_cell(strategy, target, history)
+                if record.pre_eligible and record.native_ticket_count is not None:
+                    expected_native_ticket_count += record.native_ticket_count
                 records.append(record)
                 self._record_generation_outcome(record, accumulator)
         return records, expected_native_ticket_count
@@ -353,6 +352,25 @@ class HistoricalReplayController:
             )
 
         try:
+            expected_native_ticket_count = _expected_native_ticket_count(
+                self._adapter,
+                strategy,
+                history,
+                target,
+            )
+        except Exception as exc:  # Count providers are part of the adapter boundary.
+            return _empty_record(
+                target,
+                strategy,
+                ReplayCellStatus.FAILED,
+                history,
+                f"NATIVE_TICKET_COUNT_RESOLUTION_FAILED: {type(exc).__name__}: "
+                f"{_short_message(exc)}",
+                history_fingerprint,
+                pre_eligible=True,
+            )
+
+        try:
             tickets = self._adapter.generate(strategy, history, target)
         except (ReplayTypedClosure, SourceNativePortfolioClosure) as exc:
             return _empty_record(
@@ -363,6 +381,7 @@ class HistoricalReplayController:
                 f"{type(exc).__name__}: {_short_message(exc)}",
                 history_fingerprint,
                 pre_eligible=True,
+                native_ticket_count=expected_native_ticket_count,
             )
         except InsufficientHistory as exc:
             return _empty_record(
@@ -382,9 +401,10 @@ class HistoricalReplayController:
                 f"FAILED_EXECUTION: {type(exc).__name__}: {_short_message(exc)}",
                 history_fingerprint,
                 pre_eligible=True,
+                native_ticket_count=expected_native_ticket_count,
             )
 
-        if type(tickets) is not tuple or len(tickets) != strategy.native_ticket_count:
+        if type(tickets) is not tuple or len(tickets) != expected_native_ticket_count:
             return _empty_record(
                 target,
                 strategy,
@@ -393,9 +413,10 @@ class HistoricalReplayController:
                 "NATIVE_TICKET_COUNT_MISMATCH",
                 history_fingerprint,
                 pre_eligible=True,
+                native_ticket_count=expected_native_ticket_count,
             )
         positions = tuple(ticket.ticket_position for ticket in tickets)
-        expected_positions = tuple(range(1, strategy.native_ticket_count + 1))
+        expected_positions = tuple(range(1, expected_native_ticket_count + 1))
         if positions != expected_positions:
             return _empty_record(
                 target,
@@ -405,6 +426,7 @@ class HistoricalReplayController:
                 "NATIVE_TICKET_POSITION_INCOMPLETE",
                 history_fingerprint,
                 pre_eligible=True,
+                native_ticket_count=expected_native_ticket_count,
             )
 
         evaluations: list[ReplayEvaluation] = []
@@ -423,6 +445,7 @@ class HistoricalReplayController:
                 f"INVALID_PRIZE_RESULT_LINKAGE: {type(exc).__name__}: {_short_message(exc)}",
                 history_fingerprint,
                 pre_eligible=True,
+                native_ticket_count=expected_native_ticket_count,
             )
 
         return ReplayTargetRecord(
@@ -433,6 +456,7 @@ class HistoricalReplayController:
             causal_history=history,
             tickets=tickets,
             evaluations=tuple(evaluations),
+            native_ticket_count=expected_native_ticket_count,
             history_fingerprint=history_fingerprint,
         )
 
@@ -465,8 +489,9 @@ class HistoricalReplayController:
         accumulator: _ComparisonAccumulator,
     ) -> tuple[list[ReplayTargetRecord], int, int]:
         eligible_keys: dict[
-            tuple[str, str], tuple[ReplayDraw, ReplayStrategy, tuple[ReplayDraw, ...]]
+            tuple[str, str], tuple[ReplayDraw, ReplayStrategy, tuple[ReplayDraw, ...], int]
         ] = {}
+        native_count_errors: dict[tuple[str, str], str] = {}
         all_keys: set[tuple[str, str]] = set()
         expected_native_ticket_count = 0
         for target in targets:
@@ -475,8 +500,20 @@ class HistoricalReplayController:
                 key = (target.draw_number, strategy.strategy_id)
                 all_keys.add(key)
                 if len(history) >= strategy.min_history:
-                    eligible_keys[key] = (target, strategy, history)
-                    expected_native_ticket_count += strategy.native_ticket_count
+                    try:
+                        expected_ticket_count = _expected_native_ticket_count(
+                            self._adapter,
+                            strategy,
+                            history,
+                            target,
+                        )
+                    except Exception as exc:  # Keep source-contract failures explicit.
+                        expected_ticket_count = strategy.native_ticket_count
+                        native_count_errors[key] = (
+                            f"{type(exc).__name__}: {_short_message(exc)}"
+                        )
+                    eligible_keys[key] = (target, strategy, history, expected_ticket_count)
+                    expected_native_ticket_count += expected_ticket_count
 
         targets_by_key: dict[tuple[str, str], list[ReplayStoredTarget]] = defaultdict(list)
         for stored in request.source.stored_targets:
@@ -497,7 +534,7 @@ class HistoricalReplayController:
                 accumulator.reason("ORPHAN_TICKET")
 
         issue_records: dict[tuple[str, str], ReplayTargetRecord] = {}
-        for key, (target, strategy, history) in eligible_keys.items():
+        for key, (target, strategy, history, expected_ticket_count) in eligible_keys.items():
             rows = targets_by_key.get(key, [])
             tickets = tickets_by_key.get(key, [])
             if len(rows) > 1:
@@ -512,10 +549,13 @@ class HistoricalReplayController:
 
             cell_reasons: set[str] = set()
             missing_positions: set[int] = set()
+            if key in native_count_errors:
+                accumulator.failed_count += 1
+                cell_reasons.add("NATIVE_TICKET_COUNT_RESOLUTION_FAILED")
             if row is None:
                 accumulator.missing_count += 1
                 cell_reasons.add("MISSING_ELIGIBLE_TARGET")
-                missing_positions.update(range(1, strategy.native_ticket_count + 1))
+                missing_positions.update(range(1, expected_ticket_count + 1))
             else:
                 if row.target_draw_date != target.draw_date:
                     cell_reasons.add("INCONSISTENT_TARGET_METADATA")
@@ -523,7 +563,7 @@ class HistoricalReplayController:
                     row.strategy_fingerprint != strategy.fingerprint
                 ):
                     cell_reasons.add("STRATEGY_IDENTITY_CHANGED")
-                if row.expected_ticket_count != strategy.native_ticket_count:
+                if row.expected_ticket_count != expected_ticket_count:
                     cell_reasons.add("NATIVE_TICKET_COUNT_CHANGED")
                 if row.cutoff_draw_number is not None and _draw_number_at_or_after(
                     history_pool, row.cutoff_draw_number, target
@@ -549,7 +589,7 @@ class HistoricalReplayController:
 
                 missing_positions.update(
                     position
-                    for position in range(1, strategy.native_ticket_count + 1)
+                    for position in range(1, expected_ticket_count + 1)
                     if position not in positions
                 )
                 if row.status is ReplayCellStatus.COMPLETE and missing_positions:
@@ -605,6 +645,7 @@ class HistoricalReplayController:
                     causal_history=history,
                     tickets=(),
                     evaluations=(),
+                    native_ticket_count=expected_ticket_count,
                     reason=";".join(sorted(cell_reasons)),
                     history_fingerprint=_history_fingerprint(history),
                 )
@@ -616,6 +657,7 @@ class HistoricalReplayController:
                 history=history,
                 stored_target=row,
                 stored_tickets=tickets,
+                expected_ticket_count=expected_ticket_count,
                 accumulator=accumulator,
             )
 
@@ -651,13 +693,14 @@ class HistoricalReplayController:
         history: tuple[ReplayDraw, ...],
         stored_target: ReplayStoredTarget | None,
         stored_tickets: list[ReplayStoredTicket],
+        expected_ticket_count: int,
         accumulator: _ComparisonAccumulator,
     ) -> None:
         if stored_target is None or stored_target.status is not ReplayCellStatus.COMPLETE:
             return
         if not stored_tickets or any(ticket.main_numbers is None for ticket in stored_tickets):
             return
-        if len(stored_tickets) != strategy.native_ticket_count:
+        if len(stored_tickets) != expected_ticket_count:
             return
 
         current = self._generate_cell(strategy, target, history)
@@ -704,6 +747,7 @@ def _empty_record(
     history_fingerprint: str | None,
     *,
     pre_eligible: bool = False,
+    native_ticket_count: int | None = None,
 ) -> ReplayTargetRecord:
     return ReplayTargetRecord(
         target=target,
@@ -713,9 +757,35 @@ def _empty_record(
         causal_history=history,
         tickets=(),
         evaluations=(),
+        native_ticket_count=native_ticket_count,
         reason=reason,
         history_fingerprint=history_fingerprint,
     )
+
+
+def _supports_target_native_ticket_count(adapter: HistoricalReplayAdapter) -> bool:
+    return callable(getattr(adapter, "expected_native_ticket_count", None))
+
+
+def _expected_native_ticket_count(
+    adapter: HistoricalReplayAdapter,
+    strategy: ReplayStrategy,
+    history: tuple[ReplayDraw, ...],
+    target: ReplayDraw,
+) -> int:
+    resolver = getattr(adapter, "expected_native_ticket_count", None)
+    if resolver is None:
+        return strategy.native_ticket_count
+    if not callable(resolver):
+        raise HistoricalReplayContractError(
+            "expected_native_ticket_count must be callable when supplied"
+        )
+    count = resolver(strategy, history, target)
+    if type(count) is not int or count <= 0:
+        raise HistoricalReplayContractError(
+            "expected_native_ticket_count must return a positive exact integer"
+        )
+    return count
 
 
 def _ordered_unique_draws(draws: tuple[ReplayDraw, ...]) -> tuple[ReplayDraw, ...]:

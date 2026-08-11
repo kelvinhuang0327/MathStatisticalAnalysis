@@ -1,9 +1,10 @@
-"""DAILY_539 and POWER_LOTTO adapters for the shared replay controller.
+"""Lottery adapters for the shared historical replay controller.
 
 These wrappers reuse the existing pure strategy implementations.  They do
 not register a strategy, open a database, read a file, call a network, or
-change the existing adapter APIs.  BIG_LOTTO intentionally has no wrapper in
-this module.
+change the existing adapter APIs.  The BIG_LOTTO wrapper also accepts a
+streaming stored-output implementation for identities that are historical
+raw-only and therefore must not execute an unavailable legacy producer.
 """
 
 from __future__ import annotations
@@ -230,6 +231,124 @@ class PowerLottoReplayAdapter(_PrizeEvaluatingAdapter):
         return binding
 
 
+class BigLottoReplayAdapter(_PrizeEvaluatingAdapter):
+    """Target-native adapter for current and preserved BIG_LOTTO outputs."""
+
+    lottery_type = LotteryType.BIG_LOTTO
+
+    def __init__(self, bindings: Iterable[ReplayStrategyBinding]) -> None:
+        self._bindings = _freeze_bindings(bindings, LotteryType.BIG_LOTTO)
+        self._by_id: Mapping[str, ReplayStrategyBinding] = {
+            binding.strategy.strategy_id: binding for binding in self._bindings
+        }
+
+    @property
+    def strategies(self) -> tuple[ReplayStrategy, ...]:
+        return tuple(binding.strategy for binding in self._bindings)
+
+    def expected_native_ticket_count(
+        self,
+        strategy: ReplayStrategy,
+        history: tuple[ReplayDraw, ...],
+        target: ReplayDraw,
+    ) -> int:
+        """Return a source-native target count when a binding supplies one."""
+
+        implementation = self._binding(strategy).implementation
+        resolver = cast(
+            Callable[[ReplayStrategy, tuple[ReplayDraw, ...], ReplayDraw], int] | None,
+            getattr(implementation, "expected_native_ticket_count", None),
+        )
+        if callable(resolver):
+            return resolver(strategy, history, target)
+        return strategy.native_ticket_count
+
+    def generate(
+        self,
+        strategy: ReplayStrategy,
+        history: tuple[ReplayDraw, ...],
+        target: ReplayDraw,
+    ) -> tuple[ReplayTicket, ...]:
+        binding = self._binding(strategy)
+        implementation = binding.implementation
+
+        get_replay_tickets = cast(
+            Callable[[tuple[ReplayDraw, ...], ReplayDraw], tuple[ReplayTicket, ...]] | None,
+            getattr(implementation, "get_replay_tickets", None),
+        )
+        if callable(get_replay_tickets):
+            tickets = get_replay_tickets(history, target)
+            if type(tickets) is not tuple:
+                raise TypeError("BIG_LOTTO stored-output implementations must return a tuple")
+            return tickets
+
+        causal_rows = tuple(_biglotto_row(draw) for draw in history)
+
+        get_bets_with_emission = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], tuple[BetAdapterExecution, ...]]
+            | None,
+            getattr(implementation, "get_bets_with_emission", None),
+        )
+        if callable(get_bets_with_emission):
+            executions = get_bets_with_emission(causal_rows, LotteryType.BIG_LOTTO)
+            return tuple(
+                ReplayTicket(
+                    ticket_position=index,
+                    main_numbers=execution.legal_main_numbers,
+                    special_number=execution.special_number,
+                )
+                for index, execution in enumerate(executions, start=1)
+            )
+
+        get_bets = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], tuple[tuple[int, ...], ...]]
+            | None,
+            getattr(implementation, "get_bets", None),
+        )
+        if callable(get_bets):
+            bets = get_bets(causal_rows, LotteryType.BIG_LOTTO)
+            return tuple(
+                ReplayTicket(ticket_position=index, main_numbers=tuple(numbers))
+                for index, numbers in enumerate(bets, start=1)
+            )
+
+        get_one_with_emission = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], BetAdapterExecution] | None,
+            getattr(implementation, "get_one_bet_with_emission", None),
+        )
+        if callable(get_one_with_emission):
+            execution = get_one_with_emission(causal_rows, LotteryType.BIG_LOTTO)
+            return (
+                ReplayTicket(
+                    ticket_position=1,
+                    main_numbers=execution.legal_main_numbers,
+                    special_number=execution.special_number,
+                ),
+            )
+
+        get_one_bet = cast(
+            Callable[[tuple[CausalDrawRow, ...], LotteryType], tuple[tuple[int, ...], None]]
+            | None,
+            getattr(implementation, "get_one_bet", None),
+        )
+        if callable(get_one_bet):
+            numbers, special_number = get_one_bet(causal_rows, LotteryType.BIG_LOTTO)
+            return (ReplayTicket(1, tuple(numbers), special_number),)
+
+        raise TypeError(f"{strategy.strategy_id}: implementation has no ticket method")
+
+    def _binding(self, strategy: ReplayStrategy) -> ReplayStrategyBinding:
+        try:
+            binding = self._by_id[strategy.strategy_id]
+        except KeyError as exc:
+            raise ValueError(
+                f"strategy {strategy.strategy_id!r} is not pinned in BIG_LOTTO adapter"
+            ) from exc
+        if binding.strategy.identity != strategy.identity:
+            raise ValueError(f"strategy {strategy.strategy_id!r} identity is not pinned")
+        return binding
+
+
 def binding_from_implementation(
     implementation: ReplayStrategyImplementation,
     *,
@@ -303,6 +422,18 @@ def _daily539_row(draw: ReplayDraw) -> CausalDrawRow:
     )
 
 
+def _biglotto_row(draw: ReplayDraw) -> CausalDrawRow:
+    if draw.lottery_type is not LotteryType.BIG_LOTTO:
+        raise ValueError("BIG_LOTTO adapter received a different draw type")
+    if draw.special_number is None:
+        raise ValueError("BIG_LOTTO causal draws require a special number")
+    return CausalDrawRow(
+        draw=draw.draw_number,
+        date=draw.draw_date.isoformat(),
+        numbers=draw.main_numbers,
+    )
+
+
 def _p638_row(draw: ReplayDraw) -> P638HistoryRow:
     if draw.lottery_type is not LotteryType.POWER_LOTTO:
         raise ValueError("POWER_LOTTO adapter received a different draw type")
@@ -317,6 +448,7 @@ def _p638_row(draw: ReplayDraw) -> P638HistoryRow:
 
 
 __all__ = [
+    "BigLottoReplayAdapter",
     "Daily539ReplayAdapter",
     "PowerLottoReplayAdapter",
     "ReplayStrategyBinding",

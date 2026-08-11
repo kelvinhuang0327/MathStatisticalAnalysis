@@ -31,6 +31,9 @@ from lottolab.interfaces.cli.full_strategy_research import (
     export_full_strategy_research_catalog_command,
 )
 from lottolab.interfaces.cli.historical_import import historical_import_command
+from lottolab.interfaces.cli.historical_replay_biglotto import (
+    historical_replay_biglotto_command,
+)
 from lottolab.interfaces.cli.legacy_advanced_methods_native_batch_wave63 import (
     materialize_legacy_advanced_methods_native_wave63_batch_command,
 )
@@ -223,6 +226,7 @@ app.command("materialize-ordered-candidate-emissions")(
 )
 app.command("export-biglotto-strategy-universe")(export_full_strategy_research_catalog_command)
 app.command("backtest-biglotto-portfolios")(multi_ticket_backtest_command)
+app.command("historical-replay-biglotto")(historical_replay_biglotto_command)
 app.command("materialize-biglotto-replay-batch")(materialize_exact_replay_batch_command)
 app.command("materialize-biglotto-random-native-batch")(
     materialize_legacy_random_native_batch_command

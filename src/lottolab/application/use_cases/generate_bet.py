@@ -300,6 +300,12 @@ def _instantiated_adapter(strategy_id: str, adapter_class: object) -> BetAdapter
     return adapter_class()
 
 
+def instantiate_adapter(strategy_id: str, adapter_class: object) -> BetAdapter:
+    """Instantiate one catalog adapter through the canonical type guard."""
+
+    return _instantiated_adapter(strategy_id, adapter_class)
+
+
 def build_production_generate_one_bet() -> GenerateOneBet:
     """Compose the production catalog with its single-ticket executable adapters.
 
@@ -542,6 +548,14 @@ def _instantiated_portfolio_adapter(
     return adapter_factory()
 
 
+def instantiate_portfolio_adapter(
+    strategy_id: str, adapter_class: object
+) -> PortfolioBetAdapter:
+    """Instantiate one portfolio adapter through the canonical type guard."""
+
+    return _instantiated_portfolio_adapter(strategy_id, adapter_class)
+
+
 def _generate_wave26_portfolio(
     method_id: str,
     target_draw_number: str,
@@ -684,6 +698,8 @@ __all__ = [
     "HistoryParseError",
     "build_production_generate_one_bet",
     "build_production_generate_portfolio",
+    "instantiate_adapter",
+    "instantiate_portfolio_adapter",
     "parse_history_json",
     "render_portfolio_result_json",
     "render_result_json",

@@ -3,9 +3,8 @@
 Each lottery type owns its own versioned, source-bound prize-tier table.
 There is no universal cross-lottery hit threshold: a hit signature that wins
 one lottery's prize tier has no bearing on any other lottery's rules.  Only
-POWER_LOTTO (Super Lotto 638, 威力彩) and DAILY_539 (今彩539) are implemented
-here; other lottery types must supply their own evaluator rather than reuse
-either of these.
+BIG_LOTTO, POWER_LOTTO (Super Lotto 638, 威力彩), and DAILY_539 (今彩539)
+are implemented here; other lottery types must supply their own evaluator.
 """
 
 from __future__ import annotations
@@ -16,6 +15,12 @@ from datetime import UTC, datetime
 from enum import StrEnum
 
 from lottolab.domain.draws import LotteryType
+from lottolab.domain.lottery_rules import (
+    BIG_LOTTO_RULE_CONTRACT,
+    BigLottoPrizeTier,
+    resolve_big_lotto_prize_tier,
+    score_big_lotto_ticket,
+)
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 
@@ -371,6 +376,44 @@ def _validate_daily539_numbers(label: str, numbers: tuple[int, ...]) -> None:
         raise ValueError(f"{label} must use canonical ascending order")
 
 
+def evaluate_big_lotto_ticket(
+    *,
+    predicted_main_numbers: tuple[int, ...],
+    predicted_special_number: int | None,
+    winning_main_numbers: tuple[int, ...],
+    winning_special_number: int | None,
+) -> PrizeEvaluationResult:
+    """Score one canonical BIG_LOTTO ticket using the committed rule contract.
+
+    BIG_LOTTO tickets contain six main numbers; the draw's special number is
+    compared with the ticket's main-number set and is not a second ticket zone.
+    """
+
+    if predicted_special_number is not None:
+        raise ValueError("BIG_LOTTO tickets must not carry a predicted special number")
+    if winning_special_number is None:
+        raise ValueError("BIG_LOTTO evaluation requires a winning special number")
+
+    score = score_big_lotto_ticket(
+        predicted_main_numbers=predicted_main_numbers,
+        winning_main_numbers=winning_main_numbers,
+        winning_special_number=winning_special_number,
+    )
+    tier = resolve_big_lotto_prize_tier(score.main_hits, score.special_hit)
+    prize_rule = BIG_LOTTO_RULE_CONTRACT.prize_rule
+    assert prize_rule is not None
+    return PrizeEvaluationResult(
+        lottery_type=LotteryType.BIG_LOTTO,
+        is_winner=isinstance(tier, BigLottoPrizeTier),
+        prize_tier=tier.tier_id.value if isinstance(tier, BigLottoPrizeTier) else None,
+        prize_tier_order=None,
+        zone1_hits=score.main_hits,
+        zone2_hit=score.special_hit,
+        prize_rule_version=prize_rule.schema_version,
+        prize_rule_provenance=f"{prize_rule.source_locator} (sha256={prize_rule.source_sha256})",
+    )
+
+
 def evaluate_power_lotto_ticket(
     *,
     predicted_main_numbers: tuple[int, ...],
@@ -449,6 +492,13 @@ def evaluate_lottery_prize(
 ) -> PrizeEvaluationResult:
     """Dispatch to the lottery-specific evaluator; there is no universal hit threshold."""
 
+    if lottery_type is LotteryType.BIG_LOTTO:
+        return evaluate_big_lotto_ticket(
+            predicted_main_numbers=predicted_main_numbers,
+            predicted_special_number=predicted_special_number,
+            winning_main_numbers=winning_main_numbers,
+            winning_special_number=winning_special_number,
+        )
     if lottery_type is LotteryType.POWER_LOTTO:
         if predicted_special_number is None or winning_special_number is None:
             raise ValueError("POWER_LOTTO evaluation requires a second-zone number")

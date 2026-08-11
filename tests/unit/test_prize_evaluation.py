@@ -1,4 +1,4 @@
-"""Golden contract tests for the official POWER_LOTTO prize-tier evaluator."""
+"""Golden contract tests for the official lottery prize-tier evaluators."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from dataclasses import FrozenInstanceError, replace
 import pytest
 
 from lottolab.domain.draws import LotteryType
+from lottolab.domain.lottery_rules import BigLottoPrizeTierId
 from lottolab.domain.prize_evaluation import (
     DAILY_FIVE39_PRIZE_RULE_CONTRACT,
     LOTTERY_PRIZE_EVALUATOR,
@@ -223,15 +224,16 @@ class TestLotteryPrizeEvaluatorDispatch:
         assert result.is_winner is True
         assert result.prize_tier == PowerLottoPrizeTierId.FIRST.value
 
-    def test_unimplemented_lottery_type_fails_closed(self) -> None:
-        with pytest.raises(NotImplementedError, match="BIG_LOTTO"):
-            evaluate_lottery_prize(
-                lottery_type=LotteryType.BIG_LOTTO,
-                predicted_main_numbers=(1, 2, 3, 4, 5, 6),
-                predicted_special_number=None,
-                winning_main_numbers=(1, 2, 3, 4, 5, 6),
-                winning_special_number=None,
-            )
+    def test_dispatches_big_lotto_by_lottery_type(self) -> None:
+        result = evaluate_lottery_prize(
+            lottery_type=LotteryType.BIG_LOTTO,
+            predicted_main_numbers=WINNING_MAIN,
+            predicted_special_number=None,
+            winning_main_numbers=WINNING_MAIN,
+            winning_special_number=WINNING_SPECIAL,
+        )
+        assert result.is_winner is True
+        assert result.prize_tier == BigLottoPrizeTierId.FIRST.value
 
     def test_power_lotto_requires_second_zone_numbers(self) -> None:
         with pytest.raises(ValueError, match="second-zone"):

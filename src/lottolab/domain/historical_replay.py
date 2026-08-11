@@ -169,6 +169,7 @@ class ReplayTargetRecord:
     evaluations: tuple[ReplayEvaluation, ...]
     reason: str | None = None
     history_fingerprint: str | None = None
+    native_ticket_count: int | None = None
 
     def __post_init__(self) -> None:
         if type(self.status) is not ReplayCellStatus:
@@ -179,8 +180,17 @@ class ReplayTargetRecord:
             raise ValueError("causal_history must be a tuple")
         if type(self.tickets) is not tuple or type(self.evaluations) is not tuple:
             raise ValueError("tickets and evaluations must be tuples")
+        if self.native_ticket_count is not None and (
+            type(self.native_ticket_count) is not int or self.native_ticket_count <= 0
+        ):
+            raise ValueError("native_ticket_count must be positive when supplied")
+        expected_native_ticket_count = (
+            self.native_ticket_count
+            if self.native_ticket_count is not None
+            else self.strategy.native_ticket_count
+        )
         if self.status is ReplayCellStatus.COMPLETE:
-            if len(self.tickets) != self.strategy.native_ticket_count:
+            if len(self.tickets) != expected_native_ticket_count:
                 raise ValueError("COMPLETE records must preserve every native ticket")
             if len(self.evaluations) != len(self.tickets):
                 raise ValueError("COMPLETE records require one evaluation per ticket")
@@ -192,6 +202,16 @@ class ReplayTargetRecord:
     @property
     def cell_key(self) -> tuple[str, str]:
         return self.target.draw_number, self.strategy.strategy_id
+
+    @property
+    def expected_native_ticket_count(self) -> int:
+        """Return the target-specific count used for completeness validation."""
+
+        return (
+            self.native_ticket_count
+            if self.native_ticket_count is not None
+            else self.strategy.native_ticket_count
+        )
 
 
 @dataclass(frozen=True, slots=True)

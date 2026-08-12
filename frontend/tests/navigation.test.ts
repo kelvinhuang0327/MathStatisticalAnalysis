@@ -8,10 +8,10 @@ import { makeRunPage } from './historical-success-windows-fixtures'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
-function apiResponse(payload: unknown): Response {
+function apiResponse(payload: unknown, status = 200): Response {
   return {
-    ok: true,
-    status: 200,
+    ok: status >= 200 && status < 300,
+    status,
     json: vi.fn().mockResolvedValue(payload),
   } as unknown as Response
 }
@@ -197,6 +197,17 @@ beforeEach(() => {
         }),
       )
     }
+    if (url.includes('/api/v1/b649-strategy-k-combinations/')) {
+      return Promise.resolve(
+        apiResponse(
+          {
+            error_code: 'B649_ANALYTICS_AUTHORITY_UNAVAILABLE',
+            message: 'navigation fixture leaves sealed analytics unavailable',
+          },
+          503,
+        ),
+      )
+    }
     if (url.includes('/api/v1/b649-multi-ticket-records/summary')) {
       return Promise.resolve(
         apiResponse({
@@ -303,6 +314,7 @@ describe('App navigation', () => {
       'Base Data Browser',
       'B649 Records',
       'B649 Ranking',
+      'B649 K + Combos',
       'Data Center',
       'History',
       'Strategy Evidence',
@@ -348,6 +360,16 @@ describe('App navigation', () => {
     expect(wrapper.text()).toContain('B649 R2 ranking projection 無法載入')
     expect(
       navigation.find('a[href="#/b649-owner-ranking"]').attributes('aria-current'),
+    ).toBe('page')
+
+    window.location.hash = '#/b649-strategy-k-combinations'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#b649-analytics-title').exists()).toBe(true)
+    expect(
+      navigation
+        .find('a[href="#/b649-strategy-k-combinations"]')
+        .attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/data-center'
@@ -522,6 +544,7 @@ describe('App navigation', () => {
     expect(keyboardTab().textContent?.trim()).toBe('Base Data Browser')
     expect(keyboardTab().textContent?.trim()).toBe('B649 Records')
     expect(keyboardTab().textContent?.trim()).toBe('B649 Ranking')
+    expect(keyboardTab().textContent?.trim()).toBe('B649 K + Combos')
     expect(keyboardTab().textContent?.trim()).toBe('Data Center')
     await activateFocused('Enter')
 

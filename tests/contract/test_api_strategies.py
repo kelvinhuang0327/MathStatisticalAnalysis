@@ -295,10 +295,15 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
     assert operations == {
         ("get", "/api/health"),
         ("get", "/api/v1/strategies"),
-            ("get", "/api/v1/strategy-overview"),
-            ("get", "/api/v1/strategy-evidence"),
-            ("get", "/api/v1/b649-multi-ticket-records"),
-            ("get", "/api/v1/b649-multi-ticket-records/summary"),
+        ("get", "/api/v1/strategy-overview"),
+        ("get", "/api/v1/strategy-evidence"),
+        ("get", "/api/v1/b649-multi-ticket-records"),
+        ("get", "/api/v1/b649-multi-ticket-records/summary"),
+        ("get", "/api/v1/b649-strategy-k-combinations/strategy-k/summary"),
+        ("get", "/api/v1/b649-strategy-k-combinations/strategy-k"),
+        ("get", "/api/v1/b649-strategy-k-combinations/combinations/summary"),
+        ("get", "/api/v1/b649-strategy-k-combinations/combinations"),
+        ("get", "/api/v1/b649-strategy-k-combinations/evidence-status"),
         ("post", "/api/v1/draw-imports/preview"),
         ("post", "/api/v1/draw-imports/commit"),
         ("post", "/api/v1/draw-imports/batch/preview"),
@@ -433,7 +438,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 67
+    assert len(operations) == 72
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

@@ -15,6 +15,7 @@ from lottolab.application.historical_prefix_success_windows import (
 )
 from lottolab.application.historical_queries import HistoricalResultsUnavailableError
 from lottolab.application.ports import (
+    B649AnalyticsArtifactReader,
     DrawDataProvider,
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
@@ -29,6 +30,10 @@ from lottolab.application.ports import (
 from lottolab.application.t539_historical import T539HistoricalResultsUnavailableError
 from lottolab.application.use_cases.query_replay_scoring_projection import (
     ReplayScoringQueryUnavailableError,
+)
+from lottolab.infrastructure.b649_analytics_artifact_reader import (
+    B649AnalyticsAuthorityPaths,
+    SealedB649AnalyticsArtifactReader,
 )
 from lottolab.infrastructure.draw_provider import JsonHttpDrawDataProvider
 from lottolab.infrastructure.persistence.historical_prefix_success_window_reader import (
@@ -90,6 +95,42 @@ DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
 OFFICIAL_TAIWAN_LOTTERY_SOURCE = "OFFICIAL_TAIWAN_LOTTERY"
 REPLAY_SCORING_DB_ENV = "LOTTOLAB_REPLAY_SCORING_DB"
+B649_TASK_DATA_ROOT_ENV = "LOTTOLAB_B649_TASK_DATA_ROOT"
+B649_DEFAULT_TASK_DATA_ROOT = Path("/Users/kelvin/VibeCoding-WorkSpace/.task-data")
+
+
+@dataclass(frozen=True)
+class LocalB649AnalyticsComposition:
+    """One read-only reader bound to the three exact sealed authority roots."""
+
+    task_data_root: Path
+
+    def b649_analytics_artifact_reader(self) -> B649AnalyticsArtifactReader:
+        return SealedB649AnalyticsArtifactReader(
+            B649AnalyticsAuthorityPaths(
+                strategy_k_root=(
+                    self.task_data_root / "B649_STRATEGY_K_HISTORICAL_MATRIX_AUTHORITY_R1"
+                ),
+                combination_root=(self.task_data_root / "B649_COMBINATION_PROJECTION_R1"),
+                observer_root=(
+                    self.task_data_root / "B649_COMBINATION_PROSPECTIVE_FORWARD_OBSERVER_R1"
+                ),
+            )
+        )
+
+
+def local_b649_analytics_composition(
+    environment: Mapping[str, str],
+) -> LocalB649AnalyticsComposition:
+    """Resolve one exact optional override; otherwise use the pinned local root."""
+
+    configured = environment.get(B649_TASK_DATA_ROOT_ENV)
+    root = (
+        B649_DEFAULT_TASK_DATA_ROOT
+        if configured is None or configured == ""
+        else Path(configured)
+    )
+    return LocalB649AnalyticsComposition(task_data_root=root)
 
 
 @dataclass(frozen=True)
@@ -355,6 +396,8 @@ def create_local_app() -> FastAPI:
     current_ranking_composition = local_p638_current_ranking_composition(os.environ)
     current_replay_composition = local_p638_current_replay_composition(os.environ)
     t539_historical_composition = local_t539_historical_composition(os.environ)
+    b649_analytics_composition = local_b649_analytics_composition(os.environ)
+    b649_analytics_reader = b649_analytics_composition.b649_analytics_artifact_reader()
     provider = local_draw_provider(os.environ)
     replay_scoring_projection_reader_factory = (
         replay_scoring_composition.replay_scoring_projection_reader
@@ -400,6 +443,7 @@ def create_local_app() -> FastAPI:
         p638_historical_query_repository_factory = composition.p638_historical_query_repository
     if composition is None:
         return create_app(
+            b649_analytics_artifact_reader_factory=lambda: b649_analytics_reader,
             draw_data_provider_factory=lambda: provider,
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
             p638_historical_query_repository_factory=p638_historical_query_repository_factory,
@@ -411,6 +455,7 @@ def create_local_app() -> FastAPI:
             p638_multiwindow_success_source_reader_factory=p638_multiwindow_factory,
         )
     return create_app(
+        b649_analytics_artifact_reader_factory=lambda: b649_analytics_reader,
         draw_data_provider_factory=lambda: provider,
         historical_query_repository_factory=composition.historical_query_repository,
         p638_historical_query_repository_factory=p638_historical_query_repository_factory,
@@ -448,6 +493,8 @@ def local_draw_provider(
 
 
 __all__ = [
+    "B649_DEFAULT_TASK_DATA_ROOT",
+    "B649_TASK_DATA_ROOT_ENV",
     "DRAW_PROVIDER_SOURCE_ENV",
     "DRAW_PROVIDER_URL_ENV",
     "HISTORICAL_RESULTS_DB_ENV",
@@ -458,12 +505,14 @@ __all__ = [
     "P638_CURRENT_REPLAY_DB_ENV",
     "REPLAY_SCORING_DB_ENV",
     "T539_HISTORICAL_DB_ENV",
+    "LocalB649AnalyticsComposition",
     "LocalHistoricalComposition",
     "LocalP638CurrentRankingComposition",
     "LocalP638CurrentReplayComposition",
     "LocalReplayScoringComposition",
     "LocalT539HistoricalComposition",
     "create_local_app",
+    "local_b649_analytics_composition",
     "local_draw_provider",
     "local_historical_composition",
     "local_p638_current_ranking_composition",

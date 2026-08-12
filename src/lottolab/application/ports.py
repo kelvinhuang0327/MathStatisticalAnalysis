@@ -7,6 +7,15 @@ from datetime import date
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
+from lottolab.application.b649_strategy_k_combinations import (
+    B649CombinationPage,
+    B649CombinationQuery,
+    B649CombinationSummary,
+    B649EvidenceStatus,
+    B649StrategyKPage,
+    B649StrategyKQuery,
+    B649StrategyKSummary,
+)
 from lottolab.application.biglotto_multi_ticket_records import (
     B649MultiTicketRecordDataset,
 )
@@ -175,6 +184,24 @@ class B649MultiTicketRecordReader(Protocol):
 
 
 type B649MultiTicketRecordReaderFactory = Callable[[], B649MultiTicketRecordReader]
+
+
+@runtime_checkable
+class B649AnalyticsArtifactReader(Protocol):
+    """Read only the three exact sealed B649 analytics authorities."""
+
+    def strategy_k_summary(self) -> B649StrategyKSummary: ...
+
+    def query_strategy_k(self, query: B649StrategyKQuery) -> B649StrategyKPage: ...
+
+    def combination_summary(self) -> B649CombinationSummary: ...
+
+    def query_combinations(self, query: B649CombinationQuery) -> B649CombinationPage: ...
+
+    def evidence_status(self) -> B649EvidenceStatus: ...
+
+
+type B649AnalyticsArtifactReaderFactory = Callable[[], B649AnalyticsArtifactReader]
 
 
 @runtime_checkable

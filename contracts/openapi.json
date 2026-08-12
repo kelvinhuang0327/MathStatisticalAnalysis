@@ -319,6 +319,346 @@
         }
       }
     },
+    "/api/v1/b649-strategy-k-combinations/strategy-k/summary": {
+      "get": {
+        "tags": [
+          "b649-strategy-k-combinations"
+        ],
+        "summary": "Strategy K Summary",
+        "operationId": "getB649StrategyKSummary",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649StrategyKSummaryResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649AnalyticsApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649-strategy-k-combinations/strategy-k": {
+      "get": {
+        "tags": [
+          "b649-strategy-k-combinations"
+        ],
+        "summary": "Strategy K",
+        "operationId": "listB649StrategyKRecords",
+        "parameters": [
+          {
+            "name": "requested_k",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 49,
+              "minimum": 1,
+              "title": "Requested K"
+            }
+          },
+          {
+            "name": "window_kind",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649StrategyKWindowKind"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649StrategyKCriterion"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/B649StrategyKSort",
+              "default": "STRATEGY_ID_ASC"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649StrategyKPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649AnalyticsApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/b649-strategy-k-combinations/combinations/summary": {
+      "get": {
+        "tags": [
+          "b649-strategy-k-combinations"
+        ],
+        "summary": "Combination Summary",
+        "operationId": "getB649CombinationSummary",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649CombinationSummaryResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649AnalyticsApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/b649-strategy-k-combinations/combinations": {
+      "get": {
+        "tags": [
+          "b649-strategy-k-combinations"
+        ],
+        "summary": "Combinations",
+        "operationId": "listB649Combinations",
+        "parameters": [
+          {
+            "name": "proxy_mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649CombinationProxyMode"
+            }
+          },
+          {
+            "name": "member_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649MemberCount"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649CombinationWindow"
+            }
+          },
+          {
+            "name": "criterion",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649CombinationCriterion"
+            }
+          },
+          {
+            "name": "member_search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Member Search"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/B649CombinationSort",
+              "default": "SEALED_RANK_ASC"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649CombinationPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649AnalyticsApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/b649-strategy-k-combinations/evidence-status": {
+      "get": {
+        "tags": [
+          "b649-strategy-k-combinations"
+        ],
+        "summary": "Evidence Status",
+        "operationId": "getB649CombinationEvidenceStatus",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649EvidenceStatusResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649AnalyticsApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/strategy-evidence": {
       "get": {
         "tags": [
@@ -5699,6 +6039,530 @@
         ],
         "title": "ApiValidationErrorResponse"
       },
+      "B649AnalyticsApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649AnalyticsApiErrorResponse"
+      },
+      "B649CombinationCriterion": {
+        "type": "string",
+        "enum": [
+          "M1_PLUS",
+          "M2_PLUS",
+          "M3_PLUS",
+          "M4_PLUS",
+          "M5_PLUS",
+          "M6",
+          "SPECIAL_HIT",
+          "M1_PLUS_SPECIAL",
+          "M2_PLUS_SPECIAL",
+          "M3_PLUS_SPECIAL",
+          "M4_PLUS_SPECIAL",
+          "M5_PLUS_SPECIAL"
+        ],
+        "title": "B649CombinationCriterion"
+      },
+      "B649CombinationPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649CombinationRecordView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "proxy_mode": {
+            "$ref": "#/components/schemas/B649CombinationProxyMode"
+          },
+          "member_count": {
+            "type": "integer",
+            "title": "Member Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649CombinationWindow"
+          },
+          "window_role": {
+            "$ref": "#/components/schemas/B649WindowRole"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649CombinationCriterion"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/B649CombinationSort"
+          },
+          "ranking_label": {
+            "type": "string",
+            "title": "Ranking Label"
+          },
+          "source_scope": {
+            "type": "string",
+            "title": "Source Scope"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "proxy_mode",
+          "member_count",
+          "window",
+          "window_role",
+          "criterion",
+          "sort",
+          "ranking_label",
+          "source_scope",
+          "research_disclaimer"
+        ],
+        "title": "B649CombinationPageResponse"
+      },
+      "B649CombinationProxyMode": {
+        "type": "string",
+        "enum": [
+          "A",
+          "C"
+        ],
+        "title": "B649CombinationProxyMode"
+      },
+      "B649CombinationProxyOptionView": {
+        "properties": {
+          "proxy_mode": {
+            "$ref": "#/components/schemas/B649CombinationProxyMode"
+          },
+          "proxy_label": {
+            "type": "string",
+            "title": "Proxy Label"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proxy_mode",
+          "proxy_label"
+        ],
+        "title": "B649CombinationProxyOptionView"
+      },
+      "B649CombinationRecordView": {
+        "properties": {
+          "proxy_mode": {
+            "$ref": "#/components/schemas/B649CombinationProxyMode"
+          },
+          "proxy_label": {
+            "type": "string",
+            "title": "Proxy Label"
+          },
+          "member_count": {
+            "type": "integer",
+            "title": "Member Count"
+          },
+          "member_strategy_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Member Strategy Ids"
+          },
+          "combination_id": {
+            "type": "string",
+            "title": "Combination Id"
+          },
+          "evaluation_window": {
+            "$ref": "#/components/schemas/B649CombinationWindow"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649CombinationCriterion"
+          },
+          "sealed_rank": {
+            "type": "integer",
+            "title": "Sealed Rank"
+          },
+          "eligible_draws": {
+            "type": "integer",
+            "title": "Eligible Draws"
+          },
+          "success_numerator": {
+            "type": "integer",
+            "title": "Success Numerator"
+          },
+          "success_denominator": {
+            "type": "integer",
+            "title": "Success Denominator"
+          },
+          "observed_rate": {
+            "type": "string",
+            "title": "Observed Rate"
+          },
+          "exact_random_baseline_numerator": {
+            "type": "integer",
+            "title": "Exact Random Baseline Numerator"
+          },
+          "exact_random_baseline_denominator": {
+            "type": "integer",
+            "title": "Exact Random Baseline Denominator"
+          },
+          "random_baseline_rate": {
+            "type": "string",
+            "title": "Random Baseline Rate"
+          },
+          "descriptive_delta": {
+            "type": "string",
+            "title": "Descriptive Delta"
+          },
+          "evaluation_status": {
+            "type": "string",
+            "title": "Evaluation Status"
+          },
+          "evaluation_reason": {
+            "type": "string",
+            "title": "Evaluation Reason"
+          },
+          "long_delta_sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Long Delta Sign"
+          },
+          "mid_delta_sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mid Delta Sign"
+          },
+          "short_delta_sign": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Short Delta Sign"
+          },
+          "positive_window_count": {
+            "type": "integer",
+            "title": "Positive Window Count"
+          },
+          "minimum_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum Delta"
+          },
+          "delta_range": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Range"
+          },
+          "cross_window_stable_positive": {
+            "type": "boolean",
+            "title": "Cross Window Stable Positive"
+          },
+          "historical_search_only": {
+            "type": "boolean",
+            "title": "Historical Search Only"
+          },
+          "predictive_advantage_claimed": {
+            "type": "boolean",
+            "title": "Predictive Advantage Claimed"
+          },
+          "prospective_validation_required": {
+            "type": "boolean",
+            "title": "Prospective Validation Required"
+          },
+          "candidate_disposition": {
+            "type": "string",
+            "title": "Candidate Disposition"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "proxy_mode",
+          "proxy_label",
+          "member_count",
+          "member_strategy_ids",
+          "combination_id",
+          "evaluation_window",
+          "criterion",
+          "sealed_rank",
+          "eligible_draws",
+          "success_numerator",
+          "success_denominator",
+          "observed_rate",
+          "exact_random_baseline_numerator",
+          "exact_random_baseline_denominator",
+          "random_baseline_rate",
+          "descriptive_delta",
+          "evaluation_status",
+          "evaluation_reason",
+          "long_delta_sign",
+          "mid_delta_sign",
+          "short_delta_sign",
+          "positive_window_count",
+          "minimum_delta",
+          "delta_range",
+          "cross_window_stable_positive",
+          "historical_search_only",
+          "predictive_advantage_claimed",
+          "prospective_validation_required",
+          "candidate_disposition"
+        ],
+        "title": "B649CombinationRecordView"
+      },
+      "B649CombinationSort": {
+        "type": "string",
+        "enum": [
+          "SEALED_RANK_ASC",
+          "COMBINATION_ID_ASC"
+        ],
+        "title": "B649CombinationSort"
+      },
+      "B649CombinationSummaryResponse": {
+        "properties": {
+          "authority_task_tree": {
+            "type": "string",
+            "title": "Authority Task Tree"
+          },
+          "sealed_top_candidate_count": {
+            "type": "integer",
+            "title": "Sealed Top Candidate Count"
+          },
+          "proxy_modes": {
+            "items": {
+              "$ref": "#/components/schemas/B649CombinationProxyOptionView"
+            },
+            "type": "array",
+            "title": "Proxy Modes"
+          },
+          "member_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Member Counts"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/B649WindowOptionView"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "supported_criteria": {
+            "items": {
+              "$ref": "#/components/schemas/B649CombinationCriterion"
+            },
+            "type": "array",
+            "title": "Supported Criteria"
+          },
+          "source_scope": {
+            "type": "string",
+            "title": "Source Scope"
+          },
+          "full_projection_sent_to_browser": {
+            "type": "boolean",
+            "title": "Full Projection Sent To Browser"
+          },
+          "predictive_advantage_claimed": {
+            "type": "boolean",
+            "title": "Predictive Advantage Claimed"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "authority_task_tree",
+          "sealed_top_candidate_count",
+          "proxy_modes",
+          "member_counts",
+          "windows",
+          "supported_criteria",
+          "source_scope",
+          "full_projection_sent_to_browser",
+          "predictive_advantage_claimed",
+          "research_disclaimer"
+        ],
+        "title": "B649CombinationSummaryResponse"
+      },
+      "B649CombinationWindow": {
+        "type": "string",
+        "enum": [
+          "FULL",
+          "LONG_750",
+          "MID_300",
+          "SHORT_50"
+        ],
+        "title": "B649CombinationWindow"
+      },
+      "B649EffectiveUniqueKCountView": {
+        "properties": {
+          "effective_unique_k": {
+            "type": "integer",
+            "title": "Effective Unique K"
+          },
+          "observation_count": {
+            "type": "integer",
+            "title": "Observation Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "effective_unique_k",
+          "observation_count"
+        ],
+        "title": "B649EffectiveUniqueKCountView"
+      },
+      "B649EvidenceStatusResponse": {
+        "properties": {
+          "observer_task_tree": {
+            "type": "string",
+            "title": "Observer Task Tree"
+          },
+          "historical_evidence_status": {
+            "type": "string",
+            "title": "Historical Evidence Status"
+          },
+          "pre_freeze_date_unseen_holdout_count": {
+            "type": "integer",
+            "title": "Pre Freeze Date Unseen Holdout Count"
+          },
+          "post_freeze_date_prospective_count": {
+            "type": "integer",
+            "title": "Post Freeze Date Prospective Count"
+          },
+          "observation_count": {
+            "type": "integer",
+            "title": "Observation Count"
+          },
+          "observation_start_draw": {
+            "type": "string",
+            "title": "Observation Start Draw"
+          },
+          "latest_observed_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Observed Draw"
+          },
+          "checkpoints": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Checkpoints"
+          },
+          "checkpoints_reached": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Checkpoints Reached"
+          },
+          "primary_outcome": {
+            "type": "string",
+            "title": "Primary Outcome"
+          },
+          "c_forward_status": {
+            "type": "string",
+            "title": "C Forward Status"
+          },
+          "c_forward_reason": {
+            "type": "string",
+            "title": "C Forward Reason"
+          },
+          "holdout_used_to_rerank_historical_results": {
+            "type": "boolean",
+            "title": "Holdout Used To Rerank Historical Results"
+          },
+          "predictive_advantage_claimed": {
+            "type": "boolean",
+            "title": "Predictive Advantage Claimed"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "observer_task_tree",
+          "historical_evidence_status",
+          "pre_freeze_date_unseen_holdout_count",
+          "post_freeze_date_prospective_count",
+          "observation_count",
+          "observation_start_draw",
+          "latest_observed_draw",
+          "checkpoints",
+          "checkpoints_reached",
+          "primary_outcome",
+          "c_forward_status",
+          "c_forward_reason",
+          "holdout_used_to_rerank_historical_results",
+          "predictive_advantage_claimed"
+        ],
+        "title": "B649EvidenceStatusResponse"
+      },
       "B649HistoryWindow": {
         "type": "string",
         "enum": [
@@ -5708,6 +6572,14 @@
           "RECENT_50"
         ],
         "title": "B649HistoryWindow"
+      },
+      "B649MemberCount": {
+        "type": "integer",
+        "enum": [
+          2,
+          3
+        ],
+        "title": "B649MemberCount"
       },
       "B649MultiTicketApiErrorResponse": {
         "properties": {
@@ -6357,6 +7229,389 @@
         ],
         "title": "B649ResearchProgressView"
       },
+      "B649StrategyAvailability": {
+        "type": "string",
+        "enum": [
+          "MATRIX_AVAILABLE",
+          "PORTFOLIO_ORDER_AGGREGATION_NOT_DEFINED"
+        ],
+        "title": "B649StrategyAvailability"
+      },
+      "B649StrategyAvailabilityView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "availability": {
+            "$ref": "#/components/schemas/B649StrategyAvailability"
+          },
+          "availability_reason": {
+            "type": "string",
+            "title": "Availability Reason"
+          },
+          "response_shape": {
+            "type": "string",
+            "title": "Response Shape"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "availability",
+          "availability_reason",
+          "response_shape",
+          "native_ticket_count"
+        ],
+        "title": "B649StrategyAvailabilityView"
+      },
+      "B649StrategyKCriterion": {
+        "type": "string",
+        "enum": [
+          "M1_PLUS",
+          "M2_PLUS",
+          "M3_PLUS",
+          "M4_PLUS",
+          "M5_PLUS",
+          "M6_PLUS",
+          "SPECIAL_HIT",
+          "M2_PLUS_SPECIAL",
+          "M3_PLUS_SPECIAL",
+          "M4_PLUS_SPECIAL",
+          "M5_PLUS_SPECIAL",
+          "M6_PLUS_SPECIAL"
+        ],
+        "title": "B649StrategyKCriterion"
+      },
+      "B649StrategyKPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649StrategyKRecordView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "requested_k": {
+            "type": "integer",
+            "title": "Requested K"
+          },
+          "window_kind": {
+            "$ref": "#/components/schemas/B649StrategyKWindowKind"
+          },
+          "window_role": {
+            "$ref": "#/components/schemas/B649WindowRole"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649StrategyKCriterion"
+          },
+          "sort": {
+            "$ref": "#/components/schemas/B649StrategyKSort"
+          },
+          "ranking_label": {
+            "type": "string",
+            "title": "Ranking Label"
+          },
+          "measurement_mode": {
+            "type": "string",
+            "title": "Measurement Mode"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "requested_k",
+          "window_kind",
+          "window_role",
+          "criterion",
+          "sort",
+          "ranking_label",
+          "measurement_mode",
+          "research_disclaimer"
+        ],
+        "title": "B649StrategyKPageResponse"
+      },
+      "B649StrategyKRecordView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "requested_k": {
+            "type": "integer",
+            "title": "Requested K"
+          },
+          "effective_unique_k_counts": {
+            "items": {
+              "$ref": "#/components/schemas/B649EffectiveUniqueKCountView"
+            },
+            "type": "array",
+            "title": "Effective Unique K Counts"
+          },
+          "criterion": {
+            "$ref": "#/components/schemas/B649StrategyKCriterion"
+          },
+          "window_kind": {
+            "$ref": "#/components/schemas/B649StrategyKWindowKind"
+          },
+          "window_role": {
+            "$ref": "#/components/schemas/B649WindowRole"
+          },
+          "requested_draw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Draw Count"
+          },
+          "source_observation_count": {
+            "type": "integer",
+            "title": "Source Observation Count"
+          },
+          "eligible_observation_count": {
+            "type": "integer",
+            "title": "Eligible Observation Count"
+          },
+          "excluded_observation_count": {
+            "type": "integer",
+            "title": "Excluded Observation Count"
+          },
+          "success_numerator": {
+            "type": "integer",
+            "title": "Success Numerator"
+          },
+          "success_denominator": {
+            "type": "integer",
+            "title": "Success Denominator"
+          },
+          "random_baseline_numerator": {
+            "type": "integer",
+            "title": "Random Baseline Numerator"
+          },
+          "random_baseline_denominator": {
+            "type": "integer",
+            "title": "Random Baseline Denominator"
+          },
+          "observed_minus_baseline": {
+            "type": "string",
+            "title": "Observed Minus Baseline"
+          },
+          "first_target_draw": {
+            "type": "string",
+            "title": "First Target Draw"
+          },
+          "last_target_draw": {
+            "type": "string",
+            "title": "Last Target Draw"
+          },
+          "evaluation_status": {
+            "type": "string",
+            "title": "Evaluation Status"
+          },
+          "measurement_mode": {
+            "type": "string",
+            "title": "Measurement Mode"
+          },
+          "window_policy_version": {
+            "type": "string",
+            "title": "Window Policy Version"
+          },
+          "nested_windows_independent": {
+            "type": "boolean",
+            "title": "Nested Windows Independent"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "requested_k",
+          "effective_unique_k_counts",
+          "criterion",
+          "window_kind",
+          "window_role",
+          "requested_draw_count",
+          "source_observation_count",
+          "eligible_observation_count",
+          "excluded_observation_count",
+          "success_numerator",
+          "success_denominator",
+          "random_baseline_numerator",
+          "random_baseline_denominator",
+          "observed_minus_baseline",
+          "first_target_draw",
+          "last_target_draw",
+          "evaluation_status",
+          "measurement_mode",
+          "window_policy_version",
+          "nested_windows_independent"
+        ],
+        "title": "B649StrategyKRecordView"
+      },
+      "B649StrategyKSort": {
+        "type": "string",
+        "enum": [
+          "STRATEGY_ID_ASC",
+          "OBSERVED_RATE_DESC",
+          "OBSERVED_MINUS_BASELINE_DESC"
+        ],
+        "title": "B649StrategyKSort"
+      },
+      "B649StrategyKSummaryResponse": {
+        "properties": {
+          "authority_task_tree": {
+            "type": "string",
+            "title": "Authority Task Tree"
+          },
+          "authority_full_output_tree": {
+            "type": "string",
+            "title": "Authority Full Output Tree"
+          },
+          "matrix_row_count": {
+            "type": "integer",
+            "title": "Matrix Row Count"
+          },
+          "supported_k_values": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Supported K Values"
+          },
+          "supported_criteria": {
+            "items": {
+              "$ref": "#/components/schemas/B649StrategyKCriterion"
+            },
+            "type": "array",
+            "title": "Supported Criteria"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/B649WindowOptionView"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "strategies": {
+            "items": {
+              "$ref": "#/components/schemas/B649StrategyAvailabilityView"
+            },
+            "type": "array",
+            "title": "Strategies"
+          },
+          "current_executable_strategy_count": {
+            "type": "integer",
+            "title": "Current Executable Strategy Count"
+          },
+          "matrix_available_strategy_count": {
+            "type": "integer",
+            "title": "Matrix Available Strategy Count"
+          },
+          "matrix_unavailable_strategy_count": {
+            "type": "integer",
+            "title": "Matrix Unavailable Strategy Count"
+          },
+          "historical_accounted_identity_count": {
+            "type": "integer",
+            "title": "Historical Accounted Identity Count"
+          },
+          "measurement_mode": {
+            "type": "string",
+            "title": "Measurement Mode"
+          },
+          "window_policy_version": {
+            "type": "string",
+            "title": "Window Policy Version"
+          },
+          "duplicate_handling_policy": {
+            "type": "string",
+            "title": "Duplicate Handling Policy"
+          },
+          "nested_windows_independent": {
+            "type": "boolean",
+            "title": "Nested Windows Independent"
+          },
+          "predictive_advantage_claimed": {
+            "type": "boolean",
+            "title": "Predictive Advantage Claimed"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "authority_task_tree",
+          "authority_full_output_tree",
+          "matrix_row_count",
+          "supported_k_values",
+          "supported_criteria",
+          "windows",
+          "strategies",
+          "current_executable_strategy_count",
+          "matrix_available_strategy_count",
+          "matrix_unavailable_strategy_count",
+          "historical_accounted_identity_count",
+          "measurement_mode",
+          "window_policy_version",
+          "duplicate_handling_policy",
+          "nested_windows_independent",
+          "predictive_advantage_claimed",
+          "research_disclaimer"
+        ],
+        "title": "B649StrategyKSummaryResponse"
+      },
+      "B649StrategyKWindowKind": {
+        "type": "string",
+        "enum": [
+          "FULL_HISTORY",
+          "LONG",
+          "MEDIUM",
+          "SHORT"
+        ],
+        "title": "B649StrategyKWindowKind"
+      },
       "B649SuccessCriterion": {
         "type": "string",
         "enum": [
@@ -6370,6 +7625,51 @@
           "M5_PLUS_SPECIAL"
         ],
         "title": "B649SuccessCriterion"
+      },
+      "B649WindowOptionView": {
+        "properties": {
+          "window_kind": {
+            "type": "string",
+            "title": "Window Kind"
+          },
+          "window_role": {
+            "$ref": "#/components/schemas/B649WindowRole"
+          },
+          "requested_draw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested Draw Count"
+          },
+          "default_emphasis": {
+            "type": "boolean",
+            "title": "Default Emphasis"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "window_kind",
+          "window_role",
+          "requested_draw_count",
+          "default_emphasis"
+        ],
+        "title": "B649WindowOptionView"
+      },
+      "B649WindowRole": {
+        "type": "string",
+        "enum": [
+          "PRIMARY_EVIDENCE",
+          "STABILITY_CONFIRMATION",
+          "DEGRADATION_VETO",
+          "REFERENCE_ONLY"
+        ],
+        "title": "B649WindowRole"
       },
       "BatchImportCommitRequest": {
         "properties": {

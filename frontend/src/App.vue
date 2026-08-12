@@ -4,6 +4,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 import DataCenterPage from './features/data-center/DataCenterPage.vue'
 import B649MultiTicketRecordsPage from './features/b649-multi-ticket-records/B649MultiTicketRecordsPage.vue'
 import B649OwnerRankingPage from './features/b649-owner-ranking/B649OwnerRankingPage.vue'
+import B649StrategyKCombinationsPage from './features/b649-strategy-k-combinations/B649StrategyKCombinationsPage.vue'
 import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import HistoricalBaseDataPage from './features/historical-base-data/HistoricalBaseDataPage.vue'
@@ -21,6 +22,7 @@ type Page =
   | 'historical-base-data'
   | 'b649-multi-ticket-records'
   | 'b649-owner-ranking'
+  | 'b649-strategy-k-combinations'
   | 'data-center'
   | 'history'
   | 'strategy-evidence'
@@ -38,6 +40,7 @@ function pageFromHash(): Page {
   if (route === 'historical-base-data') return 'historical-base-data'
   if (route === 'b649-multi-ticket-records') return 'b649-multi-ticket-records'
   if (route === 'b649-owner-ranking') return 'b649-owner-ranking'
+  if (route === 'b649-strategy-k-combinations') return 'b649-strategy-k-combinations'
   if (route === 'data-center') return 'data-center'
   if (route === 'history' || route === 'draw-history') return 'history'
   if (route === 'strategy-evidence') return 'strategy-evidence'
@@ -95,6 +98,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           B649 Ranking
         </a>
+        <a
+          href="#/b649-strategy-k-combinations"
+          :aria-current="currentPage === 'b649-strategy-k-combinations' ? 'page' : undefined"
+        >
+          B649 K + Combos
+        </a>
         <a href="#/data-center" :aria-current="currentPage === 'data-center' ? 'page' : undefined">
           Data Center
         </a>
@@ -147,6 +156,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <HistoricalBaseDataPage v-else-if="currentPage === 'historical-base-data'" />
       <B649MultiTicketRecordsPage v-else-if="currentPage === 'b649-multi-ticket-records'" />
       <B649OwnerRankingPage v-else-if="currentPage === 'b649-owner-ranking'" />
+      <B649StrategyKCombinationsPage
+        v-else-if="currentPage === 'b649-strategy-k-combinations'"
+      />
       <DataCenterPage v-else-if="currentPage === 'data-center'" />
       <HistoryPage v-else-if="currentPage === 'history'" />
       <StrategyEvidencePage v-else-if="currentPage === 'strategy-evidence'" />
@@ -174,6 +186,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       </template>
       <template v-else-if="currentPage === 'b649-owner-ranking'">
         B649 R2 Owner Ranking 只呈現已驗證的歷史描述性證據，不重算排名、不保證未來表現。
+      </template>
+      <template v-else-if="currentPage === 'b649-strategy-k-combinations'">
+        Historical candidate coverage and sealed pair/triple rankings are descriptive only—not
+        official prize probability, future success probability, recommendation, or prediction.
       </template>
       <template v-else-if="currentPage === 'live-zone-split-bets'">
         Target-contract-only view of the merged Live Zone Split API. Legacy LotteryNew consumer

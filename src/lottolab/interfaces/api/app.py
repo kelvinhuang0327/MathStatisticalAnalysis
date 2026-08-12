@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    B649AnalyticsArtifactReaderFactory,
     B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
@@ -51,6 +52,9 @@ from lottolab.infrastructure.strategy_evidence_registry import (
 )
 from lottolab.interfaces.api.b649_multi_ticket_records import (
     create_b649_multi_ticket_records_router,
+)
+from lottolab.interfaces.api.b649_strategy_k_combinations import (
+    create_b649_strategy_k_combinations_router,
 )
 from lottolab.interfaces.api.draw_data import (
     ApiValidationErrorResponse,
@@ -114,6 +118,7 @@ def create_app(
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
+    b649_analytics_artifact_reader_factory: (B649AnalyticsArtifactReaderFactory | None) = None,
     t539_historical_query_repository_factory: (
         T539HistoricalQueryRepositoryFactory | None
     ) = None,
@@ -183,6 +188,9 @@ def create_app(
             load_full_strategy_catalog(),
             resolved_b649_reader_factory,
         )
+    )
+    app.include_router(
+        create_b649_strategy_k_combinations_router(b649_analytics_artifact_reader_factory)
     )
     app.include_router(
         create_strategy_evidence_router(

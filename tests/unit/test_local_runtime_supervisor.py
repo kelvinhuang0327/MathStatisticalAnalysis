@@ -1402,6 +1402,21 @@ def test_smoke_verifies_health_proxy_catalog_openapi_and_local_listeners(
                                 "/api/v1/strategy-evidence": {"get": {}},
                                 "/api/v1/b649-multi-ticket-records": {"get": {}},
                                 "/api/v1/b649-multi-ticket-records/summary": {"get": {}},
+                                "/api/v1/b649-strategy-k-combinations/strategy-k/summary": {
+                                    "get": {}
+                                },
+                                "/api/v1/b649-strategy-k-combinations/strategy-k": {
+                                    "get": {}
+                                },
+                                "/api/v1/b649-strategy-k-combinations/combinations/summary": {
+                                    "get": {}
+                                },
+                                "/api/v1/b649-strategy-k-combinations/combinations": {
+                                    "get": {}
+                                },
+                                "/api/v1/b649-strategy-k-combinations/evidence-status": {
+                                    "get": {}
+                                },
                             "/api/v1/draw-imports/preview": {"post": {}},
                             "/api/v1/draw-imports/commit": {"post": {}},
                             "/api/v1/draw-imports/batch/preview": {"post": {}},

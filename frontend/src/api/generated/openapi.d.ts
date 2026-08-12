@@ -95,6 +95,122 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/b649-strategy-k-combinations/strategy-k/summary": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649StrategyKSummaryResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649AnalyticsApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-strategy-k-combinations/strategy-k": {
+      get: {
+          parameters: {
+            "query": {
+              "requested_k": number
+              "window_kind": components['schemas']["B649StrategyKWindowKind"]
+              "criterion": components['schemas']["B649StrategyKCriterion"]
+              "q"?: string | null
+              "sort"?: components['schemas']["B649StrategyKSort"]
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649StrategyKPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649AnalyticsApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-strategy-k-combinations/combinations/summary": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649CombinationSummaryResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649AnalyticsApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-strategy-k-combinations/combinations": {
+      get: {
+          parameters: {
+            "query": {
+              "proxy_mode": components['schemas']["B649CombinationProxyMode"]
+              "member_count": components['schemas']["B649MemberCount"]
+              "window": components['schemas']["B649CombinationWindow"]
+              "criterion": components['schemas']["B649CombinationCriterion"]
+              "member_search"?: string | null
+              "sort"?: components['schemas']["B649CombinationSort"]
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649CombinationPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649AnalyticsApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/b649-strategy-k-combinations/evidence-status": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649EvidenceStatusResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649AnalyticsApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/strategy-evidence": {
       get: {
           parameters: Record<string, never>
@@ -2095,7 +2211,98 @@ export interface components {
           "preview"?: components['schemas']["DrawImportPreviewResponse"] | null
           "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
         }
+    "B649AnalyticsApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649CombinationCriterion": "M1_PLUS" | "M2_PLUS" | "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "SPECIAL_HIT" | "M1_PLUS_SPECIAL" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
+    "B649CombinationPageResponse": {
+          "items": Array<components['schemas']["B649CombinationRecordView"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "proxy_mode": components['schemas']["B649CombinationProxyMode"]
+          "member_count": number
+          "window": components['schemas']["B649CombinationWindow"]
+          "window_role": components['schemas']["B649WindowRole"]
+          "criterion": components['schemas']["B649CombinationCriterion"]
+          "sort": components['schemas']["B649CombinationSort"]
+          "ranking_label": string
+          "source_scope": string
+          "research_disclaimer": string
+        }
+    "B649CombinationProxyMode": "A" | "C"
+    "B649CombinationProxyOptionView": {
+          "proxy_mode": components['schemas']["B649CombinationProxyMode"]
+          "proxy_label": string
+        }
+    "B649CombinationRecordView": {
+          "proxy_mode": components['schemas']["B649CombinationProxyMode"]
+          "proxy_label": string
+          "member_count": number
+          "member_strategy_ids": Array<string>
+          "combination_id": string
+          "evaluation_window": components['schemas']["B649CombinationWindow"]
+          "criterion": components['schemas']["B649CombinationCriterion"]
+          "sealed_rank": number
+          "eligible_draws": number
+          "success_numerator": number
+          "success_denominator": number
+          "observed_rate": string
+          "exact_random_baseline_numerator": number
+          "exact_random_baseline_denominator": number
+          "random_baseline_rate": string
+          "descriptive_delta": string
+          "evaluation_status": string
+          "evaluation_reason": string
+          "long_delta_sign": string | null
+          "mid_delta_sign": string | null
+          "short_delta_sign": string | null
+          "positive_window_count": number
+          "minimum_delta": string | null
+          "delta_range": string | null
+          "cross_window_stable_positive": boolean
+          "historical_search_only": boolean
+          "predictive_advantage_claimed": boolean
+          "prospective_validation_required": boolean
+          "candidate_disposition": string
+        }
+    "B649CombinationSort": "SEALED_RANK_ASC" | "COMBINATION_ID_ASC"
+    "B649CombinationSummaryResponse": {
+          "authority_task_tree": string
+          "sealed_top_candidate_count": number
+          "proxy_modes": Array<components['schemas']["B649CombinationProxyOptionView"]>
+          "member_counts": Array<number>
+          "windows": Array<components['schemas']["B649WindowOptionView"]>
+          "supported_criteria": Array<components['schemas']["B649CombinationCriterion"]>
+          "source_scope": string
+          "full_projection_sent_to_browser": boolean
+          "predictive_advantage_claimed": boolean
+          "research_disclaimer": string
+        }
+    "B649CombinationWindow": "FULL" | "LONG_750" | "MID_300" | "SHORT_50"
+    "B649EffectiveUniqueKCountView": {
+          "effective_unique_k": number
+          "observation_count": number
+        }
+    "B649EvidenceStatusResponse": {
+          "observer_task_tree": string
+          "historical_evidence_status": string
+          "pre_freeze_date_unseen_holdout_count": number
+          "post_freeze_date_prospective_count": number
+          "observation_count": number
+          "observation_start_draw": string
+          "latest_observed_draw": string | null
+          "checkpoints": Array<number>
+          "checkpoints_reached": Array<number>
+          "primary_outcome": string
+          "c_forward_status": string
+          "c_forward_reason": string
+          "holdout_used_to_rerank_historical_results": boolean
+          "predictive_advantage_claimed": boolean
+        }
     "B649HistoryWindow": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
+    "B649MemberCount": 2 | 3
     "B649MultiTicketApiErrorResponse": {
           "error_code": string
           "message": string
@@ -2182,7 +2389,83 @@ export interface components {
           "owner_decision_required_count": number
           "uncompleted_count": number
         }
+    "B649StrategyAvailability": "MATRIX_AVAILABLE" | "PORTFOLIO_ORDER_AGGREGATION_NOT_DEFINED"
+    "B649StrategyAvailabilityView": {
+          "strategy_id": string
+          "strategy_version": string
+          "availability": components['schemas']["B649StrategyAvailability"]
+          "availability_reason": string
+          "response_shape": string
+          "native_ticket_count": number
+        }
+    "B649StrategyKCriterion": "M1_PLUS" | "M2_PLUS" | "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6_PLUS" | "SPECIAL_HIT" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL" | "M6_PLUS_SPECIAL"
+    "B649StrategyKPageResponse": {
+          "items": Array<components['schemas']["B649StrategyKRecordView"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "requested_k": number
+          "window_kind": components['schemas']["B649StrategyKWindowKind"]
+          "window_role": components['schemas']["B649WindowRole"]
+          "criterion": components['schemas']["B649StrategyKCriterion"]
+          "sort": components['schemas']["B649StrategyKSort"]
+          "ranking_label": string
+          "measurement_mode": string
+          "research_disclaimer": string
+        }
+    "B649StrategyKRecordView": {
+          "strategy_id": string
+          "strategy_version": string
+          "requested_k": number
+          "effective_unique_k_counts": Array<components['schemas']["B649EffectiveUniqueKCountView"]>
+          "criterion": components['schemas']["B649StrategyKCriterion"]
+          "window_kind": components['schemas']["B649StrategyKWindowKind"]
+          "window_role": components['schemas']["B649WindowRole"]
+          "requested_draw_count": number | null
+          "source_observation_count": number
+          "eligible_observation_count": number
+          "excluded_observation_count": number
+          "success_numerator": number
+          "success_denominator": number
+          "random_baseline_numerator": number
+          "random_baseline_denominator": number
+          "observed_minus_baseline": string
+          "first_target_draw": string
+          "last_target_draw": string
+          "evaluation_status": string
+          "measurement_mode": string
+          "window_policy_version": string
+          "nested_windows_independent": boolean
+        }
+    "B649StrategyKSort": "STRATEGY_ID_ASC" | "OBSERVED_RATE_DESC" | "OBSERVED_MINUS_BASELINE_DESC"
+    "B649StrategyKSummaryResponse": {
+          "authority_task_tree": string
+          "authority_full_output_tree": string
+          "matrix_row_count": number
+          "supported_k_values": Array<number>
+          "supported_criteria": Array<components['schemas']["B649StrategyKCriterion"]>
+          "windows": Array<components['schemas']["B649WindowOptionView"]>
+          "strategies": Array<components['schemas']["B649StrategyAvailabilityView"]>
+          "current_executable_strategy_count": number
+          "matrix_available_strategy_count": number
+          "matrix_unavailable_strategy_count": number
+          "historical_accounted_identity_count": number
+          "measurement_mode": string
+          "window_policy_version": string
+          "duplicate_handling_policy": string
+          "nested_windows_independent": boolean
+          "predictive_advantage_claimed": boolean
+          "research_disclaimer": string
+        }
+    "B649StrategyKWindowKind": "FULL_HISTORY" | "LONG" | "MEDIUM" | "SHORT"
     "B649SuccessCriterion": "M3_PLUS" | "M4_PLUS" | "M5_PLUS" | "M6" | "M2_PLUS_SPECIAL" | "M3_PLUS_SPECIAL" | "M4_PLUS_SPECIAL" | "M5_PLUS_SPECIAL"
+    "B649WindowOptionView": {
+          "window_kind": string
+          "window_role": components['schemas']["B649WindowRole"]
+          "requested_draw_count": number | null
+          "default_emphasis": boolean
+        }
+    "B649WindowRole": "PRIMARY_EVIDENCE" | "STABILITY_CONFIRMATION" | "DEGRADATION_VETO" | "REFERENCE_ONLY"
     "BatchImportCommitRequest": {
           "files": Array<components['schemas']["BatchImportFileRequest"]>
           "expected_manifest_sha256": string

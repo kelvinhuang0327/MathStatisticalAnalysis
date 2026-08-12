@@ -210,6 +210,7 @@ def test_strategy_adapters_are_target_native_db_free_and_offline() -> None:
     for module in (
         "lottolab.strategies.adapters",
         "lottolab.strategies.adapters.base",
+        "lottolab.strategies.adapters.biglotto_horizon_minimax",
         "lottolab.strategies.adapters.biglotto_selected",
     ):
         imports.update(_transitive_imports(module))

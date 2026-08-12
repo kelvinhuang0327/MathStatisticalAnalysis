@@ -6,13 +6,20 @@ Adding a strategy must NEVER require editing these tests.
 import pytest
 
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.strategies import LifecycleStatus, StrategyDescriptor
+from lottolab.domain.strategies import (
+    LifecycleStatus,
+    ResponseShape,
+    StrategyDescriptor,
+)
 from lottolab.strategies.adapters import (
     BigLottoDeviation2BetBet2Adapter,
     BigLottoP02BetBet1Adapter,
     BigLottoP02BetBet2Adapter,
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
+)
+from lottolab.strategies.adapters.biglotto_horizon_minimax import (
+    BigLottoHorizonMinimaxDisagreementAdapter,
 )
 from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
@@ -229,6 +236,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__gap_pressure_scorer__5e862ef27ee6",
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
+        "b649_new_horizon_minimax_disagreement_r1",
     ]
     online_ids = {
         descriptor.strategy_id
@@ -237,6 +245,36 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
     }
     assert online_ids == set(ids)
     assert ExecutableRegistry(catalog).executable_ids() == frozenset(ids)
+
+
+def test_horizon_minimax_descriptor_and_adapter_identity_match_exactly() -> None:
+    descriptor = production_catalog().get(
+        BigLottoHorizonMinimaxDisagreementAdapter.strategy_id
+    )
+    assert (
+        descriptor.strategy_id,
+        descriptor.strategy_name,
+        descriptor.version,
+        descriptor.lottery_types,
+        descriptor.min_history,
+        descriptor.lifecycle_status,
+        descriptor.executable,
+        descriptor.adapter_path,
+        descriptor.response_shape,
+        descriptor.native_ticket_count,
+    ) == (
+        BigLottoHorizonMinimaxDisagreementAdapter.strategy_id,
+        BigLottoHorizonMinimaxDisagreementAdapter.strategy_name,
+        BigLottoHorizonMinimaxDisagreementAdapter.strategy_version,
+        (LotteryType.BIG_LOTTO,),
+        BigLottoHorizonMinimaxDisagreementAdapter.min_history,
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.biglotto_horizon_minimax:"
+        "BigLottoHorizonMinimaxDisagreementAdapter",
+        ResponseShape.PORTFOLIO,
+        2,
+    )
 
 
 def test_zone_split_bet2_descriptor_and_adapter_identity_match_exactly() -> None:

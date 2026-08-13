@@ -1618,6 +1618,37 @@ _PRODUCTION_DESCRIPTORS = (
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
         ),
     ),
+    StrategyDescriptor(
+        strategy_id="b649_new_horizon_minimax_disagreement_r1",
+        strategy_name="大樂透 Horizon Minimax Disagreement 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_horizon_minimax:"
+            "BigLottoHorizonMinimaxDisagreementAdapter"
+        ),
+        min_history=200,
+        provenance=(
+            "research_task:B649_NEXT_GENERATION_STRATEGY_RESEARCH_R1",
+            "research_task_tree:"
+            "eb5a18eab2807a89a2f3abd5411c3a28509a982d3060702e5f8cc85b0724ed5a",
+            "research_source_sha256:"
+            "616ca197a53bbabb9e43e42f004b64caab5be58cc51769d091a17a14dfc733ec",
+            "research_result_sha256:"
+            "4aa1749814dcecf4a51dd9b0f3acd0864af4a7ca20162c0524e3b42948d8fd9a",
+            "research_shortlist_sha256:"
+            "fdb9f9b7a4ca13822ede799566537a97517c58e9e8ceb99cc6fb1f1042a35bec",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "predictive_advantage_claimed:NO",
+            "migration_task:"
+            "BRANCH_B_B649_HORIZON_MINIMAX_TARGET_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

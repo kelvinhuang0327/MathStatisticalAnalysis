@@ -14,11 +14,9 @@ transcription built on the already-tested ``_unified_*_ticket`` functions.
 ``zone_momentum_predict`` closures matching the donor's own undersized raw
 output at those same lengths.
 
-This module also carries this migration's catalog SSOT (the live descriptor
-total, 68); every prior wave's own ``len(catalog) == N`` assertion is bumped
-in lockstep here too, same as every prior wave already did for its
-predecessors -- those files' load-bearing assertions remain their own
-prefix-slice checks, not the exact-total line.
+This module also protects Batch 15's frozen nine-descriptor suffix position at
+the time of its migration. Later target-native strategies may append after
+that slice without changing Batch 15 membership or order.
 """
 
 # pyright: reportPrivateUsage=false
@@ -385,12 +383,11 @@ def test_production_catalog_descriptors_declare_expected_shapes() -> None:
     assert dm_dms.min_history == 1
 
 
-def test_production_catalog_now_has_sixty_eight_descriptors() -> None:
-    """The catalog SSOT for this migration: 59 (through wave 14) + 9
-    (batch 15) = 68."""
+def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
+    """The 68-strategy Batch-15 closure remains an unchanged prefix."""
 
     catalog = production_catalog()
-    assert len(catalog) == 68
+    assert len(catalog) == 69
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -400,7 +397,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 68
+    assert len(all_ids) == 69
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -416,6 +413,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     )
+    assert all_ids[68:] == ("b649_new_horizon_minimax_disagreement_r1",)
 
 
 def test_all_batch15_strategies_are_reachable_through_exactly_one_response_path() -> None:

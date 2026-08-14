@@ -22,6 +22,7 @@ from lottolab.application.use_cases.generate_bet import build_production_generat
 from lottolab.application.use_cases.replay_historical_predictions import (
     ReplayHistoricalPredictions,
     ReplayHistoricalPredictionsInput,
+    ReplayResearchCache,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_history import ReplayCausalDrawRow
@@ -104,11 +105,20 @@ def _targets(fixture: dict[str, Any]) -> tuple[ReplayTarget, ...]:
     )
 
 
-def _use_case(reader: _FixtureDrawHistoryReader) -> ReplayHistoricalPredictions:
+def _use_case(
+    reader: _FixtureDrawHistoryReader,
+    *,
+    cache: ReplayResearchCache | None = None,
+) -> ReplayHistoricalPredictions:
     catalog = production_catalog()
     generate_one_bet = build_production_generate_one_bet()
     build_causal_history = BuildCausalHistory(lambda: reader)
-    return ReplayHistoricalPredictions(build_causal_history, generate_one_bet, catalog)
+    return ReplayHistoricalPredictions(
+        build_causal_history,
+        generate_one_bet,
+        catalog,
+        cache=cache,
+    )
 
 
 def test_fixture_declares_the_expected_golden_slice_shape() -> None:
@@ -336,6 +346,47 @@ def test_two_full_golden_slice_runs_produce_byte_identical_artifacts() -> None:
         return serialize_replay_artifact(artifact)
 
     assert _run() == _run()
+
+
+def test_cached_golden_slice_matches_uncached_outputs_and_causal_cutoffs() -> None:
+    fixture = _load_fixture()
+    targets = _targets(fixture)
+    request = ReplayHistoricalPredictionsInput(
+        lottery_type=LotteryType.BIG_LOTTO,
+        dataset_id="SYNTHETIC_BIG_LOTTO_REPLAY_GOLDEN_R1",
+        dataset_version="1",
+        targets=targets,
+        strategy_ids=_STRATEGY_IDS,
+    )
+    uncached_reader = _FixtureDrawHistoryReader(fixture)
+    uncached = _use_case(uncached_reader).execute(request)
+
+    cache = ReplayResearchCache()
+    cached_reader = _FixtureDrawHistoryReader(fixture)
+    cached_use_case = _use_case(cached_reader, cache=cache)
+    cold_cache = cached_use_case.execute(request)
+    warm_cache = cached_use_case.execute(request)
+
+    assert cold_cache == uncached
+    assert warm_cache == uncached
+    assert [
+        (snapshot.target_draw_number, snapshot.strategy_id) for snapshot in warm_cache.snapshots
+    ] == [(snapshot.target_draw_number, snapshot.strategy_id) for snapshot in uncached.snapshots]
+    assert [snapshot.predicted_main_numbers for snapshot in warm_cache.snapshots] == [
+        snapshot.predicted_main_numbers for snapshot in uncached.snapshots
+    ]
+    assert [snapshot.cutoff_draw_number for snapshot in warm_cache.snapshots] == [
+        snapshot.cutoff_draw_number for snapshot in uncached.snapshots
+    ]
+    assert [snapshot.causal_history_sha256 for snapshot in warm_cache.snapshots] == [
+        snapshot.causal_history_sha256 for snapshot in uncached.snapshots
+    ]
+    assert cache.stats.hits == len(targets) * len(_STRATEGY_IDS)
+    assert cache.stats.misses == len(targets) * len(_STRATEGY_IDS)
+    assert cache.stats.entries == len(targets) * len(_STRATEGY_IDS)
+    assert cached_reader.calls == [
+        (LotteryType.BIG_LOTTO, target.draw_number, None) for _ in range(2) for target in targets
+    ]
 
 
 def test_this_module_never_imports_sqlite_cli_or_network_modules() -> None:

@@ -9,6 +9,7 @@ draw_schema, repositories, or replay_history_reader — mirroring
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 import pytest
@@ -21,6 +22,8 @@ from lottolab.application.use_cases.replay_historical_predictions import (
     DuplicateReplayTargetError,
     ReplayHistoricalPredictions,
     ReplayHistoricalPredictionsInput,
+    ReplayHistoricalPredictionsResult,
+    ReplayResearchCache,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_history import ReplayCausalDrawRow
@@ -95,6 +98,8 @@ class _OutcomeAdapterA(BetAdapter):
             raise InsufficientHistory("needs more")
         if self.outcome == "invalid":
             raise InvalidOutput("bad output")
+        if self.outcome == "error":
+            raise RuntimeError("transient failure")
         return (1, 2, 3, 4, 5, 6)
 
 
@@ -127,6 +132,7 @@ def _use_case(
     strategy_ids: tuple[str, ...] = (_STRATEGY_A,),
     outcomes: dict[str, str] | None = None,
     reader: FakeDrawHistoryReader | None = None,
+    cache: ReplayResearchCache | None = None,
 ) -> tuple[ReplayHistoricalPredictions, FakeDrawHistoryReader]:
     if reader is None:
         reader = FakeDrawHistoryReader(history_by_target=history_by_target)
@@ -138,7 +144,15 @@ def _use_case(
     }
     generate_one_bet = GenerateOneBet(catalog, adapters)
     build_causal_history = BuildCausalHistory(lambda: reader)
-    return ReplayHistoricalPredictions(build_causal_history, generate_one_bet, catalog), reader
+    return (
+        ReplayHistoricalPredictions(
+            build_causal_history,
+            generate_one_bet,
+            catalog,
+            cache=cache,
+        ),
+        reader,
+    )
 
 
 def _target(draw_number: str, day: int) -> ReplayTarget:
@@ -426,6 +440,153 @@ def test_two_identical_runs_produce_identical_snapshots() -> None:
     first = use_case.execute(request)
     second = use_case.execute(request)
     assert first == second
+
+
+def test_research_cache_reuses_complete_snapshot_but_rechecks_causal_history() -> None:
+    cache = ReplayResearchCache()
+    use_case, reader = _use_case(
+        history_by_target={"10": (_row("1", 1), _row("2", 2))},
+        cache=cache,
+    )
+    request = ReplayHistoricalPredictionsInput(
+        lottery_type=LotteryType.BIG_LOTTO,
+        dataset_id="DS1",
+        dataset_version="1",
+        targets=(_target("10", 5),),
+        strategy_ids=(_STRATEGY_A,),
+    )
+
+    uncached = use_case.execute(request)
+    cached = use_case.execute(request)
+
+    assert cached == uncached
+    assert cached.snapshots[0].cutoff_draw_number == "2"
+    assert reader.calls == [
+        (LotteryType.BIG_LOTTO, "10", None),
+        (LotteryType.BIG_LOTTO, "10", None),
+    ]
+    assert cache.stats.hits == 1
+    assert cache.stats.misses == 1
+    assert cache.stats.entries == 1
+    assert cache.stats.evictions == 0
+    assert cache.stats.hit_rate == 0.5
+
+
+def test_research_cache_invalidates_corrected_history_with_the_same_cutoff() -> None:
+    history_by_target = {"10": (_row("1", 1), _row("2", 2))}
+    cache = ReplayResearchCache()
+    use_case, _ = _use_case(history_by_target=history_by_target, cache=cache)
+    request = ReplayHistoricalPredictionsInput(
+        lottery_type=LotteryType.BIG_LOTTO,
+        dataset_id="DS1",
+        dataset_version="1",
+        targets=(_target("10", 5),),
+        strategy_ids=(_STRATEGY_A,),
+    )
+
+    before = use_case.execute(request).snapshots[0]
+    history_by_target["10"] = (
+        _row("1", 1),
+        ReplayCausalDrawRow(
+            draw_number="2",
+            draw_date=date(2020, 1, 2),
+            main_numbers=(1, 2, 3, 4, 5, 7),
+            special_number=44,
+        ),
+    )
+    after = use_case.execute(request).snapshots[0]
+
+    assert before.cutoff_draw_number == after.cutoff_draw_number == "2"
+    assert before.causal_history_sha256 != after.causal_history_sha256
+    assert before.result_sha256 != after.result_sha256
+    assert cache.stats.hits == 0
+    assert cache.stats.misses == 2
+    assert cache.stats.entries == 2
+
+
+def test_research_cache_invalidates_strategy_config_and_adapter_identity_changes() -> None:
+    reader = FakeDrawHistoryReader(history_by_target={"10": (_row("1", 1),)})
+    cache = ReplayResearchCache()
+    request = ReplayHistoricalPredictionsInput(
+        lottery_type=LotteryType.BIG_LOTTO,
+        dataset_id="DS1",
+        dataset_version="1",
+        targets=(_target("10", 5),),
+        strategy_ids=(_STRATEGY_A,),
+    )
+    base = _descriptor(_STRATEGY_A)
+    descriptors = (
+        base,
+        replace(base, provenance=("config:v2",)),
+        replace(base, adapter_path="fixture:AdapterV2"),
+    )
+    results: list[ReplayHistoricalPredictionsResult] = []
+
+    for descriptor in descriptors:
+        catalog = StrategyCatalog((descriptor,))
+        use_case = ReplayHistoricalPredictions(
+            BuildCausalHistory(lambda: reader),
+            GenerateOneBet(catalog, {_STRATEGY_A: _OutcomeAdapterA()}),
+            catalog,
+            cache=cache,
+        )
+        results.append(use_case.execute(request))
+
+    assert results[0] == results[1] == results[2]
+    assert cache.stats.hits == 0
+    assert cache.stats.misses == 3
+    assert cache.stats.entries == 3
+
+
+def test_research_cache_does_not_reuse_replay_errors() -> None:
+    cache = ReplayResearchCache()
+    use_case, _ = _use_case(
+        history_by_target={"10": (_row("1", 1),)},
+        outcomes={_STRATEGY_A: "error"},
+        cache=cache,
+    )
+    request = ReplayHistoricalPredictionsInput(
+        lottery_type=LotteryType.BIG_LOTTO,
+        dataset_id="DS1",
+        dataset_version="1",
+        targets=(_target("10", 5),),
+        strategy_ids=(_STRATEGY_A,),
+    )
+
+    first = use_case.execute(request)
+    second = use_case.execute(request)
+
+    assert first == second
+    assert first.snapshots[0].prediction_status == "REPLAY_ERROR"
+    assert cache.stats.hits == 0
+    assert cache.stats.misses == 2
+    assert cache.stats.entries == 0
+
+
+def test_research_cache_applies_a_deterministic_entry_bound() -> None:
+    cache = ReplayResearchCache(max_entries=1)
+    use_case, _ = _use_case(
+        history_by_target={
+            "10": (_row("1", 1),),
+            "20": (_row("1", 1),),
+        },
+        cache=cache,
+    )
+
+    use_case.execute(
+        ReplayHistoricalPredictionsInput(
+            lottery_type=LotteryType.BIG_LOTTO,
+            dataset_id="DS1",
+            dataset_version="1",
+            targets=(_target("10", 5), _target("20", 6)),
+            strategy_ids=(_STRATEGY_A,),
+        )
+    )
+
+    assert cache.stats.hits == 0
+    assert cache.stats.misses == 2
+    assert cache.stats.entries == 1
+    assert cache.stats.evictions == 1
 
 
 # --------------------------------------------------------------------------

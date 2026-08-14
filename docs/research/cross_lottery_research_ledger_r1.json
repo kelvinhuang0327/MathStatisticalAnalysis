@@ -530,6 +530,48 @@
       "source_type": "STRATEGY_MATRIX_NATIVE",
       "uncertainty": "NONE -- exact enumeration / exact closed form",
       "zone": null
+    },
+    {
+      "artifact_paths": [
+        "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-preregistration.md",
+        "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-preregistration-hash.json",
+        "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-result.json",
+        "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-attempt-ledger.json",
+        "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-report.md"
+      ],
+      "cell_id": "DIVERSIFICATION_COVERAGE_P638_ZONE1_V1__POWER_LOTTO_zone1",
+      "decision_state": "ADVANCE_TO_NEXT_LEVEL",
+      "descriptive_classification": "OUTPERFORMS_RANDOM_EXPECTED_COVERAGE",
+      "economic_optimality": "NOT_TESTED",
+      "evidence_grade": "LOCAL_VERIFIED",
+      "evidence_type": "EXACT_COMBINATORIAL",
+      "exhausted": false,
+      "generation": 1,
+      "global_mechanism_status": "RETAIN_AND_REPLICATE",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "hypothesis_variant_id": "DIVERSIFICATION_COVERAGE_P638_ZONE1_V1",
+      "last_reviewed_at": "2026-08-14",
+      "lottery_type": "POWER_LOTTO",
+      "mechanism_class": "STRUCTURAL",
+      "mechanism_family": "DIVERSIFICATION",
+      "next_priority": "MEDIUM",
+      "null_replay_percentile": null,
+      "predictive_advantage": "NOT_TESTED",
+      "preregistration_grade": "R1_PREREGISTERED",
+      "primary_endpoint_definition": "D_3(20) = Q_sidon_M3+(20) - Q_random_expected_M3+(20), exact combinatorics, exact value 7853527786631591480259845893250386474155474781980381800465203448861951641046516894880073018607706299/131704396033130947118708343818273549765660895754369989224055944711504240598168786106602790393615591370. Native replication of DIVERSIFICATION_COVERAGE_B649_V1 and DIVERSIFICATION_COVERAGE_T539_V1 into POWER_LOTTO Zone-1's 6/38 structure (Zone-2 1-of-8 out of scope; see zone2 NOT_TESTED note below). Constructor required a completed backtracking search, not plain greedy: 38 is the first even pool size this mechanism was run against, and 19=38/2 is self-inverse, which plain greedy cannot satisfy (see preregistration Sec 3). Q_sidon(M6) == Q_random(M6) exactly for every k (D_6(k)=0), the same degenerate exact-match case as T539's M5: with draw_size=6, M6 means the draw equals a ticket outright, which no fixed-vs-random geometry distinction can affect.",
+      "primary_endpoint_value": 0.059629959387657756,
+      "prize_value_advantage": "NOT_TESTED",
+      "record_state": "SEALED",
+      "related_legacy_evidence": [],
+      "retest_eligible": true,
+      "retest_triggers": [
+        "DIVERSIFICATION_FULL_TICKET_P638_V2 (Zone-1 low-overlap geometry combined with Zone-2 1-of-8 allocation/cycling geometry) tests whether the mechanism survives once full-ticket structure is introduced -- a separate design, not authorized here",
+        "extending the exposure ladder beyond k=20 to see whether the growing marginal advantage (already the largest of the three sealed native cells at k=20) continues or eventually turns over"
+      ],
+      "source_note": "Computed and independently verified in this session (Strategy Matrix Phase 3) via complete C(38,6) = 2,760,681-draw enumeration, exact fractions.Fraction arithmetic, no simulation. Native replication cell: independently derived and independently verified Sidon-type base set in Z_38 (see diversification-coverage-p638-zone1-v1-preregistration.md Sec 3 for the even-modulus obstruction and its resolution), not copied from B649's or T539's base set. Makes no predictive-advantage or prize-value claim. decision_state is ADVANCE_TO_NEXT_LEVEL rather than REPLICATION_REQUIRED because this repository has exactly three lottery types (BIG_LOTTO, DAILY_539, POWER_LOTTO) and this single-zone diversification mechanism has now been natively replicated, positively, in all three -- CROSS_LOTTERY_REPLICATION_STATUS: SUPPORTED_IN_3_NATIVE_LOTTERY_STRUCTURES. This does not imply a universal predictive mechanism, a forecasting edge, economic optimality, or profitability -- the evidence type remains EXACT_COMBINATORIAL portfolio-geometry coverage, not forecasting. The B649 and T539 sibling cells' own decision_state fields are left unchanged (REPLICATION_REQUIRED, as sealed at the time), per the ledger's no-retroactive-edit rule.",
+      "source_type": "STRATEGY_MATRIX_NATIVE",
+      "uncertainty": "NONE -- exact enumeration / exact closed form",
+      "zone": "zone1"
     }
   ],
   "generated_at": "2026-08-14",

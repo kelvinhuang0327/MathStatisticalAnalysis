@@ -73,6 +73,22 @@ def test_exact_coverage_is_monotonically_nondecreasing_in_k() -> None:
     assert all(values[i] <= values[i + 1] for i in range(len(values) - 1))
 
 
+def test_exact_coverage_at_k_one_equals_marginal_hit_probability_for_power_lotto_zone1() -> None:
+    # Same identity as the B649 (49,6) case above, confirmed to generalize
+    # with no code changes to (pool=38, draw=6) -- POWER_LOTTO Zone-1's own
+    # shape, needed before the Sidon-shift diversification design for P638
+    # can reuse this module verbatim.
+    pool_size, draw_size, m = 38, 6, 3
+    total = math.comb(pool_size, draw_size)
+    expected = Fraction(qualifying_ticket_count(pool_size, draw_size, m), total)
+    assert exact_random_portfolio_coverage(pool_size, draw_size, m, 1) == expected
+
+
+def test_exact_coverage_is_monotonically_nondecreasing_in_k_for_power_lotto_zone1() -> None:
+    values = [exact_random_portfolio_coverage(38, 6, 3, k) for k in range(0, 21)]
+    assert all(values[i] <= values[i + 1] for i in range(len(values) - 1))
+
+
 def test_exact_coverage_at_k_zero_is_zero() -> None:
     assert exact_random_portfolio_coverage(49, 6, 3, 0) == Fraction(0)
 

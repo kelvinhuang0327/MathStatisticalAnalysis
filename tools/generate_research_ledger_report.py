@@ -60,8 +60,13 @@ def main() -> None:
         "| Hypothesis family | BIG_LOTTO | DAILY_539 | POWER_LOTTO (z1/z2) | Next priority |"
     )
     lines.append("|---|---|---|---|---|")
+    # dict.fromkeys, not a set comprehension: preserves each family's first
+    # appearance order in `cells` as the tie-break for the sort below, so
+    # regenerating this file twice from the same ledger is byte-identical
+    # regardless of Python's per-process string-hash randomization (a set's
+    # iteration order is not insertion order and is not stable across runs).
     family_order = sorted(
-        {cell["hypothesis_family_id"] for cell in cells},
+        dict.fromkeys(cell["hypothesis_family_id"] for cell in cells),
         key=lambda family_id: next(
             cell["next_priority"] for cell in cells if cell["hypothesis_family_id"] == family_id
         ),

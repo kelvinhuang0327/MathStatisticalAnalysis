@@ -97,8 +97,40 @@ def test_t539_diversification_cell_replicates_b649() -> None:
         assert Path(artifact_path).is_file(), artifact_path
 
 
+def test_p638_zone1_diversification_cell_replicates_b649_and_t539() -> None:
+    cells = {cell["cell_id"]: cell for cell in _cells()}
+    p638 = cells["DIVERSIFICATION_COVERAGE_P638_ZONE1_V1__POWER_LOTTO_zone1"]
+    assert p638["record_state"] == "SEALED"
+    assert p638["evidence_type"] == "EXACT_COMBINATORIAL"
+    assert p638["descriptive_classification"] == "OUTPERFORMS_RANDOM_EXPECTED_COVERAGE"
+    assert p638["hypothesis_family_id"] == "DIVERSIFICATION"
+    assert p638["lottery_type"] == "POWER_LOTTO"
+    assert p638["zone"] == "zone1"
+    assert p638["related_legacy_evidence"] == []
+    for artifact_path in p638["artifact_paths"]:
+        assert Path(artifact_path).is_file(), artifact_path
+
+
 def test_report_generator_runs_and_covers_every_cell_id() -> None:
     subprocess.run([sys.executable, str(REPORT_GENERATOR_PATH)], check=True, capture_output=True)
     report_text = REPORT_PATH.read_text(encoding="utf-8")
     for cell in _cells():
         assert cell["cell_id"] in report_text
+
+
+def test_report_generation_is_deterministic_across_fresh_processes() -> None:
+    # Each subprocess is a fresh Python process with its own (by default
+    # randomized) string-hash seed. The family-order table groups cells by
+    # `hypothesis_family_id` and breaks ties among same-`next_priority`
+    # families using a *set*-derived ordering unless that ordering is
+    # explicitly stabilized (see `generate_research_ledger_report.main`) --
+    # without a stable tie-break, two fresh runs against the same ledger
+    # could legitimately disagree on row order with no underlying data
+    # change, which would show up as unrelated noise in every future diff.
+    outputs: list[str] = []
+    for _ in range(2):
+        subprocess.run(
+            [sys.executable, str(REPORT_GENERATOR_PATH)], check=True, capture_output=True
+        )
+        outputs.append(REPORT_PATH.read_text(encoding="utf-8"))
+    assert outputs[0] == outputs[1]

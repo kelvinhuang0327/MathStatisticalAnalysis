@@ -69,6 +69,27 @@ class FileSystemPreOutcomeTargetAuthorityStore:
     def root(self) -> Path:
         return self._root
 
+    @classmethod
+    def record_path_for(
+        cls,
+        root: str | Path,
+        target: ObservationTarget,
+    ) -> Path:
+        """Return the canonical record path without creating or opening the store."""
+
+        if not str(root):
+            raise ValueError("root must be a non-empty filesystem path")
+        lottery_key, target_key = cls._target_segments(target)
+        return Path(root).absolute() / lottery_key / target_key / _RECORD_NAME
+
+    @staticmethod
+    def canonical_record_sha256(registration: PreOutcomeTargetRegistration) -> str:
+        """Hash the exact canonical bytes persisted for one registration."""
+
+        if type(registration) is not PreOutcomeTargetRegistration:
+            raise ValueError("registration must be a PreOutcomeTargetRegistration")
+        return hashlib.sha256(_encode_registration(registration)).hexdigest()
+
     def close(self) -> None:
         """Release the pinned root descriptor; accepted records remain durable."""
 
@@ -370,8 +391,7 @@ class FileSystemPreOutcomeTargetAuthorityStore:
             ) from exc
 
     def _record_path(self, target: ObservationTarget) -> Path:
-        lottery_key, target_key = self._target_segments(target)
-        return self._root / lottery_key / target_key / _RECORD_NAME
+        return self.record_path_for(self._root, target)
 
     @staticmethod
     def _target_segments(target: ObservationTarget) -> tuple[str, str]:

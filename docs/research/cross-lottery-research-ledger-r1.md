@@ -1,6 +1,6 @@
 # Cross-Lottery Research Ledger R1
 
-Status: OPERATIONAL SSOT | generated 2026-08-14 | 10 priors, 15 cells
+Status: OPERATIONAL SSOT | generated 2026-08-14 | 10 priors, 16 cells
 
 Source of truth: `docs/research/cross_lottery_research_ledger_r1.json`. This file is generated from it — never hand-edited. Schema and lifecycle: `docs/research/cross-lottery-research-ledger-r1-schema.md`.
 
@@ -25,14 +25,14 @@ Source of truth: `docs/research/cross_lottery_research_ledger_r1.json`. This fil
 |---|---|---|---|---|
 | H09_H21_CONDITIONAL_NEGATIVE_INFORMATION_SUPPRESSION | WEAK_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | HIGH |
 | H07_H19_CHANGE_POINT_TRIGGERED_ALLOCATION | WEAK_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | HIGH |
-| H08_H12_TEMPORAL_HYPERGRAPH_MOTIF_RESIDUALS | NO_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
-| DIVERSIFICATION | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
 | H01_CROSS_STRATEGY_RESIDUAL_GATED_META_SELECTOR | WEAK_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
+| H08_H12_TEMPORAL_HYPERGRAPH_MOTIF_RESIDUALS | NO_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
+| DIVERSIFICATION | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | UNTESTED / UNTESTED | MEDIUM |
 | H05_H10_DIRECT_TICKET_LEVEL_RESIDUAL_SCORING | WEAK_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
 | REGIME_CHANGE_POINT | NO_EVIDENCE_OF_REGIME_CHANGE | UNTESTED | UNTESTED / UNTESTED | LOW |
 | H03_H04_MULTI_WINDOW_SLOPE_ACCELERATION | NO_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | LOW |
-| H04_H07_CALIBRATED_PER_NUMBER_PROBABILITIES | POSITIVE_WITHIN_NULL_RANGE | POSITIVE_WITHIN_NULL_RANGE | POSITIVE_WITHIN_NULL_RANGE / POSITIVE_WITHIN_NULL_RANGE | NONE |
 | H02_H27 | STRUCTURALLY_DEFERRED (unverified) | UNTESTED | UNTESTED / UNTESTED | NONE |
+| H04_H07_CALIBRATED_PER_NUMBER_PROBABILITIES | POSITIVE_WITHIN_NULL_RANGE | POSITIVE_WITHIN_NULL_RANGE | POSITIVE_WITHIN_NULL_RANGE / POSITIVE_WITHIN_NULL_RANGE | NONE |
 | ALLOCATION_EXPOSURE | STRUCTURALLY_DEFERRED | UNTESTED | UNTESTED / UNTESTED | NONE |
 
 ## Replication queue
@@ -42,6 +42,7 @@ Positive results awaiting a second lottery before being read as more than lotter
 | Cell | Lottery | Classification | Next priority |
 |---|---|---|---|
 | `DIVERSIFICATION_COVERAGE_B649_V1__BIG_LOTTO` | BIG_LOTTO | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
+| `DIVERSIFICATION_COVERAGE_T539_V1__DAILY_539` | DAILY_539 | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
 
 ## Full cell detail
 
@@ -221,3 +222,18 @@ Positive results awaiting a second lottery before being read as more than lotter
 - artifacts: docs/research/matrix-native-results/diversification-coverage-b649-v1-preregistration.md, docs/research/matrix-native-results/diversification-coverage-b649-v1-preregistration-hash.json, docs/research/matrix-native-results/diversification-coverage-b649-v1-result.json, docs/research/matrix-native-results/diversification-coverage-b649-v1-attempt-ledger.json, docs/research/matrix-native-results/diversification-coverage-b649-v1-report.md
 - retest_eligible: True
 - source: Computed and independently verified in this session (Strategy Matrix Phase 1) via complete C(49,6) enumeration, exact fractions.Fraction arithmetic, no simulation. Split cleanly off ALLOCATION_EXPOSURE_EFFICIENCY_B649_V1 (DESIGN_ABANDONED) once exposure and geometry were correctly told apart. Makes no predictive-advantage or prize-value claim.
+
+### `DIVERSIFICATION_COVERAGE_T539_V1__DAILY_539`
+
+- lottery: DAILY_539
+- mechanism_class: STRUCTURAL
+- evidence_type: `EXACT_COMBINATORIAL` | uncertainty: NONE -- exact enumeration / exact closed form
+- record_state: `SEALED`
+- preregistration_grade: `R1_PREREGISTERED` | evidence_grade: `LOCAL_VERIFIED`
+- descriptive_classification: `OUTPERFORMS_RANDOM_EXPECTED_COVERAGE` | decision_state: `REPLICATION_REQUIRED`
+- global_mechanism_status: `RETAIN_AND_REPLICATE` | exhausted: False
+- predictive_advantage: `NOT_TESTED` | prize_value_advantage: `NOT_TESTED` | economic_optimality: `NOT_TESTED`
+- primary_endpoint: +0.009292 (D_3(20) = Q_sidon_M3+(20) - Q_random_expected_M3+(20), exact combinatorics, exact value 7936665663334624487805755106998757032043297207603505890465577337229935222707753273/854116625879098836238200337908424671905738564473126295698485942275321822152736920680. Native replication of DIVERSIFICATION_COVERAGE_B649_V1 into DAILY_539's 5/39 structure; classification terminology locked correctly from the start, no ledger-layer relabeling needed (contrast DIVERSIFICATION_COVERAGE_B649_V1's primary_endpoint_definition).)
+- artifacts: docs/research/matrix-native-results/diversification-coverage-t539-v1-preregistration.md, docs/research/matrix-native-results/diversification-coverage-t539-v1-preregistration-hash.json, docs/research/matrix-native-results/diversification-coverage-t539-v1-result.json, docs/research/matrix-native-results/diversification-coverage-t539-v1-attempt-ledger.json, docs/research/matrix-native-results/diversification-coverage-t539-v1-report.md
+- retest_eligible: True
+- source: Computed and independently verified in this session (Strategy Matrix Phase 2) via complete C(39,5) enumeration, exact fractions.Fraction arithmetic, no simulation. Native replication cell: independently derived and independently verified Sidon base set in Z_39, not copied from B649's base set (see diversification-coverage-t539-v1-preregistration.md Sec 3 for the wording correction on that point). Makes no predictive-advantage or prize-value claim.

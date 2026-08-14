@@ -488,6 +488,48 @@
       "source_type": "STRATEGY_MATRIX_NATIVE",
       "uncertainty": "NONE -- exact enumeration / exact closed form",
       "zone": null
+    },
+    {
+      "artifact_paths": [
+        "docs/research/matrix-native-results/diversification-coverage-t539-v1-preregistration.md",
+        "docs/research/matrix-native-results/diversification-coverage-t539-v1-preregistration-hash.json",
+        "docs/research/matrix-native-results/diversification-coverage-t539-v1-result.json",
+        "docs/research/matrix-native-results/diversification-coverage-t539-v1-attempt-ledger.json",
+        "docs/research/matrix-native-results/diversification-coverage-t539-v1-report.md"
+      ],
+      "cell_id": "DIVERSIFICATION_COVERAGE_T539_V1__DAILY_539",
+      "decision_state": "REPLICATION_REQUIRED",
+      "descriptive_classification": "OUTPERFORMS_RANDOM_EXPECTED_COVERAGE",
+      "economic_optimality": "NOT_TESTED",
+      "evidence_grade": "LOCAL_VERIFIED",
+      "evidence_type": "EXACT_COMBINATORIAL",
+      "exhausted": false,
+      "generation": 1,
+      "global_mechanism_status": "RETAIN_AND_REPLICATE",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "hypothesis_variant_id": "DIVERSIFICATION_COVERAGE_T539_V1",
+      "last_reviewed_at": "2026-08-14",
+      "lottery_type": "DAILY_539",
+      "mechanism_class": "STRUCTURAL",
+      "mechanism_family": "DIVERSIFICATION",
+      "next_priority": "MEDIUM",
+      "null_replay_percentile": null,
+      "predictive_advantage": "NOT_TESTED",
+      "preregistration_grade": "R1_PREREGISTERED",
+      "primary_endpoint_definition": "D_3(20) = Q_sidon_M3+(20) - Q_random_expected_M3+(20), exact combinatorics, exact value 7936665663334624487805755106998757032043297207603505890465577337229935222707753273/854116625879098836238200337908424671905738564473126295698485942275321822152736920680. Native replication of DIVERSIFICATION_COVERAGE_B649_V1 into DAILY_539's 5/39 structure; classification terminology locked correctly from the start, no ledger-layer relabeling needed (contrast DIVERSIFICATION_COVERAGE_B649_V1's primary_endpoint_definition).",
+      "primary_endpoint_value": 0.009292250522773536,
+      "prize_value_advantage": "NOT_TESTED",
+      "record_state": "SEALED",
+      "related_legacy_evidence": [],
+      "retest_eligible": true,
+      "retest_triggers": [
+        "P638 native replication (dual-zone 6/38 + 1/8 structure) tests whether the geometric advantage generalizes beyond single-zone pick-m-of-n structures",
+        "extending the exposure ladder beyond k=20 to see whether the growing marginal advantage continues or eventually turns over"
+      ],
+      "source_note": "Computed and independently verified in this session (Strategy Matrix Phase 2) via complete C(39,5) enumeration, exact fractions.Fraction arithmetic, no simulation. Native replication cell: independently derived and independently verified Sidon base set in Z_39, not copied from B649's base set (see diversification-coverage-t539-v1-preregistration.md Sec 3 for the wording correction on that point). Makes no predictive-advantage or prize-value claim.",
+      "source_type": "STRATEGY_MATRIX_NATIVE",
+      "uncertainty": "NONE -- exact enumeration / exact closed form",
+      "zone": null
     }
   ],
   "generated_at": "2026-08-14",

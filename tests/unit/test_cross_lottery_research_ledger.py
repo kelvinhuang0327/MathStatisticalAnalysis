@@ -84,6 +84,19 @@ def test_b649_diversification_cell_is_sealed_and_unchanged() -> None:
     assert b649["lottery_type"] == "BIG_LOTTO"
 
 
+def test_t539_diversification_cell_replicates_b649() -> None:
+    cells = {cell["cell_id"]: cell for cell in _cells()}
+    t539 = cells["DIVERSIFICATION_COVERAGE_T539_V1__DAILY_539"]
+    assert t539["record_state"] == "SEALED"
+    assert t539["evidence_type"] == "EXACT_COMBINATORIAL"
+    assert t539["descriptive_classification"] == "OUTPERFORMS_RANDOM_EXPECTED_COVERAGE"
+    assert t539["hypothesis_family_id"] == "DIVERSIFICATION"
+    assert t539["lottery_type"] == "DAILY_539"
+    assert t539["related_legacy_evidence"] == []
+    for artifact_path in t539["artifact_paths"]:
+        assert Path(artifact_path).is_file(), artifact_path
+
+
 def test_report_generator_runs_and_covers_every_cell_id() -> None:
     subprocess.run([sys.executable, str(REPORT_GENERATOR_PATH)], check=True, capture_output=True)
     report_text = REPORT_PATH.read_text(encoding="utf-8")

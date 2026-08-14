@@ -1,0 +1,431 @@
+{
+  "causality_leakage_audit": "This is a retrospective stationarity test over the fixed historical sequence, not a forward-prediction claim; there is no held-out future to leak into. The methodological risk this design controls is post-hoc statistic/threshold selection, closed by locking the statistic, trim fraction, simulation count, and classification thresholds (recorded in preregistration_hash_sha256 above) before this script ever read a single draw.",
+  "chronological_stability_diagnostic": {
+    "blocks": [
+      {
+        "block_index": 1,
+        "draw_count": 534,
+        "expected_mean_sum": 150.0,
+        "holm_adjusted_p_value": 1.0,
+        "observed_mean_sum": 149.14606741573033,
+        "p_value": 0.5472724050329418
+      },
+      {
+        "block_index": 2,
+        "draw_count": 535,
+        "expected_mean_sum": 150.0,
+        "holm_adjusted_p_value": 1.0,
+        "observed_mean_sum": 150.7140186915888,
+        "p_value": 0.6144638213455903
+      },
+      {
+        "block_index": 3,
+        "draw_count": 535,
+        "expected_mean_sum": 150.0,
+        "holm_adjusted_p_value": 1.0,
+        "observed_mean_sum": 148.93457943925233,
+        "p_value": 0.4522843963828855
+      },
+      {
+        "block_index": 4,
+        "draw_count": 534,
+        "expected_mean_sum": 150.0,
+        "holm_adjusted_p_value": 1.0,
+        "observed_mean_sum": 150.75842696629215,
+        "p_value": 0.5929680224818334
+      }
+    ],
+    "holm_min_adjusted_p_value": 1.0,
+    "n_blocks": 4,
+    "note": "descriptive only, not part of the primary classification"
+  },
+  "decision_state": "DO_NOT_ADVANCE",
+  "hypothesis_family_id": "REGIME_CHANGE_POINT",
+  "lottery_type": "BIG_LOTTO",
+  "matrix_variant_id": "REGIME_CHANGE_POINT_CUSUM_B649_V1",
+  "n_draws": 2138,
+  "preregistration_hash_sha256": "6cf305db6fe5ae37743d8ddf5b2018f533005f1b7d18dc9d0e45ebd07e6d7d26",
+  "primary": {
+    "argmax_split_point": 386,
+    "descriptive_classification": "NO_EVIDENCE_OF_REGIME_CHANGE",
+    "null_distribution_summary": {
+      "max": 4886.0,
+      "median": 1685.0,
+      "min": 689.0
+    },
+    "null_simulations": 100,
+    "percentile": 0.1,
+    "statistic_name": "global_max_abs_cusum_sum_of_six",
+    "statistic_value": 964.0
+  },
+  "provenance": {
+    "date_range": [
+      "2007-03-09",
+      "2026-07-31"
+    ],
+    "distinct_identities_total": 2288,
+    "excluded_date_like_contaminants": 150,
+    "kept_draws": 2138,
+    "source_path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/BIGLOTTO_CANONICAL_FULL_HISTORY_BASELINE_R4/baseline.sqlite"
+  },
+  "replication_candidate": false,
+  "scope": {
+    "allocation_exposure_action": "OUT_OF_SCOPE",
+    "cohort_creation": "NO",
+    "cross_lottery_replication": "NOT_RUN",
+    "p638": "NOT_RUN",
+    "production_promotion": "NO",
+    "prospective_activation": "NO",
+    "regime_detection": "IN_SCOPE",
+    "t539": "NOT_RUN"
+  },
+  "secondary_per_number_family": {
+    "holm_min_adjusted_p_value": 0.48514851485148514,
+    "p_value_method": "empirical add-one upper-tail (Davison-Hinkley), not part of primary classification",
+    "results": [
+      {
+        "argmax_split_point": 1628,
+        "holm_adjusted_p_value": 1.0,
+        "number": 1,
+        "raw_p_value": 0.0297029702970297,
+        "statistic": 36.65306122448892
+      },
+      {
+        "argmax_split_point": 1617,
+        "holm_adjusted_p_value": 1.0,
+        "number": 2,
+        "raw_p_value": 0.1782178217821782,
+        "statistic": 24.9999999999992
+      },
+      {
+        "argmax_split_point": 983,
+        "holm_adjusted_p_value": 1.0,
+        "number": 3,
+        "raw_p_value": 0.9702970297029703,
+        "statistic": 7.632653061224496
+      },
+      {
+        "argmax_split_point": 1812,
+        "holm_adjusted_p_value": 1.0,
+        "number": 4,
+        "raw_p_value": 0.16831683168316833,
+        "statistic": 24.877551020408692
+      },
+      {
+        "argmax_split_point": 679,
+        "holm_adjusted_p_value": 1.0,
+        "number": 5,
+        "raw_p_value": 0.8514851485148515,
+        "statistic": 9.857142857142929
+      },
+      {
+        "argmax_split_point": 1765,
+        "holm_adjusted_p_value": 0.48514851485148514,
+        "number": 6,
+        "raw_p_value": 0.009900990099009901,
+        "statistic": 42.12244897959268
+      },
+      {
+        "argmax_split_point": 1149,
+        "holm_adjusted_p_value": 1.0,
+        "number": 7,
+        "raw_p_value": 0.8415841584158416,
+        "statistic": 10.693877551020298
+      },
+      {
+        "argmax_split_point": 1514,
+        "holm_adjusted_p_value": 0.48514851485148514,
+        "number": 8,
+        "raw_p_value": 0.009900990099009901,
+        "statistic": 31.61224489795866
+      },
+      {
+        "argmax_split_point": 1354,
+        "holm_adjusted_p_value": 1.0,
+        "number": 9,
+        "raw_p_value": 0.27722772277227725,
+        "statistic": 19.795918367347227
+      },
+      {
+        "argmax_split_point": 1632,
+        "holm_adjusted_p_value": 1.0,
+        "number": 10,
+        "raw_p_value": 0.7425742574257426,
+        "statistic": 12.836734693877355
+      },
+      {
+        "argmax_split_point": 1755,
+        "holm_adjusted_p_value": 1.0,
+        "number": 11,
+        "raw_p_value": 0.3069306930693069,
+        "statistic": 19.102040816326067
+      },
+      {
+        "argmax_split_point": 1036,
+        "holm_adjusted_p_value": 1.0,
+        "number": 12,
+        "raw_p_value": 0.7524752475247525,
+        "statistic": 11.85714285714282
+      },
+      {
+        "argmax_split_point": 996,
+        "holm_adjusted_p_value": 1.0,
+        "number": 13,
+        "raw_p_value": 0.9504950495049505,
+        "statistic": 8.040816326530617
+      },
+      {
+        "argmax_split_point": 1573,
+        "holm_adjusted_p_value": 1.0,
+        "number": 14,
+        "raw_p_value": 0.3465346534653465,
+        "statistic": 19.612244897959908
+      },
+      {
+        "argmax_split_point": 1781,
+        "holm_adjusted_p_value": 1.0,
+        "number": 15,
+        "raw_p_value": 0.31683168316831684,
+        "statistic": 19.918367346937927
+      },
+      {
+        "argmax_split_point": 621,
+        "holm_adjusted_p_value": 1.0,
+        "number": 16,
+        "raw_p_value": 0.8415841584158416,
+        "statistic": 10.040816326530628
+      },
+      {
+        "argmax_split_point": 574,
+        "holm_adjusted_p_value": 1.0,
+        "number": 17,
+        "raw_p_value": 0.15841584158415842,
+        "statistic": 24.285714285714477
+      },
+      {
+        "argmax_split_point": 1340,
+        "holm_adjusted_p_value": 1.0,
+        "number": 18,
+        "raw_p_value": 0.7623762376237624,
+        "statistic": 12.081632653061277
+      },
+      {
+        "argmax_split_point": 1037,
+        "holm_adjusted_p_value": 1.0,
+        "number": 19,
+        "raw_p_value": 0.5148514851485149,
+        "statistic": 16.97959183673505
+      },
+      {
+        "argmax_split_point": 432,
+        "holm_adjusted_p_value": 1.0,
+        "number": 20,
+        "raw_p_value": 0.6138613861386139,
+        "statistic": 13.102040816326534
+      },
+      {
+        "argmax_split_point": 1816,
+        "holm_adjusted_p_value": 1.0,
+        "number": 21,
+        "raw_p_value": 0.7524752475247525,
+        "statistic": 11.632653061224524
+      },
+      {
+        "argmax_split_point": 1200,
+        "holm_adjusted_p_value": 1.0,
+        "number": 22,
+        "raw_p_value": 0.42574257425742573,
+        "statistic": 17.061224489795617
+      },
+      {
+        "argmax_split_point": 1773,
+        "holm_adjusted_p_value": 1.0,
+        "number": 23,
+        "raw_p_value": 0.0891089108910891,
+        "statistic": 27.897959183672675
+      },
+      {
+        "argmax_split_point": 1414,
+        "holm_adjusted_p_value": 1.0,
+        "number": 24,
+        "raw_p_value": 0.25742574257425743,
+        "statistic": 21.14285714285735
+      },
+      {
+        "argmax_split_point": 1817,
+        "holm_adjusted_p_value": 1.0,
+        "number": 25,
+        "raw_p_value": 0.39603960396039606,
+        "statistic": 17.489795918367584
+      },
+      {
+        "argmax_split_point": 1311,
+        "holm_adjusted_p_value": 1.0,
+        "number": 26,
+        "raw_p_value": 0.2079207920792079,
+        "statistic": 21.53061224489811
+      },
+      {
+        "argmax_split_point": 1008,
+        "holm_adjusted_p_value": 1.0,
+        "number": 27,
+        "raw_p_value": 1.0,
+        "statistic": 7.571428571428611
+      },
+      {
+        "argmax_split_point": 1209,
+        "holm_adjusted_p_value": 1.0,
+        "number": 28,
+        "raw_p_value": 0.40594059405940597,
+        "statistic": 18.95918367346909
+      },
+      {
+        "argmax_split_point": 639,
+        "holm_adjusted_p_value": 1.0,
+        "number": 29,
+        "raw_p_value": 0.9603960396039604,
+        "statistic": 9.244897959183636
+      },
+      {
+        "argmax_split_point": 1816,
+        "holm_adjusted_p_value": 1.0,
+        "number": 30,
+        "raw_p_value": 0.594059405940594,
+        "statistic": 14.632653061224257
+      },
+      {
+        "argmax_split_point": 1223,
+        "holm_adjusted_p_value": 1.0,
+        "number": 31,
+        "raw_p_value": 0.9504950495049505,
+        "statistic": 8.244897959183772
+      },
+      {
+        "argmax_split_point": 1351,
+        "holm_adjusted_p_value": 1.0,
+        "number": 32,
+        "raw_p_value": 0.19801980198019803,
+        "statistic": 23.571428571428232
+      },
+      {
+        "argmax_split_point": 979,
+        "holm_adjusted_p_value": 1.0,
+        "number": 33,
+        "raw_p_value": 0.2871287128712871,
+        "statistic": 20.87755102040834
+      },
+      {
+        "argmax_split_point": 1596,
+        "holm_adjusted_p_value": 1.0,
+        "number": 34,
+        "raw_p_value": 0.2079207920792079,
+        "statistic": 23.428571428571853
+      },
+      {
+        "argmax_split_point": 1089,
+        "holm_adjusted_p_value": 1.0,
+        "number": 35,
+        "raw_p_value": 0.21782178217821782,
+        "statistic": 21.6530612244896
+      },
+      {
+        "argmax_split_point": 1363,
+        "holm_adjusted_p_value": 1.0,
+        "number": 36,
+        "raw_p_value": 0.3564356435643564,
+        "statistic": 20.102040816326042
+      },
+      {
+        "argmax_split_point": 372,
+        "holm_adjusted_p_value": 1.0,
+        "number": 37,
+        "raw_p_value": 0.8811881188118812,
+        "statistic": 9.551020408163243
+      },
+      {
+        "argmax_split_point": 1756,
+        "holm_adjusted_p_value": 1.0,
+        "number": 38,
+        "raw_p_value": 0.44554455445544555,
+        "statistic": 17.020408163265653
+      },
+      {
+        "argmax_split_point": 1678,
+        "holm_adjusted_p_value": 1.0,
+        "number": 39,
+        "raw_p_value": 0.8514851485148515,
+        "statistic": 10.469387755102016
+      },
+      {
+        "argmax_split_point": 1702,
+        "holm_adjusted_p_value": 1.0,
+        "number": 40,
+        "raw_p_value": 0.6237623762376238,
+        "statistic": 14.408163265306184
+      },
+      {
+        "argmax_split_point": 1812,
+        "holm_adjusted_p_value": 1.0,
+        "number": 41,
+        "raw_p_value": 0.24752475247524752,
+        "statistic": 21.122448979591542
+      },
+      {
+        "argmax_split_point": 1032,
+        "holm_adjusted_p_value": 1.0,
+        "number": 42,
+        "raw_p_value": 0.9900990099009901,
+        "statistic": 8.36734693877543
+      },
+      {
+        "argmax_split_point": 1817,
+        "holm_adjusted_p_value": 1.0,
+        "number": 43,
+        "raw_p_value": 0.3069306930693069,
+        "statistic": 21.510204081631876
+      },
+      {
+        "argmax_split_point": 1661,
+        "holm_adjusted_p_value": 1.0,
+        "number": 44,
+        "raw_p_value": 0.693069306930693,
+        "statistic": 12.61224489795913
+      },
+      {
+        "argmax_split_point": 1264,
+        "holm_adjusted_p_value": 1.0,
+        "number": 45,
+        "raw_p_value": 0.6336633663366337,
+        "statistic": 12.775510204081572
+      },
+      {
+        "argmax_split_point": 481,
+        "holm_adjusted_p_value": 1.0,
+        "number": 46,
+        "raw_p_value": 0.7524752475247525,
+        "statistic": 12.897959183673525
+      },
+      {
+        "argmax_split_point": 1809,
+        "holm_adjusted_p_value": 1.0,
+        "number": 47,
+        "raw_p_value": 0.5742574257425742,
+        "statistic": 14.5102040816326
+      },
+      {
+        "argmax_split_point": 1279,
+        "holm_adjusted_p_value": 1.0,
+        "number": 48,
+        "raw_p_value": 0.38613861386138615,
+        "statistic": 17.612244897959176
+      },
+      {
+        "argmax_split_point": 1359,
+        "holm_adjusted_p_value": 1.0,
+        "number": 49,
+        "raw_p_value": 0.8118811881188119,
+        "statistic": 10.408163265306076
+      }
+    ]
+  }
+}

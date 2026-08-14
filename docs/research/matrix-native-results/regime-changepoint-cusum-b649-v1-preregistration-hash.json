@@ -1,0 +1,27 @@
+{
+  "hash_method": "LCJ-1 canonical bytes (lottolab.evidence.canonical_json), SHA-256",
+  "locked_parameters": {
+    "classification_likely_threshold_denominator": 100,
+    "classification_likely_threshold_numerator": 95,
+    "classification_possible_threshold_denominator": 100,
+    "classification_possible_threshold_numerator": 75,
+    "hypothesis_family_id": "REGIME_CHANGE_POINT",
+    "lottery_type": "BIG_LOTTO",
+    "matrix_variant_id": "REGIME_CHANGE_POINT_CUSUM_B649_V1",
+    "n_null_simulations": 100,
+    "n_stability_blocks": 4,
+    "null_mean_sum_of_six": 150,
+    "null_probability_per_number_denominator": 49,
+    "null_probability_per_number_numerator": 6,
+    "null_simulation_seed_end": 99,
+    "null_simulation_seed_start": 0,
+    "null_variance_sum_of_six_denominator": 1,
+    "null_variance_sum_of_six_numerator": 1075,
+    "per_number_holm_family_size": 49,
+    "stability_block_holm_family_size": 4,
+    "trim_fraction_denominator": 100,
+    "trim_fraction_numerator": 15
+  },
+  "matrix_variant_id": "REGIME_CHANGE_POINT_CUSUM_B649_V1",
+  "preregistration_hash_sha256": "6cf305db6fe5ae37743d8ddf5b2018f533005f1b7d18dc9d0e45ebd07e6d7d26"
+}

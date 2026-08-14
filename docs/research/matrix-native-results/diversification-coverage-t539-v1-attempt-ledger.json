@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "DIVERSIFICATION_COVERAGE_T539_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "lottery_type": "DAILY_539",
+      "matrix_variant_id": "DIVERSIFICATION_COVERAGE_T539_V1",
+      "preregistration_hash_sha256": "dd926b0ea045cb57be4e1cd10bc16e3d524e3b6acae5b34a805ed01f437e334e",
+      "record_state": "SEALED",
+      "result_hash_sha256": "7051bd8fe44aebb2abc53cff324f920231ca324d8c181fa9759dca5f73a02d89",
+      "sealed_at": "2026-08-14T09:57:41.857439+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE2_T539_DIVERSIFICATION_COVERAGE_R1"
+    }
+  ]
+}

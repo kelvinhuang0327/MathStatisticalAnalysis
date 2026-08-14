@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "REGIME_CHANGE_POINT_CUSUM_B649_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "REGIME_CHANGE_POINT",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "REGIME_CHANGE_POINT_CUSUM_B649_V1",
+      "preregistration_hash_sha256": "6cf305db6fe5ae37743d8ddf5b2018f533005f1b7d18dc9d0e45ebd07e6d7d26",
+      "record_state": "SEALED",
+      "result_hash_sha256": "9bf038adc709dab7773fdacab7693c9c1bec0639047af1f39e133ef7106d7edd",
+      "sealed_at": "2026-08-14T07:26:34.487225+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE1_B649_REGIME_CHANGEPOINT_CUSUM_V1"
+    }
+  ]
+}

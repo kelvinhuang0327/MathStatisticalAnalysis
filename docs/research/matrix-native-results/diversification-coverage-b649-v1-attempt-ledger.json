@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "DIVERSIFICATION_COVERAGE_B649_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "DIVERSIFICATION_COVERAGE_B649_V1",
+      "preregistration_hash_sha256": "029210d0eb9860a625ad8bf4bc535358e928823860fa4ea1ad4591114ea59a26",
+      "record_state": "SEALED",
+      "result_hash_sha256": "bb873774862461834d42e5ec5fc0fb99f01e2869f1276e6bd9afb92ec62691e3",
+      "sealed_at": "2026-08-14T08:37:30.754614+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE1_B649_DIVERSIFICATION_COVERAGE_SIDON_V1"
+    }
+  ]
+}

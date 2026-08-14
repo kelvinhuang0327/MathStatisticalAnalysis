@@ -200,6 +200,9 @@ from lottolab.interfaces.cli.ordered_candidate_materialization import (
 from lottolab.interfaces.cli.p638_historical_forward import (
     forward_p638_historical_command,
 )
+from lottolab.interfaces.cli.pre_outcome_target import (
+    register_pre_outcome_target_command,
+)
 from lottolab.interfaces.cli.replay_backed_batch import (
     materialize_exact_replay_batch_command,
 )
@@ -216,6 +219,7 @@ app.add_typer(local_app, name="local")
 app.command("import-historical-results")(historical_import_command)
 app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
+app.command("register-pre-outcome-target")(register_pre_outcome_target_command)
 app.command("research-store")(research_store_command)
 app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
 app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)

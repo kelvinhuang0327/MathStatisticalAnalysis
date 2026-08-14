@@ -227,6 +227,55 @@ repository 與 LotteryNew 邊界檢查仍會強制執行；但已用相同 OS �
 owner-owned 檔案的惡意 process 不在支援的 threat model 內，實作不宣稱具備 same-UID
 namespace-race immunity。若需更強隔離，必須採用 OS sandboxing 或 privilege separation，超出目前範圍。
 
+## Pre-Outcome Target Authority（Operational Binding R1）
+
+`lottolab register-pre-outcome-target --lottery-type ...` 將已合併的 create-once target-authority
+contract 綁到本機 canonical data directory；支援 `BIG_LOTTO`、`DAILY_539` 與 `POWER_LOTTO`，
+不推算期號、不依星期或歷史 cadence 猜下一期，也不在命令內連網。固定 operational paths 為：
+
+- announcement authority：`<LOTTOLAB_DATA_DIR>/pre-outcome-target-announcements-v1.json`
+- durable registrations：`<LOTTOLAB_DATA_DIR>/pre-outcome-target-authority-v1/`
+
+未設定 `LOTTOLAB_DATA_DIR` 時仍沿用既有的
+`~/Library/Application Support/LottoLab` canonical root。Path resolution、CLI help 與 composition
+都不建立上述檔案或目錄；只有成功的 canonical create-once registration 才會建立 durable authority
+root。announcement file 必須是 owner-owned、mode `0600`、single-link regular file，外層 schema 如下；
+每個 entry 都必須逐一引用 credential-free 的台灣彩券官方 HTTPS 頁面，且不得出現中獎號碼、特別號、
+獎項或 outcome hash；`source_payload_sha256` 是建立該 announcement 所依據之官方 source payload 的
+exact SHA-256，不是整份 mutable inventory file 的 hash：
+
+```json
+{
+  "schema_version": "LOTTOLAB_PRE_OUTCOME_OPERATIONAL_ANNOUNCEMENTS_V1",
+  "announcements": [
+    {
+      "target": {
+        "lottery_type": "BIG_LOTTO",
+        "draw_number": "999999901",
+        "draw_date": "2099-01-02"
+      },
+      "schedule_timezone": "Asia/Taipei",
+      "scheduled_at": "2099-01-02T12:30:00Z",
+      "source": {
+        "source_id": "TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
+        "source_version": "taiwan-lottery-official-schedule-v1",
+        "source_locator": "https://www.taiwanlottery.com/",
+        "source_payload_sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "observed_at": "2099-01-01T06:00:00Z"
+      }
+    }
+  ]
+}
+```
+
+上述 `2099` entry 只示範 schema，不能當作 real target。實際 registration 會先 re-read 同一 announcement
+以偵測 drift，再從 canonical draw DB 建立 strictly-pre-target history digest。ABSENT outcome attestation
+只接受既有、成功且涵蓋 target date 的 `TAIWAN_LOTTERY_OFFICIAL_API` sync audit；presence query 只讀
+target identity 與 audit metadata，不選取 winning-number columns。若 announcement file 不存在，命令以
+`NO_CANONICAL_TARGET_ANNOUNCEMENT` 正常 no-op；若沒有仍在 schedule 前的相符 target，則回傳
+`NO_REGISTERABLE_PRE_OUTCOME_TARGET`。這個命令只註冊 target authority，不執行 prediction、matched
+control、score、checkpoint 或 prospective-observer runtime。
+
 ### History
 
 `#/history` 統一三個唯讀分頁：

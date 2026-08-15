@@ -437,7 +437,7 @@ class TargetDrawNotFoundError(LookupError):
 
 @runtime_checkable
 class DrawHistoryReader(Protocol):
-    """Replay's narrow, read-only causal Big Lotto history boundary.
+    """Replay's narrow, read-only, lottery-rule-aware causal history boundary.
 
     Returns/raises in terms of domain types only — never sqlite3 rows, SQL
     strings, or any UI/HTTP concept.

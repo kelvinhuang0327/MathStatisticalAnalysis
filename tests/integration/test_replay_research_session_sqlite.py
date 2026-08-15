@@ -29,6 +29,7 @@ from lottolab.application.use_cases.replay_historical_predictions import (
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_predictions import ReplayTarget
+from lottolab.evidence.replay_artifact import causal_history_sha256
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
     DATA_DIRECTORY_ENV,
@@ -305,3 +306,137 @@ def test_sessions_do_not_share_a_cache_unless_one_is_explicitly_passed(tmp_path:
         strategy_ids=_STRATEGY_IDS,
     )
     assert shared_second.cache_stats.hits == pair_count  # explicit shared cache -> second is warm
+
+
+def _seed_native_draws(
+    paths: LocalDataPaths,
+    *,
+    lottery_type: LotteryType,
+    rows: list[tuple[str, str, tuple[int, ...], int | None]],
+) -> None:
+    csv_rows = [
+        ",".join(
+            (
+                lottery_type.value,
+                draw_number,
+                draw_date,
+                "|".join(str(number) for number in main_numbers),
+                "" if special_number is None else str(special_number),
+                f"synthetic-{lottery_type.value.lower()}-research-session",
+            )
+        )
+        for draw_number, draw_date, main_numbers, special_number in rows
+    ]
+    document = parse_draw_csv(
+        "\n".join((_HEADER, *csv_rows, "")),
+        filename=f"synthetic-{lottery_type.value.lower()}.csv",
+    )
+    assert document.is_valid, document.errors
+    result = SQLiteDrawDataRepository(paths).apply_valid_import(document)
+    assert result.inserted_count == len(rows)
+    assert result.skipped_count == result.conflict_count == result.failed_count == 0
+
+
+def test_replay_targets_supports_daily_539_native_five_number_causal_history(
+    tmp_path: Path,
+) -> None:
+    """DAILY_539 (5/39, no special number) must resolve end to end through the session."""
+
+    paths = _task_paths(tmp_path)
+    _seed_native_draws(
+        paths,
+        lottery_type=LotteryType.DAILY_539,
+        rows=[
+            ("1", "2026-02-01", (1, 2, 3, 4, 5), None),
+            ("2", "2026-02-02", (6, 7, 8, 9, 10), None),
+            ("3", "2026-02-03", (11, 12, 13, 14, 15), None),
+        ],
+    )
+    session = ReplayResearchSession(lottery_type=LotteryType.DAILY_539, paths=paths)
+
+    result = session.replay_targets(
+        dataset_id="SYNTHETIC_DAILY_539_RESEARCH_SESSION_R1",
+        dataset_version="1",
+        target_draw_numbers=("3",),
+        strategy_ids=_STRATEGY_IDS[:1],
+    )
+
+    assert len(result.snapshots) == 1
+    snapshot = result.snapshots[0]
+    # Target/history lottery identity is preserved end to end.
+    assert snapshot.lottery_type is LotteryType.DAILY_539
+    assert snapshot.target_draw_number == "3"
+    assert snapshot.target_draw_date == date(2026, 2, 3)
+    # Five-number DAILY_539 rows are accepted -- the six-number BIG_LOTTO
+    # contract is not silently applied -- and the causal cutoff stops
+    # strictly before the target (draws "1" and "2" only, never "3").
+    assert snapshot.history_status == "OK"
+    assert snapshot.causal_history_count == 2
+    assert snapshot.cutoff_draw_number == "2"
+    assert snapshot.cutoff_draw_date == date(2026, 2, 2)
+    reader = SQLiteDrawHistoryReader(paths)
+    expected_history = reader.read_causal_history(LotteryType.DAILY_539, "3")
+    assert len(expected_history) == 2
+    assert all(row.lottery_type is LotteryType.DAILY_539 for row in expected_history)
+    assert all(len(row.main_numbers) == 5 for row in expected_history)
+    assert all(row.special_number is None for row in expected_history)
+    assert snapshot.causal_history_sha256 == causal_history_sha256(expected_history)
+    # No strategy in the production catalog currently supports DAILY_539; the
+    # causal-history read still succeeds and resolves as a closed result.
+    assert snapshot.prediction_status == "STRATEGY_UNAVAILABLE"
+
+
+def test_replay_targets_supports_power_lotto_native_zone_split_causal_history(
+    tmp_path: Path,
+) -> None:
+    """POWER_LOTTO (6/38 main zone + 1/8 special zone) must resolve end to end."""
+
+    paths = _task_paths(tmp_path)
+    _seed_native_draws(
+        paths,
+        lottery_type=LotteryType.POWER_LOTTO,
+        rows=[
+            ("1", "2026-02-01", (1, 2, 3, 4, 5, 6), 8),
+            ("2", "2026-02-02", (7, 8, 9, 10, 11, 12), 3),
+            ("3", "2026-02-03", (13, 14, 15, 16, 17, 18), 1),
+        ],
+    )
+    session = ReplayResearchSession(lottery_type=LotteryType.POWER_LOTTO, paths=paths)
+
+    result = session.replay_targets(
+        dataset_id="SYNTHETIC_POWER_LOTTO_RESEARCH_SESSION_R1",
+        dataset_version="1",
+        target_draw_numbers=("3",),
+        strategy_ids=_STRATEGY_IDS[:1],
+    )
+
+    assert len(result.snapshots) == 1
+    snapshot = result.snapshots[0]
+    # Target/history lottery identity is preserved end to end.
+    assert snapshot.lottery_type is LotteryType.POWER_LOTTO
+    assert snapshot.target_draw_number == "3"
+    assert snapshot.target_draw_date == date(2026, 2, 3)
+    # The causal cutoff stops strictly before the target (draws "1" and "2"
+    # only, never "3").
+    assert snapshot.history_status == "OK"
+    assert snapshot.causal_history_count == 2
+    assert snapshot.cutoff_draw_number == "2"
+    assert snapshot.cutoff_draw_date == date(2026, 2, 2)
+    reader = SQLiteDrawHistoryReader(paths)
+    expected_history = reader.read_causal_history(LotteryType.POWER_LOTTO, "3")
+    assert len(expected_history) == 2
+    # Native zone semantics are preserved, not flattened into a fake
+    # single-zone BIG_LOTTO row: zone1 (6 main numbers, 1..38) stays distinct
+    # from zone2 (the 1..8 special number) on every causal history row.
+    assert all(row.lottery_type is LotteryType.POWER_LOTTO for row in expected_history)
+    assert all(len(row.main_numbers) == 6 for row in expected_history)
+    assert all(max(row.main_numbers) <= 38 for row in expected_history)
+    assert all(
+        row.special_number is not None and 1 <= row.special_number <= 8 for row in expected_history
+    )
+    assert [row.special_number for row in expected_history] == [8, 3]
+    assert snapshot.causal_history_sha256 == causal_history_sha256(expected_history)
+    # No strategy in the production catalog currently supports POWER_LOTTO; the
+    # causal-history read (main zone + special zone both preserved) still
+    # succeeds and resolves as a closed result.
+    assert snapshot.prediction_status == "STRATEGY_UNAVAILABLE"

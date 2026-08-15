@@ -24,6 +24,7 @@ from lottolab.domain.replay_history import ReplayCausalDrawRow
 
 def _row(draw_number: str, draw_date: date) -> ReplayCausalDrawRow:
     return ReplayCausalDrawRow(
+        lottery_type=LotteryType.BIG_LOTTO,
         draw_number=draw_number,
         draw_date=draw_date,
         main_numbers=(1, 2, 3, 4, 5, 6),

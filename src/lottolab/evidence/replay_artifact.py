@@ -51,17 +51,24 @@ def _dataclass_field_dict(instance: Any) -> dict[str, Any]:
 def causal_history_canonical_payload(
     history: tuple[ReplayCausalDrawRow, ...],
 ) -> list[dict[str, Any]]:
-    """Ordered, LCJ-1-safe payload for causal-history provenance hashing."""
+    """Ordered, LCJ-1-safe payload for causal-history provenance hashing.
 
-    return [
-        {
+    ``special_number`` is omitted (never emitted as ``null``) for a lottery
+    with no special number at all, e.g. DAILY_539 -- see the module
+    docstring's key-absence-not-null convention.
+    """
+
+    payload: list[dict[str, Any]] = []
+    for row in history:
+        row_payload: dict[str, Any] = {
             "draw_number": row.draw_number,
             "draw_date": row.draw_date.isoformat(),
             "main_numbers": list(row.main_numbers),
-            "special_number": row.special_number,
         }
-        for row in history
-    ]
+        if row.special_number is not None:
+            row_payload["special_number"] = row.special_number
+        payload.append(row_payload)
+    return payload
 
 
 def causal_history_sha256(history: tuple[ReplayCausalDrawRow, ...]) -> str:

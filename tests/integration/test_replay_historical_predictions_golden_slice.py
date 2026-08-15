@@ -63,6 +63,7 @@ class _FixtureDrawHistoryReader:
     def __init__(self, fixture: dict[str, Any]) -> None:
         self._all_rows = tuple(
             ReplayCausalDrawRow(
+                lottery_type=LotteryType.BIG_LOTTO,
                 draw_number=row["draw_number"],
                 draw_date=date.fromisoformat(row["draw_date"]),
                 main_numbers=tuple(row["main_numbers"]),

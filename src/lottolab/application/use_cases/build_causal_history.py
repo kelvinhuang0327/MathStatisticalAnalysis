@@ -1,4 +1,4 @@
-"""Replay use case: build one closed-result causal Big Lotto history window."""
+"""Replay use case: build one closed-result causal draw history window."""
 
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ class BuildCausalHistoryResult:
 
 
 class BuildCausalHistory:
-    """Validate bounds, then resolve one causal Big Lotto history window."""
+    """Validate bounds, then resolve one causal draw history window."""
 
     def __init__(self, reader_factory: DrawHistoryReaderFactory) -> None:
         self._reader_factory = reader_factory

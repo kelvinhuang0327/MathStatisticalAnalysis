@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "lottery_type": "POWER_LOTTO",
+      "matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1",
+      "preregistration_hash_sha256": "e535caa323c1bb5ef027e5d8c5efa8b12fa83f59f83312ad1d9250d1e039f58b",
+      "record_state": "SEALED",
+      "result_hash_sha256": "533eeb0254d6b83063ffb68dc6738f24004a134dcf6646764a4a1285e323d3ad",
+      "sealed_at": "2026-08-15T10:56:43.467998+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE5_P638_NON_SIDON_LOW_OVERLAP_LOCK_EXECUTE_R1"
+    }
+  ]
+}

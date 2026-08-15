@@ -1,0 +1,40 @@
+{
+  "hash_method": "LCJ-1 canonical bytes (lottolab.evidence.canonical_json), SHA-256",
+  "locked_parameters": {
+    "arm_a_constructor_id": "CYCLIC_SIDON_SHIFT_T539_V1",
+    "arm_a_mutation": "none",
+    "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+    "arm_b_mutation": "none",
+    "arm_c_constructor_id": "RANDOM_EXPECTED_COVERAGE",
+    "arm_c_mutation": "none",
+    "draw_size": 5,
+    "duplicate_tickets_invariant": 0,
+    "exposure_ladder": [
+      1,
+      3,
+      5,
+      10,
+      15,
+      20
+    ],
+    "hypothesis_family_id": "DIVERSIFICATION",
+    "lottery_type": "DAILY_539",
+    "matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+    "pool_size": 39,
+    "portfolio_mode": "NESTED_PREFIX",
+    "primary_event_minimum_matches": 3,
+    "secondary_event_minimum_matches": [
+      4,
+      5
+    ],
+    "sidon_base_set_0_indexed": [
+      0,
+      1,
+      3,
+      7,
+      12
+    ]
+  },
+  "matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+  "preregistration_hash_sha256": "cb786aac3fc04ea2f1c302b37120831a2296869e94e7d397260d5745420ff8bd"
+}

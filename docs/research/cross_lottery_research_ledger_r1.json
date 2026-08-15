@@ -614,9 +614,51 @@
       "source_type": "STRATEGY_MATRIX_NATIVE",
       "uncertainty": "NONE for Q_X(k) values (exact, via the parity-verified fast evaluator, not sampled/simulated). The optimizer SEARCH itself is BOUNDED (56,730/65,610 evaluations used across the ladder), not exhaustive -- BEST_FOUND_Q(k) is a found maximum among 3 disclosed arms under one fixed seeded budget, not a proven optimum.",
       "zone": null
+    },
+    {
+      "artifact_paths": [
+        "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-preregistration.md",
+        "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-preregistration-hash.json",
+        "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-result.json",
+        "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-attempt-ledger.json",
+        "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-report.md"
+      ],
+      "cell_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1__DAILY_539",
+      "decision_state": "REPLICATION_REQUIRED",
+      "descriptive_classification": "OUTPERFORMS_RANDOM_EXPECTED_COVERAGE",
+      "economic_optimality": "NOT_TESTED",
+      "evidence_grade": "LOCAL_VERIFIED",
+      "evidence_type": "EXACT_COMBINATORIAL",
+      "exhausted": false,
+      "generation": 2,
+      "global_mechanism_status": "RETAIN_AND_REPLICATE",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "hypothesis_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+      "last_reviewed_at": "2026-08-15",
+      "lottery_type": "DAILY_539",
+      "mechanism_class": "STRUCTURAL",
+      "mechanism_family": "DIVERSIFICATION",
+      "next_priority": "MEDIUM",
+      "null_replay_percentile": null,
+      "predictive_advantage": "NOT_TESTED",
+      "preregistration_grade": "R1_PREREGISTERED",
+      "primary_endpoint_definition": "DELTA_SIDON(20) = Q_greedy_M3+(20) - Q_sidon_M3+(20), exact combinatorics via complete C(39,5)=575,757 enumeration, exact value 92/63973. Q2 requires DELTA_SIDON(k) > 0 for every k in {3,5,10,15,20}: TRUE -> T539_ARM_B_EXCEEDS_SIDON_GAIN -- arm B (greedy, non-Sidon) not only reproduces but exceeds T539's own sealed Sidon-shift gain over random at every tested k>1, matching B649's own constructor-frontier finding in direction (CONSISTENT_WITH_B649). DELTA_RANDOM_B(20) (arm B vs. random, Q1) = 9164976506672862384010629524136847629878758229152090749769669793255596167763507993/854116625879098836238200337908424671905738564473126295698485942275321822152736920680 (+0.01073036), also > 0 at every k>1 -> T539_ARM_B_OUTPERFORMS_RANDOM.",
+      "primary_endpoint_value": 0.001438106701264596,
+      "prize_value_advantage": "NOT_TESTED",
+      "record_state": "SEALED",
+      "related_legacy_evidence": [],
+      "retest_eligible": true,
+      "retest_triggers": [
+        "a richer optimizer arm (e.g. a bounded seeded search analogous to B649's RESTART_GREEDY_SWAP_COVERAGE_SEARCH_B649_V1) is run at T539 scale to test whether an even larger gap over Sidon exists",
+        "P638 native replication of GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1/B649_V1 tests whether this mechanism's advantage over Sidon-shift generalizes to the third native lottery structure"
+      ],
+      "source_note": "Computed and independently verified in this session (Strategy Matrix Phase 5, Generation 2, commits 94aa504 design + fd3ebd7 execute) via complete C(39,5)=575,757 enumeration, exact fractions.Fraction arithmetic, no simulation, no historical draws. Native T539 parameter-substitution translation of GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1 (see DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__BIG_LOTTO) -- the design doc (94aa504) confirmed no B649-specific constant is required, so this is a thin parameter-substitution wrapper, not a new algorithm. Arm A (Sidon) was recomputed fresh and cross-checked for exact identity against the already-sealed DIVERSIFICATION_COVERAGE_T539_V1 cell (arm_a_identity_check_vs_sealed_coverage_cell: true in the sealed result). Makes no predictive-advantage or prize-value claim. P638 not run by this task; P638_NATIVE_REPLICATION_CANDIDATE: YES per the sealed result.",
+      "source_type": "STRATEGY_MATRIX_NATIVE",
+      "uncertainty": "NONE -- exact enumeration / exact closed form",
+      "zone": null
     }
   ],
-  "generated_at": "2026-08-14",
+  "generated_at": "2026-08-15",
   "ledger_id": "CROSS_LOTTERY_RESEARCH_LEDGER_R1",
   "priors": [
     {

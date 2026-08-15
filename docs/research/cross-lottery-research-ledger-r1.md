@@ -1,6 +1,6 @@
 # Cross-Lottery Research Ledger R1
 
-Status: OPERATIONAL SSOT | generated 2026-08-14 | 10 priors, 18 cells
+Status: OPERATIONAL SSOT | generated 2026-08-15 | 10 priors, 19 cells
 
 Source of truth: `docs/research/cross_lottery_research_ledger_r1.json`. This file is generated from it — never hand-edited. Schema and lifecycle: `docs/research/cross-lottery-research-ledger-r1-schema.md`.
 
@@ -44,6 +44,7 @@ Positive results awaiting a second lottery before being read as more than lotter
 | `DIVERSIFICATION_COVERAGE_B649_V1__BIG_LOTTO` | BIG_LOTTO | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
 | `DIVERSIFICATION_COVERAGE_T539_V1__DAILY_539` | DAILY_539 | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
 | `DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__BIG_LOTTO` | BIG_LOTTO | SIDON_BELOW_FRONTIER_MARGIN | MEDIUM |
+| `GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1__DAILY_539` | DAILY_539 | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
 
 ## Full cell detail
 
@@ -268,3 +269,18 @@ Positive results awaiting a second lottery before being read as more than lotter
 - artifacts: docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-preregistration.md, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-preregistration-hash.json, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-attempt-ledger.json, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-report.md
 - retest_eligible: True
 - source: Computed and independently verified in this session (Strategy Matrix Phase 5, Generation 2) via the fast-evaluator-backed (c7e3b4a, parity-verified) bounded_coverage_optimizer_fast module, at real B649 scale for the first time -- neither arm B nor arm C had been invoked at (49,6) before this task (971b97b, design only). Sidon-shift (arm A, the sealed DIVERSIFICATION_COVERAGE_B649_V1 reference) turned out to be meaningfully below the frontier this one bounded search found, not near it. Both challenger arms are ELIGIBLE_FOR_T539_P638_REPLICATION per 971b97b Sec 11's three-condition rule. Makes no predictive-advantage or prize-value claim; GLOBAL_OPTIMUM_STATUS remains UNKNOWN -- the search sampled a disclosed, bounded, vanishingly small fraction of the C(49,6)=13,983,816 candidate space per slot, never exhaustive.
+
+### `GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1__DAILY_539`
+
+- lottery: DAILY_539
+- mechanism_class: STRUCTURAL
+- evidence_type: `EXACT_COMBINATORIAL` | uncertainty: NONE -- exact enumeration / exact closed form
+- record_state: `SEALED`
+- preregistration_grade: `R1_PREREGISTERED` | evidence_grade: `LOCAL_VERIFIED`
+- descriptive_classification: `OUTPERFORMS_RANDOM_EXPECTED_COVERAGE` | decision_state: `REPLICATION_REQUIRED`
+- global_mechanism_status: `RETAIN_AND_REPLICATE` | exhausted: False
+- predictive_advantage: `NOT_TESTED` | prize_value_advantage: `NOT_TESTED` | economic_optimality: `NOT_TESTED`
+- primary_endpoint: +0.001438 (DELTA_SIDON(20) = Q_greedy_M3+(20) - Q_sidon_M3+(20), exact combinatorics via complete C(39,5)=575,757 enumeration, exact value 92/63973. Q2 requires DELTA_SIDON(k) > 0 for every k in {3,5,10,15,20}: TRUE -> T539_ARM_B_EXCEEDS_SIDON_GAIN -- arm B (greedy, non-Sidon) not only reproduces but exceeds T539's own sealed Sidon-shift gain over random at every tested k>1, matching B649's own constructor-frontier finding in direction (CONSISTENT_WITH_B649). DELTA_RANDOM_B(20) (arm B vs. random, Q1) = 9164976506672862384010629524136847629878758229152090749769669793255596167763507993/854116625879098836238200337908424671905738564473126295698485942275321822152736920680 (+0.01073036), also > 0 at every k>1 -> T539_ARM_B_OUTPERFORMS_RANDOM.)
+- artifacts: docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-preregistration.md, docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-preregistration-hash.json, docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-result.json, docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-attempt-ledger.json, docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-report.md
+- retest_eligible: True
+- source: Computed and independently verified in this session (Strategy Matrix Phase 5, Generation 2, commits 94aa504 design + fd3ebd7 execute) via complete C(39,5)=575,757 enumeration, exact fractions.Fraction arithmetic, no simulation, no historical draws. Native T539 parameter-substitution translation of GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1 (see DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__BIG_LOTTO) -- the design doc (94aa504) confirmed no B649-specific constant is required, so this is a thin parameter-substitution wrapper, not a new algorithm. Arm A (Sidon) was recomputed fresh and cross-checked for exact identity against the already-sealed DIVERSIFICATION_COVERAGE_T539_V1 cell (arm_a_identity_check_vs_sealed_coverage_cell: true in the sealed result). Makes no predictive-advantage or prize-value claim. P638 not run by this task; P638_NATIVE_REPLICATION_CANDIDATE: YES per the sealed result.

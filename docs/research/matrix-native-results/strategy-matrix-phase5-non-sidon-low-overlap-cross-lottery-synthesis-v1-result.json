@@ -1,0 +1,1087 @@
+{
+  "claim_boundary": {
+    "all_low_overlap_constructors_equivalent": "NOT_CLAIMED",
+    "allowed": "EXACT_COMBINATORIAL_CROSS_LOTTERY_REPLICATION",
+    "arm_c_bounded_optimizer_replication_to_t539_p638": "NOT_RUN",
+    "economic_optimality": "NOT_TESTED",
+    "global_optimum": "NOT_CLAIMED",
+    "historical_draw_data_read": "NO",
+    "new_lottery_execution": "NONE",
+    "p638_zone2_or_full_ticket_behavior": "NOT_TESTED",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_value_advantage": "NOT_TESTED",
+    "profitability": "NOT_TESTED"
+  },
+  "common_geometry_invariants": {
+    "max_pairwise_overlap_never_exceeds_1_in_any_lottery": true,
+    "overlap_profile_keys_subset_of_0_1_in_every_lottery": true,
+    "relative_gain_over_sidon_monotonic_nonincreasing_from_k5_in_every_lottery": true,
+    "relative_gain_over_sidon_peaks_at_k5_in_every_lottery": true,
+    "relative_lift_random_monotonic_nondecreasing_in_every_lottery": true,
+    "zero_duplicate_tickets_in_any_lottery_at_any_k": true
+  },
+  "cross_lottery_classification": "NON_SIDON_LOW_OVERLAP_SUPPORTED_ACROSS_3_NATIVE_LOTTERY_STRUCTURES",
+  "delta_sidon_shape_comparison": {
+    "classification": "PEAKING_IN_ALL_THREE_BUT_PEAK_K_IS_LOTTERY_SPECIFIC",
+    "per_lottery_peak_k": {
+      "BIG_LOTTO": 15,
+      "DAILY_539": 15,
+      "POWER_LOTTO_zone1": 5
+    },
+    "per_lottery_shape": {
+      "BIG_LOTTO": "PEAKING_AT_K15",
+      "DAILY_539": "PEAKING_AT_K15",
+      "POWER_LOTTO_zone1": "PEAKING_AT_K5"
+    }
+  },
+  "evidence_type": "EXACT_COMBINATORIAL",
+  "hypothesis_family_id": "DIVERSIFICATION",
+  "inputs": {
+    "BIG_LOTTO": {
+      "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1",
+      "source_matrix_variant_id": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1",
+      "source_path": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json"
+    },
+    "DAILY_539": {
+      "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+      "source_matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+      "source_path": "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-result.json"
+    },
+    "POWER_LOTTO_zone1": {
+      "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1",
+      "source_matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1",
+      "source_path": "docs/research/matrix-native-results/greedy-min-overlap-constructor-p638-zone1-v1-result.json"
+    }
+  },
+  "ladder": [
+    1,
+    3,
+    5,
+    10,
+    15,
+    20
+  ],
+  "lottery_specific_differences": {
+    "delta_sidon_peak_k_by_lottery": {
+      "BIG_LOTTO": 15,
+      "DAILY_539": 15,
+      "POWER_LOTTO_zone1": 5
+    },
+    "delta_sidon_peak_k_shared_by_big_lotto_and_daily_539_only": true,
+    "delta_sidon_shape_by_lottery": {
+      "BIG_LOTTO": "PEAKING_AT_K15",
+      "DAILY_539": "PEAKING_AT_K15",
+      "POWER_LOTTO_zone1": "PEAKING_AT_K5"
+    },
+    "note": "BIG_LOTTO never reaches full unique-number coverage within the tested k<=20 ladder (lexicographic tie-break structurally avoids the pool's highest number); DAILY_539 and POWER_LOTTO_zone1 both reach full coverage within the ladder, at different k. This is observed within the tested ladder only, not a proven asymptotic property.",
+    "reaches_full_pool_unique_number_coverage_by_k20_by_lottery": {
+      "BIG_LOTTO": false,
+      "DAILY_539": true,
+      "POWER_LOTTO_zone1": true
+    },
+    "relative_lift_random_pct_at_k20_by_lottery": {
+      "BIG_LOTTO": 6.946064018715743,
+      "DAILY_539": 5.871028110168478,
+      "POWER_LOTTO_zone1": 11.887634534400975
+    }
+  },
+  "mechanism_family": "NON_SIDON_LOW_OVERLAP",
+  "per_lottery": {
+    "BIG_LOTTO": {
+      "any_duplicate_tickets": false,
+      "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1",
+      "arm_b_constructor_id_source": "diversification-constructor-frontier-b649-v1-report.md, Method section ('B `GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1`'); not a literal JSON field in this cell's schema",
+      "delta_random_b": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "857783037105076123633707416027826364660737874033040004415/84303284848176457585400195617682253920924535113895391588596",
+          "float": 0.010174965763788155
+        },
+        "15": {
+          "exact": "1314026532146439622686464987123938973105541755720412775233968081525664173874107785/88916794687699956758869330142519234326183107605758758029316057428524316895585582934",
+          "float": 0.01477815902790535
+        },
+        "20": {
+          "exact": "21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031/980897987403733678134351946047330513989794948891363256085921242175151267023392248256804542045804579786428549982552",
+          "float": 0.021781606629135565
+        },
+        "3": {
+          "exact": "19358796627054/20382336149654941",
+          "float": 0.0009497830123551236
+        },
+        "5": {
+          "exact": "345802587770383447146826160/110714025898921387590654475161",
+          "float": 0.0031233855418290987
+        }
+      },
+      "delta_random_b_positive_for_every_tested_k_gt_1": true,
+      "delta_random_sidon": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "3978877298704688338006436057941316118631730240715426787135/1854672266659882066878804303589009586260339772505698614949112",
+          "float": 0.0021453263577776633
+        },
+        "15": {
+          "exact": "788235024886216648714776642593420477058432221066035686416671638997008702602226508/133375192031549935138303995213778851489274661408638137043974086142786475343378374401",
+          "float": 0.005909907328941348
+        },
+        "20": {
+          "exact": "232873368979434815903103141927996609520609913134520474550364154631313559621962152611930026635215720204285651202/17516035489352387109541999036559473464103481230202915287248593610270558339703433004585795393675081781900509821117",
+          "float": 0.01329486738714325
+        },
+        "3": {
+          "exact": "400787405867/2495796263223054",
+          "float": 0.00016058498514996008
+        },
+        "5": {
+          "exact": "455266670373322911314937703/885712207191371100725235801288",
+          "float": 0.0005140119631149623
+        }
+      },
+      "delta_sidon": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "112285/13983816",
+          "float": 0.00802963940601049
+        },
+        "15": {
+          "exact": "4429/499422",
+          "float": 0.008868251698964002
+        },
+        "20": {
+          "exact": "39559/4661272",
+          "float": 0.008486739241992315
+        },
+        "3": {
+          "exact": "2759/3495954",
+          "float": 0.0007891980272051634
+        },
+        "5": {
+          "exact": "12163/4661272",
+          "float": 0.0026093735787141364
+        }
+      },
+      "delta_sidon_positive_for_every_tested_k_gt_1": true,
+      "delta_sidon_shape": {
+        "monotonic_nondecreasing": false,
+        "monotonic_nonincreasing": false,
+        "peak_k": 15,
+        "shape": "PEAKING_AT_K15"
+      },
+      "draw_size": 6,
+      "geometry": {
+        "1": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {},
+          "reuse_dispersion": 0.3278036409022247,
+          "unique_number_coverage": 6,
+          "unique_number_coverage_over_pool_size": "6/49"
+        },
+        "10": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.28888888888888886,
+          "overlap_profile": {
+            "0": 32,
+            "1": 13
+          },
+          "reuse_dispersion": 0.5056943548311783,
+          "unique_number_coverage": 48,
+          "unique_number_coverage_over_pool_size": "48/49"
+        },
+        "15": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.5904761904761905,
+          "overlap_profile": {
+            "0": 43,
+            "1": 62
+          },
+          "reuse_dispersion": 0.996871407495495,
+          "unique_number_coverage": 48,
+          "unique_number_coverage_over_pool_size": "48/49"
+        },
+        "20": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.6631578947368421,
+          "overlap_profile": {
+            "0": 64,
+            "1": 126
+          },
+          "reuse_dispersion": 1.26267006516392,
+          "unique_number_coverage": 48,
+          "unique_number_coverage_over_pool_size": "48/49"
+        },
+        "3": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {
+            "0": 3
+          },
+          "reuse_dispersion": 0.482082114735417,
+          "unique_number_coverage": 18,
+          "unique_number_coverage_over_pool_size": "18/49"
+        },
+        "5": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {
+            "0": 10
+          },
+          "reuse_dispersion": 0.48723821984952337,
+          "unique_number_coverage": 30,
+          "unique_number_coverage_over_pool_size": "30/49"
+        }
+      },
+      "lottery_type": "BIG_LOTTO",
+      "max_pairwise_overlap_ever_exceeds_1": false,
+      "overlap_profile_keys_observed": [
+        "0",
+        "1"
+      ],
+      "pool_size": 49,
+      "primary_event_minimum_matches": 3,
+      "q_arm_b": {
+        "1": {
+          "exact": "4654/249711",
+          "float": 0.01863754500202234
+        },
+        "10": {
+          "exact": "211705/1165318",
+          "float": 0.1816714407569436
+        },
+        "15": {
+          "exact": "86785/332948",
+          "float": 0.2606563187044223
+        },
+        "20": {
+          "exact": "142111/423752",
+          "float": 0.3353636089033208
+        },
+        "3": {
+          "exact": "32528/582659",
+          "float": 0.055826821519962794
+        },
+        "5": {
+          "exact": "54130/582659",
+          "float": 0.09290168005643094
+        }
+      },
+      "q_random_expected": {
+        "1": {
+          "exact": "4654/249711",
+          "float": 0.01863754500202234
+        },
+        "10": {
+          "exact": "3245609755099340710811707686284489657738894441607314745205/18925227210815123131416370444785812104697344617405087907644",
+          "float": 0.17149647499315546
+        },
+        "15": {
+          "exact": "271586308598091491944473961161920217701361795742045773468872681632141016123471965/1104556455747825549799619007981605395356311895723711279867280216503407663299199788",
+          "float": 0.24587815967651697
+        },
+        "20": {
+          "exact": "136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745/435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388",
+          "float": 0.31358200227418526
+        },
+        "3": {
+          "exact": "159788892251374/2911762307093563",
+          "float": 0.05487703850760767
+        },
+        "5": {
+          "exact": "1419959489150088733927686730/15816289414131626798664925023",
+          "float": 0.08977829451460186
+        }
+      },
+      "q_sidon": {
+        "1": {
+          "exact": "4654/249711",
+          "float": 0.01863754500202234
+        },
+        "10": {
+          "exact": "2428175/13983816",
+          "float": 0.1736418013509331
+        },
+        "15": {
+          "exact": "5351/21252",
+          "float": 0.2517880670054583
+        },
+        "20": {
+          "exact": "108833/332948",
+          "float": 0.3268768696613285
+        },
+        "3": {
+          "exact": "27487/499422",
+          "float": 0.05503762349275763
+        },
+        "5": {
+          "exact": "18299/202664",
+          "float": 0.09029230647771681
+        }
+      },
+      "reaches_full_pool_unique_number_coverage_by_k20": false,
+      "relative_gain_over_sidon": {
+        "1": "NOT_APPLICABLE_K1",
+        "10": {
+          "exact": "3774245363262334943988312630522436004507246645745376019426/795775459740937667601287211588263223726346048143085357427",
+          "float": 4.742852166478003
+        },
+        "15": {
+          "exact": "3942079596439318868059394961371816919316625267161238325701904244576992521622323355/1576470049772433297429553285186840954116864442132071372833343277994017405204453016",
+          "float": 2.5005737324399955
+        },
+        "20": {
+          "exact": "21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031/13040908662848349690573775947967810133154155135533146574820392659353559338829880546268081491572080331439996467312",
+          "float": 1.6383470398658795
+        },
+        "3": {
+          "exact": "116152779762324/19638582887483",
+          "float": 5.9145194145528714
+        },
+        "5": {
+          "exact": "2766420702163067577174609280/455266670373322911314937703",
+          "float": 6.07648414037113
+        }
+      },
+      "relative_gain_over_sidon_shape": {
+        "monotonic_nondecreasing": false,
+        "monotonic_nonincreasing": false,
+        "peak_k": 5,
+        "shape": "PEAKING_AT_K5"
+      },
+      "relative_lift_random": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "1887122681631167471994156315261218002253623322872688009713/31806975599973538965954735325587998645841165527751684503009",
+          "float": 0.059330465913041336
+        },
+        "15": {
+          "exact": "525610612858575849074585994849575589242216702288165110093587232610265669549643114/8745079136858546040612061549413831009983849822893873905697700348554940719175797273",
+          "float": 0.06010358564318133
+        },
+        "20": {
+          "exact": "21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031/307591954916781344412997728743963427865125917646684308552103531045393842189207075838911612407988961728870858021230",
+          "float": 0.06946064018715743
+        },
+        "3": {
+          "exact": "9679398313527/559261122879809",
+          "float": 0.017307475734563448
+        },
+        "5": {
+          "exact": "34580258777038344714682616/993971642405062113749380711",
+          "float": 0.03478998524884097
+        }
+      },
+      "relative_lift_random_pct": {
+        "1": 0.0,
+        "10": 5.933046591304134,
+        "15": 6.010358564318133,
+        "20": 6.946064018715743,
+        "3": 1.7307475734563447,
+        "5": 3.478998524884097
+      },
+      "source_matrix_variant_id": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1",
+      "source_path": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json",
+      "total_draws_enumerated": 13983816
+    },
+    "DAILY_539": {
+      "any_duplicate_tickets": false,
+      "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+      "arm_b_constructor_id_source": "matrix_variant_id field, this cell IS arm B only",
+      "delta_random_b": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "93662201899639914962203917068391653109371/28458842832579951673483003698024549730554255",
+          "float": 0.003291145829457779
+        },
+        "15": {
+          "exact": "3784902480287348837656271660653663343721493897125390500323384867/598599685904506546631579855760286887871699871506613396468589124680",
+          "float": 0.006322927608236579
+        },
+        "20": {
+          "exact": "9164976506672862384010629524136847629878758229152090749769669793255596167763507993/854116625879098836238200337908424671905738564473126295698485942275321822152736920680",
+          "float": 0.010730357224038131
+        },
+        "3": {
+          "exact": "4338012298/14393681661471",
+          "float": 0.00030138309294501
+        },
+        "5": {
+          "exact": "3438823797620349108188/3446005085257975509658207",
+          "float": 0.0009979160542541426
+        }
+      },
+      "delta_random_b_positive_for_every_tested_k_gt_1": true,
+      "delta_random_sidon": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "344235447955757644439082045827088768061097/199211899828059661714381025886171848113879785",
+          "float": 0.001727986371561479
+        },
+        "15": {
+          "exact": "2699482638089503505887193092067020869660293311022391516527778307/598599685904506546631579855760286887871699871506613396468589124680",
+          "float": 0.004509662637076871
+        },
+        "20": {
+          "exact": "7936665663334624487805755106998757032043297207603505890465577337229935222707753273/854116625879098836238200337908424671905738564473126295698485942275321822152736920680",
+          "float": 0.009292250522773536
+        },
+        "3": {
+          "exact": "21294753262/187117861599123",
+          "float": 0.00011380395799745397
+        },
+        "5": {
+          "exact": "1284161621228449081828/3446005085257975509658207",
+          "float": 0.0003726522710956226
+        }
+      },
+      "delta_sidon": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "100/63973",
+          "float": 0.0015631594578963
+        },
+        "15": {
+          "exact": "116/63973",
+          "float": 0.001813264971159708
+        },
+        "20": {
+          "exact": "92/63973",
+          "float": 0.001438106701264596
+        },
+        "3": {
+          "exact": "12/63973",
+          "float": 0.000187579134947556
+        },
+        "5": {
+          "exact": "40/63973",
+          "float": 0.00062526378315852
+        }
+      },
+      "delta_sidon_positive_for_every_tested_k_gt_1": true,
+      "delta_sidon_shape": {
+        "monotonic_nondecreasing": false,
+        "monotonic_nonincreasing": false,
+        "peak_k": 15,
+        "shape": "PEAKING_AT_K15"
+      },
+      "draw_size": 5,
+      "geometry": {
+        "1": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {},
+          "reuse_dispersion": 0.3343180720616743,
+          "unique_number_coverage": 5,
+          "unique_number_coverage_over_pool_size": "5/39"
+        },
+        "10": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.4,
+          "overlap_profile": {
+            "0": 27,
+            "1": 18
+          },
+          "reuse_dispersion": 0.749314830574485,
+          "unique_number_coverage": 35,
+          "unique_number_coverage_over_pool_size": "35/39"
+        },
+        "15": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.580952380952381,
+          "overlap_profile": {
+            "0": 44,
+            "1": 61
+          },
+          "reuse_dispersion": 1.1632098689450006,
+          "unique_number_coverage": 39,
+          "unique_number_coverage_over_pool_size": "39/39"
+        },
+        "20": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.6157894736842106,
+          "overlap_profile": {
+            "0": 73,
+            "1": 117
+          },
+          "reuse_dispersion": 1.410489491228212,
+          "unique_number_coverage": 39,
+          "unique_number_coverage_over_pool_size": "39/39"
+        },
+        "3": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {
+            "0": 3
+          },
+          "reuse_dispersion": 0.4865042554105199,
+          "unique_number_coverage": 15,
+          "unique_number_coverage_over_pool_size": "15/39"
+        },
+        "5": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {
+            "0": 10
+          },
+          "reuse_dispersion": 0.4796996649710181,
+          "unique_number_coverage": 25,
+          "unique_number_coverage_over_pool_size": "25/39"
+        }
+      },
+      "lottery_type": "DAILY_539",
+      "max_pairwise_overlap_ever_exceeds_1": false,
+      "overlap_profile_keys_observed": [
+        "0",
+        "1"
+      ],
+      "pool_size": 39,
+      "primary_event_minimum_matches": 3,
+      "q_arm_b": {
+        "1": {
+          "exact": "1927/191919",
+          "float": 0.010040694251220566
+        },
+        "10": {
+          "exact": "2722/27417",
+          "float": 0.09928146770252033
+        },
+        "15": {
+          "exact": "9391/63973",
+          "float": 0.14679630469104155
+        },
+        "20": {
+          "exact": "37136/191919",
+          "float": 0.19349829876145666
+        },
+        "3": {
+          "exact": "1927/63973",
+          "float": 0.0301220827536617
+        },
+        "5": {
+          "exact": "9635/191919",
+          "float": 0.05020347125610283
+        }
+      },
+      "q_random_expected": {
+        "1": {
+          "exact": "1927/191919",
+          "float": 0.010040694251220566
+        },
+        "10": {
+          "exact": "210136421818019142830254085117764470705343/2189141756352303974883307976771119210042635",
+          "float": 0.09599032187306256
+        },
+        "15": {
+          "exact": "4425648389458544938963379911506957588946026049013937458614804247/31505246626552976138504202934751941466931572184558599814136269720",
+          "float": 0.14047337708280497
+        },
+        "20": {
+          "exact": "1715441071920970397176193765176714544329158433866151866864960526518171695862708197/9385896987682404793826377339653018372590533675528860392291054310717822221458647480",
+          "float": 0.18276794153741852
+        },
+        "3": {
+          "exact": "797140793129/26731123085589",
+          "float": 0.029820699660716692
+        },
+        "5": {
+          "exact": "5589975608192723862911/113604563250262928889831",
+          "float": 0.049205555201848696
+        }
+      },
+      "q_sidon": {
+        "1": {
+          "exact": "1927/191919",
+          "float": 0.010040694251220566
+        },
+        "10": {
+          "exact": "18754/191919",
+          "float": 0.09771830824462403
+        },
+        "15": {
+          "exact": "1325/9139",
+          "float": 0.14498303971988183
+        },
+        "20": {
+          "exact": "1940/10101",
+          "float": 0.19206019206019206
+        },
+        "3": {
+          "exact": "1915/63973",
+          "float": 0.029934503618714144
+        },
+        "5": {
+          "exact": "9515/191919",
+          "float": 0.049578207472944315
+        }
+      },
+      "reaches_full_pool_unique_number_coverage_by_k20": true,
+      "relative_gain_over_sidon": {
+        "1": "NOT_APPLICABLE_K1",
+        "10": {
+          "exact": "655635413297479404735427419478741571765597/344235447955757644439082045827088768061097",
+          "float": 1.9046133022934466
+        },
+        "15": {
+          "exact": "3784902480287348837656271660653663343721493897125390500323384867/2699482638089503505887193092067020869660293311022391516527778307",
+          "float": 1.4020843945734824
+        },
+        "20": {
+          "exact": "9164976506672862384010629524136847629878758229152090749769669793255596167763507993/7936665663334624487805755106998757032043297207603505890465577337229935222707753273",
+          "float": 1.1547640905440582
+        },
+        "3": {
+          "exact": "28197079937/10647376631",
+          "float": 2.648265475544818
+        },
+        "5": {
+          "exact": "859705949405087277047/321040405307112270457",
+          "float": 2.677874607660924
+        }
+      },
+      "relative_gain_over_sidon_shape": {
+        "monotonic_nondecreasing": false,
+        "monotonic_nonincreasing": false,
+        "peak_k": 5,
+        "shape": "PEAKING_AT_K5"
+      },
+      "relative_lift_random": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "93662201899639914962203917068391653109371/2731773483634248856793303106530938119169459",
+          "float": 0.03428622558230386
+        },
+        "15": {
+          "exact": "3784902480287348837656271660653663343721493897125390500323384867/84087319399712353840304218318632194189974494931264811713681280693",
+          "float": 0.045011572580827164
+        },
+        "20": {
+          "exact": "9164976506672862384010629524136847629878758229152090749769669793255596167763507993/156105137544808306143033632631081023533953417481819819884711407913153624323506445927",
+          "float": 0.05871028110168478
+        },
+        "3": {
+          "exact": "29265262/2895685289",
+          "float": 0.010106506432578006
+        },
+        "5": {
+          "exact": "5353643691157782732/263979128357829720563",
+          "float": 0.020280556741216284
+        }
+      },
+      "relative_lift_random_pct": {
+        "1": 0.0,
+        "10": 3.428622558230386,
+        "15": 4.501157258082716,
+        "20": 5.871028110168478,
+        "3": 1.0106506432578006,
+        "5": 2.0280556741216285
+      },
+      "source_matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+      "source_path": "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-result.json",
+      "total_draws_enumerated": 575757
+    },
+    "POWER_LOTTO_zone1": {
+      "any_duplicate_tickets": false,
+      "arm_b_constructor_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1",
+      "arm_b_constructor_id_source": "matrix_variant_id field, this cell IS arm B only",
+      "delta_random_b": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "7753008142180951013851092168666461079060045625351/289228225611711190094443680252367846982140840938230",
+          "float": 0.026805848999638653
+        },
+        "15": {
+          "exact": "7910582333333016118126318935768004042450935474969392950348991360991045378611/184691683677811805905882154628337070754716054558145809685396145831678511031735",
+          "float": 0.042831286042812576
+        },
+        "20": {
+          "exact": "25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787/395113188099392841356125031454820649296982687263109967672167834134512721794506358319808371180846774110",
+          "float": 0.06488916898123268
+        },
+        "3": {
+          "exact": "269741990501428/67436281195460485",
+          "float": 0.0039999535223420035
+        },
+        "5": {
+          "exact": "221993692364261365090999096/17131828159753742002044612597",
+          "float": 0.012957968658929881
+        }
+      },
+      "delta_random_b_positive_for_every_tested_k_gt_1": true,
+      "delta_random_sidon": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "267334261906802839601997495101093449481547209558131/14750639506197270694816627692870760196089182887849730",
+          "float": 0.01812357096751542
+        },
+        "15": {
+          "exact": "532385343435336441051989222456304033108135870508197273988185876420083918362522/14221259643191509054752925906381954448113136200977227345775503229039245349443595",
+          "float": 0.03743587817062452
+        },
+        "20": {
+          "exact": "7853527786631591480259845893250386474155474781980381800465203448861951641046516894880073018607706299/131704396033130947118708343818273549765660895754369989224055944711504240598168786106602790393615591370",
+          "float": 0.059629959387657756
+        },
+        "3": {
+          "exact": "34616383744972/28901263369483065",
+          "float": 0.0011977463857695421
+        },
+        "5": {
+          "exact": "63817804616287901336905403/17131828159753742002044612597",
+          "float": 0.003725101840923744
+        }
+      },
+      "delta_sidon": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "2179/250971",
+          "float": 0.008682278032123233
+        },
+        "15": {
+          "exact": "4965/920227",
+          "float": 0.0053954078721880575
+        },
+        "20": {
+          "exact": "14519/2760681",
+          "float": 0.005259209593574918
+        },
+        "3": {
+          "exact": "7736/2760681",
+          "float": 0.002802207136572462
+        },
+        "5": {
+          "exact": "25489/2760681",
+          "float": 0.009232866818006136
+        }
+      },
+      "delta_sidon_positive_for_every_tested_k_gt_1": true,
+      "delta_sidon_shape": {
+        "monotonic_nondecreasing": false,
+        "monotonic_nonincreasing": false,
+        "peak_k": 5,
+        "shape": "PEAKING_AT_K5"
+      },
+      "draw_size": 6,
+      "geometry": {
+        "1": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {},
+          "reuse_dispersion": 0.36464227527765836,
+          "unique_number_coverage": 6,
+          "unique_number_coverage_over_pool_size": "6/38"
+        },
+        "10": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.6666666666666666,
+          "overlap_profile": {
+            "0": 15,
+            "1": 30
+          },
+          "reuse_dispersion": 0.8153649149910351,
+          "unique_number_coverage": 36,
+          "unique_number_coverage_over_pool_size": "36/38"
+        },
+        "15": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.8095238095238095,
+          "overlap_profile": {
+            "0": 20,
+            "1": 85
+          },
+          "reuse_dispersion": 1.1102643741962623,
+          "unique_number_coverage": 37,
+          "unique_number_coverage_over_pool_size": "37/38"
+        },
+        "20": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 1,
+          "mean_pairwise_overlap": 0.8263157894736842,
+          "overlap_profile": {
+            "0": 33,
+            "1": 157
+          },
+          "reuse_dispersion": 1.2036417501083443,
+          "unique_number_coverage": 38,
+          "unique_number_coverage_over_pool_size": "38/38"
+        },
+        "3": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {
+            "0": 3
+          },
+          "reuse_dispersion": 0.49930699897395464,
+          "unique_number_coverage": 18,
+          "unique_number_coverage_over_pool_size": "18/38"
+        },
+        "5": {
+          "duplicate_tickets": 0,
+          "max_pairwise_overlap": 0,
+          "mean_pairwise_overlap": 0.0,
+          "overlap_profile": {
+            "0": 10
+          },
+          "reuse_dispersion": 0.40768245749551757,
+          "unique_number_coverage": 30,
+          "unique_number_coverage_over_pool_size": "30/38"
+        }
+      },
+      "lottery_type": "POWER_LOTTO",
+      "max_pairwise_overlap_ever_exceeds_1": false,
+      "overlap_profile_keys_observed": [
+        "0",
+        "1"
+      ],
+      "pool_size": 38,
+      "primary_event_minimum_matches": 3,
+      "q_arm_b": {
+        "1": {
+          "exact": "35611/920227",
+          "float": 0.038698060369886995
+        },
+        "10": {
+          "exact": "324750/920227",
+          "float": 0.3529020556884334
+        },
+        "15": {
+          "exact": "64365/131461",
+          "float": 0.48961288899369393
+        },
+        "20": {
+          "exact": "1686068/2760681",
+          "float": 0.6107435085763259
+        },
+        "3": {
+          "exact": "106433/920227",
+          "float": 0.11565950575238501
+        },
+        "5": {
+          "exact": "530165/2760681",
+          "float": 0.1920413839918484
+        }
+      },
+      "q_random_expected": {
+        "1": {
+          "exact": "35611/920227",
+          "float": 0.038698060369886995
+        },
+        "10": {
+          "exact": "12055457617054652709605677589559750389447883460801/36969021318790152117334906498422957884935295458270",
+          "float": 0.32609620668879474
+        },
+        "15": {
+          "exact": "2810171242532411178262502967881988185426574514447954450164460031493081669148/6289809660854272027754500622017671140253487926128804664208537474143850220895",
+          "float": 0.4467816029508814
+        },
+        "20": {
+          "exact": "10270202302633615863312327738837263272327303835576854236234331415440224472009028462792403800706875633/18814913719018706731244049116896221395094413679195712746293706387357748656881255158086112913373655910",
+          "float": 0.5458543395950932
+        },
+        "3": {
+          "exact": "1075700708906341/9633754456494355",
+          "float": 0.11165955223004301
+        },
+        "5": {
+          "exact": "7689288966780371765498391/42936912681087072686828603",
+          "float": 0.1790834153329185
+        }
+      },
+      "q_sidon": {
+        "1": {
+          "exact": "35611/920227",
+          "float": 0.038698060369886995
+        },
+        "10": {
+          "exact": "950281/2760681",
+          "float": 0.3442197776563102
+        },
+        "15": {
+          "exact": "445590/920227",
+          "float": 0.48421748112150587
+        },
+        "20": {
+          "exact": "1369/2261",
+          "float": 0.605484298982751
+        },
+        "3": {
+          "exact": "44509/394383",
+          "float": 0.11285729861581255
+        },
+        "5": {
+          "exact": "504676/2760681",
+          "float": 0.18280851717384225
+        }
+      },
+      "reaches_full_pool_unique_number_coverage_by_k20": true,
+      "relative_gain_over_sidon": {
+        "1": "NOT_APPLICABLE_K1",
+        "10": {
+          "exact": "395403415251228501706405700601989515032062326892901/267334261906802839601997495101093449481547209558131",
+          "float": 1.4790600068653852
+        },
+        "15": {
+          "exact": "609114839666642241095726558054136311268722031572643257176872334796310494153047/532385343435336441051989222456304033108135870508197273988185876420083918362522",
+          "float": 1.1441239830837404
+        },
+        "20": {
+          "exact": "25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787/23560583359894774440779537679751159422466424345941145401395610346585854923139550684640219055823118897",
+          "float": 1.0881974371202319
+        },
+        "3": {
+          "exact": "202306492876071/60578671553701",
+          "float": 3.3395663471545913
+        },
+        "5": {
+          "exact": "221993692364261365090999096/63817804616287901336905403",
+          "float": 3.478554201276974
+        }
+      },
+      "relative_gain_over_sidon_shape": {
+        "monotonic_nondecreasing": false,
+        "monotonic_nonincreasing": false,
+        "peak_k": 5,
+        "shape": "PEAKING_AT_K5"
+      },
+      "relative_lift_random": {
+        "1": {
+          "exact": "0/1",
+          "float": 0.0
+        },
+        "10": {
+          "exact": "131801138417076167235468566867329838344020775630967/1603375863068268810377555119411446801796568500286533",
+          "float": 0.08220227175233728
+        },
+        "15": {
+          "exact": "87016405666663177299389508293448044466960290224663322453838904970901499164721/907685311337968810578788458625882183892783568166689287403120590172265379134804",
+          "float": 0.0958662705893049
+        },
+        "20": {
+          "exact": "25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787/215674248355305933129558882515582528718873380547113938960920959724244713912189597718640479814844388293",
+          "float": 0.11887634534400975
+        },
+        "3": {
+          "exact": "269741990501428/7529904962344387",
+          "float": 0.03582276162187385
+        },
+        "5": {
+          "exact": "221993692364261365090999096/3068026297745368334433858009",
+          "float": 0.07235716738393022
+        }
+      },
+      "relative_lift_random_pct": {
+        "1": 0.0,
+        "10": 8.220227175233727,
+        "15": 9.58662705893049,
+        "20": 11.887634534400975,
+        "3": 3.582276162187385,
+        "5": 7.235716738393022
+      },
+      "source_matrix_variant_id": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1",
+      "source_path": "docs/research/matrix-native-results/greedy-min-overlap-constructor-p638-zone1-v1-result.json",
+      "total_draws_enumerated": 2760681
+    }
+  },
+  "phase5_priority_decision": {
+    "authorization": "NOT_AUTHORIZED_BY_THIS_TASK",
+    "executed": false,
+    "options_considered": [
+      "A_REPLICATE_ARM_C_BOUNDED_OPTIMIZER_TO_T539_AND_P638_ZONE1",
+      "B_STUDY_LOW_OVERLAP_GEOMETRY_MECHANISM_FIRST"
+    ],
+    "reasoning": "Arm C's own B649 run cost ~115 minutes for one lottery at k<=20 (runtime grows steeply with k: the k=20 rung alone took ~48.4 minutes), so replicating it to two more lotteries is a substantial compute investment on a mechanism already partially explained (P638 Zone-1's sealed report proves the secondary-event Q_greedy=Q_sidon identity from max_pairwise_overlap<=1 and 2m-1>draw_size alone) and already flagged by B649's own report as one where 'arm B ... already captures most of arm C's advantage at small-to-medium k'. This synthesis also surfaces a fresh, unexplained common pattern cheap to investigate further from already-sealed data: relative_gain_over_sidon peaks at k=5 in all three lotteries and then monotonically declines through k=20, while the absolute delta_sidon peaks later (k=15 in two of three). Neither per-lottery sealed report identifies this shared k=5 ratio-peak explicitly. Studying why is lower-cost than a second heavy optimizer campaign and uses evidence already in hand.",
+    "recommendation": "B_STUDY_LOW_OVERLAP_GEOMETRY_MECHANISM_FIRST"
+  },
+  "q1_arm_b_beats_random_every_k_gt_1": {
+    "holds_for_all_three": true,
+    "per_lottery": {
+      "BIG_LOTTO": true,
+      "DAILY_539": true,
+      "POWER_LOTTO_zone1": true
+    }
+  },
+  "q2_arm_b_beats_sidon_every_k_gt_1": {
+    "holds_for_all_three": true,
+    "per_lottery": {
+      "BIG_LOTTO": true,
+      "DAILY_539": true,
+      "POWER_LOTTO_zone1": true
+    }
+  },
+  "q3_direction_consistent_across_all_three": true,
+  "relative_gain_over_sidon_shape_comparison": {
+    "classification": "PEAKS_AT_K5_THEN_DECLINES_IN_ALL_THREE",
+    "per_lottery_peak_k": {
+      "BIG_LOTTO": 5,
+      "DAILY_539": 5,
+      "POWER_LOTTO_zone1": 5
+    },
+    "per_lottery_shape": {
+      "BIG_LOTTO": "PEAKING_AT_K5",
+      "DAILY_539": "PEAKING_AT_K5",
+      "POWER_LOTTO_zone1": "PEAKING_AT_K5"
+    }
+  },
+  "scope": {
+    "arm_a_arm_c_arm_d_mutated": "NO",
+    "cohort_creation": "NO",
+    "economic_optimality": "NOT_TESTED",
+    "historical_draw_data_read": "NO",
+    "new_enumeration_performed": "NO",
+    "p638_zone2_touched": "NO",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_value_advantage": "NOT_TESTED",
+    "production_promotion": "NO",
+    "prospective_activation": "NO"
+  },
+  "source_type": "STRATEGY_MATRIX_SYNTHESIS",
+  "synthesis_id": "STRATEGY_MATRIX_PHASE5_NON_SIDON_LOW_OVERLAP_CROSS_LOTTERY_SYNTHESIS_R1"
+}

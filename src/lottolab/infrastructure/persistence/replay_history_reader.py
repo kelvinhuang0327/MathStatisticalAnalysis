@@ -1,10 +1,16 @@
-"""Read-only SQLite implementation of Replay's causal Big Lotto history port.
+"""Read-only SQLite implementation of Replay's causal draw history port.
 
 Ordering contract (load-bearing, mirrors :attr:`lottolab.domain.draws.Draw.sort_key`):
 ``draw_number`` is stored as TEXT and must never be ordered or compared
 lexicographically. Every comparison and ordering here goes through
 ``draw_date`` first, then ``CAST(draw_number AS INTEGER)`` — never a plain
 string comparison of ``draw_number``.
+
+Special-number decoding is per-lottery: the authoritative
+:class:`~lottolab.domain.lottery_rules.LotteryRuleContract` resolved for the
+requested ``lottery_type`` determines whether a stored row must decode to
+exactly one special number (e.g. BIG_LOTTO, POWER_LOTTO) or none at all
+(e.g. DAILY_539) — never a hardcoded BIG_LOTTO assumption.
 """
 
 from __future__ import annotations
@@ -16,6 +22,7 @@ from typing import cast
 
 from lottolab.application.ports import TargetDrawNotFoundError
 from lottolab.domain.draws import LotteryType
+from lottolab.domain.lottery_rules import LOTTERY_RULE_CONTRACTS, resolve_lottery_rule_contract
 from lottolab.domain.replay_history import ReplayCausalDrawRow
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
@@ -39,7 +46,7 @@ class ReplayHistoryStorageError(RuntimeError):
 
 
 class SQLiteDrawHistoryReader:
-    """Read-only causal Big Lotto history reader bound to one local database.
+    """Read-only causal draw history reader bound to one local database.
 
     Implements :class:`lottolab.application.ports.DrawHistoryReader`.
     """
@@ -73,7 +80,7 @@ class SQLiteDrawHistoryReader:
                 target_numeric=target_numeric,
                 maximum_history_draws=maximum_history_draws,
             )
-        return tuple(_decode_row(row) for row in rows)
+        return tuple(_decode_row(row, lottery_type) for row in rows)
 
     @staticmethod
     def _resolve_target(
@@ -142,7 +149,7 @@ def _numeric_draw_number(value: object) -> int:
         raise ReplayHistoryStorageError(f"draw_number is not numeric: {value!r}") from exc
 
 
-def _decode_row(row: tuple[object, ...]) -> ReplayCausalDrawRow:
+def _decode_row(row: tuple[object, ...], lottery_type: LotteryType) -> ReplayCausalDrawRow:
     draw_number, draw_date_text, main_numbers_json, special_numbers_json = row
     if not isinstance(draw_number, str) or not draw_number:
         raise ReplayHistoryStorageError("draw_number is invalid")
@@ -153,18 +160,27 @@ def _decode_row(row: tuple[object, ...]) -> ReplayCausalDrawRow:
     except ValueError as exc:
         raise ReplayHistoryStorageError("draw_date is invalid") from exc
 
+    rule = resolve_lottery_rule_contract(lottery_type, LOTTERY_RULE_CONTRACTS)
+    if rule is None:
+        raise ReplayHistoryStorageError(
+            f"no authoritative rule contract for lottery_type={lottery_type.value}"
+        )
+
     main_numbers = _decode_int_list(main_numbers_json, "main_numbers_json")
     special_numbers = _decode_int_list(special_numbers_json, "special_numbers_json")
-    if len(special_numbers) != 1:
+    expected_special_count = 1 if rule.special_number_required else 0
+    if len(special_numbers) != expected_special_count:
         raise ReplayHistoryStorageError(
-            "special_numbers_json must decode to exactly one integer for BIG_LOTTO"
+            f"special_numbers_json must decode to exactly {expected_special_count} "
+            f"integer(s) for {lottery_type.value}"
         )
 
     return ReplayCausalDrawRow(
+        lottery_type=lottery_type,
         draw_number=draw_number,
         draw_date=draw_date_value,
         main_numbers=tuple(main_numbers),
-        special_number=special_numbers[0],
+        special_number=special_numbers[0] if rule.special_number_required else None,
     )
 
 

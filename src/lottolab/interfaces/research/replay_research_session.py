@@ -10,15 +10,18 @@ rolls a full replay loop). This module runs no prediction logic of its own:
 every import from ``replay_historical_predictions`` is used verbatim, and the
 only cache in play is the one already merged there.
 
-Currently BIG_LOTTO only. The causal-history port this module composes
-(``ReplayCausalDrawRow`` / ``SQLiteDrawHistoryReader``) validates every row
-against ``BIG_LOTTO_RULE_CONTRACT`` unconditionally -- see
-``lottolab.domain.replay_history``'s module docstring -- regardless of the
-``lottery_type`` threaded through the request. A ``DAILY_539`` or
-``POWER_LOTTO`` request fails closed inside that reader (or, for a 5-number
-game, inside ``ReplayCausalDrawRow`` itself), not inside this module.
-Widening that port to other lotteries would be a semantics change to a
-merged, unmodified use case and is out of this task's scope.
+The causal-history port this module composes (``ReplayCausalDrawRow`` /
+``SQLiteDrawHistoryReader``) validates every row against the authoritative
+``LotteryRuleContract`` resolved for the request's own ``lottery_type`` --
+see ``lottolab.domain.replay_history``'s module docstring -- so BIG_LOTTO,
+DAILY_539, and POWER_LOTTO each get their own rule-correct causal history
+(6/49+1, 5/39 with no special number, and 6/38+1 respectively). A request for
+a ``lottery_type`` with no committed ``LotteryRuleContract`` still fails
+closed inside that reader, not inside this module. Strategy availability is
+independent of this: ``GenerateOneBet`` already resolves an unregistered
+strategy/lottery pair as a closed ``STRATEGY_UNAVAILABLE`` result rather than
+raising (see :meth:`replay_targets`), so a lottery with no strategies
+registered in the catalog still gets a real causal-history read.
 """
 
 from __future__ import annotations

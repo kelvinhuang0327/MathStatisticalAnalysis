@@ -50,6 +50,26 @@ def row(
     return f"BIG_LOTTO,{draw_number},{draw_date},{main_numbers},{special_number},{source}"
 
 
+def daily539_row(
+    draw_number: str,
+    draw_date: str,
+    main_numbers: str = "1|3|9|17|24",
+    source: str = "synthetic-reference",
+) -> str:
+    # DAILY_539 has no special number: the special_numbers column is empty.
+    return f"DAILY_539,{draw_number},{draw_date},{main_numbers},,{source}"
+
+
+def power_lotto_row(
+    draw_number: str,
+    draw_date: str,
+    main_numbers: str = "1|3|9|17|24|38",
+    special_number: str = "5",
+    source: str = "synthetic-reference",
+) -> str:
+    return f"POWER_LOTTO,{draw_number},{draw_date},{main_numbers},{special_number},{source}"
+
+
 def _insert(paths: LocalDataPaths, *rows: str) -> None:
     document = parse_draw_csv("\n".join((HEADER, *rows, "")), filename="synthetic.csv")
     assert document.is_valid, document.errors
@@ -261,3 +281,66 @@ def test_unbounded_query_does_not_use_sqlite_row_factory_row_type(tmp_path: Path
     history = reader.read_causal_history(LotteryType.BIG_LOTTO, "20")
 
     assert all(not isinstance(row, sqlite3.Row) for row in history)
+
+
+def test_daily_539_causal_history_decodes_five_numbers_and_no_special(tmp_path: Path) -> None:
+    """DAILY_539 (5/39, no special number) must resolve through the same reader."""
+
+    paths = task_paths(tmp_path)
+    _insert(
+        paths,
+        daily539_row("1", "2026-01-01", main_numbers="1|2|3|4|5"),
+        daily539_row("2", "2026-01-02", main_numbers="6|7|8|9|10"),
+        daily539_row("3", "2026-01-03", main_numbers="11|12|13|14|15"),
+    )
+    reader = SQLiteDrawHistoryReader(paths)
+
+    history = reader.read_causal_history(LotteryType.DAILY_539, "3")
+
+    assert [row.draw_number for row in history] == ["1", "2"]
+    assert all(row.lottery_type is LotteryType.DAILY_539 for row in history)
+    assert history[1].main_numbers == (6, 7, 8, 9, 10)
+    assert history[1].special_number is None
+
+
+def test_power_lotto_causal_history_decodes_six_numbers_and_one_special(tmp_path: Path) -> None:
+    """POWER_LOTTO (6/38 + 1/8) must resolve through the same reader, zones preserved."""
+
+    paths = task_paths(tmp_path)
+    _insert(
+        paths,
+        power_lotto_row("1", "2026-01-01", main_numbers="1|2|3|4|5|6", special_number="8"),
+        power_lotto_row("2", "2026-01-02", main_numbers="7|8|9|10|11|12", special_number="3"),
+        power_lotto_row("3", "2026-01-03", main_numbers="13|14|15|16|17|18", special_number="1"),
+    )
+    reader = SQLiteDrawHistoryReader(paths)
+
+    history = reader.read_causal_history(LotteryType.POWER_LOTTO, "3")
+
+    assert [row.draw_number for row in history] == ["1", "2"]
+    assert all(row.lottery_type is LotteryType.POWER_LOTTO for row in history)
+    assert history[1].main_numbers == (7, 8, 9, 10, 11, 12)
+    assert history[1].special_number == 3
+
+
+def test_daily_539_and_big_lotto_causal_histories_stay_isolated_by_lottery_type(
+    tmp_path: Path,
+) -> None:
+    """Seeding both lotteries in one database must never cross-contaminate a read."""
+
+    paths = task_paths(tmp_path)
+    _seed_standard_history(paths)
+    _insert(
+        paths,
+        daily539_row("1", "2026-01-01", main_numbers="1|2|3|4|5"),
+        daily539_row("20", "2026-01-12", main_numbers="6|7|8|9|10"),
+    )
+    reader = SQLiteDrawHistoryReader(paths)
+
+    big_lotto_history = reader.read_causal_history(LotteryType.BIG_LOTTO, "20")
+    daily539_history = reader.read_causal_history(LotteryType.DAILY_539, "20")
+
+    assert [row.draw_number for row in big_lotto_history] == ["1", "2", "9", "10", "15"]
+    assert [row.draw_number for row in daily539_history] == ["1"]
+    assert all(row.lottery_type is LotteryType.BIG_LOTTO for row in big_lotto_history)
+    assert all(row.lottery_type is LotteryType.DAILY_539 for row in daily539_history)

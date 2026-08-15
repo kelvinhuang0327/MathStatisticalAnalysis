@@ -129,4 +129,10 @@ def test_replay_causal_draw_row_is_a_distinct_type_from_causal_draw_row() -> Non
 
     assert ReplayCausalDrawRow is not CausalDrawRow
     replay_field_names = {field.name for field in dataclasses.fields(ReplayCausalDrawRow)}
-    assert replay_field_names == {"draw_number", "draw_date", "main_numbers", "special_number"}
+    assert replay_field_names == {
+        "lottery_type",
+        "draw_number",
+        "draw_date",
+        "main_numbers",
+        "special_number",
+    }

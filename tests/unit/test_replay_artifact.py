@@ -37,6 +37,7 @@ _STRATEGY_IDENTITY = (_STRATEGY_ID, "Fixture Strategy", "v1")
 
 def _history_row(number: str, day: int, main: tuple[int, ...], special: int) -> ReplayCausalDrawRow:
     return ReplayCausalDrawRow(
+        lottery_type=LotteryType.BIG_LOTTO,
         draw_number=number,
         draw_date=date(2020, 1, day),
         main_numbers=main,
@@ -121,6 +122,45 @@ def test_causal_history_sha256_changes_when_special_number_changes() -> None:
 
 def test_causal_history_sha256_of_empty_history_does_not_crash() -> None:
     assert causal_history_sha256(()) == causal_history_sha256(())
+
+
+def test_causal_history_sha256_handles_a_lottery_with_no_special_number() -> None:
+    """DAILY_539 rows carry ``special_number=None`` -- LCJ-1 forbids JSON null,
+    so this must hash via key omission, not a null value (see
+    lottolab.evidence.replay_artifact's module docstring)."""
+
+    history = (
+        ReplayCausalDrawRow(
+            lottery_type=LotteryType.DAILY_539,
+            draw_number="1",
+            draw_date=date(2020, 1, 1),
+            main_numbers=(1, 2, 3, 4, 5),
+            special_number=None,
+        ),
+    )
+    assert causal_history_sha256(history) == causal_history_sha256(history)
+
+
+def test_causal_history_sha256_distinguishes_none_special_from_a_real_special_number() -> None:
+    no_special = (
+        ReplayCausalDrawRow(
+            lottery_type=LotteryType.DAILY_539,
+            draw_number="1",
+            draw_date=date(2020, 1, 1),
+            main_numbers=(1, 2, 3, 4, 5),
+            special_number=None,
+        ),
+    )
+    with_special = (
+        ReplayCausalDrawRow(
+            lottery_type=LotteryType.POWER_LOTTO,
+            draw_number="1",
+            draw_date=date(2020, 1, 1),
+            main_numbers=(1, 2, 3, 4, 5, 6),
+            special_number=7,
+        ),
+    )
+    assert causal_history_sha256(no_special) != causal_history_sha256(with_special)
 
 
 # --------------------------------------------------------------------------

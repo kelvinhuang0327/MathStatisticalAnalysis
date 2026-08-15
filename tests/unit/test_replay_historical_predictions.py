@@ -45,6 +45,7 @@ _STRATEGY_B = "fixture_strategy_b"
 
 def _row(draw_number: str, day: int) -> ReplayCausalDrawRow:
     return ReplayCausalDrawRow(
+        lottery_type=LotteryType.BIG_LOTTO,
         draw_number=draw_number,
         draw_date=date(2020, 1, day),
         main_numbers=(1, 2, 3, 4, 5, 6),
@@ -488,6 +489,7 @@ def test_research_cache_invalidates_corrected_history_with_the_same_cutoff() -> 
     history_by_target["10"] = (
         _row("1", 1),
         ReplayCausalDrawRow(
+            lottery_type=LotteryType.BIG_LOTTO,
             draw_number="2",
             draw_date=date(2020, 1, 2),
             main_numbers=(1, 2, 3, 4, 5, 7),

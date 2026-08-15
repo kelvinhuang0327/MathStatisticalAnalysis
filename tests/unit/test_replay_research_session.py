@@ -55,6 +55,30 @@ def test_replay_targets_rejects_empty_strategy_ids(tmp_path: Path) -> None:
         )
 
 
+def test_replay_portfolio_targets_rejects_empty_target_draw_numbers(tmp_path: Path) -> None:
+    session = _unopened_session(tmp_path)
+
+    with pytest.raises(ValueError, match="target_draw_numbers must not be empty"):
+        session.replay_portfolio_targets(
+            dataset_id="d",
+            dataset_version="1",
+            target_draw_numbers=(),
+            strategy_ids=("some_strategy",),
+        )
+
+
+def test_replay_portfolio_targets_rejects_empty_strategy_ids(tmp_path: Path) -> None:
+    session = _unopened_session(tmp_path)
+
+    with pytest.raises(ValueError, match="strategy_ids must not be empty"):
+        session.replay_portfolio_targets(
+            dataset_id="d",
+            dataset_version="1",
+            target_draw_numbers=("1000000",),
+            strategy_ids=(),
+        )
+
+
 @pytest.mark.parametrize("count", [0, -1, -100])
 def test_most_recent_target_draw_numbers_rejects_non_positive_count(
     tmp_path: Path, count: int

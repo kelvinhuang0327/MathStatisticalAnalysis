@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1",
+      "preregistration_hash_sha256": "02b3bc90256b94864eb35e1caf940bec79f83f0315671281a49b3c0cb05b9e71",
+      "record_state": "SEALED",
+      "result_hash_sha256": "93d292d5e709de8ef8fcb8aa56e8d7c686e0497873da612632a202ab1b62b6f8",
+      "sealed_at": "2026-08-15T03:08:09.382662+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE5_B649_CONSTRUCTOR_FRONTIER_LOCK_EXECUTE_R1"
+    }
+  ]
+}

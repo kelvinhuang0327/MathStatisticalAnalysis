@@ -572,6 +572,48 @@
       "source_type": "STRATEGY_MATRIX_NATIVE",
       "uncertainty": "NONE -- exact enumeration / exact closed form",
       "zone": "zone1"
+    },
+    {
+      "artifact_paths": [
+        "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-preregistration.md",
+        "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-preregistration-hash.json",
+        "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json",
+        "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-attempt-ledger.json",
+        "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-report.md"
+      ],
+      "cell_id": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__BIG_LOTTO",
+      "decision_state": "REPLICATION_REQUIRED",
+      "descriptive_classification": "SIDON_BELOW_FRONTIER_MARGIN",
+      "economic_optimality": "NOT_TESTED",
+      "evidence_grade": "LOCAL_VERIFIED",
+      "evidence_type": "EXACT_COMBINATORIAL_BOUNDED_SEARCH",
+      "exhausted": false,
+      "generation": 2,
+      "global_mechanism_status": "RETAIN_AND_REPLICATE",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "hypothesis_variant_id": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1",
+      "last_reviewed_at": "2026-08-15",
+      "lottery_type": "BIG_LOTTO",
+      "mechanism_class": "STRUCTURAL",
+      "mechanism_family": "DIVERSIFICATION",
+      "next_priority": "MEDIUM",
+      "null_replay_percentile": null,
+      "predictive_advantage": "NOT_TESTED",
+      "preregistration_grade": "R1_PREREGISTERED",
+      "primary_endpoint_definition": "SIDON_FRONTIER_GAP(20) = BEST_FOUND_Q_M3+(20) - Q_sidon_M3+(20), exact combinatorics via the c7e3b4a fast evaluator (parity-verified against complete C(49,6) enumeration). Best-found arm at k=20 is C (RESTART_GREEDY_SWAP_COVERAGE_SEARCH_B649_V1, a bounded seeded search, 56,730/65,610 evaluations used). FRONTIER_CAPTURE_RATIO(20) = 0.46057 -- Sidon captures only 46% of the random-relative improvement this bounded search found at k=20 (the largest tested k); the ratio was lower at every smaller k (16-30%). SIDON_FRONTIER_CLASSIFICATION: SIDON_BELOW_FRONTIER_MARGIN at every k>1 (FRONTIER_CAPTURE_RATIO < 0.90 everywhere). Arm B (GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1, no Sidon/difference-set algebra) also exceeds -- not just reproduces -- Sidon's own gain over random at every k (1.64x-6.08x).",
+      "primary_endpoint_value": 0.015571357632280059,
+      "prize_value_advantage": "NOT_TESTED",
+      "record_state": "SEALED",
+      "related_legacy_evidence": [],
+      "retest_eligible": true,
+      "retest_triggers": [
+        "a richer optimizer budget (more restarts/candidate sample/swap passes) at k=15/20, where most restarts did not converge within the locked 3-pass limit, might find an even larger gap",
+        "T539/P638 native replication of GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1 or RESTART_GREEDY_SWAP_COVERAGE_SEARCH_B649_V1 tests whether either mechanism's advantage over Sidon-shift generalizes beyond B649's 6/49 structure"
+      ],
+      "source_note": "Computed and independently verified in this session (Strategy Matrix Phase 5, Generation 2) via the fast-evaluator-backed (c7e3b4a, parity-verified) bounded_coverage_optimizer_fast module, at real B649 scale for the first time -- neither arm B nor arm C had been invoked at (49,6) before this task (971b97b, design only). Sidon-shift (arm A, the sealed DIVERSIFICATION_COVERAGE_B649_V1 reference) turned out to be meaningfully below the frontier this one bounded search found, not near it. Both challenger arms are ELIGIBLE_FOR_T539_P638_REPLICATION per 971b97b Sec 11's three-condition rule. Makes no predictive-advantage or prize-value claim; GLOBAL_OPTIMUM_STATUS remains UNKNOWN -- the search sampled a disclosed, bounded, vanishingly small fraction of the C(49,6)=13,983,816 candidate space per slot, never exhaustive.",
+      "source_type": "STRATEGY_MATRIX_NATIVE",
+      "uncertainty": "NONE for Q_X(k) values (exact, via the parity-verified fast evaluator, not sampled/simulated). The optimizer SEARCH itself is BOUNDED (56,730/65,610 evaluations used across the ladder), not exhaustive -- BEST_FOUND_Q(k) is a found maximum among 3 disclosed arms under one fixed seeded budget, not a proven optimum.",
+      "zone": null
     }
   ],
   "generated_at": "2026-08-14",

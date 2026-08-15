@@ -1,6 +1,6 @@
 # Cross-Lottery Research Ledger R1
 
-Status: OPERATIONAL SSOT | generated 2026-08-14 | 10 priors, 17 cells
+Status: OPERATIONAL SSOT | generated 2026-08-14 | 10 priors, 18 cells
 
 Source of truth: `docs/research/cross_lottery_research_ledger_r1.json`. This file is generated from it — never hand-edited. Schema and lifecycle: `docs/research/cross-lottery-research-ledger-r1-schema.md`.
 
@@ -28,7 +28,7 @@ Source of truth: `docs/research/cross_lottery_research_ledger_r1.json`. This fil
 | H01_CROSS_STRATEGY_RESIDUAL_GATED_META_SELECTOR | WEAK_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
 | H05_H10_DIRECT_TICKET_LEVEL_RESIDUAL_SCORING | WEAK_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
 | H08_H12_TEMPORAL_HYPERGRAPH_MOTIF_RESIDUALS | NO_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | MEDIUM |
-| DIVERSIFICATION | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE / UNTESTED | MEDIUM |
+| DIVERSIFICATION | SIDON_BELOW_FRONTIER_MARGIN | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE / UNTESTED | MEDIUM |
 | H03_H04_MULTI_WINDOW_SLOPE_ACCELERATION | NO_SIGNAL (unverified) | UNTESTED | UNTESTED / UNTESTED | LOW |
 | REGIME_CHANGE_POINT | NO_EVIDENCE_OF_REGIME_CHANGE | UNTESTED | UNTESTED / UNTESTED | LOW |
 | H04_H07_CALIBRATED_PER_NUMBER_PROBABILITIES | POSITIVE_WITHIN_NULL_RANGE | POSITIVE_WITHIN_NULL_RANGE | POSITIVE_WITHIN_NULL_RANGE / POSITIVE_WITHIN_NULL_RANGE | NONE |
@@ -43,6 +43,7 @@ Positive results awaiting a second lottery before being read as more than lotter
 |---|---|---|---|
 | `DIVERSIFICATION_COVERAGE_B649_V1__BIG_LOTTO` | BIG_LOTTO | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
 | `DIVERSIFICATION_COVERAGE_T539_V1__DAILY_539` | DAILY_539 | OUTPERFORMS_RANDOM_EXPECTED_COVERAGE | MEDIUM |
+| `DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__BIG_LOTTO` | BIG_LOTTO | SIDON_BELOW_FRONTIER_MARGIN | MEDIUM |
 
 ## Full cell detail
 
@@ -252,3 +253,18 @@ Positive results awaiting a second lottery before being read as more than lotter
 - artifacts: docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-preregistration.md, docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-preregistration-hash.json, docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-result.json, docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-attempt-ledger.json, docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-report.md
 - retest_eligible: True
 - source: Computed and independently verified in this session (Strategy Matrix Phase 3) via complete C(38,6) = 2,760,681-draw enumeration, exact fractions.Fraction arithmetic, no simulation. Native replication cell: independently derived and independently verified Sidon-type base set in Z_38 (see diversification-coverage-p638-zone1-v1-preregistration.md Sec 3 for the even-modulus obstruction and its resolution), not copied from B649's or T539's base set. Makes no predictive-advantage or prize-value claim. decision_state is ADVANCE_TO_NEXT_LEVEL rather than REPLICATION_REQUIRED because this repository has exactly three lottery types (BIG_LOTTO, DAILY_539, POWER_LOTTO) and this single-zone diversification mechanism has now been natively replicated, positively, in all three -- CROSS_LOTTERY_REPLICATION_STATUS: SUPPORTED_IN_3_NATIVE_LOTTERY_STRUCTURES. This does not imply a universal predictive mechanism, a forecasting edge, economic optimality, or profitability -- the evidence type remains EXACT_COMBINATORIAL portfolio-geometry coverage, not forecasting. The B649 and T539 sibling cells' own decision_state fields are left unchanged (REPLICATION_REQUIRED, as sealed at the time), per the ledger's no-retroactive-edit rule.
+
+### `DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1__BIG_LOTTO`
+
+- lottery: BIG_LOTTO
+- mechanism_class: STRUCTURAL
+- evidence_type: `EXACT_COMBINATORIAL_BOUNDED_SEARCH` | uncertainty: NONE for Q_X(k) values (exact, via the parity-verified fast evaluator, not sampled/simulated). The optimizer SEARCH itself is BOUNDED (56,730/65,610 evaluations used across the ladder), not exhaustive -- BEST_FOUND_Q(k) is a found maximum among 3 disclosed arms under one fixed seeded budget, not a proven optimum.
+- record_state: `SEALED`
+- preregistration_grade: `R1_PREREGISTERED` | evidence_grade: `LOCAL_VERIFIED`
+- descriptive_classification: `SIDON_BELOW_FRONTIER_MARGIN` | decision_state: `REPLICATION_REQUIRED`
+- global_mechanism_status: `RETAIN_AND_REPLICATE` | exhausted: False
+- predictive_advantage: `NOT_TESTED` | prize_value_advantage: `NOT_TESTED` | economic_optimality: `NOT_TESTED`
+- primary_endpoint: +0.015571 (SIDON_FRONTIER_GAP(20) = BEST_FOUND_Q_M3+(20) - Q_sidon_M3+(20), exact combinatorics via the c7e3b4a fast evaluator (parity-verified against complete C(49,6) enumeration). Best-found arm at k=20 is C (RESTART_GREEDY_SWAP_COVERAGE_SEARCH_B649_V1, a bounded seeded search, 56,730/65,610 evaluations used). FRONTIER_CAPTURE_RATIO(20) = 0.46057 -- Sidon captures only 46% of the random-relative improvement this bounded search found at k=20 (the largest tested k); the ratio was lower at every smaller k (16-30%). SIDON_FRONTIER_CLASSIFICATION: SIDON_BELOW_FRONTIER_MARGIN at every k>1 (FRONTIER_CAPTURE_RATIO < 0.90 everywhere). Arm B (GREEDY_MIN_OVERLAP_CONSTRUCTOR_B649_V1, no Sidon/difference-set algebra) also exceeds -- not just reproduces -- Sidon's own gain over random at every k (1.64x-6.08x).)
+- artifacts: docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-preregistration.md, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-preregistration-hash.json, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-attempt-ledger.json, docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-report.md
+- retest_eligible: True
+- source: Computed and independently verified in this session (Strategy Matrix Phase 5, Generation 2) via the fast-evaluator-backed (c7e3b4a, parity-verified) bounded_coverage_optimizer_fast module, at real B649 scale for the first time -- neither arm B nor arm C had been invoked at (49,6) before this task (971b97b, design only). Sidon-shift (arm A, the sealed DIVERSIFICATION_COVERAGE_B649_V1 reference) turned out to be meaningfully below the frontier this one bounded search found, not near it. Both challenger arms are ELIGIBLE_FOR_T539_P638_REPLICATION per 971b97b Sec 11's three-condition rule. Makes no predictive-advantage or prize-value claim; GLOBAL_OPTIMUM_STATUS remains UNKNOWN -- the search sampled a disclosed, bounded, vanishingly small fraction of the C(49,6)=13,983,816 candidate space per slot, never exhaustive.

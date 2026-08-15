@@ -269,7 +269,7 @@ def _strategy_cache_identity(descriptor: StrategyDescriptor) -> _StrategyCacheId
     )
 
 
-def _to_causal_draw_rows(history: tuple[ReplayCausalDrawRow, ...]) -> tuple[CausalDrawRow, ...]:
+def to_causal_draw_rows(history: tuple[ReplayCausalDrawRow, ...]) -> tuple[CausalDrawRow, ...]:
     """Narrow Replay provenance rows down to the strategy adapter's own input shape.
 
     Deliberately drops ``special_number``: the strategy-facing ``CausalDrawRow``
@@ -277,6 +277,12 @@ def _to_causal_draw_rows(history: tuple[ReplayCausalDrawRow, ...]) -> tuple[Caus
     ``lottolab.domain.replay_history`` module docstring). Replay's own
     provenance hash is computed separately, from the full
     ``ReplayCausalDrawRow`` tuple, so no information is actually lost.
+
+    Public (not module-private) because
+    :mod:`lottolab.application.use_cases.replay_historical_portfolio_predictions`
+    reuses it verbatim for the PORTFOLIO response-shape path -- the causal
+    history a strategy adapter sees must be identical regardless of whether
+    its response shape is SINGLE_TICKET or PORTFOLIO.
     """
 
     return tuple(
@@ -329,7 +335,7 @@ class ReplayHistoricalPredictions:
 
             if history_result.status is BuildCausalHistoryStatus.OK:
                 assert history_result.history is not None
-                adapter_history = _to_causal_draw_rows(history_result.history)
+                adapter_history = to_causal_draw_rows(history_result.history)
                 history_fingerprint = (
                     causal_history_sha256(history_result.history)
                     if self._cache is not None
@@ -465,4 +471,5 @@ __all__ = [
     "ReplayResearchCache",
     "ReplayResearchCacheKey",
     "ReplayResearchCacheStats",
+    "to_causal_draw_rows",
 ]

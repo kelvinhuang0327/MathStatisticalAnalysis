@@ -10,6 +10,17 @@ rolls a full replay loop). This module runs no prediction logic of its own:
 every import from ``replay_historical_predictions`` is used verbatim, and the
 only cache in play is the one already merged there.
 
+:meth:`ReplayResearchSession.replay_portfolio_targets` is the
+``ResponseShape.PORTFOLIO`` analog of :meth:`ReplayResearchSession.replay_targets`:
+same target resolution and the same ``BuildCausalHistory``-over-
+``SQLiteDrawHistoryReader`` causal history, but delegates prediction to
+``GeneratePortfolio`` (``build_production_generate_portfolio()``) so a
+research caller no longer has to hand-compose ``BuildCausalHistory`` +
+``GeneratePortfolio`` + ``production_catalog()`` itself to replay a PORTFOLIO
+strategy. It shares no cache and does not alter :meth:`replay_targets` in any
+way -- see ``replay_historical_portfolio_predictions`` module docstring for
+why a portfolio result is never cached.
+
 The causal-history port this module composes (``ReplayCausalDrawRow`` /
 ``SQLiteDrawHistoryReader``) validates every row against the authoritative
 ``LotteryRuleContract`` resolved for the request's own ``lottery_type`` --
@@ -18,10 +29,11 @@ DAILY_539, and POWER_LOTTO each get their own rule-correct causal history
 (6/49+1, 5/39 with no special number, and 6/38+1 respectively). A request for
 a ``lottery_type`` with no committed ``LotteryRuleContract`` still fails
 closed inside that reader, not inside this module. Strategy availability is
-independent of this: ``GenerateOneBet`` already resolves an unregistered
-strategy/lottery pair as a closed ``STRATEGY_UNAVAILABLE`` result rather than
-raising (see :meth:`replay_targets`), so a lottery with no strategies
-registered in the catalog still gets a real causal-history read.
+independent of this: ``GenerateOneBet``/``GeneratePortfolio`` already resolve
+an unregistered strategy/lottery pair as a closed ``STRATEGY_UNAVAILABLE``
+result rather than raising (see :meth:`replay_targets`/
+:meth:`replay_portfolio_targets`), so a lottery with no strategies registered
+in the catalog still gets a real causal-history read.
 """
 
 from __future__ import annotations
@@ -30,7 +42,15 @@ from collections.abc import Sequence
 
 from lottolab.application.draw_data import DrawDataApplicationError, DrawHistoryQuery
 from lottolab.application.use_cases.build_causal_history import BuildCausalHistory
-from lottolab.application.use_cases.generate_bet import build_production_generate_one_bet
+from lottolab.application.use_cases.generate_bet import (
+    build_production_generate_one_bet,
+    build_production_generate_portfolio,
+)
+from lottolab.application.use_cases.replay_historical_portfolio_predictions import (
+    ReplayHistoricalPortfolioPredictions,
+    ReplayHistoricalPortfolioPredictionsInput,
+    ReplayHistoricalPortfolioPredictionsResult,
+)
 from lottolab.application.use_cases.replay_historical_predictions import (
     ReplayHistoricalPredictions,
     ReplayHistoricalPredictionsInput,
@@ -96,6 +116,11 @@ class ReplayResearchSession:
             build_production_generate_one_bet(),
             production_catalog(),
             cache=self._cache,
+        )
+        self._replay_portfolio = ReplayHistoricalPortfolioPredictions(
+            BuildCausalHistory(lambda: SQLiteDrawHistoryReader(paths)),
+            build_production_generate_portfolio(),
+            production_catalog(),
         )
 
     @property
@@ -170,6 +195,81 @@ class ReplayResearchSession:
         if not strategy_ids:
             raise ValueError("strategy_ids must not be empty")
 
+        targets = self._resolve_targets(target_draw_numbers)
+        return self._replay.execute(
+            ReplayHistoricalPredictionsInput(
+                lottery_type=self._lottery_type,
+                dataset_id=dataset_id,
+                dataset_version=dataset_version,
+                targets=targets,
+                strategy_ids=tuple(strategy_ids),
+                maximum_history_draws=maximum_history_draws,
+                minimum_history_draws=minimum_history_draws,
+            )
+        )
+
+    def replay_portfolio_targets(
+        self,
+        *,
+        dataset_id: str,
+        dataset_version: str,
+        target_draw_numbers: Sequence[str],
+        strategy_ids: Sequence[str],
+        maximum_history_draws: int | None = None,
+        minimum_history_draws: int | None = None,
+    ) -> ReplayHistoricalPortfolioPredictionsResult:
+        """Resolve one batch of target x strategy Replay PORTFOLIO snapshots.
+
+        The ``ResponseShape.PORTFOLIO`` analog of :meth:`replay_targets`:
+        identical target-identity resolution and the same
+        ``BuildCausalHistory``-over-``SQLiteDrawHistoryReader`` causal
+        history, but delegates prediction to ``GeneratePortfolio`` (via
+        ``build_production_generate_portfolio()``) instead of
+        ``GenerateOneBet``, so a PORTFOLIO ``strategy_id``'s complete,
+        ordered native ticket set comes back intact -- never flattened to one
+        ticket or to an invented probability/score (see
+        :class:`~lottolab.domain.replay_predictions.ReplayPortfolioPredictionSnapshot`).
+        A SINGLE_TICKET ``strategy_id`` resolves as a closed
+        ``WRONG_RESPONSE_PATH`` result here, mirroring how
+        ``run_cli_generate_portfolio``/``run_cli_generate_bet`` already split
+        at the CLI -- use :meth:`replay_targets` for a SINGLE_TICKET
+        ``strategy_id`` instead.
+
+        Unlike :meth:`replay_targets`, this path shares no
+        :class:`ReplayResearchCache`: every call recomputes (see the
+        ``replay_historical_portfolio_predictions`` module docstring for
+        why). Raises :class:`ResearchReplayError` under the same conditions
+        as :meth:`replay_targets` -- a genuinely missing target draw, or an
+        unavailable local database.
+        """
+
+        if not target_draw_numbers:
+            raise ValueError("target_draw_numbers must not be empty")
+        if not strategy_ids:
+            raise ValueError("strategy_ids must not be empty")
+
+        targets = self._resolve_targets(target_draw_numbers)
+        return self._replay_portfolio.execute(
+            ReplayHistoricalPortfolioPredictionsInput(
+                lottery_type=self._lottery_type,
+                dataset_id=dataset_id,
+                dataset_version=dataset_version,
+                targets=targets,
+                strategy_ids=tuple(strategy_ids),
+                maximum_history_draws=maximum_history_draws,
+                minimum_history_draws=minimum_history_draws,
+            )
+        )
+
+    def _resolve_targets(self, target_draw_numbers: Sequence[str]) -> tuple[ReplayTarget, ...]:
+        """Resolve each draw number's target identity, in caller order.
+
+        Shared by :meth:`replay_targets` and :meth:`replay_portfolio_targets`
+        so both response shapes resolve target identity through exactly one
+        code path. Callers must reject an empty ``target_draw_numbers``
+        themselves first -- this helper assumes at least one is present.
+        """
+
         targets: list[ReplayTarget] = []
         try:
             for draw_number in target_draw_numbers:
@@ -181,18 +281,7 @@ class ReplayResearchSession:
                 )
         except DrawDataApplicationError as exc:
             raise ResearchReplayError("local draw database is unavailable") from exc
-
-        return self._replay.execute(
-            ReplayHistoricalPredictionsInput(
-                lottery_type=self._lottery_type,
-                dataset_id=dataset_id,
-                dataset_version=dataset_version,
-                targets=tuple(targets),
-                strategy_ids=tuple(strategy_ids),
-                maximum_history_draws=maximum_history_draws,
-                minimum_history_draws=minimum_history_draws,
-            )
-        )
+        return tuple(targets)
 
 
 def _resolve_local_data_paths() -> LocalDataPaths:

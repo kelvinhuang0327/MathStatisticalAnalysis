@@ -6,6 +6,13 @@ may depend on domain; domain must never depend on evidence). Status/reason
 fields are plain strings echoing the originating use case's own closed-result
 enums (``BuildCausalHistoryStatus``/``GenerateOneBetStatus`` and their reason
 enums) so this module never imports the application layer.
+
+:class:`ReplayPortfolioPredictionSnapshot` is the ``ResponseShape.PORTFOLIO``
+analog of :class:`ReplayPredictionSnapshot`: same target/history identity
+fields, but its prediction payload is a strategy's complete, ordered native
+ticket set rather than one ticket. It carries no ``result_sha256`` -- unlike
+its single-ticket sibling it is not (yet) part of a persisted, tamper-evident
+artifact -- so it stays a plain dataclass with no evidence-layer builder.
 """
 
 from __future__ import annotations
@@ -17,6 +24,7 @@ from enum import StrEnum
 from lottolab.domain.draws import LotteryType
 
 SNAPSHOT_SCHEMA_VERSION = "1.0.0"
+PORTFOLIO_SNAPSHOT_SCHEMA_VERSION = "1.0.0"
 
 
 class ReplaySourceMode(StrEnum):
@@ -152,8 +160,124 @@ class ReplayPredictionSnapshot:
             raise ValueError("strategy/adapter identity fields must be all-present or all-absent")
 
 
+@dataclass(frozen=True, slots=True)
+class ReplayPortfolioPredictionSnapshot:
+    """One immutable, closed-schema Replay outcome for one target x PORTFOLIO strategy pair.
+
+    Mirrors :class:`ReplayPredictionSnapshot` field-for-field except
+    ``predicted_tickets``, which carries a ``ResponseShape.PORTFOLIO``
+    strategy's complete, ordered native ticket set (see
+    ``GeneratePortfolioResult``) instead of one ticket. Ticket order and
+    positional duplicates are never reordered, deduplicated, or flattened
+    into a score here -- the same guarantee ``GeneratePortfolio`` already
+    makes. Not to be confused with
+    ``lottolab.domain.replay_portfolio_ranking``'s unrelated sense of
+    "portfolio" (a ranked group of *single-ticket* strategies).
+    """
+
+    snapshot_schema_version: str
+    dataset_id: str
+    dataset_version: str
+    lottery_type: LotteryType
+    source_mode: ReplaySourceMode
+    target_draw_number: str
+    target_draw_date: date
+    cutoff_draw_number: str | None
+    cutoff_draw_date: date | None
+    strategy_id: str
+    strategy_version: str | None
+    adapter_strategy_id: str | None
+    adapter_strategy_name: str | None
+    adapter_strategy_version: str | None
+    history_status: str
+    history_reason_code: str | None
+    causal_history_count: int | None
+    causal_history_sha256: str | None
+    prediction_status: str | None
+    prediction_reason_code: str | None
+    predicted_tickets: tuple[tuple[int, ...], ...] | None
+
+    def __post_init__(self) -> None:
+        if type(self.lottery_type) is not LotteryType:
+            raise ValueError("lottery_type must be a LotteryType")
+        if type(self.source_mode) is not ReplaySourceMode:
+            raise ValueError("source_mode must be a ReplaySourceMode")
+        if not self.strategy_id:
+            raise ValueError("strategy_id must be a non-empty string")
+
+        if (self.cutoff_draw_number is None) != (self.cutoff_draw_date is None):
+            raise ValueError(
+                "cutoff_draw_number and cutoff_draw_date must be both present or both absent"
+            )
+
+        history_ok = self.history_status == "OK"
+        if history_ok:
+            if self.history_reason_code is not None:
+                raise ValueError("OK history_status must not carry a history_reason_code")
+            if self.causal_history_count is None or self.causal_history_sha256 is None:
+                raise ValueError("OK history_status requires causal_history_count and _sha256")
+            if self.causal_history_count < 0:
+                raise ValueError("causal_history_count must not be negative")
+            if self.causal_history_count == 0:
+                if self.cutoff_draw_number is not None or self.cutoff_draw_date is not None:
+                    raise ValueError(
+                        "OK history_status with zero causal history must not carry a cutoff"
+                    )
+            elif self.cutoff_draw_number is None or self.cutoff_draw_date is None:
+                raise ValueError(
+                    "OK history_status with non-zero causal history requires a cutoff"
+                )
+        else:
+            if self.history_reason_code is None:
+                raise ValueError("non-OK history_status requires a history_reason_code")
+            if self.causal_history_count is not None or self.causal_history_sha256 is not None:
+                raise ValueError(
+                    "non-OK history_status must not carry causal_history_count or _sha256"
+                )
+            if self.cutoff_draw_number is not None or self.cutoff_draw_date is not None:
+                raise ValueError("non-OK history_status must not carry a cutoff")
+            if self.prediction_status is not None or self.prediction_reason_code is not None:
+                raise ValueError("prediction is unattempted when history_status is not OK")
+            if self.predicted_tickets is not None:
+                raise ValueError("predicted_tickets requires an OK prediction_status")
+
+        if self.cutoff_draw_number is not None and self.cutoff_draw_date is not None:
+            cutoff_key = (self.cutoff_draw_date, int(self.cutoff_draw_number))
+            target_key = (self.target_draw_date, int(self.target_draw_number))
+            if cutoff_key >= target_key:
+                raise ValueError("cutoff must represent a draw strictly before the target")
+
+        if history_ok and self.prediction_status is None:
+            raise ValueError("OK history_status requires an attempted prediction_status")
+
+        prediction_ok = self.prediction_status == "OK"
+        if prediction_ok:
+            if self.prediction_reason_code is not None:
+                raise ValueError("OK prediction_status must not carry a prediction_reason_code")
+            if self.predicted_tickets is None:
+                raise ValueError("OK prediction_status requires predicted_tickets")
+        elif self.prediction_status is not None:
+            if self.prediction_reason_code is None:
+                raise ValueError("non-OK prediction_status requires a prediction_reason_code")
+            if self.predicted_tickets is not None:
+                raise ValueError("predicted_tickets requires an OK prediction_status")
+
+        identity_present = (
+            self.strategy_version,
+            self.adapter_strategy_id,
+            self.adapter_strategy_name,
+            self.adapter_strategy_version,
+        )
+        if any(field is None for field in identity_present) and any(
+            field is not None for field in identity_present
+        ):
+            raise ValueError("strategy/adapter identity fields must be all-present or all-absent")
+
+
 __all__ = [
+    "PORTFOLIO_SNAPSHOT_SCHEMA_VERSION",
     "SNAPSHOT_SCHEMA_VERSION",
+    "ReplayPortfolioPredictionSnapshot",
     "ReplayPredictionSnapshot",
     "ReplaySourceMode",
     "ReplayTarget",

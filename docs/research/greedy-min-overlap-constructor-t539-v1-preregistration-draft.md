@@ -104,18 +104,28 @@ function (design doc §9), not re-derived by hand here.
 
 Toy-scale measurements (`draw_size=5`, `pool_size` in {16,18,20,22}, all
 far below 39) fit a cost model cross-validated against B649's own real,
-measured arm-B runtime (774.5s, within 12.6% of the model's prediction)
-before extrapolating: **~30-35s estimated** for a single nested-prefix
-build to `ticket_count=20` (which yields every ladder `k` as a free
-slice) at real `(pool_size=39, draw_size=5)` scale. Not measured directly
-— `pool_size=39` was not invoked anywhere in the design task (design doc
-§2). Coverage evaluation on top of the built portfolio reuses the
-already-proven-feasible T539 winning-space method (`0.025s` bare
-enumeration, already exercised by the sealed T539 Sidon cell).
+measured arm-B runtime (774.5s, within 12.6% of the model's prediction,
+i.e. a 1.145x under-prediction ratio) before extrapolating: **~30-35s
+estimated** for a single nested-prefix build to `ticket_count=20` (which
+yields every ladder `k` as a free slice) at real `(pool_size=39,
+draw_size=5)` scale. Not measured directly — `pool_size=39` was not
+invoked anywhere in the design task (design doc §2). Coverage evaluation
+on top of the built portfolio reuses the already-proven-feasible T539
+winning-space method (`0.025s` bare enumeration, already exercised by the
+sealed T539 Sidon cell).
 
 ```text
 MONTE_CARLO:  NONE
 REAL_DRAW_HISTORY: NOT_USED
+NON_LOAD_BEARING_RUNTIME_ESTIMATE: TRUE -- the 1.145x correction and the
+                                    ~30-35s figure it produces are
+                                    engineering feasibility estimates
+                                    only; not part of this preregistration's
+                                    scientific contract (Sec 1-4, 6) and
+                                    not consumed by LOCKED_PARAMETERS or
+                                    any estimand/classification rule. The
+                                    real execution task measures actual
+                                    wall-clock time directly.
 ```
 
 ## 6. Classification (frozen rule, identical in kind to B649/T539/P638, not applied here)

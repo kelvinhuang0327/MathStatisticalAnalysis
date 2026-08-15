@@ -254,6 +254,21 @@ RAW_MODEL_ESTIMATE:                       29.1s
 B649-CROSS-VALIDATION-CORRECTED ESTIMATE: 33.3s (applying the observed
                                            1.145x under-prediction ratio
                                            from the B649 check above)
+NON_LOAD_BEARING_RUNTIME_ESTIMATE:        TRUE -- both the 1.145x factor
+                                           and the 29.1s/33.3s figures it
+                                           produces are engineering
+                                           feasibility estimates only (used
+                                           solely to decide whether a
+                                           fast-evaluator optimization is
+                                           needed before running arm B).
+                                           Neither feeds Q_ARM_B(k),
+                                           DELTA_RANDOM(k), DELTA_SIDON(k),
+                                           any classification, or the
+                                           locked preregistration's
+                                           LOCKED_PARAMETERS -- the real
+                                           lock-and-execute task measures
+                                           actual wall-clock time directly
+                                           and does not read this estimate.
 ```
 
 Because `greedy_min_overlap_portfolio` is a strict nested prefix (§4.B —

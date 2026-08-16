@@ -1,0 +1,36 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "EH01_MATRIX_PROFILE_MOTIF_DISCORD_B649_V1__ATTEMPT_1",
+      "descriptive_classification": "NO_SIGNAL",
+      "design_version": "V1",
+      "hypothesis_family_id": "HIGHER_ORDER_TEMPORAL_STRUCTURE",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "EH01_MATRIX_PROFILE_MOTIF_DISCORD_B649_V1",
+      "preregistration_hash_sha256": "f12ef1314e4fd6cadcd28154b332f04afa46bb9593a23733708540ae3302c8f7",
+      "record_state": "SEALED",
+      "result_hash_sha256": "0263e55b7fe0dc85797608aad283eac3d6013d4f9e41fae7847449ef03652bf3",
+      "sealed_at": "2026-08-16T07:27:50.566426+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "B649_TRACK_B_EH01_EH10_ORDINAL_TEMPORAL_LOCK_EXECUTE_R1"
+    },
+    {
+      "attempt_id": "EH10_PERMUTATION_ENTROPY_ORDINAL_B649_V1__ATTEMPT_1",
+      "descriptive_classification": "NO_SIGNAL",
+      "design_version": "V1",
+      "hypothesis_family_id": "HIGHER_ORDER_TEMPORAL_STRUCTURE",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "EH10_PERMUTATION_ENTROPY_ORDINAL_B649_V1",
+      "preregistration_hash_sha256": "f12ef1314e4fd6cadcd28154b332f04afa46bb9593a23733708540ae3302c8f7",
+      "record_state": "SEALED",
+      "result_hash_sha256": "0263e55b7fe0dc85797608aad283eac3d6013d4f9e41fae7847449ef03652bf3",
+      "sealed_at": "2026-08-16T07:27:50.566426+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "B649_TRACK_B_EH01_EH10_ORDINAL_TEMPORAL_LOCK_EXECUTE_R1"
+    }
+  ]
+}

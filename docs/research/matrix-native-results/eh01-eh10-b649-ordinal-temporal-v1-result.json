@@ -1,0 +1,657 @@
+{
+  "data_authority": {
+    "date_range": [
+      "2007-03-09",
+      "2026-07-31"
+    ],
+    "draw_data_version": "canonical-full-history-2382-draws-v1",
+    "excluded_date_like_contaminants": 150,
+    "logical_sha256": "a1f39161797cadc132a4ae561e382b577a9c4a573c9866e34f61ee4af71a9918",
+    "row_count": 2138,
+    "source_path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/BIGLOTTO_CANONICAL_FULL_HISTORY_BASELINE_R4/baseline.sqlite"
+  },
+  "eh01": {
+    "claim_scope": "STRUCTURAL_TEMPORAL_PRECONDITION_ONLY",
+    "classification": "NO_SIGNAL",
+    "comparator_decision": "REMOVE_UNIDENTIFIABLE_FROZEN_STRATEGY_COMPARATOR_NO_PROXY",
+    "endpoints": {
+      "discord_104": {
+        "era4_holm_p": 0.744,
+        "era4_raw_p": 0.124,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.8768768768768769,
+          "surrogate_max": 13.306226382944516,
+          "surrogate_median": 12.919088897704643,
+          "surrogate_min": 12.606464164952916,
+          "surrogate_q1": 12.83763342120497,
+          "surrogate_q3": 13.010280975695807
+        },
+        "global_holm_p": 0.7020000000000001,
+        "global_raw_p": 0.117,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.8838838838838838,
+          "surrogate_max": 13.303516043769063,
+          "surrogate_median": 12.916463454139045,
+          "surrogate_min": 12.58877877321872,
+          "surrogate_q1": 12.837106204523593,
+          "surrogate_q3": 13.017372681480424
+        },
+        "observed": 13.077716677850688
+      },
+      "discord_26": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.915,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.08508508508508508,
+          "surrogate_max": 6.629637458445605,
+          "surrogate_median": 6.0359895255736795,
+          "surrogate_min": 5.632014714520244,
+          "surrogate_q1": 5.936439300918557,
+          "surrogate_q3": 6.138008322708318
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.898,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.1021021021021021,
+          "surrogate_max": 6.616434947238053,
+          "surrogate_median": 6.037102744669955,
+          "surrogate_min": 5.600567876044676,
+          "surrogate_q1": 5.922446484332887,
+          "surrogate_q3": 6.154213258831236
+        },
+        "observed": 5.843861463219322
+      },
+      "discord_52": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.731,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.26926926926926925,
+          "surrogate_max": 9.318168634550048,
+          "surrogate_median": 8.857919966921168,
+          "surrogate_min": 8.500031181181681,
+          "surrogate_q1": 8.771767220533802,
+          "surrogate_q3": 8.965671166024174
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.703,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.2972972972972973,
+          "surrogate_max": 9.520243068139628,
+          "surrogate_median": 8.857677403578696,
+          "surrogate_min": 8.504944686649562,
+          "surrogate_q1": 8.764385101817577,
+          "surrogate_q3": 8.965782327748522
+        },
+        "observed": 8.778448989084362
+      },
+      "motif_104": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.958,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.042042042042042045,
+          "surrogate_max": -9.712742236633716,
+          "surrogate_median": -10.872926089660627,
+          "surrogate_min": -11.328301537807187,
+          "surrogate_q1": -10.998061923079765,
+          "surrogate_q3": -10.72127663034086
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.968,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.03203203203203203,
+          "surrogate_max": -9.537411302099292,
+          "surrogate_median": -10.872997963441613,
+          "surrogate_min": -11.372467039997732,
+          "surrogate_q1": -11.017411500169004,
+          "surrogate_q3": -10.698661288813302
+        },
+        "observed": -11.183076910946
+      },
+      "motif_26": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.287,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.7137137137137137,
+          "surrogate_max": -2.1788106050618024,
+          "surrogate_median": -3.268316752677049,
+          "surrogate_min": -3.652963809267636,
+          "surrogate_q1": -3.3818073324986764,
+          "surrogate_q3": -3.1461508057286025
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.328,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.6726726726726727,
+          "surrogate_max": -2.461677076852478,
+          "surrogate_median": -3.2670089401444433,
+          "surrogate_min": -3.679465602808829,
+          "surrogate_q1": -3.375737177768461,
+          "surrogate_q3": -3.1150156111765677
+        },
+        "observed": -3.168530352057042
+      },
+      "motif_52": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.425,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.5755755755755756,
+          "surrogate_max": -5.474045546489434,
+          "surrogate_median": -6.440458167241556,
+          "surrogate_min": -6.882016464677307,
+          "surrogate_q1": -6.566913792879157,
+          "surrogate_q3": -6.29394740095808
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.445,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.5555555555555556,
+          "surrogate_max": -5.504894725581946,
+          "surrogate_median": -6.430412143464419,
+          "surrogate_min": -6.8700380525164295,
+          "surrogate_q1": -6.564492533998941,
+          "surrogate_q3": -6.267621885779734
+        },
+        "observed": -6.406416566188751
+      }
+    },
+    "era_local_diagnostics": [
+      {
+        "endpoints": {
+          "discord_104": {
+            "observed": 13.077716677850688,
+            "observed_percentile_within_surrogates": 0.8768768768768769,
+            "surrogate_max": 13.306226382944516,
+            "surrogate_median": 12.915985640519166,
+            "surrogate_min": 12.51474986309655,
+            "surrogate_q1": 12.834561814304942,
+            "surrogate_q3": 13.010280975695807
+          },
+          "discord_26": {
+            "observed": 5.843861463219322,
+            "observed_percentile_within_surrogates": 0.08508508508508508,
+            "surrogate_max": 6.629637458445605,
+            "surrogate_median": 6.0359895255736795,
+            "surrogate_min": 5.632014714520244,
+            "surrogate_q1": 5.936439300918557,
+            "surrogate_q3": 6.138008322708318
+          },
+          "discord_52": {
+            "observed": 8.778448989084362,
+            "observed_percentile_within_surrogates": 0.26926926926926925,
+            "surrogate_max": 9.318168634550048,
+            "surrogate_median": 8.857919966921168,
+            "surrogate_min": 8.500031181181681,
+            "surrogate_q1": 8.771767220533802,
+            "surrogate_q3": 8.965671166024174
+          },
+          "motif_104": {
+            "observed": -11.93282871483691,
+            "observed_percentile_within_surrogates": 0.07007007007007007,
+            "surrogate_max": -9.961883960821757,
+            "surrogate_median": -11.594795198677957,
+            "surrogate_min": -12.188166828484462,
+            "surrogate_q1": -11.759555578839723,
+            "surrogate_q3": -11.409402603975874
+          },
+          "motif_26": {
+            "observed": -4.032430338777291,
+            "observed_percentile_within_surrogates": 0.07707707707707707,
+            "surrogate_max": -2.9646198504389347,
+            "surrogate_median": -3.778374372461197,
+            "surrogate_min": -4.2016293780743075,
+            "surrogate_q1": -3.914620863446878,
+            "surrogate_q3": -3.615399874286546
+          },
+          "motif_52": {
+            "observed": -7.1771253881989425,
+            "observed_percentile_within_surrogates": 0.24724724724724725,
+            "surrogate_max": -6.050635249667107,
+            "surrogate_median": -7.032550438110036,
+            "surrogate_min": -7.6072867429230655,
+            "surrogate_q1": -7.175974305762397,
+            "surrogate_q3": -6.85676473652107
+          }
+        },
+        "era": 1
+      },
+      {
+        "endpoints": {
+          "discord_104": {
+            "observed": 13.041856699963,
+            "observed_percentile_within_surrogates": 0.8268268268268268,
+            "surrogate_max": 13.344605682929517,
+            "surrogate_median": 12.91659457277053,
+            "surrogate_min": 12.362052323695712,
+            "surrogate_q1": 12.828149280685032,
+            "surrogate_q3": 13.010157524696634
+          },
+          "discord_26": {
+            "observed": 6.035677521697641,
+            "observed_percentile_within_surrogates": 0.5255255255255256,
+            "surrogate_max": 6.5708780344088105,
+            "surrogate_median": 6.024069209982218,
+            "surrogate_min": 5.621065601721722,
+            "surrogate_q1": 5.922619638063527,
+            "surrogate_q3": 6.137140531964438
+          },
+          "discord_52": {
+            "observed": 8.808869679050396,
+            "observed_percentile_within_surrogates": 0.35235235235235235,
+            "surrogate_max": 9.30799762364514,
+            "surrogate_median": 8.856094817199416,
+            "surrogate_min": 8.514162107162951,
+            "surrogate_q1": 8.767909481811758,
+            "surrogate_q3": 8.955979417584398
+          },
+          "motif_104": {
+            "observed": -12.025082590525807,
+            "observed_percentile_within_surrogates": 0.015015015015015015,
+            "surrogate_max": -10.256674699079529,
+            "surrogate_median": -11.593944750804306,
+            "surrogate_min": -12.291105078808993,
+            "surrogate_q1": -11.762499463501534,
+            "surrogate_q3": -11.385261845245022
+          },
+          "motif_26": {
+            "observed": -3.6885218658526786,
+            "observed_percentile_within_surrogates": 0.6806806806806807,
+            "surrogate_max": -2.6221866645616614,
+            "surrogate_median": -3.803834555790867,
+            "surrogate_min": -4.3430098131577335,
+            "surrogate_q1": -3.928455209050021,
+            "surrogate_q3": -3.6256984014158955
+          },
+          "motif_52": {
+            "observed": -6.941936087973799,
+            "observed_percentile_within_surrogates": 0.6646646646646647,
+            "surrogate_max": -5.776098905646965,
+            "surrogate_median": -7.047244559194507,
+            "surrogate_min": -7.5642182543562075,
+            "surrogate_q1": -7.196615593251913,
+            "surrogate_q3": -6.869651254566815
+          }
+        },
+        "era": 2
+      },
+      {
+        "endpoints": {
+          "discord_104": {
+            "observed": 12.918743391630242,
+            "observed_percentile_within_surrogates": 0.4974974974974975,
+            "surrogate_max": 13.365915200155538,
+            "surrogate_median": 12.91949103897631,
+            "surrogate_min": 12.484957557823472,
+            "surrogate_q1": 12.834969272183578,
+            "surrogate_q3": 13.011841582070796
+          },
+          "discord_26": {
+            "observed": 6.055626392518029,
+            "observed_percentile_within_surrogates": 0.5485485485485485,
+            "surrogate_max": 6.754466368520125,
+            "surrogate_median": 6.031216521161253,
+            "surrogate_min": 5.585654761375669,
+            "surrogate_q1": 5.926758043195044,
+            "surrogate_q3": 6.1499874100964576
+          },
+          "discord_52": {
+            "observed": 8.791042210505955,
+            "observed_percentile_within_surrogates": 0.33133133133133136,
+            "surrogate_max": 9.371285588037201,
+            "surrogate_median": 8.853213212358321,
+            "surrogate_min": 8.417531019715783,
+            "surrogate_q1": 8.758956509925802,
+            "surrogate_q3": 8.95528859897125
+          },
+          "motif_104": {
+            "observed": -11.78766440111053,
+            "observed_percentile_within_surrogates": 0.21521521521521522,
+            "surrogate_max": -10.39914391935682,
+            "surrogate_median": -11.612170437078566,
+            "surrogate_min": -12.212390561762145,
+            "surrogate_q1": -11.765560855460278,
+            "surrogate_q3": -11.427351154051355
+          },
+          "motif_26": {
+            "observed": -4.170699680110725,
+            "observed_percentile_within_surrogates": 0.013013013013013013,
+            "surrogate_max": -2.1788106050618024,
+            "surrogate_median": -3.7869222627391705,
+            "surrogate_min": -4.2830094266343055,
+            "surrogate_q1": -3.921190077955573,
+            "surrogate_q3": -3.620506433811959
+          },
+          "motif_52": {
+            "observed": -7.312242380447525,
+            "observed_percentile_within_surrogates": 0.08408408408408409,
+            "surrogate_max": -5.715467888697523,
+            "surrogate_median": -7.021821375131981,
+            "surrogate_min": -7.583009578446748,
+            "surrogate_q1": -7.186078638107826,
+            "surrogate_q3": -6.852649683107925
+          }
+        },
+        "era": 3
+      },
+      {
+        "endpoints": {
+          "discord_104": {
+            "observed": 12.807024296078737,
+            "observed_percentile_within_surrogates": 0.1891891891891892,
+            "surrogate_max": 13.462698680837857,
+            "surrogate_median": 12.924516892774314,
+            "surrogate_min": 12.483184481928086,
+            "surrogate_q1": 12.83654480216923,
+            "surrogate_q3": 13.010939439584618
+          },
+          "discord_26": {
+            "observed": 6.115288937331775,
+            "observed_percentile_within_surrogates": 0.7007007007007007,
+            "surrogate_max": 6.578719525017082,
+            "surrogate_median": 6.022620856208594,
+            "surrogate_min": 5.600359636953667,
+            "surrogate_q1": 5.920290802732712,
+            "surrogate_q3": 6.146924134579361
+          },
+          "discord_52": {
+            "observed": 9.154492152017486,
+            "observed_percentile_within_surrogates": 0.970970970970971,
+            "surrogate_max": 9.382449363142413,
+            "surrogate_median": 8.858974167109253,
+            "surrogate_min": 8.488362585508309,
+            "surrogate_q1": 8.759382667377558,
+            "surrogate_q3": 8.956013192888326
+          },
+          "motif_104": {
+            "observed": -11.335481287638698,
+            "observed_percentile_within_surrogates": 0.8198198198198198,
+            "surrogate_max": -10.337859258356234,
+            "surrogate_median": -11.609101577887094,
+            "surrogate_min": -12.222842093834863,
+            "surrogate_q1": -11.776475870726685,
+            "surrogate_q3": -11.404743788729206
+          },
+          "motif_26": {
+            "observed": -3.777193358028292,
+            "observed_percentile_within_surrogates": 0.5375375375375375,
+            "surrogate_max": -2.8654387132146106,
+            "surrogate_median": -3.797952862398062,
+            "surrogate_min": -4.294960748763958,
+            "surrogate_q1": -3.9286164851366254,
+            "surrogate_q3": -3.632334241122345
+          },
+          "motif_52": {
+            "observed": -6.406416566188751,
+            "observed_percentile_within_surrogates": 0.968968968968969,
+            "surrogate_max": -5.70571665638943,
+            "surrogate_median": -7.046091824786028,
+            "surrogate_min": -7.603085328382519,
+            "surrogate_q1": -7.185389010060657,
+            "surrogate_q3": -6.851842229137097
+          }
+        },
+        "era": 4
+      }
+    ],
+    "lengths": [
+      26,
+      52,
+      104
+    ],
+    "signal_endpoint": null
+  },
+  "eh01_variant_id": "EH01_MATRIX_PROFILE_MOTIF_DISCORD_B649_V1",
+  "eh10": {
+    "claim_scope": "ORDINAL_STRUCTURAL_PRECONDITION_ONLY",
+    "classification": "NO_SIGNAL",
+    "endpoints": {
+      "pe_3": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.999,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.001001001001001001,
+          "surrogate_max": 0.10578268118920076,
+          "surrogate_median": 0.035939919187267466,
+          "surrogate_min": 0.018161393795551817,
+          "surrogate_q1": 0.030304151960144132,
+          "surrogate_q3": 0.04333261168805547
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.995,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.005005005005005005,
+          "surrogate_max": 0.09170991332186684,
+          "surrogate_median": 0.035496985368229206,
+          "surrogate_min": 0.016022389866750864,
+          "surrogate_q1": 0.030076051767346623,
+          "surrogate_q3": 0.04227495622533339
+        },
+        "observed": 0.018976911109432892
+      },
+      "pe_4": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.943,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.057057057057057055,
+          "surrogate_max": 0.12937073765453133,
+          "surrogate_median": 0.06458404171876975,
+          "surrogate_min": 0.04481517795401624,
+          "surrogate_q1": 0.058880328146143524,
+          "surrogate_q3": 0.07186798038581221
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.94,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.06006006006006006,
+          "surrogate_max": 0.11752362198349064,
+          "surrogate_median": 0.06432676581292474,
+          "surrogate_min": 0.04348334469565995,
+          "surrogate_q1": 0.05882841914745651,
+          "surrogate_q3": 0.0710648166560347
+        },
+        "observed": 0.052293423647869375
+      },
+      "pe_5": {
+        "era4_holm_p": 1.0,
+        "era4_raw_p": 0.988,
+        "era4_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.012012012012012012,
+          "surrogate_max": 0.19302877648627093,
+          "surrogate_median": 0.1550931103567238,
+          "surrogate_min": 0.13276487986175123,
+          "surrogate_q1": 0.15053584803393816,
+          "surrogate_q3": 0.1601880447415357
+        },
+        "global_holm_p": 1.0,
+        "global_raw_p": 0.979,
+        "global_surrogate_summary": {
+          "observed_percentile_within_surrogates": 0.021021021021021023,
+          "surrogate_max": 0.19793321637134165,
+          "surrogate_median": 0.15492213442079106,
+          "surrogate_min": 0.1315819428394469,
+          "surrogate_q1": 0.1502948677434892,
+          "surrogate_q3": 0.16030853488676022
+        },
+        "observed": 0.1416267763816994
+      }
+    },
+    "era_local_diagnostics": [
+      {
+        "endpoints": {
+          "pe_3": {
+            "observed": 0.012210837160915755,
+            "observed_percentile_within_surrogates": 0.01901901901901902,
+            "surrogate_max": 0.07473083424626403,
+            "surrogate_median": 0.023553432777137617,
+            "surrogate_min": 0.00945619149281296,
+            "surrogate_q1": 0.018614596055084864,
+            "surrogate_q3": 0.030355631977908915
+          },
+          "pe_4": {
+            "observed": 0.03672148089999128,
+            "observed_percentile_within_surrogates": 0.036036036036036036,
+            "surrogate_max": 0.10462854571372204,
+            "surrogate_median": 0.051757154396681604,
+            "surrogate_min": 0.024621120532414054,
+            "surrogate_q1": 0.04577434382057699,
+            "surrogate_q3": 0.05897956549229233
+          },
+          "pe_5": {
+            "observed": 0.13561774100559632,
+            "observed_percentile_within_surrogates": 0.1931931931931932,
+            "surrogate_max": 0.19005542519720076,
+            "surrogate_median": 0.1434955321797371,
+            "surrogate_min": 0.11828658480035548,
+            "surrogate_q1": 0.13724048999484717,
+            "surrogate_q3": 0.15088633625464143
+          }
+        },
+        "era": 1
+      },
+      {
+        "endpoints": {
+          "pe_3": {
+            "observed": 0.017597862591805513,
+            "observed_percentile_within_surrogates": 0.2062062062062062,
+            "surrogate_max": 0.0755074591119792,
+            "surrogate_median": 0.023973341343812127,
+            "surrogate_min": 0.007602826180666322,
+            "surrogate_q1": 0.018654930443101625,
+            "surrogate_q3": 0.030375822428458266
+          },
+          "pe_4": {
+            "observed": 0.03544620511599661,
+            "observed_percentile_within_surrogates": 0.016016016016016016,
+            "surrogate_max": 0.09196496269337051,
+            "surrogate_median": 0.050750511956534794,
+            "surrogate_min": 0.028761231085261296,
+            "surrogate_q1": 0.044989326085526304,
+            "surrogate_q3": 0.058331499722263924
+          },
+          "pe_5": {
+            "observed": 0.13288537000697576,
+            "observed_percentile_within_surrogates": 0.10810810810810811,
+            "surrogate_max": 0.17788900855920586,
+            "surrogate_median": 0.14317621035801564,
+            "surrogate_min": 0.11978884364438103,
+            "surrogate_q1": 0.13699950970439767,
+            "surrogate_q3": 0.1495045675558404
+          }
+        },
+        "era": 2
+      },
+      {
+        "endpoints": {
+          "pe_3": {
+            "observed": 0.018976911109432892,
+            "observed_percentile_within_surrogates": 0.2722722722722723,
+            "surrogate_max": 0.10578268118920076,
+            "surrogate_median": 0.02351964930586925,
+            "surrogate_min": 0.008993638338705368,
+            "surrogate_q1": 0.018492655779983158,
+            "surrogate_q3": 0.030260465189181796
+          },
+          "pe_4": {
+            "observed": 0.052293423647869375,
+            "observed_percentile_within_surrogates": 0.5375375375375375,
+            "surrogate_max": 0.12937073765453133,
+            "surrogate_median": 0.0515771454078211,
+            "surrogate_min": 0.027744146031132733,
+            "surrogate_q1": 0.04506566530313716,
+            "surrogate_q3": 0.0590767442644724
+          },
+          "pe_5": {
+            "observed": 0.13909323705957555,
+            "observed_percentile_within_surrogates": 0.3213213213213213,
+            "surrogate_max": 0.19302877648627093,
+            "surrogate_median": 0.14344835704744652,
+            "surrogate_min": 0.11919737513322859,
+            "surrogate_q1": 0.1371199998496222,
+            "surrogate_q3": 0.15033701635744146
+          }
+        },
+        "era": 3
+      },
+      {
+        "endpoints": {
+          "pe_3": {
+            "observed": 0.014943823602423634,
+            "observed_percentile_within_surrogates": 0.1021021021021021,
+            "surrogate_max": 0.08613467703511124,
+            "surrogate_median": 0.023350764860393336,
+            "surrogate_min": 0.007444247650212232,
+            "surrogate_q1": 0.01835997167247605,
+            "surrogate_q3": 0.030576123847246395
+          },
+          "pe_4": {
+            "observed": 0.04274590719233207,
+            "observed_percentile_within_surrogates": 0.15415415415415415,
+            "surrogate_max": 0.11044874884885236,
+            "surrogate_median": 0.05143370244373058,
+            "surrogate_min": 0.02840615914086997,
+            "surrogate_q1": 0.045362714401823934,
+            "surrogate_q3": 0.05916462417261914
+          },
+          "pe_5": {
+            "observed": 0.13352401365041877,
+            "observed_percentile_within_surrogates": 0.12712712712712712,
+            "surrogate_max": 0.17961292830195474,
+            "surrogate_median": 0.14356884719267127,
+            "surrogate_min": 0.11769511628920282,
+            "surrogate_q1": 0.13724048999484695,
+            "surrogate_q3": 0.15088633625464143
+          }
+        },
+        "era": 4
+      }
+    ],
+    "orders": [
+      3,
+      4,
+      5
+    ],
+    "signal_endpoint": null,
+    "window": 124
+  },
+  "eh10_variant_id": "EH10_PERMUTATION_ENTROPY_ORDINAL_B649_V1",
+  "joint_interpretation": {
+    "combined_effect_computed": false,
+    "eh01_and_eh10_are_separate_holm_families": true,
+    "what_is_not_supported": [
+      "predictive_advantage",
+      "allocation_benefit",
+      "prize_value_advantage",
+      "economic_optimality",
+      "combined_eh01_eh10_effect"
+    ],
+    "what_is_supported": [
+      "NONE_AT_THE_LOCKED_SIGNAL_THRESHOLD"
+    ]
+  },
+  "permutation_ledger": {
+    "era4_all_distinct": true,
+    "era4_ledger_digest_sha256": "94423febb85fc494b15c563a701db601fc2a87b40480cab2915f7246c4766222",
+    "era4_replicate_count": 999,
+    "global_all_distinct": true,
+    "global_ledger_digest_sha256": "1fd6fe54cf6f8a58cd3f351afc6bc31cbdaf9a432630d1ec9396bc7e25006b89",
+    "global_replicate_count": 999
+  },
+  "preregistration_hash_sha256": "f12ef1314e4fd6cadcd28154b332f04afa46bb9593a23733708540ae3302c8f7",
+  "runtime_seconds": {
+    "replicate_computation": 1240.5410179580213,
+    "total": 1244.4000798750203
+  },
+  "scope": {
+    "allocation_benefit": "NOT_TESTED",
+    "cohort_creation": "NO",
+    "economic_optimality": "NOT_TESTED",
+    "new_predictive_claim": "NO",
+    "oof_proxy_used": "NO",
+    "parameter_rescue_run": "NO",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_value_advantage": "NOT_TESTED",
+    "production_promotion": "NO",
+    "prospective_activation": "NO"
+  },
+  "task_id": "B649_TRACK_B_EH01_EH10_ORDINAL_TEMPORAL_LOCK_EXECUTE_R1",
+  "worker_count": 9
+}

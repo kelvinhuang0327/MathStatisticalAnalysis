@@ -1,0 +1,18 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "STRATEGY_MATRIX_PHASE5_LOW_OVERLAP_GEOMETRY_MECHANISM_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "preregistration_hash_sha256": "8400019909b7361ad65e172449588802498fdf5d424d37a87adc030f7cde34be",
+      "record_state": "SEALED",
+      "result_hash_sha256": "a98b5e9244b0c28456793df508857f19420434d7e8b2de3c1a0243ef2409204b",
+      "sealed_at": "2026-08-16T03:30:33.091032+00:00",
+      "sequence": 1,
+      "study_id": "STRATEGY_MATRIX_PHASE5_LOW_OVERLAP_GEOMETRY_MECHANISM_V1",
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE5_LOW_OVERLAP_GEOMETRY_MECHANISM_LOCK_EXECUTE_R1"
+    }
+  ]
+}

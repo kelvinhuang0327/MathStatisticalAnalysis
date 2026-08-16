@@ -1,0 +1,5076 @@
+{
+  "canonical_input": {
+    "commit": "52b8353c932589c3f3ea8ff61fe7982c667cbbb0",
+    "input_blobs": {
+      "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-report.md": "60289b021f7859f0b92ccf42f38add16b9a31158",
+      "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json": "169df1649ff0b8247ef5c779e8104079ae574cf4",
+      "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-report.md": "ca7754640ecd41f70351330382106e28bcd4fa53",
+      "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-result.json": "f75ce278096d120ab368a058dba0f6262e9e8041",
+      "docs/research/matrix-native-results/diversification-coverage-t539-v1-report.md": "30e92c82033c67cabc92f2ac17131c328106d739",
+      "docs/research/matrix-native-results/diversification-coverage-t539-v1-result.json": "013f4fbc1de6d62966b4c09e6f4bca5f5ae8a032",
+      "docs/research/matrix-native-results/greedy-min-overlap-constructor-p638-zone1-v1-report.md": "958a1a71b7169df352dd6a71ec196d63df7a90aa",
+      "docs/research/matrix-native-results/greedy-min-overlap-constructor-p638-zone1-v1-result.json": "7665d8bd84bf0c5d9a9004afb29e61ff8d421ff5",
+      "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-report.md": "c542920fc8bc900dcdb8e148cde772d22b80a731",
+      "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-result.json": "346544f3a644a3083ef9863bd7f35a345a50f531",
+      "docs/research/matrix-native-results/strategy-matrix-phase5-non-sidon-low-overlap-cross-lottery-synthesis-v1-report.md": "2720632e56c56245a0ca18566aafda26d9d8b533",
+      "docs/research/matrix-native-results/strategy-matrix-phase5-non-sidon-low-overlap-cross-lottery-synthesis-v1-result.json": "d9e5d86582e71ba86f8e48d091f31eaf824bf224",
+      "tools/generate_strategy_matrix_phase5_non_sidon_low_overlap_synthesis.py": "5d0ad0728486ee0030510158e9262d1dc3ee6763"
+    },
+    "locked_preregistration_path": "docs/research/matrix-native-results/low-overlap-geometry-mechanism-v1-preregistration.md",
+    "locked_preregistration_sha256": "8400019909b7361ad65e172449588802498fdf5d424d37a87adc030f7cde34be",
+    "repository": "kelvinhuang0327/MathStatisticalAnalysis",
+    "tree": "69e81767f701ea4f29f86bb0af34262191950c70"
+  },
+  "classifications": {
+    "aggregate_mechanism_descriptor": "MIXED_BY_LOTTERY_OR_K",
+    "global_optimum_status": "UNKNOWN",
+    "mechanism_descriptor_counts": {
+      "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT": 5,
+      "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL": 10
+    },
+    "pairwise_collision_reduction": {
+      "failing_or_equal_cells": [],
+      "value": "PAIRWISE_COLLISION_REDUCTION_REPLICATED"
+    },
+    "redundancy_reduction": {
+      "failing_or_equal_cells": [],
+      "value": "REDUNDANCY_REDUCTION_REPLICATED"
+    }
+  },
+  "evidence_type": "EXACT_COMBINATORIAL",
+  "final_classification": "REDUNDANCY_REDUCTION_REPLICATED__PAIRWISE_COLLISION_REDUCTION_REPLICATED__AGGREGATE_DESCRIPTOR_MIXED_BY_LOTTERY_OR_K",
+  "ladder": [
+    1,
+    3,
+    5,
+    10,
+    15,
+    20
+  ],
+  "metric_semantics": {
+    "GAIN_OVER_RANDOM_RATIO_TO_SIDON": "(Q_B-Q_R)/(Q_S-Q_R)",
+    "RELATIVE_COVERAGE_DELTA_VS_SIDON": "(Q_B-Q_S)/Q_S",
+    "RELATIVE_LIFT_VS_RANDOM": "(Q_B-Q_R)/Q_R",
+    "sealed_REL_GAIN_OVER_SIDON_maps_to": "GAIN_OVER_RANDOM_RATIO_TO_SIDON"
+  },
+  "minimum_matches": 3,
+  "peak_memory_bytes": 24788992,
+  "per_lottery": {
+    "BIG_LOTTO": {
+      "draw_size": 6,
+      "lottery_type": "BIG_LOTTO",
+      "per_k": {
+        "1": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 260624
+              },
+              "covered": 260624,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {},
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.3278036409022247,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "258/2401",
+                  "numerator": 258
+                },
+                "ticket_pair_intersection_histogram": {},
+                "unique_number_coverage": 6
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 260624,
+              "multiplicity_counts": {
+                "0": 13723192,
+                "1": 260624
+              },
+              "q": {
+                "denominator": 249711,
+                "exact": "4654/249711",
+                "numerator": 4654
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 1,
+              "total_hit_incidence": 260624
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 260624
+              },
+              "covered": 260624,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {},
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.3278036409022247,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "258/2401",
+                  "numerator": 258
+                },
+                "ticket_pair_intersection_histogram": {},
+                "unique_number_coverage": 6
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 260624,
+              "multiplicity_counts": {
+                "0": 13723192,
+                "1": 260624
+              },
+              "q": {
+                "denominator": 249711,
+                "exact": "4654/249711",
+                "numerator": 4654
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 1,
+              "total_hit_incidence": 260624
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0
+            },
+            "delta_covered": 0,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": 0,
+            "gain_over_random_ratio_to_sidon": "NOT_APPLICABLE_K1",
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {},
+            "mechanism_descriptor": "NOT_APPLICABLE_K1",
+            "pairwise_absolute_contribution_share": "NOT_APPLICABLE_K1",
+            "pairwise_component": 0,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "relative_lift_vs_random": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            }
+          }
+        },
+        "10": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 2606240,
+                "10": 0,
+                "2": 66100,
+                "3": 320,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 2540460,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 45,
+                  "exact": "13/45",
+                  "numerator": 13
+                },
+                "overlap_profile": {
+                  "0": 32,
+                  "1": 13
+                },
+                "per_number_reuse_vector": [
+                  3,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "reuse_dispersion_float": 0.5056943548311783,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "614/2401",
+                  "numerator": 614
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 32,
+                  "1": 13
+                },
+                "unique_number_coverage": 48
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 2540460,
+              "multiplicity_counts": {
+                "0": 11443356,
+                "1": 2475000,
+                "10": 0,
+                "2": 65140,
+                "3": 320,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 1165318,
+                "exact": "211705/1165318",
+                "numerator": 211705
+              },
+              "redundancy": 65780,
+              "s2_geometry": 66100,
+              "s2_multiplicity": 66100,
+              "ticket_count": 10,
+              "total_hit_incidence": 2606240
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 2606240,
+                "10": 0,
+                "2": 184500,
+                "3": 6528,
+                "4": 93,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 2428175,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 45
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  3,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 1.249739664685295,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "3750/2401",
+                  "numerator": 3750
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 45
+                },
+                "unique_number_coverage": 30
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 2428175,
+              "multiplicity_counts": {
+                "0": 11555641,
+                "1": 2256452,
+                "10": 0,
+                "2": 165474,
+                "3": 6156,
+                "4": 93,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 13983816,
+                "exact": "2428175/13983816",
+                "numerator": 2428175
+              },
+              "redundancy": 178065,
+              "s2_geometry": 184500,
+              "s2_multiplicity": 184500,
+              "ticket_count": 10,
+              "total_hit_incidence": 2606240
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "2": -118400,
+              "3": -6208,
+              "4": -93,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 112285,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -112285,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 795775459740937667601287211588263223726346048143085357427,
+              "exact": "3774245363262334943988312630522436004507246645745376019426/795775459740937667601287211588263223726346048143085357427",
+              "numerator": 3774245363262334943988312630522436004507246645745376019426
+            },
+            "higher_order_residual": -6115,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "3": -6208,
+              "4": 93,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 124701,
+              "exact": "118400/124701",
+              "numerator": 118400
+            },
+            "pairwise_component": 118400,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 485635,
+              "exact": "22457/485635",
+              "numerator": 22457
+            },
+            "relative_lift_vs_random": {
+              "denominator": 31806975599973538965954735325587998645841165527751684503009,
+              "exact": "1887122681631167471994156315261218002253623322872688009713/31806975599973538965954735325587998645841165527751684503009",
+              "numerator": 1887122681631167471994156315261218002253623322872688009713
+            }
+          }
+        },
+        "15": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 3909360,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 271400,
+                "3": 7040,
+                "4": 30,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 3644970,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 105,
+                  "exact": "62/105",
+                  "numerator": 62
+                },
+                "overlap_profile": {
+                  "0": 43,
+                  "1": 62
+                },
+                "per_number_reuse_vector": [
+                  7,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "reuse_dispersion_float": 0.996871407495495,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "2386/2401",
+                  "numerator": 2386
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 43,
+                  "1": 62
+                },
+                "unique_number_coverage": 48
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 3644970,
+              "multiplicity_counts": {
+                "0": 10338846,
+                "1": 3387560,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 250460,
+                "3": 6920,
+                "4": 30,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 332948,
+                "exact": "86785/332948",
+                "numerator": 86785
+              },
+              "redundancy": 264390,
+              "s2_geometry": 271400,
+              "s2_multiplicity": 271400,
+              "ticket_count": 15,
+              "total_hit_incidence": 3909360
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 3909360,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 408300,
+                "3": 20288,
+                "4": 390,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 3520958,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 35,
+                  "exact": "33/35",
+                  "numerator": 33
+                },
+                "overlap_profile": {
+                  "0": 6,
+                  "1": 99
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  5,
+                  5,
+                  5,
+                  4,
+                  3,
+                  3,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 1.5823895489779698,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "6012/2401",
+                  "numerator": 6012
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 6,
+                  "1": 99
+                },
+                "unique_number_coverage": 35
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 3520958,
+              "multiplicity_counts": {
+                "0": 10462858,
+                "1": 3152064,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 349776,
+                "3": 18728,
+                "4": 390,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 21252,
+                "exact": "5351/21252",
+                "numerator": 5351
+              },
+              "redundancy": 388402,
+              "s2_geometry": 408300,
+              "s2_multiplicity": 408300,
+              "ticket_count": 15,
+              "total_hit_incidence": 3909360
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "2": -136900,
+              "3": -13248,
+              "4": -360,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 124012,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -124012,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 1576470049772433297429553285186840954116864442132071372833343277994017405204453016,
+              "exact": "3942079596439318868059394961371816919316625267161238325701904244576992521622323355/1576470049772433297429553285186840954116864442132071372833343277994017405204453016",
+              "numerator": 3942079596439318868059394961371816919316625267161238325701904244576992521622323355
+            },
+            "higher_order_residual": -12888,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "3": -13248,
+              "4": 360,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 37627,
+              "exact": "34225/37627",
+              "numerator": 34225
+            },
+            "pairwise_component": 136900,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 251497,
+              "exact": "8858/251497",
+              "numerator": 8858
+            },
+            "relative_lift_vs_random": {
+              "denominator": 8745079136858546040612061549413831009983849822893873905697700348554940719175797273,
+              "exact": "525610612858575849074585994849575589242216702288165110093587232610265669549643114/8745079136858546040612061549413831009983849822893873905697700348554940719175797273",
+              "numerator": 525610612858575849074585994849575589242216702288165110093587232610265669549643114
+            }
+          }
+        },
+        "20": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 5212480,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 542200,
+                "20": 0,
+                "3": 19584,
+                "4": 201,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 4689663,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 95,
+                  "exact": "63/95",
+                  "numerator": 63
+                },
+                "overlap_profile": {
+                  "0": 64,
+                  "1": 126
+                },
+                "per_number_reuse_vector": [
+                  7,
+                  7,
+                  1,
+                  1,
+                  1,
+                  1,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0
+                ],
+                "reuse_dispersion_float": 1.26267006516392,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "3828/2401",
+                  "numerator": 3828
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 64,
+                  "1": 126
+                },
+                "unique_number_coverage": 48
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 4689663,
+              "multiplicity_counts": {
+                "0": 9294153,
+                "1": 4186028,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 484654,
+                "20": 0,
+                "3": 18780,
+                "4": 201,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 423752,
+                "exact": "142111/423752",
+                "numerator": 142111
+              },
+              "redundancy": 522817,
+              "s2_geometry": 542200,
+              "s2_multiplicity": 542200,
+              "ticket_count": 20,
+              "total_hit_incidence": 5212480
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 5212480,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 679100,
+                "20": 0,
+                "3": 38400,
+                "4": 794,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 4570986,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 190,
+                  "exact": "163/190",
+                  "numerator": 163
+                },
+                "overlap_profile": {
+                  "0": 27,
+                  "1": 163
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  4,
+                  4,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 1.761970424012194,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "7454/2401",
+                  "numerator": 7454
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 27,
+                  "1": 163
+                },
+                "unique_number_coverage": 40
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 4570986,
+              "multiplicity_counts": {
+                "0": 9412830,
+                "1": 3966304,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 568664,
+                "20": 0,
+                "3": 35224,
+                "4": 794,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 332948,
+                "exact": "108833/332948",
+                "numerator": 108833
+              },
+              "redundancy": 641494,
+              "s2_geometry": 679100,
+              "s2_multiplicity": 679100,
+              "ticket_count": 20,
+              "total_hit_incidence": 5212480
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "2": -136900,
+              "20": 0,
+              "3": -18816,
+              "4": -593,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 118677,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -118677,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 13040908662848349690573775947967810133154155135533146574820392659353559338829880546268081491572080331439996467312,
+              "exact": "21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031/13040908662848349690573775947967810133154155135533146574820392659353559338829880546268081491572080331439996467312",
+              "numerator": 21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031
+            },
+            "higher_order_residual": -18223,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "3": -18816,
+              "4": 593,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 156309,
+              "exact": "136900/156309",
+              "numerator": 136900
+            },
+            "pairwise_component": 136900,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1523662,
+              "exact": "39559/1523662",
+              "numerator": 39559
+            },
+            "relative_lift_vs_random": {
+              "denominator": 307591954916781344412997728743963427865125917646684308552103531045393842189207075838911612407988961728870858021230,
+              "exact": "21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031/307591954916781344412997728743963427865125917646684308552103531045393842189207075838911612407988961728870858021230",
+              "numerator": 21365534104938899345971879434245021118250561949637416621173181859212912959939820912071864424383120616531990028031
+            }
+          }
+        },
+        "3": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 781872,
+                "2": 1200,
+                "3": 0
+              },
+              "covered": 780672,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {
+                  "0": 3
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.482082114735417,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "558/2401",
+                  "numerator": 558
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 3
+                },
+                "unique_number_coverage": 18
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 780672,
+              "multiplicity_counts": {
+                "0": 13203144,
+                "1": 779472,
+                "2": 1200,
+                "3": 0
+              },
+              "q": {
+                "denominator": 582659,
+                "exact": "32528/582659",
+                "numerator": 32528
+              },
+              "redundancy": 1200,
+              "s2_geometry": 1200,
+              "s2_multiplicity": 1200,
+              "ticket_count": 3,
+              "total_hit_incidence": 781872
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 781872,
+                "2": 12300,
+                "3": 64
+              },
+              "covered": 769636,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 3
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.5956946742582214,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "852/2401",
+                  "numerator": 852
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 3
+                },
+                "unique_number_coverage": 15
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 769636,
+              "multiplicity_counts": {
+                "0": 13214180,
+                "1": 757464,
+                "2": 12108,
+                "3": 64
+              },
+              "q": {
+                "denominator": 499422,
+                "exact": "27487/499422",
+                "numerator": 27487
+              },
+              "redundancy": 12236,
+              "s2_geometry": 12300,
+              "s2_multiplicity": 12300,
+              "ticket_count": 3,
+              "total_hit_incidence": 781872
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "2": -11100,
+              "3": -64
+            },
+            "delta_covered": 11036,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -11036,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 19638582887483,
+              "exact": "116152779762324/19638582887483",
+              "numerator": 116152779762324
+            },
+            "higher_order_residual": -64,
+            "higher_order_signed_terms": {
+              "3": -64
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 2791,
+              "exact": "2775/2791",
+              "numerator": 2775
+            },
+            "pairwise_component": 11100,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 192409,
+              "exact": "2759/192409",
+              "numerator": 2759
+            },
+            "relative_lift_vs_random": {
+              "denominator": 559261122879809,
+              "exact": "9679398313527/559261122879809",
+              "numerator": 9679398313527
+            }
+          }
+        },
+        "5": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 1303120,
+                "2": 4000,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "covered": 1299120,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {
+                  "0": 10
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.4872382198495233,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "570/2401",
+                  "numerator": 570
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 10
+                },
+                "unique_number_coverage": 30
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 1299120,
+              "multiplicity_counts": {
+                "0": 12684696,
+                "1": 1295120,
+                "2": 4000,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "q": {
+                "denominator": 582659,
+                "exact": "54130/582659",
+                "numerator": 54130
+              },
+              "redundancy": 4000,
+              "s2_geometry": 4000,
+              "s2_multiplicity": 4000,
+              "ticket_count": 5,
+              "total_hit_incidence": 1303120
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 13983816,
+                "1": 1303120,
+                "2": 41000,
+                "3": 512,
+                "4": 1,
+                "5": 0
+              },
+              "covered": 1262631,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 10
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  1,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.8034701912256951,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 2401,
+                  "exact": "1550/2401",
+                  "numerator": 1550
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 10
+                },
+                "unique_number_coverage": 22
+              },
+              "hit_event_size_per_ticket": 260624,
+              "inclusion_exclusion_covered": 1262631,
+              "multiplicity_counts": {
+                "0": 12721185,
+                "1": 1222652,
+                "2": 39470,
+                "3": 508,
+                "4": 1,
+                "5": 0
+              },
+              "q": {
+                "denominator": 202664,
+                "exact": "18299/202664",
+                "numerator": 18299
+              },
+              "redundancy": 40489,
+              "s2_geometry": 41000,
+              "s2_multiplicity": 41000,
+              "ticket_count": 5,
+              "total_hit_incidence": 1303120
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "2": -37000,
+              "3": -512,
+              "4": -1,
+              "5": 0
+            },
+            "delta_covered": 36489,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -36489,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 455266670373322911314937703,
+              "exact": "2766420702163067577174609280/455266670373322911314937703",
+              "numerator": 2766420702163067577174609280
+            },
+            "higher_order_residual": -511,
+            "higher_order_signed_terms": {
+              "3": -512,
+              "4": 1,
+              "5": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 37513,
+              "exact": "37000/37513",
+              "numerator": 37000
+            },
+            "pairwise_component": 37000,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 420877,
+              "exact": "12163/420877",
+              "numerator": 12163
+            },
+            "relative_lift_vs_random": {
+              "denominator": 993971642405062113749380711,
+              "exact": "34580258777038344714682616/993971642405062113749380711",
+              "numerator": 34580258777038344714682616
+            }
+          }
+        }
+      },
+      "pool_size": 49,
+      "portfolio_sha256": {
+        "ARM_B": "25e2ea8dddecf5bd731d1e7d311d3ff1eda3fea2ad91ad1c898790c2f1d912c3",
+        "SIDON": "f39a98ef0c982ec00fc069d9a2160f4f508404eae7ef4669e74e3945263f092a"
+      },
+      "source_matrix_ids": {
+        "arm_b": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1",
+        "sidon": "DIVERSIFICATION_CONSTRUCTOR_FRONTIER_B649_V1"
+      },
+      "source_result_paths": {
+        "arm_b": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json",
+        "sidon": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json"
+      },
+      "total_winning_combinations": 13983816,
+      "zone": "NOT_APPLICABLE"
+    },
+    "DAILY_539": {
+      "draw_size": 5,
+      "lottery_type": "DAILY_539",
+      "per_k": {
+        "1": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 5781
+              },
+              "covered": 5781,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {},
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.3343180720616743,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "170/1521",
+                  "numerator": 170
+                },
+                "ticket_pair_intersection_histogram": {},
+                "unique_number_coverage": 5
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 5781,
+              "multiplicity_counts": {
+                "0": 569976,
+                "1": 5781
+              },
+              "q": {
+                "denominator": 191919,
+                "exact": "1927/191919",
+                "numerator": 1927
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 1,
+              "total_hit_incidence": 5781
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 5781
+              },
+              "covered": 5781,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {},
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.3343180720616743,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "170/1521",
+                  "numerator": 170
+                },
+                "ticket_pair_intersection_histogram": {},
+                "unique_number_coverage": 5
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 5781,
+              "multiplicity_counts": {
+                "0": 569976,
+                "1": 5781
+              },
+              "q": {
+                "denominator": 191919,
+                "exact": "1927/191919",
+                "numerator": 1927
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 1,
+              "total_hit_incidence": 5781
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0
+            },
+            "delta_covered": 0,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": 0,
+            "gain_over_random_ratio_to_sidon": "NOT_APPLICABLE_K1",
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {},
+            "mechanism_descriptor": "NOT_APPLICABLE_K1",
+            "pairwise_absolute_contribution_share": "NOT_APPLICABLE_K1",
+            "pairwise_component": 0,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "relative_lift_vs_random": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            }
+          }
+        },
+        "10": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 57810,
+                "10": 0,
+                "2": 648,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 57162,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 5,
+                  "exact": "2/5",
+                  "numerator": 2
+                },
+                "overlap_profile": {
+                  "0": 27,
+                  "1": 18
+                },
+                "per_number_reuse_vector": [
+                  4,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.749314830574485,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "854/1521",
+                  "numerator": 854
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 27,
+                  "1": 18
+                },
+                "unique_number_coverage": 35
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 57162,
+              "multiplicity_counts": {
+                "0": 518595,
+                "1": 56514,
+                "10": 0,
+                "2": 648,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 27417,
+                "exact": "2722/27417",
+                "numerator": 2722
+              },
+              "redundancy": 648,
+              "s2_geometry": 648,
+              "s2_multiplicity": 648,
+              "ticket_count": 10,
+              "total_hit_incidence": 57810
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 57810,
+                "10": 0,
+                "2": 1548,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 56262,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 45,
+                  "exact": "43/45",
+                  "numerator": 43
+                },
+                "overlap_profile": {
+                  "0": 2,
+                  "1": 43
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  3,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 1.357764337935767,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "2804/1521",
+                  "numerator": 2804
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 2,
+                  "1": 43
+                },
+                "unique_number_coverage": 22
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 56262,
+              "multiplicity_counts": {
+                "0": 519495,
+                "1": 54714,
+                "10": 0,
+                "2": 1548,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 191919,
+                "exact": "18754/191919",
+                "numerator": 18754
+              },
+              "redundancy": 1548,
+              "s2_geometry": 1548,
+              "s2_multiplicity": 1548,
+              "ticket_count": 10,
+              "total_hit_incidence": 57810
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "2": -900,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 900,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -900,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 344235447955757644439082045827088768061097,
+              "exact": "655635413297479404735427419478741571765597/344235447955757644439082045827088768061097",
+              "numerator": 655635413297479404735427419478741571765597
+            },
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 1,
+              "exact": "1/1",
+              "numerator": 1
+            },
+            "pairwise_component": 900,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 9377,
+              "exact": "150/9377",
+              "numerator": 150
+            },
+            "relative_lift_vs_random": {
+              "denominator": 2731773483634248856793303106530938119169459,
+              "exact": "93662201899639914962203917068391653109371/2731773483634248856793303106530938119169459",
+              "numerator": 93662201899639914962203917068391653109371
+            }
+          }
+        },
+        "15": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 86715,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 2196,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 84519,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 105,
+                  "exact": "61/105",
+                  "numerator": 61
+                },
+                "overlap_profile": {
+                  "0": 44,
+                  "1": 61
+                },
+                "per_number_reuse_vector": [
+                  8,
+                  2,
+                  1,
+                  1,
+                  1,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "reuse_dispersion_float": 1.1632098689450006,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 507,
+                  "exact": "686/507",
+                  "numerator": 686
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 44,
+                  "1": 61
+                },
+                "unique_number_coverage": 39
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 84519,
+              "multiplicity_counts": {
+                "0": 491238,
+                "1": 82323,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 2196,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 63973,
+                "exact": "9391/63973",
+                "numerator": 9391
+              },
+              "redundancy": 2196,
+              "s2_geometry": 2196,
+              "s2_multiplicity": 2196,
+              "ticket_count": 15,
+              "total_hit_incidence": 86715
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 86715,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 3240,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 83475,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 7,
+                  "exact": "6/7",
+                  "numerator": 6
+                },
+                "overlap_profile": {
+                  "0": 15,
+                  "1": 90
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  5,
+                  5,
+                  5,
+                  4,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 1.6853001769389726,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 169,
+                  "exact": "480/169",
+                  "numerator": 480
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 15,
+                  "1": 90
+                },
+                "unique_number_coverage": 27
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 83475,
+              "multiplicity_counts": {
+                "0": 492282,
+                "1": 80235,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 3240,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 9139,
+                "exact": "1325/9139",
+                "numerator": 1325
+              },
+              "redundancy": 3240,
+              "s2_geometry": 3240,
+              "s2_multiplicity": 3240,
+              "ticket_count": 15,
+              "total_hit_incidence": 86715
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "2": -1044,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 1044,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -1044,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 2699482638089503505887193092067020869660293311022391516527778307,
+              "exact": "3784902480287348837656271660653663343721493897125390500323384867/2699482638089503505887193092067020869660293311022391516527778307",
+              "numerator": 3784902480287348837656271660653663343721493897125390500323384867
+            },
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 1,
+              "exact": "1/1",
+              "numerator": 1
+            },
+            "pairwise_component": 1044,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 9275,
+              "exact": "116/9275",
+              "numerator": 116
+            },
+            "relative_lift_vs_random": {
+              "denominator": 84087319399712353840304218318632194189974494931264811713681280693,
+              "exact": "3784902480287348837656271660653663343721493897125390500323384867/84087319399712353840304218318632194189974494931264811713681280693",
+              "numerator": 3784902480287348837656271660653663343721493897125390500323384867
+            }
+          }
+        },
+        "20": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 115620,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 4212,
+                "20": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 111408,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 190,
+                  "exact": "117/190",
+                  "numerator": 117
+                },
+                "overlap_profile": {
+                  "0": 73,
+                  "1": 117
+                },
+                "per_number_reuse_vector": [
+                  8,
+                  7,
+                  1,
+                  1,
+                  1,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2,
+                  3,
+                  3,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  2,
+                  1,
+                  2,
+                  1
+                ],
+                "reuse_dispersion_float": 1.410489491228212,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "3026/1521",
+                  "numerator": 3026
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 73,
+                  "1": 117
+                },
+                "unique_number_coverage": 39
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 111408,
+              "multiplicity_counts": {
+                "0": 464349,
+                "1": 107196,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 4212,
+                "20": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 191919,
+                "exact": "37136/191919",
+                "numerator": 37136
+              },
+              "redundancy": 4212,
+              "s2_geometry": 4212,
+              "s2_multiplicity": 4212,
+              "ticket_count": 20,
+              "total_hit_incidence": 115620
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 115620,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 5040,
+                "20": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 110580,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 19,
+                  "exact": "14/19",
+                  "numerator": 14
+                },
+                "overlap_profile": {
+                  "0": 50,
+                  "1": 140
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  4,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 1.7801594828420289,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "4820/1521",
+                  "numerator": 4820
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 50,
+                  "1": 140
+                },
+                "unique_number_coverage": 32
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 110580,
+              "multiplicity_counts": {
+                "0": 465177,
+                "1": 105540,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 5040,
+                "20": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 10101,
+                "exact": "1940/10101",
+                "numerator": 1940
+              },
+              "redundancy": 5040,
+              "s2_geometry": 5040,
+              "s2_multiplicity": 5040,
+              "ticket_count": 20,
+              "total_hit_incidence": 115620
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "2": -828,
+              "20": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 828,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -828,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 7936665663334624487805755106998757032043297207603505890465577337229935222707753273,
+              "exact": "9164976506672862384010629524136847629878758229152090749769669793255596167763507993/7936665663334624487805755106998757032043297207603505890465577337229935222707753273",
+              "numerator": 9164976506672862384010629524136847629878758229152090749769669793255596167763507993
+            },
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "3": 0,
+              "4": 0,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 1,
+              "exact": "1/1",
+              "numerator": 1
+            },
+            "pairwise_component": 828,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 9215,
+              "exact": "69/9215",
+              "numerator": 69
+            },
+            "relative_lift_vs_random": {
+              "denominator": 156105137544808306143033632631081023533953417481819819884711407913153624323506445927,
+              "exact": "9164976506672862384010629524136847629878758229152090749769669793255596167763507993/156105137544808306143033632631081023533953417481819819884711407913153624323506445927",
+              "numerator": 9164976506672862384010629524136847629878758229152090749769669793255596167763507993
+            }
+          }
+        },
+        "3": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 17343,
+                "2": 0,
+                "3": 0
+              },
+              "covered": 17343,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {
+                  "0": 3
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.4865042554105199,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 169,
+                  "exact": "40/169",
+                  "numerator": 40
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 3
+                },
+                "unique_number_coverage": 15
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 17343,
+              "multiplicity_counts": {
+                "0": 558414,
+                "1": 17343,
+                "2": 0,
+                "3": 0
+              },
+              "q": {
+                "denominator": 63973,
+                "exact": "1927/63973",
+                "numerator": 1927
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 3,
+              "total_hit_incidence": 17343
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 17343,
+                "2": 108,
+                "3": 0
+              },
+              "covered": 17235,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 3
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.6249260311258431,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 169,
+                  "exact": "66/169",
+                  "numerator": 66
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 3
+                },
+                "unique_number_coverage": 12
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 17235,
+              "multiplicity_counts": {
+                "0": 558522,
+                "1": 17127,
+                "2": 108,
+                "3": 0
+              },
+              "q": {
+                "denominator": 63973,
+                "exact": "1915/63973",
+                "numerator": 1915
+              },
+              "redundancy": 108,
+              "s2_geometry": 108,
+              "s2_multiplicity": 108,
+              "ticket_count": 3,
+              "total_hit_incidence": 17343
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "2": -108,
+              "3": 0
+            },
+            "delta_covered": 108,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -108,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 10647376631,
+              "exact": "28197079937/10647376631",
+              "numerator": 28197079937
+            },
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {
+              "3": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 1,
+              "exact": "1/1",
+              "numerator": 1
+            },
+            "pairwise_component": 108,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1915,
+              "exact": "12/1915",
+              "numerator": 12
+            },
+            "relative_lift_vs_random": {
+              "denominator": 2895685289,
+              "exact": "29265262/2895685289",
+              "numerator": 29265262
+            }
+          }
+        },
+        "5": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 28905,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "covered": 28905,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {
+                  "0": 10
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.4796996649710181,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "350/1521",
+                  "numerator": 350
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 10
+                },
+                "unique_number_coverage": 25
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 28905,
+              "multiplicity_counts": {
+                "0": 546852,
+                "1": 28905,
+                "2": 0,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "q": {
+                "denominator": 191919,
+                "exact": "9635/191919",
+                "numerator": 9635
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 5,
+              "total_hit_incidence": 28905
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 575757,
+                "1": 28905,
+                "2": 360,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "covered": 28545,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 10
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  1,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.8619351955882877,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 1521,
+                  "exact": "1130/1521",
+                  "numerator": 1130
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 10
+                },
+                "unique_number_coverage": 17
+              },
+              "hit_event_size_per_ticket": 5781,
+              "inclusion_exclusion_covered": 28545,
+              "multiplicity_counts": {
+                "0": 547212,
+                "1": 28185,
+                "2": 360,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "q": {
+                "denominator": 191919,
+                "exact": "9515/191919",
+                "numerator": 9515
+              },
+              "redundancy": 360,
+              "s2_geometry": 360,
+              "s2_multiplicity": 360,
+              "ticket_count": 5,
+              "total_hit_incidence": 28905
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "2": -360,
+              "3": 0,
+              "4": 0,
+              "5": 0
+            },
+            "delta_covered": 360,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -360,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 321040405307112270457,
+              "exact": "859705949405087277047/321040405307112270457",
+              "numerator": 859705949405087277047
+            },
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {
+              "3": 0,
+              "4": 0,
+              "5": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 1,
+              "exact": "1/1",
+              "numerator": 1
+            },
+            "pairwise_component": 360,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1903,
+              "exact": "24/1903",
+              "numerator": 24
+            },
+            "relative_lift_vs_random": {
+              "denominator": 263979128357829720563,
+              "exact": "5353643691157782732/263979128357829720563",
+              "numerator": 5353643691157782732
+            }
+          }
+        }
+      },
+      "pool_size": 39,
+      "portfolio_sha256": {
+        "ARM_B": "2b23e934c207a5c5f46060bea8ccce7d32436e5e8f09024634cc19ddc68e4eaf",
+        "SIDON": "31c01576e23ee36d9e8d2bb6174a3be2b2a4c2db78267fc4eaea22079517c038"
+      },
+      "source_matrix_ids": {
+        "arm_b": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_T539_V1",
+        "sidon": "DIVERSIFICATION_COVERAGE_T539_V1"
+      },
+      "source_result_paths": {
+        "arm_b": "docs/research/matrix-native-results/greedy-min-overlap-constructor-t539-v1-result.json",
+        "sidon": "docs/research/matrix-native-results/diversification-coverage-t539-v1-result.json"
+      },
+      "total_winning_combinations": 575757,
+      "zone": "NOT_APPLICABLE"
+    },
+    "POWER_LOTTO_zone1": {
+      "draw_size": 6,
+      "lottery_type": "POWER_LOTTO",
+      "per_k": {
+        "1": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 106833
+              },
+              "covered": 106833,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {},
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.3646422752776584,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "48/361",
+                  "numerator": 48
+                },
+                "ticket_pair_intersection_histogram": {},
+                "unique_number_coverage": 6
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 106833,
+              "multiplicity_counts": {
+                "0": 2653848,
+                "1": 106833
+              },
+              "q": {
+                "denominator": 920227,
+                "exact": "35611/920227",
+                "numerator": 35611
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 1,
+              "total_hit_incidence": 106833
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 106833
+              },
+              "covered": 106833,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {},
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.3646422752776584,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "48/361",
+                  "numerator": 48
+                },
+                "ticket_pair_intersection_histogram": {},
+                "unique_number_coverage": 6
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 106833,
+              "multiplicity_counts": {
+                "0": 2653848,
+                "1": 106833
+              },
+              "q": {
+                "denominator": 920227,
+                "exact": "35611/920227",
+                "numerator": 35611
+              },
+              "redundancy": 0,
+              "s2_geometry": 0,
+              "s2_multiplicity": 0,
+              "ticket_count": 1,
+              "total_hit_incidence": 106833
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0
+            },
+            "delta_covered": 0,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": 0,
+            "gain_over_random_ratio_to_sidon": "NOT_APPLICABLE_K1",
+            "higher_order_residual": 0,
+            "higher_order_signed_terms": {},
+            "mechanism_descriptor": "NOT_APPLICABLE_K1",
+            "pairwise_absolute_contribution_share": "NOT_APPLICABLE_K1",
+            "pairwise_component": 0,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "relative_lift_vs_random": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            }
+          }
+        },
+        "10": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 1068330,
+                "10": 0,
+                "2": 96000,
+                "3": 1920,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 974250,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 3,
+                  "exact": "2/3",
+                  "numerator": 2
+                },
+                "overlap_profile": {
+                  "0": 15,
+                  "1": 30
+                },
+                "per_number_reuse_vector": [
+                  5,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.8153649149910351,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "240/361",
+                  "numerator": 240
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 15,
+                  "1": 30
+                },
+                "unique_number_coverage": 36
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 974250,
+              "multiplicity_counts": {
+                "0": 1786431,
+                "1": 882090,
+                "10": 0,
+                "2": 90240,
+                "3": 1920,
+                "4": 0,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 920227,
+                "exact": "324750/920227",
+                "numerator": 324750
+              },
+              "redundancy": 94080,
+              "s2_geometry": 96000,
+              "s2_multiplicity": 96000,
+              "ticket_count": 10,
+              "total_hit_incidence": 1068330
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 1068330,
+                "10": 0,
+                "2": 122000,
+                "3": 3968,
+                "4": 17,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 950281,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 9,
+                  "exact": "8/9",
+                  "numerator": 8
+                },
+                "overlap_profile": {
+                  "0": 5,
+                  "1": 40
+                },
+                "per_number_reuse_vector": [
+                  2,
+                  3,
+                  2,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  3,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "reuse_dispersion_float": 1.0913916501751433,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "430/361",
+                  "numerator": 430
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 5,
+                  "1": 40
+                },
+                "unique_number_coverage": 35
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 950281,
+              "multiplicity_counts": {
+                "0": 1810400,
+                "1": 836166,
+                "10": 0,
+                "2": 110198,
+                "3": 3900,
+                "4": 17,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 2760681,
+                "exact": "950281/2760681",
+                "numerator": 950281
+              },
+              "redundancy": 118049,
+              "s2_geometry": 122000,
+              "s2_multiplicity": 122000,
+              "ticket_count": 10,
+              "total_hit_incidence": 1068330
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "2": -26000,
+              "3": -2048,
+              "4": -17,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 23969,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -23969,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 267334261906802839601997495101093449481547209558131,
+              "exact": "395403415251228501706405700601989515032062326892901/267334261906802839601997495101093449481547209558131",
+              "numerator": 395403415251228501706405700601989515032062326892901
+            },
+            "higher_order_residual": -2031,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "3": -2048,
+              "4": 17,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 5613,
+              "exact": "5200/5613",
+              "numerator": 5200
+            },
+            "pairwise_component": 26000,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 950281,
+              "exact": "23969/950281",
+              "numerator": 23969
+            },
+            "relative_lift_vs_random": {
+              "denominator": 1603375863068268810377555119411446801796568500286533,
+              "exact": "131801138417076167235468566867329838344020775630967/1603375863068268810377555119411446801796568500286533",
+              "numerator": 131801138417076167235468566867329838344020775630967
+            }
+          }
+        },
+        "15": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 1602495,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 263000,
+                "3": 12288,
+                "4": 118,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 1351665,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 21,
+                  "exact": "17/21",
+                  "numerator": 17
+                },
+                "overlap_profile": {
+                  "0": 20,
+                  "1": 85
+                },
+                "per_number_reuse_vector": [
+                  7,
+                  4,
+                  1,
+                  1,
+                  1,
+                  1,
+                  3,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  3,
+                  2,
+                  2,
+                  3,
+                  2,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  3,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  3,
+                  3,
+                  1,
+                  0
+                ],
+                "reuse_dispersion_float": 1.1102643741962623,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "445/361",
+                  "numerator": 445
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 20,
+                  "1": 85
+                },
+                "unique_number_coverage": 37
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 1351665,
+              "multiplicity_counts": {
+                "0": 1409016,
+                "1": 1112887,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 226844,
+                "3": 11816,
+                "4": 118,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 131461,
+                "exact": "64365/131461",
+                "numerator": 64365
+              },
+              "redundancy": 250830,
+              "s2_geometry": 263000,
+              "s2_multiplicity": 263000,
+              "ticket_count": 15,
+              "total_hit_incidence": 1602495
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 1602495,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 281200,
+                "3": 15680,
+                "4": 205,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 1336770,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 105,
+                  "exact": "92/105",
+                  "numerator": 92
+                },
+                "overlap_profile": {
+                  "0": 13,
+                  "1": 92
+                },
+                "per_number_reuse_vector": [
+                  2,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  3,
+                  2,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1
+                ],
+                "reuse_dispersion_float": 1.2653489768601376,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "578/361",
+                  "numerator": 578
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 13,
+                  "1": 92
+                },
+                "unique_number_coverage": 38
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 1336770,
+              "multiplicity_counts": {
+                "0": 1423911,
+                "1": 1086315,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "2": 235390,
+                "3": 14860,
+                "4": 205,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 920227,
+                "exact": "445590/920227",
+                "numerator": 445590
+              },
+              "redundancy": 265725,
+              "s2_geometry": 281200,
+              "s2_multiplicity": 281200,
+              "ticket_count": 15,
+              "total_hit_incidence": 1602495
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "2": -18200,
+              "3": -3392,
+              "4": -87,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 14895,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -14895,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 532385343435336441051989222456304033108135870508197273988185876420083918362522,
+              "exact": "609114839666642241095726558054136311268722031572643257176872334796310494153047/532385343435336441051989222456304033108135870508197273988185876420083918362522",
+              "numerator": 609114839666642241095726558054136311268722031572643257176872334796310494153047
+            },
+            "higher_order_residual": -3305,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "3": -3392,
+              "4": 87,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 3097,
+              "exact": "2600/3097",
+              "numerator": 2600
+            },
+            "pairwise_component": 18200,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 29706,
+              "exact": "331/29706",
+              "numerator": 331
+            },
+            "relative_lift_vs_random": {
+              "denominator": 907685311337968810578788458625882183892783568166689287403120590172265379134804,
+              "exact": "87016405666663177299389508293448044466960290224663322453838904970901499164721/907685311337968810578788458625882183892783568166689287403120590172265379134804",
+              "numerator": 87016405666663177299389508293448044466960290224663322453838904970901499164721
+            }
+          }
+        },
+        "20": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 2136660,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 484200,
+                "20": 0,
+                "3": 34240,
+                "4": 632,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 1686068,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 190,
+                  "exact": "157/190",
+                  "numerator": 157
+                },
+                "overlap_profile": {
+                  "0": 33,
+                  "1": 157
+                },
+                "per_number_reuse_vector": [
+                  7,
+                  5,
+                  5,
+                  1,
+                  1,
+                  1,
+                  4,
+                  4,
+                  4,
+                  4,
+                  2,
+                  2,
+                  4,
+                  4,
+                  4,
+                  4,
+                  2,
+                  2,
+                  3,
+                  3,
+                  4,
+                  4,
+                  3,
+                  3,
+                  3,
+                  3,
+                  4,
+                  4,
+                  3,
+                  3,
+                  3,
+                  3,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  2
+                ],
+                "reuse_dispersion_float": 1.2036417501083443,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "523/361",
+                  "numerator": 523
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 33,
+                  "1": 157
+                },
+                "unique_number_coverage": 38
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 1686068,
+              "multiplicity_counts": {
+                "0": 1074613,
+                "1": 1268452,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 385272,
+                "20": 0,
+                "3": 31712,
+                "4": 632,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 2760681,
+                "exact": "1686068/2760681",
+                "numerator": 1686068
+              },
+              "redundancy": 450592,
+              "s2_geometry": 484200,
+              "s2_multiplicity": 484200,
+              "ticket_count": 20,
+              "total_hit_incidence": 2136660
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 2136660,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 502400,
+                "20": 0,
+                "3": 38016,
+                "4": 727,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "covered": 1671549,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 95,
+                  "exact": "82/95",
+                  "numerator": 82
+                },
+                "overlap_profile": {
+                  "0": 26,
+                  "1": 164
+                },
+                "per_number_reuse_vector": [
+                  2,
+                  3,
+                  3,
+                  4,
+                  4,
+                  4,
+                  4,
+                  5,
+                  5,
+                  5,
+                  5,
+                  5,
+                  4,
+                  4,
+                  4,
+                  4,
+                  4,
+                  5,
+                  5,
+                  5,
+                  4,
+                  3,
+                  3,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  1,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  2,
+                  1
+                ],
+                "reuse_dispersion_float": 1.3480261552490207,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "656/361",
+                  "numerator": 656
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 26,
+                  "1": 164
+                },
+                "unique_number_coverage": 38
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 1671549,
+              "multiplicity_counts": {
+                "0": 1089132,
+                "1": 1243000,
+                "10": 0,
+                "11": 0,
+                "12": 0,
+                "13": 0,
+                "14": 0,
+                "15": 0,
+                "16": 0,
+                "17": 0,
+                "18": 0,
+                "19": 0,
+                "2": 392714,
+                "20": 0,
+                "3": 35108,
+                "4": 727,
+                "5": 0,
+                "6": 0,
+                "7": 0,
+                "8": 0,
+                "9": 0
+              },
+              "q": {
+                "denominator": 2261,
+                "exact": "1369/2261",
+                "numerator": 1369
+              },
+              "redundancy": 465111,
+              "s2_geometry": 502400,
+              "s2_multiplicity": 502400,
+              "ticket_count": 20,
+              "total_hit_incidence": 2136660
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "2": -18200,
+              "20": 0,
+              "3": -3776,
+              "4": -95,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "delta_covered": 14519,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -14519,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 23560583359894774440779537679751159422466424345941145401395610346585854923139550684640219055823118897,
+              "exact": "25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787/23560583359894774440779537679751159422466424345941145401395610346585854923139550684640219055823118897",
+              "numerator": 25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787
+            },
+            "higher_order_residual": -3681,
+            "higher_order_signed_terms": {
+              "10": 0,
+              "11": 0,
+              "12": 0,
+              "13": 0,
+              "14": 0,
+              "15": 0,
+              "16": 0,
+              "17": 0,
+              "18": 0,
+              "19": 0,
+              "20": 0,
+              "3": -3776,
+              "4": 95,
+              "5": 0,
+              "6": 0,
+              "7": 0,
+              "8": 0,
+              "9": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 3153,
+              "exact": "2600/3153",
+              "numerator": 2600
+            },
+            "pairwise_component": 18200,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 1671549,
+              "exact": "14519/1671549",
+              "numerator": 14519
+            },
+            "relative_lift_vs_random": {
+              "denominator": 215674248355305933129558882515582528718873380547113938960920959724244713912189597718640479814844388293,
+              "exact": "25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787/215674248355305933129558882515582528718873380547113938960920959724244713912189597718640479814844388293",
+              "numerator": 25638566429295072651130382030001166941315176388054339073765654108903554870266523274535718659426256787
+            }
+          }
+        },
+        "3": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 320499,
+                "2": 1200,
+                "3": 0
+              },
+              "covered": 319299,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {
+                  "0": 3
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.49930699897395464,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "90/361",
+                  "numerator": 90
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 3
+                },
+                "unique_number_coverage": 18
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 319299,
+              "multiplicity_counts": {
+                "0": 2441382,
+                "1": 318099,
+                "2": 1200,
+                "3": 0
+              },
+              "q": {
+                "denominator": 920227,
+                "exact": "106433/920227",
+                "numerator": 106433
+              },
+              "redundancy": 1200,
+              "s2_geometry": 1200,
+              "s2_multiplicity": 1200,
+              "ticket_count": 3,
+              "total_hit_incidence": 320499
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 320499,
+                "2": 9000,
+                "3": 64
+              },
+              "covered": 311563,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 3
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  2,
+                  1,
+                  1,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.6381239817359021,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "147/361",
+                  "numerator": 147
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 3
+                },
+                "unique_number_coverage": 15
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 311563,
+              "multiplicity_counts": {
+                "0": 2449118,
+                "1": 302691,
+                "2": 8808,
+                "3": 64
+              },
+              "q": {
+                "denominator": 394383,
+                "exact": "44509/394383",
+                "numerator": 44509
+              },
+              "redundancy": 8936,
+              "s2_geometry": 9000,
+              "s2_multiplicity": 9000,
+              "ticket_count": 3,
+              "total_hit_incidence": 320499
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "2": -7800,
+              "3": -64
+            },
+            "delta_covered": 7736,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -7736,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 60578671553701,
+              "exact": "202306492876071/60578671553701",
+              "numerator": 202306492876071
+            },
+            "higher_order_residual": -64,
+            "higher_order_signed_terms": {
+              "3": -64
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 983,
+              "exact": "975/983",
+              "numerator": 975
+            },
+            "pairwise_component": 7800,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 311563,
+              "exact": "7736/311563",
+              "numerator": 7736
+            },
+            "relative_lift_vs_random": {
+              "denominator": 7529904962344387,
+              "exact": "269741990501428/7529904962344387",
+              "numerator": 269741990501428
+            }
+          }
+        },
+        "5": {
+          "arms": {
+            "ARM_B": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 534165,
+                "2": 4000,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "covered": 530165,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 0,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "0/1",
+                  "numerator": 0
+                },
+                "overlap_profile": {
+                  "0": 10
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.40768245749551757,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "60/361",
+                  "numerator": 60
+                },
+                "ticket_pair_intersection_histogram": {
+                  "0": 10
+                },
+                "unique_number_coverage": 30
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 530165,
+              "multiplicity_counts": {
+                "0": 2230516,
+                "1": 526165,
+                "2": 4000,
+                "3": 0,
+                "4": 0,
+                "5": 0
+              },
+              "q": {
+                "denominator": 2760681,
+                "exact": "530165/2760681",
+                "numerator": 530165
+              },
+              "redundancy": 4000,
+              "s2_geometry": 4000,
+              "s2_multiplicity": 4000,
+              "ticket_count": 5,
+              "total_hit_incidence": 534165
+            },
+            "SIDON": {
+              "collision_moments": {
+                "0": 2760681,
+                "1": 534165,
+                "2": 30000,
+                "3": 512,
+                "4": 1,
+                "5": 0
+              },
+              "covered": 504676,
+              "geometry": {
+                "duplicate_count": 0,
+                "max_pairwise_overlap": 1,
+                "mean_pairwise_overlap": {
+                  "denominator": 1,
+                  "exact": "1/1",
+                  "numerator": 1
+                },
+                "overlap_profile": {
+                  "1": 10
+                },
+                "per_number_reuse_vector": [
+                  1,
+                  2,
+                  2,
+                  3,
+                  3,
+                  2,
+                  1,
+                  2,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  1,
+                  1,
+                  1,
+                  1,
+                  0,
+                  0,
+                  0
+                ],
+                "reuse_dispersion_float": 0.8321783316232577,
+                "reuse_dispersion_population_variance": {
+                  "denominator": 361,
+                  "exact": "250/361",
+                  "numerator": 250
+                },
+                "ticket_pair_intersection_histogram": {
+                  "1": 10
+                },
+                "unique_number_coverage": 22
+              },
+              "hit_event_size_per_ticket": 106833,
+              "inclusion_exclusion_covered": 504676,
+              "multiplicity_counts": {
+                "0": 2256005,
+                "1": 475697,
+                "2": 28470,
+                "3": 508,
+                "4": 1,
+                "5": 0
+              },
+              "q": {
+                "denominator": 2760681,
+                "exact": "504676/2760681",
+                "numerator": 504676
+              },
+              "redundancy": 29489,
+              "s2_geometry": 30000,
+              "s2_multiplicity": 30000,
+              "ticket_count": 5,
+              "total_hit_incidence": 534165
+            }
+          },
+          "checks": {
+            "fixed_incidence_identity": true,
+            "inclusion_exclusion_identity": true,
+            "n_c_sums_to_winning_space": true,
+            "q_arm_b_matches_sealed": true,
+            "q_sidon_matches_sealed": true,
+            "redundancy_identity": true,
+            "reuse_vector_identity": true,
+            "s2_geometry_identity": true,
+            "zero_duplicates": true
+          },
+          "comparison": {
+            "delta_collision_moments": {
+              "0": 0,
+              "1": 0,
+              "2": -26000,
+              "3": -512,
+              "4": -1,
+              "5": 0
+            },
+            "delta_covered": 25489,
+            "delta_direction": "ARM_B_MINUS_SIDON",
+            "delta_redundancy": -25489,
+            "gain_over_random_ratio_to_sidon": {
+              "denominator": 63817804616287901336905403,
+              "exact": "221993692364261365090999096/63817804616287901336905403",
+              "numerator": 221993692364261365090999096
+            },
+            "higher_order_residual": -511,
+            "higher_order_signed_terms": {
+              "3": -512,
+              "4": 1,
+              "5": 0
+            },
+            "mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "pairwise_absolute_contribution_share": {
+              "denominator": 26513,
+              "exact": "26000/26513",
+              "numerator": 26000
+            },
+            "pairwise_component": 26000,
+            "relative_coverage_delta_vs_sidon": {
+              "denominator": 504676,
+              "exact": "25489/504676",
+              "numerator": 25489
+            },
+            "relative_lift_vs_random": {
+              "denominator": 3068026297745368334433858009,
+              "exact": "221993692364261365090999096/3068026297745368334433858009",
+              "numerator": 221993692364261365090999096
+            }
+          }
+        }
+      },
+      "pool_size": 38,
+      "portfolio_sha256": {
+        "ARM_B": "b78ff3bc82290dd948d0414af73b4a79fc3de4f430ea70f6b11d7d72d1d1b8f1",
+        "SIDON": "6abf61ae22d0dda13b9dd6e483a081bc03765573e8d0abd83c496e6e2dfebaf2"
+      },
+      "source_matrix_ids": {
+        "arm_b": "GREEDY_MIN_OVERLAP_CONSTRUCTOR_P638_ZONE1_V1",
+        "sidon": "DIVERSIFICATION_COVERAGE_P638_ZONE1_V1"
+      },
+      "source_result_paths": {
+        "arm_b": "docs/research/matrix-native-results/greedy-min-overlap-constructor-p638-zone1-v1-result.json",
+        "sidon": "docs/research/matrix-native-results/diversification-coverage-p638-zone1-v1-result.json"
+      },
+      "total_winning_combinations": 2760681,
+      "zone": "ZONE1"
+    }
+  },
+  "runtime_seconds": {
+    "derivation_and_validation": 0.005607750965282321,
+    "portfolio_generation_by_lottery_and_arm": {
+      "BIG_LOTTO": {
+        "ARM_B": 774.0204652089742,
+        "SIDON": 1.191598130390048e-05
+      },
+      "DAILY_539": {
+        "ARM_B": 30.652431416965555,
+        "SIDON": 1.1292053386569023e-05
+      },
+      "POWER_LOTTO_zone1": {
+        "ARM_B": 154.22885100002168,
+        "SIDON": 1.4999997802078724e-05
+      }
+    },
+    "total": 1003.3207283330266,
+    "winning_space_enumeration_by_lottery": {
+      "BIG_LOTTO": 35.773629541974515,
+      "DAILY_539": 1.4705322089721449,
+      "POWER_LOTTO_zone1": 7.156611165963113
+    }
+  },
+  "scope": {
+    "arm_c": "NOT_RUN",
+    "economic_optimality": "NOT_TESTED",
+    "historical_draws_read": false,
+    "monte_carlo": false,
+    "p638_zone2": "NOT_RUN",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_value_advantage": "NOT_TESTED",
+    "secondary_events": "NOT_RUN"
+  },
+  "source_type": "STRATEGY_MATRIX_NATIVE_MECHANISM",
+  "study_id": "STRATEGY_MATRIX_PHASE5_LOW_OVERLAP_GEOMETRY_MECHANISM_V1"
+}

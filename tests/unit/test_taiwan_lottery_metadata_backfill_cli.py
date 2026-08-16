@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from click import unstyle
 from typer.testing import CliRunner
 
 import lottolab.interfaces.cli.taiwan_lottery_metadata_backfill as backfill_cli
@@ -47,10 +48,11 @@ def test_command_is_registered() -> None:
     result = runner.invoke(app, ["backfill-taiwan-lottery-metadata", "--help"])
 
     assert result.exit_code == 0
-    assert "--lottery-type" in result.output
-    assert "--date-from" in result.output
-    assert "--date-to" in result.output
-    assert "--output" in result.output
+    help_output = unstyle(result.output)
+    assert "--lottery-type" in help_output
+    assert "--date-from" in help_output
+    assert "--date-to" in help_output
+    assert "--output" in help_output
 
 
 def test_fetches_and_appends_metadata(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

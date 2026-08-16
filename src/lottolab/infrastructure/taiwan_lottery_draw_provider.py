@@ -16,6 +16,7 @@ requested range before returning them, because ``_validate_fetch`` in
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 from datetime import date
 from typing import NamedTuple, cast
@@ -29,6 +30,7 @@ from lottolab.application.draw_automation import (
     ProviderDrawRecord,
     ProviderFetchResult,
 )
+from lottolab.application.draw_metadata import OfficialDrawMetadataRecord
 from lottolab.domain.draws import LotteryType
 
 API_BASE = "https://api.taiwanlottery.com/TLCAPIWeB"
@@ -50,14 +52,31 @@ class _SourceConfig(NamedTuple):
     result_key: str
     numbers_count: int
     has_special: bool
+    jackpot_assign_key: str
+    # True for BIG_LOTTO/POWER_LOTTO, whose *JackpotAssign object has
+    # prize/lastPrize keys confirmed (by direct live-API chain
+    # reconstruction) to carry a rolling jackpot pool forward across draws
+    # with no winner. False for DAILY_539: its d539JackpotAssign object has
+    # only winnerCount/perPrize -- no prize/lastPrize -- so it has no
+    # rollover jackpot pool to reconstruct.
+    jackpot_has_pool: bool
 
 
 SOURCE_CONFIG: dict[LotteryType, _SourceConfig] = {
-    LotteryType.BIG_LOTTO: _SourceConfig("/Lottery/Lotto649Result", "lotto649Res", 6, True),
-    LotteryType.POWER_LOTTO: _SourceConfig(
-        "/Lottery/SuperLotto638Result", "superLotto638Res", 6, True
+    LotteryType.BIG_LOTTO: _SourceConfig(
+        "/Lottery/Lotto649Result", "lotto649Res", 6, True, "jackpotAssign", True
     ),
-    LotteryType.DAILY_539: _SourceConfig("/Lottery/Daily539Result", "daily539Res", 5, False),
+    LotteryType.POWER_LOTTO: _SourceConfig(
+        "/Lottery/SuperLotto638Result",
+        "superLotto638Res",
+        6,
+        True,
+        "super638JackpotAssign",
+        True,
+    ),
+    LotteryType.DAILY_539: _SourceConfig(
+        "/Lottery/Daily539Result", "daily539Res", 5, False, "d539JackpotAssign", False
+    ),
 }
 
 Transport = Callable[[str], bytes]
@@ -89,6 +108,58 @@ class TaiwanLotteryDrawProvider:
         date_from: date,
         date_to: date,
     ) -> ProviderFetchResult:
+        config, raw_rows = self._fetch_rows(lottery_type, date_from, date_to)
+        records = tuple(
+            record
+            for row in raw_rows
+            if (record := _record(lottery_type, config, row, date_from, date_to)) is not None
+        )
+        return ProviderFetchResult(
+            provider_id=PROVIDER_ID,
+            provider_version=PROVIDER_VERSION,
+            records=records,
+        )
+
+    def fetch_draws_with_metadata(
+        self,
+        *,
+        lottery_type: LotteryType,
+        date_from: date,
+        date_to: date,
+    ) -> tuple[ProviderFetchResult, tuple[OfficialDrawMetadataRecord, ...]]:
+        """Fetch the same bounded range as :meth:`fetch_draws`, plus research metadata.
+
+        Issues exactly one request per call (no extra network round-trip vs.
+        :meth:`fetch_draws`). The canonical ``ProviderFetchResult`` half is
+        identical to what :meth:`fetch_draws` returns for the same arguments;
+        the metadata half is additive and never feeds canonical draw
+        ingestion.
+        """
+
+        config, raw_rows = self._fetch_rows(lottery_type, date_from, date_to)
+        records: list[ProviderDrawRecord] = []
+        metadata: list[OfficialDrawMetadataRecord] = []
+        for row in raw_rows:
+            record = _record(lottery_type, config, row, date_from, date_to)
+            if record is None:
+                continue
+            records.append(record)
+            metadata.append(_metadata_record(lottery_type, config, row, record))
+        return (
+            ProviderFetchResult(
+                provider_id=PROVIDER_ID,
+                provider_version=PROVIDER_VERSION,
+                records=tuple(records),
+            ),
+            tuple(metadata),
+        )
+
+    def _fetch_rows(
+        self,
+        lottery_type: LotteryType,
+        date_from: date,
+        date_to: date,
+    ) -> tuple[_SourceConfig, list[object]]:
         config = SOURCE_CONFIG.get(lottery_type)
         if config is None:
             raise DrawProviderContractError(f"unsupported lottery type: {lottery_type.value}")
@@ -114,17 +185,7 @@ class TaiwanLotteryDrawProvider:
         raw_rows = payload.get(config.result_key)
         if not isinstance(raw_rows, list):
             raise DrawProviderContractError("official API response is missing the result list")
-
-        records = tuple(
-            record
-            for row in cast(list[object], raw_rows)
-            if (record := _record(lottery_type, config, row, date_from, date_to)) is not None
-        )
-        return ProviderFetchResult(
-            provider_id=PROVIDER_ID,
-            provider_version=PROVIDER_VERSION,
-            records=records,
-        )
+        return config, cast(list[object], raw_rows)
 
 
 def _default_transport(url: str) -> bytes:
@@ -137,8 +198,6 @@ def _default_transport(url: str) -> bytes:
 
 
 def _parse_envelope(body: bytes) -> dict[str, object]:
-    import json
-
     try:
         payload: object = json.loads(body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -167,7 +226,7 @@ def _record(
         raise DrawProviderContractError("official API draw row must be an object")
     mapping = cast(dict[str, object], row)
 
-    draw_number = _required_text(mapping.get("period"), "period")
+    draw_number = _required_draw_number(mapping.get("period"), "period")
     draw_date = _required_date(mapping.get("lotteryDate"), "lotteryDate")
     raw_numbers = mapping.get("drawNumberSize")
     if not isinstance(raw_numbers, list):
@@ -198,10 +257,19 @@ def _record(
     )
 
 
-def _required_text(value: object, label: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise DrawProviderContractError(f"official API {label} is invalid")
-    return value
+def _required_draw_number(value: object, label: str) -> str:
+    """Accept the official API's real ``period`` shape (a JSON integer, e.g.
+
+    ``115000079``) as well as the string form, and normalize both to text.
+    ``bool`` is rejected even though it is an ``int`` subclass; ``float``,
+    ``None``, and non-scalar values are rejected too.
+    """
+
+    if type(value) is int:
+        return str(value)
+    if type(value) is str and value.strip():
+        return value
+    raise DrawProviderContractError(f"official API {label} is invalid")
 
 
 def _required_date(value: object, label: str) -> date:
@@ -211,6 +279,92 @@ def _required_date(value: object, label: str) -> date:
         return date.fromisoformat(value[:10])
     except ValueError as exc:
         raise DrawProviderContractError(f"official API {label} is invalid") from exc
+
+
+def _metadata_record(
+    lottery_type: LotteryType,
+    config: _SourceConfig,
+    row: object,
+    record: ProviderDrawRecord,
+) -> OfficialDrawMetadataRecord:
+    """Build the research-only metadata sidecar for a row ``_record`` already accepted.
+
+    ``draw_number_appear`` preserves ``drawNumberAppear`` verbatim, in source
+    order -- it is never sorted or renamed, unlike ``main_numbers``.
+    """
+
+    mapping = cast(dict[str, object], row)
+
+    raw_appear = mapping.get("drawNumberAppear")
+    draw_number_appear = _required_int_list(raw_appear, "drawNumberAppear")
+    expected_count = config.numbers_count + (1 if config.has_special else 0)
+    if len(draw_number_appear) != expected_count:
+        raise DrawProviderContractError(
+            "official API drawNumberAppear has an unexpected length"
+        )
+
+    winner_count, per_prize, prize, last_prize = _jackpot_tier(mapping, config)
+
+    return OfficialDrawMetadataRecord(
+        lottery_type=lottery_type,
+        draw_number=record.draw_number,
+        draw_date=record.draw_date,
+        draw_number_appear=tuple(draw_number_appear),
+        sell_amount=_optional_int(mapping.get("sellAmount")),
+        total_amount=_optional_int(mapping.get("totalAmount")),
+        jackpot_winner_count=winner_count,
+        jackpot_per_prize=per_prize,
+        jackpot_prize=prize,
+        jackpot_last_prize=last_prize,
+        source_reference=record.source_reference
+        or f"taiwanlottery:{config.endpoint}:{record.draw_number}",
+        raw_json=json.dumps(mapping, ensure_ascii=False, sort_keys=True),
+    )
+
+
+def _jackpot_tier(
+    mapping: dict[str, object], config: _SourceConfig
+) -> tuple[int | None, int | None, int | None, int | None]:
+    """Parse the top prize-tier assign object named by ``config.jackpot_assign_key``.
+
+    Returns ``(winner_count, per_prize, prize, last_prize)``. ``prize`` and
+    ``last_prize`` are always ``None`` when ``config.jackpot_has_pool`` is
+    ``False`` (DAILY_539's tier has no rollover pool to report), regardless
+    of what the row happens to contain.
+    """
+
+    tier = mapping.get(config.jackpot_assign_key)
+    if tier is None:
+        return None, None, None, None
+    if not isinstance(tier, dict):
+        raise DrawProviderContractError(f"official API {config.jackpot_assign_key} is invalid")
+    tier_mapping = cast(dict[str, object], tier)
+    winner_count = _required_int(tier_mapping.get("winnerCount"), "winnerCount")
+    per_prize = _required_int(tier_mapping.get("perPrize"), "perPrize")
+    if not config.jackpot_has_pool:
+        return winner_count, per_prize, None, None
+    prize = _required_int(tier_mapping.get("prize"), "prize")
+    last_prize = _required_int(tier_mapping.get("lastPrize"), "lastPrize")
+    return winner_count, per_prize, prize, last_prize
+
+
+def _required_int_list(value: object, label: str) -> list[int]:
+    if not isinstance(value, list):
+        raise DrawProviderContractError(f"official API {label} is invalid")
+    items = cast(list[object], value)
+    if any(type(item) is not int for item in items):
+        raise DrawProviderContractError(f"official API {label} must contain only integers")
+    return cast(list[int], items)
+
+
+def _required_int(value: object, label: str) -> int:
+    if type(value) is not int:
+        raise DrawProviderContractError(f"official API {label} is invalid")
+    return value
+
+
+def _optional_int(value: object) -> int | None:
+    return value if type(value) is int else None
 
 
 __all__ = ["TaiwanLotteryDrawProvider"]

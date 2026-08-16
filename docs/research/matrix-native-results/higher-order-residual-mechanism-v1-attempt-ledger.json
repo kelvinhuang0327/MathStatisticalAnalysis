@@ -1,0 +1,18 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "STRATEGY_MATRIX_PHASE6_HIGHER_ORDER_RESIDUAL_MECHANISM_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "preregistration_hash_sha256": "354d96bcee4c9e4efb59e3e88f18c686fdfb23ed00be5dae2c0ea0d133e550a6",
+      "record_state": "SEALED",
+      "result_hash_sha256": "1da856fbf8189cef53fc71606ce1023771aee086888cc9c3b6532e8849563f75",
+      "sealed_at": "2026-08-16T14:22:21.141981+00:00",
+      "sequence": 1,
+      "study_id": "STRATEGY_MATRIX_PHASE6_HIGHER_ORDER_RESIDUAL_MECHANISM_V1",
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE6_HIGHER_ORDER_RESIDUAL_MECHANISM_LOCK_EXECUTE_R1"
+    }
+  ]
+}

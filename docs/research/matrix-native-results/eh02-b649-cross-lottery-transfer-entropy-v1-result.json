@@ -1,0 +1,177 @@
+{
+  "data_authority": {
+    "dataset_a": {
+      "date_range": [
+        "2007-03-09",
+        "2026-07-31"
+      ],
+      "logical_sha256": "a1f39161797cadc132a4ae561e382b577a9c4a573c9866e34f61ee4af71a9918",
+      "row_count": 2138,
+      "source_path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/BIGLOTTO_CANONICAL_FULL_HISTORY_BASELINE_R4/baseline.sqlite"
+    },
+    "dataset_b": {
+      "date_range": [
+        "2007-01-01",
+        "2026-08-01"
+      ],
+      "logical_sha256": "794ef4e5ed3268c750f484836b0c31591ce56f287dca4b882b5925a6fddcaa42",
+      "row_count": 5930,
+      "source_path": "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/T539_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/t539_wave1.sqlite3"
+    },
+    "dataset_c": {
+      "date_range": [
+        "2008-01-24",
+        "2026-07-30"
+      ],
+      "logical_sha256": "49c1911154a0f95256ab12b25f5301dfb4480e4302dc0d3b6f422d247ee46df0",
+      "row_count": 1933,
+      "source_path": "/Users/kelvin/VibeCoding-WorkSpace/.runs/MathStatisticalAnalysis/P638_WAVE1_CLEAN_REPRODUCTION_AND_PUBLICATION_R2/p638_wave1.sqlite3"
+    }
+  },
+  "edge_1_t539_to_b649": {
+    "classification": "NO_SIGNAL",
+    "diagnostics": {
+      "b2_raw_p": 0.677,
+      "b2_te_observed": 0.00023415575246025187
+    },
+    "directionality_control": {
+      "forward_raw_p": 0.933,
+      "pass": false,
+      "reverse_raw_p": 0.002,
+      "te_reverse_observed": 0.0026991869826222337
+    },
+    "edge_id": "T539_TO_B649",
+    "eligibility": {
+      "eligible_post_burn_in": 1937,
+      "era4_partition_sizes": [
+        485,
+        484,
+        484,
+        484
+      ],
+      "no_prior_count": 0,
+      "qualifying_count": 2137,
+      "reverse_eligible_post_burn_in": 5680,
+      "reverse_qualifying_count": 5880,
+      "same_day_excluded_count": 2117,
+      "stale_eligible_count": 1937
+    },
+    "multiplicity": {
+      "era4_holm_p": 1.0,
+      "global_holm_p": 1.0
+    },
+    "permutation_ledger": {
+      "era4_ledger_digest_sha256": "ed2abc25cba32c2a3bf742c9f81f46c8b88139aed2afa1c89843de326a551e5a",
+      "era4_replicate_count": 999,
+      "global_ledger_digest_sha256": "36fc0ba5b204e19fccc4faf366873fc08ac2fe59bd70c61810c95e215514ac83",
+      "global_replicate_count": 999,
+      "reverse_global_ledger_digest_sha256": "52dbdd3829d977d735a180a4b0291be6481e6e29e5e08d3a172510828ea611ff",
+      "reverse_global_replicate_count": 999
+    },
+    "primary": {
+      "era4_raw_p": 0.918,
+      "global_raw_p": 0.933,
+      "mi_comparator_observed": 0.0004837722495666098,
+      "te_global_observed": 0.0014772229168979376
+    },
+    "reverse_edge_id": "B649_TO_T539_REVERSE",
+    "timing_control": {
+      "pass": false,
+      "stale_days": 28,
+      "te_observed": 0.0014772229168979376,
+      "te_stale": 0.003055914374326396
+    }
+  },
+  "edge_2_p638z1_to_b649": {
+    "classification": "NO_SIGNAL",
+    "diagnostics": {
+      "b2_raw_p": 0.463,
+      "b2_te_observed": 0.0004320601920825007
+    },
+    "directionality_control": {
+      "forward_raw_p": 0.869,
+      "pass": false,
+      "reverse_raw_p": 0.669,
+      "te_reverse_observed": 0.0027386571435945887
+    },
+    "edge_id": "P638Z1_TO_B649",
+    "eligibility": {
+      "eligible_post_burn_in": 1846,
+      "era4_partition_sizes": [
+        462,
+        461,
+        462,
+        461
+      ],
+      "no_prior_count": 91,
+      "qualifying_count": 2046,
+      "reverse_eligible_post_burn_in": 1732,
+      "reverse_qualifying_count": 1932,
+      "same_day_excluded_count": 42,
+      "stale_eligible_count": 1846
+    },
+    "multiplicity": {
+      "era4_holm_p": 1.0,
+      "global_holm_p": 1.0
+    },
+    "permutation_ledger": {
+      "era4_ledger_digest_sha256": "daf7a3dcc04e28ac24d9c7a50bce72f30ca17c5882370b85d86343a50ef0bdd4",
+      "era4_replicate_count": 999,
+      "global_ledger_digest_sha256": "f7286a3377acbf45168a42166f08dbbd36b049d413a0e3f996701ebfe182dc36",
+      "global_replicate_count": 999,
+      "reverse_global_ledger_digest_sha256": "28e8107d8caff61c771afbe7d90feac713cd7fa85a9681b9d26c2a707209f459",
+      "reverse_global_replicate_count": 999
+    },
+    "primary": {
+      "era4_raw_p": 0.88,
+      "global_raw_p": 0.869,
+      "mi_comparator_observed": 0.0007022650179219251,
+      "te_global_observed": 0.001823816533673203
+    },
+    "reverse_edge_id": "B649_TO_P638Z1_REVERSE",
+    "timing_control": {
+      "pass": false,
+      "stale_days": 28,
+      "te_observed": 0.001823816533673203,
+      "te_stale": 0.004322255915024678
+    }
+  },
+  "joint_interpretation": {
+    "combined_effect_computed": false,
+    "edges_are_separate_holm_families_within_shared_global_and_era4_families": true,
+    "what_is_not_supported": [
+      "predictive_advantage",
+      "allocation_benefit",
+      "prize_value_advantage",
+      "universal_cross_lottery_causality",
+      "arbitrary_lag_generalization",
+      "combined_edge_effect"
+    ],
+    "what_is_supported": [
+      "NONE_AT_THE_LOCKED_SIGNAL_THRESHOLD"
+    ]
+  },
+  "preregistration_hash_sha256": "45a7ddd6a1409a1da65bc347beed6cbb34efa73291910f91b4a3e59b98446045",
+  "runtime_seconds": 46.109996875049546,
+  "scope": {
+    "allocation_benefit": "NOT_TESTED",
+    "cohort_creation": "NO",
+    "new_predictive_claim": "NO",
+    "parameter_rescue_run": "NO",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_value_advantage": "NOT_TESTED",
+    "production_promotion": "NO",
+    "prospective_activation": "NO"
+  },
+  "synthetic_fixture_check": {
+    "status": "PASS",
+    "values": {
+      "fixture_a_mi": 1.0986122886681096,
+      "fixture_a_te": 1.0986122886681098,
+      "fixture_b_mi": 0.0,
+      "fixture_b_te": 0.0
+    }
+  },
+  "task_id": "EXPERIMENT_H02_V1_LOCK_EXECUTE_R1",
+  "variant_id": "EH02_CROSS_LOTTERY_TRANSFER_ENTROPY_B649_V1"
+}

@@ -1,0 +1,38 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "EH02_CROSS_LOTTERY_TRANSFER_ENTROPY_B649_V1__EDGE_1_T539_TO_B649__ATTEMPT_1",
+      "descriptive_classification": "NO_SIGNAL",
+      "design_version": "V1",
+      "edge_id": "T539_TO_B649",
+      "hypothesis_family_id": "TRANSFER_ENTROPY_DIRECTED_LAG_GRAPH",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "EH02_CROSS_LOTTERY_TRANSFER_ENTROPY_B649_V1",
+      "preregistration_hash_sha256": "45a7ddd6a1409a1da65bc347beed6cbb34efa73291910f91b4a3e59b98446045",
+      "record_state": "SEALED",
+      "result_hash_sha256": "7b0420d39651f1ffe0ffbf7147115c969b3a50380cb598a458209b9288d3bc33",
+      "sealed_at": "2026-08-16T09:21:00.762119+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "EXPERIMENT_H02_V1_LOCK_EXECUTE_R1"
+    },
+    {
+      "attempt_id": "EH02_CROSS_LOTTERY_TRANSFER_ENTROPY_B649_V1__EDGE_2_P638Z1_TO_B649__ATTEMPT_1",
+      "descriptive_classification": "NO_SIGNAL",
+      "design_version": "V1",
+      "edge_id": "P638Z1_TO_B649",
+      "hypothesis_family_id": "TRANSFER_ENTROPY_DIRECTED_LAG_GRAPH",
+      "invalidated_reason": null,
+      "lottery_type": "BIG_LOTTO",
+      "matrix_variant_id": "EH02_CROSS_LOTTERY_TRANSFER_ENTROPY_B649_V1",
+      "preregistration_hash_sha256": "45a7ddd6a1409a1da65bc347beed6cbb34efa73291910f91b4a3e59b98446045",
+      "record_state": "SEALED",
+      "result_hash_sha256": "7b0420d39651f1ffe0ffbf7147115c969b3a50380cb598a458209b9288d3bc33",
+      "sealed_at": "2026-08-16T09:21:00.762119+00:00",
+      "sequence": 1,
+      "supersedes_attempt_id": null,
+      "task_id": "EXPERIMENT_H02_V1_LOCK_EXECUTE_R1"
+    }
+  ]
+}

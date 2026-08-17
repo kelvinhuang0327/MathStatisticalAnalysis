@@ -74,11 +74,34 @@ def test_determinism_two_independent_builds_are_identical() -> None:
     assert first == second
 
 
+def _ensure_full_history() -> None:
+    """`--follow` below needs the path's full history to know it has only one
+    commit. A shallow checkout (e.g. actions/checkout@v4's default
+    fetch-depth: 1) only has the single checked-out commit, so `--follow`
+    reports that commit instead of the path's true origin. Unshallow once if
+    needed; a no-op on a full clone.
+    """
+    is_shallow = subprocess.run(
+        ["git", "rev-parse", "--is-shallow-repository"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if is_shallow.stdout.strip() == "true":
+        subprocess.run(
+            ["git", "fetch", "--unshallow", "origin"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+
+
 def test_source_commit_is_full_sha1_and_is_the_files_only_commit(
     raw_source: dict[str, Any],
 ) -> None:
     assert len(SOURCE_COMMIT) == 40
     assert all(c in "0123456789abcdef" for c in SOURCE_COMMIT)
+    _ensure_full_history()
     log = subprocess.run(
         ["git", "log", "--format=%H", "--follow", "--", SOURCE_PATH.as_posix()],
         cwd=REPO_ROOT,

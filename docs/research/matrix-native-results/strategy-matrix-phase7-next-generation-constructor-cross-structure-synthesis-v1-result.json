@@ -1,0 +1,1522 @@
+{
+  "as_of_origin_main": "edcbc3c717fdb2be9222fee1d30fe69b97aecf85",
+  "claim_boundary": {
+    "allowed": [
+      "exact combinatorial replication across 3 native structures",
+      "deterministic geometry-aware improvement over the prior reference",
+      "mechanism-consistent geometry pattern (Q4/Q6)"
+    ],
+    "global_optimality": "NOT_CLAIMED",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_economic_value": "NOT_TESTED",
+    "profitability": "NOT_TESTED",
+    "universal_portability": "NOT_CLAIMED",
+    "untested_zones_or_structures": "NOT_TESTED (P638 Zone-2, any 4th structure)"
+  },
+  "constructor_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+  "cross_structure_questions": {
+    "q1_e_beats_random_every_k_gt_1": {
+      "holds_for_all_three": true,
+      "per_structure": {
+        "STRUCTURE_A_B649": true,
+        "STRUCTURE_B_T539": true,
+        "STRUCTURE_C_P638_ZONE1": true
+      }
+    },
+    "q2_e_ge_reference_every_k_gt_1": {
+      "holds_for_all_three": true,
+      "per_structure": {
+        "STRUCTURE_A_B649": true,
+        "STRUCTURE_B_T539": true,
+        "STRUCTURE_C_P638_ZONE1": true
+      }
+    },
+    "q3_e_gt_reference_at_k_10_15_20": {
+      "holds_for_all_three": true,
+      "per_structure": {
+        "STRUCTURE_A_B649": true,
+        "STRUCTURE_B_T539": true,
+        "STRUCTURE_C_P638_ZONE1": true
+      }
+    },
+    "q4_geometry_consistent_with_locked_mechanism": {
+      "definition": "at every k in {10,15,20} where E strictly exceeds the previous reference (Q3), the lexicographic geometry tuple (max_pairwise_overlap, sum_pairwise_overlap) for E is not lexicographically greater than the reference's own tuple",
+      "holds_for_all_three": true,
+      "per_structure_per_k": {
+        "STRUCTURE_A_B649_k10": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 11,
+          "sum_reference": 13,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_A_B649_k15": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 43,
+          "sum_reference": 62,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_A_B649_k20": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 93,
+          "sum_reference": 126,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_B_T539_k10": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 11,
+          "sum_reference": 18,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_B_T539_k15": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 40,
+          "sum_reference": 61,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_B_T539_k20": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 83,
+          "sum_reference": 117,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_C_P638_ZONE1_k10": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 22,
+          "sum_reference": 30,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_C_P638_ZONE1_k15": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 66,
+          "sum_reference": 85,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_C_P638_ZONE1_k20": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 132,
+          "sum_reference": 157,
+          "sum_strictly_reduced": true
+        }
+      }
+    },
+    "q5_improvement_patterns": {
+      "common_across_all_three": {
+        "e_first_strictly_exceeds_reference_at_k10": true,
+        "e_ties_reference_exactly_at_k_1_3_5": true,
+        "relative_lift_random_monotonic_nondecreasing_through_k20": true
+      },
+      "structure_specific": {
+        "note": "Structure C's relative_lift_reference peaks at k=15 and is lower at k=20 than at k=15 -- the only one of the three whose reference-relative lift is not still climbing at k=20 within the tested ladder. Structures A and B are both still increasing at k=20. relative_lift_reference magnitude at k=20 and total runtime both vary by roughly an order of magnitude across the three structures and do not rank in the same order as each other.",
+        "relative_lift_reference_monotonic_nondecreasing_through_k20": {
+          "STRUCTURE_A_B649": true,
+          "STRUCTURE_B_T539": true,
+          "STRUCTURE_C_P638_ZONE1": false
+        },
+        "relative_lift_reference_pct_at_k20": {
+          "STRUCTURE_A_B649": 2.2803557526415013,
+          "STRUCTURE_B_T539": 1.098664368806549,
+          "STRUCTURE_C_P638_ZONE1": 2.877523326461329
+        },
+        "runtime_total_seconds": {
+          "STRUCTURE_A_B649": 1609.125417000032,
+          "STRUCTURE_B_T539": 65.58065137499943,
+          "STRUCTURE_C_P638_ZONE1": 338.2311550420127
+        }
+      }
+    },
+    "q6_reduced_geometry_accompanies_coverage_gain": {
+      "definition": "at every k in {10,15,20}, max_pairwise_overlap is tied and sum_pairwise_overlap is strictly reduced for E vs. the previous reference, coinciding exactly with where E's coverage gain is strict",
+      "holds_for_all_three_at_every_superiority_k": true,
+      "per_structure_per_k": {
+        "STRUCTURE_A_B649_k10": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 11,
+          "sum_reference": 13,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_A_B649_k15": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 43,
+          "sum_reference": 62,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_A_B649_k20": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 93,
+          "sum_reference": 126,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_B_T539_k10": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 11,
+          "sum_reference": 18,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_B_T539_k15": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 40,
+          "sum_reference": 61,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_B_T539_k20": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 83,
+          "sum_reference": 117,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_C_P638_ZONE1_k10": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 22,
+          "sum_reference": 30,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_C_P638_ZONE1_k15": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 66,
+          "sum_reference": 85,
+          "sum_strictly_reduced": true
+        },
+        "STRUCTURE_C_P638_ZONE1_k20": {
+          "lex_max_sum_not_increased": true,
+          "max_e": 1,
+          "max_reference": 1,
+          "max_tied": true,
+          "sum_e": 132,
+          "sum_reference": 157,
+          "sum_strictly_reduced": true
+        }
+      }
+    }
+  },
+  "evidence_type": "EXACT_COMBINATORIAL",
+  "global_optimum_status": "UNKNOWN",
+  "inputs": {
+    "STRUCTURE_A_B649": {
+      "alias": "Structure A",
+      "lottery_type": "BIG_LOTTO",
+      "role": "DISCOVERY_ADVANCE",
+      "source_commit": "aa0cb76a7e77b60fc58349f2dd49c50fff65b5de",
+      "source_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-v1-result.json",
+      "study_id": "STRATEGY_MATRIX_PHASE7_CONSTRUCTOR_FRONTIER_NEXT_GENERATION_V1"
+    },
+    "STRUCTURE_B_T539": {
+      "alias": "Structure B",
+      "lottery_type": "DAILY_539",
+      "role": "NATIVE_REPLICATION_1",
+      "source_commit": "452712903a2e909679f18902e28f7fdbff1b98b5",
+      "source_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-t539-v1-result.json",
+      "study_id": "STRATEGY_MATRIX_PHASE7_T539_NEXT_GEN_CONSTRUCTOR_REPLICATION_V1"
+    },
+    "STRUCTURE_C_P638_ZONE1": {
+      "alias": "Structure C",
+      "lottery_type": "POWER_LOTTO_ZONE1",
+      "role": "NATIVE_REPLICATION_2_FINAL",
+      "source_commit": "7d23acab005e3db99cce361a3fcf1932352c1019",
+      "source_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-p638-zone1-v1-result.json",
+      "study_id": "STRATEGY_MATRIX_PHASE7_P638_ZONE1_NEXT_GEN_CONSTRUCTOR_REPLICATION_V1"
+    }
+  },
+  "ladder": [
+    1,
+    3,
+    5,
+    10,
+    15,
+    20
+  ],
+  "per_structure": {
+    "STRUCTURE_A_B649": {
+      "alias": "Structure A",
+      "has_sealed_frontier": true,
+      "lottery_type": "BIG_LOTTO",
+      "per_k": {
+        "1": {
+          "delta_e_vs_random": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": false,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.3278036409022247,
+            "reuse_dispersion_population_variance": {
+              "exact": "258/2401",
+              "float": 0.10745522698875469
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 6
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.3278036409022247,
+            "reuse_dispersion_population_variance": {
+              "exact": "258/2401",
+              "float": 0.10745522698875469
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 6
+          },
+          "q_e": {
+            "exact": "4654/249711",
+            "float": 0.01863754500202234
+          },
+          "q_previous_reference": {
+            "exact": "4654/249711",
+            "float": 0.01863754500202234
+          },
+          "q_random_expected": {
+            "exact": "4654/249711",
+            "float": 0.01863754500202234
+          },
+          "relative_lift_random": "NOT_APPLICABLE_K1",
+          "relative_lift_reference": "NOT_APPLICABLE_K1",
+          "sealed_frontier": {
+            "b_to_c_gap_capture_as_sealed": "NOT_APPLICABLE",
+            "e_vs_sealed_frontier": "TIES_SEALED_BOUNDED_SEARCH_REFERENCE",
+            "frontier_capture_ratio_e_as_sealed": "NOT_APPLICABLE",
+            "global_optimum_status": "UNKNOWN",
+            "q_c_sealed": {
+              "exact": "4654/249711",
+              "float": 0.01863754500202234
+            }
+          }
+        },
+        "10": {
+          "delta_e_vs_random": {
+            "exact": "9905123291865404370631603145662057934141358281349774329345/927336133329941033439402151794504793130169886252849307474556",
+            "float": 0.010681265331803065
+          },
+          "delta_e_vs_reference": {
+            "exact": "295/582659",
+            "float": 0.0005062995680149109
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 11,
+            "reuse_dispersion_float_as_sealed": 0.4172458836787933,
+            "reuse_dispersion_population_variance": {
+              "exact": "418/2401",
+              "float": 0.17409412744689712
+            },
+            "sum_pairwise_overlap": 11,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 49
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 13,
+            "reuse_dispersion_float_as_sealed": 0.5056943548311783,
+            "reuse_dispersion_population_variance": {
+              "exact": "614/2401",
+              "float": 0.25572678050812164
+            },
+            "sum_pairwise_overlap": 13,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 48
+          },
+          "q_e": {
+            "exact": "212295/1165318",
+            "float": 0.1821777403249585
+          },
+          "q_previous_reference": {
+            "exact": "211705/1165318",
+            "float": 0.1816714407569436
+          },
+          "q_random_expected": {
+            "exact": "3245609755099340710811707686284489657738894441607314745205/18925227210815123131416370444785812104697344617405087907644",
+            "float": 0.17149647499315546
+          },
+          "relative_lift_random": {
+            "exact": "1981024658373080874126320629132411586828271656269954865869/31806975599973538965954735325587998645841165527751684503009",
+            "float": 0.06228271066346619
+          },
+          "relative_lift_reference": {
+            "exact": "118/42341",
+            "float": 0.0027868968611983657
+          },
+          "sealed_frontier": {
+            "b_to_c_gap_capture_as_sealed": "885/893",
+            "e_vs_sealed_frontier": "BELOW_SEALED_BOUNDED_SEARCH_REFERENCE",
+            "frontier_capture_ratio_e_as_sealed": "9905123291865404370631603145662057934141358281349774329345/9909367449006281812535881758718383067907444081729311814369",
+            "global_optimum_status": "UNKNOWN",
+            "q_c_sealed": {
+              "exact": "636901/3495954",
+              "float": 0.1821823170442174
+            }
+          }
+        },
+        "15": {
+          "delta_e_vs_random": {
+            "exact": "72193835762937467068194426150264610454552145338011589953025208869348199836782461037/3734505376883398183872511865985807841699690519441867837231274411998021309614594483228",
+            "float": 0.01933156562307222
+          },
+          "delta_e_vs_reference": {
+            "exact": "31837/6991908",
+            "float": 0.00455340659516687
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 43,
+            "reuse_dispersion_float_as_sealed": 0.46716420988814683,
+            "reuse_dispersion_population_variance": {
+              "exact": "524/2401",
+              "float": 0.2182423990004165
+            },
+            "sum_pairwise_overlap": 43,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 49
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 62,
+            "reuse_dispersion_float_as_sealed": 0.996871407495495,
+            "reuse_dispersion_population_variance": {
+              "exact": "2386/2401",
+              "float": 0.9937526030820492
+            },
+            "sum_pairwise_overlap": 62,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 48
+          },
+          "q_e": {
+            "exact": "927161/3495954",
+            "float": 0.2652097252995892
+          },
+          "q_previous_reference": {
+            "exact": "86785/332948",
+            "float": 0.2606563187044223
+          },
+          "q_random_expected": {
+            "exact": "271586308598091491944473961161920217701361795742045773468872681632141016123471965/1104556455747825549799619007981605395356311895723711279867280216503407663299199788",
+            "float": 0.24587815967651697
+          },
+          "relative_lift_random": {
+            "exact": "72193835762937467068194426150264610454552145338011589953025208869348199836782461037/918233309370147334264266462688452256048304231403856760098258536598268775513458713665",
+            "float": 0.07862254072710353
+          },
+          "relative_lift_reference": {
+            "exact": "31837/1822485",
+            "float": 0.01746900523186748
+          },
+          "sealed_frontier": {
+            "b_to_c_gap_capture_as_sealed": "63674/64825",
+            "e_vs_sealed_frontier": "BELOW_SEALED_BOUNDED_SEARCH_REFERENCE",
+            "frontier_capture_ratio_e_as_sealed": "144387671525874934136388852300529220909104290676023179906050417738696399673564922074/145002441584175585590846957464062503215707344347192421532320843042949505196029805515",
+            "global_optimum_status": "UNKNOWN",
+            "q_c_sealed": {
+              "exact": "3709795/13983816",
+              "float": 0.26529203473501084
+            }
+          }
+        },
+        "20": {
+          "delta_e_vs_random": {
+            "exact": "627542068034581117028982451920808726207857714931072398442462814363130691039342127213649142101498928684432437173/21323869291385514742051129261898489434560759758507896871433070482068505804856353222974011783604447386661490217012",
+            "float": 0.029429089977028585
+          },
+          "delta_e_vs_reference": {
+            "exact": "35647/4661272",
+            "float": 0.007647483347893022
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 93,
+            "reuse_dispersion_float_as_sealed": 0.4973901064062833,
+            "reuse_dispersion_population_variance": {
+              "exact": "594/2401",
+              "float": 0.2473969179508538
+            },
+            "sum_pairwise_overlap": 93,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 49
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 126,
+            "reuse_dispersion_float_as_sealed": 1.26267006516392,
+            "reuse_dispersion_population_variance": {
+              "exact": "3828/2401",
+              "float": 1.594335693461058
+            },
+            "sum_pairwise_overlap": 126,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 48
+          },
+          "q_e": {
+            "exact": "17379/50666",
+            "float": 0.34301109225121384
+          },
+          "q_previous_reference": {
+            "exact": "142111/423752",
+            "float": 0.3353636089033208
+          },
+          "q_random_expected": {
+            "exact": "136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745/435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388",
+            "float": 0.31358200227418526
+          },
+          "relative_lift_random": {
+            "exact": "627542068034581117028982451920808726207857714931072398442462814363130691039342127213649142101498928684432437173/6686781628625681400282559320520944084024476470580093664176163718378127004113197300845904617564977428888496913505",
+            "float": 0.0938481474179019
+          },
+          "relative_lift_reference": {
+            "exact": "35647/1563221",
+            "float": 0.02280355752641501
+          },
+          "sealed_frontier": {
+            "b_to_c_gap_capture_as_sealed": "106941/99070",
+            "e_vs_sealed_frontier": "EXCEEDS_SEALED_BOUNDED_SEARCH_REFERENCE",
+            "frontier_capture_ratio_e_as_sealed": "86600805388772194149999578365071604216684364660487990985059868382112035363429213555483581610006852158451676329874/84944466076486880660335065294961441480930330988407940692210129920773453186130587689833752861450121753639646669963",
+            "global_optimum_status": "UNKNOWN",
+            "q_c_sealed": {
+              "exact": "4788733/13983816",
+              "float": 0.3424482272936086
+            }
+          }
+        },
+        "3": {
+          "delta_e_vs_random": {
+            "exact": "19358796627054/20382336149654941",
+            "float": 0.0009497830123551236
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.482082114735417,
+            "reuse_dispersion_population_variance": {
+              "exact": "558/2401",
+              "float": 0.23240316534777175
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 18
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.482082114735417,
+            "reuse_dispersion_population_variance": {
+              "exact": "558/2401",
+              "float": 0.23240316534777175
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 18
+          },
+          "q_e": {
+            "exact": "32528/582659",
+            "float": 0.055826821519962794
+          },
+          "q_previous_reference": {
+            "exact": "32528/582659",
+            "float": 0.055826821519962794
+          },
+          "q_random_expected": {
+            "exact": "159788892251374/2911762307093563",
+            "float": 0.05487703850760767
+          },
+          "relative_lift_random": {
+            "exact": "9679398313527/559261122879809",
+            "float": 0.017307475734563448
+          },
+          "relative_lift_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "sealed_frontier": {
+            "b_to_c_gap_capture_as_sealed": "NOT_APPLICABLE",
+            "e_vs_sealed_frontier": "TIES_SEALED_BOUNDED_SEARCH_REFERENCE",
+            "frontier_capture_ratio_e_as_sealed": "1/1",
+            "global_optimum_status": "UNKNOWN",
+            "q_c_sealed": {
+              "exact": "32528/582659",
+              "float": 0.055826821519962794
+            }
+          }
+        },
+        "5": {
+          "delta_e_vs_random": {
+            "exact": "345802587770383447146826160/110714025898921387590654475161",
+            "float": 0.0031233855418290987
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.4872382198495233,
+            "reuse_dispersion_population_variance": {
+              "exact": "570/2401",
+              "float": 0.23740108288213244
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 30
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.4872382198495233,
+            "reuse_dispersion_population_variance": {
+              "exact": "570/2401",
+              "float": 0.23740108288213244
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "DERIVED_FROM_OVERLAP_ONE_PAIR_COUNT_MAX_LE_1",
+            "unique_number_coverage": 30
+          },
+          "q_e": {
+            "exact": "54130/582659",
+            "float": 0.09290168005643094
+          },
+          "q_previous_reference": {
+            "exact": "54130/582659",
+            "float": 0.09290168005643094
+          },
+          "q_random_expected": {
+            "exact": "1419959489150088733927686730/15816289414131626798664925023",
+            "float": 0.08977829451460186
+          },
+          "relative_lift_random": {
+            "exact": "34580258777038344714682616/993971642405062113749380711",
+            "float": 0.03478998524884097
+          },
+          "relative_lift_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "sealed_frontier": {
+            "b_to_c_gap_capture_as_sealed": "NOT_APPLICABLE",
+            "e_vs_sealed_frontier": "TIES_SEALED_BOUNDED_SEARCH_REFERENCE",
+            "frontier_capture_ratio_e_as_sealed": "1/1",
+            "global_optimum_status": "UNKNOWN",
+            "q_c_sealed": {
+              "exact": "54130/582659",
+              "float": 0.09290168005643094
+            }
+          }
+        }
+      },
+      "role": "DISCOVERY_ADVANCE",
+      "runtime_as_sealed": {
+        "arm_a_seconds": 1.7499958630651236e-05,
+        "arm_b_seconds": 764.25015037501,
+        "arm_e_seconds": 781.2030371250003,
+        "peak_memory_bytes": 24985600,
+        "total_seconds": 1609.125417000032,
+        "winning_space_seconds": 63.67122158402344
+      },
+      "sealed_gate": {
+        "classification": "B649_NEXT_GEN_CONSTRUCTOR_ADVANCE",
+        "clauses": {
+          "b_to_c_gap_capture_20_ge_1_over_4": true,
+          "duplicate_count_eq_0": true,
+          "q_e_ge_q_b_for_every_k_gt_1": true,
+          "q_e_gt_q_b_at_k_10_15_20": true,
+          "q_e_gt_q_d_for_every_k_gt_1": true
+        },
+        "cross_lottery_replication_eligible": true,
+        "passed": true
+      },
+      "source_commit": "aa0cb76a7e77b60fc58349f2dd49c50fff65b5de",
+      "source_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-v1-result.json",
+      "study_id": "STRATEGY_MATRIX_PHASE7_CONSTRUCTOR_FRONTIER_NEXT_GENERATION_V1"
+    },
+    "STRUCTURE_B_T539": {
+      "alias": "Structure B",
+      "has_sealed_frontier": false,
+      "lottery_type": "DAILY_539",
+      "per_k": {
+        "1": {
+          "delta_e_vs_random": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": false,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.3343180720616743,
+            "reuse_dispersion_population_variance": {
+              "exact": "170/1521",
+              "float": 0.11176857330703485
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 5
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.3343180720616743,
+            "reuse_dispersion_population_variance": {
+              "exact": "170/1521",
+              "float": 0.11176857330703485
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 5
+          },
+          "q_e": {
+            "exact": "1927/191919",
+            "float": 0.010040694251220566
+          },
+          "q_previous_reference": {
+            "exact": "1927/191919",
+            "float": 0.010040694251220566
+          },
+          "q_random_expected": {
+            "exact": "1927/191919",
+            "float": 0.010040694251220566
+          },
+          "relative_lift_random": "NOT_APPLICABLE_K1",
+          "relative_lift_reference": "NOT_APPLICABLE_K1"
+        },
+        "10": {
+          "delta_e_vs_random": {
+            "exact": "106118200513308785374057732014457765257551/28458842832579951673483003698024549730554255",
+            "float": 0.003728830477668743
+          },
+          "delta_e_vs_reference": {
+            "exact": "4/9139",
+            "float": 0.000437684648210964
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 11,
+            "reuse_dispersion_float_as_sealed": 0.4499981737124165,
+            "reuse_dispersion_population_variance": {
+              "exact": "308/1521",
+              "float": 0.2024983563445102
+            },
+            "sum_pairwise_overlap": 11,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 39
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 18,
+            "reuse_dispersion_float_as_sealed": 0.749314830574485,
+            "reuse_dispersion_population_variance": {
+              "exact": "854/1521",
+              "float": 0.5614727153188692
+            },
+            "sum_pairwise_overlap": 18,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 35
+          },
+          "q_e": {
+            "exact": "2734/27417",
+            "float": 0.0997191523507313
+          },
+          "q_previous_reference": {
+            "exact": "2722/27417",
+            "float": 0.09928146770252033
+          },
+          "q_random_expected": {
+            "exact": "210136421818019142830254085117764470705343/2189141756352303974883307976771119210042635",
+            "float": 0.09599032187306256
+          },
+          "relative_lift_random": {
+            "exact": "106118200513308785374057732014457765257551/2731773483634248856793303106530938119169459",
+            "float": 0.038845900346075955
+          },
+          "relative_lift_reference": {
+            "exact": "6/1361",
+            "float": 0.00440852314474651
+          }
+        },
+        "15": {
+          "delta_e_vs_random": {
+            "exact": "4570896159120271319282156141354335480110639149131010454106410307/598599685904506546631579855760286887871699871506613396468589124680",
+            "float": 0.007635981552869471
+          },
+          "delta_e_vs_reference": {
+            "exact": "12/9139",
+            "float": 0.001313053944632892
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 40,
+            "reuse_dispersion_float_as_sealed": 0.5254846546645948,
+            "reuse_dispersion_population_variance": {
+              "exact": "140/507",
+              "float": 0.27613412228796846
+            },
+            "sum_pairwise_overlap": 40,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 39
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 61,
+            "reuse_dispersion_float_as_sealed": 1.1632098689450006,
+            "reuse_dispersion_population_variance": {
+              "exact": "686/507",
+              "float": 1.3530571992110454
+            },
+            "sum_pairwise_overlap": 61,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 39
+          },
+          "q_e": {
+            "exact": "9475/63973",
+            "float": 0.14810935863567443
+          },
+          "q_previous_reference": {
+            "exact": "9391/63973",
+            "float": 0.14679630469104155
+          },
+          "q_random_expected": {
+            "exact": "4425648389458544938963379911506957588946026049013937458614804247/31505246626552976138504202934751941466931572184558599814136269720",
+            "float": 0.14047337708280497
+          },
+          "relative_lift_random": {
+            "exact": "4570896159120271319282156141354335480110639149131010454106410307/84087319399712353840304218318632194189974494931264811713681280693",
+            "float": 0.054358923458985985
+          },
+          "relative_lift_reference": {
+            "exact": "84/9391",
+            "float": 0.008944734320093706
+          }
+        },
+        "20": {
+          "delta_e_vs_random": {
+            "exact": "844672335541725495997358559323888213423468608706187198866359694815221351138649981/65701278913776833556784641377571128608133735728702022746037380175024755550210532360",
+            "float": 0.0128562540867771
+          },
+          "delta_e_vs_reference": {
+            "exact": "136/63973",
+            "float": 0.002125896862738968
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 83,
+            "reuse_dispersion_float_as_sealed": 0.49587383604650553,
+            "reuse_dispersion_population_variance": {
+              "exact": "374/1521",
+              "float": 0.24589086127547666
+            },
+            "sum_pairwise_overlap": 83,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 39
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 117,
+            "reuse_dispersion_float_as_sealed": 1.410489491228212,
+            "reuse_dispersion_population_variance": {
+              "exact": "3026/1521",
+              "float": 1.9894806048652203
+            },
+            "sum_pairwise_overlap": 117,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 39
+          },
+          "q_e": {
+            "exact": "152/777",
+            "float": 0.1956241956241956
+          },
+          "q_previous_reference": {
+            "exact": "37136/191919",
+            "float": 0.19349829876145666
+          },
+          "q_random_expected": {
+            "exact": "1715441071920970397176193765176714544329158433866151866864960526518171695862708197/9385896987682404793826377339653018372590533675528860392291054310717822221458647480",
+            "float": 0.18276794153741852
+          },
+          "relative_lift_random": {
+            "exact": "844672335541725495997358559323888213423468608706187198866359694815221351138649981/12008087503446792780233356356237001810304109037063063068054723685627201871038957379",
+            "float": 0.07034195372904065
+          },
+          "relative_lift_reference": {
+            "exact": "51/4642",
+            "float": 0.010986643688065489
+          }
+        },
+        "3": {
+          "delta_e_vs_random": {
+            "exact": "4338012298/14393681661471",
+            "float": 0.00030138309294501
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.4865042554105199,
+            "reuse_dispersion_population_variance": {
+              "exact": "40/169",
+              "float": 0.23668639053254437
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 15
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.4865042554105199,
+            "reuse_dispersion_population_variance": {
+              "exact": "40/169",
+              "float": 0.23668639053254437
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 15
+          },
+          "q_e": {
+            "exact": "1927/63973",
+            "float": 0.0301220827536617
+          },
+          "q_previous_reference": {
+            "exact": "1927/63973",
+            "float": 0.0301220827536617
+          },
+          "q_random_expected": {
+            "exact": "797140793129/26731123085589",
+            "float": 0.029820699660716692
+          },
+          "relative_lift_random": {
+            "exact": "29265262/2895685289",
+            "float": 0.010106506432578006
+          },
+          "relative_lift_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          }
+        },
+        "5": {
+          "delta_e_vs_random": {
+            "exact": "3438823797620349108188/3446005085257975509658207",
+            "float": 0.0009979160542541426
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.4796996649710181,
+            "reuse_dispersion_population_variance": {
+              "exact": "350/1521",
+              "float": 0.23011176857330704
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 25
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.4796996649710181,
+            "reuse_dispersion_population_variance": {
+              "exact": "350/1521",
+              "float": 0.23011176857330704
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 25
+          },
+          "q_e": {
+            "exact": "9635/191919",
+            "float": 0.05020347125610283
+          },
+          "q_previous_reference": {
+            "exact": "9635/191919",
+            "float": 0.05020347125610283
+          },
+          "q_random_expected": {
+            "exact": "5589975608192723862911/113604563250262928889831",
+            "float": 0.049205555201848696
+          },
+          "relative_lift_random": {
+            "exact": "5353643691157782732/263979128357829720563",
+            "float": 0.020280556741216284
+          },
+          "relative_lift_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          }
+        }
+      },
+      "role": "NATIVE_REPLICATION_1",
+      "runtime_as_sealed": {
+        "arm_a_seconds": 1.516594784334302e-05,
+        "arm_b_seconds": 31.52059545798693,
+        "arm_e_seconds": 31.504130040993914,
+        "peak_memory_bytes": 26771456,
+        "total_seconds": 65.58065137499943,
+        "winning_space_seconds": 2.55577750003431
+      },
+      "sealed_gate": {
+        "classification": "T539_NEXT_GEN_CONSTRUCTOR_REPLICATION_SUPPORTED",
+        "clauses": {
+          "duplicate_count_eq_0": true,
+          "geometry_lex_max_sum_not_increased_where_coverage_superiority_claimed": true,
+          "q_e_ge_q_b_for_every_k_gt_1": true,
+          "q_e_gt_q_b_at_k_10_15_20": true,
+          "q_e_gt_q_d_for_every_k_gt_1": true
+        },
+        "p638_replication_eligible": true,
+        "passed": true
+      },
+      "source_commit": "452712903a2e909679f18902e28f7fdbff1b98b5",
+      "source_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-t539-v1-result.json",
+      "study_id": "STRATEGY_MATRIX_PHASE7_T539_NEXT_GEN_CONSTRUCTOR_REPLICATION_V1"
+    },
+    "STRUCTURE_C_P638_ZONE1": {
+      "alias": "Structure C",
+      "has_sealed_frontier": false,
+      "lottery_type": "POWER_LOTTO_ZONE1",
+      "per_k": {
+        "1": {
+          "delta_e_vs_random": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": false,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.3646422752776584,
+            "reuse_dispersion_population_variance": {
+              "exact": "48/361",
+              "float": 0.1329639889196676
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 6
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.3646422752776584,
+            "reuse_dispersion_population_variance": {
+              "exact": "48/361",
+              "float": 0.1329639889196676
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 6
+          },
+          "q_e": {
+            "exact": "35611/920227",
+            "float": 0.038698060369886995
+          },
+          "q_previous_reference": {
+            "exact": "35611/920227",
+            "float": 0.038698060369886995
+          },
+          "q_random_expected": {
+            "exact": "35611/920227",
+            "float": 0.038698060369886995
+          },
+          "relative_lift_random": "NOT_APPLICABLE_K1",
+          "relative_lift_reference": "NOT_APPLICABLE_K1"
+        },
+        "10": {
+          "delta_e_vs_random": {
+            "exact": "26120076316337226061584074951167197110735637322279/776349447694593194464033036466882115583641204623670",
+            "float": 0.03364474128744735
+          },
+          "delta_e_vs_reference": {
+            "exact": "18880/2760681",
+            "float": 0.006838892287808696
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 22,
+            "reuse_dispersion_float_as_sealed": 0.49372797471825575,
+            "reuse_dispersion_population_variance": {
+              "exact": "88/361",
+              "float": 0.24376731301939059
+            },
+            "sum_pairwise_overlap": 22,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 38
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 30,
+            "reuse_dispersion_float_as_sealed": 0.8153649149910351,
+            "reuse_dispersion_population_variance": {
+              "exact": "240/361",
+              "float": 0.6648199445983379
+            },
+            "sum_pairwise_overlap": 30,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 36
+          },
+          "q_e": {
+            "exact": "52270/145299",
+            "float": 0.3597409479762421
+          },
+          "q_previous_reference": {
+            "exact": "324750/920227",
+            "float": 0.3529020556884334
+          },
+          "q_random_expected": {
+            "exact": "12055457617054652709605677589559750389447883460801/36969021318790152117334906498422957884935295458270",
+            "float": 0.32609620668879474
+          },
+          "relative_lift_random": {
+            "exact": "26120076316337226061584074951167197110735637322279/253164609958147706901719229380754758178405552676821",
+            "float": 0.10317427985157683
+          },
+          "relative_lift_reference": {
+            "exact": "1888/97425",
+            "float": 0.019379009494482936
+          }
+        },
+        "15": {
+          "delta_e_vs_random": {
+            "exact": "822988973572741885688938152505348162539028593175440728142154938278296058011457/14221259643191509054752925906381954448113136200977227345775503229039245349443595",
+            "float": 0.05787032894563257
+          },
+          "delta_e_vs_reference": {
+            "exact": "41518/2760681",
+            "float": 0.015039042902819993
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 66,
+            "reuse_dispersion_float_as_sealed": 0.48237638894272,
+            "reuse_dispersion_population_variance": {
+              "exact": "84/361",
+              "float": 0.23268698060941828
+            },
+            "sum_pairwise_overlap": 66,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 38
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 85,
+            "reuse_dispersion_float_as_sealed": 1.1102643741962623,
+            "reuse_dispersion_population_variance": {
+              "exact": "445/361",
+              "float": 1.2326869806094183
+            },
+            "sum_pairwise_overlap": 85,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 37
+          },
+          "q_e": {
+            "exact": "126653/250971",
+            "float": 0.5046519318965139
+          },
+          "q_previous_reference": {
+            "exact": "64365/131461",
+            "float": 0.48961288899369393
+          },
+          "q_random_expected": {
+            "exact": "2810171242532411178262502967881988185426574514447954450164460031493081669148/6289809660854272027754500622017671140253487926128804664208537474143850220895",
+            "float": 0.4467816029508814
+          },
+          "relative_lift_random": {
+            "exact": "822988973572741885688938152505348162539028593175440728142154938278296058011457/6353797179365781674051519210381175287249484977166825011821844131205857653943628",
+            "float": 0.12952710801745962
+          },
+          "relative_lift_reference": {
+            "exact": "41518/1351665",
+            "float": 0.03071619077212179
+          }
+        },
+        "20": {
+          "delta_e_vs_random": {
+            "exact": "10860799654820796383895904952927578979565625474788593484729915862514373384212847086965219218133096019/131704396033130947118708343818273549765660895754369989224055944711504240598168786106602790393615591370",
+            "float": 0.0824634559053648
+          },
+          "delta_e_vs_reference": {
+            "exact": "6931/394383",
+            "float": 0.017574286924132126
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": true,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 132,
+            "reuse_dispersion_float_as_sealed": 0.3646422752776584,
+            "reuse_dispersion_population_variance": {
+              "exact": "48/361",
+              "float": 0.1329639889196676
+            },
+            "sum_pairwise_overlap": 132,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 38
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 1,
+            "overlap_one_pair_count": 157,
+            "reuse_dispersion_float_as_sealed": 1.2036417501083443,
+            "reuse_dispersion_population_variance": {
+              "exact": "523/361",
+              "float": 1.448753462603878
+            },
+            "sum_pairwise_overlap": 157,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 38
+          },
+          "q_e": {
+            "exact": "578195/920227",
+            "float": 0.6283177955004581
+          },
+          "q_previous_reference": {
+            "exact": "1686068/2760681",
+            "float": 0.6107435085763259
+          },
+          "q_random_expected": {
+            "exact": "10270202302633615863312327738837263272327303835576854236234331415440224472009028462792403800706875633/18814913719018706731244049116896221395094413679195712746293706387357748656881255158086112913373655910",
+            "float": 0.5458543395950932
+          },
+          "relative_lift_random": {
+            "exact": "10860799654820796383895904952927578979565625474788593484729915862514373384212847086965219218133096019/71891416118435311043186294171860842906291126849037979653640319908081571304063199239546826604948129431",
+            "float": 0.15107227317554164
+          },
+          "relative_lift_reference": {
+            "exact": "48517/1686068",
+            "float": 0.02877523326461329
+          }
+        },
+        "3": {
+          "delta_e_vs_random": {
+            "exact": "269741990501428/67436281195460485",
+            "float": 0.0039999535223420035
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.49930699897395464,
+            "reuse_dispersion_population_variance": {
+              "exact": "90/361",
+              "float": 0.24930747922437674
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 18
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.49930699897395464,
+            "reuse_dispersion_population_variance": {
+              "exact": "90/361",
+              "float": 0.24930747922437674
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 18
+          },
+          "q_e": {
+            "exact": "106433/920227",
+            "float": 0.11565950575238501
+          },
+          "q_previous_reference": {
+            "exact": "106433/920227",
+            "float": 0.11565950575238501
+          },
+          "q_random_expected": {
+            "exact": "1075700708906341/9633754456494355",
+            "float": 0.11165955223004301
+          },
+          "relative_lift_random": {
+            "exact": "269741990501428/7529904962344387",
+            "float": 0.03582276162187385
+          },
+          "relative_lift_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          }
+        },
+        "5": {
+          "delta_e_vs_random": {
+            "exact": "221993692364261365090999096/17131828159753742002044612597",
+            "float": 0.012957968658929881
+          },
+          "delta_e_vs_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          },
+          "e_exceeds_random": true,
+          "e_strictly_exceeds_reference": false,
+          "e_ties_or_exceeds_reference": true,
+          "geometry_e": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.40768245749551757,
+            "reuse_dispersion_population_variance": {
+              "exact": "60/361",
+              "float": 0.16620498614958448
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 30
+          },
+          "geometry_previous_reference": {
+            "duplicate_count": 0,
+            "max_pairwise_overlap": 0,
+            "overlap_one_pair_count": 0,
+            "reuse_dispersion_float_as_sealed": 0.40768245749551757,
+            "reuse_dispersion_population_variance": {
+              "exact": "60/361",
+              "float": 0.16620498614958448
+            },
+            "sum_pairwise_overlap": 0,
+            "sum_pairwise_overlap_derivation": "NATIVE_FIELD",
+            "unique_number_coverage": 30
+          },
+          "q_e": {
+            "exact": "530165/2760681",
+            "float": 0.1920413839918484
+          },
+          "q_previous_reference": {
+            "exact": "530165/2760681",
+            "float": 0.1920413839918484
+          },
+          "q_random_expected": {
+            "exact": "7689288966780371765498391/42936912681087072686828603",
+            "float": 0.1790834153329185
+          },
+          "relative_lift_random": {
+            "exact": "221993692364261365090999096/3068026297745368334433858009",
+            "float": 0.07235716738393022
+          },
+          "relative_lift_reference": {
+            "exact": "0/1",
+            "float": 0.0
+          }
+        }
+      },
+      "role": "NATIVE_REPLICATION_2_FINAL",
+      "runtime_as_sealed": {
+        "arm_a_seconds": 1.4249992091208696e-05,
+        "arm_b_seconds": 159.0474720420316,
+        "arm_e_seconds": 166.4140658749966,
+        "peak_memory_bytes": 26853376,
+        "total_seconds": 338.2311550420127,
+        "winning_space_seconds": 12.768526083033066
+      },
+      "sealed_gate": {
+        "classification": "P638_NEXT_GEN_CONSTRUCTOR_REPLICATION_SUPPORTED",
+        "clauses": {
+          "duplicate_count_eq_0": true,
+          "geometry_lex_max_sum_not_increased_where_coverage_superiority_claimed": true,
+          "q_e_ge_q_b_for_every_k_gt_1": true,
+          "q_e_gt_q_b_at_k_10_15_20": true,
+          "q_e_gt_q_d_for_every_k_gt_1": true
+        },
+        "cross_lottery_status": "NEXT_GEN_CONSTRUCTOR_SUPPORTED_IN_3_NATIVE_STRUCTURES",
+        "passed": true
+      },
+      "source_commit": "7d23acab005e3db99cce361a3fcf1932352c1019",
+      "source_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-p638-zone1-v1-result.json",
+      "study_id": "STRATEGY_MATRIX_PHASE7_P638_ZONE1_NEXT_GEN_CONSTRUCTOR_REPLICATION_V1"
+    }
+  },
+  "reference_promotion_assessment": {
+    "factors": {
+      "absence_of_parameter_rescue": "PARAMETER_RESCUE_RUN: NO in all three sealed sources -- no post-hoc parameter mining after an initial failure",
+      "determinism": "MONTE_CARLO: NONE and HISTORICAL_DRAWS: NOT_USED in all three sealed sources; Constructor E is a deterministic greedy packing with a fixed lexicographic tie-break, re-derivable exactly from each pool/draw size",
+      "geometry_mechanism_consistency": "Q4 and Q6 both hold for all three structures at every k in {10,15,20}: max_pairwise_overlap tied, sum_pairwise_overlap strictly reduced, exactly where the coverage gain is strict",
+      "replication_breadth": "3 of 3 native structures in this repository (BIG_LOTTO, DAILY_539, POWER_LOTTO Zone-1) -- the complete population of this repository's native lottery structures, not a sample; all three sealed gates PASS",
+      "runtime_practicality": "Total sealed runtime ranges from 65.6s (Structure B) to 1609.1s (Structure A) for the full k<=20 ladder -- offline/batch-scale in all three, not evaluated against any live/request-path latency budget"
+    },
+    "not_a_global_optimum_claim": true,
+    "recommendation": "PROMOTE_TO_NEXT_REFERENCE_CONSTRUCTOR",
+    "recommendation_scope": "Scoped to the primary coverage event (M3_PLUS / ZONE1_M3_PLUS) at k>=10 within the tested k<=20 ladder, where the gain over the previous reference is strict in all three structures. At k in {1,3,5} Constructor E exactly ties the previous reference in all three structures (never worse), so adopting it network-wide carries no observed downside within this tested ladder. Not evaluated past k=20."
+  },
+  "scope": {
+    "added_new_structure": "NO",
+    "changed_constructor_or_tie_breaking": "NO",
+    "new_matrix_native_cell": "NONE",
+    "new_native_experiment": "NONE",
+    "reran_any_structure": "NO",
+    "reran_bounded_search_reference": "NO",
+    "used_historical_outcomes": "NO"
+  },
+  "sealed_frontier_comparison": {
+    "applies_to": "STRUCTURE_A_B649",
+    "e_vs_sealed_frontier_by_k": {
+      "1": "TIES_SEALED_BOUNDED_SEARCH_REFERENCE",
+      "10": "BELOW_SEALED_BOUNDED_SEARCH_REFERENCE",
+      "15": "BELOW_SEALED_BOUNDED_SEARCH_REFERENCE",
+      "20": "EXCEEDS_SEALED_BOUNDED_SEARCH_REFERENCE",
+      "3": "TIES_SEALED_BOUNDED_SEARCH_REFERENCE",
+      "5": "TIES_SEALED_BOUNDED_SEARCH_REFERENCE"
+    },
+    "exceeds_sealed_bounded_search_reference_at_k": [
+      20
+    ],
+    "global_optimum_status": "UNKNOWN",
+    "no_frontier_invented_for_those_structures": true,
+    "structures_without_a_sealed_frontier": [
+      "STRUCTURE_B_T539",
+      "STRUCTURE_C_P638_ZONE1"
+    ]
+  },
+  "source_type": "STRATEGY_MATRIX_SYNTHESIS",
+  "synthesis_classification": "NEXT_GEN_CONSTRUCTOR_SUPPORTED_IN_3_NATIVE_STRUCTURES",
+  "synthesis_classification_matches_structure_c_sealed_field": true,
+  "synthesis_id": "STRATEGY_MATRIX_PHASE7_NEXT_GENERATION_CONSTRUCTOR_CROSS_STRUCTURE_SYNTHESIS_R1"
+}

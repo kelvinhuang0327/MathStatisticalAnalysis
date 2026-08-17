@@ -451,6 +451,7 @@ class ReplayHistoricalPredictions:
                 else None
             ),
             predicted_main_numbers=prediction_result.numbers,
+            precomputed_causal_history_sha256=history_fingerprint,
         )
         if (
             self._cache is not None

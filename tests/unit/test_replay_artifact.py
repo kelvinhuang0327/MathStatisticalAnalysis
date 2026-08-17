@@ -185,6 +185,38 @@ def test_ok_snapshot_carries_history_and_prediction_fields() -> None:
     assert snapshot.cutoff_draw_date != snapshot.target_draw_date
 
 
+def test_precomputed_causal_history_sha256_skips_recomputation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    history = _history()
+    expected_hash = causal_history_sha256(history)
+
+    def unexpected_recomputation(_: tuple[ReplayCausalDrawRow, ...]) -> str:
+        raise AssertionError("causal history hash was recomputed")
+
+    monkeypatch.setattr(
+        "lottolab.evidence.replay_artifact.causal_history_sha256",
+        unexpected_recomputation,
+    )
+    snapshot = build_replay_prediction_snapshot(
+        dataset_id="DS1",
+        dataset_version="1",
+        lottery_type=LotteryType.BIG_LOTTO,
+        target=_target(),
+        strategy_id=_STRATEGY_ID,
+        strategy_identity=_STRATEGY_IDENTITY,
+        history_status="OK",
+        history_reason_code=None,
+        causal_history=history,
+        prediction_status="OK",
+        prediction_reason_code=None,
+        predicted_main_numbers=(1, 2, 3, 4, 5, 6),
+        precomputed_causal_history_sha256=expected_hash,
+    )
+
+    assert snapshot.causal_history_sha256 == expected_hash
+
+
 def test_ok_snapshot_with_empty_history_has_no_cutoff() -> None:
     snapshot = _ok_snapshot(history=())
     assert snapshot.history_status == "OK"

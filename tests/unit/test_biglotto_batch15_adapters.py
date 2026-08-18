@@ -387,13 +387,14 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     """The 68-strategy Batch-15 closure remains an unchanged prefix.
 
     Total count reflects every descriptor appended after Batch 15 to date:
-    ``b649_new_horizon_minimax_disagreement_r1`` and, as of
+    ``b649_new_horizon_minimax_disagreement_r1``; PR #149's
+    ``legacy_composite__quick_predict_5bet_ts3_markov_freqort``; and, as of
     ``B_BASE_METHOD_UNIVERSE_INTAKE_BATCH01_R1``,
     ``legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b``.
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 70
+    assert len(catalog) == 71
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -403,7 +404,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 70
+    assert len(all_ids) == 71
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)

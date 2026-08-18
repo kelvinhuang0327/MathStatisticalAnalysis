@@ -232,14 +232,15 @@ def test_production_catalog_declares_expected_shape() -> None:
 
 def test_production_catalog_appends_batch16_last_and_preserves_prior_order() -> None:
     """Batch 16 adds exactly one descriptor, strictly after every
-    pre-existing one (69 -> 70); nothing already in the catalog moves."""
+    pre-existing one (69 -> 71, with PR #149's unrelated composite
+    descriptor landing in between); nothing already in the catalog moves."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 70
+    assert len(all_ids) == 71
     assert all_ids[-1] == STRATEGY_ID
     assert all_ids[:-1].count(STRATEGY_ID) == 0
-    assert all_ids[-2] == "b649_new_horizon_minimax_disagreement_r1"
+    assert all_ids[-2] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
 
 
 def test_strategy_is_reachable_only_through_the_portfolio_response_path() -> None:

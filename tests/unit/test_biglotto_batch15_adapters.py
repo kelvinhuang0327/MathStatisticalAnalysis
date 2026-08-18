@@ -387,7 +387,7 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     """The 68-strategy Batch-15 closure remains an unchanged prefix."""
 
     catalog = production_catalog()
-    assert len(catalog) == 69
+    assert len(catalog) == 70
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -397,7 +397,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 69
+    assert len(all_ids) == 70
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -413,7 +413,10 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     )
-    assert all_ids[68:] == ("b649_new_horizon_minimax_disagreement_r1",)
+    assert all_ids[68:] == (
+        "b649_new_horizon_minimax_disagreement_r1",
+        "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+    )
 
 
 def test_all_batch15_strategies_are_reachable_through_exactly_one_response_path() -> None:

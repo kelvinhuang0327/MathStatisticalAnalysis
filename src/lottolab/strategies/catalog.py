@@ -1649,6 +1649,27 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+        strategy_name="大樂透 Quick Predict 5注（TS3 + Markov + FreqOrt）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_composite_quick_predict_5bet:"
+            "BigLottoCompositeQuickPredict5BetAdapter"
+        ),
+        min_history=500,
+        provenance=(
+            "legacy_source:tools/quick_predict.py",
+            "legacy_source:tools/backtest_biglotto_5bet_ts3markov.py",
+            "full_strategy_catalog_id:legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+            "migration_task:B649_COMPOSITE_CHAMPION_5BET_TS3_MARKOV_FREQORT_INTAKE_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=5,
+    ),
 )
 
 

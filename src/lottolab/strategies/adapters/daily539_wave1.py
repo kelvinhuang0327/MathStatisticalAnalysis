@@ -122,7 +122,7 @@ class Daily539MarkovColdAdapter:
         self,
         history: object,
         lottery_type: LotteryType,
-    ) -> tuple[tuple[int, ...], None]:
+    ) -> tuple[tuple[int, ...], int | None]:
         execution = self.get_one_bet_with_emission(history, lottery_type)
         return execution.legal_main_numbers, execution.special_number
 

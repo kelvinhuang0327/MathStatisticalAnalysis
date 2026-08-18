@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from typing import ClassVar, cast
 
 from lottolab.domain.draws import LotteryType
-from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
+from lottolab.domain.lottery_rules import (
+    LOTTERY_RULE_CONTRACTS,
+    LotteryRuleContract,
+    resolve_lottery_rule_contract,
+)
 
 
 class BetAdapterError(Exception):
@@ -64,13 +68,27 @@ class BetAdapterExecution:
 
     emitted_main_numbers: tuple[int, ...]
     legal_main_numbers: tuple[int, ...]
-    special_number: None
+    special_number: int | None
 
 
-def _validated_biglotto_numbers(numbers: object, strategy_id: str) -> tuple[int, ...]:
-    """Validate exact integers against the authoritative BIG_LOTTO contract."""
+def _resolved_rule(lottery_type: LotteryType, strategy_id: str) -> LotteryRuleContract:
+    """Resolve the one active, primary rule contract for a supported lottery type."""
 
-    rule = BIG_LOTTO_RULE_CONTRACT
+    rule = resolve_lottery_rule_contract(lottery_type, LOTTERY_RULE_CONTRACTS)
+    if rule is None:
+        raise UnsupportedLotteryType(
+            f"{strategy_id}: no active primary rule contract for {lottery_type}"
+        )
+    return rule
+
+
+def _validated_lottery_numbers(
+    numbers: object,
+    strategy_id: str,
+    rule: LotteryRuleContract,
+) -> tuple[int, ...]:
+    """Validate exact integers against one authoritative native lottery rule contract."""
+
     if type(numbers) is not tuple:
         raise InvalidOutput(f"{strategy_id}: expected a number tuple")
     raw_numbers = cast(tuple[object, ...], numbers)
@@ -92,6 +110,38 @@ def _validated_biglotto_numbers(numbers: object, strategy_id: str) -> tuple[int,
     return tuple(sorted(validated))
 
 
+def _validated_special_number(
+    value: object,
+    strategy_id: str,
+    rule: LotteryRuleContract,
+    *,
+    main_numbers: tuple[int, ...],
+) -> int | None:
+    """Validate one optional special/second-zone number against its native rule.
+
+    Presence is always optional here regardless of the rule's
+    ``special_number_required`` flag: that flag describes the lottery's own
+    drawn result (every BIG_LOTTO draw has one), not whether a strategy's
+    predicted ticket must include one (BIG_LOTTO strategies legitimately
+    never do). A concrete value, once given, is still fully validated.
+    """
+
+    if value is None:
+        return None
+    if rule.special_number_count == 0:
+        raise InvalidOutput(f"{strategy_id}: special_number is not defined for this lottery")
+    if type(value) is not int:
+        raise InvalidOutput(f"{strategy_id}: special_number must be an exact built-in integer")
+    if not rule.special_number_min <= value <= rule.special_number_max:
+        raise InvalidOutput(
+            f"{strategy_id}: special_number out of range "
+            f"[{rule.special_number_min}..{rule.special_number_max}]"
+        )
+    if not rule.main_special_overlap_allowed and value in main_numbers:
+        raise InvalidOutput(f"{strategy_id}: special_number must not overlap main numbers")
+    return value
+
+
 def _require_history_tuple(history: object, strategy_id: str) -> tuple[object, ...]:
     """Reject every history container except an exact built-in tuple."""
 
@@ -100,9 +150,23 @@ def _require_history_tuple(history: object, strategy_id: str) -> tuple[object, .
     return cast(tuple[object, ...], history)
 
 
-def validated_history(history: object, strategy_id: str) -> tuple[CausalDrawRow, ...]:
-    """Return canonical immutable rows without coercing legacy values."""
+def validated_history(
+    history: object,
+    strategy_id: str,
+    *,
+    lottery_type: LotteryType = LotteryType.BIG_LOTTO,
+) -> tuple[CausalDrawRow, ...]:
+    """Return canonical immutable rows without coercing legacy values.
 
+    ``lottery_type`` selects the native rule contract used to validate each
+    row's main numbers. It defaults to ``BIG_LOTTO`` so every existing
+    two-argument call site keeps its exact prior behavior. ``CausalDrawRow``
+    carries only primary numbers by design (see
+    ``lottolab.domain.replay_history.ReplayCausalDrawRow`` for the separate,
+    dataset-specific type that carries second-zone history).
+    """
+
+    rule = _resolved_rule(lottery_type, strategy_id)
     rows = _require_history_tuple(history, strategy_id)
     validated: list[CausalDrawRow] = []
     for index, candidate in enumerate(rows):
@@ -117,11 +181,12 @@ def validated_history(history: object, strategy_id: str) -> tuple[CausalDrawRow,
             raise InvalidOutput(
                 f"{strategy_id}: history row {index} date must be a non-empty string"
             )
+        validated_numbers = _validated_lottery_numbers(row.numbers, strategy_id, rule)
         validated.append(
             CausalDrawRow(
                 draw=row.draw,
                 date=row.date,
-                numbers=_validated_biglotto_numbers(row.numbers, strategy_id),
+                numbers=validated_numbers,
             )
         )
     return tuple(validated)
@@ -140,7 +205,7 @@ class BetAdapter(ABC):
         self,
         history: object,
         lottery_type: LotteryType,
-    ) -> tuple[tuple[int, ...], None]:
+    ) -> tuple[tuple[int, ...], int | None]:
         execution = self.get_one_bet_with_emission(history, lottery_type)
         return execution.legal_main_numbers, execution.special_number
 
@@ -158,11 +223,13 @@ class BetAdapter(ABC):
             raise UnsupportedLotteryType(
                 f"{self.strategy_id} does not support the requested lottery type"
             )
+        rule = _resolved_rule(lottery_type, self.strategy_id)
 
         raw_history = _require_history_tuple(history, self.strategy_id)
         canonical_history = validated_history(
             self._history_window(raw_history),
             self.strategy_id,
+            lottery_type=lottery_type,
         )
         if len(canonical_history) < self.min_history:
             raise InsufficientHistory(
@@ -171,17 +238,42 @@ class BetAdapter(ABC):
             )
 
         predicted = self._predict(canonical_history, lottery_type)
-        validated = _validated_biglotto_numbers(predicted, self.strategy_id)
+        validated = _validated_lottery_numbers(predicted, self.strategy_id, rule)
+        predicted_special = self._predict_special_number(
+            canonical_history, lottery_type, validated
+        )
+        validated_special = _validated_special_number(
+            predicted_special,
+            self.strategy_id,
+            rule,
+            main_numbers=validated,
+        )
         return BetAdapterExecution(
             emitted_main_numbers=predicted,
             legal_main_numbers=validated,
-            special_number=None,
+            special_number=validated_special,
         )
 
     def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
         """Select rows that are causally visible to this adapter before row validation."""
 
         return history
+
+    def _predict_special_number(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+        main_numbers: tuple[int, ...],
+    ) -> int | None:
+        """Return this producer's untrusted special number, or ``None`` when not applicable.
+
+        The default preserves every existing single-ticket adapter's output
+        exactly ``None``. A native adapter for a lottery whose own ticket
+        includes a second-zone/special number (for example POWER_LOTTO)
+        overrides this hook instead of changing :meth:`_predict`.
+        """
+
+        return None
 
     @abstractmethod
     def _predict(
@@ -232,11 +324,13 @@ class PortfolioBetAdapter(ABC):
             raise UnsupportedLotteryType(
                 f"{self.strategy_id} does not support the requested lottery type"
             )
+        rule = _resolved_rule(lottery_type, self.strategy_id)
 
         raw_history = _require_history_tuple(history, self.strategy_id)
         canonical_history = validated_history(
             self._history_window(raw_history),
             self.strategy_id,
+            lottery_type=lottery_type,
         )
         if len(canonical_history) < self.min_history:
             raise InsufficientHistory(
@@ -253,19 +347,54 @@ class PortfolioBetAdapter(ABC):
                 f"got {len(predicted)}"
             )
 
+        validated_tickets = tuple(
+            _validated_lottery_numbers(ticket, self.strategy_id, rule) for ticket in predicted
+        )
+        predicted_specials = self._predict_special_numbers(
+            canonical_history, lottery_type, validated_tickets
+        )
+        if type(predicted_specials) is not tuple or len(predicted_specials) != len(
+            validated_tickets
+        ):
+            raise InvalidOutput(
+                f"{self.strategy_id}: expected one special number per native ticket"
+            )
         return tuple(
             BetAdapterExecution(
                 emitted_main_numbers=ticket,
-                legal_main_numbers=_validated_biglotto_numbers(ticket, self.strategy_id),
-                special_number=None,
+                legal_main_numbers=validated_ticket,
+                special_number=_validated_special_number(
+                    special,
+                    self.strategy_id,
+                    rule,
+                    main_numbers=validated_ticket,
+                ),
             )
-            for ticket in predicted
+            for ticket, validated_ticket, special in zip(
+                predicted, validated_tickets, predicted_specials, strict=True
+            )
         )
 
     def _history_window(self, history: tuple[object, ...]) -> tuple[object, ...]:
         """Select rows that are causally visible to this adapter before row validation."""
 
         return history
+
+    def _predict_special_numbers(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+        tickets: tuple[tuple[int, ...], ...],
+    ) -> tuple[int | None, ...]:
+        """Return this producer's untrusted special number per ticket, or all-``None``.
+
+        The default preserves every existing portfolio adapter's output
+        exactly ``None`` for each ticket; see
+        :meth:`BetAdapter._predict_special_number` for the single-ticket
+        equivalent and when a native adapter would override this instead.
+        """
+
+        return tuple(None for _ in tickets)
 
     @abstractmethod
     def _predict_all(

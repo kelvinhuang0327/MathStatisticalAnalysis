@@ -125,6 +125,29 @@ class _OutcomeAdapter(BetAdapter):
         return (49, 41, 35, 34, 33, 32)
 
 
+class _PowerLottoOutcomeAdapter(BetAdapter):
+    strategy_id = "fixture_powerlotto_generate_one_bet"
+    strategy_name = "Fixture POWER_LOTTO Generate One Bet"
+    strategy_version = "v1.0"
+    min_history = 1
+    supported_lottery_types = (LotteryType.POWER_LOTTO,)
+
+    def _predict(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[int, ...]:
+        return (2, 4, 6, 8, 10, 12)
+
+    def _predict_special_number(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+        main_numbers: tuple[int, ...],
+    ) -> int | None:
+        return 5
+
+
 class _WrongIdAdapter(_OutcomeAdapter):
     strategy_id = "wrong-id"
 
@@ -188,6 +211,38 @@ def test_ok_result_is_canonical_and_typed() -> None:
     assert result.numbers == (32, 33, 34, 35, 41, 49)
     assert result.special_number is None
     assert result.reason_code is None
+
+
+def test_ok_result_preserves_a_typed_special_number() -> None:
+    """A native adapter for a lottery with its own second-zone number (POWER_LOTTO)
+    has that number carried through GenerateOneBet, not just adapter execution."""
+
+    descriptor = StrategyDescriptor(
+        strategy_id="fixture_powerlotto_generate_one_bet",
+        strategy_name="Fixture POWER_LOTTO Generate One Bet",
+        version="v1.0",
+        lottery_types=(LotteryType.POWER_LOTTO,),
+        lifecycle_status=LifecycleStatus.OBSERVATION,
+        executable=False,
+        min_history=1,
+        provenance=("fixture:generate-one-bet",),
+    )
+    use_case = GenerateOneBet(
+        StrategyCatalog((descriptor,)),
+        {descriptor.strategy_id: _PowerLottoOutcomeAdapter()},
+    )
+
+    result = use_case.execute(
+        GenerateOneBetInput(
+            strategy_id=descriptor.strategy_id,
+            lottery_type=LotteryType.POWER_LOTTO,
+            history=(CausalDrawRow("1", "2026-01-01", (1, 2, 3, 4, 5, 6)),),
+        )
+    )
+
+    assert result.status is GenerateOneBetStatus.OK
+    assert result.numbers == (2, 4, 6, 8, 10, 12)
+    assert result.special_number == 5
 
 
 def test_execution_detail_preserves_raw_order_without_a_second_adapter_call() -> None:

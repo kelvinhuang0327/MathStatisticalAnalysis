@@ -38,8 +38,10 @@ from lottolab.application.use_cases.generate_ordered_candidate_emission import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import (
     BIG_LOTTO_RULE_CONTRACT,
+    LOTTERY_RULE_CONTRACTS,
     BigLottoPrizeTier,
     resolve_big_lotto_prize_tier,
+    resolve_lottery_rule_contract,
     score_big_lotto_ticket,
 )
 from lottolab.domain.ordered_candidate_materialization import (
@@ -198,10 +200,12 @@ class BigLottoResearchBacktestManifest:
                 "INVALID_MANIFEST_SCHEMA_VERSION",
                 "manifest schema_version is unsupported",
             )
-        if self.lottery_type is not LotteryType.BIG_LOTTO:
+        if type(self.lottery_type) is not LotteryType or (
+            resolve_lottery_rule_contract(self.lottery_type, LOTTERY_RULE_CONTRACTS) is None
+        ):
             raise ResearchBacktestInputError(
                 "UNSUPPORTED_LOTTERY_TYPE",
-                "manifest lottery_type must be BIG_LOTTO",
+                "manifest lottery_type has no active primary rule contract",
             )
         if self.run_kind is not ResearchRunKind.HISTORICAL_BACKTEST:
             raise ResearchBacktestInputError(
@@ -617,10 +621,10 @@ class RunBigLottoResearchBacktest:
                     "STRATEGY_NOT_EXECUTABLE",
                     f"strategy {strategy_id} is not currently executable",
                 )
-            if LotteryType.BIG_LOTTO not in descriptor.lottery_types:
+            if manifest.lottery_type not in descriptor.lottery_types:
                 raise ResearchBacktestInputError(
-                    "STRATEGY_NOT_BIG_LOTTO_COMPATIBLE",
-                    f"strategy {strategy_id} is not BIG_LOTTO-compatible",
+                    "STRATEGY_NOT_LOTTERY_TYPE_COMPATIBLE",
+                    f"strategy {strategy_id} is not {manifest.lottery_type.value}-compatible",
                 )
             try:
                 loaded_adapter = self._registry.load_adapter(strategy_id)

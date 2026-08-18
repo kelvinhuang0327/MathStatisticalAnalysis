@@ -59,7 +59,7 @@ class GenerateOneBetInput:
 class GenerateOneBetResult:
     status: GenerateOneBetStatus
     numbers: tuple[int, ...] | None
-    special_number: None
+    special_number: int | None
     reason_code: GenerateOneBetReason | None
 
     def __post_init__(self) -> None:
@@ -353,7 +353,7 @@ class GeneratePortfolioResult:
 
     status: GeneratePortfolioStatus
     numbers: tuple[tuple[int, ...], ...] | None
-    special_number: None
+    special_number: int | None
     reason_code: GeneratePortfolioReason | None
 
     def __post_init__(self) -> None:

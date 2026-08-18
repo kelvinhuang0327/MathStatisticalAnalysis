@@ -1670,6 +1670,31 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__cooccurrence_graph__25fa2e473092",
+        strategy_name="大樂透 Cooccurrence Graph 共現圖譜 (原生最多4注)",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_cooccurrence_graph:"
+            "BigLottoCooccurrenceGraphAdapter"
+        ),
+        min_history=100,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/cooccurrence_graph.py",
+            "legacy_source_sha256:"
+            "25fa2e47309232265f442a688ddc1de2bbd853ce6c63762a5298aef016c008ab",
+            "native_helper:lottolab.application.legacy_history_native_portfolios_wave2",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__cooccurrence_graph__25fa2e473092",
+            "migration_task:B649_BASE_METHOD_COOCCURRENCE_GRAPH_INTAKE_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+    ),
 )
 
 

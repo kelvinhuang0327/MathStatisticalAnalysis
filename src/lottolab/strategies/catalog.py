@@ -1759,6 +1759,112 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=10,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+        strategy_name="大樂透 三重打擊（Fourier+冷號+尾數平衡）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch17:"
+            "BigLottoPredictBiglottoTripleStrikeAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_biglotto_triple_strike.py",
+            "legacy_source_sha256:"
+            "dad1c50d1504971a51b6ec860178f6d6c27469315b02573d73fd20593c2c73db",
+            "legacy_symbol:generate_triple_strike",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+            "migration_task:BIGLOTTO_BATCH17_R1_BASE_METHOD_BATCH03_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_COVERAGE_AND_BATCH03_SELECTION_R1",
+            "min_history_status:INFERRED_FROM_SIBLING_DONOR_FILE_MIN_HISTORY_BUFFER",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_sum_constraint__acb3b118300d",
+        strategy_name="大樂透 總和回歸約束三注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch17:BigLottoBacktestSumConstraintAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_sum_constraint.py",
+            "legacy_source_sha256:"
+            "acb3b118300ddeae322f98923e75bb85de2a8e8e13a9cf85c8d6bed10b9f5533",
+            "legacy_symbol:generate_ts_sum_constrained(pool_size=12, apply_to='all')",
+            "full_strategy_catalog_id:legacy_biglotto__backtest_sum_constraint__acb3b118300d",
+            "migration_task:BIGLOTTO_BATCH17_R1_BASE_METHOD_BATCH03_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_COVERAGE_AND_BATCH03_SELECTION_R1",
+            "parameterization_status:DONOR_DEFAULT_KWARGS_NOT_GRID_SEARCH_SELECTED",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=3,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
+        strategy_name="大樂透 三重打擊 + Markov 正交注四",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch17:"
+            "BigLottoBacktestBiglottoMarkov4BetAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_biglotto_markov_4bet.py",
+            "legacy_source_sha256:"
+            "aefb54eb345bf38fbeb1526959c12a3585a970325316dfbc2c6a7bb440b5ec6a",
+            "legacy_symbol:generate_ts3_markov4",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
+            "migration_task:BIGLOTTO_BATCH17_R1_BASE_METHOD_BATCH03_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_COVERAGE_AND_BATCH03_SELECTION_R1",
+            "sequencing_status:SELF_CONTAINED_NO_CROSS_ADAPTER_DEPENDENCY",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
+        strategy_name="大樂透 熱號休停回歸",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch17:"
+            "BigLottoBacktestBiglottoHotStopReboundAdapter"
+        ),
+        min_history=200,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_biglotto_hot_stop_rebound.py",
+            "legacy_source_sha256:"
+            "1794a8c507aed174efe13310a3a3b7774158149931ce70101a2cfb729d54b2f5",
+            "legacy_symbol:generate_hot_stop_bet",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
+            "migration_task:BIGLOTTO_BATCH17_R1_BASE_METHOD_BATCH03_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_COVERAGE_AND_BATCH03_SELECTION_R1",
+            "parameterization_status:DONOR_DEFAULT_KWARGS_MATCH_DOCSTRING_SIGNAL_DEFINITION",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

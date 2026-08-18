@@ -306,12 +306,19 @@ def test_production_catalog_batch16_descriptors_declare_expected_shapes() -> Non
 def test_pre_batch16_descriptors_are_unaffected_by_batch16() -> None:
     """Every pre-existing descriptor and its declaration order must remain
     unchanged; batch 16's four new descriptors are appended strictly after
-    them."""
+    them.
+
+    Position note: batch 17 (Base Method Universe Batch03 intake) has since
+    been appended after batch 16, so batch 16's own block is no longer the
+    catalog's last 4 -- it is now the 4 immediately before batch 17's own
+    trailing 4 (see ``test_biglotto_batch17_adapters.py``'s analogous,
+    currently-last-4 assertion, which the next batch will need to adjust the
+    same way this one now has been)."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    pre_existing_ids = all_ids[:-4]
-    batch16_ids_in_order = all_ids[-4:]
+    pre_existing_ids = all_ids[:-8]
+    batch16_ids_in_order = all_ids[-8:-4]
     assert set(pre_existing_ids).isdisjoint(BATCH16_IDS)
     assert set(batch16_ids_in_order) == BATCH16_IDS
     assert batch16_ids_in_order == (

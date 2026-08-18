@@ -1,5 +1,7 @@
 """Exact parity and runtime tests for the minimal dual-bet intake."""
 
+# pyright: reportPrivateUsage=false
+
 from __future__ import annotations
 
 from collections import Counter

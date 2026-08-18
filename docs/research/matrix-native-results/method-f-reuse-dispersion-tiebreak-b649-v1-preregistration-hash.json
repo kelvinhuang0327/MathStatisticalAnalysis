@@ -1,0 +1,108 @@
+{
+  "hash_method": "LCJ-1 canonical bytes (lottolab.evidence.canonical_json), SHA-256",
+  "locked_parameters": {
+    "candidate_f_constructor_id": "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1",
+    "candidate_f_constructor_key": [
+      "max_pairwise_overlap",
+      "sum_pairwise_overlap",
+      "resulting_peak_element_reuse",
+      "resulting_sum_c_reuse_3",
+      "ticket"
+    ],
+    "candidate_f_constructor_rule": "unused_legal_ticket_minimizing_max_then_sum_then_peak_reuse_then_sum_c3_reuse_then_lex_ticket",
+    "candidate_f_entry_point": "lottolab.research.greedy_minmax_sum_then_reuse_dispersion_constructor.greedy_minmax_sum_then_reuse_dispersion_portfolio",
+    "candidate_f_source_path": "src/lottolab/research/greedy_minmax_sum_then_reuse_dispersion_constructor.py",
+    "canonical_input_commit": "9141649ceaad5d5261443606cdd681b93a8c5549",
+    "canonical_input_tree": "26f7dbb950cf7290f98ee08d436ad214582fb285",
+    "design_file_blobs": [
+      {
+        "blob": "dfc2fc627698828e31bf0e1578f22ada3350e222",
+        "path": "src/lottolab/research/greedy_minmax_sum_then_reuse_dispersion_constructor.py"
+      },
+      {
+        "blob": "824d9ebd43d784e8e833f9b5f385949bfc9d96a8",
+        "path": "tests/unit/test_greedy_minmax_sum_then_reuse_dispersion_constructor.py"
+      }
+    ],
+    "design_source": "OWNER_TASK_PACKET_MATRIX_PHASE8_METHOD_F_DISCOVERY_R1",
+    "draw_size": 6,
+    "duplicate_tickets_invariant": 0,
+    "evaluator_id": "ONE_PASS_EXACT_PREFIX_BITMASK_M3_PLUS",
+    "evidence_type": "EXACT_COMBINATORIAL",
+    "exposure_ladder": [
+      10,
+      15,
+      20
+    ],
+    "global_optimum_status": "UNKNOWN",
+    "historical_draws_used": false,
+    "hypothesis_family_id": "REUSE_DISPERSION_TIEBREAK",
+    "lock_scope": "THIS_EXACT_CANDIDATE_F_VARIANT_ONLY",
+    "lottery_type": "BIG_LOTTO",
+    "method_f_advance_gate": [
+      "q_f_ge_q_e_for_every_k_10_15_20",
+      "q_f_gt_q_e_at_k_20",
+      "duplicate_count_eq_0_for_every_k_10_15_20",
+      "geometry_max_and_sum_not_worse_than_sealed_e_for_every_k_10_15_20",
+      "second_independent_run_byte_identical"
+    ],
+    "monte_carlo": false,
+    "owner_authorization": "AUTHORIZE_MATRIX_PHASE8_METHOD_F_DISCOVERY_R1",
+    "p638_execution": "not_run",
+    "parameter_rescue": "forbidden",
+    "pool_size": 49,
+    "portfolio_mode": "nested_prefix",
+    "post_result_tuning": "forbidden",
+    "primary_event_minimum_matches": 3,
+    "random_baseline_id": "exact_random_portfolio_coverage",
+    "randomness": "none",
+    "reference_e_constructor_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+    "reference_e_entry_point": "lottolab.research.greedy_minmax_then_sum_overlap_constructor.greedy_minmax_then_sum_overlap_portfolio",
+    "reference_e_rerun": "forbidden",
+    "reference_e_sealed_locked_preregistration_blob_sha1": "67cf4c63eeb39c5575cf5c04b6a3c56c07bdeb20",
+    "reference_e_sealed_locked_preregistration_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-v1-preregistration-hash.json",
+    "reference_e_sealed_locked_preregistration_sha256": "ea014c2204e1fa77041329fc60d172502589bbc02c7922c63e78120e582080c1",
+    "reference_e_sealed_result_blob_sha1": "70148c6c59baea1087126bf95a009eb4d291149c",
+    "reference_e_sealed_result_path": "docs/research/matrix-native-results/constructor-frontier-next-generation-v1-result.json",
+    "reference_e_source_blob_sha1": "b141a3c881252135b581123761db820108e2f046",
+    "restarts": "none",
+    "runtime_promotion": "not_authorized",
+    "sealed_q_e": {
+      "k_10": "212295/1165318",
+      "k_15": "927161/3495954",
+      "k_20": "17379/50666"
+    },
+    "sealed_q_e_duplicate_count": {
+      "k_10": 0,
+      "k_15": 0,
+      "k_20": 0
+    },
+    "sealed_q_e_max_pairwise_overlap": {
+      "k_10": 1,
+      "k_15": 1,
+      "k_20": 1
+    },
+    "sealed_q_e_path": "per_k.k.q_e.exact",
+    "sealed_q_e_sum_pairwise_overlap": {
+      "k_10": 11,
+      "k_15": 43,
+      "k_20": 93
+    },
+    "secondary_events": "not_run",
+    "source_type": "STRATEGY_MATRIX_NATIVE",
+    "structure_scope": "STRUCTURE_A_B649_ONLY",
+    "study_id": "STRATEGY_MATRIX_PHASE8_METHOD_F_REUSE_DISPERSION_TIEBREAK_V1",
+    "t539_execution": "not_run",
+    "task_id": "MATRIX_PHASE8_METHOD_F_DISCOVERY_R1",
+    "tie_breaking": [
+      "max_pairwise_overlap",
+      "sum_pairwise_overlap",
+      "resulting_peak_element_reuse",
+      "resulting_sum_c_reuse_3",
+      "lexicographic_ticket"
+    ],
+    "weights": "none"
+  },
+  "preregistration_hash_sha256": "32f673d601feadd54d8019a0942358ce1aaf0ef7cda6e7423a5bf9bf85824263",
+  "study_id": "STRATEGY_MATRIX_PHASE8_METHOD_F_REUSE_DISPERSION_TIEBREAK_V1"
+}

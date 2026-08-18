@@ -450,4 +450,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "b649_new_horizon_minimax_disagreement_r1",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
+        "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
     ]

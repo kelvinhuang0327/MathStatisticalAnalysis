@@ -384,7 +384,13 @@ def test_production_catalog_descriptors_declare_expected_shapes() -> None:
 
 
 def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
-    """The 68-strategy Batch-15 closure remains an unchanged prefix."""
+    """The 68-strategy Batch-15 closure remains an unchanged prefix.
+
+    Total count reflects every descriptor appended after Batch 15 to date:
+    ``b649_new_horizon_minimax_disagreement_r1`` and, as of
+    ``B_BASE_METHOD_UNIVERSE_INTAKE_BATCH01_R1``,
+    ``legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b``.
+    """
 
     catalog = production_catalog()
     assert len(catalog) == 70
@@ -416,6 +422,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
     assert all_ids[68:] == (
         "b649_new_horizon_minimax_disagreement_r1",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+        "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
     )
 
 

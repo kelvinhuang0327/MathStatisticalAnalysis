@@ -799,6 +799,7 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__test_pce__9c0cf22b4217",
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+        "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
     }
 
 

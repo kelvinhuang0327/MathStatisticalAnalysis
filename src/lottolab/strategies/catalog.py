@@ -1619,6 +1619,32 @@ _PRODUCTION_DESCRIPTORS = (
         ),
     ),
     StrategyDescriptor(
+        strategy_id="legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        strategy_name="大樂透 Minimal Dual Bet Strategy 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_minimal_dual_bet:"
+            "BigLottoMinimalDualBetStrategyAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/minimal_dual_bet_strategy.py",
+            "legacy_source_sha256:"
+            "c4624b1a5ec06330d0f4298ebc7e74cbde0b9cc4a2ab77da2f8a04b23f91309c",
+            "legacy_symbol:MinimalDualBetStrategy.predict_dual_bets",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "predictive_advantage_claimed:NO",
+            "migration_task:B649_BASE_METHOD_MINIMAL_DUAL_BET_INTAKE_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
         strategy_id="b649_new_horizon_minimax_disagreement_r1",
         strategy_name="大樂透 Horizon Minimax Disagreement 2注",
         version="v0.1",

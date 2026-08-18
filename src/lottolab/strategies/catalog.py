@@ -1670,6 +1670,30 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
+        strategy_name="大樂透 Triple Strike + Markov 正交注4",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch16:BigLottoTs3Markov4betAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_biglotto_markov_4bet.py",
+            "legacy_source_sha256:"
+            "aefb54eb345bf38fbeb1526959c12a3585a970325316dfbc2c6a7bb440b5ec6a",
+            "legacy_symbol:generate_ts3_markov4",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
+            "migration_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH01_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+    ),
 )
 
 

@@ -1,0 +1,102 @@
+{
+  "claim_boundary": {
+    "global_optimum": "NOT_CLAIMED",
+    "prediction_method": "NOT_CLAIMED",
+    "production_default": "NOT_CLAIMED",
+    "profitability_claim": "NOT_CLAIMED",
+    "runtime_strategy": "NOT_CLAIMED",
+    "universal_portability": "NOT_CLAIMED"
+  },
+  "constructor_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+  "designation_id": "STRATEGY_MATRIX_PHASE7_REFERENCE_DESIGNATION_R1",
+  "effective_scope": {
+    "conditions_all_must_hold": {
+      "domain_compatible_with_sealed_evidence": "one of the 3 sealed native structures: ['BIG_LOTTO', 'DAILY_539', 'POWER_LOTTO_ZONE1']",
+      "k_gte_10": "within the tested ladder, k in [10, 15, 20]",
+      "method_e_applicable_unchanged": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1 applied exactly as sealed, no parameter changes",
+      "primary_tested_coverage_event": "as stated in the source's own recommendation_scope: 'Scoped to the primary coverage event (M3_PLUS / ZONE1_M3_PLUS) at k>=10 within the tested k<=20 ladder, where the gain over the previous reference is strict in all three structures. At k in {1,3,5} Constructor E exactly ties the previous reference in all three structures (never worse), so adopting it network-wide carries no observed downside within this tested ladder. Not evaluated past k=20.'"
+    },
+    "domains_in_scope": [
+      "BIG_LOTTO",
+      "DAILY_539",
+      "POWER_LOTTO_ZONE1"
+    ],
+    "k_ladder_in_scope": [
+      10,
+      15,
+      20
+    ],
+    "recommendation_scope_as_sealed": "Scoped to the primary coverage event (M3_PLUS / ZONE1_M3_PLUS) at k>=10 within the tested k<=20 ladder, where the gain over the previous reference is strict in all three structures. At k in {1,3,5} Constructor E exactly ties the previous reference in all three structures (never worse), so adopting it network-wide carries no observed downside within this tested ladder. Not evaluated past k=20.",
+    "structures_in_scope": [
+      "STRUCTURE_A_B649",
+      "STRUCTURE_B_T539",
+      "STRUCTURE_C_P638_ZONE1"
+    ]
+  },
+  "excluded_scope": {
+    "any_4th_structure": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+    "extrapolation_policy": "DO_NOT_EXTRAPOLATE",
+    "incompatible_domains": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+    "k_1_3_5": {
+      "k": [
+        1,
+        3,
+        5
+      ],
+      "reason": "Constructor E exactly ties the previous reference (never worse) at k in {1,3,5} in all three sealed structures per the source synthesis (q2_e_ge_reference_every_k_gt_1, q5 common_across_all_three). A tie alone does not replace Reference R for these k.",
+      "reference_status": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+      "status": "TIE_ONLY_DOES_NOT_TRIGGER_REPLACEMENT"
+    },
+    "k_beyond_20": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+    "p638_zone2": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+    "untested_objectives": {
+      "predictive_advantage": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+      "prize_economic_value": "NOT_ESTABLISHED_BY_THIS_DESIGNATION",
+      "profitability": "NOT_ESTABLISHED_BY_THIS_DESIGNATION"
+    }
+  },
+  "global_optimum_status": "UNKNOWN",
+  "next_task": "MATRIX_PHASE7_REFERENCE_DESIGNATION_CANONICALIZE_PUBLISH_R1",
+  "no_new_science": {
+    "altered_prior_sealed_artifacts": "NO",
+    "changed_method_e": "NO",
+    "inspected_outcome_or_history_data": "NO",
+    "new_matrix_native_result_cell": "NO",
+    "regenerated_portfolios": "NO",
+    "reran_a_b_c": "NO",
+    "tuned_parameters": "NO"
+  },
+  "prior_reference_treatment": {
+    "note": "The prior reference constructor remains the historical/sealed comparator for every already-sealed result that used it. This designation does not alter, invalidate, or retroactively re-grade any prior sealed artifact.",
+    "replaced_by_this_designation": false,
+    "status": "HISTORICAL_SEALED_COMPARATOR"
+  },
+  "reference_designation_status": "METHOD_E_IS_NEXT_RESEARCH_REFERENCE_IN_SCOPE",
+  "runtime_promotion": "NOT_AUTHORIZED",
+  "semantics": {
+    "does_not_mean": [
+      "production default",
+      "prediction method",
+      "runtime strategy",
+      "profitability claim",
+      "universal portability",
+      "global optimum"
+    ],
+    "means": [
+      "default scientific comparator for future in-scope Matrix constructor studies",
+      "prior reference remains historical/sealed comparator",
+      "future candidates should compare against Constructor E in-scope"
+    ]
+  },
+  "source_synthesis": {
+    "source_commit": "e7e886ff0537487f1ea2cbac848ea93382a22f43",
+    "source_result_path": "docs/research/matrix-native-results/strategy-matrix-phase7-next-generation-constructor-cross-structure-synthesis-v1-result.json",
+    "synthesis_id": "STRATEGY_MATRIX_PHASE7_NEXT_GENERATION_CONSTRUCTOR_CROSS_STRUCTURE_SYNTHESIS_R1",
+    "verified": {
+      "global_optimum_status": "UNKNOWN",
+      "reference_promotion_recommendation": "PROMOTE_TO_NEXT_REFERENCE_CONSTRUCTOR",
+      "synthesis_classification": "NEXT_GEN_CONSTRUCTOR_SUPPORTED_IN_3_NATIVE_STRUCTURES"
+    }
+  },
+  "source_type": "STRATEGY_MATRIX_REFERENCE_DESIGNATION"
+}

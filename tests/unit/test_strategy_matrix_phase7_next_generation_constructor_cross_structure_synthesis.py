@@ -47,12 +47,22 @@ def synthesis() -> dict[str, Any]:
 
 def _independent_read(commit: str, path: Path) -> dict[str, Any]:
     """Bypasses the module's own `_read_pinned_blob`/`load_source` entirely."""
-    proc = subprocess.run(
-        ["git", "show", f"{commit}:{path.as_posix()}"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=True,
+    show_cmd = ["git", "show", f"{commit}:{path.as_posix()}"]
+    proc = subprocess.run(show_cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+    if proc.returncode != 0:
+        # Shallow checkouts (e.g. actions/checkout@v4's default fetch-depth: 1)
+        # don't have older merged-in commits locally even though they're
+        # reachable on the remote. Fetch just that commit, then retry once.
+        subprocess.run(
+            ["git", "fetch", "--depth=1", "origin", commit],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+        )
+        proc = subprocess.run(show_cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+    assert proc.returncode == 0, (
+        f"cannot read pinned canonical blob {commit}:{path} -- "
+        f"tried fetching {commit} from origin and it still failed. stderr: {proc.stderr}"
     )
     return json.loads(proc.stdout)
 

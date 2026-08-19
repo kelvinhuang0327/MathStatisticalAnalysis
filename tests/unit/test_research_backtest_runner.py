@@ -182,7 +182,7 @@ def test_manifest_rejects_noncanonical_file_bytes() -> None:
     ("change", "reason_code"),
     [
         ({"schema_version": "v0"}, "INVALID_MANIFEST_SCHEMA_VERSION"),
-        ({"lottery_type": LotteryType.POWER_LOTTO}, "UNSUPPORTED_LOTTERY_TYPE"),
+        ({"lottery_type": "POWER_LOTTO"}, "UNSUPPORTED_LOTTERY_TYPE"),
         ({"replicate": 2}, "INVALID_REPLICATE"),
         ({"minimum_history_draws": 0}, "INVALID_HISTORY_BOUNDS"),
         (
@@ -203,6 +203,32 @@ def test_manifest_rejects_invalid_closed_contract_values(
         replace(manifest, **change)
 
     assert error.value.reason_code == reason_code
+
+
+@pytest.mark.parametrize("lottery_type", [LotteryType.DAILY_539, LotteryType.POWER_LOTTO])
+def test_manifest_accepts_every_lottery_type_with_an_active_rule_contract(
+    lottery_type: LotteryType,
+) -> None:
+    manifest = replace(_manifest(_snapshot()), lottery_type=lottery_type)
+
+    assert manifest.lottery_type is lottery_type
+
+
+@pytest.mark.parametrize("lottery_type", [LotteryType.DAILY_539, LotteryType.POWER_LOTTO])
+def test_non_biglotto_manifest_still_rejects_a_biglotto_only_strategy(
+    lottery_type: LotteryType,
+) -> None:
+    """Accepting other lottery types at the manifest gate must not silently let a
+    BIG_LOTTO-only strategy execute mislabeled as another lottery: the runner's
+    separate per-strategy compatibility gate still closes that path."""
+
+    snapshot = _snapshot()
+    manifest = replace(_manifest(snapshot), lottery_type=lottery_type)
+
+    with pytest.raises(ResearchBacktestInputError) as error:
+        _runner(snapshot).execute(manifest)
+
+    assert error.value.reason_code == "STRATEGY_NOT_LOTTERY_TYPE_COMPATIBLE"
 
 
 def test_zero_prior_target_rejects_before_repository_provenance_or_strategy() -> None:

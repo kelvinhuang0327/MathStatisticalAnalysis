@@ -1,0 +1,915 @@
+{
+  "canonical_input": {
+    "commit": "81104798a9f265de400c1a8bc476e109b14e1a4a",
+    "input_blobs": {
+      "docs/research/matrix-native-results/low-overlap-geometry-mechanism-v1-preregistration-hash.json": "c26e61a62dbebcfa44881d5a23f044a0ed52e04f",
+      "docs/research/matrix-native-results/low-overlap-geometry-mechanism-v1-preregistration.md": "17b1ae14523bcd63f48d226a3134a2c5531ee654",
+      "docs/research/matrix-native-results/low-overlap-geometry-mechanism-v1-report.md": "0243589b14068ea6a3f32d8af37e4db9b7569065",
+      "docs/research/matrix-native-results/low-overlap-geometry-mechanism-v1-result.json": "dc17f0b39c9baf81f8c85162d5db554e7ca2797a",
+      "src/lottolab/research/cyclic_sidon_shift.py": "d07efb5c71a0b25bb00ba3823e208c57aabb306e",
+      "src/lottolab/research/cyclic_sidon_shift_p638.py": "736d0c7e8efc79f68e989921be3e5e0742617e97",
+      "src/lottolab/research/cyclic_sidon_shift_t539.py": "f6b95bed2e0d51ed81781efd096d4f87d88606a1",
+      "src/lottolab/research/greedy_min_overlap_constructor.py": "5511f67d981f7f8a1c33183c966d76ee50249d7d",
+      "src/lottolab/research/greedy_min_overlap_constructor_p638_zone1.py": "622898a9f0a9f4c72af456a21af83c0fc63c7d45",
+      "src/lottolab/research/greedy_min_overlap_constructor_t539.py": "372542aa0c164d3548a6aaa91dd56b28821d0eaa",
+      "src/lottolab/research/higher_order_residual_mechanism.py": "2bc6eb7857ba373b723ac9e4d6c4dc89080e464c",
+      "src/lottolab/research/low_overlap_geometry_mechanism.py": "20b6e0d70b17ef4e34c4d3d6f89196685c5bd22c"
+    },
+    "locked_preregistration_path": "docs/research/matrix-native-results/higher-order-residual-mechanism-v1-preregistration.md",
+    "locked_preregistration_sha256": "354d96bcee4c9e4efb59e3e88f18c686fdfb23ed00be5dae2c0ea0d133e550a6",
+    "repository": "kelvinhuang0327/MathStatisticalAnalysis",
+    "sealed_phase5_preregistration_sha256": "8400019909b7361ad65e172449588802498fdf5d424d37a87adc030f7cde34be",
+    "sealed_phase5_result_blob": "dc17f0b39c9baf81f8c85162d5db554e7ca2797a",
+    "sealed_phase5_result_path": "docs/research/matrix-native-results/low-overlap-geometry-mechanism-v1-result.json",
+    "tree": "a82dc823bab4d396ac63a8856d507b43d393047d"
+  },
+  "classifications": {
+    "global_optimum_status": "UNKNOWN",
+    "mass_bound_prediction": {
+      "exception_cells": [],
+      "value": "MASS_BOUND_PREDICTS_ZERO_SPLIT"
+    },
+    "s3_geometry_identity": {
+      "failing_cells": [],
+      "value": "S3_GEOMETRY_IDENTITY_REPLICATED"
+    },
+    "saturated_triple_count_by_k": {
+      "BIG_LOTTO": {
+        "ARM_B": {
+          "10": 5,
+          "15": 110,
+          "20": 306,
+          "3": 0,
+          "5": 0
+        },
+        "SIDON": {
+          "10": 102,
+          "15": 317,
+          "20": 600,
+          "3": 1,
+          "5": 8
+        }
+      },
+      "DAILY_539": {
+        "ARM_B": {
+          "10": 0,
+          "15": 0,
+          "20": 0,
+          "3": 0,
+          "5": 0
+        },
+        "SIDON": {
+          "10": 0,
+          "15": 0,
+          "20": 0,
+          "3": 0,
+          "5": 0
+        }
+      },
+      "POWER_LOTTO_zone1": {
+        "ARM_B": {
+          "10": 30,
+          "15": 192,
+          "20": 535,
+          "3": 0,
+          "5": 0
+        },
+        "SIDON": {
+          "10": 62,
+          "15": 245,
+          "20": 594,
+          "3": 1,
+          "5": 8
+        }
+      }
+    }
+  },
+  "evidence_type": "EXACT_COMBINATORIAL",
+  "final_classification": "S3_GEOMETRY_IDENTITY_REPLICATED__MASS_BOUND_PREDICTS_ZERO_SPLIT",
+  "ladder": [
+    1,
+    3,
+    5,
+    10,
+    15,
+    20
+  ],
+  "minimum_matches": 3,
+  "peak_memory_bytes": 22167552,
+  "per_lottery": {
+    "BIG_LOTTO": {
+      "draw_size": 6,
+      "lottery_type": "BIG_LOTTO",
+      "per_k": {
+        "10": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 320,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 320,
+              "saturated_triple_count": 5,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 58,
+                "0,0,1,0": 26,
+                "0,1,1,0": 30,
+                "1,1,1,0": 5,
+                "1,1,1,1": 1
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 6528,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 6528,
+              "saturated_triple_count": 102,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 102,
+                "1,1,1,1": 18
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 22457,
+              "exact": "-1223/22457",
+              "numerator": -1223
+            },
+            "sealed_delta_covered": 112285,
+            "sealed_higher_order_residual": -6115,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -6208,
+            "sealed_t4": 93,
+            "sealed_t5": 0
+          }
+        },
+        "15": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 7040,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 7040,
+              "saturated_triple_count": 110,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 65,
+                "0,0,1,0": 124,
+                "0,1,1,0": 116,
+                "1,1,1,0": 110,
+                "1,1,1,1": 40
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 20288,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 20288,
+              "saturated_triple_count": 317,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,1,0": 2,
+                "0,1,1,0": 74,
+                "1,1,1,0": 317,
+                "1,1,1,1": 62
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 31003,
+              "exact": "-3222/31003",
+              "numerator": -3222
+            },
+            "sealed_delta_covered": 124012,
+            "sealed_higher_order_residual": -12888,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -13248,
+            "sealed_t4": 360,
+            "sealed_t5": 0
+          }
+        },
+        "20": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 19584,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 19584,
+              "saturated_triple_count": 306,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 76,
+                "0,0,1,0": 260,
+                "0,1,1,0": 404,
+                "1,1,1,0": 306,
+                "1,1,1,1": 94
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 38400,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 38400,
+              "saturated_triple_count": 600,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,1,0": 72,
+                "0,1,1,0": 342,
+                "1,1,1,0": 600,
+                "1,1,1,1": 126
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 118677,
+              "exact": "-18223/118677",
+              "numerator": -18223
+            },
+            "sealed_delta_covered": 118677,
+            "sealed_higher_order_residual": -18223,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -18816,
+            "sealed_t4": 593,
+            "sealed_t5": 0
+          }
+        },
+        "3": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 0,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 1
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 64,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 64,
+              "saturated_triple_count": 1,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 1
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 2759,
+              "exact": "-16/2759",
+              "numerator": -16
+            },
+            "sealed_delta_covered": 11036,
+            "sealed_higher_order_residual": -64,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -64,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        },
+        "5": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 0,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 10
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 512,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 512,
+              "saturated_triple_count": 8,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 8,
+                "1,1,1,1": 2
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 36489,
+              "exact": "-511/36489",
+              "numerator": -511
+            },
+            "sealed_delta_covered": 36489,
+            "sealed_higher_order_residual": -511,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -512,
+            "sealed_t4": 1,
+            "sealed_t5": 0
+          }
+        }
+      },
+      "pool_size": 49,
+      "portfolio_hash_status": {
+        "ARM_B": true,
+        "SIDON": true
+      },
+      "portfolio_sha256": {
+        "ARM_B": "25e2ea8dddecf5bd731d1e7d311d3ff1eda3fea2ad91ad1c898790c2f1d912c3",
+        "SIDON": "f39a98ef0c982ec00fc069d9a2160f4f508404eae7ef4669e74e3945263f092a"
+      },
+      "zone": "NOT_APPLICABLE"
+    },
+    "DAILY_539": {
+      "draw_size": 5,
+      "lottery_type": "DAILY_539",
+      "per_k": {
+        "10": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 38,
+                "0,0,1,0": 36,
+                "0,1,1,0": 30,
+                "1,1,1,0": 12,
+                "1,1,1,1": 4
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,1,1,0": 16,
+                "1,1,1,0": 86,
+                "1,1,1,1": 18
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "sealed_delta_covered": 900,
+            "sealed_higher_order_residual": 0,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "sealed_t3": 0,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        },
+        "15": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 55,
+                "0,0,1,0": 131,
+                "0,1,1,0": 145,
+                "1,1,1,0": 64,
+                "1,1,1,1": 60
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,1,0": 24,
+                "0,1,1,0": 147,
+                "1,1,1,0": 224,
+                "1,1,1,1": 60
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "sealed_delta_covered": 1044,
+            "sealed_higher_order_residual": 0,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "sealed_t3": 0,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        },
+        "20": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 70,
+                "0,0,1,0": 354,
+                "0,1,1,0": 396,
+                "1,1,1,0": 209,
+                "1,1,1,1": 111
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 8,
+                "0,0,1,0": 228,
+                "0,1,1,0": 420,
+                "1,1,1,0": 374,
+                "1,1,1,1": 110
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "sealed_delta_covered": 828,
+            "sealed_higher_order_residual": 0,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "sealed_t3": 0,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        },
+        "3": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 0,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 1
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 1
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "sealed_delta_covered": 108,
+            "sealed_higher_order_residual": 0,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "sealed_t3": 0,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        },
+        "5": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 0,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 10
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 8,
+                "1,1,1,1": 2
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "sealed_delta_covered": 360,
+            "sealed_higher_order_residual": 0,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_EXACTLY_SUFFICIENT",
+            "sealed_t3": 0,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        }
+      },
+      "pool_size": 39,
+      "portfolio_hash_status": {
+        "ARM_B": true,
+        "SIDON": true
+      },
+      "portfolio_sha256": {
+        "ARM_B": "2b23e934c207a5c5f46060bea8ccce7d32436e5e8f09024634cc19ddc68e4eaf",
+        "SIDON": "31c01576e23ee36d9e8d2bb6174a3be2b2a4c2db78267fc4eaea22079517c038"
+      },
+      "zone": "NOT_APPLICABLE"
+    },
+    "POWER_LOTTO_zone1": {
+      "draw_size": 6,
+      "lottery_type": "POWER_LOTTO",
+      "per_k": {
+        "10": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 1920,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 1920,
+              "saturated_triple_count": 30,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 20,
+                "0,1,1,0": 60,
+                "1,1,1,0": 30,
+                "1,1,1,1": 10
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 3968,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 3968,
+              "saturated_triple_count": 62,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,1,1,0": 40,
+                "1,1,1,0": 62,
+                "1,1,1,1": 18
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 23969,
+              "exact": "-2031/23969",
+              "numerator": -2031
+            },
+            "sealed_delta_covered": 23969,
+            "sealed_higher_order_residual": -2031,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -2048,
+            "sealed_t4": 17,
+            "sealed_t5": 0
+          }
+        },
+        "15": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 12288,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 12288,
+              "saturated_triple_count": 192,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 20,
+                "0,0,1,0": 10,
+                "0,1,1,0": 180,
+                "1,1,1,0": 192,
+                "1,1,1,1": 53
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 15680,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 15680,
+              "saturated_triple_count": 245,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,1,0": 11,
+                "0,1,1,0": 147,
+                "1,1,1,0": 245,
+                "1,1,1,1": 52
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 2979,
+              "exact": "-661/2979",
+              "numerator": -661
+            },
+            "sealed_delta_covered": 14895,
+            "sealed_higher_order_residual": -3305,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -3392,
+            "sealed_t4": 87,
+            "sealed_t5": 0
+          }
+        },
+        "20": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 34240,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 34240,
+              "saturated_triple_count": 535,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 22,
+                "0,0,1,0": 60,
+                "0,1,1,0": 408,
+                "1,1,1,0": 535,
+                "1,1,1,1": 115
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 38016,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 38016,
+              "saturated_triple_count": 594,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "0,0,1,0": 46,
+                "0,1,1,0": 376,
+                "1,1,1,0": 594,
+                "1,1,1,1": 124
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 14519,
+              "exact": "-3681/14519",
+              "numerator": -3681
+            },
+            "sealed_delta_covered": 14519,
+            "sealed_higher_order_residual": -3681,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -3776,
+            "sealed_t4": 95,
+            "sealed_t5": 0
+          }
+        },
+        "3": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 0,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 1
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 64,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 64,
+              "saturated_triple_count": 1,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 1
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 967,
+              "exact": "-8/967",
+              "numerator": -8
+            },
+            "sealed_delta_covered": 7736,
+            "sealed_higher_order_residual": -64,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -64,
+            "sealed_t4": 0,
+            "sealed_t5": 0
+          }
+        },
+        "5": {
+          "arms": {
+            "ARM_B": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 0,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 0,
+              "saturated_triple_count": 0,
+              "sealed_max_pairwise_overlap": 0,
+              "ticket_triple_intersection_histogram": {
+                "0,0,0,0": 10
+              }
+            },
+            "SIDON": {
+              "mass_bound_prediction_correct": true,
+              "s3_geometry": 512,
+              "s3_geometry_identity": true,
+              "s3_multiplicity": 512,
+              "saturated_triple_count": 8,
+              "sealed_max_pairwise_overlap": 1,
+              "ticket_triple_intersection_histogram": {
+                "1,1,1,0": 8,
+                "1,1,1,1": 2
+              }
+            }
+          },
+          "checks": {
+            "portfolio_sha256_matches_sealed": true,
+            "s3_geometry_identity": true,
+            "triple_region_sizes_all_nonnegative": true
+          },
+          "comparison": {
+            "residual_to_net_gain_ratio": {
+              "denominator": 25489,
+              "exact": "-511/25489",
+              "numerator": -511
+            },
+            "sealed_delta_covered": 25489,
+            "sealed_higher_order_residual": -511,
+            "sealed_mechanism_descriptor": "PAIRWISE_COLLISION_PRIMARY_WITH_HIGHER_ORDER_RESIDUAL",
+            "sealed_t3": -512,
+            "sealed_t4": 1,
+            "sealed_t5": 0
+          }
+        }
+      },
+      "pool_size": 38,
+      "portfolio_hash_status": {
+        "ARM_B": true,
+        "SIDON": true
+      },
+      "portfolio_sha256": {
+        "ARM_B": "b78ff3bc82290dd948d0414af73b4a79fc3de4f430ea70f6b11d7d72d1d1b8f1",
+        "SIDON": "6abf61ae22d0dda13b9dd6e483a081bc03765573e8d0abd83c496e6e2dfebaf2"
+      },
+      "zone": "ZONE1"
+    }
+  },
+  "runtime_seconds": {
+    "derivation_and_validation": 0.0,
+    "portfolio_generation_by_lottery_and_arm": {
+      "BIG_LOTTO": {
+        "ARM_B": 765.2371758749941,
+        "SIDON": 1.1541997082531452e-05
+      },
+      "DAILY_539": {
+        "ARM_B": 30.20220329199219,
+        "SIDON": 1.7332960851490498e-05
+      },
+      "POWER_LOTTO_zone1": {
+        "ARM_B": 151.2481962919701,
+        "SIDON": 1.2458011042326689e-05
+      }
+    },
+    "total": 946.7127800419694,
+    "triple_geometry_computation_by_lottery": {
+      "BIG_LOTTO": 0.007304666971322149,
+      "DAILY_539": 0.005543874984141439,
+      "POWER_LOTTO_zone1": 0.008045916038099676
+    }
+  },
+  "scope": {
+    "arm_c": "NOT_RUN",
+    "economic_optimality": "NOT_TESTED",
+    "historical_draws_read": false,
+    "j4_geometry": "NOT_RUN",
+    "monte_carlo": false,
+    "native_winning_space_enumeration": false,
+    "p638_zone2": "NOT_RUN",
+    "predictive_advantage": "NOT_TESTED",
+    "prize_value_advantage": "NOT_TESTED",
+    "secondary_events": "NOT_RUN"
+  },
+  "source_type": "STRATEGY_MATRIX_NATIVE_MECHANISM",
+  "study_id": "STRATEGY_MATRIX_PHASE6_HIGHER_ORDER_RESIDUAL_MECHANISM_V1",
+  "triple_ladder": [
+    3,
+    5,
+    10,
+    15,
+    20
+  ]
+}

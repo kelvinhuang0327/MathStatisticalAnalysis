@@ -94,7 +94,7 @@ class PortfolioAdapterProtocol(Protocol):
 class SingleAdapterProtocol(Protocol):
     def get_one_bet(
         self, history: object, lottery_type: LotteryType
-    ) -> tuple[tuple[int, ...], None]: ...
+    ) -> tuple[tuple[int, ...], int | None]: ...
 
 
 AdapterFactory = Callable[[], PortfolioAdapterProtocol | SingleAdapterProtocol]

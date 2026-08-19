@@ -1,0 +1,171 @@
+{
+  "candidate_f_constructor_id": "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1",
+  "canonical_input_commit": "9141649ceaad5d5261443606cdd681b93a8c5549",
+  "canonical_input_tree": "26f7dbb950cf7290f98ee08d436ad214582fb285",
+  "cross_structure_replication_eligible": false,
+  "evidence_type": "EXACT_COMBINATORIAL",
+  "exposure_ladder": [
+    10,
+    15,
+    20
+  ],
+  "gate": {
+    "classification": "DO_NOT_ADVANCE_THIS_EXACT_METHOD_F_VARIANT",
+    "clauses": {
+      "duplicate_count_eq_0_for_every_k_10_15_20": true,
+      "geometry_max_and_sum_not_worse_than_sealed_e_for_every_k_10_15_20": true,
+      "q_f_ge_q_e_for_every_k_10_15_20": true,
+      "q_f_gt_q_e_at_k_20": false,
+      "second_independent_run_byte_identical": true
+    },
+    "passed": false
+  },
+  "global_optimum_status": "UNKNOWN",
+  "lottery_type": "BIG_LOTTO",
+  "monte_carlo": false,
+  "p638_execution": "NOT_RUN",
+  "parameter_rescue_run": "NO",
+  "per_k": {
+    "10": {
+      "delta_f_vs_e": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "delta_f_vs_random": {
+        "denominator": 927336133329941033439402151794504793130169886252849307474556,
+        "exact": "9905123291865404370631603145662057934141358281349774329345/927336133329941033439402151794504793130169886252849307474556",
+        "numerator": 9905123291865404370631603145662057934141358281349774329345
+      },
+      "geometry": {
+        "duplicate_count": 0,
+        "max_pairwise_overlap": 1,
+        "peak_reuse": 2,
+        "reuse_histogram": {
+          "1": 38,
+          "2": 11
+        },
+        "sum_c_reuse_3": 0,
+        "sum_pairwise_overlap": 11,
+        "unique_count": 49
+      },
+      "q_e_sealed": {
+        "denominator": 1165318,
+        "exact": "212295/1165318",
+        "numerator": 212295
+      },
+      "q_f": {
+        "denominator": 1165318,
+        "exact": "212295/1165318",
+        "numerator": 212295
+      },
+      "q_random": {
+        "denominator": 18925227210815123131416370444785812104697344617405087907644,
+        "exact": "3245609755099340710811707686284489657738894441607314745205/18925227210815123131416370444785812104697344617405087907644",
+        "numerator": 3245609755099340710811707686284489657738894441607314745205
+      }
+    },
+    "15": {
+      "delta_f_vs_e": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "delta_f_vs_random": {
+        "denominator": 3734505376883398183872511865985807841699690519441867837231274411998021309614594483228,
+        "exact": "72193835762937467068194426150264610454552145338011589953025208869348199836782461037/3734505376883398183872511865985807841699690519441867837231274411998021309614594483228",
+        "numerator": 72193835762937467068194426150264610454552145338011589953025208869348199836782461037
+      },
+      "geometry": {
+        "duplicate_count": 0,
+        "max_pairwise_overlap": 1,
+        "peak_reuse": 3,
+        "reuse_histogram": {
+          "1": 10,
+          "2": 37,
+          "3": 2
+        },
+        "sum_c_reuse_3": 2,
+        "sum_pairwise_overlap": 43,
+        "unique_count": 49
+      },
+      "q_e_sealed": {
+        "denominator": 3495954,
+        "exact": "927161/3495954",
+        "numerator": 927161
+      },
+      "q_f": {
+        "denominator": 3495954,
+        "exact": "927161/3495954",
+        "numerator": 927161
+      },
+      "q_random": {
+        "denominator": 1104556455747825549799619007981605395356311895723711279867280216503407663299199788,
+        "exact": "271586308598091491944473961161920217701361795742045773468872681632141016123471965/1104556455747825549799619007981605395356311895723711279867280216503407663299199788",
+        "numerator": 271586308598091491944473961161920217701361795742045773468872681632141016123471965
+      }
+    },
+    "20": {
+      "delta_f_vs_e": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "delta_f_vs_random": {
+        "denominator": 21323869291385514742051129261898489434560759758507896871433070482068505804856353222974011783604447386661490217012,
+        "exact": "627542068034581117028982451920808726207857714931072398442462814363130691039342127213649142101498928684432437173/21323869291385514742051129261898489434560759758507896871433070482068505804856353222974011783604447386661490217012",
+        "numerator": 627542068034581117028982451920808726207857714931072398442462814363130691039342127213649142101498928684432437173
+      },
+      "geometry": {
+        "duplicate_count": 0,
+        "max_pairwise_overlap": 1,
+        "peak_reuse": 3,
+        "reuse_histogram": {
+          "2": 27,
+          "3": 22
+        },
+        "sum_c_reuse_3": 22,
+        "sum_pairwise_overlap": 93,
+        "unique_count": 49
+      },
+      "q_e_sealed": {
+        "denominator": 50666,
+        "exact": "17379/50666",
+        "numerator": 17379
+      },
+      "q_f": {
+        "denominator": 50666,
+        "exact": "17379/50666",
+        "numerator": 17379
+      },
+      "q_random": {
+        "denominator": 435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388,
+        "exact": "136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745/435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388",
+        "numerator": 136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745
+      }
+    }
+  },
+  "portfolio_sha256": {
+    "run1": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+    "run2": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff"
+  },
+  "preregistration_hash_sha256": "32f673d601feadd54d8019a0942358ce1aaf0ef7cda6e7423a5bf9bf85824263",
+  "primary_event_minimum_matches": 3,
+  "reference_e_rerun": "NO",
+  "reproducibility": {
+    "run1_elapsed_seconds": 1110.8625544590177,
+    "run1_portfolio_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+    "run2_elapsed_seconds": 1116.7835896250326,
+    "run2_portfolio_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+    "second_run_byte_identical": true
+  },
+  "runtime": {
+    "run1_generation_seconds": 1110.8625544590177,
+    "run2_generation_seconds": 1116.7835896250326,
+    "winning_space_seconds": 15.323698749998584
+  },
+  "runtime_promotion": "NOT_AUTHORIZED",
+  "study_id": "STRATEGY_MATRIX_PHASE8_METHOD_F_REUSE_DISPERSION_TIEBREAK_V1",
+  "t539_execution": "NOT_RUN",
+  "task_id": "MATRIX_PHASE8_METHOD_F_DISCOVERY_R1"
+}

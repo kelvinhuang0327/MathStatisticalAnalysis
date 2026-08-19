@@ -1,0 +1,19 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "STRATEGY_MATRIX_PHASE7_P638_ZONE1_NEXT_GEN_CONSTRUCTOR_REPLICATION_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "lock_existed_before_native_q_e": true,
+      "preregistration_hash_sha256": "e4299741623632702e6548e6f3c505d37c01099c2b2f5561b56cf2695782b202",
+      "record_state": "SEALED",
+      "result_hash_sha256": "c36209534257e31f00f7729fb8b06e914baee73113d4124bbb51de4030a40639",
+      "sealed_at": "2026-08-17T07:38:42.049409+00:00",
+      "sequence": 1,
+      "study_id": "STRATEGY_MATRIX_PHASE7_P638_ZONE1_NEXT_GEN_CONSTRUCTOR_REPLICATION_V1",
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE7_P638_ZONE1_NEXT_GEN_CONSTRUCTOR_REPLICATION_R1"
+    }
+  ]
+}

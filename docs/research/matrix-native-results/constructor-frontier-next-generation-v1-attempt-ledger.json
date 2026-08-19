@@ -1,0 +1,18 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "STRATEGY_MATRIX_PHASE7_CONSTRUCTOR_FRONTIER_NEXT_GENERATION_V1__ATTEMPT_1",
+      "design_version": "V1",
+      "hypothesis_family_id": "DIVERSIFICATION",
+      "invalidated_reason": null,
+      "preregistration_hash_sha256": "ea014c2204e1fa77041329fc60d172502589bbc02c7922c63e78120e582080c1",
+      "record_state": "SEALED",
+      "result_hash_sha256": "a3e023abe3317faa916aa0790c22b74fecf188d76115378307b571f20fd90f63",
+      "sealed_at": "2026-08-17T04:27:28.103075+00:00",
+      "sequence": 1,
+      "study_id": "STRATEGY_MATRIX_PHASE7_CONSTRUCTOR_FRONTIER_NEXT_GENERATION_V1",
+      "supersedes_attempt_id": null,
+      "task_id": "STRATEGY_MATRIX_PHASE7_B649_NEXT_GEN_CONSTRUCTOR_LOCK_EXECUTE_R1"
+    }
+  ]
+}

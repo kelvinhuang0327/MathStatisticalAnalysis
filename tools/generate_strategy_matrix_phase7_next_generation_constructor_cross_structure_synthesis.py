@@ -122,19 +122,25 @@ STRUCTURES: dict[str, dict[str, Any]] = {
 
 
 def _read_pinned_blob(commit: str, path: Path) -> str:
-    try:
-        proc = subprocess.run(
-            ["git", "show", f"{commit}:{path.as_posix()}"],
+    show_cmd = ["git", "show", f"{commit}:{path.as_posix()}"]
+    proc = subprocess.run(show_cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+    if proc.returncode != 0:
+        # Shallow checkouts (e.g. actions/checkout@v4's default fetch-depth: 1)
+        # don't have older merged-in commits locally even though they're
+        # reachable on the remote. Fetch just that commit, then retry once.
+        subprocess.run(
+            ["git", "fetch", "--depth=1", "origin", commit],
             cwd=REPO_ROOT,
             capture_output=True,
             text=True,
-            check=True,
         )
-    except subprocess.CalledProcessError as exc:  # pragma: no cover - environment guard
+        proc = subprocess.run(show_cmd, cwd=REPO_ROOT, capture_output=True, text=True)
+    if proc.returncode != 0:  # pragma: no cover - environment guard
         raise RuntimeError(
             f"cannot read pinned canonical blob {commit}:{path} -- "
-            f"is origin/main fetched into this clone? stderr: {exc.stderr}"
-        ) from exc
+            f"tried fetching {commit} from origin and it still failed. "
+            f"stderr: {proc.stderr}"
+        )
     return proc.stdout
 
 

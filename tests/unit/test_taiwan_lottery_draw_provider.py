@@ -274,3 +274,114 @@ def test_raises_contract_error_on_non_integer_numbers() -> None:
             date_from=date(2026, 7, 1),
             date_to=date(2026, 7, 31),
         )
+
+
+def _row_with_period(period: object, iso_date: str, numbers: list[object]) -> dict[str, object]:
+    return {"period": period, "lotteryDate": iso_date, "drawNumberSize": numbers}
+
+
+#: The real official API returns ``period`` as a JSON integer (spot-checked
+#: live on 2026-08-16, e.g. ``115000079`` with no quotes), not a string.
+REAL_SHAPED_NUMBERS: list[object] = [1, 49, 3, 24, 9, 17, 7]
+
+
+def test_period_as_json_integer_parses_correctly_matching_real_api_shape() -> None:
+    transport = _FakeTransport(
+        _envelope("lotto649Res", [_row_with_period(115000079, "2026-08-14", REAL_SHAPED_NUMBERS)])
+    )
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    result = provider.fetch_draws(
+        lottery_type=LotteryType.BIG_LOTTO,
+        date_from=date(2026, 8, 1),
+        date_to=date(2026, 8, 31),
+    )
+
+    assert len(result.records) == 1
+    record = result.records[0]
+    assert record.draw_number == "115000079"
+    assert record.main_numbers == (1, 3, 9, 17, 24, 49)
+    assert record.special_numbers == (7,)
+    assert record.source_reference == "taiwanlottery:/Lottery/Lotto649Result:115000079"
+
+
+def test_period_as_string_remains_compatible() -> None:
+    transport = _FakeTransport(
+        _envelope(
+            "lotto649Res", [_row_with_period("115000079", "2026-08-14", REAL_SHAPED_NUMBERS)]
+        )
+    )
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    result = provider.fetch_draws(
+        lottery_type=LotteryType.BIG_LOTTO,
+        date_from=date(2026, 8, 1),
+        date_to=date(2026, 8, 31),
+    )
+
+    assert result.records[0].draw_number == "115000079"
+
+
+@pytest.mark.parametrize(
+    "invalid_period",
+    [True, False, 115000079.0, None, {"period": 1}, [115000079]],
+    ids=["true", "false", "float", "null", "dict", "list"],
+)
+def test_raises_contract_error_on_non_int_non_str_period(invalid_period: object) -> None:
+    transport = _FakeTransport(
+        _envelope(
+            "lotto649Res", [_row_with_period(invalid_period, "2026-08-14", REAL_SHAPED_NUMBERS)]
+        )
+    )
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    with pytest.raises(DrawProviderContractError):
+        provider.fetch_draws(
+            lottery_type=LotteryType.BIG_LOTTO,
+            date_from=date(2026, 8, 1),
+            date_to=date(2026, 8, 31),
+        )
+
+
+def test_raises_contract_error_on_empty_string_period() -> None:
+    transport = _FakeTransport(
+        _envelope("lotto649Res", [_row_with_period("   ", "2026-08-14", REAL_SHAPED_NUMBERS)])
+    )
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    with pytest.raises(DrawProviderContractError):
+        provider.fetch_draws(
+            lottery_type=LotteryType.BIG_LOTTO,
+            date_from=date(2026, 8, 1),
+            date_to=date(2026, 8, 31),
+        )
+
+
+def test_fetch_draws_with_metadata_also_accepts_real_shaped_integer_period() -> None:
+    row: dict[str, object] = _row_with_period(115000079, "2026-08-14", REAL_SHAPED_NUMBERS)
+    row["drawNumberAppear"] = [7, 24, 17, 9, 3, 49, 1]
+    row["sellAmount"] = 93928200
+    row["totalAmount"] = 130683982
+    row["jackpotAssign"] = {
+        "prize": 18825389,
+        "lastPrize": 78084190,
+        "winnerCount": 0,
+        "perPrize": 0,
+    }
+    transport = _FakeTransport(_envelope("lotto649Res", [row]))
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    result, metadata = provider.fetch_draws_with_metadata(
+        lottery_type=LotteryType.BIG_LOTTO,
+        date_from=date(2026, 8, 1),
+        date_to=date(2026, 8, 31),
+    )
+
+    assert result.records[0].draw_number == "115000079"
+    assert result.records[0].main_numbers == (1, 3, 9, 17, 24, 49)
+    assert len(metadata) == 1
+    assert metadata[0].draw_number == "115000079"
+    assert metadata[0].draw_number_appear == (7, 24, 17, 9, 3, 49, 1)
+    assert metadata[0].jackpot_prize == 18825389
+    assert metadata[0].jackpot_last_prize == 78084190
+    assert metadata[0].sell_amount == 93928200

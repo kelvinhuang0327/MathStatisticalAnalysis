@@ -211,6 +211,9 @@ from lottolab.interfaces.cli.research_backtest_runner import (
     run_biglotto_research_backtest_command,
 )
 from lottolab.interfaces.cli.research_store import research_store_command
+from lottolab.interfaces.cli.taiwan_lottery_metadata_backfill import (
+    taiwan_lottery_metadata_backfill_command,
+)
 from lottolab.strategies.catalog import production_catalog
 
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
@@ -225,6 +228,7 @@ app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_com
 app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)
 app.command("inspect-draw-data-integrity")(draw_data_integrity_command)
 app.command("import-legacy-draw-files")(legacy_draw_import_command)
+app.command("backfill-taiwan-lottery-metadata")(taiwan_lottery_metadata_backfill_command)
 app.command("materialize-ordered-candidate-emissions")(
     materialize_ordered_candidate_emissions_command
 )

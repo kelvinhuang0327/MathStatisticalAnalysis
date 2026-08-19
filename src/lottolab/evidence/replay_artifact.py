@@ -157,6 +157,7 @@ def build_replay_prediction_snapshot(
     prediction_status: str | None,
     prediction_reason_code: str | None,
     predicted_main_numbers: tuple[int, ...] | None,
+    precomputed_causal_history_sha256: str | None = None,
 ) -> ReplayPredictionSnapshot:
     """Assemble one immutable, hash-stamped :class:`ReplayPredictionSnapshot`.
 
@@ -167,7 +168,9 @@ def build_replay_prediction_snapshot(
     injected adapter's identity matches its descriptor exactly. Pass ``None``
     when the catalog has no descriptor for ``strategy_id`` (identity
     mismatch): the use case must still produce one closed snapshot, never a
-    crash.
+    crash. ``precomputed_causal_history_sha256`` is an internal fast path for
+    a caller that has already computed the exact provenance hash for the same
+    history tuple; when omitted, the hash is computed here as before.
     """
 
     adapter_id, adapter_name, adapter_version = (
@@ -176,7 +179,13 @@ def build_replay_prediction_snapshot(
     strategy_version = adapter_version
     causal_history_count = len(causal_history) if causal_history is not None else None
     causal_history_hash = (
-        causal_history_sha256(causal_history) if causal_history is not None else None
+        (
+            precomputed_causal_history_sha256
+            if precomputed_causal_history_sha256 is not None
+            else causal_history_sha256(causal_history)
+        )
+        if causal_history is not None
+        else None
     )
     if causal_history:
         cutoff_draw_number: str | None = causal_history[-1].draw_number

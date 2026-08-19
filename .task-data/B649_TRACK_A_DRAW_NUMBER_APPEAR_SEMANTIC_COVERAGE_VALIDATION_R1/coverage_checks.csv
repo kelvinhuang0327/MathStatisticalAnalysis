@@ -1,5 +1,0 @@
-scope,source_total_size,rows_checked,unique_periods,field_present_count,field_missing_count,coverage_rate,duplicates,malformed_rows,legal_value_fail_count,permutation_pass_count,permutation_fail_count,special_slot_match_count,format_stability,first_available_draw,first_available_date,last_available_draw,last_available_date,exact_join_success_count,exact_join_rate,date_aligned_join_success_count,date_aligned_source_count,date_aligned_join_rate,source_only_count,local_only_count,local_db_max_date,notes
-OVERALL,2161,2161,2161,2161,0,1.0,0,0,0,2161,0,2161,PASS,96000001,2007-01-02,115000079,2026-08-14,2160,0.999537251272559,2160,2160,1.0,1,998,2026-08-11,
-EARLY_2007_01_TO_03,26,26,26,26,0,1.0,0,0,0,26,0,26,PASS,96000001,2007-01-02,96000026,2007-03-30,26,1.0,26,26,1.0,0,N/A,2026-08-11,
-MID_2015_06,9,9,9,9,0,1.0,0,0,0,9,0,9,PASS,104000049,2015-06-02,104000057,2015-06-30,9,1.0,9,9,1.0,0,N/A,2026-08-11,
-RECENT_2026_08,4,4,4,4,0,1.0,0,0,0,4,0,4,PASS,115000076,2026-08-04,115000079,2026-08-14,3,0.75,3,3,1.0,1,N/A,2026-08-11,

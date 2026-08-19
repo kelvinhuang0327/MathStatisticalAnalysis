@@ -6,15 +6,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import cast
 
-from lottolab.application.forward_auto_cycle_operational import (
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.prize_evaluation import evaluate_daily_539_ticket
+from lottolab.infrastructure.forward_auto_cycle_operational import (
     FileForwardAutoCycleAdapter,
     ForwardCycleHistorySnapshot,
     ForwardCycleStrategyStream,
     ForwardCycleTarget,
     load_causal_history,
 )
-from lottolab.domain.draws import LotteryType
-from lottolab.domain.prize_evaluation import evaluate_daily_539_ticket
 from lottolab.strategies.adapters.base import CausalDrawRow
 from tools.run_daily539_t539_wave1 import DEFAULT_STRATEGY_SPECS
 

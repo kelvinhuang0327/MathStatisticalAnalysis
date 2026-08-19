@@ -24,6 +24,10 @@ from hashlib import sha256
 from pathlib import Path
 from typing import cast
 
+from lottolab.infrastructure.persistence.research_repository import (
+    fetch_research_draw_bindings_for_dataset,
+)
+
 DEFAULT_SQLITE_PATH = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
     "BIGLOTTO_CANONICAL_FULL_HISTORY_BASELINE_R4/baseline.sqlite"
@@ -82,22 +86,11 @@ def load_clean_b649_history(sqlite_path: Path | str = DEFAULT_SQLITE_PATH) -> Cl
     connection = sqlite3.connect(uri, uri=True)
     try:
         connection.execute("PRAGMA query_only = ON;")
-        rows = connection.execute(
-            """
-            SELECT draw_number, draw_date, main_numbers_json
-            FROM research_draw_bindings
-            WHERE lottery_type = ?
-              AND draw_data_version = ?
-              AND draw_number != replace(draw_date, '-', '')
-            ORDER BY draw_date ASC, CAST(draw_number AS INTEGER) ASC
-            """,
-            (LOTTERY_TYPE, DRAW_DATA_VERSION),
-        ).fetchall()
-        (total_count,) = connection.execute(
-            "SELECT count(*) FROM research_draw_bindings "
-            "WHERE lottery_type = ? AND draw_data_version = ?",
-            (LOTTERY_TYPE, DRAW_DATA_VERSION),
-        ).fetchone()
+        rows, total_count = fetch_research_draw_bindings_for_dataset(
+            connection,
+            lottery_type=LOTTERY_TYPE,
+            draw_data_version=DRAW_DATA_VERSION,
+        )
     finally:
         connection.close()
 

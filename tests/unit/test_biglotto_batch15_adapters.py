@@ -395,7 +395,7 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 72
+    assert len(catalog) == 79
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -405,7 +405,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 72
+    assert len(all_ids) == 79
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -426,6 +426,13 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+        "legacy_biglotto__backtest_apriori__2abb53765703",
+        "legacy_biglotto__covering_strategy_research__214ecc206fc9",
+        "legacy_biglotto__evolution_engine__3df019c31ce4",
+        "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+        "legacy_biglotto__backtest_sum_constraint__acb3b118300d",
+        "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
     )
 
 

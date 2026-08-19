@@ -245,6 +245,8 @@ def test_get_run_specific_endpoints_treat_failed_and_in_progress_as_not_found(
 
     repository = SQLiteHistoricalResultQueryRepository(database)
 
+    assert repository.get_run("failed-run") is None
+    assert repository.get_run("in-progress-run") is None
     assert repository.list_strategies("failed-run", ticket_count=10) is None
     assert repository.list_strategies("in-progress-run", ticket_count=10) is None
     assert (
@@ -504,11 +506,30 @@ def test_replay_pagination_is_deterministic(tmp_path: Path) -> None:
     assert first_page.total_count == second_page.total_count == third_page.total_count == 5
 
 
+def test_get_run_returns_exact_summary_for_completed_run(tmp_path: Path) -> None:
+    database = tmp_path / "historical.db"
+    run_id = _commit(database, build_baseline_envelope())
+    repository = SQLiteHistoricalResultQueryRepository(database)
+
+    summary = repository.get_run(run_id)
+    page = repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
+
+    assert summary is not None
+    assert len(page.items) == 1
+    assert summary == page.items[0]
+    assert summary.run_id == run_id
+    assert summary.status == "COMPLETED"
+    assert summary.strategy_count == 5
+    assert summary.draw_count == 2
+    assert summary.portfolio_count == 5
+
+
 def test_unknown_run_and_portfolio_are_not_found(tmp_path: Path) -> None:
     database = tmp_path / "historical.db"
     _commit(database, build_baseline_envelope())
     repository = SQLiteHistoricalResultQueryRepository(database)
 
+    assert repository.get_run("does-not-exist") is None
     assert repository.list_strategies("does-not-exist", ticket_count=10) is None
     assert repository.get_portfolio("does-not-exist", ticket_count=10) is None
     assert (
@@ -527,6 +548,7 @@ def test_absent_database_creates_nothing(tmp_path: Path) -> None:
     page = repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
     assert page.items == ()
     assert page.total_count == 0
+    assert repository.get_run("anything") is None
     assert repository.get_portfolio("anything", ticket_count=10) is None
     assert repository.list_strategies("anything", ticket_count=10) is None
 
@@ -542,6 +564,8 @@ def test_corrupt_database_fails_closed_instead_of_empty(tmp_path: Path) -> None:
     with pytest.raises(HistoricalResultsUnavailableError):
         repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
     with pytest.raises(HistoricalResultsUnavailableError):
+        repository.get_run("anything")
+    with pytest.raises(HistoricalResultsUnavailableError):
         repository.get_portfolio("anything", ticket_count=10)
 
 
@@ -554,6 +578,7 @@ def test_read_only_queries_leave_the_database_byte_identical_and_create_no_sidec
 
     repository = SQLiteHistoricalResultQueryRepository(database)
     repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
+    repository.get_run(run_id)
     repository.list_strategies(run_id, ticket_count=10)
     repository.list_replay_portfolios(
         run_id, HistoricalReplayQuery(strategy_id=REAL_STRATEGY_IDS[0], ticket_count=20)

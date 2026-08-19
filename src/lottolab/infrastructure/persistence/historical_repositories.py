@@ -425,52 +425,15 @@ class SQLiteHistoricalResultQueryRepository:
             if query.lottery_type is not None:
                 predicate += " AND lottery_type = ?"
                 predicate_parameters = (query.lottery_type.value,)
-            p638_tables_available = _has_p638_extension(connection)
-            if p638_tables_available:
-                strategy_count_sql = """
-                       CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
-                            (SELECT COUNT(*) FROM historical_p638_strategy_ledger p638s
-                             WHERE p638s.run_id = r.id)
-                            ELSE
-                            (SELECT COUNT(*) FROM historical_strategy_snapshot s
-                             WHERE s.run_id = r.id)
-                       END
-                """
-                portfolio_count_sql = """
-                       CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
-                            (SELECT COUNT(*) FROM historical_p638_target p638t
-                             WHERE p638t.run_id = r.id)
-                            ELSE
-                            (SELECT COUNT(*) FROM historical_portfolio p
-                             WHERE p.run_id = r.id)
-                       END
-                """
-            else:
-                strategy_count_sql = """
-                       (SELECT COUNT(*) FROM historical_strategy_snapshot s
-                        WHERE s.run_id = r.id)
-                """
-                portfolio_count_sql = """
-                       (SELECT COUNT(*) FROM historical_portfolio p
-                        WHERE p.run_id = r.id)
-                """
             total_count = _scalar(
                 connection,
                 f"SELECT COUNT(*) FROM historical_result_run WHERE {predicate}",
                 predicate_parameters,
             )
+            select_sql = _run_summary_select_sql(_has_p638_extension(connection))
             rows = connection.execute(
                 f"""
-                SELECT r.id, r.import_identity_sha256, r.manifest_sha256,
-                       r.contract_version, r.source_kind, r.source_repository,
-                       r.source_commit_oid, r.source_artifact_sha256,
-                       r.dataset_identity, r.dataset_sha256, r.legacy_run_id,
-                       r.lottery_type, r.started_at, r.completed_at, r.status,
-                       {strategy_count_sql},
-                       (SELECT COUNT(*) FROM historical_draw_snapshot d
-                        WHERE d.run_id = r.id),
-                       {portfolio_count_sql}
-                FROM historical_result_run r
+                {select_sql}
                 WHERE {predicate}
                 ORDER BY r.completed_at DESC, r.id DESC
                 LIMIT ? OFFSET ?
@@ -481,6 +444,22 @@ class SQLiteHistoricalResultQueryRepository:
         return HistoricalRunPage(
             items=items, total_count=total_count, limit=query.limit, offset=query.offset
         )
+
+    def get_run(self, run_id: str) -> HistoricalRunSummary | None:
+        if not _verify_available(self._database):
+            return None
+        with _read_only_connection(self._database) as connection:
+            select_sql = _run_summary_select_sql(_has_p638_extension(connection))
+            row = connection.execute(
+                f"""
+                {select_sql}
+                WHERE r.id = ? AND r.status = 'COMPLETED'
+                """,
+                (run_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            return _row_to_run_summary(row)
 
     def list_strategies(
         self, run_id: str, *, ticket_count: int
@@ -624,9 +603,7 @@ def _scalar(connection: sqlite3.Connection, sql: str, parameters: tuple[object, 
 def _has_p638_extension(connection: sqlite3.Connection) -> bool:
     names = {
         str(row[0])
-        for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        )
+        for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
     }
     return {
         "historical_p638_run",
@@ -661,6 +638,49 @@ def _decode_numbers(raw: object) -> tuple[int, ...]:
     for item in cast(list[object], parsed):
         numbers.append(_decode_int(item))
     return tuple(numbers)
+
+
+def _run_summary_select_sql(p638_tables_available: bool) -> str:
+    if p638_tables_available:
+        strategy_count_sql = """
+               CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
+                    (SELECT COUNT(*) FROM historical_p638_strategy_ledger p638s
+                     WHERE p638s.run_id = r.id)
+                    ELSE
+                    (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                     WHERE s.run_id = r.id)
+               END
+        """
+        portfolio_count_sql = """
+               CASE WHEN r.lottery_type = 'POWER_LOTTO' THEN
+                    (SELECT COUNT(*) FROM historical_p638_target p638t
+                     WHERE p638t.run_id = r.id)
+                    ELSE
+                    (SELECT COUNT(*) FROM historical_portfolio p
+                     WHERE p.run_id = r.id)
+               END
+        """
+    else:
+        strategy_count_sql = """
+               (SELECT COUNT(*) FROM historical_strategy_snapshot s
+                WHERE s.run_id = r.id)
+        """
+        portfolio_count_sql = """
+               (SELECT COUNT(*) FROM historical_portfolio p
+                WHERE p.run_id = r.id)
+        """
+    return f"""
+        SELECT r.id, r.import_identity_sha256, r.manifest_sha256,
+               r.contract_version, r.source_kind, r.source_repository,
+               r.source_commit_oid, r.source_artifact_sha256,
+               r.dataset_identity, r.dataset_sha256, r.legacy_run_id,
+               r.lottery_type, r.started_at, r.completed_at, r.status,
+               {strategy_count_sql},
+               (SELECT COUNT(*) FROM historical_draw_snapshot d
+                WHERE d.run_id = r.id),
+               {portfolio_count_sql}
+        FROM historical_result_run r
+    """
 
 
 def _row_to_run_summary(row: sqlite3.Row | tuple[object, ...]) -> HistoricalRunSummary:

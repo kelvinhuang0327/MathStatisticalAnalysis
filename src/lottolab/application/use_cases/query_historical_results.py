@@ -20,6 +20,7 @@ from lottolab.application.historical_queries import (
     HistoricalReplayQuery,
     HistoricalRunPage,
     HistoricalRunQuery,
+    HistoricalRunSummary,
     HistoricalStrategySummaryList,
     InvalidHistoricalQueryError,
 )
@@ -60,6 +61,14 @@ class ListHistoricalRuns:
                 lottery_type=lottery_type,
             )
         )
+
+
+class GetHistoricalRun:
+    def __init__(self, repository_factory: HistoricalResultQueryRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self, run_id: str) -> HistoricalRunSummary | None:
+        return self._repository_factory().get_run(run_id)
 
 
 class ListHistoricalStrategies:

@@ -6,9 +6,11 @@ Queries only the already-committed historical-results projection (BLHQ-R1's
 committed portfolios: it never consumes or modifies Replay's
 ``DrawHistoryReader`` and executes no strategy.
 
-``/replay/runs`` is a separate, unrelated compatibility route restoring the
-legacy ``GET /api/replay/runs`` capability by reusing ``ListHistoricalRuns``
-verbatim; it is not a Replay query implementation of its own.
+``/replay/runs`` and ``/replay/run/{run_id}/status`` are separate, unrelated
+compatibility routes restoring the legacy ``GET /api/replay/runs`` and
+``GET /api/replay/run/{run_id}/status`` capabilities by reusing the
+Historical Results run projection; they are not Replay query implementations
+of their own.
 """
 
 # pyright: reportUnusedFunction=false
@@ -39,6 +41,7 @@ from lottolab.application.historical_queries import (
 from lottolab.application.ports import HistoricalResultQueryRepositoryFactory
 from lottolab.application.use_cases.query_historical_results import (
     GetHistoricalPortfolio,
+    GetHistoricalRun,
     ListHistoricalReplayPortfolios,
     ListHistoricalRuns,
     ListHistoricalStrategies,
@@ -310,13 +313,16 @@ def create_historical_results_router(
     repository_factory: HistoricalResultQueryRepositoryFactory | None,
 ) -> APIRouter:
     """Always exposes the four historical-results routes plus the
-    ``/replay/runs`` compatibility route; ``repository_factory=None`` ->
-    503 NOT_CONFIGURED.
+    ``/replay/runs`` and ``/replay/run/{run_id}/status`` compatibility routes;
+    ``repository_factory=None`` -> 503 NOT_CONFIGURED.
     """
 
     router = APIRouter(prefix=API_PREFIX, tags=["historical-results"])
     list_runs_use_case = (
         ListHistoricalRuns(repository_factory) if repository_factory is not None else None
+    )
+    get_run_use_case = (
+        GetHistoricalRun(repository_factory) if repository_factory is not None else None
     )
     list_strategies_use_case = (
         ListHistoricalStrategies(repository_factory) if repository_factory is not None else None
@@ -381,6 +387,32 @@ def create_historical_results_router(
         lottery_type: HistoricalLotteryType | None = None,
     ) -> HistoricalRunPageResponse | JSONResponse:
         return _list_runs_page(limit=limit, offset=offset, lottery_type=lottery_type)
+
+    # Legacy GET /api/replay/run/{run_id}/status compatibility surface: direct
+    # read-only lookup over the Historical Results run projection.
+    @router.get(
+        "/replay/run/{run_id}/status",
+        response_model=HistoricalRunView,
+        responses={
+            404: {"model": ApiErrorResponse},
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        tags=["replay"],
+        operation_id="getReplayRunStatus",
+    )
+    def get_replay_run_status(
+        run_id: RunId,
+    ) -> HistoricalRunView | JSONResponse:
+        if get_run_use_case is None:
+            return _not_configured_error()
+        try:
+            summary = get_run_use_case.execute(run_id)
+        except HistoricalResultsUnavailableError:
+            return _unavailable_error()
+        if summary is None:
+            return _run_not_found()
+        return HistoricalRunView.from_summary(summary)
 
     @router.get(
         "/historical-results/runs/{run_id}/strategies",

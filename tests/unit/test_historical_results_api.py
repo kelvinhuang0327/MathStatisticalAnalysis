@@ -196,6 +196,81 @@ def test_replay_runs_declared_in_openapi_document() -> None:
     assert operation["operationId"] == "listReplayRuns"
 
 
+# --- /api/v1/replay/run/{run_id}/status: legacy status-read compatibility ----
+# Restores legacy GET /api/replay/run/{run_id}/status; must equal the matching
+# run projection from GET /api/v1/replay/runs.
+
+
+def test_replay_run_status_matches_replay_runs_item_projection(tmp_path: Path) -> None:
+    database = tmp_path / "historical.db"
+    run_id = _seed_database(database)
+    client = _client_for(database)
+
+    runs_response = client.get(f"{REPLAY_PREFIX}/runs")
+    assert runs_response.status_code == 200
+    runs_body = runs_response.json()
+    (matching_run,) = [item for item in runs_body["items"] if item["run_id"] == run_id]
+
+    status_response = client.get(f"{REPLAY_PREFIX}/run/{run_id}/status")
+    assert status_response.status_code == 200
+    assert status_response.json() == matching_run
+
+
+def test_replay_run_status_unknown_run_returns_sanitized_404(tmp_path: Path) -> None:
+    database = tmp_path / "historical.db"
+    _seed_database(database)
+    client = _client_for(database)
+
+    response = client.get(f"{REPLAY_PREFIX}/run/does-not-exist/status")
+    assert response.status_code == 404
+    body = response.json()
+    assert body["error_code"] == "HISTORICAL_RUN_NOT_FOUND"
+    assert body["message"] == "Historical run was not found."
+
+
+def test_replay_run_status_unconfigured_app_returns_not_configured_503() -> None:
+    client = TestClient(create_app())
+
+    response = client.get(f"{REPLAY_PREFIX}/run/any-run/status")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
+    assert body["message"] == "Historical results storage is not configured."
+
+
+def test_replay_run_status_absent_configured_database_returns_404(tmp_path: Path) -> None:
+    database = tmp_path / "does-not-exist" / "historical.db"
+    client = _client_for(database)
+
+    response = client.get(f"{REPLAY_PREFIX}/run/any-run/status")
+    assert response.status_code == 404
+    body = response.json()
+    assert body["error_code"] == "HISTORICAL_RUN_NOT_FOUND"
+    assert not database.exists()
+
+
+def test_replay_run_status_corrupt_database_returns_sanitized_503(tmp_path: Path) -> None:
+    database = tmp_path / "historical.db"
+    database.write_bytes(b"not a valid sqlite database, just garbage bytes")
+    client = _client_for(database)
+
+    response = client.get(f"{REPLAY_PREFIX}/run/any-run/status")
+    assert response.status_code == 503
+    body = response.json()
+    assert body["error_code"] == "HISTORICAL_RESULTS_UNAVAILABLE"
+    raw_text = response.text
+    assert str(database) not in raw_text
+    assert "Traceback" not in raw_text
+    assert "sqlite3" not in raw_text.lower()
+
+
+def test_replay_run_status_declared_in_openapi_document() -> None:
+    document = create_app().openapi()
+
+    operation = document["paths"][f"{REPLAY_PREFIX}/run/{{run_id}}/status"]["get"]
+    assert operation["operationId"] == "getReplayRunStatus"
+
+
 def test_list_run_strategies_returns_summaries_for_each_ticket_count(tmp_path: Path) -> None:
     database = tmp_path / "historical.db"
     run_id = _seed_database(database)

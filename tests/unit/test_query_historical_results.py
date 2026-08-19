@@ -17,11 +17,13 @@ from lottolab.application.historical_queries import (
     HistoricalResultsUnavailableError,
     HistoricalRunPage,
     HistoricalRunQuery,
+    HistoricalRunSummary,
     HistoricalStrategySummaryList,
     InvalidHistoricalQueryError,
 )
 from lottolab.application.use_cases.query_historical_results import (
     GetHistoricalPortfolio,
+    GetHistoricalRun,
     ListHistoricalReplayPortfolios,
     ListHistoricalRuns,
     ListHistoricalStrategies,
@@ -34,17 +36,20 @@ class _FakeQueryRepository:
         self,
         *,
         run_page: HistoricalRunPage | None = None,
+        run_summary: HistoricalRunSummary | None = None,
         strategies: HistoricalStrategySummaryList | None = None,
         replay_page: HistoricalReplayPage | None = None,
         portfolio: HistoricalPortfolioRecord | None = None,
         raise_unavailable: bool = False,
     ) -> None:
         self._run_page = run_page
+        self._run_summary = run_summary
         self._strategies = strategies
         self._replay_page = replay_page
         self._portfolio = portfolio
         self._raise_unavailable = raise_unavailable
         self.received_run_query: HistoricalRunQuery | None = None
+        self.received_get_run_arg: str | None = None
         self.received_strategies_args: tuple[str, int] | None = None
         self.received_replay_query: tuple[str, HistoricalReplayQuery] | None = None
         self.received_portfolio_args: tuple[str, int] | None = None
@@ -55,6 +60,12 @@ class _FakeQueryRepository:
         self.received_run_query = query
         assert self._run_page is not None
         return self._run_page
+
+    def get_run(self, run_id: str) -> HistoricalRunSummary | None:
+        if self._raise_unavailable:
+            raise HistoricalResultsUnavailableError("unavailable")
+        self.received_get_run_arg = run_id
+        return self._run_summary
 
     def list_strategies(
         self, run_id: str, *, ticket_count: int
@@ -83,6 +94,30 @@ class _FakeQueryRepository:
 
 def _run_page() -> HistoricalRunPage:
     return HistoricalRunPage(items=(), total_count=0, limit=50, offset=0)
+
+
+def _run_summary() -> HistoricalRunSummary:
+    return HistoricalRunSummary(
+        run_id="run-1",
+        import_identity_sha256="a" * 64,
+        manifest_sha256="b" * 64,
+        contract_version="1.0.0",
+        source_kind="TEST",
+        source_repository="repo",
+        source_commit_oid="c" * 40,
+        source_artifact_sha256="d" * 64,
+        dataset_identity="dataset",
+        dataset_sha256="e" * 64,
+        legacy_run_id=None,
+        lottery_type="BIG_LOTTO",
+        started_at="2026-01-01T00:00:00.000000Z",
+        completed_at="2026-01-01T00:00:00.000000Z",
+        status="COMPLETED",
+        strategy_count=1,
+        draw_count=1,
+        portfolio_count=1,
+        is_idempotent_replay=False,
+    )
 
 
 def _strategies() -> HistoricalStrategySummaryList:
@@ -206,7 +241,18 @@ def test_list_replay_portfolios_rejects_invalid_ticket_count() -> None:
         use_case.execute("run-1", strategy_id="strat-1", ticket_count=13, limit=50, offset=0)
 
 
-# --- completed-only visibility / not-found mapping ---
+def test_get_run_forwards_run_id() -> None:
+    repository = _FakeQueryRepository(run_summary=_run_summary())
+    use_case = GetHistoricalRun(lambda: repository)
+    result = use_case.execute("run-1")
+    assert result == _run_summary()
+    assert repository.received_get_run_arg == "run-1"
+
+
+def test_get_run_returns_none_when_not_found() -> None:
+    repository = _FakeQueryRepository(run_summary=None)
+    use_case = GetHistoricalRun(lambda: repository)
+    assert use_case.execute("missing-run") is None
 
 
 def test_list_strategies_returns_none_when_run_not_found_or_not_completed() -> None:
@@ -231,6 +277,13 @@ def test_get_portfolio_returns_none_when_not_found() -> None:
 
 
 # --- repository-unavailable mapping ---
+
+
+def test_get_run_propagates_repository_unavailable() -> None:
+    repository = _FakeQueryRepository(raise_unavailable=True)
+    use_case = GetHistoricalRun(lambda: repository)
+    with pytest.raises(HistoricalResultsUnavailableError):
+        use_case.execute("run-1")
 
 
 def test_list_runs_propagates_repository_unavailable() -> None:

@@ -32,6 +32,7 @@ from lottolab.application.historical_queries import (
     HistoricalReplayQuery,
     HistoricalRunPage,
     HistoricalRunQuery,
+    HistoricalRunSummary,
     HistoricalStrategySummaryList,
 )
 from lottolab.application.multiwindow_success_windows import MultiWindowSource
@@ -245,6 +246,10 @@ class HistoricalResultQueryRepository(Protocol):
         self, run_id: str, query: HistoricalReplayQuery
     ) -> HistoricalReplayPage | None:
         """Return one page of portfolios for a COMPLETED run, or None if not found."""
+        ...
+
+    def get_run(self, run_id: str) -> HistoricalRunSummary | None:
+        """Return one COMPLETED run's summary, or None if not found."""
         ...
 
     def get_portfolio(

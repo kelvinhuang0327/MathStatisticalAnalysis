@@ -240,6 +240,14 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "power_c01_recency_decay_1bet",
+        "power_c02_gap_overdue_1bet",
+        "power_c03_pair_centrality_1bet",
+        "power_c04_zone_balanced_1bet",
+        "power_c05_dispersion_match_1bet",
+        "power_c06_regime_cusum_1bet",
+        "power_c07_borda_ensemble_1bet",
+        "acb_markov_midfreq_3bet",
     ]
     online_ids = {
         descriptor.strategy_id

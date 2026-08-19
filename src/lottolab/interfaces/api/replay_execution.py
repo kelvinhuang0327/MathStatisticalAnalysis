@@ -7,6 +7,12 @@ scoring, ranking, or persistence happens here -- see
 :mod:`lottolab.application.use_cases.replay_historical_predictions` for the
 use case this only adapts. The injected executor is called at most once per
 request and never at app construction or OpenAPI-generation time.
+
+:class:`LocalReplayExecutor` is the default executor ``create_app()`` injects
+when no caller-supplied one is given -- the same read-only
+``BuildCausalHistory``/``SQLiteDrawHistoryReader``/``SQLiteDrawDataRepository``
+composition :mod:`lottolab.interfaces.cli.replay_predictions` already uses,
+never a second prediction engine.
 """
 
 # pyright: reportUnusedFunction=false
@@ -14,6 +20,8 @@ request and never at app construction or OpenAPI-generation time.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date
 from typing import Annotated, Protocol
 
@@ -21,14 +29,21 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from lottolab.application.use_cases.build_causal_history import BuildCausalHistory
+from lottolab.application.use_cases.generate_bet import GenerateOneBet
 from lottolab.application.use_cases.replay_historical_predictions import (
+    ReplayHistoricalPredictions,
     ReplayHistoricalPredictionsInput,
     ReplayHistoricalPredictionsResult,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.replay_predictions import ReplaySourceMode, ReplayTarget
+from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths
+from lottolab.infrastructure.persistence.replay_history_reader import SQLiteDrawHistoryReader
+from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.interfaces.api.draw_data import ApiErrorResponse, ApiValidationErrorResponse
 from lottolab.interfaces.api.strategy_catalog import API_PREFIX
+from lottolab.strategies.catalog import StrategyCatalog
 
 _STRICT_BODY = ConfigDict(extra="forbid")
 _FROZEN_RESPONSE = ConfigDict(frozen=True)
@@ -45,6 +60,69 @@ class ReplayExecutor(Protocol):
     def execute(
         self, request: ReplayHistoricalPredictionsInput
     ) -> ReplayHistoricalPredictionsResult: ...
+
+
+@dataclass(frozen=True)
+class LocalReplayExecutor:
+    """Default local READ-ONLY ``ReplayExecutor``: create_app()'s composition
+    when no caller-supplied executor is injected.
+
+    Reuses exactly the wiring :mod:`lottolab.interfaces.cli.replay_predictions`
+    already composes -- ``BuildCausalHistory`` over ``SQLiteDrawHistoryReader``,
+    the injected ``GenerateOneBet``, and the injected ``StrategyCatalog`` --
+    never a second prediction engine. ``paths_provider`` is called only from
+    :meth:`execute`, never at construction, so building this object never
+    opens the local database.
+
+    A caller-supplied ``draw_date`` is never trusted: each target's canonical
+    date is re-resolved from the local draw repository by ``draw_number``
+    first. A ``draw_number`` absent from local storage is passed through
+    unchanged rather than raised -- ``BuildCausalHistory``'s own existing
+    ``TARGET_NOT_FOUND`` closed result still resolves it independently by
+    ``draw_number``, so that existing closed semantics is never re-derived
+    here.
+    """
+
+    paths_provider: Callable[[], LocalDataPaths]
+    generate_one_bet: GenerateOneBet
+    catalog: StrategyCatalog
+
+    def execute(
+        self, request: ReplayHistoricalPredictionsInput
+    ) -> ReplayHistoricalPredictionsResult:
+        paths = self.paths_provider()
+        repository = SQLiteDrawDataRepository(paths)
+        canonical_targets = tuple(
+            self._canonical_target(repository, request.lottery_type, target)
+            for target in request.targets
+        )
+        replay = ReplayHistoricalPredictions(
+            BuildCausalHistory(lambda: SQLiteDrawHistoryReader(paths)),
+            self.generate_one_bet,
+            self.catalog,
+        )
+        return replay.execute(
+            ReplayHistoricalPredictionsInput(
+                lottery_type=request.lottery_type,
+                dataset_id=request.dataset_id,
+                dataset_version=request.dataset_version,
+                targets=canonical_targets,
+                strategy_ids=request.strategy_ids,
+                maximum_history_draws=request.maximum_history_draws,
+                minimum_history_draws=request.minimum_history_draws,
+            )
+        )
+
+    @staticmethod
+    def _canonical_target(
+        repository: SQLiteDrawDataRepository,
+        lottery_type: LotteryType,
+        target: ReplayTarget,
+    ) -> ReplayTarget:
+        record = repository.get_draw(lottery_type, target.draw_number)
+        if record is None:
+            return target
+        return ReplayTarget(draw_number=record.draw_number, draw_date=record.draw_date)
 
 
 class ReplayExecutionTargetRequest(BaseModel):
@@ -196,6 +274,7 @@ def _error_response(status_code: int, error_code: str, message: str) -> JSONResp
 
 
 __all__ = [
+    "LocalReplayExecutor",
     "ReplayExecutionRequest",
     "ReplayExecutionResponse",
     "ReplayExecutionSnapshotView",

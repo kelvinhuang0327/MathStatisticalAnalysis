@@ -72,6 +72,7 @@ from lottolab.interfaces.api.multiwindow_success_windows import (
 )
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
 from lottolab.interfaces.api.replay_execution import (
+    LocalReplayExecutor,
     ReplayExecutor,
     create_replay_execution_router,
 )
@@ -152,6 +153,15 @@ def create_app(
         if b649_multi_ticket_record_reader_factory is not None
         else PackagedB649MultiTicketRecordReader
     )
+    resolved_replay_executor: ReplayExecutor = (
+        replay_executor
+        if replay_executor is not None
+        else LocalReplayExecutor(
+            paths_provider=resolved_paths_provider,
+            generate_one_bet=resolved_generate_one_bet,
+            catalog=resolved_catalog,
+        )
+    )
 
     def repository_factory() -> SQLiteDrawDataRepository:
         return SQLiteDrawDataRepository(resolved_paths_provider())
@@ -226,7 +236,7 @@ def create_app(
     app.include_router(
         create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
-    app.include_router(create_replay_execution_router(replay_executor))
+    app.include_router(create_replay_execution_router(resolved_replay_executor))
     app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))
     app.include_router(
         create_multiwindow_success_windows_router(

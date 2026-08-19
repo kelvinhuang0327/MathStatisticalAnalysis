@@ -1,9 +1,14 @@
 """API contract coverage for the Replay execution HTTP transport.
 
 Uses a fake/stub executor throughout -- never a real DrawHistoryReader, SQLite
-repository, or production dataset. ``ReplayHistoricalPredictions`` itself is
-covered by ``tests/unit/test_replay_historical_predictions.py``; this file
-only proves the HTTP adapter translates and serializes without altering
+repository, or production dataset -- except for the small number of tests
+below that exercise ``create_app()``'s own default local composition
+(``LocalReplayExecutor``) against an isolated, non-existent local database
+path; those never touch a real dataset either. ``ReplayHistoricalPredictions``
+itself is covered by ``tests/unit/test_replay_historical_predictions.py``;
+real-SQLite acceptance of the default composition is covered by
+``tests/integration/test_replay_execution_api_sqlite.py``. This file only
+proves the HTTP adapter translates and serializes without altering
 strategy/draw order or leaking internal state.
 """
 
@@ -13,9 +18,11 @@ strategy/draw order or leaking internal state.
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from lottolab.application.use_cases.replay_historical_predictions import (
@@ -24,7 +31,12 @@ from lottolab.application.use_cases.replay_historical_predictions import (
 )
 from lottolab.domain.replay_predictions import ReplayPredictionSnapshot
 from lottolab.evidence.replay_artifact import build_replay_prediction_snapshot
+from lottolab.infrastructure.persistence.draw_schema import (
+    DATA_DIRECTORY_ENV,
+    resolve_local_data_paths,
+)
 from lottolab.interfaces.api.app import create_app
+from lottolab.interfaces.api.replay_execution import create_replay_execution_router
 
 _PATH = "/api/v1/replay-execution"
 
@@ -251,8 +263,42 @@ def test_bounded_application_failure_closes_without_traceback_or_internal_state_
     assert "Traceback" not in response.text
 
 
-def test_default_app_returns_not_configured_503() -> None:
-    client = TestClient(create_app())
+def test_default_app_uses_the_local_composition_not_the_permanent_not_configured_503(
+    tmp_path: Path,
+) -> None:
+    """create_app() with no injected executor must no longer permanently 503 --
+    it now composes LocalReplayExecutor bound to an isolated (here: empty,
+    never the real machine's) local database. An empty database still closes
+    every target through the existing TARGET_NOT_FOUND semantics, so this
+    stays a 200 -- never the old permanent NOT_CONFIGURED failure."""
+
+    paths = resolve_local_data_paths(
+        environ={DATA_DIRECTORY_ENV: str(tmp_path / "empty-default-replay-execution")}
+    )
+    client = TestClient(create_app(data_paths_provider=lambda: paths))
+
+    response = client.post(
+        _PATH,
+        json=_payload(targets=[("10", "2020-01-05")], strategy_ids=["fixture_strategy_a"]),
+    )
+
+    assert response.status_code == 200
+    body = cast(dict[str, Any], response.json())
+    assert len(body["snapshots"]) == 1
+    snapshot = body["snapshots"][0]
+    assert snapshot["target_draw_number"] == "10"
+    assert snapshot["history_status"] == "TARGET_NOT_FOUND"
+    assert snapshot["history_reason_code"] == "TARGET_DRAW_NOT_FOUND"
+
+
+def test_router_builder_still_supports_an_explicit_not_configured_state() -> None:
+    """``create_replay_execution_router(None)`` -- the underlying building
+    block ``create_app()`` no longer reaches with its own default -- still
+    503s NOT_CONFIGURED for any other caller that wires it with no executor."""
+
+    app = FastAPI()
+    app.include_router(create_replay_execution_router(None))
+    client = TestClient(app)
 
     response = client.post(
         _PATH,

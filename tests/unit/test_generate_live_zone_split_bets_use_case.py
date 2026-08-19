@@ -367,9 +367,7 @@ def test_input_and_execute_surfaces_expose_no_forbidden_fields() -> None:
     assert input_fields == {"num_bets"}
     assert input_fields.isdisjoint(forbidden)
 
-    execute_params = set(inspect.signature(GenerateLiveZoneSplitBets.execute).parameters) - {
-        "self"
-    }
+    execute_params = set(inspect.signature(GenerateLiveZoneSplitBets.execute).parameters) - {"self"}
     assert execute_params == {"request"}
 
 
@@ -451,4 +449,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "legacy_biglotto__backtest_apriori__2abb53765703",
     ]

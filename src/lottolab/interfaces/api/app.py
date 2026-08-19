@@ -71,6 +71,10 @@ from lottolab.interfaces.api.multiwindow_success_windows import (
     create_multiwindow_success_windows_router,
 )
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
+from lottolab.interfaces.api.replay_execution import (
+    ReplayExecutor,
+    create_replay_execution_router,
+)
 from lottolab.interfaces.api.replay_portfolio_rankings import (
     create_replay_portfolio_rankings_router,
 )
@@ -108,6 +112,7 @@ def create_app(
         HistoricalPrefixAnalyticsResultProvider | None
     ) = None,
     replay_scoring_projection_reader_factory: (ReplayScoringProjectionReaderFactory | None) = None,
+    replay_executor: ReplayExecutor | None = None,
     historical_prefix_success_window_source_reader_factory: (
         HistoricalPrefixSuccessWindowSourceReaderFactory | None
     ) = None,
@@ -221,6 +226,7 @@ def create_app(
     app.include_router(
         create_replay_scoring_projections_router(replay_scoring_projection_reader_factory)
     )
+    app.include_router(create_replay_execution_router(replay_executor))
     app.include_router(create_t539_historical_router(t539_historical_query_repository_factory))
     app.include_router(
         create_multiwindow_success_windows_router(

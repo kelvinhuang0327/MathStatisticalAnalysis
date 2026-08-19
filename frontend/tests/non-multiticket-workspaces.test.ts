@@ -343,6 +343,68 @@ describe('History workspace', () => {
     wrapper.unmount()
   })
 
+  it('exposes a distinguishing accessible name on each Open button', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/draws?')) {
+        return Promise.resolve(
+          apiResponse({
+            records: [],
+            page: 1,
+            page_size: 25,
+            total_count: 0,
+            total_pages: 0,
+            sort: ['draw_date:desc', 'draw_number:string_desc', 'id:desc'],
+          }),
+        )
+      }
+      if (url.endsWith('/api/v1/ingestion-runs/run-success')) {
+        return Promise.resolve(
+          apiResponse({
+            run: successfulRun,
+            items: [],
+            item_count: 0,
+            items_truncated: false,
+          }),
+        )
+      }
+      if (url.includes('/api/v1/ingestion-runs?')) {
+        return Promise.resolve(
+          apiResponse({
+            records: [run, successfulRun],
+            page: 1,
+            page_size: 25,
+            total_count: 2,
+            total_pages: 1,
+            sort: ['started_at:desc', 'id:desc'],
+          }),
+        )
+      }
+      return Promise.resolve(apiResponse({ items: [], total_count: 0, limit: 50, offset: 0 }))
+    })
+    const wrapper = mount(HistoryPage)
+    await flushPromises()
+
+    await wrapper
+      .get('nav[aria-label="History sections"]')
+      .findAll('button')[1]
+      ?.trigger('click')
+    await flushPromises()
+
+    const openButtons = wrapper.findAll('button').filter((button) => button.text() === 'Open')
+    expect(openButtons).toHaveLength(2)
+    const accessibleNames = openButtons.map((button) => button.attributes('aria-label'))
+    expect(accessibleNames.every((name) => typeof name === 'string' && name.length > 0)).toBe(true)
+    expect(new Set(accessibleNames).size).toBe(2)
+    expect(accessibleNames[0]).toContain('run-1')
+    expect(accessibleNames[1]).toContain('run-success')
+
+    await openButtons[1]?.trigger('click')
+    await flushPromises()
+    expect(wrapper.get('#run-detail-title').text()).toContain('run-success')
+    wrapper.unmount()
+  })
+
   it('aborts all workspace reads when unmounted', async () => {
     fetchMock.mockImplementation(() => new Promise<Response>(() => undefined))
     const wrapper = mount(HistoryPage)

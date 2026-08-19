@@ -215,7 +215,7 @@ onBeforeUnmount(() => {
               <td>{{ run.requested_start ?? '—' }} → {{ run.requested_end ?? '—' }}<small>{{ run.resolved_start ?? '—' }} → {{ run.resolved_end ?? '—' }}</small></td>
               <td>{{ run.fetched_count }} fetched · {{ run.inserted_count }} inserted · {{ run.skipped_count }} duplicate · {{ run.conflict_count }} conflict · {{ run.failed_count }} failed</td>
               <td>{{ formatTimestamp(run.started_at) }}<small>{{ formatTimestamp(run.completed_at) }}</small></td>
-              <td><button class="button button--quiet" type="button" @click="showRunDetail(run.run_id)">Open</button></td>
+              <td><button class="button button--quiet" type="button" :aria-label="`Open ingestion run ${run.run_id} detail`" @click="showRunDetail(run.run_id)">Open</button></td>
             </tr>
           </tbody>
         </table>

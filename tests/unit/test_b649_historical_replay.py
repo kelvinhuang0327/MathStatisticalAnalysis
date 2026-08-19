@@ -120,8 +120,12 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 52,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 81,
+            # SELECTED_INTAKE_SET03_R1 registered 2 more BIG_LOTTO identities
+            # among these 221 (verify_markov_vs_triple_2bet,
+            # backtest_biglotto_coldpool_15) as executable, moving them from
+            # HISTORICAL_RAW_ONLY to CURRENTLY_REPLAYABLE: 52->54, 81->79.
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 54,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 79,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,

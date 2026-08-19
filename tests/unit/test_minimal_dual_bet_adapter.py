@@ -209,11 +209,14 @@ def test_catalog_registry_and_production_portfolio_path_are_reachable() -> None:
 
 
 def test_production_catalog_appends_minimal_dual_bet_last_and_preserves_prior_order() -> None:
+    """SELECTED_INTAKE_SET03_R1 appended 6 more descriptors after this one
+    (2 BIG_LOTTO, 3 POWER_LOTTO, 1 DAILY_539), so this identity moved from
+    position -1 to -7; nothing before it moved."""
+
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 72
-    assert all_ids[-1] == STRATEGY_ID
-    assert all_ids[:-1].count(STRATEGY_ID) == 0
-    assert all_ids[-2] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
-    assert all_ids[-3] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-
+    assert len(all_ids) == 78
+    assert all_ids[-7] == STRATEGY_ID
+    assert all_ids.count(STRATEGY_ID) == 1
+    assert all_ids[-8] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
+    assert all_ids[-9] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"

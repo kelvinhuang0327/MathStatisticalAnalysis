@@ -801,6 +801,11 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "legacy_biglotto__verify_markov_vs_triple_2bet__2094ee4bc361",
+        "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+        "zonal_entropy_2bet",
+        "power_apriori_2bet",
+        "power_lead_lag_2bet",
     }
 
 

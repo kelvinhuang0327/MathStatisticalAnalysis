@@ -233,17 +233,19 @@ def test_production_catalog_declares_expected_shape() -> None:
 def test_production_catalog_appends_batch16_last_and_preserves_prior_order() -> None:
     """Batch 16 adds exactly one descriptor, strictly after every
     pre-existing one (69 -> 71, with PR #149's unrelated composite
-    descriptor landing in between, and PR #152 minimal dual bet appended after);
-    nothing already in the catalog moves."""
+    descriptor landing in between, and PR #152 minimal dual bet appended
+    after). SELECTED_INTAKE_SET03_R1 later appended 6 more descriptors
+    after minimal dual bet, shifting this identity from -2 to -8; nothing
+    before it moves."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 72
+    assert len(all_ids) == 78
     assert STRATEGY_ID in all_ids
-    assert all_ids[-2] == STRATEGY_ID
-    assert all_ids[:-2].count(STRATEGY_ID) == 0
-    assert all_ids[-3] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-1] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
+    assert all_ids[-8] == STRATEGY_ID
+    assert all_ids.count(STRATEGY_ID) == 1
+    assert all_ids[-9] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-7] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
 
 
 def test_strategy_is_reachable_only_through_the_portfolio_response_path() -> None:

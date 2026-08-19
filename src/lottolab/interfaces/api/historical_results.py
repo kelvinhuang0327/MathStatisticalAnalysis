@@ -5,6 +5,10 @@ Queries only the already-committed historical-results projection (BLHQ-R1's
 ``/runs/{run_id}/replay`` path is a read-only projection view over already-
 committed portfolios: it never consumes or modifies Replay's
 ``DrawHistoryReader`` and executes no strategy.
+
+``/replay/runs`` is a separate, unrelated compatibility route restoring the
+legacy ``GET /api/replay/runs`` capability by reusing ``ListHistoricalRuns``
+verbatim; it is not a Replay query implementation of its own.
 """
 
 # pyright: reportUnusedFunction=false
@@ -305,7 +309,10 @@ class HistoricalReplayPageResponse(BaseModel):
 def create_historical_results_router(
     repository_factory: HistoricalResultQueryRepositoryFactory | None,
 ) -> APIRouter:
-    """Always exposes the four routes; ``repository_factory=None`` -> 503 NOT_CONFIGURED."""
+    """Always exposes the four historical-results routes plus the
+    ``/replay/runs`` compatibility route; ``repository_factory=None`` ->
+    503 NOT_CONFIGURED.
+    """
 
     router = APIRouter(prefix=API_PREFIX, tags=["historical-results"])
     list_runs_use_case = (
@@ -323,6 +330,23 @@ def create_historical_results_router(
         GetHistoricalPortfolio(repository_factory) if repository_factory is not None else None
     )
 
+    def _list_runs_page(
+        limit: int,
+        offset: int,
+        lottery_type: HistoricalLotteryType | None,
+    ) -> HistoricalRunPageResponse | JSONResponse:
+        if list_runs_use_case is None:
+            return _not_configured_error()
+        try:
+            page = list_runs_use_case.execute(
+                limit=limit,
+                offset=offset,
+                lottery_type=lottery_type,
+            )
+        except HistoricalResultsUnavailableError:
+            return _unavailable_error()
+        return HistoricalRunPageResponse.from_page(page)
+
     @router.get(
         "/historical-results/runs",
         response_model=HistoricalRunPageResponse,
@@ -337,17 +361,26 @@ def create_historical_results_router(
         offset: Offset = 0,
         lottery_type: HistoricalLotteryType | None = None,
     ) -> HistoricalRunPageResponse | JSONResponse:
-        if list_runs_use_case is None:
-            return _not_configured_error()
-        try:
-            page = list_runs_use_case.execute(
-                limit=limit,
-                offset=offset,
-                lottery_type=lottery_type,
-            )
-        except HistoricalResultsUnavailableError:
-            return _unavailable_error()
-        return HistoricalRunPageResponse.from_page(page)
+        return _list_runs_page(limit=limit, offset=offset, lottery_type=lottery_type)
+
+    # Legacy GET /api/replay/runs compatibility surface: same projection as
+    # /historical-results/runs above, via the identical use-case call site.
+    @router.get(
+        "/replay/runs",
+        response_model=HistoricalRunPageResponse,
+        responses={
+            422: {"model": ApiValidationErrorResponse},
+            503: {"model": ApiErrorResponse},
+        },
+        tags=["replay"],
+        operation_id="listReplayRuns",
+    )
+    def list_replay_runs(
+        limit: Limit = 50,
+        offset: Offset = 0,
+        lottery_type: HistoricalLotteryType | None = None,
+    ) -> HistoricalRunPageResponse | JSONResponse:
+        return _list_runs_page(limit=limit, offset=offset, lottery_type=lottery_type)
 
     @router.get(
         "/historical-results/runs/{run_id}/strategies",

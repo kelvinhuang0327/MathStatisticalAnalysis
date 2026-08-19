@@ -1,4 +1,8 @@
-"""API contract tests for the read-only /api/v1/historical-results/* endpoints (BLHQ R2)."""
+"""API contract tests for the read-only /api/v1/historical-results/* endpoints (BLHQ R2).
+
+Also covers ``/api/v1/replay/runs``, the thin legacy-compatibility surface
+over the same ``ListHistoricalRuns`` behavior (see historical_results.py).
+"""
 
 # pyright: reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false
 # (starlette TestClient is partially untyped under the httpx v1 compatibility shim)
@@ -26,6 +30,7 @@ from lottolab.interfaces.api.app import create_app
 from lottolab.normalization.historical_import import verify_and_normalize_historical_import
 
 PREFIX = "/api/v1/historical-results"
+REPLAY_PREFIX = "/api/v1/replay"
 
 
 def _normalized_import(envelope: dict[str, Any]) -> HistoricalRunImport:
@@ -85,6 +90,110 @@ def test_list_runs_accepts_and_filters_each_internal_lottery_type(
     assert body["total_count"] == 1
     assert [item["run_id"] for item in body["items"]] == [run_ids[lottery_type]]
     assert body["items"][0]["lottery_type"] == lottery_type
+
+
+# --- /api/v1/replay/runs: thin legacy-compatibility surface -----------------
+# Restores legacy GET /api/replay/runs; must equal the historical-results
+# run-list projection for the same query (same use case, same repository).
+
+
+def test_replay_runs_matches_historical_results_runs_projection(tmp_path: Path) -> None:
+    database = tmp_path / "historical.db"
+    run_id = _seed_database(database)
+    client = _client_for(database)
+
+    historical_response = client.get(f"{PREFIX}/runs")
+    replay_response = client.get(f"{REPLAY_PREFIX}/runs")
+
+    assert replay_response.status_code == 200
+    assert replay_response.json() == historical_response.json()
+    assert [item["run_id"] for item in replay_response.json()["items"]] == [run_id]
+
+
+@pytest.mark.parametrize("lottery_type", ["DAILY_539", "BIG_LOTTO", "POWER_LOTTO"])
+def test_replay_runs_preserves_lottery_type_filter_and_pagination(
+    tmp_path: Path, lottery_type: str
+) -> None:
+    database = tmp_path / "historical.db"
+    repository = SQLiteHistoricalResultRepository(database)
+    for selected in ("DAILY_539", "BIG_LOTTO", "POWER_LOTTO"):
+        repository.commit_import(_normalized_import(build_v2_envelope(selected)))
+    client = _client_for(database)
+    params = {"lottery_type": lottery_type, "limit": 1, "offset": 0}
+
+    historical_response = client.get(f"{PREFIX}/runs", params=params)
+    replay_response = client.get(f"{REPLAY_PREFIX}/runs", params=params)
+
+    assert replay_response.status_code == 200
+    assert replay_response.json() == historical_response.json()
+    assert replay_response.json()["items"][0]["lottery_type"] == lottery_type
+
+
+def test_replay_runs_unconfigured_app_returns_same_not_configured_503() -> None:
+    client = TestClient(create_app())
+
+    historical_response = client.get(f"{PREFIX}/runs")
+    replay_response = client.get(f"{REPLAY_PREFIX}/runs")
+
+    assert replay_response.status_code == 503
+    assert replay_response.json() == historical_response.json()
+    assert replay_response.json()["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
+
+
+def test_replay_runs_absent_configured_database_returns_same_empty_page(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "does-not-exist" / "historical.db"
+    client = _client_for(database)
+
+    historical_response = client.get(f"{PREFIX}/runs")
+    replay_response = client.get(f"{REPLAY_PREFIX}/runs")
+
+    assert replay_response.status_code == 200
+    assert replay_response.json() == historical_response.json()
+    assert replay_response.json()["items"] == []
+    assert replay_response.json()["total_count"] == 0
+    assert not database.exists()
+
+
+def test_replay_runs_corrupt_database_returns_same_sanitized_503(tmp_path: Path) -> None:
+    database = tmp_path / "historical.db"
+    database.write_bytes(b"not a valid sqlite database, just garbage bytes")
+    client = _client_for(database)
+
+    historical_response = client.get(f"{PREFIX}/runs")
+    replay_response = client.get(f"{REPLAY_PREFIX}/runs")
+
+    assert replay_response.status_code == 503
+    assert replay_response.json() == historical_response.json()
+    raw_text = replay_response.text
+    assert str(database) not in raw_text
+    assert "Traceback" not in raw_text
+    assert "sqlite3" not in raw_text.lower()
+
+
+@pytest.mark.parametrize(
+    "params",
+    [{"limit": 0}, {"limit": 201}, {"offset": -1}, {"lottery_type": "L649"}],
+)
+def test_replay_runs_invalid_query_parameters_return_sanitized_422(
+    params: dict[str, object],
+) -> None:
+    client = TestClient(create_app())
+
+    historical_response = client.get(f"{PREFIX}/runs", params=params)
+    replay_response = client.get(f"{REPLAY_PREFIX}/runs", params=params)
+
+    assert replay_response.status_code == 422
+    assert replay_response.json() == historical_response.json()
+    assert replay_response.json()["error_code"] == "REQUEST_VALIDATION_FAILED"
+
+
+def test_replay_runs_declared_in_openapi_document() -> None:
+    document = create_app().openapi()
+
+    operation = document["paths"][f"{REPLAY_PREFIX}/runs"]["get"]
+    assert operation["operationId"] == "listReplayRuns"
 
 
 def test_list_run_strategies_returns_summaries_for_each_ticket_count(tmp_path: Path) -> None:

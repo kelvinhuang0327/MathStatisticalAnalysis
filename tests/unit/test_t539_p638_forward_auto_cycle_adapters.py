@@ -21,12 +21,12 @@ from tools.t539_forward_auto_cycle_adapter import (
 )
 
 from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
-from lottolab.application.forward_auto_cycle_operational import (
+from lottolab.domain.draws import LotteryType
+from lottolab.infrastructure.forward_auto_cycle_operational import (
     ForwardCycleHistorySnapshot,
     ForwardCycleStrategyStream,
     ForwardCycleTarget,
 )
-from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.adapters.powerlotto_wave1 import P638HistoryRow
 

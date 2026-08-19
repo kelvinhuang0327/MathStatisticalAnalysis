@@ -1735,6 +1735,35 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def fetch_research_draw_bindings_for_dataset(
+    connection: sqlite3.Connection,
+    *,
+    lottery_type: str,
+    draw_data_version: str,
+) -> tuple[list[tuple[str, str, str]], int]:
+    """Read bounded draw bindings from the research store for dataset ingestion."""
+    rows = connection.execute(
+        """
+        SELECT draw_number, draw_date, main_numbers_json
+        FROM research_draw_bindings
+        WHERE lottery_type = ?
+          AND draw_data_version = ?
+          AND draw_number != replace(draw_date, '-', '')
+        ORDER BY draw_date ASC, CAST(draw_number AS INTEGER) ASC
+        """,
+        (lottery_type, draw_data_version),
+    ).fetchall()
+    (total_count,) = connection.execute(
+        "SELECT count(*) FROM research_draw_bindings "
+        "WHERE lottery_type = ? AND draw_data_version = ?",
+        (lottery_type, draw_data_version),
+    ).fetchone()
+    return (
+        [(str(r[0]), str(r[1]), str(r[2])) for r in rows],
+        int(total_count),
+    )
+
+
 __all__ = [
     "BUSY_TIMEOUT_MS",
     "IMMUTABLE_TABLE_NAMES",
@@ -1761,4 +1790,5 @@ __all__ = [
     "TicketCursor",
     "TicketInput",
     "TicketResultInput",
+    "fetch_research_draw_bindings_for_dataset",
 ]

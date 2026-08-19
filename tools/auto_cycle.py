@@ -16,7 +16,7 @@ from lottolab.application.forward_auto_cycle_core import (
     ForwardAutoCycleCore,
     ForwardAutoCycleResult,
 )
-from lottolab.application.forward_auto_cycle_operational import ForwardCycleTarget
+from lottolab.infrastructure.forward_auto_cycle_operational import ForwardCycleTarget
 from tools.b649_forward_auto_cycle_adapter import B649ForwardAutoCycleAdapter
 from tools.b649_operational_prediction_loop import (
     DEFAULT_OPERATION_ROOT as B649_OPERATION_ROOT,

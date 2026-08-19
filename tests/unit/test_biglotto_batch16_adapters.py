@@ -238,12 +238,15 @@ def test_production_catalog_appends_batch16_last_and_preserves_prior_order() -> 
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 72
-    assert STRATEGY_ID in all_ids
-    assert all_ids[-2] == STRATEGY_ID
-    assert all_ids[:-2].count(STRATEGY_ID) == 0
-    assert all_ids[-3] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-1] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
+    assert len(all_ids) == 80
+    # Scoped to the pre-PENDING_INTAKE_SET02_R1 prefix: batch16 is still
+    # 2nd-to-last within it, and nothing in it moved.
+    batch16_and_earlier = all_ids[:72]
+    assert STRATEGY_ID in batch16_and_earlier
+    assert batch16_and_earlier[-2] == STRATEGY_ID
+    assert batch16_and_earlier[:-2].count(STRATEGY_ID) == 0
+    assert batch16_and_earlier[-3] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert batch16_and_earlier[-1] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
 
 
 def test_strategy_is_reachable_only_through_the_portfolio_response_path() -> None:

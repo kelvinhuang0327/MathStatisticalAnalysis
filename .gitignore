@@ -27,3 +27,6 @@ data/*
 # ~/.gitignore_global (user-level) ignores README.md everywhere; re-include here
 !README.md
 !**/README.md
+
+# Local task/research execution artifacts — never commit
+.task-data/

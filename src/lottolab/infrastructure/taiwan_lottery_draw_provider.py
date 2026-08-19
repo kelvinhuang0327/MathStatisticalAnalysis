@@ -199,9 +199,14 @@ def _record(
 
 
 def _required_text(value: object, label: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise DrawProviderContractError(f"official API {label} is invalid")
-    return value
+    if type(value) is str and value.strip():
+        return value
+    # The official Taiwan Lottery result API currently serializes ``period``
+    # as a JSON integer.  Canonical draw identities are stored as text, so
+    # normalize that provider representation at the adapter boundary.
+    if type(value) is int and value >= 0:
+        return str(value)
+    raise DrawProviderContractError(f"official API {label} is invalid")
 
 
 def _required_date(value: object, label: str) -> date:

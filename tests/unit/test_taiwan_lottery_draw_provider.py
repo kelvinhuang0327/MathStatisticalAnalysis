@@ -70,6 +70,31 @@ def test_fetches_and_normalizes_big_lotto_draws() -> None:
     assert "endMonth=2026-07" in transport.requested_urls[0]
 
 
+def test_accepts_official_integer_period_and_normalizes_it_to_text() -> None:
+    transport = _FakeTransport(
+        _envelope(
+            "daily539Res",
+            [
+                {
+                    "period": 115000198,
+                    "lotteryDate": "2026-08-15T00:00:00",
+                    "drawNumberSize": [12, 14, 21, 35, 37],
+                }
+            ],
+        )
+    )
+    provider = TaiwanLotteryDrawProvider(transport=transport)
+
+    result = provider.fetch_draws(
+        lottery_type=LotteryType.DAILY_539,
+        date_from=date(2026, 8, 1),
+        date_to=date(2026, 8, 16),
+    )
+
+    assert result.records[0].draw_number == "115000198"
+    assert result.records[0].draw_date == date(2026, 8, 15)
+
+
 def test_fetches_power_lotto_from_its_own_endpoint() -> None:
     transport = _FakeTransport(
         _envelope("superLotto638Res", [_row("113000042", "2026-07-10", [2, 4, 6, 8, 10, 12, 5])])

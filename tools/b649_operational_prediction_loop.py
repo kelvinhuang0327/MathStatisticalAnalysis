@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -19,6 +20,9 @@ from pathlib import Path
 from typing import cast
 from uuid import uuid4
 from zoneinfo import ZoneInfo
+
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
@@ -1107,6 +1111,28 @@ def _score_prediction(
     }
 
 
+def ensure_operation_root(root: Path) -> None:
+    """Public adapter hook that preserves the existing B649 root contract."""
+
+    _ensure_operation_root(root)
+
+
+def iter_prediction_files(root: Path, draw_number: str) -> tuple[Path, ...]:
+    """Public adapter hook for the legacy flat/nested prediction layout."""
+
+    return _iter_prediction_files(root, draw_number)
+
+
+def score_prediction(
+    prediction: dict[str, object],
+    outcome: dict[str, object],
+    scored_at: datetime,
+) -> dict[str, object]:
+    """Public adapter hook for the existing B649 scoring implementation."""
+
+    return _score_prediction(prediction, outcome, scored_at)
+
+
 def _ensure_directories(root: Path) -> None:
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     for name in ("predictions", "outcomes", "scores"):
@@ -1421,6 +1447,20 @@ def _build_parser() -> argparse.ArgumentParser:
             "draw with any stored prediction."
         ),
     )
+    auto_cycle = subparsers.add_parser(
+        "auto-cycle",
+        help="Run one shared forward auto-cycle for a supported lottery adapter.",
+    )
+    auto_cycle.add_argument(
+        "--lottery",
+        required=True,
+        type=str.upper,
+        choices=("B649", "T539", "P638", "ALL"),
+    )
+    auto_cycle.add_argument("--database", type=Path)
+    auto_cycle.add_argument("--target-draw-number")
+    auto_cycle.add_argument("--target-draw-date")
+    auto_cycle.add_argument("--target-scheduled-at")
     return parser
 
 
@@ -1445,6 +1485,60 @@ def main(argv: list[str] | None = None) -> int:
     args = _build_parser().parse_args(argv)
     root = cast(Path, args.operation_root)
     command = cast(str, args.command)
+    if command == "auto-cycle":
+        lottery = cast(str, args.lottery)
+        if lottery != "B649":
+            raise SystemExit(
+                f"auto-cycle adapter for {lottery} is not implemented by design in R1"
+            )
+        supplied_database = cast(Path | None, args.database)
+        database = (
+            resolve_local_data_paths().database
+            if supplied_database is None
+            else supplied_database
+        )
+        target_values = (
+            cast(str | None, args.target_draw_number),
+            cast(str | None, args.target_draw_date),
+            cast(str | None, args.target_scheduled_at),
+        )
+        if any(value is not None for value in target_values) and not all(
+            value is not None for value in target_values
+        ):
+            raise SystemExit(
+                "auto-cycle target override requires --target-draw-number, "
+                "--target-draw-date, and --target-scheduled-at together"
+            )
+        from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
+        from tools.b649_forward_auto_cycle_adapter import (
+            B649ForwardAutoCycleAdapter,
+            serialize_cycle_result,
+        )
+
+        target = (
+            None
+            if not all(value is not None for value in target_values)
+            else PredictionTarget(
+                lottery_type=LOTTERY_TYPE,
+                draw_number=cast(str, target_values[0]),
+                draw_date=cast(str, target_values[1]),
+                scheduled_at=cast(str, target_values[2]),
+            )
+        )
+        adapter = B649ForwardAutoCycleAdapter(
+            root,
+            database=database,
+            target=target,
+        )
+        result = ForwardAutoCycleCore[
+            PredictionTarget,
+            StrategyStream,
+            HistorySnapshot,
+            dict[str, object],
+            dict[str, object],
+        ](adapter).run()
+        print(_canonical_json(serialize_cycle_result(result, adapter)))
+        return 0
     if command == "predict":
         supplied_database = cast(Path | None, args.database)
         database = (

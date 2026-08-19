@@ -1,0 +1,45 @@
+{
+  "ctbc_result": {
+    "lotto649": {
+      "appear_main": [
+        35,
+        25,
+        5,
+        12,
+        34,
+        33
+      ],
+      "parse_status": "PASS",
+      "period": 115000079,
+      "sorted_main": [
+        5,
+        12,
+        25,
+        33,
+        34,
+        35
+      ],
+      "special": 27
+    },
+    "sha256": "e241c5786967ae5625d509f41851c72f30c58edb11864c8e717a9b6c06e46cfc",
+    "url": "https://lotto.ctbcbank.com/result_all.htm"
+  },
+  "history_renderer": {
+    "flags": {
+      "passes_both_to_winner_numbers": true,
+      "reads_draw_number_appear": true,
+      "reads_draw_number_size": true
+    },
+    "sha256": "c7e0f807ccfd504d94c250e55c44b42d452861611fca9585607f403323c07862",
+    "url": "https://www.taiwanlottery.com/_nuxt/history_result.1_0_8_7.js"
+  },
+  "process": {
+    "flags": {
+      "mentions_big_lotto_sequential_rule": true,
+      "mentions_opened_numbers_keep_order": true,
+      "mentions_selected_drop_order": true
+    },
+    "sha256": "db65a808b1c24722c65c22ac514e1350fb9d51836a3f141fc0fdf85778f82766",
+    "url": "https://www.taiwanlottery.com/run_lottery/info/"
+  }
+}

@@ -1955,6 +1955,46 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
+        ),
+        strategy_name="大樂透 Hot-Stop Rebound 熱號休停 8組態",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_hot_stop_rebound:"
+            "BigLottoHotStopReboundAdapter"
+        ),
+        min_history=200,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_biglotto_hot_stop_rebound.py",
+            "legacy_source_blob:b3758b5c855fe42bae5d9a9de5b66b8079755ba7",
+            "legacy_source_sha256:"
+            "1794a8c507aed174efe13310a3a3b7774158149931ce70101a2cfb729d54b2f5",
+            "retained_reference:"
+            "lottolab.application.legacy_source_native_portfolios_wave6."
+            "generate_legacy_source_native_wave6_portfolio",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
+            "donor_evidence_sha256:"
+            "db230b09ecad472d83b1c2db1d9280a3c66aa07208e50cffaeef4fb900610b1d",
+            "donor_parity:EXACT_OUTPUT_PARITY",
+            "source_history:OLDEST_FIRST_MINIMUM_200_FREQ100_GAP10_FULL_GAP_SCAN",
+            "portfolio_cardinality:EXACTLY_8_POSITIONAL_DUPLICATES_PRESERVED",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_MECHANISM_RESIDUAL_GAP_NEXT_NATIVE_MIGRATION_R2",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=8,
+    ),
 )
 
 

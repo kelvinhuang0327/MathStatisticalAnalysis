@@ -247,6 +247,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
         "legacy_biglotto__cooccurrence_graph__25fa2e473092",
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
+        "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
     ]
     online_ids = {
         descriptor.strategy_id

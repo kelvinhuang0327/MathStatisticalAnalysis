@@ -1778,6 +1778,39 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
+        strategy_name="大樂透 Apriori 關聯規則 2-7 注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_apriori:"
+            "BigLottoAprioriPredictorAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_biglotto_apriori.py",
+            "legacy_source_blob:53222aacf71474fb25487ea625e0e9519760a75a",
+            "legacy_source_sha256:"
+            "cda690ae84c2324b5f7d160a68e0ba3cf65d6073ecfc5c28ef48402b07018e7b",
+            "legacy_symbol:BigLottoAprioriPredictor.predict_next_draw",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
+            "donor_evidence_sha256:"
+            "34e23e53faa49889f430df42013226dfcc6c82d794556256d42f41cb9c51c249",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_APRIORI_VARIABLE_PORTFOLIO_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=7,
+        minimum_native_ticket_count=2,
+        maximum_native_ticket_count=7,
+    ),
 )
 
 

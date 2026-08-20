@@ -120,13 +120,27 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 52,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 81,
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 55,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 78,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,
         }
     )
+    status_by_id = {
+        identity.strategy_id: identity.status for identity in use_case.identity_accounts
+    }
+    assert {
+        status_by_id[
+            "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+        ],
+        status_by_id[
+            "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
+        ],
+        status_by_id[
+            "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+        ],
+    } == {B649IdentityStatus.CURRENTLY_REPLAYABLE}
 
 
 def test_b649_current_catalog_binding_reaches_controller_and_prize_evaluation(

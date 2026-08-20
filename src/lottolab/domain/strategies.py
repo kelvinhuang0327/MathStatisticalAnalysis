@@ -51,6 +51,30 @@ class StrategyDescriptor:
     provenance: tuple[str, ...] = ()
     response_shape: ResponseShape = ResponseShape.SINGLE_TICKET
     native_ticket_count: int = 1
+    minimum_native_ticket_count: int | None = None
+    maximum_native_ticket_count: int | None = None
+
+    @property
+    def native_ticket_count_bounds(self) -> tuple[int, int]:
+        """Return the strategy's explicit bounded native portfolio contract.
+
+        Existing descriptors declare one exact ``native_ticket_count`` and
+        therefore resolve to ``(count, count)`` without any catalog rewrite.
+        Variable-size portfolios opt in by declaring both bounds while the
+        legacy count field remains the bounded maximum for old consumers.
+        """
+
+        minimum = (
+            self.native_ticket_count
+            if self.minimum_native_ticket_count is None
+            else self.minimum_native_ticket_count
+        )
+        maximum = (
+            self.native_ticket_count
+            if self.maximum_native_ticket_count is None
+            else self.maximum_native_ticket_count
+        )
+        return minimum, maximum
 
     def __post_init__(self) -> None:
         if not self.strategy_id.strip():
@@ -74,13 +98,31 @@ class StrategyDescriptor:
             raise ValueError(
                 f"{self.strategy_id}: non-executable strategy cannot declare adapter_path"
             )
-        if self.response_shape is ResponseShape.SINGLE_TICKET and self.native_ticket_count != 1:
+        if type(self.native_ticket_count) is not int:
+            raise ValueError(f"{self.strategy_id}: native_ticket_count must be an exact integer")
+        minimum_count, maximum_count = self.native_ticket_count_bounds
+        if type(minimum_count) is not int or type(maximum_count) is not int:
+            raise ValueError(
+                f"{self.strategy_id}: native ticket-count bounds must be exact integers"
+            )
+        if minimum_count > maximum_count:
+            raise ValueError(
+                f"{self.strategy_id}: minimum native ticket count exceeds maximum"
+            )
+        if self.native_ticket_count != maximum_count:
+            raise ValueError(
+                f"{self.strategy_id}: native_ticket_count must equal the bounded maximum"
+            )
+        if self.response_shape is ResponseShape.SINGLE_TICKET and (
+            minimum_count,
+            maximum_count,
+        ) != (1, 1):
             raise ValueError(
                 f"{self.strategy_id}: SINGLE_TICKET strategies must declare "
-                "native_ticket_count=1"
+                "native_ticket_count=1 (minimum=maximum=1)"
             )
-        if self.response_shape is ResponseShape.PORTFOLIO and self.native_ticket_count < 2:
+        if self.response_shape is ResponseShape.PORTFOLIO and minimum_count < 2:
             raise ValueError(
                 f"{self.strategy_id}: PORTFOLIO strategies must declare "
-                "native_ticket_count >= 2"
+                "native_ticket_count >= 2 with a bounded minimum"
             )

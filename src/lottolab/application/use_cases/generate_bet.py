@@ -419,12 +419,14 @@ class GeneratePortfolio:
                 adapter.strategy_name,
                 adapter.strategy_version,
                 adapter.native_ticket_count,
+                adapter.native_ticket_count_bounds(),
             )
             expected_identity = (
                 descriptor.strategy_id,
                 descriptor.strategy_name,
                 descriptor.version,
                 descriptor.native_ticket_count,
+                descriptor.native_ticket_count_bounds,
             )
             if strategy_id != adapter.strategy_id or actual_identity != expected_identity:
                 raise AdapterIdentityMismatchError(

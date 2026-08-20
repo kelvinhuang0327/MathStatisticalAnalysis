@@ -286,13 +286,15 @@ class BetAdapter(ABC):
 
 class PortfolioBetAdapter(ABC):
     """Template for one strategy identity whose native output is an ordered,
-    fixed-size set of two or more causally-computed tickets (a "portfolio").
+    bounded set of two or more causally-computed tickets (a "portfolio").
 
     Kept entirely separate from :class:`BetAdapter` so the eight shipped
     single-ticket adapters are untouched by this contract's existence. Native
     ticket order and positional duplicates are preserved exactly as emitted;
     this class only canonicalizes each ticket's own number ordering for legal
-    validation, never reorders or deduplicates across tickets.
+    validation, never reorders or deduplicates across tickets. Existing
+    adapters declare one exact ``native_ticket_count``; variable-size adapters
+    additionally declare a finite minimum and maximum.
     """
 
     strategy_id: ClassVar[str]
@@ -301,6 +303,36 @@ class PortfolioBetAdapter(ABC):
     min_history: ClassVar[int]
     supported_lottery_types: ClassVar[tuple[LotteryType, ...]]
     native_ticket_count: ClassVar[int]
+    minimum_native_ticket_count: ClassVar[int | None] = None
+    maximum_native_ticket_count: ClassVar[int | None] = None
+
+    @classmethod
+    def native_ticket_count_bounds(cls) -> tuple[int, int]:
+        """Resolve and validate this adapter's bounded cardinality declaration."""
+
+        native_count = cls.native_ticket_count
+        minimum = (
+            native_count
+            if cls.minimum_native_ticket_count is None
+            else cls.minimum_native_ticket_count
+        )
+        maximum = (
+            native_count
+            if cls.maximum_native_ticket_count is None
+            else cls.maximum_native_ticket_count
+        )
+        if (
+            type(native_count) is not int
+            or type(minimum) is not int
+            or type(maximum) is not int
+            or minimum < 2
+            or minimum > maximum
+            or native_count != maximum
+        ):
+            raise InvalidOutput(
+                f"{cls.strategy_id}: invalid bounded native ticket-count declaration"
+            )
+        return minimum, maximum
 
     def get_bets(
         self,
@@ -341,9 +373,14 @@ class PortfolioBetAdapter(ABC):
         predicted = self._predict_all(canonical_history, lottery_type)
         if type(predicted) is not tuple:
             raise InvalidOutput(f"{self.strategy_id}: expected a tuple of tickets")
-        if len(predicted) != self.native_ticket_count:
+        minimum_count, maximum_count = self.native_ticket_count_bounds()
+        if not minimum_count <= len(predicted) <= maximum_count:
+            if minimum_count == maximum_count:
+                expectation = str(minimum_count)
+            else:
+                expectation = f"between {minimum_count} and {maximum_count}"
             raise InvalidOutput(
-                f"{self.strategy_id}: expected {self.native_ticket_count} native tickets, "
+                f"{self.strategy_id}: expected {expectation} native tickets, "
                 f"got {len(predicted)}"
             )
 

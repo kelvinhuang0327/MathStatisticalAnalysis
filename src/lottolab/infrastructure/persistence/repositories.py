@@ -13,8 +13,10 @@ from typing import Never, cast
 from lottolab.application.draw_automation import IngestionAuditContext
 from lottolab.application.draw_data import (
     MAX_INGESTION_ITEM_DETAILS,
+    DrawDataStats,
     DrawHistoryPage,
     DrawHistoryQuery,
+    DrawLotteryStats,
     DrawRecord,
     ExistingDrawConflictError,
     ImportCommitResult,
@@ -151,6 +153,23 @@ class SQLiteDrawRepository:
             (*parameters, query.page_size, offset),
         ).fetchall()
         return tuple(_draw_record(row) for row in rows)
+
+    def get_stats(self) -> tuple[DrawLotteryStats, ...]:
+        rows = self._connection.execute(
+            """
+            SELECT lottery_type, COUNT(*), MIN(draw_date), MAX(draw_date),
+                   (
+                       SELECT latest.draw_number
+                       FROM draws AS latest
+                       WHERE latest.lottery_type = draws.lottery_type
+                       ORDER BY latest.draw_date DESC, latest.draw_number DESC, latest.id DESC
+                       LIMIT 1
+                   )
+            FROM draws
+            GROUP BY lottery_type
+            """
+        ).fetchall()
+        return tuple(_draw_lottery_stats(row) for row in rows)
 
 
 class SQLiteIngestionRunRepository:
@@ -415,6 +434,46 @@ class SQLiteDrawDataRepository:
                 page_size=query.page_size,
                 total_count=total_count,
                 total_pages=_total_pages(total_count, query.page_size),
+            )
+        except (
+            LocalDataError,
+            SchemaMigrationError,
+            sqlite3.DatabaseError,
+            _StoredDataError,
+        ) as exc:
+            _raise_repository_error(exc)
+
+    def get_stats(self) -> DrawDataStats:
+        try:
+            if not verify_schema_read_only(self._paths):
+                return DrawDataStats(
+                    total_draw_count=0,
+                    items=tuple(
+                        _empty_draw_lottery_stats(lottery_type)
+                        for lottery_type in LotteryType
+                    ),
+                )
+            with open_database(self._paths, read_only=True) as connection:
+                connection.execute("BEGIN")
+                try:
+                    repository = SQLiteDrawRepository(connection)
+                    total_draw_count = repository.count(DrawHistoryQuery())
+                    persisted_stats = repository.get_stats()
+                finally:
+                    if connection.in_transaction:
+                        connection.rollback()
+            stats_by_lottery_type = {
+                item.lottery_type: item for item in persisted_stats
+            }
+            return DrawDataStats(
+                total_draw_count=total_draw_count,
+                items=tuple(
+                    stats_by_lottery_type.get(
+                        lottery_type,
+                        _empty_draw_lottery_stats(lottery_type),
+                    )
+                    for lottery_type in LotteryType
+                ),
             )
         except (
             LocalDataError,
@@ -1095,6 +1154,29 @@ def _draw_record(row: sqlite3.Row | tuple[object, ...]) -> DrawRecord:
         ingestion_run_id=_required_string(values[9], "ingestion run id"),
         created_at=_datetime_value(values[10]),
         updated_at=_datetime_value(values[11]),
+    )
+
+
+def _draw_lottery_stats(row: sqlite3.Row | tuple[object, ...]) -> DrawLotteryStats:
+    values = tuple(row)
+    if len(values) != 5:
+        raise _StoredDataError("draw statistics row shape is invalid")
+    return DrawLotteryStats(
+        lottery_type=_lottery_type(values[0]),
+        draw_count=_nonnegative_integer(values[1], "draw count"),
+        earliest_draw_date=(None if values[2] is None else _date_value(values[2])),
+        latest_draw_date=(None if values[3] is None else _date_value(values[3])),
+        latest_draw_number=_optional_string(values[4], "latest draw number"),
+    )
+
+
+def _empty_draw_lottery_stats(lottery_type: LotteryType) -> DrawLotteryStats:
+    return DrawLotteryStats(
+        lottery_type=lottery_type,
+        draw_count=0,
+        earliest_draw_date=None,
+        latest_draw_date=None,
+        latest_draw_number=None,
     )
 
 

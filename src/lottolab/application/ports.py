@@ -15,6 +15,7 @@ from lottolab.application.draw_automation import (
     ProviderFetchResult,
 )
 from lottolab.application.draw_data import (
+    DrawDataStats,
     DrawHistoryPage,
     DrawHistoryQuery,
     DrawRecord,
@@ -92,6 +93,10 @@ from lottolab.evidence.replay_scoring_artifact import ReplayScoringArtifact
 class DrawRepository(Protocol):
     def list_draws(self, query: DrawHistoryQuery) -> DrawHistoryPage:
         """Return one deterministic draw-history page."""
+        ...
+
+    def get_stats(self) -> DrawDataStats:
+        """Return aggregate statistics over canonical draw rows."""
         ...
 
     def get_draw(self, lottery_type: LotteryType, draw_number: str) -> DrawRecord | None:

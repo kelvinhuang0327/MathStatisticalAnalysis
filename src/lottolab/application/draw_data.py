@@ -60,6 +60,21 @@ class DrawHistoryPage:
 
 
 @dataclass(frozen=True, slots=True)
+class DrawLotteryStats:
+    lottery_type: LotteryType
+    draw_count: int
+    earliest_draw_date: date | None
+    latest_draw_date: date | None
+    latest_draw_number: str | None
+
+
+@dataclass(frozen=True, slots=True)
+class DrawDataStats:
+    total_draw_count: int
+    items: tuple[DrawLotteryStats, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class IngestionRunQuery:
     status: IngestionRunStatus | None = None
     operation_type: IngestionOperationType | None = None

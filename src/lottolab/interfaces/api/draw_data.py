@@ -26,8 +26,10 @@ from lottolab.application.draw_automation import (
 from lottolab.application.draw_data import (
     MAX_HISTORY_PAGE_SIZE,
     DigestMismatchError,
+    DrawDataStats,
     DrawHistoryPage,
     DrawHistoryQuery,
+    DrawLotteryStats,
     DrawRecord,
     ExistingDrawConflictError,
     ImportCommitResult,
@@ -57,6 +59,7 @@ from lottolab.application.use_cases.draw_automation import (
 )
 from lottolab.application.use_cases.draw_history import (
     GetDraw,
+    GetDrawDataStats,
     GetIngestionRun,
     ListDraws,
     ListIngestionRuns,
@@ -531,6 +534,40 @@ class DrawHistoryResponse(BaseModel):
         )
 
 
+class DrawLotteryStatsView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    lottery_type: LotteryType
+    draw_count: int
+    earliest_draw_date: date | None
+    latest_draw_date: date | None
+    latest_draw_number: str | None
+
+    @classmethod
+    def from_stats(cls, stats: DrawLotteryStats) -> DrawLotteryStatsView:
+        return cls(
+            lottery_type=stats.lottery_type,
+            draw_count=stats.draw_count,
+            earliest_draw_date=stats.earliest_draw_date,
+            latest_draw_date=stats.latest_draw_date,
+            latest_draw_number=stats.latest_draw_number,
+        )
+
+
+class DrawDataStatsResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    total_draw_count: int
+    items: list[DrawLotteryStatsView]
+
+    @classmethod
+    def from_stats(cls, stats: DrawDataStats) -> DrawDataStatsResponse:
+        return cls(
+            total_draw_count=stats.total_draw_count,
+            items=[DrawLotteryStatsView.from_stats(item) for item in stats.items],
+        )
+
+
 class IngestionRunView(BaseModel):
     model_config = _FROZEN_RESPONSE
 
@@ -710,6 +747,7 @@ def create_draw_data_router(
         resolved_provider_factory, repository_factory, parse_draw_csv
     )
     list_draws_use_case = ListDraws(repository_factory)
+    get_draw_data_stats_use_case = GetDrawDataStats(repository_factory)
     get_draw_use_case = GetDraw(repository_factory)
     list_runs_use_case = ListIngestionRuns(repository_factory)
     get_run_use_case = GetIngestionRun(repository_factory)
@@ -1065,6 +1103,22 @@ def create_draw_data_router(
         return DrawHistoryResponse.from_page(history)
 
     @router.get(
+        "/draws/stats",
+        response_model=DrawDataStatsResponse,
+        responses={503: {"model": ApiErrorResponse}},
+        operation_id="getDrawDataStats",
+        include_in_schema=False,
+    )
+    def get_draw_data_stats() -> DrawDataStatsResponse | JSONResponse:
+        try:
+            stats = get_draw_data_stats_use_case.execute()
+        except RepositoryBusyError:
+            return _repository_error("REPOSITORY_BUSY", "Local draw data is temporarily busy.")
+        except RepositoryUnavailableError:
+            return _repository_error("REPOSITORY_UNAVAILABLE", "Local draw data is unavailable.")
+        return DrawDataStatsResponse.from_stats(stats)
+
+    @router.get(
         "/draws/{lottery_type}/{draw_number}",
         response_model=DrawRecordView,
         responses={
@@ -1187,6 +1241,7 @@ def response_models() -> Sequence[type[BaseModel]]:
         ImportCommitResultView,
         DrawSyncResponse,
         DrawHistoryResponse,
+        DrawDataStatsResponse,
         IngestionRunPageResponse,
         IngestionRunDetailResponse,
     )

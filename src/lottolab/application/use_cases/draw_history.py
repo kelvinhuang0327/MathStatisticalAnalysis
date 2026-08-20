@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from lottolab.application.draw_data import (
+    DrawDataStats,
     DrawHistoryPage,
     DrawHistoryQuery,
     DrawRecord,
@@ -20,6 +21,14 @@ class ListDraws:
 
     def execute(self, query: DrawHistoryQuery) -> DrawHistoryPage:
         return self._repository_factory().list_draws(query)
+
+
+class GetDrawDataStats:
+    def __init__(self, repository_factory: DrawDataRepositoryFactory) -> None:
+        self._repository_factory = repository_factory
+
+    def execute(self) -> DrawDataStats:
+        return self._repository_factory().get_stats()
 
 
 class GetDraw:

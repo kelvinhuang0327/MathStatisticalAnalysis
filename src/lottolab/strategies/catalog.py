@@ -1811,6 +1811,39 @@ _PRODUCTION_DESCRIPTORS = (
         minimum_native_ticket_count=2,
         maximum_native_ticket_count=7,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__smart_multi_bet__613c62c1f192",
+        strategy_name="大樂透 Smart Multi-Bet 6注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_smart_multi_bet:"
+            "BigLottoSmartMultiBetAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/smart_multi_bet.py",
+            "legacy_source_blob:910ccf647b6ec0a2969f9c6ee21ad3c7c2796435",
+            "legacy_source_sha256:"
+            "613c62c1f1929903e5d58309fccd9a7fd7c755be15d188cf9ab01ffe43f092e9",
+            "legacy_symbol:SmartMultiBetSystem.generate_smart_bets",
+            "full_strategy_catalog_id:legacy_biglotto__smart_multi_bet__613c62c1f192",
+            "donor_evidence_sha256:"
+            "2362665d0e019c118c71ee468281b90046e9e61b5f5d24b60f106def9340bb91",
+            "donor_parity_artifact_sha256:"
+            "f4ced21625d1c5f3021ace69920af8ba4df88626925963e4c63a14c958e921de",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_SMART_MULTI_BET_DB_DECOUPLING_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=6,
+    ),
 )
 
 

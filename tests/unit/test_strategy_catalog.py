@@ -243,6 +243,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
+        "legacy_biglotto__smart_multi_bet__613c62c1f192",
     ]
     online_ids = {
         descriptor.strategy_id

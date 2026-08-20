@@ -184,9 +184,10 @@ def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
 def test_production_catalog_preserves_concentrated_pool_append_position() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 75
-    assert all_ids[-3] == STRATEGY_ID
-    assert all_ids[:-3].count(STRATEGY_ID) == 0
-    assert all_ids[-4] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
-    assert all_ids[-2] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
-    assert all_ids[-1] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+    assert len(all_ids) == 76
+    assert all_ids[-4] == STRATEGY_ID
+    assert all_ids[:-4].count(STRATEGY_ID) == 0
+    assert all_ids[-5] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
+    assert all_ids[-3] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
+    assert all_ids[-2] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+    assert all_ids[-1] == "legacy_biglotto__smart_multi_bet__613c62c1f192"

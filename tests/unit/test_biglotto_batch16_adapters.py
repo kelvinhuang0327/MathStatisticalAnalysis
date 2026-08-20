@@ -238,15 +238,16 @@ def test_production_catalog_preserves_batch16_append_position() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 75
+    assert len(all_ids) == 76
     assert STRATEGY_ID in all_ids
-    assert all_ids[-5] == STRATEGY_ID
-    assert all_ids[:-5].count(STRATEGY_ID) == 0
-    assert all_ids[-6] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-4] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
-    assert all_ids[-3] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
-    assert all_ids[-2] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
-    assert all_ids[-1] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+    assert all_ids[-6] == STRATEGY_ID
+    assert all_ids[:-6].count(STRATEGY_ID) == 0
+    assert all_ids[-7] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-5] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
+    assert all_ids[-4] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-3] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
+    assert all_ids[-2] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+    assert all_ids[-1] == "legacy_biglotto__smart_multi_bet__613c62c1f192"
 
 
 def test_strategy_is_reachable_only_through_the_portfolio_response_path() -> None:

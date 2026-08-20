@@ -1720,6 +1720,35 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__concentrated_pool_predictor__a03b90705749",
+        strategy_name="大樂透 Concentrated Pool Predictor 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_concentrated_pool:"
+            "BigLottoConcentratedPoolPredictorAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/concentrated_pool_predictor.py",
+            "legacy_source_sha256:"
+            "a03b9070574950b634376ac944dbc58b503c188f47850a23a2de065a85e7fc8b",
+            "legacy_symbol:"
+            "lottolab.application.legacy_history_native_portfolios_wave2._concentrated_pool",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_MECHANISM_UNIVERSE_GAP_AND_FIRST_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

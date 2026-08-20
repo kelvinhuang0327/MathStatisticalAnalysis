@@ -242,6 +242,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+        "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
     ]
     online_ids = {
         descriptor.strategy_id
@@ -253,9 +254,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
 
 
 def test_horizon_minimax_descriptor_and_adapter_identity_match_exactly() -> None:
-    descriptor = production_catalog().get(
-        BigLottoHorizonMinimaxDisagreementAdapter.strategy_id
-    )
+    descriptor = production_catalog().get(BigLottoHorizonMinimaxDisagreementAdapter.strategy_id)
     assert (
         descriptor.strategy_id,
         descriptor.strategy_name,
@@ -331,8 +330,7 @@ def test_deviation_bet2_descriptor_registry_and_provenance_match_exactly() -> No
         BigLottoDeviation2BetBet2Adapter.min_history,
         LifecycleStatus.ONLINE,
         True,
-        "lottolab.strategies.adapters.biglotto_selected:"
-        "BigLottoDeviation2BetBet2Adapter",
+        "lottolab.strategies.adapters.biglotto_selected:BigLottoDeviation2BetBet2Adapter",
     )
     assert descriptor.provenance == (
         "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",

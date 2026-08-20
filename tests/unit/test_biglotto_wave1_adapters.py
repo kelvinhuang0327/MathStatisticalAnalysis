@@ -118,9 +118,10 @@ def test_graph_predictor_minimum_history_boundary() -> None:
 def test_graph_predictor_recent_target_rolls_forward() -> None:
     """149 -> 150 -> 151 each add one causal draw and each changes the bet,
     proving the adapter is sensitive to the most recent target draw."""
-    outputs = {n: BigLottoGraphPredictorAdapter().get_one_bet(
-        _wave1_history(n), LotteryType.BIG_LOTTO
-    )[0] for n in (149, 150, 151)}
+    outputs = {
+        n: BigLottoGraphPredictorAdapter().get_one_bet(_wave1_history(n), LotteryType.BIG_LOTTO)[0]
+        for n in (149, 150, 151)
+    }
     assert len({outputs[149], outputs[150], outputs[151]}) == 3
 
 
@@ -173,9 +174,10 @@ def test_must_hit_matches_frozen_donor_golden(n: int) -> None:
 def test_must_hit_minimum_history_boundary() -> None:
     with pytest.raises(InsufficientHistory):
         BigLottoMustHitTop6Adapter().get_one_bet(_wave1_history(49), LotteryType.BIG_LOTTO)
-    assert BigLottoMustHitTop6Adapter().get_one_bet(
-        _wave1_history(50), LotteryType.BIG_LOTTO
-    ) == (MUST_HIT_GOLDENS[50], None)
+    assert BigLottoMustHitTop6Adapter().get_one_bet(_wave1_history(50), LotteryType.BIG_LOTTO) == (
+        MUST_HIT_GOLDENS[50],
+        None,
+    )
 
 
 def test_must_hit_50_vs_51_rows_window_is_mutation_sensitive() -> None:
@@ -217,9 +219,10 @@ DYNAMIC_FREQUENCY_GOLDENS: dict[int, tuple[int, ...]] = {
 @pytest.mark.parametrize("n", sorted(DYNAMIC_FREQUENCY_GOLDENS))
 def test_dynamic_frequency_matches_frozen_donor_golden(n: int) -> None:
     history = _wave1_history(n)
-    assert BigLottoDynamicFrequencyAdapter().get_one_bet(
-        history, LotteryType.BIG_LOTTO
-    ) == (DYNAMIC_FREQUENCY_GOLDENS[n], None)
+    assert BigLottoDynamicFrequencyAdapter().get_one_bet(history, LotteryType.BIG_LOTTO) == (
+        DYNAMIC_FREQUENCY_GOLDENS[n],
+        None,
+    )
 
 
 def test_dynamic_frequency_minimum_history_boundary() -> None:
@@ -265,9 +268,10 @@ COOCCURRENCE_GOLDENS: dict[int, tuple[int, ...]] = {
 @pytest.mark.parametrize("n", sorted(COOCCURRENCE_GOLDENS))
 def test_cooccurrence_matches_frozen_donor_golden(n: int) -> None:
     history = _wave1_history(n)
-    assert BigLottoHotCooccurrenceAdapter().get_one_bet(
-        history, LotteryType.BIG_LOTTO
-    ) == (COOCCURRENCE_GOLDENS[n], None)
+    assert BigLottoHotCooccurrenceAdapter().get_one_bet(history, LotteryType.BIG_LOTTO) == (
+        COOCCURRENCE_GOLDENS[n],
+        None,
+    )
 
 
 def test_cooccurrence_minimum_history_boundary() -> None:
@@ -388,17 +392,19 @@ ECHO_PHASE2_GOLDENS: dict[int, tuple[tuple[int, ...], ...]] = {
 @pytest.mark.parametrize("n", sorted(ECHO_PHASE2_GOLDENS))
 def test_echo_phase2_matches_frozen_donor_golden(n: int) -> None:
     history = _wave1_history(n)
-    assert BigLottoEchoPhase2Adapter().get_bets(history, LotteryType.BIG_LOTTO) == (
-        ECHO_PHASE2_GOLDENS[n]
+    assert (
+        BigLottoEchoPhase2Adapter().get_bets(history, LotteryType.BIG_LOTTO)
+        == (ECHO_PHASE2_GOLDENS[n])
     )
 
 
 def test_echo_phase2_minimum_history_boundary() -> None:
     with pytest.raises(InsufficientHistory):
         BigLottoEchoPhase2Adapter().get_bets((), LotteryType.BIG_LOTTO)
-    assert BigLottoEchoPhase2Adapter().get_bets(
-        _wave1_history(1), LotteryType.BIG_LOTTO
-    ) == ECHO_PHASE2_GOLDENS[1]
+    assert (
+        BigLottoEchoPhase2Adapter().get_bets(_wave1_history(1), LotteryType.BIG_LOTTO)
+        == ECHO_PHASE2_GOLDENS[1]
+    )
 
 
 def test_echo_phase2_native_ticket_count_and_order_is_fixed() -> None:
@@ -597,8 +603,9 @@ def test_wave1_adapters_need_no_filesystem_clock_database_or_network(
         COOCCURRENCE_GOLDENS[750],
         None,
     )
-    assert BigLottoEchoPhase2Adapter().get_bets(history, LotteryType.BIG_LOTTO) == (
-        ECHO_PHASE2_GOLDENS[750]
+    assert (
+        BigLottoEchoPhase2Adapter().get_bets(history, LotteryType.BIG_LOTTO)
+        == (ECHO_PHASE2_GOLDENS[750])
     )
 
 
@@ -709,7 +716,8 @@ def test_portfolio_base_rejects_wrong_lottery_type() -> None:
 def test_portfolio_base_rejects_non_tuple_history() -> None:
     with pytest.raises(InvalidOutput):
         _StubTwoTicketPortfolioAdapter().get_bets(
-            list(_wave1_history(5)), LotteryType.BIG_LOTTO  # type: ignore[arg-type]
+            list(_wave1_history(5)),
+            LotteryType.BIG_LOTTO,  # type: ignore[arg-type]
         )
 
 
@@ -803,6 +811,7 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+        "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
     }
 
 

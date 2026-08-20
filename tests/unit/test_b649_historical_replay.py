@@ -30,9 +30,7 @@ from lottolab.strategies.catalog import production_catalog
 
 RAW_ONLY_ID = "legacy_biglotto__backtest_cluster_pivot_biglotto__b28957a6433e"
 CURRENT_ID = "legacy_biglotto__graph_predictor__cd70713a5709"
-KEEP_UNRESOLVED_ID = (
-    "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
-)
+KEEP_UNRESOLVED_ID = "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
 RAW_HISTORY_NOT_FOUND_IDS = frozenset(
     {
         "legacy_biglotto__backtest_biglotto_5bet_ts3markov__25760472baa0",
@@ -120,13 +118,21 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 52,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 81,
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 55,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 78,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,
         }
     )
+    status_by_id = {
+        identity.strategy_id: identity.status for identity in use_case.identity_accounts
+    }
+    assert {
+        status_by_id["legacy_biglotto__concentrated_pool_predictor__a03b90705749"],
+        status_by_id["legacy_biglotto__constraint_filter_predictor__3a85b3995002"],
+        status_by_id["legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"],
+    } == {B649IdentityStatus.CURRENTLY_REPLAYABLE}
 
 
 def test_b649_current_catalog_binding_reaches_controller_and_prize_evaluation(

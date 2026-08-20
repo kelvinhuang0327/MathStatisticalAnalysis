@@ -24,9 +24,7 @@ from lottolab.interfaces.cli.main import app
 from lottolab.strategies.catalog import production_catalog
 
 RAW_ONLY_ID = "legacy_biglotto__backtest_cluster_pivot_biglotto__b28957a6433e"
-KEEP_UNRESOLVED_ID = (
-    "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
-)
+KEEP_UNRESOLVED_ID = "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
 RAW_HISTORY_NOT_FOUND_IDS = frozenset(
     {
         "legacy_biglotto__backtest_biglotto_5bet_ts3markov__25760472baa0",
@@ -152,8 +150,8 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.stderr == ""
     summary = json.loads(result.stdout)
     assert summary == {
-        "currently_replayable_identity_count": 52,
-        "historical_raw_only_identity_count": 81,
+        "currently_replayable_identity_count": 55,
+        "historical_raw_only_identity_count": 78,
         "keep_unresolved_alias_count": 3,
         "lottery_type": "BIG_LOTTO",
         "mode": "FULL_REPLAY",

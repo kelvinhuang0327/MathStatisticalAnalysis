@@ -80,9 +80,7 @@ def _donor_main_tickets(
         selected: list[int] = []
         for start, end in ((1, 13), (14, 25), (26, 38)):
             zone_candidates = [
-                number
-                for number in candidates
-                if start <= number <= end and number not in selected
+                number for number in candidates if start <= number <= end and number not in selected
             ]
             selected.extend(zone_candidates[:2])
         while len(selected) < 6 and candidates:
@@ -208,14 +206,14 @@ def test_catalog_registry_and_production_portfolio_path_are_reachable() -> None:
     )
 
 
-def test_production_catalog_appends_minimal_dual_bet_last_and_preserves_prior_order() -> None:
+def test_production_catalog_preserves_minimal_dual_bet_append_position() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 74
-    assert all_ids[-3] == STRATEGY_ID
-    assert all_ids[:-3].count(STRATEGY_ID) == 0
-    assert all_ids[-4] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
-    assert all_ids[-5] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-2] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
-    assert all_ids[-1] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
-
+    assert len(all_ids) == 75
+    assert all_ids[-4] == STRATEGY_ID
+    assert all_ids[:-4].count(STRATEGY_ID) == 0
+    assert all_ids[-5] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
+    assert all_ids[-6] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-3] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-2] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
+    assert all_ids[-1] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"

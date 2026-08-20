@@ -86,9 +86,7 @@ class GenerateOneBetExecution:
                 or type(self.strategy_version) is not str
                 or not self.strategy_version
             ):
-                raise ValueError(
-                    "OK executions require emitted_main_numbers and strategy_version"
-                )
+                raise ValueError("OK executions require emitted_main_numbers and strategy_version")
         elif self.emitted_main_numbers is not None or self.strategy_version is not None:
             raise ValueError("non-OK executions must not expose an emission identity")
 
@@ -267,9 +265,7 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
             type(number) is int for number in cast("list[object]", numbers)
         ):
             raise HistoryParseError(f"history row {index}: numbers must be a list of integers")
-        rows.append(
-            CausalDrawRow(draw=draw, date=date, numbers=tuple(cast("list[int]", numbers)))
-        )
+        rows.append(CausalDrawRow(draw=draw, date=date, numbers=tuple(cast("list[int]", numbers))))
     return tuple(rows)
 
 
@@ -380,9 +376,7 @@ class GeneratePortfolioExecution:
                 or type(self.strategy_version) is not str
                 or not self.strategy_version
             ):
-                raise ValueError(
-                    "OK executions require emitted_all_numbers and strategy_version"
-                )
+                raise ValueError("OK executions require emitted_all_numbers and strategy_version")
         elif self.emitted_all_numbers is not None or self.strategy_version is not None:
             raise ValueError("non-OK executions must not expose an emission identity")
 
@@ -419,12 +413,14 @@ class GeneratePortfolio:
                 adapter.strategy_name,
                 adapter.strategy_version,
                 adapter.native_ticket_count,
+                adapter.native_ticket_count_bounds(),
             )
             expected_identity = (
                 descriptor.strategy_id,
                 descriptor.strategy_name,
                 descriptor.version,
                 descriptor.native_ticket_count,
+                descriptor.native_ticket_count_bounds,
             )
             if strategy_id != adapter.strategy_id or actual_identity != expected_identity:
                 raise AdapterIdentityMismatchError(
@@ -504,9 +500,7 @@ class GeneratePortfolio:
                 special_number=None,
                 reason_code=None,
             ),
-            emitted_all_numbers=tuple(
-                execution.emitted_main_numbers for execution in executions
-            ),
+            emitted_all_numbers=tuple(execution.emitted_main_numbers for execution in executions),
             strategy_version=descriptor.version,
         )
 
@@ -535,9 +529,7 @@ class GeneratePortfolio:
         )
 
 
-def _instantiated_portfolio_adapter(
-    strategy_id: str, adapter_class: object
-) -> PortfolioBetAdapter:
+def _instantiated_portfolio_adapter(strategy_id: str, adapter_class: object) -> PortfolioBetAdapter:
     if not (isinstance(adapter_class, type) and issubclass(adapter_class, PortfolioBetAdapter)):
         raise AdapterIdentityMismatchError(
             f"{strategy_id}: adapter_path does not resolve to a PortfolioBetAdapter subclass"
@@ -548,9 +540,7 @@ def _instantiated_portfolio_adapter(
     return adapter_factory()
 
 
-def instantiate_portfolio_adapter(
-    strategy_id: str, adapter_class: object
-) -> PortfolioBetAdapter:
+def instantiate_portfolio_adapter(strategy_id: str, adapter_class: object) -> PortfolioBetAdapter:
     """Instantiate one portfolio adapter through the canonical type guard."""
 
     return _instantiated_portfolio_adapter(strategy_id, adapter_class)

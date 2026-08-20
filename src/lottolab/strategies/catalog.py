@@ -1917,6 +1917,44 @@ _PRODUCTION_DESCRIPTORS = (
         minimum_native_ticket_count=1,
         maximum_native_ticket_count=4,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
+        strategy_name="大樂透 Radical Gap 雙區排除 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_radical_gap:"
+            "BigLottoRadicalGapBacktestAdapter"
+        ),
+        min_history=50,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_radical_strategy.py",
+            "legacy_source_blob:c460fb65561000a1e3a0d5558133784603860f2c",
+            "legacy_source_sha256:"
+            "e54cc0812bc6fff14a259282a37821810d264c023c4fb87517305b511db08fd9",
+            "retained_reference:"
+            "lottolab.application.legacy_source_native_portfolios_wave31."
+            "generate_legacy_source_native_wave31_portfolio",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
+            "donor_evidence_sha256:"
+            "4faa3f7f4b6b2fcd647b268557259748a67f1a61d3f2340282203d31413fb97a",
+            "donor_parity:EXACT_OUTPUT_PARITY",
+            "source_history:LATEST_300_RECENT_FIRST_MINIMUM_50",
+            "portfolio_cardinality:EXACTLY_2_POSITIONAL_DUPLICATES_PRESERVED",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_MECHANISM_RESIDUAL_GAP_NEXT_NATIVE_MIGRATION_R2",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

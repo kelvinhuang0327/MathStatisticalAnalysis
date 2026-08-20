@@ -211,14 +211,15 @@ def test_catalog_registry_and_production_portfolio_path_are_reachable() -> None:
 def test_production_catalog_preserves_minimal_dual_bet_append_position() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 78
-    assert all_ids[-7] == STRATEGY_ID
-    assert all_ids[:-7].count(STRATEGY_ID) == 0
-    assert all_ids[-8] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
-    assert all_ids[-9] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-6] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
-    assert all_ids[-5] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
-    assert all_ids[-4] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
-    assert all_ids[-3] == "legacy_biglotto__smart_multi_bet__613c62c1f192"
-    assert all_ids[-2] == "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
-    assert all_ids[-1] == "legacy_biglotto__cooccurrence_graph__25fa2e473092"
+    assert len(all_ids) == 79
+    assert all_ids[-8] == STRATEGY_ID
+    assert all_ids[:-8].count(STRATEGY_ID) == 0
+    assert all_ids[-9] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
+    assert all_ids[-10] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-7] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-6] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
+    assert all_ids[-5] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+    assert all_ids[-4] == "legacy_biglotto__smart_multi_bet__613c62c1f192"
+    assert all_ids[-3] == "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
+    assert all_ids[-2] == "legacy_biglotto__cooccurrence_graph__25fa2e473092"
+    assert all_ids[-1] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"

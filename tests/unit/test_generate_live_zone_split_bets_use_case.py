@@ -456,4 +456,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
         "legacy_biglotto__smart_multi_bet__613c62c1f192",
         "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        "legacy_biglotto__cooccurrence_graph__25fa2e473092",
     ]

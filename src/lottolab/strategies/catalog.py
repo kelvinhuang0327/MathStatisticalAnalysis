@@ -1879,6 +1879,44 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=6,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__cooccurrence_graph__25fa2e473092",
+        strategy_name="大樂透 Cooccurrence Graph 共現圖譜 (原生最多4注)",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_cooccurrence_graph:"
+            "BigLottoCooccurrenceGraphAdapter"
+        ),
+        min_history=100,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/cooccurrence_graph.py",
+            "legacy_source_blob:69a7a0c903a025b4df67eaec927ecd09168e7e49",
+            "legacy_source_sha256:"
+            "25fa2e47309232265f442a688ddc1de2bbd853ce6c63762a5298aef016c008ab",
+            "legacy_symbol:"
+            "lottolab.application.legacy_history_native_portfolios_wave2._cooccurrence_graph",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__cooccurrence_graph__25fa2e473092",
+            "donor_evidence_sha256:"
+            "7ac1fcb9ae550bed5ca63f11ffbabaca618c59943e8db71eec273d0a2ef460d2",
+            "rng_authority:HISTORICAL_RNG_STATE_ONLY_MISSING",
+            "donor_parity:MECHANISM_COMPONENT_PARITY",
+            "portfolio_cardinality:BEST_EFFORT_UNIQUE_1_TO_4",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_EXPLICIT_TARGET_SEED_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_COOCCURRENCE_GRAPH_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+        minimum_native_ticket_count=1,
+        maximum_native_ticket_count=4,
+    ),
 )
 
 

@@ -286,7 +286,7 @@ class BetAdapter(ABC):
 
 class PortfolioBetAdapter(ABC):
     """Template for one strategy identity whose native output is an ordered,
-    bounded set of two or more causally-computed tickets (a "portfolio").
+    bounded set of one or more causally-computed tickets (a "portfolio").
 
     Kept entirely separate from :class:`BetAdapter` so the eight shipped
     single-ticket adapters are untouched by this contract's existence. Native
@@ -325,7 +325,7 @@ class PortfolioBetAdapter(ABC):
             type(native_count) is not int
             or type(minimum) is not int
             or type(maximum) is not int
-            or minimum < 2
+            or minimum < 1
             or minimum > maximum
             or native_count != maximum
         ):

@@ -255,7 +255,7 @@ def test_descriptor_rejects_unbounded_or_inconsistent_cardinality() -> None:
             executable=False,
             response_shape=ResponseShape.PORTFOLIO,
             native_ticket_count=7,
-            minimum_native_ticket_count=1,
+            minimum_native_ticket_count=0,
             maximum_native_ticket_count=7,
         )
     with pytest.raises(ValueError, match="exceeds maximum"):

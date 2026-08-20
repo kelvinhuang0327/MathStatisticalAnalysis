@@ -806,6 +806,7 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
         "legacy_biglotto__smart_multi_bet__613c62c1f192",
         "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        "legacy_biglotto__cooccurrence_graph__25fa2e473092",
     }
 
 
@@ -872,8 +873,8 @@ def test_strategy_descriptor_single_ticket_requires_native_ticket_count_one() ->
         )
 
 
-def test_strategy_descriptor_portfolio_requires_native_ticket_count_at_least_two() -> None:
-    with pytest.raises(ValueError, match="native_ticket_count >= 2"):
+def test_strategy_descriptor_portfolio_requires_positive_native_ticket_count() -> None:
+    with pytest.raises(ValueError, match="native_ticket_count >= 1"):
         StrategyDescriptor(
             strategy_id="bad",
             strategy_name="bad",
@@ -885,7 +886,7 @@ def test_strategy_descriptor_portfolio_requires_native_ticket_count_at_least_two
             executable=True,
             adapter_path="x:Y",
             response_shape=ResponseShape.PORTFOLIO,
-            native_ticket_count=1,
+            native_ticket_count=0,
         )
 
 

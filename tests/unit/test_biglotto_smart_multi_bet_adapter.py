@@ -290,15 +290,18 @@ def test_invalid_native_cardinality_has_no_silent_fallback(
     assert result.numbers is None
 
 
-def test_production_catalog_preserves_smart_multi_bet_before_anti_consensus() -> None:
+def test_production_catalog_preserves_smart_multi_bet_append_position() -> None:
     strategy_ids = tuple(descriptor.strategy_id for descriptor in production_catalog())
 
-    assert len(strategy_ids) == 77
-    assert strategy_ids[-2] == STRATEGY_ID
-    assert strategy_ids[:-2].count(STRATEGY_ID) == 0
-    assert strategy_ids[-5:-2] == (
+    assert len(strategy_ids) == 78
+    assert strategy_ids[-3] == STRATEGY_ID
+    assert strategy_ids[:-3].count(STRATEGY_ID) == 0
+    assert strategy_ids[-6:-3] == (
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
     )
-    assert strategy_ids[-1] == "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
+    assert strategy_ids[-2:] == (
+        "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        "legacy_biglotto__cooccurrence_graph__25fa2e473092",
+    )

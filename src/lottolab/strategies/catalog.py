@@ -1844,6 +1844,41 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=6,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        strategy_name="大樂透 Anti-Consensus 6注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_anti_consensus:"
+            "BigLottoAntiConsensusStrategyAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/anti_consensus_strategy.py",
+            "legacy_source_blob:09406d20d8aeb96c832928234a794a4ed9c23406",
+            "legacy_source_sha256:"
+            "a454ddd26cef405db5e9b4b4f5d2c0f5e1df14d291bbd0505d45be36a2cecc80",
+            "legacy_symbol:"
+            "lottolab.application.legacy_history_native_portfolios_wave2._anti_consensus",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+            "donor_evidence_sha256:"
+            "7ac1fcb9ae550bed5ca63f11ffbabaca618c59943e8db71eec273d0a2ef460d2",
+            "rng_authority:HISTORICAL_REPLAY_SEED_ONLY_MISSING",
+            "donor_parity:MECHANISM_COMPONENT_PARITY",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_EXPLICIT_TARGET_SEED_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_ANTI_CONSENSUS_RNG_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=6,
+    ),
 )
 
 

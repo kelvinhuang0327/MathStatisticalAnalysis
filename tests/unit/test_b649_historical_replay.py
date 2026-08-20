@@ -120,8 +120,8 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 56,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 77,
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 57,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 76,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,
@@ -141,6 +141,9 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
             "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
         ],
         status_by_id["legacy_biglotto__smart_multi_bet__613c62c1f192"],
+        status_by_id[
+            "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
+        ],
     } == {B649IdentityStatus.CURRENTLY_REPLAYABLE}
 
 

@@ -805,6 +805,7 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
         "legacy_biglotto__smart_multi_bet__613c62c1f192",
+        "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
     }
 
 

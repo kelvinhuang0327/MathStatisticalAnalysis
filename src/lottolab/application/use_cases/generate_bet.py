@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
-from typing import cast
+from typing import Protocol, cast, runtime_checkable
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import ResponseShape
@@ -53,6 +53,7 @@ class GenerateOneBetInput:
     strategy_id: str
     lottery_type: LotteryType
     history: tuple[CausalDrawRow, ...]
+    seed: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -474,6 +475,12 @@ class GeneratePortfolio:
             )
 
         try:
+            if isinstance(adapter, _ExplicitSeedPortfolioAdapter):
+                if type(request.seed) is not int:
+                    raise InvalidOutput(
+                        f"{request.strategy_id}: an explicit integer seed is required"
+                    )
+                adapter = adapter.with_seed(request.seed)
             executions = adapter.get_bets_with_emission(
                 request.history,
                 request.lottery_type,
@@ -535,6 +542,13 @@ class GeneratePortfolio:
             emitted_all_numbers=None,
             strategy_version=None,
         )
+
+
+@runtime_checkable
+class _ExplicitSeedPortfolioAdapter(Protocol):
+    """A portfolio adapter that can be cloned with one call-local RNG seed."""
+
+    def with_seed(self, seed: int) -> PortfolioBetAdapter: ...
 
 
 def _instantiated_portfolio_adapter(
@@ -642,8 +656,8 @@ def render_portfolio_result_json(
     """Render a canonical, machine-readable complete-portfolio result.
 
     ``numbers`` is the full ordered native ticket set — never truncated.
-    ``seed`` is caller-provided bookkeeping metadata, as in
-    :func:`render_result_json`.
+    ``seed`` is echoed as caller-provided metadata. For adapters exposing the
+    explicit portfolio RNG seam, the same value also controls execution.
     """
 
     payload: dict[str, object] = {
@@ -676,6 +690,7 @@ def run_cli_generate_portfolio(
             strategy_id=strategy_id,
             lottery_type=LotteryType.BIG_LOTTO,
             history=history,
+            seed=seed,
         )
     )
     return (

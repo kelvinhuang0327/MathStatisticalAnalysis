@@ -1749,6 +1749,35 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+        strategy_name="大樂透 Constraint Filter Predictor 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_constraint_filter:"
+            "BigLottoConstraintFilterPredictorAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:lottery_api/models/constraint_filter_predictor.py",
+            "legacy_source_sha256:"
+            "3a85b3995002a9c66c50643e2b52a3cdc853c8e858242c7f335ce8736d576c85",
+            "legacy_symbol:"
+            "lottolab.application.legacy_history_native_portfolios_wave2._constraint_filter",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+            "evidence_status:HISTORICAL_RESEARCH_ONLY",
+            "current_significance:NOT_ESTABLISHED",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_MECHANISM_UNIVERSE_SECOND_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

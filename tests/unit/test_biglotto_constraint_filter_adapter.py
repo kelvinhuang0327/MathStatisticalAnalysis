@@ -1,4 +1,6 @@
-"""Exact donor parity and runtime tests for concentrated-pool intake."""
+"""Exact donor parity and runtime tests for constraint-filter intake."""
+
+# pyright: reportPrivateUsage=false
 
 from __future__ import annotations
 
@@ -8,7 +10,8 @@ import pytest
 
 from lottolab.application.legacy_history_native_portfolios import LegacyHistoryDraw
 from lottolab.application.legacy_history_native_portfolios_wave2 import (
-    CONCENTRATED_POOL_METHOD_ID,
+    CONSTRAINT_FILTER_METHOD_ID,
+    DEFAULT_HISTORY_NATIVE_WAVE2_USER_SEED,
     LegacyHistoryNativeWave2Request,
     generate_legacy_history_native_wave2_portfolio,
 )
@@ -29,19 +32,20 @@ from lottolab.strategies.adapters.base import (
     InvalidOutput,
     UnsupportedLotteryType,
 )
-from lottolab.strategies.adapters.biglotto_concentrated_pool import (
-    BigLottoConcentratedPoolPredictorAdapter,
+from lottolab.strategies.adapters.biglotto_constraint_filter import (
+    BigLottoConstraintFilterPredictorAdapter,
+    _target_after_causal_cutoff,
 )
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
 
-STRATEGY_ID = "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+STRATEGY_ID = "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
 
 
 def _wave_row(index: int) -> CausalDrawRow:
     numbers = tuple(sorted(((index + step * 8) % 49) + 1 for step in range(6)))
     return CausalDrawRow(
-        draw=f"cp-{index}",
+        draw=f"cf-{index}",
         date=f"2020-{(index % 12) + 1:02d}-{(index % 28) + 1:02d}",
         numbers=numbers,
     )
@@ -56,8 +60,8 @@ def _donor_tickets(history: tuple[CausalDrawRow, ...]) -> tuple[tuple[int, ...],
 
     result = generate_legacy_history_native_wave2_portfolio(
         LegacyHistoryNativeWave2Request(
-            legacy_method_id=CONCENTRATED_POOL_METHOD_ID,
-            target_draw_number="parity-target",
+            legacy_method_id=CONSTRAINT_FILTER_METHOD_ID,
+            target_draw_number=_target_after_causal_cutoff(history),
             history=tuple(
                 LegacyHistoryDraw(
                     draw_number=row.draw,
@@ -65,6 +69,7 @@ def _donor_tickets(history: tuple[CausalDrawRow, ...]) -> tuple[tuple[int, ...],
                 )
                 for row in history
             ),
+            user_seed=DEFAULT_HISTORY_NATIVE_WAVE2_USER_SEED,
         )
     )
     return result.tickets
@@ -74,10 +79,11 @@ def _donor_tickets(history: tuple[CausalDrawRow, ...]) -> tuple[tuple[int, ...],
 def test_adapter_matches_preserved_wave2_donor_on_causal_histories(
     history_length: int,
 ) -> None:
-    adapter = BigLottoConcentratedPoolPredictorAdapter()
+    adapter = BigLottoConstraintFilterPredictorAdapter()
     history = _wave_history(history_length)
     expected = _donor_tickets(history)
 
+    assert adapter.get_bets(history, LotteryType.BIG_LOTTO) == expected
     assert adapter.get_bets(history, LotteryType.BIG_LOTTO) == expected
     assert len(expected) == 2
     for ticket in expected:
@@ -87,7 +93,7 @@ def test_adapter_matches_preserved_wave2_donor_on_causal_histories(
 
 
 def test_prediction_for_draw_n_ignores_later_history_suffix() -> None:
-    adapter = BigLottoConcentratedPoolPredictorAdapter()
+    adapter = BigLottoConstraintFilterPredictorAdapter()
     prefix = _wave_history(40)
     with_future = prefix + _wave_history(80)[40:]
 
@@ -101,7 +107,7 @@ def test_prediction_for_draw_n_ignores_later_history_suffix() -> None:
 
 
 def test_native_output_is_two_legal_tickets_and_failures_close() -> None:
-    adapter = BigLottoConcentratedPoolPredictorAdapter()
+    adapter = BigLottoConstraintFilterPredictorAdapter()
     history = _wave_history(25)
     expected = _donor_tickets(history)
     executions = adapter.get_bets_with_emission(history, LotteryType.BIG_LOTTO)
@@ -129,7 +135,7 @@ def test_native_output_is_two_legal_tickets_and_failures_close() -> None:
 def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
-    adapter = BigLottoConcentratedPoolPredictorAdapter()
+    adapter = BigLottoConstraintFilterPredictorAdapter()
 
     assert (
         descriptor.strategy_id,
@@ -152,13 +158,13 @@ def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
         adapter.min_history,
         ResponseShape.PORTFOLIO,
         2,
-        "lottolab.strategies.adapters.biglotto_concentrated_pool:"
-        "BigLottoConcentratedPoolPredictorAdapter",
+        "lottolab.strategies.adapters.biglotto_constraint_filter:"
+        "BigLottoConstraintFilterPredictorAdapter",
     )
     assert ExecutableRegistry(catalog).load_adapter(STRATEGY_ID) is (
-        BigLottoConcentratedPoolPredictorAdapter
+        BigLottoConstraintFilterPredictorAdapter
     )
-    assert "legacy_source:lottery_api/models/concentrated_pool_predictor.py" in (
+    assert "legacy_source:lottery_api/models/constraint_filter_predictor.py" in (
         descriptor.provenance
     )
     assert "current_significance:NOT_ESTABLISHED" in descriptor.provenance
@@ -181,12 +187,11 @@ def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
     assert one_bet.numbers is None
 
 
-def test_production_catalog_appends_concentrated_pool_last_and_preserves_prior_order() -> None:
+def test_production_catalog_appends_constraint_filter_last_and_preserves_prior_order() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
     assert len(all_ids) == 74
-    assert all_ids[-2] == STRATEGY_ID
-    assert all_ids[:-2].count(STRATEGY_ID) == 0
+    assert all_ids[-1] == STRATEGY_ID
+    assert all_ids[:-1].count(STRATEGY_ID) == 0
+    assert all_ids[-2] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
     assert all_ids[-3] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
-    assert all_ids[-4] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
-    assert all_ids[-1] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"

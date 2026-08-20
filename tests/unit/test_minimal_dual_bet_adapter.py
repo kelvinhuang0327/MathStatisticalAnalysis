@@ -211,10 +211,11 @@ def test_catalog_registry_and_production_portfolio_path_are_reachable() -> None:
 def test_production_catalog_appends_minimal_dual_bet_last_and_preserves_prior_order() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 73
-    assert all_ids[-2] == STRATEGY_ID
-    assert all_ids[:-2].count(STRATEGY_ID) == 0
-    assert all_ids[-3] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
-    assert all_ids[-4] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-1] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert len(all_ids) == 74
+    assert all_ids[-3] == STRATEGY_ID
+    assert all_ids[:-3].count(STRATEGY_ID) == 0
+    assert all_ids[-4] == "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
+    assert all_ids[-5] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-2] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-1] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
 

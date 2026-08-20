@@ -238,13 +238,14 @@ def test_production_catalog_appends_batch16_last_and_preserves_prior_order() -> 
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 73
+    assert len(all_ids) == 74
     assert STRATEGY_ID in all_ids
-    assert all_ids[-3] == STRATEGY_ID
-    assert all_ids[:-3].count(STRATEGY_ID) == 0
-    assert all_ids[-4] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-2] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
-    assert all_ids[-1] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-4] == STRATEGY_ID
+    assert all_ids[:-4].count(STRATEGY_ID) == 0
+    assert all_ids[-5] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-3] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
+    assert all_ids[-2] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-1] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
 
 
 def test_strategy_is_reachable_only_through_the_portfolio_response_path() -> None:

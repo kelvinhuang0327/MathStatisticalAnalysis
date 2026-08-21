@@ -367,7 +367,9 @@ def test_input_and_execute_surfaces_expose_no_forbidden_fields() -> None:
     assert input_fields == {"num_bets"}
     assert input_fields.isdisjoint(forbidden)
 
-    execute_params = set(inspect.signature(GenerateLiveZoneSplitBets.execute).parameters) - {"self"}
+    execute_params = set(inspect.signature(GenerateLiveZoneSplitBets.execute).parameters) - {
+        "self"
+    }
     assert execute_params == {"request"}
 
 
@@ -469,6 +471,16 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "power_apriori_2bet",
         "power_lead_lag_2bet",
         "acb_single_539",
+        "biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_conditional",
+        "biglotto_wave2_neighbor_ad_cooccurrence_top_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_transition_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_triplet",
+        "biglotto_wave2_neighbor_ad_graph_bridge_bet",
+        "biglotto_wave2_neighbor_ad_graph_centrality_bet",
+        "biglotto_wave2_neighbor_ad_graph_pagerank_bet",
+        "biglotto_wave2_sum_range_ad_structural_sum_regression",
+        "biglotto_wave2_social_ad_negative_consensus_remove",
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",

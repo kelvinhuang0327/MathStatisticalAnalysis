@@ -4655,6 +4655,57 @@
         }
       }
     },
+    "/api/v1/replay-execution": {
+      "post": {
+        "tags": [
+          "replay-execution"
+        ],
+        "summary": "Execute Replay",
+        "operationId": "executeReplayHistoricalPredictions",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplayExecutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReplayExecutionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/t539-historical/runs": {
       "get": {
         "tags": [
@@ -13472,6 +13523,308 @@
         ],
         "title": "P638TicketView"
       },
+      "ReplayExecutionRequest": {
+        "properties": {
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "dataset_id": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Dataset Id"
+          },
+          "dataset_version": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Dataset Version"
+          },
+          "targets": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayExecutionTargetRequest"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Targets"
+          },
+          "strategy_ids": {
+            "items": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 1
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Strategy Ids"
+          },
+          "maximum_history_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum History Draws"
+          },
+          "minimum_history_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum History Draws"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "dataset_id",
+          "dataset_version",
+          "targets",
+          "strategy_ids"
+        ],
+        "title": "ReplayExecutionRequest"
+      },
+      "ReplayExecutionResponse": {
+        "properties": {
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/ReplayExecutionSnapshotView"
+            },
+            "type": "array",
+            "title": "Snapshots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "snapshots"
+        ],
+        "title": "ReplayExecutionResponse"
+      },
+      "ReplayExecutionSnapshotView": {
+        "properties": {
+          "snapshot_schema_version": {
+            "type": "string",
+            "title": "Snapshot Schema Version"
+          },
+          "dataset_id": {
+            "type": "string",
+            "title": "Dataset Id"
+          },
+          "dataset_version": {
+            "type": "string",
+            "title": "Dataset Version"
+          },
+          "lottery_type": {
+            "$ref": "#/components/schemas/LotteryType"
+          },
+          "source_mode": {
+            "$ref": "#/components/schemas/ReplaySourceMode"
+          },
+          "target_draw_number": {
+            "type": "string",
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Target Draw Date"
+          },
+          "cutoff_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff Draw Number"
+          },
+          "cutoff_draw_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cutoff Draw Date"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strategy Version"
+          },
+          "adapter_strategy_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Strategy Id"
+          },
+          "adapter_strategy_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Strategy Name"
+          },
+          "adapter_strategy_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Adapter Strategy Version"
+          },
+          "history_status": {
+            "type": "string",
+            "title": "History Status"
+          },
+          "history_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "History Reason Code"
+          },
+          "causal_history_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Causal History Count"
+          },
+          "causal_history_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Causal History Sha256"
+          },
+          "prediction_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prediction Status"
+          },
+          "prediction_reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prediction Reason Code"
+          },
+          "predicted_main_numbers": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Predicted Main Numbers"
+          },
+          "result_sha256": {
+            "type": "string",
+            "title": "Result Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "snapshot_schema_version",
+          "dataset_id",
+          "dataset_version",
+          "lottery_type",
+          "source_mode",
+          "target_draw_number",
+          "target_draw_date",
+          "strategy_id",
+          "history_status",
+          "result_sha256"
+        ],
+        "title": "ReplayExecutionSnapshotView"
+      },
+      "ReplayExecutionTargetRequest": {
+        "properties": {
+          "draw_number": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Draw Date"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "draw_number",
+          "draw_date"
+        ],
+        "title": "ReplayExecutionTargetRequest"
+      },
       "ReplayOverallAggregateResponse": {
         "properties": {
           "run_payload_sha256": {
@@ -14071,6 +14424,14 @@
           "overall_aggregate_sha256"
         ],
         "title": "ReplayScoringRunResponse"
+      },
+      "ReplaySourceMode": {
+        "type": "string",
+        "enum": [
+          "TARGET_NATIVE"
+        ],
+        "title": "ReplaySourceMode",
+        "description": "Closed for this task: history and prediction both resolve against the\ntarget's own lottery type — never a cross-lottery or hypothetical replay."
       },
       "ReplayStrategyAggregateView": {
         "properties": {

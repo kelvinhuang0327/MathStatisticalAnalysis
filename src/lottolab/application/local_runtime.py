@@ -143,11 +143,10 @@ _ALLOWED_OPENAPI_OPERATIONS = {
         "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
         "random-baseline-evidence"
     ): frozenset({"get"}),
+    "/api/v1/replay-execution": frozenset({"post"}),
     "/api/v1/replay-rankings/optimal": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": frozenset({"get"}),
-    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset(
-        {"get"}
-    ),
+    "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": frozenset({"get"}),
     "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": (
         frozenset({"get"})
     ),
@@ -167,6 +166,7 @@ _FORBIDDEN_ROUTE_WORD_EXCEPTION_PATHS = frozenset(
             "/api/v1/historical-prefix-analytics/strategies/"
             "{strategy_id}/{strategy_version}/{replicate}/replay"
         ),
+        "/api/v1/replay-execution",
         "/api/v1/replay-rankings/optimal",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}",
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions",
@@ -195,8 +195,10 @@ no latest or fallback selection. The Historical Prefix strategy replay path is
 also a GET-only projection over one exact strategy identity.
 ``/api/v1/t539-historical/runs/{run_id}/replay`` is the same kind of GET-only
 read over the sealed T539 Wave 1 database as the P638 replay path above; it
-executes no strategy and reruns no replay. Only the exact
-paths above are exempted;
+executes no strategy and reruns no replay. The exact
+``POST /api/v1/replay-execution`` operation executes the existing Replay
+stack over the configured local draw database with query-only storage access
+and persists no results. Only the exact paths above are exempted;
 every other path containing a forbidden word (including
 "/api/v1/generate", "/api/v1/generation", "/api/v1/replay-rankings/execute",
 and "/api/v1/replay-rankings/optimize") is still rejected, and the
@@ -550,9 +552,7 @@ class ExpectedStrategy:
         if not self.strategy_id:
             raise LocalRuntimeSafetyError("expected strategy_id must be a non-empty string")
         if not self.lifecycle_status:
-            raise LocalRuntimeSafetyError(
-                "expected lifecycle_status must be a non-empty string"
-            )
+            raise LocalRuntimeSafetyError("expected lifecycle_status must be a non-empty string")
 
 
 def validate_health_payload(payload: object) -> None:

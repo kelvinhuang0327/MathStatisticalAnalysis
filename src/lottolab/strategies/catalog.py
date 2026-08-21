@@ -160,7 +160,8 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_selected:BigLottoDeviation2BetBet2Adapter"
+            "lottolab.strategies.adapters.biglotto_selected:"
+            "BigLottoDeviation2BetBet2Adapter"
         ),
         min_history=100,
         provenance=(
@@ -182,7 +183,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet1Adapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet1Adapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:44a9067b73cc38fcd517673f5187e98080997aef",
@@ -200,7 +203,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet2Adapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_selected:BigLottoP02BetBet2Adapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:44a9067b73cc38fcd517673f5187e98080997aef",
@@ -218,7 +223,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave1:BigLottoGraphPredictorAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoGraphPredictorAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
@@ -236,7 +243,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave1:BigLottoMustHitTop6Adapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoMustHitTop6Adapter"
+        ),
         min_history=50,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
@@ -262,7 +271,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/dynamic_frequency_predictor.py",
-            "full_strategy_catalog_id:legacy_biglotto__dynamic_frequency_predictor__36e5bf9998ac",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__dynamic_frequency_predictor__36e5bf9998ac",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
         ),
         response_shape=ResponseShape.SINGLE_TICKET,
@@ -275,13 +285,16 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave1:BigLottoHotCooccurrenceAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoHotCooccurrenceAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/hot_cooccurrence_analyzer.py",
             "legacy_symbol:analyze_and_recommend",
-            "full_strategy_catalog_id:legacy_biglotto__hot_cooccurrence_analyzer__48121f27d7ee",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__hot_cooccurrence_analyzer__48121f27d7ee",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
         ),
         response_shape=ResponseShape.SINGLE_TICKET,
@@ -294,7 +307,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave1:BigLottoEchoPhase2Adapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave1:BigLottoEchoPhase2Adapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
@@ -303,7 +318,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:tools/predict_biglotto_echo_3bet.py",
             "legacy_symbol:phase2_echo_2bet",
             "legacy_symbol:phase2_echo_3bet",
-            "full_strategy_catalog_id:legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE1_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -316,13 +332,16 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave2:BigLottoHighPrizeTrendAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2:BigLottoHighPrizeTrendAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:ai_lab/scripts/high_prize_trend_optimizer.py",
             "legacy_symbol:HighPrizeTrendOptimizer.predict",
-            "full_strategy_catalog_id:legacy_biglotto__high_prize_trend_optimizer__0fc72409150e",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__high_prize_trend_optimizer__0fc72409150e",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE2_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -335,7 +354,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave2:BigLottoCoreSatelliteAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2:BigLottoCoreSatelliteAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
@@ -354,13 +375,16 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave2:BigLottoAutoDiscoveryAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2:BigLottoAutoDiscoveryAdapter"
+        ),
         min_history=50,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/auto_discovery_biglotto.py",
             "legacy_symbol:build_methods",
-            "full_strategy_catalog_id:legacy_biglotto__auto_discovery_biglotto__06bcb164db84",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__auto_discovery_biglotto__06bcb164db84",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE2_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -393,7 +417,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetOptimizerAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave3:BigLottoTwoBetOptimizerAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
@@ -626,16 +652,19 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave6:BigLottoAutoOptimizerAlphaAdapter"
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoAutoOptimizerAlphaAdapter"
         ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/auto_optimizer_alpha.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:7eaa9572e3848fdf8fbcb66dbade25f653bf25a7fe7c4be95b6e9d2f8df1d61d",
+            "legacy_source_sha256:"
+            "7eaa9572e3848fdf8fbcb66dbade25f653bf25a7fe7c4be95b6e9d2f8df1d61d",
             "legacy_symbol:AutoOptimizer.generate_strategy_space",
-            "full_strategy_catalog_id:legacy_biglotto__auto_optimizer_alpha__7eaa9572e384",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__auto_optimizer_alpha__7eaa9572e384",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -648,15 +677,20 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave6:BigLottoTenBetBacktestAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoTenBetBacktestAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/backtest_10bet_biglotto.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:054e85b088bec0827318b2442255dee961fa3e9ca8b08b87cc2d5b4cfcb669f2",
+            "legacy_source_sha256:"
+            "054e85b088bec0827318b2442255dee961fa3e9ca8b08b87cc2d5b4cfcb669f2",
             "legacy_symbol:main",
-            "full_strategy_catalog_id:legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -669,13 +703,17 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave6:BigLottoTmeThreeAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoTmeThreeAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_tme.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:f3bb5106dfe3f255bc84317169fb5fbafa653a97c2977b66cb12a49eab07891c",
+            "legacy_source_sha256:"
+            "f3bb5106dfe3f255bc84317169fb5fbafa653a97c2977b66cb12a49eab07891c",
             "legacy_symbol:TMEOptimizer.predict_3bets_tme",
             "full_strategy_catalog_id:legacy_biglotto__test_tme__f3bb5106dfe3",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
@@ -684,126 +722,163 @@ _PRODUCTION_DESCRIPTORS = (
         native_ticket_count=3,
     ),
     StrategyDescriptor(
-        strategy_id=("legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776"),
+        strategy_id=(
+            "legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776"
+        ),
         strategy_name="大樂透 Gemini V1 雙注驗證組合",
         version="v0.1",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave6:BigLottoGeminiTwoBetVerifierAdapter"
+            "lottolab.strategies.adapters.biglotto_wave6:"
+            "BigLottoGeminiTwoBetVerifierAdapter"
         ),
         min_history=50,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/verify_gemini_2bet_claim.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:d5ca233aa776d257c12b0f07e6d68205c5126b05759c39cf00e8ce8314062df3",
+            "legacy_source_sha256:"
+            "d5ca233aa776d257c12b0f07e6d68205c5126b05759c39cf00e8ce8314062df3",
             "legacy_symbol:generate_2bet_v1",
-            "full_strategy_catalog_id:legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__verify_gemini_2bet_claim__d5ca233aa776",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE6_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
     StrategyDescriptor(
-        strategy_id=("legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd"),
+        strategy_id=(
+            "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd"
+        ),
         strategy_name="大樂透 5ME 五方法獨立組合",
         version="v0.1",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave7:BigLottoFiveMeAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoFiveMeAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/predict_5me_115000004.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:8a1c06ce1bddb2ab605ad00e95503d1f6bea35b102ad5c39559eb1cf4c5e5782",
+            "legacy_source_sha256:"
+            "8a1c06ce1bddb2ab605ad00e95503d1f6bea35b102ad5c39559eb1cf4c5e5782",
             "legacy_symbol:main",
-            "full_strategy_catalog_id:legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
     ),
     StrategyDescriptor(
-        strategy_id=("legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a"),
+        strategy_id=(
+            "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a"
+        ),
         strategy_name="大樂透 Smart 2-Bet 頻率偏差互補組合",
         version="v0.1",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave7:BigLottoSmartTwoBetAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoSmartTwoBetAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/predict_big_lotto_smart_2bet.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:7acdaab1bd0afea2dd270e225335c25ccdb26594ce788902f2752b5e41801ede",
+            "legacy_source_sha256:"
+            "7acdaab1bd0afea2dd270e225335c25ccdb26594ce788902f2752b5e41801ede",
             "legacy_symbol:main",
-            "full_strategy_catalog_id:legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
     StrategyDescriptor(
-        strategy_id=("legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519"),
+        strategy_id=(
+            "legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519"
+        ),
         strategy_name="大樂透 Gemini Phase 2 七方法驗證組合",
         version="v0.1",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave7:BigLottoGeminiPhaseTwoVerifierAdapter"
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoGeminiPhaseTwoVerifierAdapter"
         ),
         min_history=100,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/verify_gemini_phase2_claim.py",
-            "legacy_source_sha256:6407a8f3951913fcd2de6b98046305defd377739e67d7f37b53884f81964b480",
+            "legacy_source_sha256:"
+            "6407a8f3951913fcd2de6b98046305defd377739e67d7f37b53884f81964b480",
             "legacy_symbol:generate_7_bets",
-            "full_strategy_catalog_id:legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__verify_gemini_phase2_claim__6407a8f39519",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=7,
     ),
     StrategyDescriptor(
-        strategy_id=("legacy_biglotto__attention_replay_predictor__a811e2eb8215"),
+        strategy_id=(
+            "legacy_biglotto__attention_replay_predictor__a811e2eb8215"
+        ),
         strategy_name="大樂透 Attention Replay 15期加權頻率",
         version="v0.1",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave7:BigLottoAttentionReplayAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoAttentionReplayAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:ai_lab/scripts/attention_replay_predictor.py",
-            "legacy_source_sha256:a811e2eb821506396cad2c739c90f05184792bd57b09bf6808e996afbace94fc",
+            "legacy_source_sha256:"
+            "a811e2eb821506396cad2c739c90f05184792bd57b09bf6808e996afbace94fc",
             "legacy_symbol:predict_next_draw",
             "frozen_semantics:model_logits_ignored_fixed_recency_weights",
-            "full_strategy_catalog_id:legacy_biglotto__attention_replay_predictor__a811e2eb8215",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__attention_replay_predictor__a811e2eb8215",
             "migration_task:BIGLOTTO_NATIVE_STRATEGY_WAVE7_R1",
         ),
         response_shape=ResponseShape.SINGLE_TICKET,
     ),
     StrategyDescriptor(
-        strategy_id=("legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d"),
+        strategy_id=(
+            "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d"
+        ),
         strategy_name="大樂透 Zone Balance 500 五位置組合",
         version="v0.1",
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave7:BigLottoZoneBalanceFiveAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave7:"
+            "BigLottoZoneBalanceFiveAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:predict_biglotto_115000002_zone_balance.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:8febca575f5d61b28095b1a27ff92b9717f74da88dd810ec0837fabba9033d02",
+            "legacy_source_sha256:"
+            "8febca575f5d61b28095b1a27ff92b9717f74da88dd810ec0837fabba9033d02",
             "legacy_symbol:main",
             "full_strategy_catalog_id:"
             "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d",
@@ -819,14 +894,19 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave8:BigLottoCesThreeAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoCesThreeAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_ces.py",
-            "legacy_source_sha256:78d17c530ab8cacf25146c5c39cb4017e3a3ffacde90a4e14ae07a8026b0bc22",
+            "legacy_source_sha256:"
+            "78d17c530ab8cacf25146c5c39cb4017e3a3ffacde90a4e14ae07a8026b0bc22",
             "legacy_symbol:test_ces",
-            "native_helper:lottolab.application.legacy_source_native_portfolios_wave26",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
             "full_strategy_catalog_id:legacy_biglotto__test_ces__78d17c530ab8",
             "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
         ),
@@ -840,14 +920,19 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave8:BigLottoDmsThreeAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoDmsThreeAdapter"
+        ),
         min_history=20,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_dms.py",
-            "legacy_source_sha256:b63442289bd5862955075bdea70bc682e16b2fe885190d16367b7b2987234dd1",
+            "legacy_source_sha256:"
+            "b63442289bd5862955075bdea70bc682e16b2fe885190d16367b7b2987234dd1",
             "legacy_symbol:test_dms",
-            "native_helper:lottolab.application.legacy_source_native_portfolios_wave26",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
             "full_strategy_catalog_id:legacy_biglotto__test_dms__b63442289bd5",
             "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
         ),
@@ -861,15 +946,21 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave8:BigLottoGreedyThreeAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoGreedyThreeAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_greedy_optimizer.py",
-            "legacy_source_sha256:82df7f878ece8f9daa86b3efc1208dd85440bab8a241308fcf7a2d14c7cd6db6",
+            "legacy_source_sha256:"
+            "82df7f878ece8f9daa86b3efc1208dd85440bab8a241308fcf7a2d14c7cd6db6",
             "legacy_symbol:test_greedy",
-            "native_helper:lottolab.application.legacy_source_native_portfolios_wave26",
-            "full_strategy_catalog_id:legacy_biglotto__test_greedy_optimizer__82df7f878ece",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__test_greedy_optimizer__82df7f878ece",
             "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -882,14 +973,19 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave8:BigLottoMwscThreeAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave8:"
+            "BigLottoMwscThreeAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_mwsc.py",
-            "legacy_source_sha256:ba37643d6a3b533d1e61dadf91f040e667d088e95a5163007d568931bcdc6033",
+            "legacy_source_sha256:"
+            "ba37643d6a3b533d1e61dadf91f040e667d088e95a5163007d568931bcdc6033",
             "legacy_symbol:test_mwsc",
-            "native_helper:lottolab.application.legacy_source_native_portfolios_wave26",
+            "native_helper:"
+            "lottolab.application.legacy_source_native_portfolios_wave26",
             "full_strategy_catalog_id:legacy_biglotto__test_mwsc__ba37643d6a3b",
             "migration_task:BIGLOTTO_REHABILITATION_CES_DMS_GREEDY_MWSC_R1",
         ),
@@ -1045,13 +1141,15 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave11:BigLottoCoreSatelliteRandomNativeAdapter"
+            "lottolab.strategies.adapters.biglotto_wave11:"
+            "BigLottoCoreSatelliteRandomNativeAdapter"
         ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/core_satellite.py",
-            "legacy_source_sha256:611284461323dbbca0b5959498bf3f0e86bfaa35c4b902fdb64aabfe5076a6e2",
+            "legacy_source_sha256:"
+            "611284461323dbbca0b5959498bf3f0e86bfaa35c4b902fdb64aabfe5076a6e2",
             "legacy_symbol:generate_legacy_random_native_portfolio",
             "full_strategy_catalog_id:legacy_biglotto__core_satellite__611284461323",
             "migration_task:BIGLOTTO_WAVE11_R1_THREE_RANDOM_NATIVE_ADAPTERS",
@@ -1067,13 +1165,15 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave11:BigLottoZoneSplitRandomNativeAdapter"
+            "lottolab.strategies.adapters.biglotto_wave11:"
+            "BigLottoZoneSplitRandomNativeAdapter"
         ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/zone_split.py",
-            "legacy_source_sha256:b6144f9d479feded3746d81e0d5682e7cfb28ba8d8aa03ff65f3706649996211",
+            "legacy_source_sha256:"
+            "b6144f9d479feded3746d81e0d5682e7cfb28ba8d8aa03ff65f3706649996211",
             "legacy_symbol:generate_legacy_random_native_portfolio",
             "full_strategy_catalog_id:legacy_biglotto__zone_split__b6144f9d479f",
             "migration_task:BIGLOTTO_WAVE11_R1_THREE_RANDOM_NATIVE_ADAPTERS",
@@ -1095,9 +1195,11 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/big_lotto_exhaustive_audit.py",
-            "legacy_source_sha256:694d353b7ca230af6a860f5ef8977fdecbab031a30ad4e6c51b3d0c0f98b910c",
+            "legacy_source_sha256:"
+            "694d353b7ca230af6a860f5ef8977fdecbab031a30ad4e6c51b3d0c0f98b910c",
             "legacy_symbol:generate_legacy_history_native_portfolio",
-            "full_strategy_catalog_id:legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2",
             "migration_task:BIGLOTTO_WAVE11_R1_THREE_RANDOM_NATIVE_ADAPTERS",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -1111,15 +1213,18 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave12:BigLottoSocialWisdomPredictorAdapter"
+            "lottolab.strategies.adapters.biglotto_wave12:"
+            "BigLottoSocialWisdomPredictorAdapter"
         ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/social_wisdom_predictor.py",
-            "legacy_source_sha256:a00829b5d875cb8202c3bbd90ad7202fa6b95f568e3e8d821a6cdbffe6a95e3b",
+            "legacy_source_sha256:"
+            "a00829b5d875cb8202c3bbd90ad7202fa6b95f568e3e8d821a6cdbffe6a95e3b",
             "legacy_symbol:generate_legacy_history_native_portfolio",
-            "full_strategy_catalog_id:legacy_biglotto__social_wisdom_predictor__a00829b5d875",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__social_wisdom_predictor__a00829b5d875",
             "migration_task:BIGLOTTO_WAVE12_R1_SOCIAL_NEGATIVE_QUICKML",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -1133,15 +1238,18 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_wave12:BigLottoNegativeSelectionBiglottoAdapter"
+            "lottolab.strategies.adapters.biglotto_wave12:"
+            "BigLottoNegativeSelectionBiglottoAdapter"
         ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/negative_selection_biglotto.py",
-            "legacy_source_sha256:98f860c52cc2f01552690b7903679961a263909fae844896860442909dca1294",
+            "legacy_source_sha256:"
+            "98f860c52cc2f01552690b7903679961a263909fae844896860442909dca1294",
             "legacy_symbol:generate_legacy_history_native_wave3_portfolio",
-            "full_strategy_catalog_id:legacy_biglotto__negative_selection_biglotto__98f860c52cc2",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__negative_selection_biglotto__98f860c52cc2",
             "migration_task:BIGLOTTO_WAVE12_R1_SOCIAL_NEGATIVE_QUICKML",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -1154,12 +1262,15 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave12:BigLottoQuickMlPredictAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave12:BigLottoQuickMlPredictAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/quick_ml_predict.py",
-            "legacy_source_sha256:8b7ba0b52e2dfcb7bd39997be9dbfab90a81f6e44c3fcf269ac5c9ddaa266d80",
+            "legacy_source_sha256:"
+            "8b7ba0b52e2dfcb7bd39997be9dbfab90a81f6e44c3fcf269ac5c9ddaa266d80",
             "legacy_symbol:generate_legacy_history_native_portfolio",
             "full_strategy_catalog_id:legacy_biglotto__quick_ml_predict__8b7ba0b52e2d",
             "migration_task:BIGLOTTO_WAVE12_R1_SOCIAL_NEGATIVE_QUICKML",
@@ -1182,7 +1293,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
             "legacy_source:tools/negative_selector.py",
-            "legacy_source_sha256:d39a233a4c75158cdab704e26980b89cbb96daf128e50718309731111ac55ddf",
+            "legacy_source_sha256:"
+            "d39a233a4c75158cdab704e26980b89cbb96daf128e50718309731111ac55ddf",
             "legacy_symbol:ASMOptimizer.predict_3bets_asm",
             "full_strategy_catalog_id:legacy_biglotto__test_asm__d39a233a4c75",
             "migration_task:BIGLOTTO_WAVE13_R1_ASM_DCB_4BET_DCB",
@@ -1205,7 +1317,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
             "legacy_source:tools/negative_selector.py",
-            "legacy_source_sha256:c3299c25ca5930f22bc9809c8e1eac1ba47094e0a18e6e549b5d24d10d591e38",
+            "legacy_source_sha256:"
+            "c3299c25ca5930f22bc9809c8e1eac1ba47094e0a18e6e549b5d24d10d591e38",
             "legacy_symbol:DCBOptimizer.predict_3bets_dcb",
             "full_strategy_catalog_id:legacy_biglotto__test_dcb__c3299c25ca59",
             "migration_task:BIGLOTTO_WAVE13_R1_ASM_DCB_4BET_DCB",
@@ -1220,7 +1333,9 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave13:BigLottoTestFourBetDcbAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave13:BigLottoTestFourBetDcbAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
@@ -1229,7 +1344,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
             "legacy_source:tools/negative_selector.py",
-            "legacy_source_sha256:3c7e3e661ad86ccdfac2ec7abd09c0c08101fdf1d639b17acd9427215cfe25a0",
+            "legacy_source_sha256:"
+            "3c7e3e661ad86ccdfac2ec7abd09c0c08101fdf1d639b17acd9427215cfe25a0",
             "legacy_symbol:DCB4BetOptimizer.predict_4bets_dcb",
             "full_strategy_catalog_id:legacy_biglotto__test_4bet_dcb__3c7e3e661ad8",
             "migration_task:BIGLOTTO_WAVE13_R1_ASM_DCB_4BET_DCB",
@@ -1252,7 +1368,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
             "legacy_source:tools/negative_selector.py",
-            "legacy_source_sha256:c9d5ac6decddac7940a6ad90739069afd4b13d181dddd4336586e3f718d8e6a2",
+            "legacy_source_sha256:"
+            "c9d5ac6decddac7940a6ad90739069afd4b13d181dddd4336586e3f718d8e6a2",
             "legacy_symbol:ECPOptimizer.predict_3bets_ecp",
             "full_strategy_catalog_id:legacy_biglotto__test_ecp__c9d5ac6decdd",
             "migration_task:BIGLOTTO_WAVE14_R1_ECP_PCE_HPSB",
@@ -1275,7 +1392,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:lottery_api/models/biglotto_3bet_optimizer.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
             "legacy_source:tools/negative_selector.py",
-            "legacy_source_sha256:9c0cf22b42179ffc496f7fb93cbc3cfc902a7ff60a43095e3fe1f44168b6d28c",
+            "legacy_source_sha256:"
+            "9c0cf22b42179ffc496f7fb93cbc3cfc902a7ff60a43095e3fe1f44168b6d28c",
             "legacy_symbol:PCEOptimizer.predict_3bets_pce",
             "full_strategy_catalog_id:legacy_biglotto__test_pce__9c0cf22b4217",
             "migration_task:BIGLOTTO_WAVE14_R1_ECP_PCE_HPSB",
@@ -1290,13 +1408,16 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_wave14:BigLottoHpsbOptimizerAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave14:BigLottoHpsbOptimizerAdapter"
+        ),
         min_history=1,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/hpsb_optimizer.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:cf5cd7d971e8bf2f1854d2196824278de957b3eae3697dff197ab9a3c8b78bcc",
+            "legacy_source_sha256:"
+            "cf5cd7d971e8bf2f1854d2196824278de957b3eae3697dff197ab9a3c8b78bcc",
             "legacy_symbol:HPSBOptimizer.predict_hpsb_v2",
             "full_strategy_catalog_id:legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
             "migration_task:BIGLOTTO_WAVE14_R1_ECP_PCE_HPSB",
@@ -1316,7 +1437,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/cold_hunter_predictor.py",
-            "legacy_source_sha256:9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
+            "legacy_source_sha256:"
+            "9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
             "legacy_symbol:ColdHunterPredictor.cold_hunter_predict",
             "full_strategy_catalog_id:legacy_biglotto__cold_hunter_predict__9e89f2b41add",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1337,7 +1459,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/cold_hunter_predictor.py",
-            "legacy_source_sha256:9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
+            "legacy_source_sha256:"
+            "9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
             "legacy_symbol:ColdHunterPredictor.short_window_deviation_predict",
             "full_strategy_catalog_id:"
             "legacy_biglotto__short_window_deviation_predict__9e89f2b41add",
@@ -1358,7 +1481,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/cold_hunter_predictor.py",
-            "legacy_source_sha256:9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
+            "legacy_source_sha256:"
+            "9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
             "legacy_symbol:ColdHunterPredictor.rebound_aware_predict",
             "full_strategy_catalog_id:legacy_biglotto__rebound_aware_predict__9e89f2b41add",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1378,7 +1502,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/cold_hunter_predictor.py",
-            "legacy_source_sha256:9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
+            "legacy_source_sha256:"
+            "9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
             "legacy_symbol:ColdHunterPredictor.zone_momentum_predict",
             "full_strategy_catalog_id:legacy_biglotto__zone_momentum_predict__9e89f2b41add",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1398,7 +1523,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/cold_hunter_predictor.py",
-            "legacy_source_sha256:9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
+            "legacy_source_sha256:"
+            "9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
             "legacy_symbol:ColdHunterPredictor.pure_cold_predict",
             "full_strategy_catalog_id:legacy_biglotto__pure_cold_predict__9e89f2b41add",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1418,7 +1544,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/cold_hunter_predictor.py",
-            "legacy_source_sha256:9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
+            "legacy_source_sha256:"
+            "9e89f2b41add14d2577c8fd39db3716dbea46f6dccdb7581752afc768e243422",
             "legacy_symbol:ColdHunterPredictor.moderate_rank_predict",
             "full_strategy_catalog_id:legacy_biglotto__moderate_rank_predict__9e89f2b41add",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1438,7 +1565,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:lottery_api/models/gap_pressure.py",
-            "legacy_source_sha256:5e862ef27ee6e467debf689c889f1c6774bf03029eca61d370ef300e60165689",
+            "legacy_source_sha256:"
+            "5e862ef27ee6e467debf689c889f1c6774bf03029eca61d370ef300e60165689",
             "legacy_symbol:GapPressureScorer.predict",
             "full_strategy_catalog_id:legacy_biglotto__gap_pressure_scorer__5e862ef27ee6",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1459,7 +1587,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_dm_dms_biglotto.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:bad71858012da7b8f4cd0575d5fb018a121471cd251a627e2c6f1e3fdded21fa",
+            "legacy_source_sha256:"
+            "bad71858012da7b8f4cd0575d5fb018a121471cd251a627e2c6f1e3fdded21fa",
             "legacy_symbol:run_dm_dms_benchmark",
             "full_strategy_catalog_id:legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1482,7 +1611,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/test_dms_biglotto.py",
             "legacy_source:lottery_api/models/unified_predictor.py",
-            "legacy_source_sha256:10e39919c3a1edc3ec5da003e9ff68d65507545b35909d95ba272ed9ea2e593e",
+            "legacy_source_sha256:"
+            "10e39919c3a1edc3ec5da003e9ff68d65507545b35909d95ba272ed9ea2e593e",
             "legacy_symbol:run_dms_benchmark",
             "full_strategy_catalog_id:legacy_biglotto__test_dms_biglotto__10e39919c3a1",
             "migration_task:BIGLOTTO_BATCH15_HIGH_THROUGHPUT_MIGRATION_R1",
@@ -1502,7 +1632,8 @@ _PRODUCTION_DESCRIPTORS = (
         min_history=200,
         provenance=(
             "research_task:B649_NEXT_GENERATION_STRATEGY_RESEARCH_R1",
-            "research_task_tree:eb5a18eab2807a89a2f3abd5411c3a28509a982d3060702e5f8cc85b0724ed5a",
+            "research_task_tree:"
+            "eb5a18eab2807a89a2f3abd5411c3a28509a982d3060702e5f8cc85b0724ed5a",
             "research_source_sha256:"
             "616ca197a53bbabb9e43e42f004b64caab5be58cc51769d091a17a14dfc733ec",
             "research_result_sha256:"
@@ -1512,7 +1643,8 @@ _PRODUCTION_DESCRIPTORS = (
             "evidence_status:HISTORICAL_RESEARCH_ONLY",
             "current_significance:NOT_ESTABLISHED",
             "predictive_advantage_claimed:NO",
-            "migration_task:BRANCH_B_B649_HORIZON_MINIMAX_TARGET_NATIVE_MIGRATION_R1",
+            "migration_task:"
+            "BRANCH_B_B649_HORIZON_MINIMAX_TARGET_NATIVE_MIGRATION_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
@@ -1545,14 +1677,18 @@ _PRODUCTION_DESCRIPTORS = (
         lottery_types=(LotteryType.BIG_LOTTO,),
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
-        adapter_path=("lottolab.strategies.adapters.biglotto_batch16:BigLottoTs3Markov4betAdapter"),
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch16:BigLottoTs3Markov4betAdapter"
+        ),
         min_history=150,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/backtest_biglotto_markov_4bet.py",
-            "legacy_source_sha256:aefb54eb345bf38fbeb1526959c12a3585a970325316dfbc2c6a7bb440b5ec6a",
+            "legacy_source_sha256:"
+            "aefb54eb345bf38fbeb1526959c12a3585a970325316dfbc2c6a7bb440b5ec6a",
             "legacy_symbol:generate_ts3_markov4",
-            "full_strategy_catalog_id:legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
             "migration_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH01_R1",
         ),
         response_shape=ResponseShape.PORTFOLIO,
@@ -1573,7 +1709,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/minimal_dual_bet_strategy.py",
-            "legacy_source_sha256:c4624b1a5ec06330d0f4298ebc7e74cbde0b9cc4a2ab77da2f8a04b23f91309c",
+            "legacy_source_sha256:"
+            "c4624b1a5ec06330d0f4298ebc7e74cbde0b9cc4a2ab77da2f8a04b23f91309c",
             "legacy_symbol:MinimalDualBetStrategy.predict_dual_bets",
             "evidence_status:HISTORICAL_RESEARCH_ONLY",
             "current_significance:NOT_ESTABLISHED",
@@ -1598,7 +1735,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c01_recency_decay_1bet",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1621,7 +1759,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c02_gap_overdue_1bet",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1644,7 +1783,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c03_pair_centrality_1bet",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1667,7 +1807,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c04_zone_balanced_1bet",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1690,7 +1831,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c05_dispersion_match_1bet",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1713,7 +1855,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c06_regime_cusum_1bet",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1736,7 +1879,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/powerlotto_wave2.py",
-            "source_sha256:b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
+            "source_sha256:"
+            "b9386dcf20e834d00c6b7fdfedeb082673d77318bf40e7f2f47720c05b56a21f",
             "wave2_strategy_id:power_c07_borda_ensemble_1bet",
             "composite_of:power_c01_recency_decay_1bet,power_c02_gap_overdue_1bet,"
             "power_c03_pair_centrality_1bet,power_c04_zone_balanced_1bet",
@@ -1761,7 +1905,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "source_commit:76990f7cfb1fdbb4f933026f872116fdd32bf869",
             "source_path:src/lottolab/strategies/adapters/daily539_portfolio_phase2.py",
-            "source_sha256:a114c4796eb3313c928002541b513a99f909b7a2a3809b4a508b69caf64e9e42",
+            "source_sha256:"
+            "a114c4796eb3313c928002541b513a99f909b7a2a3809b4a508b69caf64e9e42",
             "wrapped_adapter:Daily539AcbMarkovMidfreq3BetAdapter",
             "selection_task:B_BASE_METHOD_UNIVERSE_INTAKE_BATCH02_RESELECTION_R1",
             "migration_task:PENDING_INTAKE_SET02_R1",
@@ -1784,7 +1929,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/backtest_apriori.py",
             "legacy_source:tools/predict_biglotto_apriori.py",
-            "legacy_source_sha256:2abb537657035eec87da9863055f817d81ffafe83084f0f53858ad31327282a1",
+            "legacy_source_sha256:"
+            "2abb537657035eec87da9863055f817d81ffafe83084f0f53858ad31327282a1",
             "legacy_symbol:BacktestApriori.predict_for_backtest",
             "full_strategy_catalog_id:legacy_biglotto__backtest_apriori__2abb53765703",
             "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
@@ -1802,18 +1948,21 @@ _PRODUCTION_DESCRIPTORS = (
         lifecycle_status=LifecycleStatus.ONLINE,
         executable=True,
         adapter_path=(
-            "lottolab.strategies.adapters.biglotto_batch16:BigLottoCoveringStrategyResearchAdapter"
+            "lottolab.strategies.adapters.biglotto_batch16:"
+            "BigLottoCoveringStrategyResearchAdapter"
         ),
         min_history=200,
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/covering_strategy_research.py",
-            "legacy_source_sha256:214ecc206fc91280068db0f87476eec18d221800faa478a70d279712a63f8413",
+            "legacy_source_sha256:"
+            "214ecc206fc91280068db0f87476eec18d221800faa478a70d279712a63f8413",
             "legacy_symbol:main "
             "(gen_zero_overlap+gen_anchor_k(2,3,4)+random_baseline+gen_signal_guided+"
             "gen_cooccurrence_guided+gen_zero_overlap(dynamic seed) combined -- see "
             "adapter module docstring OUTPUT_SHAPE INFERENCE note)",
-            "full_strategy_catalog_id:legacy_biglotto__covering_strategy_research__214ecc206fc9",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__covering_strategy_research__214ecc206fc9",
             "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
             "selection_task:B_BASE_METHOD_UNIVERSE_LIVE_GAP_AND_BATCH02_RESELECTION_R1",
             "output_shape_status:INFERRED_NOT_CONFIRMED",
@@ -1838,7 +1987,8 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_source:tools/evolving_strategy_engine/strategy_generator.py",
             "legacy_source:tools/evolving_strategy_engine/strategy_base.py",
             "legacy_source:tools/evolving_strategy_engine/evaluator.py",
-            "legacy_source_sha256:3df019c31ce48e38efc7fd8b52d3e6eb5fd6ab1927bc789785e6d1e85c794f54",
+            "legacy_source_sha256:"
+            "3df019c31ce48e38efc7fd8b52d3e6eb5fd6ab1927bc789785e6d1e85c794f54",
             "legacy_symbol:EvolutionEngine.run",
             "full_strategy_catalog_id:legacy_biglotto__evolution_engine__3df019c31ce4",
             "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
@@ -1862,7 +2012,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/predict_biglotto_triple_strike.py",
-            "legacy_source_sha256:dad1c50d1504971a51b6ec860178f6d6c27469315b02573d73fd20593c2c73db",
+            "legacy_source_sha256:"
+            "dad1c50d1504971a51b6ec860178f6d6c27469315b02573d73fd20593c2c73db",
             "legacy_symbol:generate_triple_strike",
             "full_strategy_catalog_id:"
             "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
@@ -1887,7 +2038,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/backtest_sum_constraint.py",
-            "legacy_source_sha256:acb3b118300ddeae322f98923e75bb85de2a8e8e13a9cf85c8d6bed10b9f5533",
+            "legacy_source_sha256:"
+            "acb3b118300ddeae322f98923e75bb85de2a8e8e13a9cf85c8d6bed10b9f5533",
             "legacy_symbol:generate_ts_sum_constrained(pool_size=12, apply_to='all')",
             "full_strategy_catalog_id:legacy_biglotto__backtest_sum_constraint__acb3b118300d",
             "migration_task:BIGLOTTO_BATCH17_R1_BASE_METHOD_BATCH03_INTAKE",
@@ -1912,7 +2064,8 @@ _PRODUCTION_DESCRIPTORS = (
         provenance=(
             "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
             "legacy_source:tools/backtest_biglotto_hot_stop_rebound.py",
-            "legacy_source_sha256:1794a8c507aed174efe13310a3a3b7774158149931ce70101a2cfb729d54b2f5",
+            "legacy_source_sha256:"
+            "1794a8c507aed174efe13310a3a3b7774158149931ce70101a2cfb729d54b2f5",
             "legacy_symbol:generate_hot_stop_bet",
             "full_strategy_catalog_id:"
             "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
@@ -2047,6 +2200,196 @@ _PRODUCTION_DESCRIPTORS = (
             "legacy_symbol:_acb_predict",
             "full_strategy_catalog_id:acb_single_539",
             "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs",
+        strategy_name="BigLotto Wave 2 Neighbor AD Co-occurrence Anti-pairs",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdCooccurrenceAntiPairsAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_cooccurrence_conditional",
+        strategy_name="BigLotto Wave 2 Neighbor AD Co-occurrence Conditional",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdCooccurrenceConditionalAdapter"
+        ),
+        min_history=50,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_cooccurrence_top_pairs",
+        strategy_name="BigLotto Wave 2 Neighbor AD Co-occurrence Top Pairs",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdCooccurrenceTopPairsAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_cooccurrence_transition_pairs",
+        strategy_name="BigLotto Wave 2 Neighbor AD Co-occurrence Transition Pairs",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdCooccurrenceTransitionPairsAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_cooccurrence_triplet",
+        strategy_name="BigLotto Wave 2 Neighbor AD Co-occurrence Triplet",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdCooccurrenceTripletAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_graph_bridge_bet",
+        strategy_name="BigLotto Wave 2 Neighbor AD Graph Bridge Bet",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdGraphBridgeBetAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_graph_centrality_bet",
+        strategy_name="BigLotto Wave 2 Neighbor AD Graph Centrality Bet",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdGraphCentralityBetAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_neighbor_ad_graph_pagerank_bet",
+        strategy_name="BigLotto Wave 2 Neighbor AD Graph PageRank Bet",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2NeighborAdGraphPagerankBetAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_sum_range_ad_structural_sum_regression",
+        strategy_name="BigLotto Wave 2 Sum-range AD Structural Sum Regression",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2SumRangeAdStructuralSumRegressionAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+        ),
+    ),
+    StrategyDescriptor(
+        strategy_id="biglotto_wave2_social_ad_negative_consensus_remove",
+        strategy_name="BigLotto Wave 2 Social AD Negative Consensus Remove",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            "BigLottoWave2SocialAdNegativeConsensusRemoveAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+            "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+            "publication_pr:161",
+            "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
         ),
     ),
     StrategyDescriptor(

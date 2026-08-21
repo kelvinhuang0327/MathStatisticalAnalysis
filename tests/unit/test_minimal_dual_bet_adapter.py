@@ -80,7 +80,9 @@ def _donor_main_tickets(
         selected: list[int] = []
         for start, end in ((1, 13), (14, 25), (26, 38)):
             zone_candidates = [
-                number for number in candidates if start <= number <= end and number not in selected
+                number
+                for number in candidates
+                if start <= number <= end and number not in selected
             ]
             selected.extend(zone_candidates[:2])
         while len(selected) < 6 and candidates:
@@ -209,7 +211,7 @@ def test_catalog_registry_and_production_portfolio_path_are_reachable() -> None:
 def test_production_catalog_appends_minimal_dual_bet_last_and_preserves_prior_order() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 101
+    assert len(all_ids) == 111
     # Scoped to the pre-PENDING_INTAKE_SET02_R1 prefix: minimal-dual-bet is
     # still last within it, and nothing in it moved.
     minimal_dual_bet_and_earlier = all_ids[:72]

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Never
@@ -27,10 +27,26 @@ from lottolab.application.ports import (
     T539HistoricalQueryRepository,
 )
 from lottolab.application.t539_historical import T539HistoricalResultsUnavailableError
+from lottolab.application.use_cases.build_causal_history import BuildCausalHistory
+from lottolab.application.use_cases.generate_bet import (
+    GenerateOneBet,
+    build_production_generate_one_bet,
+)
 from lottolab.application.use_cases.query_replay_scoring_projection import (
     ReplayScoringQueryUnavailableError,
 )
+from lottolab.application.use_cases.replay_historical_predictions import (
+    ReplayHistoricalPredictions,
+    ReplayHistoricalPredictionsInput,
+    ReplayHistoricalPredictionsResult,
+)
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.replay_predictions import ReplayTarget
 from lottolab.infrastructure.draw_provider import JsonHttpDrawDataProvider
+from lottolab.infrastructure.persistence.draw_schema import (
+    LocalDataPaths,
+    resolve_local_data_paths,
+)
 from lottolab.infrastructure.persistence.historical_prefix_success_window_reader import (
     SQLiteHistoricalPrefixSuccessWindowSourceReader,
 )
@@ -65,12 +81,14 @@ from lottolab.infrastructure.persistence.p638_current_ranking_schema import (
 from lottolab.infrastructure.persistence.p638_historical_repositories import (
     SQLiteP638HistoricalQueryRepository,
 )
+from lottolab.infrastructure.persistence.replay_history_reader import SQLiteDrawHistoryReader
 from lottolab.infrastructure.persistence.replay_scoring_projection_repository import (
     SQLiteReplayScoringProjectionRepository,
 )
 from lottolab.infrastructure.persistence.replay_scoring_schema import (
     verify_schema_read_only as verify_replay_scoring_schema_read_only,
 )
+from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.persistence.t539_historical_repositories import (
     SQLiteT539HistoricalQueryRepository,
 )
@@ -79,6 +97,7 @@ from lottolab.infrastructure.persistence.t539_historical_repositories import (
 )
 from lottolab.infrastructure.taiwan_lottery_draw_provider import TaiwanLotteryDrawProvider
 from lottolab.interfaces.api.app import create_app
+from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 P638_ALL10_RANKING_DB_ENV = "LOTTOLAB_P638_ALL10_RANKING_DB"
@@ -90,6 +109,63 @@ DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
 OFFICIAL_TAIWAN_LOTTERY_SOURCE = "OFFICIAL_TAIWAN_LOTTERY"
 REPLAY_SCORING_DB_ENV = "LOTTOLAB_REPLAY_SCORING_DB"
+
+LocalDataPathsProvider = Callable[[], LocalDataPaths]
+
+
+@dataclass(frozen=True)
+class LocalReplayExecutor:
+    """Lazy read-only Replay composition used only by :func:`create_local_app`.
+
+    This mirrors the existing Replay CLI stack: canonical target lookup from
+    the configured draw database, ``BuildCausalHistory`` over
+    ``SQLiteDrawHistoryReader``, production ``GenerateOneBet``, and the
+    production catalog. Construction performs no filesystem or database I/O.
+    """
+
+    paths_provider: LocalDataPathsProvider
+    generate_one_bet: GenerateOneBet
+    catalog: StrategyCatalog
+
+    def execute(
+        self, request: ReplayHistoricalPredictionsInput
+    ) -> ReplayHistoricalPredictionsResult:
+        paths = self.paths_provider()
+        if not paths.database.is_file():
+            raise FileNotFoundError("local draw database is unavailable")
+
+        repository = SQLiteDrawDataRepository(paths)
+        canonical_targets = tuple(
+            self._canonical_target(repository, request.lottery_type, target)
+            for target in request.targets
+        )
+        replay = ReplayHistoricalPredictions(
+            BuildCausalHistory(lambda: SQLiteDrawHistoryReader(paths)),
+            self.generate_one_bet,
+            self.catalog,
+        )
+        return replay.execute(
+            ReplayHistoricalPredictionsInput(
+                lottery_type=request.lottery_type,
+                dataset_id=request.dataset_id,
+                dataset_version=request.dataset_version,
+                targets=canonical_targets,
+                strategy_ids=request.strategy_ids,
+                maximum_history_draws=request.maximum_history_draws,
+                minimum_history_draws=request.minimum_history_draws,
+            )
+        )
+
+    @staticmethod
+    def _canonical_target(
+        repository: SQLiteDrawDataRepository,
+        lottery_type: LotteryType,
+        target: ReplayTarget,
+    ) -> ReplayTarget:
+        record = repository.get_draw(lottery_type, target.draw_number)
+        if record is None:
+            return target
+        return ReplayTarget(draw_number=record.draw_number, draw_date=record.draw_date)
 
 
 @dataclass(frozen=True)
@@ -348,6 +424,13 @@ def local_p638_current_replay_composition(
 def create_local_app() -> FastAPI:
     """Compose the normal local app without opening or modifying any database."""
 
+    replay_catalog = production_catalog()
+    replay_generate_one_bet = build_production_generate_one_bet()
+    replay_executor = LocalReplayExecutor(
+        paths_provider=resolve_local_data_paths,
+        generate_one_bet=replay_generate_one_bet,
+        catalog=replay_catalog,
+    )
     composition = local_historical_composition(os.environ)
     replay_scoring_composition = local_replay_scoring_composition(os.environ)
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
@@ -400,6 +483,9 @@ def create_local_app() -> FastAPI:
         p638_historical_query_repository_factory = composition.p638_historical_query_repository
     if composition is None:
         return create_app(
+            catalog=replay_catalog,
+            generate_one_bet=replay_generate_one_bet,
+            replay_executor=replay_executor,
             draw_data_provider_factory=lambda: provider,
             replay_scoring_projection_reader_factory=replay_scoring_projection_reader_factory,
             p638_historical_query_repository_factory=p638_historical_query_repository_factory,
@@ -411,6 +497,9 @@ def create_local_app() -> FastAPI:
             p638_multiwindow_success_source_reader_factory=p638_multiwindow_factory,
         )
     return create_app(
+        catalog=replay_catalog,
+        generate_one_bet=replay_generate_one_bet,
+        replay_executor=replay_executor,
         draw_data_provider_factory=lambda: provider,
         historical_query_repository_factory=composition.historical_query_repository,
         p638_historical_query_repository_factory=p638_historical_query_repository_factory,
@@ -461,6 +550,7 @@ __all__ = [
     "LocalHistoricalComposition",
     "LocalP638CurrentRankingComposition",
     "LocalP638CurrentReplayComposition",
+    "LocalReplayExecutor",
     "LocalReplayScoringComposition",
     "LocalT539HistoricalComposition",
     "create_local_app",

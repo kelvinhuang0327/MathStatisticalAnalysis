@@ -21,6 +21,18 @@ from lottolab.strategies.adapters import (
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
     BigLottoHorizonMinimaxDisagreementAdapter,
 )
+from lottolab.strategies.adapters.biglotto_wave2_intake import (
+    BigLottoWave2NeighborAdCooccurrenceAntiPairsAdapter,
+    BigLottoWave2NeighborAdCooccurrenceConditionalAdapter,
+    BigLottoWave2NeighborAdCooccurrenceTopPairsAdapter,
+    BigLottoWave2NeighborAdCooccurrenceTransitionPairsAdapter,
+    BigLottoWave2NeighborAdCooccurrenceTripletAdapter,
+    BigLottoWave2NeighborAdGraphBridgeBetAdapter,
+    BigLottoWave2NeighborAdGraphCentralityBetAdapter,
+    BigLottoWave2NeighborAdGraphPagerankBetAdapter,
+    BigLottoWave2SocialAdNegativeConsensusRemoveAdapter,
+    BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
+)
 from lottolab.strategies.catalog import (
     DuplicateStrategyIdError,
     StrategyCatalog,
@@ -260,6 +272,16 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "power_apriori_2bet",
         "power_lead_lag_2bet",
         "acb_single_539",
+        "biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_conditional",
+        "biglotto_wave2_neighbor_ad_cooccurrence_top_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_transition_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_triplet",
+        "biglotto_wave2_neighbor_ad_graph_bridge_bet",
+        "biglotto_wave2_neighbor_ad_graph_centrality_bet",
+        "biglotto_wave2_neighbor_ad_graph_pagerank_bet",
+        "biglotto_wave2_sum_range_ad_structural_sum_regression",
+        "biglotto_wave2_social_ad_negative_consensus_remove",
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
@@ -280,7 +302,9 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
 
 
 def test_horizon_minimax_descriptor_and_adapter_identity_match_exactly() -> None:
-    descriptor = production_catalog().get(BigLottoHorizonMinimaxDisagreementAdapter.strategy_id)
+    descriptor = production_catalog().get(
+        BigLottoHorizonMinimaxDisagreementAdapter.strategy_id
+    )
     assert (
         descriptor.strategy_id,
         descriptor.strategy_name,
@@ -305,6 +329,62 @@ def test_horizon_minimax_descriptor_and_adapter_identity_match_exactly() -> None
         ResponseShape.PORTFOLIO,
         2,
     )
+
+
+def test_biglotto_wave2_descriptors_and_adapter_identities_match_exactly() -> None:
+    adapter_classes = (
+        BigLottoWave2NeighborAdCooccurrenceAntiPairsAdapter,
+        BigLottoWave2NeighborAdCooccurrenceConditionalAdapter,
+        BigLottoWave2NeighborAdCooccurrenceTopPairsAdapter,
+        BigLottoWave2NeighborAdCooccurrenceTransitionPairsAdapter,
+        BigLottoWave2NeighborAdCooccurrenceTripletAdapter,
+        BigLottoWave2NeighborAdGraphBridgeBetAdapter,
+        BigLottoWave2NeighborAdGraphCentralityBetAdapter,
+        BigLottoWave2NeighborAdGraphPagerankBetAdapter,
+        BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
+        BigLottoWave2SocialAdNegativeConsensusRemoveAdapter,
+    )
+    expected_provenance = (
+        "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
+        "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",
+        "publication_pr:161",
+        "catalog_wiring_task:BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1",
+    )
+    catalog = production_catalog()
+    registry = ExecutableRegistry(catalog)
+
+    for adapter_class in adapter_classes:
+        descriptor = catalog.get(adapter_class.strategy_id)
+        expected_adapter_path = (
+            "lottolab.strategies.adapters.biglotto_wave2_intake:"
+            f"{adapter_class.__name__}"
+        )
+        assert (
+            descriptor.strategy_id,
+            descriptor.strategy_name,
+            descriptor.version,
+            descriptor.lottery_types,
+            descriptor.min_history,
+            descriptor.lifecycle_status,
+            descriptor.executable,
+            descriptor.adapter_path,
+            descriptor.provenance,
+            descriptor.response_shape,
+            descriptor.native_ticket_count,
+        ) == (
+            adapter_class.strategy_id,
+            adapter_class.strategy_name,
+            adapter_class.strategy_version,
+            (LotteryType.BIG_LOTTO,),
+            adapter_class.min_history,
+            LifecycleStatus.ONLINE,
+            True,
+            expected_adapter_path,
+            expected_provenance,
+            ResponseShape.SINGLE_TICKET,
+            1,
+        )
+        assert registry.load_adapter(descriptor.strategy_id) is adapter_class
 
 
 def test_zone_split_bet2_descriptor_and_adapter_identity_match_exactly() -> None:
@@ -356,7 +436,8 @@ def test_deviation_bet2_descriptor_registry_and_provenance_match_exactly() -> No
         BigLottoDeviation2BetBet2Adapter.min_history,
         LifecycleStatus.ONLINE,
         True,
-        "lottolab.strategies.adapters.biglotto_selected:BigLottoDeviation2BetBet2Adapter",
+        "lottolab.strategies.adapters.biglotto_selected:"
+        "BigLottoDeviation2BetBet2Adapter",
     )
     assert descriptor.provenance == (
         "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",

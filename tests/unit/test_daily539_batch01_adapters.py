@@ -56,7 +56,9 @@ def test_wrapper_matches_underlying_producer_exactly() -> None:
     history = _history(150)
     expected = _acb_predict(history)
 
-    ticket, special = Daily539AcbSingleCatalogAdapter().get_one_bet(history, LotteryType.DAILY_539)
+    ticket, special = Daily539AcbSingleCatalogAdapter().get_one_bet(
+        history, LotteryType.DAILY_539
+    )
 
     assert ticket == expected
     assert special is None
@@ -64,7 +66,9 @@ def test_wrapper_matches_underlying_producer_exactly() -> None:
 
 def test_native_output_is_one_legal_five_of_39_ticket() -> None:
     history = _history(150)
-    ticket, special = Daily539AcbSingleCatalogAdapter().get_one_bet(history, LotteryType.DAILY_539)
+    ticket, special = Daily539AcbSingleCatalogAdapter().get_one_bet(
+        history, LotteryType.DAILY_539
+    )
     assert len(ticket) == 5
     assert len(set(ticket)) == 5
     assert all(1 <= number <= 39 for number in ticket)
@@ -87,7 +91,9 @@ def test_rejects_insufficient_history() -> None:
 
 def test_accepts_exactly_min_history() -> None:
     history = _history(100)
-    ticket, _special = Daily539AcbSingleCatalogAdapter().get_one_bet(history, LotteryType.DAILY_539)
+    ticket, _special = Daily539AcbSingleCatalogAdapter().get_one_bet(
+        history, LotteryType.DAILY_539
+    )
     assert len(ticket) == 5
 
 
@@ -105,17 +111,16 @@ def test_production_catalog_declares_expected_shape() -> None:
     assert descriptor.lottery_types == (LotteryType.DAILY_539,)
 
 
-def test_production_catalog_appends_daily539_batch01_last_in_current_main_prefix() -> None:
+def test_production_catalog_appends_daily539_batch01_before_wave2() -> None:
     """This is the first DAILY_539 descriptor the production catalog has
     ever had, appended directly after the three-strategy POWER_LOTTO batch
-    01 (``power_lead_lag_2bet``) and last in the preserved current-main
-    prefix; the legacy-mechanism publication appends after that prefix."""
+    01 (``power_lead_lag_2bet``) and before the Wave 2 catalog block."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    current_main_prefix = all_ids[:92]
-    assert current_main_prefix[-1] == STRATEGY_ID
-    assert current_main_prefix[-2] == "power_lead_lag_2bet"
+    pre_wave2 = all_ids[:92]
+    assert pre_wave2[-1] == STRATEGY_ID
+    assert pre_wave2[-2] == "power_lead_lag_2bet"
     assert all_ids.count(STRATEGY_ID) == 1
 
 

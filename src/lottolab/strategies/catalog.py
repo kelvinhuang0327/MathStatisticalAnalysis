@@ -2040,6 +2040,51 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id=(
+            "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e"
+        ),
+        strategy_name="大樂透 Orthogonal 5-Bet 正交 5注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_orthogonal_5bet:"
+            "BigLottoOrthogonal5BetAdapter"
+        ),
+        min_history=500,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_big_lotto_orthogonal_5bet.py",
+            "legacy_source_blob:5721de1742a46add8c3103ea297510dac3ace451",
+            "legacy_source_sha256:"
+            "c4dff46c5a5eff0621cdfba64a623c0a36ad365a4912355b90d3a9ad1c8a0df0",
+            "retained_exact_output_ledger:"
+            "lottolab.application.legacy_source_grid_native_portfolios_wave46",
+            "full_strategy_catalog_id:legacy_biglotto__backtest_big_lotto_"
+            "orthogonal_5bet__c4dff46c5a5e",
+            "donor_evidence_sha256:"
+            "a81d0c1b2a4f9ed343d547dbaeff5b83ca77bb453bcf7ecb843779ff7414f9ac",
+            "donor_parity:MECHANISM_COMPONENT_PARITY",
+            "source_history:OLDEST_FIRST_LATEST_500_FREQ100_LAG2",
+            "orthogonality:PAIRWISE_DISJOINT_FIVE_TICKETS_NO_NUMBER_REUSE",
+            "bet1:FOURIER_RANKS_1_TO_6",
+            "bet2:FOURIER_RANKS_7_TO_12",
+            "bet3:LAG2_ECHO_THEN_COLDEST_UNUSED",
+            "bet4:HOTTEST_UNUSED_RANKS_1_TO_6",
+            "bet5:HOTTEST_UNUSED_RANKS_7_TO_12",
+            "portfolio_cardinality:EXACTLY_5_POSITIONAL_30_DISTINCT_NUMBERS",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_ORTHOGONAL_5BET_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=5,
+    ),
 )
 
 

@@ -115,8 +115,7 @@ def create_replay_execution_router(executor: ReplayExecutor | None) -> APIRouter
     """Bind an already-composed ReplayHistoricalPredictions-compatible executor.
 
     Always exposes the route without requiring the executor at construction,
-    mirroring create_replay_portfolio_rankings_router/
-    create_replay_scoring_projections_router.
+    mirroring the other replay read routers.
     """
 
     router = APIRouter(prefix=API_PREFIX, tags=["replay-execution"])

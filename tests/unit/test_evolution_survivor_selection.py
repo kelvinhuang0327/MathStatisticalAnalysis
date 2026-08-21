@@ -191,8 +191,7 @@ def test_inputs_are_not_mutated_or_reordered_and_execution_is_deterministic() ->
     assert results == results_before
     assert population == population_before
     assert all(
-        select_evolution_survivors(results, population, policy=policy) == first
-        for _ in range(20)
+        select_evolution_survivors(results, population, policy=policy) == first for _ in range(20)
     )
 
 
@@ -222,9 +221,7 @@ def test_large_exhaustive_transition_matrix_matches_donor_rules() -> None:
                 )
 
                 eligible_indices = tuple(
-                    index
-                    for index, (_, leaked) in enumerate(specifications)
-                    if not leaked
+                    index for index, (_, leaked) in enumerate(specifications) if not leaked
                 )
                 ranked_indices = tuple(
                     sorted(
@@ -239,9 +236,7 @@ def test_large_exhaustive_transition_matrix_matches_donor_rules() -> None:
                 )
                 survivor_indices = ranked_indices[:retention_limit]
                 leaked_indices = tuple(
-                    index
-                    for index, (_, leaked) in enumerate(specifications)
-                    if leaked
+                    index for index, (_, leaked) in enumerate(specifications) if leaked
                 )
                 eliminated_indices = ranked_indices[retention_limit:] + leaked_indices
                 survivor_names = {results[index].name for index in survivor_indices}

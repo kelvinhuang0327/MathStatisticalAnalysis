@@ -116,9 +116,7 @@ def _concentrated_pool_bets(
     for number in range(1, 50):
         short_rate = short_frequency.get(number, 0) / short_window
         long_rate = long_frequency.get(number, 0) / long_window
-        trend_ratio = (
-            short_rate / long_rate if long_rate > 0 else 1.0 if short_rate > 0 else 0.5
-        )
+        trend_ratio = short_rate / long_rate if long_rate > 0 else 1.0 if short_rate > 0 else 0.5
         if trend_ratio >= 1.5:
             trend_scores[number] = 1.0
         elif trend_ratio >= 1.0:
@@ -139,9 +137,7 @@ def _concentrated_pool_bets(
         pair_heat[first] += count
         pair_heat[second] += count
     maximum_heat = max(pair_heat.values()) if pair_heat else 1
-    pair_scores = {
-        number: pair_heat.get(number, 0) / maximum_heat for number in range(1, 50)
-    }
+    pair_scores = {number: pair_heat.get(number, 0) / maximum_heat for number in range(1, 50)}
 
     pool: list[_NumberScore] = []
     for number in range(1, 50):
@@ -171,11 +167,7 @@ def _concentrated_pool_bets(
         if len(selected) >= _PICK_COUNT:
             break
         zone_index = next(
-            (
-                index
-                for index, (low, high) in enumerate(_ZONES)
-                if low <= score.number <= high
-            ),
+            (index for index, (low, high) in enumerate(_ZONES) if low <= score.number <= high),
             None,
         )
         if zone_index is not None and zone_counts[zone_index] < target_per_zone + 0.5:

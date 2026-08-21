@@ -28,9 +28,7 @@ from numbers import Real
 from typing import cast
 
 DONOR_SOURCE = "tools/evolving_strategy_engine/evolution_engine.py"
-DONOR_SOURCE_SHA256 = (
-    "3df019c31ce48e38efc7fd8b52d3e6eb5fd6ab1927bc789785e6d1e85c794f54"
-)
+DONOR_SOURCE_SHA256 = "3df019c31ce48e38efc7fd8b52d3e6eb5fd6ab1927bc789785e6d1e85c794f54"
 DONOR_METHOD = "EvolutionEngine.select_survivors"
 
 DEFAULT_KEEP_RATIO = 0.5
@@ -93,9 +91,7 @@ class EvolutionSurvivorPolicy:
         if normalized_ratio < 0.0 or normalized_ratio > 1.0:
             raise EvolutionSurvivorSelectionError("keep_ratio must be between 0 and 1")
         if type(self.elite_count) is not int or self.elite_count < 0:
-            raise EvolutionSurvivorSelectionError(
-                "elite_count must be a non-negative integer"
-            )
+            raise EvolutionSurvivorSelectionError("elite_count must be a non-negative integer")
         object.__setattr__(self, "keep_ratio", normalized_ratio)
 
 
@@ -123,12 +119,8 @@ def _validated_results(
         raise EvolutionSurvivorSelectionError("results must be a sequence")
     normalized = tuple(cast(Sequence[object], values))
     if any(not isinstance(value, EvolutionCandidateEvaluation) for value in normalized):
-        raise EvolutionSurvivorSelectionError(
-            "results contains an invalid transition item"
-        )
-    return tuple(
-        value for value in normalized if isinstance(value, EvolutionCandidateEvaluation)
-    )
+        raise EvolutionSurvivorSelectionError("results contains an invalid transition item")
+    return tuple(value for value in normalized if isinstance(value, EvolutionCandidateEvaluation))
 
 
 def _validated_population(
@@ -138,12 +130,8 @@ def _validated_population(
         raise EvolutionSurvivorSelectionError("population must be a sequence")
     normalized = tuple(cast(Sequence[object], values))
     if any(not isinstance(value, EvolutionPopulationMember) for value in normalized):
-        raise EvolutionSurvivorSelectionError(
-            "population contains an invalid transition item"
-        )
-    return tuple(
-        value for value in normalized if isinstance(value, EvolutionPopulationMember)
-    )
+        raise EvolutionSurvivorSelectionError("population contains an invalid transition item")
+    return tuple(value for value in normalized if isinstance(value, EvolutionPopulationMember))
 
 
 def _validated_policy(value: object) -> EvolutionSurvivorPolicy:
@@ -182,9 +170,7 @@ def select_evolution_survivors(
             retention_limit=0,
         )
 
-    eligible_results = tuple(
-        result for result in candidate_results if not result.leakage_detected
-    )
+    eligible_results = tuple(result for result in candidate_results if not result.leakage_detected)
     ranked = tuple(
         sorted(
             eligible_results,
@@ -200,9 +186,7 @@ def select_evolution_survivors(
         int(len(ranked) * validated_policy.keep_ratio),
     )
     survivors = ranked[:retention_limit]
-    leaked_results = tuple(
-        result for result in candidate_results if result.leakage_detected
-    )
+    leaked_results = tuple(result for result in candidate_results if result.leakage_detected)
     eliminated = ranked[retention_limit:] + leaked_results
 
     survivor_names = {result.name for result in survivors}

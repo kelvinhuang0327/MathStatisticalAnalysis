@@ -36,9 +36,7 @@ _MAX_NUMBER = 49
 _PICK_COUNT = 6
 _REPLICATE_ID = 0
 _HISTORY_NATIVE_WAVE2_PROTOCOL = "legacy_history_native_wave2/v1"
-_HISTORY_NATIVE_WAVE2_DEFAULT_USER_SEED = (
-    "biglotto-full-universe-history-native-wave2-v1"
-)
+_HISTORY_NATIVE_WAVE2_DEFAULT_USER_SEED = "biglotto-full-universe-history-native-wave2-v1"
 _CONSTRAINT_FILTER_METHOD_ID = "lottery_api/models/constraint_filter_predictor.py"
 _CONSTRAINT_FILTER_SOURCE_SHA256 = (
     "3a85b3995002a9c66c50643e2b52a3cdc853c8e858242c7f335ce8736d576c85"
@@ -66,9 +64,7 @@ class _LegacyNumpyRandomState:
         self._state[0] = seed & 0xFFFFFFFF
         for index in range(1, self._STATE_SIZE):
             previous = self._state[index - 1]
-            self._state[index] = (
-                1812433253 * (previous ^ (previous >> 30)) + index
-            ) & 0xFFFFFFFF
+            self._state[index] = (1812433253 * (previous ^ (previous >> 30)) + index) & 0xFFFFFFFF
         self._index = self._STATE_SIZE
 
     def _twist(self) -> None:
@@ -76,9 +72,7 @@ class _LegacyNumpyRandomState:
             combined = (self._state[index] & self._UPPER_MASK) | (
                 self._state[(index + 1) % self._STATE_SIZE] & self._LOWER_MASK
             )
-            value = self._state[(index + self._PERIOD_OFFSET) % self._STATE_SIZE] ^ (
-                combined >> 1
-            )
+            value = self._state[(index + self._PERIOD_OFFSET) % self._STATE_SIZE] ^ (combined >> 1)
             if combined & 1:
                 value ^= self._MATRIX_A
             self._state[index] = value
@@ -174,9 +168,7 @@ def _ticket(numbers: list[int]) -> tuple[int, ...]:
         or len(set(values)) != _PICK_COUNT
         or any(not _MIN_NUMBER <= number <= _MAX_NUMBER for number in values)
     ):
-        raise InvalidOutput(
-            f"{_STRATEGY_ID}: constraint-filter ticket is not a legal 6-of-49 set"
-        )
+        raise InvalidOutput(f"{_STRATEGY_ID}: constraint-filter ticket is not a legal 6-of-49 set")
     return values
 
 
@@ -235,9 +227,7 @@ def _numpy_pairwise_sum(values: list[float]) -> float:
         return result
     midpoint = len(values) // 2
     midpoint -= midpoint % 8
-    return _numpy_pairwise_sum(values[:midpoint]) + _numpy_pairwise_sum(
-        values[midpoint:]
-    )
+    return _numpy_pairwise_sum(values[:midpoint]) + _numpy_pairwise_sum(values[midpoint:])
 
 
 def _constraint_passes(numbers: list[int]) -> bool:
@@ -326,9 +316,7 @@ def _constraint_filter_bets(
     all_used: set[int] = set()
     for bet_index in range(2):
         adjusted = {
-            number: (
-                weight if bet_index == 0 else weight * (0.3 if number in all_used else 1.2)
-            )
+            number: (weight if bet_index == 0 else weight * (0.3 if number in all_used else 1.2))
             for number, weight in weights.items()
         }
         ticket = _constraint_combination(adjusted, numpy_rng, python_rng)

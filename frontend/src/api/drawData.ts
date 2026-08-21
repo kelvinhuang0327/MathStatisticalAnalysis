@@ -184,13 +184,16 @@ export async function commitBatchDrawImport(
   })
   const payload = await responseJson(response)
   if (response.status === 200 && isBatchCommit(payload)) {
-    const ok = payload.status === 'SUCCESS'
+    const ok = payload.status !== 'FAILED'
     return {
       ok,
       status: response.status,
       result: payload,
       preview: null,
-      message: ok ? undefined : (payload.error_summary ?? 'Batch import was not committed.'),
+      message:
+        payload.status === 'SUCCESS'
+          ? undefined
+          : (payload.error_summary ?? 'Batch import completed with partial results.'),
     }
   }
   if ((response.status === 409 || response.status === 422) && isErrorRecord(payload)) {
@@ -415,7 +418,17 @@ function isBatchImportFile(value: unknown): boolean {
     isString(value.source_filename) &&
     isString(value.source_locator) &&
     isString(value.source_sha256) &&
-    isString(value.status) &&
+    [
+      'ACCEPTED',
+      'IMPORTED',
+      'PARTIAL',
+      'PARTIAL_SUCCESS',
+      'DUPLICATE',
+      'CONFLICTED',
+      'EXCLUDED',
+      'INVALID',
+      'FAILED',
+    ].includes(String(value.status)) &&
     (value.lottery_type === null || isLotteryType(value.lottery_type)) &&
     isInteger(value.discovered_rows) &&
     isInteger(value.accepted_rows) &&
@@ -423,6 +436,7 @@ function isBatchImportFile(value: unknown): boolean {
     isInteger(value.duplicate_rows) &&
     isInteger(value.conflict_rows) &&
     isInteger(value.failed_rows) &&
+    isInteger(value.imported_rows) &&
     Array.isArray(value.issues) &&
     value.issues.every(isBatchImportIssue)
   )
@@ -464,13 +478,17 @@ function isBatchCommit(value: unknown): value is BatchImportCommit {
   return (
     isRecord(value) &&
     isOptionalString(value.run_id) &&
-    isString(value.status) &&
+    ['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED'].includes(String(value.status)) &&
     isString(value.manifest_sha256) &&
     isBatchImportSummary(value.summary) &&
     Array.isArray(value.files) &&
     value.files.every(isBatchImportFile) &&
     isString(value.completed_at) &&
-    isOptionalString(value.error_summary)
+    isOptionalString(value.error_summary) &&
+    Array.isArray(value.run_ids) &&
+    value.run_ids.every(isString) &&
+    isInteger(value.committed_chunks) &&
+    isInteger(value.failed_chunks)
   )
 }
 

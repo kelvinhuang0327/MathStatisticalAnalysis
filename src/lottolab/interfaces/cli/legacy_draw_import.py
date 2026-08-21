@@ -49,7 +49,7 @@ def legacy_draw_import_command(
         typer.Option("--preview-only", help="Parse and report without writing the database."),
     ] = False,
 ) -> None:
-    """Preview or atomically commit explicit legacy draw files."""
+    """Preview or commit explicit legacy draw files in bounded transactions."""
 
     if not inputs:
         _fail("at least one --input is required")

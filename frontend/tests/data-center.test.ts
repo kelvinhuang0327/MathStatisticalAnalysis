@@ -29,6 +29,7 @@ const validFile = {
   duplicate_rows: 0,
   conflict_rows: 0,
   failed_rows: 0,
+  imported_rows: 0,
   issues: [],
 } satisfies BatchImportPreview['files'][number]
 
@@ -44,6 +45,7 @@ const invalidFile = {
   duplicate_rows: 0,
   conflict_rows: 0,
   failed_rows: 1,
+  imported_rows: 0,
   issues: [
     {
       code: 'INVALID_DRAW_DATE',
@@ -112,20 +114,60 @@ const partialPreview = {
   },
 } satisfies BatchImportPreview
 
+const secondValidFile = {
+  ...validFile,
+  source_filename: 'second.csv',
+  source_locator: 'second.csv',
+  source_sha256: 'c'.repeat(64),
+} satisfies BatchImportPreview['files'][number]
+
+const twoFilePreview = {
+  ...validPreview,
+  files: [validFile, secondValidFile],
+  summary: {
+    ...validPreview.summary,
+    discovered_files: 2,
+    accepted_files: 2,
+    parsed_rows: 2,
+    accepted_rows: 2,
+  },
+} satisfies BatchImportPreview
+
 const batchCommitSuccess = {
   run_id: '7de87eeb-ecc7-4c03-830a-c0fdb71254e8',
   status: 'SUCCESS',
   manifest_sha256: validPreview.manifest_sha256,
   summary: { ...validPreview.summary, imported_rows: 1 },
-  files: [validFile],
+  files: [{ ...validFile, status: 'IMPORTED', imported_rows: 1 }],
   completed_at: '2026-07-16T07:00:00Z',
   error_summary: null,
+  run_ids: ['7de87eeb-ecc7-4c03-830a-c0fdb71254e8'],
+  committed_chunks: 1,
+  failed_chunks: 0,
 } satisfies BatchImportCommit
 
 const batchCommitFailure = {
   ...batchCommitSuccess,
   status: 'FAILED',
+  summary: { ...validPreview.summary, failed_rows: 1 },
+  files: [{ ...validFile, status: 'FAILED', accepted_rows: 1, failed_rows: 1 }],
+  committed_chunks: 0,
+  failed_chunks: 1,
   error_summary: 'Existing draw data conflicts; the batch inserted no draws.',
+} satisfies BatchImportCommit
+
+const batchCommitPartial = {
+  ...batchCommitSuccess,
+  status: 'PARTIAL_SUCCESS',
+  summary: { ...twoFilePreview.summary, imported_rows: 1, failed_rows: 1 },
+  files: [
+    { ...validFile, status: 'IMPORTED', imported_rows: 1 },
+    { ...secondValidFile, status: 'FAILED', failed_rows: 1 },
+  ],
+  error_summary: '1 persistence chunk(s) failed',
+  run_ids: [batchCommitSuccess.run_id, '65919e1c-40a6-4587-8d4f-911f352064e4'],
+  committed_chunks: 1,
+  failed_chunks: 1,
 } satisfies BatchImportCommit
 
 const drawCommitSuccess = {
@@ -258,7 +300,7 @@ describe('DataCenterPage batch ingestion', () => {
     wrapper.unmount()
   })
 
-  it('previews every file, exposes per-file validation, and atomically commits selected files', async () => {
+  it('previews every file, exposes per-file validation, and commits selected files', async () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
       .mockResolvedValueOnce(apiResponse(invalidPreview))
@@ -275,8 +317,9 @@ describe('DataCenterPage batch ingestion', () => {
     expect(wrapper.findAll('tbody tr')).toHaveLength(2)
     expect(wrapper.text()).toContain(validPreview.manifest_sha256)
     expect(wrapper.text()).toContain('INVALID_DRAW_DATE')
-    expect(wrapper.text()).toContain('1 valid · 0 invalid')
-    expect(wrapper.text()).toContain('0 valid · 1 invalid')
+    expect(wrapper.text()).toContain('1 accepted · 0 imported')
+    expect(wrapper.text()).toContain('0 accepted · 0 imported')
+    expect(wrapper.text()).toContain('1 failed')
     expect(wrapper.get('[data-testid="commit-selected-valid"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('[data-testid="batch-confirmation"]').setValue(true)
@@ -313,7 +356,7 @@ describe('DataCenterPage batch ingestion', () => {
     wrapper.unmount()
   })
 
-  it('rolls back the whole batch when a committed batch conflicts', async () => {
+  it('fails closed when the committed batch does not match its preview', async () => {
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))
       .mockResolvedValueOnce(
@@ -377,6 +420,35 @@ describe('DataCenterPage batch ingestion', () => {
     wrapper.unmount()
   })
 
+  it('renders successful and failed files distinctly for a partial batch', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(twoFilePreview))
+      .mockResolvedValueOnce(apiResponse(twoFilePreview))
+      .mockResolvedValueOnce(apiResponse(batchCommitPartial))
+      .mockResolvedValueOnce(apiResponse(populatedRuns))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('valid.csv'), file('second.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="batch-confirmation"]').setValue(true)
+    await wrapper.get('[data-testid="commit-all-valid"]').trigger('click')
+    await flushPromises()
+
+    const rows = wrapper.findAll('[data-testid^="batch-file-"]')
+    expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('PARTIAL_SUCCESS')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]?.text()).toContain('SUCCESS')
+    expect(rows[0]?.text()).not.toContain('FAILED')
+    expect(rows[1]?.text()).toContain('FAILED')
+    expect(rows[1]?.text()).not.toContain('SUCCESS')
+    expect(wrapper.text()).toContain('1 imported')
+    expect(wrapper.text()).toContain('1 failed')
+    wrapper.unmount()
+  })
+
   it('a newer selection invalidates late file reads', async () => {
     const oldRead = deferred<string>()
     fetchMock.mockResolvedValue(apiResponse(emptyRuns))
@@ -415,7 +487,7 @@ describe('DataCenterPage batch ingestion', () => {
     wrapper.unmount()
   })
 
-  it('unmount aborts an in-flight atomic batch commit', async () => {
+  it('unmount aborts an in-flight batch commit', async () => {
     const pending = deferred<Response>()
     fetchMock
       .mockResolvedValueOnce(apiResponse(emptyRuns))

@@ -9,7 +9,7 @@ import base64
 import binascii
 from collections.abc import Sequence
 from datetime import date, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 from fastapi.responses import JSONResponse
@@ -71,6 +71,7 @@ from lottolab.domain.batch_imports import (
     ImportBatchSummary,
     ImportFilePayload,
     ImportFileResult,
+    ImportFileStatus,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import (
@@ -262,7 +263,7 @@ class BatchImportFileView(BaseModel):
     source_filename: str
     source_locator: str
     source_sha256: str
-    status: str
+    status: ImportFileStatus
     lottery_type: LotteryType | None
     discovered_rows: int
     accepted_rows: int
@@ -270,6 +271,7 @@ class BatchImportFileView(BaseModel):
     duplicate_rows: int
     conflict_rows: int
     failed_rows: int
+    imported_rows: int
     issues: list[BatchImportIssueView]
 
     @classmethod
@@ -278,7 +280,7 @@ class BatchImportFileView(BaseModel):
             source_filename=result.source_filename,
             source_locator=result.source_locator,
             source_sha256=result.source_sha256,
-            status=result.status.value,
+            status=result.status,
             lottery_type=result.lottery_type,
             discovered_rows=result.discovered_rows,
             accepted_rows=result.accepted_rows,
@@ -286,6 +288,7 @@ class BatchImportFileView(BaseModel):
             duplicate_rows=result.duplicate_rows,
             conflict_rows=result.conflict_rows,
             failed_rows=result.failed_rows,
+            imported_rows=result.imported_rows,
             issues=[
                 BatchImportIssueView(
                     code=issue.code,
@@ -361,12 +364,15 @@ class BatchImportCommitResponse(BaseModel):
     model_config = _FROZEN_RESPONSE
 
     run_id: str | None
-    status: str
+    status: Literal["SUCCESS", "PARTIAL_SUCCESS", "FAILED"]
     manifest_sha256: str
     summary: BatchImportSummaryView
     files: list[BatchImportFileView]
     completed_at: str
     error_summary: str | None
+    run_ids: list[str]
+    committed_chunks: int
+    failed_chunks: int
 
     @classmethod
     def from_commit(cls, commit: BatchDrawImportCommit) -> BatchImportCommitResponse:
@@ -378,6 +384,9 @@ class BatchImportCommitResponse(BaseModel):
             files=[BatchImportFileView.from_result(file) for file in commit.files],
             completed_at=commit.completed_at,
             error_summary=commit.error_summary,
+            run_ids=list(commit.run_ids),
+            committed_chunks=commit.committed_chunks,
+            failed_chunks=commit.failed_chunks,
         )
 
 

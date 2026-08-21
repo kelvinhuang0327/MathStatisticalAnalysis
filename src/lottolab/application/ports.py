@@ -107,7 +107,7 @@ class DrawImportRepository(Protocol):
 
 class BatchDrawImportRepository(Protocol):
     def apply_valid_batch_import(self, preview: BatchDrawImportPreview) -> BatchDrawImportCommit:
-        """Atomically apply all accepted rows from one multi-file import."""
+        """Apply accepted rows in bounded, independently atomic transactions."""
         ...
 
 

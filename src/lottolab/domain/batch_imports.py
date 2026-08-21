@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import DrawImportError, NormalizedDrawInput
@@ -11,7 +12,11 @@ from lottolab.domain.ingestion import DrawImportError, NormalizedDrawInput
 
 class ImportFileStatus(StrEnum):
     ACCEPTED = "ACCEPTED"
+    IMPORTED = "IMPORTED"
     PARTIAL = "PARTIAL"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    DUPLICATE = "DUPLICATE"
+    CONFLICTED = "CONFLICTED"
     EXCLUDED = "EXCLUDED"
     INVALID = "INVALID"
     FAILED = "FAILED"
@@ -56,6 +61,7 @@ class ImportFileResult:
     duplicate_rows: int
     conflict_rows: int
     failed_rows: int
+    imported_rows: int = 0
     issues: tuple[ImportIssue, ...] = ()
 
 
@@ -80,6 +86,7 @@ class BatchDrawImportPreview:
     files: tuple[ImportFileResult, ...]
     normalized_rows: tuple[NormalizedDrawInput, ...]
     summary: ImportBatchSummary
+    row_file_indexes: tuple[int, ...] = ()
 
     @property
     def is_valid(self) -> bool:
@@ -91,12 +98,34 @@ class BatchDrawImportPreview:
 @dataclass(frozen=True, slots=True)
 class BatchDrawImportCommit:
     run_id: str | None
-    status: str
+    status: Literal["SUCCESS", "PARTIAL_SUCCESS", "FAILED"]
     manifest_sha256: str
     summary: ImportBatchSummary
     files: tuple[ImportFileResult, ...]
     completed_at: str
     error_summary: str | None = None
+    run_ids: tuple[str, ...] = ()
+    committed_chunks: int = 0
+    failed_chunks: int = 0
+
+
+def summarize_import_files(
+    files: tuple[ImportFileResult, ...] | list[ImportFileResult],
+) -> ImportBatchSummary:
+    """Build one truthful aggregate from preview or committed file outcomes."""
+
+    return ImportBatchSummary(
+        discovered_files=len(files),
+        accepted_files=sum(file.accepted_rows > 0 for file in files),
+        excluded_files=sum(file.status is ImportFileStatus.EXCLUDED for file in files),
+        parsed_rows=sum(file.discovered_rows for file in files),
+        accepted_rows=sum(file.accepted_rows for file in files),
+        excluded_rows=sum(file.excluded_rows for file in files),
+        duplicate_rows=sum(file.duplicate_rows for file in files),
+        conflict_rows=sum(file.conflict_rows for file in files),
+        imported_rows=sum(file.imported_rows for file in files),
+        failed_rows=sum(file.failed_rows for file in files),
+    )
 
 
 def issues_from_errors(errors: tuple[DrawImportError, ...]) -> tuple[ImportIssue, ...]:
@@ -120,4 +149,5 @@ __all__ = [
     "ImportFileStatus",
     "ImportIssue",
     "issues_from_errors",
+    "summarize_import_files",
 ]

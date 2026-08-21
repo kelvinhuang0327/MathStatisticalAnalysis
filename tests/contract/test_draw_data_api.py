@@ -152,7 +152,7 @@ def test_legacy_batch_preview_is_db_free_and_reports_file_statuses(tmp_path: Pat
     assert not (tmp_path / "legacy.csv").exists()
 
 
-def test_legacy_batch_commit_uses_one_atomic_audit_run(tmp_path: Path) -> None:
+def test_legacy_batch_commit_returns_bounded_chunk_outcome(tmp_path: Path) -> None:
     paths = task_paths(tmp_path)
     client = client_for(paths)
     legacy = (
@@ -178,6 +178,11 @@ def test_legacy_batch_commit_uses_one_atomic_audit_run(tmp_path: Path) -> None:
     assert commit["status"] == "SUCCESS"
     assert commit["summary"]["imported_rows"] == 1
     assert commit["files"][0]["source_filename"] == "legacy.csv"
+    assert commit["files"][0]["status"] == "IMPORTED"
+    assert commit["files"][0]["imported_rows"] == 1
+    assert commit["run_ids"] == [commit["run_id"]]
+    assert commit["committed_chunks"] == 1
+    assert commit["failed_chunks"] == 0
     assert client.get("/api/v1/draws?lottery_type=BIG_LOTTO&page_size=10").json()[
         "total_count"
     ] == 1

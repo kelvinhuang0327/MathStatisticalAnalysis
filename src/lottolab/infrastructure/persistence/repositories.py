@@ -31,6 +31,10 @@ from lottolab.application.use_cases.batch_draw_imports import BATCH_PARSER_VERSI
 from lottolab.domain.batch_imports import (
     BatchDrawImportCommit,
     BatchDrawImportPreview,
+    ImportFileResult,
+    ImportFileStatus,
+    ImportIssue,
+    summarize_import_files,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import (
@@ -70,6 +74,7 @@ _RUN_COLUMNS_V1 = """
     r.first_draw_number, r.last_draw_number, r.started_at, r.completed_at,
     r.error_summary
 """
+MAX_BATCH_COMMIT_ROWS = 500
 
 
 class _StoredDataError(RuntimeError):
@@ -80,6 +85,18 @@ class _StoredDataError(RuntimeError):
 class _ImportDecision:
     row: NormalizedDrawInput
     disposition: IngestionItemDisposition
+
+
+@dataclass(frozen=True, slots=True)
+class _BatchRow:
+    file_index: int
+    row: NormalizedDrawInput
+
+
+@dataclass(frozen=True, slots=True)
+class _BatchChunkOutcome:
+    result: ImportCommitResult
+    decisions: tuple[_ImportDecision, ...]
 
 
 class SQLiteDrawRepository:
@@ -521,8 +538,7 @@ class SQLiteDrawDataRepository:
 
         try:
             initialize_schema(self._paths)
-            with open_database(self._paths) as connection:
-                return self._apply_batch_transaction(connection, preview=preview)
+            return self._apply_batch_chunks(preview=preview)
         except (
             LocalDataError,
             SchemaMigrationError,
@@ -751,125 +767,267 @@ class SQLiteDrawDataRepository:
             raise _StoredDataError("successful ingestion counts are inconsistent")
         return committed
 
-    def _apply_batch_transaction(
+    def _apply_batch_chunks(self, *, preview: BatchDrawImportPreview) -> BatchDrawImportCommit:
+        files = list(preview.files)
+        batch_rows = self._validated_batch_rows(preview=preview, files=files)
+        run_ids: list[str] = []
+        committed_chunks = 0
+        failed_chunks = 0
+
+        for chunk_index, start in enumerate(range(0, len(batch_rows), MAX_BATCH_COMMIT_ROWS)):
+            chunk = batch_rows[start : start + MAX_BATCH_COMMIT_ROWS]
+            rows = tuple(item.row for item in chunk)
+            try:
+                outcome = self._apply_batch_chunk(
+                    preview=preview,
+                    chunk_index=chunk_index,
+                    rows=rows,
+                )
+            except (
+                LocalDataError,
+                SchemaMigrationError,
+                sqlite3.DatabaseError,
+                _StoredDataError,
+                RepositoryBusyError,
+                RepositoryUnavailableError,
+            ):
+                failed_chunks += 1
+                _mark_batch_chunk_failed(files, chunk)
+                try:
+                    failed = self._record_failed_batch_chunk(
+                        preview=preview,
+                        chunk_index=chunk_index,
+                        rows=rows,
+                    )
+                except (
+                    LocalDataError,
+                    SchemaMigrationError,
+                    sqlite3.DatabaseError,
+                    _StoredDataError,
+                    RepositoryBusyError,
+                    RepositoryUnavailableError,
+                ):
+                    pass
+                else:
+                    if failed.run_id is not None:
+                        run_ids.append(failed.run_id)
+                continue
+
+            committed_chunks += 1
+            if outcome.result.run_id is not None:
+                run_ids.append(outcome.result.run_id)
+            for item, decision in zip(chunk, outcome.decisions, strict=True):
+                _apply_batch_decision(files, item, decision)
+
+        final_files = tuple(_finalize_batch_file(file) for file in files)
+        summary = summarize_import_files(final_files)
+        incomplete_rows = summary.conflict_rows + summary.failed_rows
+        if incomplete_rows and summary.imported_rows:
+            status = "PARTIAL_SUCCESS"
+        elif incomplete_rows:
+            status = "FAILED"
+        else:
+            status = "SUCCESS"
+        error_parts: list[str] = []
+        if failed_chunks:
+            error_parts.append(f"{failed_chunks} persistence chunk(s) failed")
+        if summary.conflict_rows:
+            error_parts.append(f"{summary.conflict_rows} conflicting row(s) were rejected")
+        if preview.summary.failed_rows:
+            error_parts.append(f"{preview.summary.failed_rows} row(s) failed validation")
+        completed_at = _utc_now()
+        return BatchDrawImportCommit(
+            run_id=run_ids[0] if run_ids else None,
+            status=status,
+            manifest_sha256=preview.manifest_sha256,
+            summary=summary,
+            files=final_files,
+            completed_at=_format_utc(completed_at),
+            error_summary="; ".join(error_parts) or None,
+            run_ids=tuple(run_ids),
+            committed_chunks=committed_chunks,
+            failed_chunks=failed_chunks,
+        )
+
+    def _validated_batch_rows(
         self,
-        connection: sqlite3.Connection,
         *,
         preview: BatchDrawImportPreview,
-    ) -> BatchDrawImportCommit:
-        rows = preview.normalized_rows
-        first_draw_number = rows[0].draw_number if rows else None
-        last_draw_number = rows[-1].draw_number if rows else None
-        lottery_type = _batch_lottery_type(rows)
+        files: list[ImportFileResult],
+    ) -> tuple[_BatchRow, ...]:
+        if len(preview.row_file_indexes) != len(preview.normalized_rows):
+            raise _StoredDataError("batch row provenance indexes are inconsistent")
+        rows: list[_BatchRow] = []
+        for file_index, row in zip(
+            preview.row_file_indexes,
+            preview.normalized_rows,
+            strict=True,
+        ):
+            if not 0 <= file_index < len(files):
+                raise _StoredDataError("batch row provenance index is invalid")
+            rows.append(_BatchRow(file_index=file_index, row=row))
+        return tuple(rows)
+
+    def _apply_batch_chunk(
+        self,
+        *,
+        preview: BatchDrawImportPreview,
+        chunk_index: int,
+        rows: tuple[NormalizedDrawInput, ...],
+    ) -> _BatchChunkOutcome:
+        if not 1 <= len(rows) <= MAX_BATCH_COMMIT_ROWS:
+            raise _StoredDataError("batch chunk size is outside the 1..500 contract")
         run_id = str(uuid.uuid4())
         started_at = _utc_now()
-        parse_result = DrawCsvParseResult(
-            source_filename=preview.source_filename,
-            content_sha256=preview.manifest_sha256,
-            parser_version=BATCH_PARSER_VERSION,
-            total_rows=preview.summary.parsed_rows,
-            blank_rows=0,
-            duplicate_input_rows=preview.summary.duplicate_rows,
-            conflicting_input_rows=preview.summary.conflict_rows,
-            ignored_columns=(),
-            normalized_rows=rows,
-            errors=(),
-        )
-        draw_repository = SQLiteDrawRepository(connection)
-        run_repository = SQLiteIngestionRunRepository(connection)
-        item_repository = SQLiteIngestionItemRepository(connection)
-
-        connection.execute("BEGIN IMMEDIATE")
-        try:
-            run_repository.create(
-                run_id=run_id,
-                lottery_type=lottery_type,
-                result=parse_result,
-                total_count=len(rows),
-                first_draw_number=first_draw_number,
-                last_draw_number=last_draw_number,
-                started_at=started_at,
-                context=None,
-            )
-            decisions = tuple(
-                _classify(draw_repository.find(row.lottery_type, row.draw_number), row)
-                for row in rows
-            )
-            if any(
-                decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
-            ):
-                connection.rollback()
-                failed = self._record_failed_conflict(
-                    connection,
-                    result=parse_result,
+        parse_result = _batch_chunk_parse_result(preview, chunk_index=chunk_index, rows=rows)
+        first_draw_number = rows[0].draw_number
+        last_draw_number = rows[-1].draw_number
+        lottery_type = _batch_lottery_type(rows)
+        with open_database(self._paths) as connection:
+            draw_repository = SQLiteDrawRepository(connection)
+            run_repository = SQLiteIngestionRunRepository(connection)
+            item_repository = SQLiteIngestionItemRepository(connection)
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                run_repository.create(
                     run_id=run_id,
                     lottery_type=lottery_type,
+                    result=parse_result,
+                    total_count=len(rows),
                     first_draw_number=first_draw_number,
                     last_draw_number=last_draw_number,
+                    started_at=started_at,
+                    context=None,
                 )
-                return _batch_commit_from_import_result(
-                    preview,
-                    failed,
-                    imported_rows=0,
-                    summary_overrides={"conflict_rows": failed.conflict_count},
+                decisions = tuple(
+                    _classify(draw_repository.find(row.lottery_type, row.draw_number), row)
+                    for row in rows
                 )
-
-            inserted_count = 0
-            skipped_count = 0
-            for decision in decisions:
-                if decision.disposition is IngestionItemDisposition.INSERTED:
-                    draw_repository.insert(
-                        decision.row,
+                inserted_count = 0
+                skipped_count = 0
+                conflict_count = 0
+                for decision in decisions:
+                    if decision.disposition is IngestionItemDisposition.INSERTED:
+                        draw_repository.insert(
+                            decision.row,
+                            run_id=run_id,
+                            source_filename=parse_result.source_filename,
+                            timestamp=started_at,
+                        )
+                        inserted_count += 1
+                        message = "Inserted new draw."
+                    elif decision.disposition is IngestionItemDisposition.SKIPPED_DUPLICATE:
+                        skipped_count += 1
+                        message = "Existing draw is semantically identical."
+                    else:
+                        conflict_count += 1
+                        message = "Existing draw differs; row rejected without overwrite."
+                    item_repository.add(
                         run_id=run_id,
-                        source_filename=preview.source_filename,
-                        timestamp=started_at,
+                        row=decision.row,
+                        disposition=decision.disposition,
+                        message=message,
                     )
-                    inserted_count += 1
-                    message = "Inserted new draw."
-                else:
-                    skipped_count += 1
-                    message = "Existing draw is semantically identical."
-                item_repository.add(
-                    run_id=run_id,
-                    row=decision.row,
-                    disposition=decision.disposition,
-                    message=message,
+                completed_at = _utc_now()
+                run_status = (
+                    IngestionRunStatus.FAILED if conflict_count else IngestionRunStatus.SUCCESS
                 )
+                run_repository.complete(
+                    run_id=run_id,
+                    status=run_status,
+                    inserted_count=inserted_count,
+                    skipped_count=skipped_count,
+                    conflict_count=conflict_count,
+                    failed_count=0,
+                    completed_at=completed_at,
+                    error_summary=(
+                        f"{conflict_count} conflicting row(s) rejected." if conflict_count else None
+                    ),
+                )
+                connection.commit()
+            except BaseException:
+                if connection.in_transaction:
+                    connection.rollback()
+                raise
+        result = ImportCommitResult(
+            run_id=run_id,
+            status=run_status,
+            lottery_type=lottery_type,
+            total_count=len(rows),
+            inserted_count=inserted_count,
+            skipped_count=skipped_count,
+            conflict_count=conflict_count,
+            failed_count=0,
+            first_draw_number=first_draw_number,
+            last_draw_number=last_draw_number,
+            completed_at=completed_at,
+        )
+        if not result.counts_are_consistent:
+            raise _StoredDataError("batch chunk ingestion counts are inconsistent")
+        return _BatchChunkOutcome(result=result, decisions=decisions)
 
-            completed_at = _utc_now()
-            run_repository.complete(
-                run_id=run_id,
-                status=IngestionRunStatus.SUCCESS,
-                inserted_count=inserted_count,
-                skipped_count=skipped_count,
-                conflict_count=0,
-                failed_count=0,
-                completed_at=completed_at,
-                error_summary=None,
-            )
-            connection.commit()
-        except BaseException:
-            if connection.in_transaction:
-                connection.rollback()
-            raise
-
-        return _batch_commit_from_import_result(
-            preview,
-            ImportCommitResult(
-                run_id=run_id,
-                status=IngestionRunStatus.SUCCESS,
-                lottery_type=lottery_type,
-                total_count=len(rows),
-                inserted_count=inserted_count,
-                skipped_count=skipped_count,
-                conflict_count=0,
-                failed_count=0,
-                first_draw_number=first_draw_number,
-                last_draw_number=last_draw_number,
-                completed_at=completed_at,
-            ),
-            imported_rows=inserted_count,
-            summary_overrides={"duplicate_rows": skipped_count},
+    def _record_failed_batch_chunk(
+        self,
+        *,
+        preview: BatchDrawImportPreview,
+        chunk_index: int,
+        rows: tuple[NormalizedDrawInput, ...],
+    ) -> ImportCommitResult:
+        run_id = str(uuid.uuid4())
+        completed_at = _utc_now()
+        parse_result = _batch_chunk_parse_result(preview, chunk_index=chunk_index, rows=rows)
+        first_draw_number = rows[0].draw_number
+        last_draw_number = rows[-1].draw_number
+        lottery_type = _batch_lottery_type(rows)
+        with open_database(self._paths) as connection:
+            run_repository = SQLiteIngestionRunRepository(connection)
+            item_repository = SQLiteIngestionItemRepository(connection)
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                run_repository.create(
+                    run_id=run_id,
+                    lottery_type=lottery_type,
+                    result=parse_result,
+                    total_count=len(rows),
+                    first_draw_number=first_draw_number,
+                    last_draw_number=last_draw_number,
+                    started_at=completed_at,
+                    context=None,
+                )
+                for row in rows:
+                    item_repository.add(
+                        run_id=run_id,
+                        row=row,
+                        disposition=IngestionItemDisposition.FAILED,
+                        message="Chunk failed before any candidate row was committed.",
+                    )
+                run_repository.complete(
+                    run_id=run_id,
+                    status=IngestionRunStatus.FAILED,
+                    inserted_count=0,
+                    skipped_count=0,
+                    conflict_count=0,
+                    failed_count=len(rows),
+                    completed_at=completed_at,
+                    error_summary="Batch chunk persistence failed.",
+                )
+                connection.commit()
+            except BaseException:
+                if connection.in_transaction:
+                    connection.rollback()
+                raise
+        return ImportCommitResult(
+            run_id=run_id,
+            status=IngestionRunStatus.FAILED,
+            lottery_type=lottery_type,
+            total_count=len(rows),
+            inserted_count=0,
+            skipped_count=0,
+            conflict_count=0,
+            failed_count=len(rows),
+            first_draw_number=first_draw_number,
+            last_draw_number=last_draw_number,
+            completed_at=completed_at,
         )
 
     def _record_failed_conflict(
@@ -1051,31 +1209,117 @@ def _batch_lottery_type(rows: tuple[NormalizedDrawInput, ...]) -> LotteryType | 
     return next(iter(lottery_types)) if len(lottery_types) == 1 else None
 
 
-def _batch_commit_from_import_result(
+def _batch_chunk_parse_result(
     preview: BatchDrawImportPreview,
-    result: ImportCommitResult,
     *,
-    imported_rows: int,
-    summary_overrides: dict[str, int],
-) -> BatchDrawImportCommit:
-    summary = preview.summary
-    for field, value in summary_overrides.items():
-        current = getattr(summary, field)
-        summary = replace(summary, **{field: current + value})
-    summary = replace(summary, imported_rows=imported_rows)
-    return BatchDrawImportCommit(
-        run_id=result.run_id,
-        status=result.status.value,
-        manifest_sha256=preview.manifest_sha256,
-        summary=summary,
-        files=preview.files,
-        completed_at=_format_utc(result.completed_at),
-        error_summary=(
-            "Batch rejected because existing draw data conflicts."
-            if result.status is IngestionRunStatus.FAILED
-            else None
+    chunk_index: int,
+    rows: tuple[NormalizedDrawInput, ...],
+) -> DrawCsvParseResult:
+    chunk_identity = hashlib.sha256(
+        f"{preview.manifest_sha256}:{chunk_index}".encode("ascii")
+    ).hexdigest()
+    return DrawCsvParseResult(
+        source_filename=f"{preview.source_filename}#chunk-{chunk_index + 1:04d}",
+        content_sha256=chunk_identity,
+        parser_version=BATCH_PARSER_VERSION,
+        total_rows=len(rows),
+        blank_rows=0,
+        duplicate_input_rows=0,
+        conflicting_input_rows=0,
+        ignored_columns=(),
+        normalized_rows=rows,
+        errors=(),
+    )
+
+
+def _apply_batch_decision(
+    files: list[ImportFileResult],
+    item: _BatchRow,
+    decision: _ImportDecision,
+) -> None:
+    current = files[item.file_index]
+    if decision.disposition is IngestionItemDisposition.INSERTED:
+        files[item.file_index] = replace(
+            current,
+            imported_rows=current.imported_rows + 1,
+        )
+        return
+    accepted_rows = max(current.accepted_rows - 1, 0)
+    if decision.disposition is IngestionItemDisposition.SKIPPED_DUPLICATE:
+        code = "DUPLICATE_SKIPPED"
+        message = "Identical draw already exists; row skipped safely."
+        files[item.file_index] = replace(
+            current,
+            accepted_rows=accepted_rows,
+            duplicate_rows=current.duplicate_rows + 1,
+            issues=_issues_with_once(current.issues, code, message, item.row),
+        )
+        return
+    code = "CONFLICT_REJECTED"
+    message = "Existing draw differs; row rejected without overwrite."
+    files[item.file_index] = replace(
+        current,
+        accepted_rows=accepted_rows,
+        conflict_rows=current.conflict_rows + 1,
+        issues=_issues_with_once(current.issues, code, message, item.row),
+    )
+
+
+def _mark_batch_chunk_failed(
+    files: list[ImportFileResult],
+    chunk: tuple[_BatchRow, ...],
+) -> None:
+    for item in chunk:
+        current = files[item.file_index]
+        files[item.file_index] = replace(
+            current,
+            failed_rows=current.failed_rows + 1,
+            issues=_issues_with_once(
+                current.issues,
+                "PERSISTENCE_FAILURE",
+                "Persistence chunk failed; this row was not committed.",
+                item.row,
+            ),
+        )
+
+
+def _issues_with_once(
+    issues: tuple[ImportIssue, ...],
+    code: str,
+    message: str,
+    row: NormalizedDrawInput,
+) -> tuple[ImportIssue, ...]:
+    if any(issue.code == code for issue in issues):
+        return issues
+    return (
+        *issues,
+        ImportIssue(
+            code=code,
+            message=message,
+            row_number=row.source_row_number,
+            member_name=row.source_name,
         ),
     )
+
+
+def _finalize_batch_file(result: ImportFileResult) -> ImportFileResult:
+    if result.status is ImportFileStatus.EXCLUDED:
+        return result
+    if result.imported_rows:
+        status = (
+            ImportFileStatus.PARTIAL_SUCCESS
+            if result.failed_rows or result.conflict_rows
+            else ImportFileStatus.IMPORTED
+        )
+    elif result.conflict_rows:
+        status = ImportFileStatus.CONFLICTED
+    elif result.failed_rows:
+        status = ImportFileStatus.FAILED
+    elif result.duplicate_rows:
+        status = ImportFileStatus.DUPLICATE
+    else:
+        status = result.status
+    return replace(result, status=status)
 
 
 def _draw_record(row: sqlite3.Row | tuple[object, ...]) -> DrawRecord:

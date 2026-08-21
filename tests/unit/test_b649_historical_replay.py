@@ -30,9 +30,7 @@ from lottolab.strategies.catalog import production_catalog
 
 RAW_ONLY_ID = "legacy_biglotto__backtest_cluster_pivot_biglotto__b28957a6433e"
 CURRENT_ID = "legacy_biglotto__graph_predictor__cd70713a5709"
-KEEP_UNRESOLVED_ID = (
-    "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
-)
+KEEP_UNRESOLVED_ID = "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
 RAW_HISTORY_NOT_FOUND_IDS = frozenset(
     {
         "legacy_biglotto__backtest_biglotto_5bet_ts3markov__25760472baa0",
@@ -120,18 +118,34 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            # The reconciled preceding batch made 5 catalog identities among
-            # these 221 executable; SELECTED_INTAKE_SET03_R1 added 2 more
-            # (verify_markov_vs_triple_2bet, backtest_biglotto_coldpool_15).
-            # Together they move 7 from HISTORICAL_RAW_ONLY to
-            # CURRENTLY_REPLAYABLE: 52->59, 81->74.
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 59,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 74,
+            # Current main makes 59 identities replayable. This publication
+            # adds 9 distinct legacy identities; hot-stop rebound is already
+            # owned by current main and is not counted twice. The union moves
+            # 9 from HISTORICAL_RAW_ONLY to CURRENTLY_REPLAYABLE: 59->68,
+            # 74->65.
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 68,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 65,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,
         }
     )
+    replayable_ids = {
+        identity.strategy_id
+        for identity in use_case.identity_accounts
+        if identity.status is B649IdentityStatus.CURRENTLY_REPLAYABLE
+    }
+    assert {
+        "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
+        "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+        "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
+        "legacy_biglotto__smart_multi_bet__613c62c1f192",
+        "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        "legacy_biglotto__cooccurrence_graph__25fa2e473092",
+        "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
+        "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+    } <= replayable_ids
 
 
 def test_b649_current_catalog_binding_reaches_controller_and_prize_evaluation(

@@ -7,7 +7,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
-from typing import cast
+from typing import Protocol, cast, runtime_checkable
 
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import ResponseShape
@@ -53,6 +53,7 @@ class GenerateOneBetInput:
     strategy_id: str
     lottery_type: LotteryType
     history: tuple[CausalDrawRow, ...]
+    seed: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,9 +87,7 @@ class GenerateOneBetExecution:
                 or type(self.strategy_version) is not str
                 or not self.strategy_version
             ):
-                raise ValueError(
-                    "OK executions require emitted_main_numbers and strategy_version"
-                )
+                raise ValueError("OK executions require emitted_main_numbers and strategy_version")
         elif self.emitted_main_numbers is not None or self.strategy_version is not None:
             raise ValueError("non-OK executions must not expose an emission identity")
 
@@ -267,9 +266,7 @@ def parse_history_json(raw: str) -> tuple[CausalDrawRow, ...]:
             type(number) is int for number in cast("list[object]", numbers)
         ):
             raise HistoryParseError(f"history row {index}: numbers must be a list of integers")
-        rows.append(
-            CausalDrawRow(draw=draw, date=date, numbers=tuple(cast("list[int]", numbers)))
-        )
+        rows.append(CausalDrawRow(draw=draw, date=date, numbers=tuple(cast("list[int]", numbers))))
     return tuple(rows)
 
 
@@ -380,9 +377,7 @@ class GeneratePortfolioExecution:
                 or type(self.strategy_version) is not str
                 or not self.strategy_version
             ):
-                raise ValueError(
-                    "OK executions require emitted_all_numbers and strategy_version"
-                )
+                raise ValueError("OK executions require emitted_all_numbers and strategy_version")
         elif self.emitted_all_numbers is not None or self.strategy_version is not None:
             raise ValueError("non-OK executions must not expose an emission identity")
 
@@ -419,12 +414,14 @@ class GeneratePortfolio:
                 adapter.strategy_name,
                 adapter.strategy_version,
                 adapter.native_ticket_count,
+                adapter.native_ticket_count_bounds(),
             )
             expected_identity = (
                 descriptor.strategy_id,
                 descriptor.strategy_name,
                 descriptor.version,
                 descriptor.native_ticket_count,
+                descriptor.native_ticket_count_bounds,
             )
             if strategy_id != adapter.strategy_id or actual_identity != expected_identity:
                 raise AdapterIdentityMismatchError(
@@ -472,6 +469,12 @@ class GeneratePortfolio:
             )
 
         try:
+            if isinstance(adapter, _ExplicitSeedPortfolioAdapter):
+                if type(request.seed) is not int:
+                    raise InvalidOutput(
+                        f"{request.strategy_id}: an explicit integer seed is required"
+                    )
+                adapter = adapter.with_seed(request.seed)
             executions = adapter.get_bets_with_emission(
                 request.history,
                 request.lottery_type,
@@ -504,9 +507,7 @@ class GeneratePortfolio:
                 special_number=None,
                 reason_code=None,
             ),
-            emitted_all_numbers=tuple(
-                execution.emitted_main_numbers for execution in executions
-            ),
+            emitted_all_numbers=tuple(execution.emitted_main_numbers for execution in executions),
             strategy_version=descriptor.version,
         )
 
@@ -535,9 +536,14 @@ class GeneratePortfolio:
         )
 
 
-def _instantiated_portfolio_adapter(
-    strategy_id: str, adapter_class: object
-) -> PortfolioBetAdapter:
+@runtime_checkable
+class _ExplicitSeedPortfolioAdapter(Protocol):
+    """A portfolio adapter that can be cloned with one call-local RNG seed."""
+
+    def with_seed(self, seed: int) -> PortfolioBetAdapter: ...
+
+
+def _instantiated_portfolio_adapter(strategy_id: str, adapter_class: object) -> PortfolioBetAdapter:
     if not (isinstance(adapter_class, type) and issubclass(adapter_class, PortfolioBetAdapter)):
         raise AdapterIdentityMismatchError(
             f"{strategy_id}: adapter_path does not resolve to a PortfolioBetAdapter subclass"
@@ -548,9 +554,7 @@ def _instantiated_portfolio_adapter(
     return adapter_factory()
 
 
-def instantiate_portfolio_adapter(
-    strategy_id: str, adapter_class: object
-) -> PortfolioBetAdapter:
+def instantiate_portfolio_adapter(strategy_id: str, adapter_class: object) -> PortfolioBetAdapter:
     """Instantiate one portfolio adapter through the canonical type guard."""
 
     return _instantiated_portfolio_adapter(strategy_id, adapter_class)
@@ -640,8 +644,8 @@ def render_portfolio_result_json(
     """Render a canonical, machine-readable complete-portfolio result.
 
     ``numbers`` is the full ordered native ticket set — never truncated.
-    ``seed`` is caller-provided bookkeeping metadata, as in
-    :func:`render_result_json`.
+    ``seed`` is echoed as caller-provided metadata. For adapters exposing the
+    explicit portfolio RNG seam, the same value also controls execution.
     """
 
     payload: dict[str, object] = {
@@ -674,6 +678,7 @@ def run_cli_generate_portfolio(
             strategy_id=strategy_id,
             lottery_type=LotteryType.BIG_LOTTO,
             history=history,
+            seed=seed,
         )
     )
     return (

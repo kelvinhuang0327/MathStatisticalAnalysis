@@ -282,6 +282,15 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "biglotto_wave2_neighbor_ad_graph_pagerank_bet",
         "biglotto_wave2_sum_range_ad_structural_sum_regression",
         "biglotto_wave2_social_ad_negative_consensus_remove",
+        "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
+        "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+        "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
+        "legacy_biglotto__smart_multi_bet__613c62c1f192",
+        "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        "legacy_biglotto__cooccurrence_graph__25fa2e473092",
+        "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
+        "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
     ]
     online_ids = {
         descriptor.strategy_id

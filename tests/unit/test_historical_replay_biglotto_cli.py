@@ -24,9 +24,7 @@ from lottolab.interfaces.cli.main import app
 from lottolab.strategies.catalog import production_catalog
 
 RAW_ONLY_ID = "legacy_biglotto__backtest_cluster_pivot_biglotto__b28957a6433e"
-KEEP_UNRESOLVED_ID = (
-    "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
-)
+KEEP_UNRESOLVED_ID = "legacy_biglotto__big649_no_db_strategy_output_adapter__6da3a06f4377"
 RAW_HISTORY_NOT_FOUND_IDS = frozenset(
     {
         "legacy_biglotto__backtest_biglotto_5bet_ts3markov__25760472baa0",
@@ -151,13 +149,12 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.exit_code == 0, result.stderr
     assert result.stderr == ""
     summary = json.loads(result.stdout)
-    # The reconciled preceding batch registered 5 more BIG_LOTTO identities
-    # among the 221 as executable, and SELECTED_INTAKE_SET03_R1 registered 2
-    # more (verify_markov_vs_triple_2bet, backtest_biglotto_coldpool_15): see
-    # test_b649_historical_replay.py::test_b649_identity_accounting_covers_all_221_identities.
+    # Current main exposes 59 replayable BIG_LOTTO identities. This publication
+    # adds 9 distinct identities; hot-stop rebound is already owned by main and
+    # is intentionally not counted twice. See the B649 accounting unit test.
     assert summary == {
-        "currently_replayable_identity_count": 59,
-        "historical_raw_only_identity_count": 74,
+        "currently_replayable_identity_count": 68,
+        "historical_raw_only_identity_count": 65,
         "keep_unresolved_alias_count": 3,
         "lottery_type": "BIG_LOTTO",
         "mode": "FULL_REPLAY",

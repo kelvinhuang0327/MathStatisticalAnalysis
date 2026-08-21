@@ -184,10 +184,10 @@ def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
 def test_production_catalog_preserves_concentrated_pool_append_position() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 101
+    assert len(all_ids) == 111
     assert all_ids[-9] == STRATEGY_ID
     assert all_ids[:-9].count(STRATEGY_ID) == 0
-    assert all_ids[-10] == "acb_single_539"
+    assert all_ids[-20] == "acb_single_539"
     assert all_ids[-8] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
     assert all_ids[-7] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
     assert all_ids[-6] == "legacy_biglotto__smart_multi_bet__613c62c1f192"

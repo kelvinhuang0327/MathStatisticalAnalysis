@@ -129,7 +129,7 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
     strategy_ids = tuple(item.strategy_id for item in catalog)
-    assert len(strategy_ids) == 101
+    assert len(strategy_ids) == 111
     assert strategy_ids[-3:] == (
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",

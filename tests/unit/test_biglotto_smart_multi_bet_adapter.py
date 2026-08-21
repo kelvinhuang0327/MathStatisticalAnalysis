@@ -284,7 +284,7 @@ def test_invalid_native_cardinality_has_no_silent_fallback(
 def test_production_catalog_preserves_smart_multi_bet_append_position() -> None:
     strategy_ids = tuple(descriptor.strategy_id for descriptor in production_catalog())
 
-    assert len(strategy_ids) == 101
+    assert len(strategy_ids) == 111
     assert strategy_ids[-6] == STRATEGY_ID
     assert strategy_ids[:-6].count(STRATEGY_ID) == 0
     assert strategy_ids[-9:-6] == (

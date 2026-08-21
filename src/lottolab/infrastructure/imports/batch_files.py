@@ -13,13 +13,13 @@ from pathlib import PurePosixPath
 
 from lottolab.domain.batch_imports import (
     BatchDrawImportPreview,
-    ImportBatchSummary,
     ImportExclusionReason,
     ImportFilePayload,
     ImportFileResult,
     ImportFileStatus,
     ImportIssue,
     issues_from_errors,
+    summarize_import_files,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import DrawCsvParseResult, NormalizedDrawInput
@@ -54,8 +54,17 @@ def preview_import_batch(
 
     file_results: list[ImportFileResult] = []
     normalized_rows: list[NormalizedDrawInput] = []
+    row_file_indexes: list[int] = []
     leaves: list[_LeafPayload] = []
-    for payload in sorted(payloads, key=lambda item: (item.filename.casefold(), item.filename)):
+    seen_draws: dict[tuple[LotteryType, str], NormalizedDrawInput] = {}
+    for payload in sorted(
+        payloads,
+        key=lambda item: (
+            item.filename.casefold(),
+            item.filename,
+            hashlib.sha256(item.content).hexdigest(),
+        ),
+    ):
         leaves.extend(_expand_payload(payload, file_results))
 
     for leaf in leaves:
@@ -66,10 +75,23 @@ def preview_import_batch(
         if parsed is None:
             continue
         valid_rows = _valid_rows(parsed)
-        normalized_rows.extend(valid_rows)
-        status = ImportFileStatus.ACCEPTED
-        if parsed.errors:
-            status = ImportFileStatus.PARTIAL if valid_rows else ImportFileStatus.INVALID
+        accepted_rows, duplicate_rows, conflict_rows, identity_issues = _classify_cross_file_rows(
+            valid_rows, seen_draws
+        )
+        normalized_rows.extend(accepted_rows)
+        row_file_indexes.extend((len(file_results),) * len(accepted_rows))
+        if accepted_rows:
+            status = (
+                ImportFileStatus.PARTIAL
+                if parsed.errors or duplicate_rows or conflict_rows
+                else ImportFileStatus.ACCEPTED
+            )
+        elif conflict_rows:
+            status = ImportFileStatus.CONFLICTED
+        elif duplicate_rows:
+            status = ImportFileStatus.DUPLICATE
+        else:
+            status = ImportFileStatus.INVALID
         file_results.append(
             ImportFileResult(
                 source_filename=leaf.filename,
@@ -78,23 +100,24 @@ def preview_import_batch(
                 status=status,
                 lottery_type=_single_lottery_type(valid_rows),
                 discovered_rows=parsed.total_rows,
-                accepted_rows=len(valid_rows),
+                accepted_rows=len(accepted_rows),
                 excluded_rows=0,
-                duplicate_rows=parsed.duplicate_input_rows,
-                conflict_rows=parsed.conflicting_input_rows,
+                duplicate_rows=parsed.duplicate_input_rows + duplicate_rows,
+                conflict_rows=parsed.conflicting_input_rows + conflict_rows,
                 failed_rows=parsed.validation_error_count,
-                issues=issues_from_errors(parsed.errors),
+                issues=(*issues_from_errors(parsed.errors), *identity_issues),
             )
         )
 
     manifest_sha256 = _manifest_sha256(file_results)
-    summary = _summary(file_results, imported_rows=0)
+    summary = summarize_import_files(file_results)
     return BatchDrawImportPreview(
         source_filename="batch-import",
         manifest_sha256=manifest_sha256,
         files=tuple(file_results),
         normalized_rows=tuple(normalized_rows),
         summary=summary,
+        row_file_indexes=tuple(row_file_indexes),
     )
 
 
@@ -287,6 +310,54 @@ def _valid_rows(result: DrawCsvParseResult) -> tuple[NormalizedDrawInput, ...]:
     return tuple(row for row in result.normalized_rows if row.source_row_number not in invalid_rows)
 
 
+def _classify_cross_file_rows(
+    rows: tuple[NormalizedDrawInput, ...],
+    seen_draws: dict[tuple[LotteryType, str], NormalizedDrawInput],
+) -> tuple[tuple[NormalizedDrawInput, ...], int, int, tuple[ImportIssue, ...]]:
+    accepted: list[NormalizedDrawInput] = []
+    duplicate_rows = 0
+    conflict_rows = 0
+    issues: list[ImportIssue] = []
+    recorded_codes: set[str] = set()
+    for row in rows:
+        key = (row.lottery_type, row.draw_number)
+        previous = seen_draws.get(key)
+        if previous is None:
+            seen_draws[key] = row
+            accepted.append(row)
+            continue
+        if _same_normalized_draw(previous, row):
+            duplicate_rows += 1
+            code = "DUPLICATE_SKIPPED"
+            message = "Identical draw appeared earlier in this selected batch."
+        else:
+            conflict_rows += 1
+            code = "CONFLICT_REJECTED"
+            message = "Draw identity appeared earlier with different normalized values."
+        if code not in recorded_codes:
+            issues.append(
+                ImportIssue(
+                    code=code,
+                    message=message,
+                    row_number=row.source_row_number,
+                    member_name=row.source_name,
+                )
+            )
+            recorded_codes.add(code)
+    return tuple(accepted), duplicate_rows, conflict_rows, tuple(issues)
+
+
+def _same_normalized_draw(left: NormalizedDrawInput, right: NormalizedDrawInput) -> bool:
+    return (
+        left.normalized_record_hash == right.normalized_record_hash
+        and left.lottery_type is right.lottery_type
+        and left.draw_number == right.draw_number
+        and left.draw_date == right.draw_date
+        and left.main_numbers == right.main_numbers
+        and left.special_numbers == right.special_numbers
+    )
+
+
 def _first_legacy_game(text: str) -> str | None:
     try:
         reader = csv.reader(io.StringIO(text, newline=""), strict=True)
@@ -307,24 +378,6 @@ def _looks_canonical_csv(text: str) -> bool:
 def _single_lottery_type(rows: tuple[NormalizedDrawInput, ...]) -> LotteryType | None:
     types = {row.lottery_type for row in rows}
     return next(iter(types)) if len(types) == 1 else None
-
-
-def _summary(files: list[ImportFileResult], *, imported_rows: int) -> ImportBatchSummary:
-    return ImportBatchSummary(
-        discovered_files=len(files),
-        accepted_files=sum(
-            file.status in {ImportFileStatus.ACCEPTED, ImportFileStatus.PARTIAL}
-            for file in files
-        ),
-        excluded_files=sum(file.status is ImportFileStatus.EXCLUDED for file in files),
-        parsed_rows=sum(file.discovered_rows for file in files),
-        accepted_rows=sum(file.accepted_rows for file in files),
-        excluded_rows=sum(file.excluded_rows for file in files),
-        duplicate_rows=sum(file.duplicate_rows for file in files),
-        conflict_rows=sum(file.conflict_rows for file in files),
-        imported_rows=imported_rows,
-        failed_rows=sum(file.failed_rows for file in files),
-    )
 
 
 def _manifest_sha256(files: list[ImportFileResult]) -> str:

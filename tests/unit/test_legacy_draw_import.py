@@ -121,6 +121,61 @@ def test_batch_expansion_is_deterministic_and_reports_exclusions() -> None:
     assert any(file.issues[0].code == "UNSAFE_ARCHIVE_MEMBER" for file in preview.files)
 
 
+def test_cross_file_identity_ledger_skips_duplicates_and_rejects_conflicts() -> None:
+    original = legacy_csv("大樂透,96000001,2007/01/02,0,0,0,13,21,23,27,31,49,19,,")
+    conflicting = legacy_csv("大樂透,96000001,2007/01/04,0,0,0,13,21,23,27,31,49,19,,")
+
+    preview = preview_import_batch(
+        (
+            ImportFilePayload("c-conflict.csv", conflicting),
+            ImportFilePayload("b-duplicate.csv", original),
+            ImportFilePayload("a-original.csv", original),
+        )
+    )
+
+    assert [row.draw_number for row in preview.normalized_rows] == ["96000001"]
+    assert preview.row_file_indexes == (0,)
+    assert preview.summary.accepted_rows == 1
+    assert preview.summary.duplicate_rows == 1
+    assert preview.summary.conflict_rows == 1
+    assert [result.source_filename for result in preview.files] == [
+        "a-original.csv",
+        "b-duplicate.csv",
+        "c-conflict.csv",
+    ]
+    results = {result.source_filename: result for result in preview.files}
+    assert results["a-original.csv"].status is ImportFileStatus.ACCEPTED
+    assert results["b-duplicate.csv"].status is ImportFileStatus.DUPLICATE
+    assert results["b-duplicate.csv"].issues[0].code == "DUPLICATE_SKIPPED"
+    assert results["c-conflict.csv"].status is ImportFileStatus.CONFLICTED
+    assert results["c-conflict.csv"].issues[0].code == "CONFLICT_REJECTED"
+
+
+def test_cross_file_identity_ledger_includes_archive_members() -> None:
+    original = legacy_csv("大樂透,96000001,2007/01/02,0,0,0,13,21,23,27,31,49,19,,")
+    archive = zip_bytes(
+        ("b-duplicate.csv", original),
+        (
+            "c-conflict.csv",
+            legacy_csv("大樂透,96000001,2007/01/04,0,0,0,13,21,23,27,31,49,19,,"),
+        ),
+    )
+
+    preview = preview_import_batch(
+        (
+            ImportFilePayload("bundle.zip", archive),
+            ImportFilePayload("a-original.csv", original),
+        )
+    )
+
+    results = {result.source_filename: result for result in preview.files}
+    assert preview.summary.accepted_rows == 1
+    assert results["b-duplicate.csv"].status is ImportFileStatus.DUPLICATE
+    assert results["b-duplicate.csv"].source_locator.startswith("bundle.zip!")
+    assert results["c-conflict.csv"].status is ImportFileStatus.CONFLICTED
+    assert results["c-conflict.csv"].source_locator.startswith("bundle.zip!")
+
+
 def test_archive_edge_limits_duplicates_and_symlinks_are_reported() -> None:
     duplicate_archive = io.BytesIO()
     with zipfile.ZipFile(duplicate_archive, "w") as archive:

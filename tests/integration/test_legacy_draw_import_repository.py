@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import io
+import zipfile
 from pathlib import Path
 
 from lottolab.application.draw_data import DrawHistoryQuery, IngestionRunQuery
@@ -31,7 +33,9 @@ def big_row(draw_number: str, *, main: str = "1|3|9|17|24|49") -> str:
     return f"BIG_LOTTO,{draw_number},2026-07-16,{main},7,batch-source"
 
 
-def test_batch_commit_is_atomic_and_preserves_duplicate_semantics(tmp_path: Path) -> None:
+def test_batch_commit_is_repeat_safe_and_rejects_conflicts_without_rollback(
+    tmp_path: Path,
+) -> None:
     repository = SQLiteDrawDataRepository(task_paths(tmp_path))
     first_preview = preview_import_batch(
         (ImportFilePayload("first.csv", canonical(big_row("100"))),)
@@ -58,15 +62,32 @@ def test_batch_commit_is_atomic_and_preserves_duplicate_semantics(tmp_path: Path
             ),
         )
     )
-    failed = repository.apply_valid_batch_import(conflict_preview)
+    partial = repository.apply_valid_batch_import(conflict_preview)
 
-    assert failed.status == IngestionRunStatus.FAILED.value
-    assert failed.summary.imported_rows == 0
-    assert failed.summary.conflict_rows >= 1
-    assert repository.get_draw(LotteryType.BIG_LOTTO, "101") is None
-    assert repository.list_draws(DrawHistoryQuery(page_size=10)).total_count == 1
+    assert partial.status == "PARTIAL_SUCCESS"
+    assert partial.summary.imported_rows == 1
+    assert partial.summary.conflict_rows == 1
+    assert partial.files[0].status.value == "PARTIAL_SUCCESS"
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "101") is not None
+    assert repository.list_draws(DrawHistoryQuery(page_size=10)).total_count == 2
     runs = repository.list_ingestion_runs(IngestionRunQuery(page_size=10))
     assert runs.records[0].status is IngestionRunStatus.FAILED
+
+
+def test_batch_commit_imports_a_valid_zip_with_member_provenance(tmp_path: Path) -> None:
+    archive_bytes = io.BytesIO()
+    member = canonical(big_row("200"))
+    with zipfile.ZipFile(archive_bytes, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("nested/draws.csv", member)
+    preview = preview_import_batch((ImportFilePayload("draws.zip", archive_bytes.getvalue()),))
+
+    committed = SQLiteDrawDataRepository(task_paths(tmp_path)).apply_valid_batch_import(preview)
+
+    assert committed.status == "SUCCESS"
+    assert committed.summary.imported_rows == 1
+    assert committed.files[0].source_filename == "nested/draws.csv"
+    assert committed.files[0].source_locator.startswith("draws.zip!nested/draws.csv")
+    assert committed.files[0].source_sha256 == preview.files[0].source_sha256
 
 
 def test_batch_commit_accepts_daily_power_and_mixed_lottery_audit(tmp_path: Path) -> None:

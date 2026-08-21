@@ -6469,6 +6469,11 @@
           },
           "status": {
             "type": "string",
+            "enum": [
+              "SUCCESS",
+              "PARTIAL_SUCCESS",
+              "FAILED"
+            ],
             "title": "Status"
           },
           "manifest_sha256": {
@@ -6499,6 +6504,21 @@
               }
             ],
             "title": "Error Summary"
+          },
+          "run_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Run Ids"
+          },
+          "committed_chunks": {
+            "type": "integer",
+            "title": "Committed Chunks"
+          },
+          "failed_chunks": {
+            "type": "integer",
+            "title": "Failed Chunks"
           }
         },
         "type": "object",
@@ -6509,7 +6529,10 @@
           "summary",
           "files",
           "completed_at",
-          "error_summary"
+          "error_summary",
+          "run_ids",
+          "committed_chunks",
+          "failed_chunks"
         ],
         "title": "BatchImportCommitResponse"
       },
@@ -6550,8 +6573,7 @@
             "title": "Source Sha256"
           },
           "status": {
-            "type": "string",
-            "title": "Status"
+            "$ref": "#/components/schemas/ImportFileStatus"
           },
           "lottery_type": {
             "anyOf": [
@@ -6587,6 +6609,10 @@
             "type": "integer",
             "title": "Failed Rows"
           },
+          "imported_rows": {
+            "type": "integer",
+            "title": "Imported Rows"
+          },
           "issues": {
             "items": {
               "$ref": "#/components/schemas/BatchImportIssueView"
@@ -6608,6 +6634,7 @@
           "duplicate_rows",
           "conflict_rows",
           "failed_rows",
+          "imported_rows",
           "issues"
         ],
         "title": "BatchImportFileView"
@@ -11311,6 +11338,21 @@
           "completed_at"
         ],
         "title": "ImportCommitResultView"
+      },
+      "ImportFileStatus": {
+        "type": "string",
+        "enum": [
+          "ACCEPTED",
+          "IMPORTED",
+          "PARTIAL",
+          "PARTIAL_SUCCESS",
+          "DUPLICATE",
+          "CONFLICTED",
+          "EXCLUDED",
+          "INVALID",
+          "FAILED"
+        ],
+        "title": "ImportFileStatus"
       },
       "IngestionItemDisposition": {
         "type": "string",

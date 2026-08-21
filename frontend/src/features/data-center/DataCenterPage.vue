@@ -19,10 +19,19 @@ type FileStatus =
   | 'PREVIEWING'
   | 'VALID'
   | 'PARTIAL'
+  | 'DUPLICATE'
+  | 'CONFLICTED'
   | 'EXCLUDED'
   | 'INVALID'
   | 'ERROR'
-type CommitStatus = 'NOT_COMMITTED' | 'COMMITTING' | 'SUCCESS' | 'FAILED'
+type CommitStatus =
+  | 'NOT_COMMITTED'
+  | 'COMMITTING'
+  | 'SUCCESS'
+  | 'PARTIAL_SUCCESS'
+  | 'DUPLICATE'
+  | 'CONFLICTED'
+  | 'FAILED'
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
 
 interface BatchFile {
@@ -45,6 +54,7 @@ const files = ref<BatchFile[]>([])
 const batchConfirmed = ref(false)
 const previewBusy = ref(false)
 const commitBusy = ref(false)
+const lastBatchStatus = ref<BatchImportCommit['status'] | null>(null)
 const ingestionRuns = ref<IngestionRun[]>([])
 const runsState = ref<LoadState>('loading')
 const runsMessage = ref('')
@@ -65,13 +75,25 @@ const commitControllers = new Map<number, AbortController>()
 const validFiles = computed(() =>
   files.value.filter(
     (entry) =>
-      (entry.previewStatus === 'VALID' || entry.previewStatus === 'PARTIAL') &&
+      ['VALID', 'PARTIAL', 'DUPLICATE', 'CONFLICTED'].includes(entry.previewStatus) &&
       entry.contentBase64,
   ),
 )
 const selectedValidFiles = computed(() => validFiles.value.filter((entry) => entry.selected))
 const batchStatus = computed(() => {
-  const successCount = files.value.filter((entry) => entry.commitStatus === 'SUCCESS').length
+  if (lastBatchStatus.value) {
+    const excludedFailure = files.value.some(
+      (entry) =>
+        ['INVALID', 'ERROR'].includes(entry.previewStatus) &&
+        entry.commitStatus === 'NOT_COMMITTED',
+    )
+    return lastBatchStatus.value === 'SUCCESS' && excludedFailure
+      ? 'PARTIAL_SUCCESS'
+      : lastBatchStatus.value
+  }
+  const successCount = files.value.filter((entry) =>
+    ['SUCCESS', 'DUPLICATE'].includes(entry.commitStatus),
+  ).length
   const failedCount = files.value.filter((entry) => entry.commitStatus === 'FAILED').length
   if (successCount === 0 && failedCount === 0) return 'NOT_COMMITTED'
   if (successCount === validFiles.value.length && validFiles.value.length > 0) return 'SUCCESS'
@@ -121,6 +143,7 @@ async function selectFiles(event: Event): Promise<void> {
 async function previewAll(): Promise<void> {
   if (previewBusy.value) return
   previewBusy.value = true
+  lastBatchStatus.value = null
   const entries = files.value.filter(
     (entry) => entry.contentBase64 && entry.commitStatus !== 'SUCCESS',
   )
@@ -163,6 +186,7 @@ async function previewAll(): Promise<void> {
 async function commitFiles(entries: BatchFile[]): Promise<void> {
   if (!batchConfirmed.value || commitBusy.value || entries.length === 0) return
   commitBusy.value = true
+  lastBatchStatus.value = null
   const controller = new AbortController()
   commitControllers.set(0, controller)
   const selection = selectionGeneration
@@ -182,6 +206,7 @@ async function commitFiles(entries: BatchFile[]): Promise<void> {
       for (const entry of entries) {
         entry.commitStatus = 'FAILED'
       }
+      lastBatchStatus.value = 'FAILED'
       return
     }
     applyBatchPreview(entries, previewOutcome.preview, '')
@@ -194,14 +219,16 @@ async function commitFiles(entries: BatchFile[]): Promise<void> {
       controller.signal,
     )
     if (!isCurrentSelection(selection)) return
+    lastBatchStatus.value = outcome.result?.status ?? 'FAILED'
     for (const entry of entries) {
       entry.result = outcome.result
-      const committed = outcome.ok && outcome.result?.status === 'SUCCESS'
-      entry.commitStatus = committed ? 'SUCCESS' : 'FAILED'
-      entry.error = committed
+      entry.fileResults = outcome.result ? resultsForEntry(outcome.result, entry) : []
+      entry.commitStatus = commitStatusForEntry(entry, outcome.result)
+      const completed = ['SUCCESS', 'DUPLICATE'].includes(entry.commitStatus)
+      entry.error = completed
         ? ''
-        : (outcome.message ?? outcome.result?.error_summary ?? 'Batch import was not committed.')
-      if (committed) entry.contentBase64 = ''
+        : (outcome.message ?? outcome.result?.error_summary ?? 'Batch import was not completed.')
+      if (completed) entry.contentBase64 = ''
     }
   } catch (error: unknown) {
     if (!isCurrentSelection(selection) || isAbort(error)) return
@@ -209,6 +236,7 @@ async function commitFiles(entries: BatchFile[]): Promise<void> {
       entry.commitStatus = 'FAILED'
       entry.error = error instanceof Error ? error.message : 'Batch commit failed.'
     }
+    lastBatchStatus.value = 'FAILED'
   } finally {
     if (commitControllers.get(0) === controller) commitControllers.delete(0)
     commitBusy.value = false
@@ -226,6 +254,7 @@ function cancelBatch(clearInput = true): void {
   previewBusy.value = false
   commitBusy.value = false
   batchConfirmed.value = false
+  lastBatchStatus.value = null
   for (const entry of files.value) entry.contentBase64 = ''
   files.value = []
   if (clearInput && fileInput.value) fileInput.value.value = ''
@@ -307,19 +336,20 @@ function applyBatchPreview(
     const accepted = entryAcceptedRows(entry)
     const hasFailure = entry.fileResults.some((file) => file.status === 'FAILED')
     const hasPartial = entry.fileResults.some((file) => file.status === 'PARTIAL')
+    const hasConflict = entry.fileResults.some((file) => file.status === 'CONFLICTED')
+    const hasDuplicate =
+      entry.fileResults.length > 0 &&
+      entry.fileResults.every((file) => ['DUPLICATE', 'EXCLUDED'].includes(file.status))
     const hasInvalid = entry.fileResults.some((file) => file.status === 'INVALID')
     const hasExcluded = entry.fileResults.length > 0 && entry.fileResults.every((file) => file.status === 'EXCLUDED')
-    entry.previewStatus = hasFailure
-      ? 'ERROR'
-      : accepted > 0 && hasPartial
-        ? 'PARTIAL'
-        : accepted > 0 && !hasInvalid
-        ? 'VALID'
-        : hasExcluded
-          ? 'EXCLUDED'
-          : hasInvalid
-            ? 'INVALID'
-            : 'ERROR'
+    if (hasFailure) entry.previewStatus = 'ERROR'
+    else if (accepted > 0 && (hasPartial || hasConflict)) entry.previewStatus = 'PARTIAL'
+    else if (accepted > 0 && !hasInvalid) entry.previewStatus = 'VALID'
+    else if (hasConflict) entry.previewStatus = 'CONFLICTED'
+    else if (hasDuplicate) entry.previewStatus = 'DUPLICATE'
+    else if (hasExcluded) entry.previewStatus = 'EXCLUDED'
+    else if (hasInvalid) entry.previewStatus = 'INVALID'
+    else entry.previewStatus = 'ERROR'
     const firstIssue = entry.fileResults.flatMap((file) => file.issues)[0]
     entry.error = firstIssue
       ? `${firstIssue.code}: ${firstIssue.message}`
@@ -328,14 +358,32 @@ function applyBatchPreview(
 }
 
 function resultsForEntry(
-  preview: BatchImportPreview,
+  result: { files: BatchImportPreview['files'] },
   entry: BatchFile,
 ): BatchImportPreview['files'] {
-  return preview.files.filter(
+  return result.files.filter(
     (file) =>
       file.source_filename === entry.filename ||
       file.source_locator.startsWith(`${entry.filename}!`),
   )
+}
+
+function commitStatusForEntry(
+  entry: BatchFile,
+  result: BatchImportCommit | null,
+): CommitStatus {
+  if (!result || entry.fileResults.length === 0) return 'FAILED'
+  const statuses = entry.fileResults.map((file) => file.status)
+  const imported = statuses.some((status) => status === 'IMPORTED')
+  const partial = statuses.some((status) => status === 'PARTIAL_SUCCESS')
+  const failed = statuses.some((status) => status === 'FAILED')
+  const conflicted = statuses.some((status) => status === 'CONFLICTED')
+  if (partial || (imported && (failed || conflicted))) return 'PARTIAL_SUCCESS'
+  if (failed) return 'FAILED'
+  if (conflicted) return 'CONFLICTED'
+  if (statuses.every((status) => status === 'DUPLICATE')) return 'DUPLICATE'
+  if (imported) return 'SUCCESS'
+  return result.status === 'FAILED' ? 'FAILED' : 'SUCCESS'
 }
 
 function entryAcceptedRows(entry: BatchFile): number {
@@ -344,6 +392,23 @@ function entryAcceptedRows(entry: BatchFile): number {
 
 function entryFailedRows(entry: BatchFile): number {
   return entry.fileResults.reduce((total, file) => total + file.failed_rows, 0)
+}
+
+function entryImportedRows(entry: BatchFile): number {
+  return entry.fileResults.reduce((total, file) => total + file.imported_rows, 0)
+}
+
+function entryDuplicateRows(entry: BatchFile): number {
+  return entry.fileResults.reduce((total, file) => total + file.duplicate_rows, 0)
+}
+
+function entryConflictRows(entry: BatchFile): number {
+  return entry.fileResults.reduce((total, file) => total + file.conflict_rows, 0)
+}
+
+function displayRunIds(result: BatchImportCommit | null): string {
+  if (!result) return '—'
+  return result.run_ids.length ? result.run_ids.join(', ') : displayText(result.run_id)
 }
 
 function entryExcludedRows(entry: BatchFile): number {
@@ -404,13 +469,14 @@ onBeforeUnmount(() => {
         <h1 id="data-center-title">Data Center</h1>
         <p class="page-intro">
           Preview one or many legacy CSV, TXT, or ZIP files, commit only explicit selections, or
-          run a bounded provider synchronization. The selected batch uses one atomic audit run.
+          run a bounded provider synchronization. Accepted rows commit in independent audit chunks
+          of at most 500 rows.
         </p>
       </div>
       <div class="scope-card" aria-label="Batch status">
         <span>Batch status</span>
         <strong data-testid="batch-status">{{ batchStatus }}</strong>
-        <small>L649 · T539 · P638 · atomic REJECT conflicts</small>
+        <small>L649 · T539 · P638 · ≤500-row chunks · reject conflicts</small>
       </div>
     </header>
 
@@ -468,7 +534,7 @@ onBeforeUnmount(() => {
                 v-model="entry.selected"
                 type="checkbox"
                 :aria-label="`Select ${entry.filename} for commit`"
-                :disabled="!['VALID', 'PARTIAL'].includes(entry.previewStatus) || entry.commitStatus === 'SUCCESS'"
+                :disabled="!['VALID', 'PARTIAL', 'DUPLICATE', 'CONFLICTED'].includes(entry.previewStatus) || ['SUCCESS', 'DUPLICATE'].includes(entry.commitStatus)"
               />
             </td>
             <td><strong>{{ entry.filename }}</strong><small>{{ formatBytes(entry.size) }}</small></td>
@@ -478,13 +544,16 @@ onBeforeUnmount(() => {
             </td>
             <td><span class="status-badge">{{ entry.previewStatus }}</span></td>
             <td>
-              {{ entryAcceptedRows(entry) }} valid ·
-              {{ entryFailedRows(entry) }} invalid ·
+              {{ entryAcceptedRows(entry) }} accepted ·
+              {{ entryImportedRows(entry) }} imported ·
+              {{ entryDuplicateRows(entry) }} duplicate ·
+              {{ entryConflictRows(entry) }} conflict ·
+              {{ entryFailedRows(entry) }} failed ·
               {{ entryExcludedRows(entry) }} excluded
             </td>
             <td><span class="status-badge">{{ entry.commitStatus }}</span></td>
             <td>
-              <code>{{ displayText(entry.result?.run_id) }}</code>
+              <code>{{ displayRunIds(entry.result) }}</code>
               <small v-if="entry.error" class="error-copy">{{ entry.error }}</small>
             </td>
           </tr>
@@ -497,8 +566,9 @@ onBeforeUnmount(() => {
       <label class="confirmation">
         <input v-model="batchConfirmed" data-testid="batch-confirmation" type="checkbox" />
         <span>
-          I confirm the selected valid files should be committed as one atomic batch with conflict
-          policy REJECT. A conflict rolls back every draw in this batch.
+          I confirm the selected files should be classified together, with conflicts rejected and
+          accepted rows committed in independent chunks of at most 500. Earlier successful chunks
+          remain durable if a later chunk fails.
         </span>
       </label>
       <div class="filter-actions">

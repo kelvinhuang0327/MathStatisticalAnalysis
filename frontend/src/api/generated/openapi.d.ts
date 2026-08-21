@@ -2212,12 +2212,15 @@ export interface components {
         }
     "BatchImportCommitResponse": {
           "run_id": string | null
-          "status": string
+          "status": "SUCCESS" | "PARTIAL_SUCCESS" | "FAILED"
           "manifest_sha256": string
           "summary": components['schemas']["BatchImportSummaryView"]
           "files": Array<components['schemas']["BatchImportFileView"]>
           "completed_at": string
           "error_summary": string | null
+          "run_ids": Array<string>
+          "committed_chunks": number
+          "failed_chunks": number
         }
     "BatchImportFileRequest": {
           "filename": string
@@ -2227,7 +2230,7 @@ export interface components {
           "source_filename": string
           "source_locator": string
           "source_sha256": string
-          "status": string
+          "status": components['schemas']["ImportFileStatus"]
           "lottery_type": components['schemas']["LotteryType"] | null
           "discovered_rows": number
           "accepted_rows": number
@@ -2235,6 +2238,7 @@ export interface components {
           "duplicate_rows": number
           "conflict_rows": number
           "failed_rows": number
+          "imported_rows": number
           "issues": Array<components['schemas']["BatchImportIssueView"]>
         }
     "BatchImportIssueView": {
@@ -3068,6 +3072,7 @@ export interface components {
           "last_draw_number": string | null
           "completed_at": string
         }
+    "ImportFileStatus": "ACCEPTED" | "IMPORTED" | "PARTIAL" | "PARTIAL_SUCCESS" | "DUPLICATE" | "CONFLICTED" | "EXCLUDED" | "INVALID" | "FAILED"
     "IngestionItemDisposition": "INSERTED" | "SKIPPED_DUPLICATE" | "CONFLICT" | "FAILED"
     "IngestionItemView": {
           "source_row_number": number

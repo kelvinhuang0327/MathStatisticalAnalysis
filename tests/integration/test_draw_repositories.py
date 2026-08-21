@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
 from pathlib import Path
 from threading import Barrier
 
@@ -21,12 +22,19 @@ from lottolab.application.draw_data import (
     RepositoryBusyError,
     RepositoryUnavailableError,
 )
+from lottolab.domain.batch_imports import (
+    BatchDrawImportPreview,
+    ImportFilePayload,
+    ImportFileStatus,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import (
     DrawCsvParseResult,
     IngestionItemDisposition,
     IngestionRunStatus,
+    NormalizedDrawInput,
 )
+from lottolab.infrastructure.imports.batch_files import preview_import_batch
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
     DATA_DIRECTORY_ENV,
@@ -37,10 +45,15 @@ from lottolab.infrastructure.persistence.draw_schema import (
 )
 from lottolab.infrastructure.persistence.repositories import (
     SQLiteDrawDataRepository,
+    SQLiteDrawRepository,
     SQLiteIngestionItemRepository,
 )
 
 HEADER = "lottery_type,draw_number,draw_date,main_numbers,special_numbers,source"
+
+
+def csv_document(*rows: str) -> str:
+    return "\n".join((HEADER, *rows, ""))
 
 
 def task_paths(tmp_path: Path) -> LocalDataPaths:
@@ -142,6 +155,212 @@ def test_success_duplicate_history_and_ingestion_item_integrity(tmp_path: Path) 
 
     assert not Path(f"{paths.database}-wal").exists()
     assert not Path(f"{paths.database}-shm").exists()
+
+
+def test_batch_repeat_safety_and_existing_conflict_are_classified_before_inserts(
+    tmp_path: Path,
+) -> None:
+    repository = SQLiteDrawDataRepository(task_paths(tmp_path))
+    repository.apply_valid_import(parsed(row("100", "2026-07-16")))
+    existing_before = repository.get_draw(LotteryType.BIG_LOTTO, "100")
+    assert existing_before is not None
+
+    duplicate_preview = preview_import_batch(
+        (
+            ImportFilePayload(
+                "duplicate.csv",
+                csv_document(row("100", "2026-07-16")).encode(),
+            ),
+        )
+    )
+    duplicate = repository.apply_valid_batch_import(duplicate_preview)
+
+    assert duplicate.status == "SUCCESS"
+    assert duplicate.summary.accepted_rows == duplicate.summary.imported_rows == 0
+    assert duplicate.summary.duplicate_rows == 1
+    assert duplicate.files[0].status is ImportFileStatus.DUPLICATE
+    assert duplicate.run_id is not None
+    duplicate_audit = repository.get_ingestion_run(duplicate.run_id)
+    assert duplicate_audit is not None
+    assert duplicate_audit.run.status is IngestionRunStatus.SUCCESS
+    assert duplicate_audit.run.skipped_count == 1
+    assert repository.list_draws(DrawHistoryQuery()).total_count == 1
+
+    conflict_preview = preview_import_batch(
+        (
+            ImportFilePayload(
+                "a-conflict.csv",
+                csv_document(row("100", "2026-07-16", main_numbers="1|3|9|17|24|48")).encode(),
+            ),
+            ImportFilePayload(
+                "b-safe.csv",
+                csv_document(row("101", "2026-07-17")).encode(),
+            ),
+        )
+    )
+    committed = repository.apply_valid_batch_import(conflict_preview)
+
+    assert committed.status == "PARTIAL_SUCCESS"
+    assert committed.summary.imported_rows == 1
+    assert committed.summary.conflict_rows == 1
+    results = {result.source_filename: result for result in committed.files}
+    assert results["a-conflict.csv"].status is ImportFileStatus.CONFLICTED
+    assert results["b-safe.csv"].status is ImportFileStatus.IMPORTED
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "100") == existing_before
+    safe = repository.get_draw(LotteryType.BIG_LOTTO, "101")
+    assert safe is not None
+    assert safe.source_name == "b-safe.csv"
+    assert safe.source_reference == "b-safe.csv|source=synthetic-reference"
+    assert committed.run_id is not None
+    conflict_audit = repository.get_ingestion_run(committed.run_id)
+    assert conflict_audit is not None
+    assert conflict_audit.run.status is IngestionRunStatus.FAILED
+    assert conflict_audit.run.inserted_count == 1
+    assert conflict_audit.run.conflict_count == 1
+
+    failed_preview = preview_import_batch(
+        (
+            ImportFilePayload(
+                "only-conflict.csv",
+                csv_document(row("100", "2026-07-16", main_numbers="1|3|9|17|24|47")).encode(),
+            ),
+        )
+    )
+    failed = repository.apply_valid_batch_import(failed_preview)
+
+    assert failed.status == "FAILED"
+    assert failed.summary.imported_rows == 0
+    assert failed.summary.conflict_rows == 1
+    assert failed.files[0].status is ImportFileStatus.CONFLICTED
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "100") == existing_before
+
+
+def test_batch_cross_file_duplicates_and_conflicts_have_distinct_outcomes(
+    tmp_path: Path,
+) -> None:
+    original = csv_document(row("200", "2026-07-16")).encode()
+    preview = preview_import_batch(
+        (
+            ImportFilePayload("c-conflict.csv", csv_document(row("200", "2026-07-17")).encode()),
+            ImportFilePayload("b-duplicate.csv", original),
+            ImportFilePayload("a-original.csv", original),
+        )
+    )
+
+    repository = SQLiteDrawDataRepository(task_paths(tmp_path))
+    committed = repository.apply_valid_batch_import(preview)
+
+    assert committed.status == "PARTIAL_SUCCESS"
+    assert committed.summary.imported_rows == 1
+    assert committed.summary.duplicate_rows == 1
+    assert committed.summary.conflict_rows == 1
+    results = {result.source_filename: result for result in committed.files}
+    assert results["a-original.csv"].status is ImportFileStatus.IMPORTED
+    assert results["b-duplicate.csv"].status is ImportFileStatus.DUPLICATE
+    assert results["c-conflict.csv"].status is ImportFileStatus.CONFLICTED
+    assert repository.list_draws(DrawHistoryQuery()).total_count == 1
+    stored = repository.get_draw(LotteryType.BIG_LOTTO, "200")
+    assert stored is not None
+    assert stored.draw_date.isoformat() == "2026-07-16"
+
+
+def test_batch_chunk_failure_preserves_earlier_rows_and_continues_later_chunks(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    repository = SQLiteDrawDataRepository(task_paths(tmp_path))
+    preview = preview_import_batch(
+        (
+            ImportFilePayload(
+                "a-first.csv",
+                csv_document(*(row(str(index), "2026-07-16") for index in range(1, 501))).encode(),
+            ),
+            ImportFilePayload(
+                "b-failing.csv",
+                csv_document(
+                    *(row(str(index), "2026-07-17") for index in range(501, 1001))
+                ).encode(),
+            ),
+            ImportFilePayload(
+                "c-later.csv",
+                csv_document(row("1001", "2026-07-18")).encode(),
+            ),
+        )
+    )
+    observed_chunk_sizes: list[int] = []
+    original_apply_chunk = (
+        SQLiteDrawDataRepository._apply_batch_chunk  # pyright: ignore[reportPrivateUsage]
+    )
+    original_insert = SQLiteDrawRepository.insert
+
+    def observe_chunk(
+        self: SQLiteDrawDataRepository,
+        *,
+        preview: BatchDrawImportPreview,
+        chunk_index: int,
+        rows: tuple[NormalizedDrawInput, ...],
+    ) -> object:
+        observed_chunk_sizes.append(len(rows))
+        return original_apply_chunk(
+            self,
+            preview=preview,
+            chunk_index=chunk_index,
+            rows=rows,
+        )
+
+    def fail_midway_through_second_chunk(
+        self: SQLiteDrawRepository,
+        candidate: NormalizedDrawInput,
+        *,
+        run_id: str,
+        source_filename: str,
+        timestamp: datetime,
+    ) -> None:
+        if candidate.draw_number == "750":
+            raise sqlite3.OperationalError("synthetic mid-chunk insert failure")
+        original_insert(
+            self,
+            candidate,
+            run_id=run_id,
+            source_filename=source_filename,
+            timestamp=timestamp,
+        )
+
+    monkeypatch.setattr(SQLiteDrawDataRepository, "_apply_batch_chunk", observe_chunk)
+    monkeypatch.setattr(SQLiteDrawRepository, "insert", fail_midway_through_second_chunk)
+    committed = repository.apply_valid_batch_import(preview)
+
+    assert observed_chunk_sizes == [500, 500, 1]
+    assert all(size <= 500 for size in observed_chunk_sizes)
+    assert committed.status == "PARTIAL_SUCCESS"
+    assert committed.committed_chunks == 2
+    assert committed.failed_chunks == 1
+    assert committed.summary.imported_rows == 501
+    assert committed.summary.failed_rows == 500
+    assert len(committed.run_ids) == 3
+    failed_audit = repository.get_ingestion_run(committed.run_ids[1])
+    assert failed_audit is not None
+    assert failed_audit.run.status is IngestionRunStatus.FAILED
+    assert failed_audit.run.failed_count == 500
+    assert failed_audit.item_count == 500
+    results = {result.source_filename: result for result in committed.files}
+    assert results["a-first.csv"].status is ImportFileStatus.IMPORTED
+    assert results["b-failing.csv"].status is ImportFileStatus.FAILED
+    assert results["c-later.csv"].status is ImportFileStatus.IMPORTED
+    preview_results = {result.source_filename: result for result in preview.files}
+    for filename, result in results.items():
+        assert result.source_locator == preview_results[filename].source_locator
+        assert result.source_sha256 == preview_results[filename].source_sha256
+    assert repository.list_draws(DrawHistoryQuery()).total_count == 501
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "1") is not None
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "501") is None
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "749") is None
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "750") is None
+    assert repository.get_draw(LotteryType.BIG_LOTTO, "1000") is None
+    later = repository.get_draw(LotteryType.BIG_LOTTO, "1001")
+    assert later is not None
+    assert later.source_name == "c-later.csv"
+    assert later.source_reference == "c-later.csv|source=synthetic-reference"
 
 
 def test_history_filters_and_string_order_are_deterministic(tmp_path: Path) -> None:

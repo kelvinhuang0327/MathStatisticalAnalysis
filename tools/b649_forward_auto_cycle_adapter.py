@@ -257,6 +257,10 @@ class B649ForwardAutoCycleAdapter:
             "strategy_version": stream.strategy_version,
             "enabled": stream.enabled,
             "native_ticket_count": stream.native_ticket_count,
+            "publication_id": stream.publication_id,
+            "source_path": stream.source_path,
+            "source_sha256": stream.source_sha256,
+            "pinned_implementation": stream.pinned_implementation,
         }
 
     def _resolve_stored_unfinished_target(self) -> PredictionTarget | None:

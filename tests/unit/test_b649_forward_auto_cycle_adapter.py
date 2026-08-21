@@ -8,6 +8,9 @@ from pathlib import Path
 
 from tools.b649_forward_auto_cycle_adapter import B649ForwardAutoCycleAdapter
 from tools.b649_operational_prediction_loop import (
+    FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    FROZEN_STREAM_PUBLICATION_ID,
+    STRATEGY_STREAMS,
     HistorySnapshot,
     PredictionTarget,
     StrategyStream,
@@ -201,3 +204,24 @@ def test_b649_default_target_resolution_uses_existing_unfinished_prediction(
     ).resolve_next_target()
 
     assert resolved == _target()
+
+
+def test_stream_dict_publishes_frozen_source_identity() -> None:
+    adapter = B649ForwardAutoCycleAdapter(
+        database=Path("/tmp/missing-b649-database.db"),
+        streams=STRATEGY_STREAMS,
+    )
+    stream = next(
+        stream
+        for stream in STRATEGY_STREAMS
+        if stream.strategy_id == "legacy_biglotto__test_tme__f3bb5106dfe3"
+    )
+
+    rendered = adapter.stream_dict(stream)
+
+    assert rendered["publication_id"] == FROZEN_STREAM_PUBLICATION_ID
+    assert rendered["source_path"] == "tools/test_tme.py"
+    assert rendered["source_sha256"] == (
+        "f3bb5106dfe3f255bc84317169fb5fbafa653a97c2977b66cb12a49eab07891c"
+    )
+    assert rendered["pinned_implementation"] == FROZEN_STREAM_PINNED_IMPLEMENTATION

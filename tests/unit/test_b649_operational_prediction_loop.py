@@ -10,6 +10,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from tools.b649_operational_prediction_loop import (
+    FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    FROZEN_STREAM_PUBLICATION_ID,
+    FROZEN_STREAM_PUBLICATIONS,
     STRATEGY_STREAMS,
     HistorySnapshot,
     PredictionTarget,
@@ -221,6 +224,46 @@ def test_default_stream_composition_is_existing_six_plus_frozen_five() -> None:
         assert stream.strategy_version == descriptor.version
         assert stream.native_ticket_count == descriptor.native_ticket_count
         assert len(adapter.get_bets(_history().rows, LotteryType.BIG_LOTTO)) == 3
+
+    publications_by_id = {
+        publication.strategy_id: publication
+        for publication in FROZEN_STREAM_PUBLICATIONS
+    }
+    for strategy_id in expected_ids[-5:]:
+        stream = streams_by_id[strategy_id]
+        descriptor = catalog.get(strategy_id)
+        publication = publications_by_id[strategy_id]
+        assert stream.publication_id == FROZEN_STREAM_PUBLICATION_ID
+        assert stream.source_path == publication.source_path
+        assert stream.source_sha256 == publication.source_sha256
+        assert stream.producer_fingerprint == publication.source_sha256
+        assert stream.pinned_implementation == FROZEN_STREAM_PINNED_IMPLEMENTATION
+        assert f"legacy_source:{publication.source_path}" in descriptor.provenance
+        assert f"legacy_source_sha256:{publication.source_sha256}" in descriptor.provenance
+        assert f"legacy_commit:{publication.pinned_implementation}" in descriptor.provenance
+
+
+def test_frozen_stream_prediction_publishes_exact_source_identity() -> None:
+    stream = next(
+        stream
+        for stream in STRATEGY_STREAMS
+        if stream.strategy_id == "legacy_biglotto__test_asm__d39a233a4c75"
+    )
+
+    record = run_strategy_stream(
+        stream,
+        _history(),
+        _target("115000080"),
+        created_at=datetime.fromisoformat("2026-08-18T19:00:00+08:00"),
+        prediction_run_id="frozen-source-identity",
+    )
+
+    assert record["publication_id"] == FROZEN_STREAM_PUBLICATION_ID
+    assert record["source_path"] == "tools/test_asm.py"
+    assert record["source_sha256"] == (
+        "d39a233a4c75158cdab704e26980b89cbb96daf128e50718309731111ac55ddf"
+    )
+    assert record["pinned_implementation"] == FROZEN_STREAM_PINNED_IMPLEMENTATION
 
 
 def test_prediction_saves_two_native_tickets_with_time_and_history_identity(

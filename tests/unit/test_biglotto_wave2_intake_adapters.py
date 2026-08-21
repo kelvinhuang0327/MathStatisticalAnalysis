@@ -1,4 +1,4 @@
-"""Focused contracts for the selected BigLotto wave-2 intake adapters."""
+"""Focused contracts for the resolved BigLotto wave-2 intake adapters."""
 
 # pyright: reportPrivateUsage=false
 
@@ -19,41 +19,90 @@ from lottolab.strategies.adapters.base import (
 )
 from lottolab.strategies.adapters.biglotto_wave2 import (
     _ad_cooccurrence_anti_pairs,
+    _ad_cooccurrence_conditional,
+    _ad_cooccurrence_top_pairs,
+    _ad_cooccurrence_transition_pairs,
+    _ad_cooccurrence_triplet,
+    _ad_graph_bridge_bet,
+    _ad_graph_centrality_bet,
+    _ad_graph_pagerank_bet,
     _ad_negative_consensus_remove,
     _ad_structural_sum_regression,
 )
 from lottolab.strategies.adapters.biglotto_wave2_intake import (
     BigLottoWave2NeighborAdCooccurrenceAntiPairsAdapter,
+    BigLottoWave2NeighborAdCooccurrenceConditionalAdapter,
+    BigLottoWave2NeighborAdCooccurrenceTopPairsAdapter,
+    BigLottoWave2NeighborAdCooccurrenceTransitionPairsAdapter,
+    BigLottoWave2NeighborAdCooccurrenceTripletAdapter,
+    BigLottoWave2NeighborAdGraphBridgeBetAdapter,
+    BigLottoWave2NeighborAdGraphCentralityBetAdapter,
+    BigLottoWave2NeighborAdGraphPagerankBetAdapter,
     BigLottoWave2SocialAdNegativeConsensusRemoveAdapter,
     BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
 )
 from lottolab.strategies.catalog import UnknownStrategyError, production_catalog
 
-_SelectedCallable = Callable[[tuple[CausalDrawRow, ...]], tuple[int, ...]]
+_ResolvedCallable = Callable[[tuple[CausalDrawRow, ...]], tuple[int, ...]]
 
 
 @dataclass(frozen=True, slots=True)
-class _SelectedCase:
+class _ResolvedCase:
     adapter_class: type[BetAdapter]
-    source_callable: _SelectedCallable
+    source_callable: _ResolvedCallable
     strategy_id: str
 
 
-_SELECTED_CASES = (
-    _SelectedCase(
+_RESOLVED_CASES = (
+    _ResolvedCase(
         BigLottoWave2NeighborAdCooccurrenceAntiPairsAdapter,
         _ad_cooccurrence_anti_pairs,
         "biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs",
     ),
-    _SelectedCase(
+    _ResolvedCase(
         BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
         _ad_structural_sum_regression,
         "biglotto_wave2_sum_range_ad_structural_sum_regression",
     ),
-    _SelectedCase(
+    _ResolvedCase(
         BigLottoWave2SocialAdNegativeConsensusRemoveAdapter,
         _ad_negative_consensus_remove,
         "biglotto_wave2_social_ad_negative_consensus_remove",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdCooccurrenceConditionalAdapter,
+        _ad_cooccurrence_conditional,
+        "biglotto_wave2_neighbor_ad_cooccurrence_conditional",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdCooccurrenceTopPairsAdapter,
+        _ad_cooccurrence_top_pairs,
+        "biglotto_wave2_neighbor_ad_cooccurrence_top_pairs",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdCooccurrenceTransitionPairsAdapter,
+        _ad_cooccurrence_transition_pairs,
+        "biglotto_wave2_neighbor_ad_cooccurrence_transition_pairs",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdCooccurrenceTripletAdapter,
+        _ad_cooccurrence_triplet,
+        "biglotto_wave2_neighbor_ad_cooccurrence_triplet",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdGraphBridgeBetAdapter,
+        _ad_graph_bridge_bet,
+        "biglotto_wave2_neighbor_ad_graph_bridge_bet",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdGraphCentralityBetAdapter,
+        _ad_graph_centrality_bet,
+        "biglotto_wave2_neighbor_ad_graph_centrality_bet",
+    ),
+    _ResolvedCase(
+        BigLottoWave2NeighborAdGraphPagerankBetAdapter,
+        _ad_graph_pagerank_bet,
+        "biglotto_wave2_neighbor_ad_graph_pagerank_bet",
     ),
 )
 
@@ -61,6 +110,13 @@ _EXPECTED_CANDIDATE_IDS = (
     "biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs::BIG_LOTTO",
     "biglotto_wave2_sum_range_ad_structural_sum_regression::BIG_LOTTO",
     "biglotto_wave2_social_ad_negative_consensus_remove::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_cooccurrence_conditional::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_cooccurrence_top_pairs::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_cooccurrence_transition_pairs::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_cooccurrence_triplet::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_graph_bridge_bet::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_graph_centrality_bet::BIG_LOTTO",
+    "biglotto_wave2_neighbor_ad_graph_pagerank_bet::BIG_LOTTO",
 )
 
 
@@ -75,8 +131,8 @@ def _history(rows: int) -> tuple[CausalDrawRow, ...]:
     )
 
 
-@pytest.mark.parametrize("case", _SELECTED_CASES)
-def test_selected_adapter_identity_and_native_support(case: _SelectedCase) -> None:
+@pytest.mark.parametrize("case", _RESOLVED_CASES)
+def test_resolved_adapter_identity_and_native_support(case: _ResolvedCase) -> None:
     adapter = case.adapter_class()
 
     assert adapter.strategy_id == case.strategy_id
@@ -85,20 +141,20 @@ def test_selected_adapter_identity_and_native_support(case: _SelectedCase) -> No
     assert adapter.supported_lottery_types == (LotteryType.BIG_LOTTO,)
 
 
-@pytest.mark.parametrize("case", _SELECTED_CASES)
-def test_selected_adapter_rejects_wrong_lottery_type(case: _SelectedCase) -> None:
+@pytest.mark.parametrize("case", _RESOLVED_CASES)
+def test_resolved_adapter_rejects_wrong_lottery_type(case: _ResolvedCase) -> None:
     with pytest.raises(UnsupportedLotteryType):
         case.adapter_class().get_one_bet(_history(1), LotteryType.POWER_LOTTO)
 
 
-@pytest.mark.parametrize("case", _SELECTED_CASES)
-def test_selected_adapter_enforces_proven_minimum_history(case: _SelectedCase) -> None:
+@pytest.mark.parametrize("case", _RESOLVED_CASES)
+def test_resolved_adapter_enforces_proven_minimum_history(case: _ResolvedCase) -> None:
     with pytest.raises(InsufficientHistory):
         case.adapter_class().get_one_bet((), LotteryType.BIG_LOTTO)
 
 
-@pytest.mark.parametrize("case", _SELECTED_CASES)
-def test_selected_adapter_is_exact_thin_delegation(case: _SelectedCase) -> None:
+@pytest.mark.parametrize("case", _RESOLVED_CASES)
+def test_resolved_adapter_is_exact_thin_delegation(case: _ResolvedCase) -> None:
     history = _history(100)
 
     execution = case.adapter_class().get_one_bet_with_emission(
@@ -110,9 +166,9 @@ def test_selected_adapter_is_exact_thin_delegation(case: _SelectedCase) -> None:
     assert execution.special_number is None
 
 
-@pytest.mark.parametrize("case", _SELECTED_CASES)
-def test_selected_adapter_returns_one_deterministic_native_ticket(
-    case: _SelectedCase,
+@pytest.mark.parametrize("case", _RESOLVED_CASES)
+def test_resolved_adapter_returns_one_deterministic_native_ticket(
+    case: _ResolvedCase,
 ) -> None:
     adapter = case.adapter_class()
     history = _history(100)
@@ -133,14 +189,14 @@ def test_selected_adapter_returns_one_deterministic_native_ticket(
     )
 
 
-def test_selected_candidate_identities_remain_exact_ordered_and_distinct() -> None:
-    candidate_ids = tuple(f"{case.strategy_id}::BIG_LOTTO" for case in _SELECTED_CASES)
+def test_resolved_candidate_identities_remain_exact_ordered_and_distinct() -> None:
+    candidate_ids = tuple(f"{case.strategy_id}::BIG_LOTTO" for case in _RESOLVED_CASES)
 
     assert candidate_ids == _EXPECTED_CANDIDATE_IDS
-    assert len(set(candidate_ids)) == 3
+    assert len(set(candidate_ids)) == 10
 
 
-@pytest.mark.parametrize("case", _SELECTED_CASES)
-def test_selected_adapter_is_not_catalog_registered(case: _SelectedCase) -> None:
+@pytest.mark.parametrize("case", _RESOLVED_CASES)
+def test_resolved_adapter_is_not_catalog_registered(case: _ResolvedCase) -> None:
     with pytest.raises(UnknownStrategyError):
         production_catalog().get(case.strategy_id)

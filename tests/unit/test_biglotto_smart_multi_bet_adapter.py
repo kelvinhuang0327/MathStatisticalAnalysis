@@ -293,19 +293,20 @@ def test_invalid_native_cardinality_has_no_silent_fallback(
 def test_production_catalog_preserves_smart_multi_bet_append_position() -> None:
     strategy_ids = tuple(descriptor.strategy_id for descriptor in production_catalog())
 
-    assert len(strategy_ids) == 80
-    assert strategy_ids[-5] == STRATEGY_ID
-    assert strategy_ids[:-5].count(STRATEGY_ID) == 0
-    assert strategy_ids[-8:-5] == (
+    assert len(strategy_ids) == 81
+    assert strategy_ids[-6] == STRATEGY_ID
+    assert strategy_ids[:-6].count(STRATEGY_ID) == 0
+    assert strategy_ids[-9:-6] == (
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
     )
-    assert strategy_ids[-4:-2] == (
+    assert strategy_ids[-5:-3] == (
         "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
         "legacy_biglotto__cooccurrence_graph__25fa2e473092",
     )
-    assert strategy_ids[-2] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"
-    assert strategy_ids[-1] == (
+    assert strategy_ids[-3] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"
+    assert strategy_ids[-2] == (
         "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
     )
+    assert strategy_ids[-1] == "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94"

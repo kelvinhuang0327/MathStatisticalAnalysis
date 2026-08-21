@@ -238,22 +238,23 @@ def test_production_catalog_preserves_batch16_append_position() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 80
+    assert len(all_ids) == 81
     assert STRATEGY_ID in all_ids
-    assert all_ids[-10] == STRATEGY_ID
-    assert all_ids[:-10].count(STRATEGY_ID) == 0
-    assert all_ids[-11] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
-    assert all_ids[-9] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
-    assert all_ids[-8] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
-    assert all_ids[-7] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
-    assert all_ids[-6] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
-    assert all_ids[-5] == "legacy_biglotto__smart_multi_bet__613c62c1f192"
-    assert all_ids[-4] == "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
-    assert all_ids[-3] == "legacy_biglotto__cooccurrence_graph__25fa2e473092"
-    assert all_ids[-2] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"
-    assert all_ids[-1] == (
+    assert all_ids[-11] == STRATEGY_ID
+    assert all_ids[:-11].count(STRATEGY_ID) == 0
+    assert all_ids[-12] == "legacy_composite__quick_predict_5bet_ts3_markov_freqort"
+    assert all_ids[-10] == "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4"
+    assert all_ids[-9] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"
+    assert all_ids[-8] == "legacy_biglotto__constraint_filter_predictor__3a85b3995002"
+    assert all_ids[-7] == "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"
+    assert all_ids[-6] == "legacy_biglotto__smart_multi_bet__613c62c1f192"
+    assert all_ids[-5] == "legacy_biglotto__anti_consensus_strategy__a454ddd26cef"
+    assert all_ids[-4] == "legacy_biglotto__cooccurrence_graph__25fa2e473092"
+    assert all_ids[-3] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"
+    assert all_ids[-2] == (
         "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
     )
+    assert all_ids[-1] == "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94"
 
 
 def test_strategy_is_reachable_only_through_the_portfolio_response_path() -> None:

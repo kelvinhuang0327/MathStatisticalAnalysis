@@ -1995,6 +1995,51 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=8,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
+        strategy_name="大樂透 Power Fourier Rhythm 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_power_fourier_rhythm:"
+            "BigLottoPowerFourierRhythmAdapter"
+        ),
+        min_history=500,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/power_fourier_rhythm.py",
+            "legacy_source_blob:8ed6d90393fa175d4f661979d312b8739af21ac8",
+            "legacy_source_sha256:"
+            "cb75e72e4c948466a23a432527ca9e5af40e8618c509154f54277ac860d62d59",
+            "retained_reference:"
+            "lottolab.strategies.adapters.powerlotto_wave1."
+            "_fourier_rhythm_fixed_window_scores",
+            "retained_exact_output_ledger:"
+            "lottolab.application.legacy_source_grid_native_portfolios_wave49",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
+            "donor_evidence_sha256:"
+            "5c6f759bdb23b7ad19814611bfc495eda8a1e992446d4a88209351daf79ae0cc",
+            "donor_parity:MECHANISM_COMPONENT_PARITY",
+            "source_history:OLDEST_FIRST_LATEST_500_FIXED_BINARY_SERIES",
+            "fourier_semantics:MEAN_DETRENDED_FULL_COMPLEX_DFT_"
+            "POSITIVE_BINS_1_TO_249_DOMINANT_AMPLITUDE_PERIOD_ALIGNMENT",
+            "phase_rule:NONE",
+            "harmonic_combination:NONE",
+            "number_ranking:DESCENDING_SCORE_ASCENDING_NUMBER_TIE_BREAK",
+            "portfolio_cardinality:EXACTLY_2_CONSECUTIVE_RANK_CHUNKS",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_POWER_FOURIER_RHYTHM_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

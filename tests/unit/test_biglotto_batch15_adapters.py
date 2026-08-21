@@ -394,11 +394,12 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     ``legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4``; the two
     earlier legacy mechanism migrations; the bounded Apriori migration; and
     the DB-decoupled Smart Multi-Bet migration; the seeded Anti-Consensus
-    migration; the Cooccurrence Graph migration; and the Radical Gap migration.
+    migration; the Cooccurrence Graph, Radical Gap, Hot-Stop Rebound, and
+    Power Fourier Rhythm migrations.
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 80
+    assert len(catalog) == 81
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -408,7 +409,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 80
+    assert len(all_ids) == 81
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -437,6 +438,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__cooccurrence_graph__25fa2e473092",
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
+        "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
     )
 
 

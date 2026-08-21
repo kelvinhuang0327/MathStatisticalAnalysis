@@ -397,7 +397,7 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 80
+    assert len(catalog) == 86
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -407,7 +407,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 80
+    assert len(all_ids) == 86
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -423,11 +423,25 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     )
-    assert all_ids[68:72] == (
+    assert all_ids[68:86] == (
         "b649_new_horizon_minimax_disagreement_r1",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "power_c01_recency_decay_1bet",
+        "power_c02_gap_overdue_1bet",
+        "power_c03_pair_centrality_1bet",
+        "power_c04_zone_balanced_1bet",
+        "power_c05_dispersion_match_1bet",
+        "power_c06_regime_cusum_1bet",
+        "power_c07_borda_ensemble_1bet",
+        "acb_markov_midfreq_3bet",
+        "legacy_biglotto__backtest_apriori__2abb53765703",
+        "legacy_biglotto__covering_strategy_research__214ecc206fc9",
+        "legacy_biglotto__evolution_engine__3df019c31ce4",
+        "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+        "legacy_biglotto__backtest_sum_constraint__acb3b118300d",
+        "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
     )
 
 

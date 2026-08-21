@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from tools.b649_operational_prediction_loop import (
+    STRATEGY_STREAMS,
     HistorySnapshot,
     PredictionTarget,
     StrategyStream,
@@ -36,6 +37,8 @@ from lottolab.infrastructure.persistence.draw_schema import (
     resolve_local_data_paths,
 )
 from lottolab.strategies.adapters.base import BetAdapter, CausalDrawRow, PortfolioBetAdapter
+from lottolab.strategies.catalog import production_catalog
+from lottolab.strategies.executable_registry import ExecutableRegistry
 
 TAIPEI = ZoneInfo("Asia/Taipei")
 
@@ -183,6 +186,41 @@ def _numbers(value: dict[str, object], key: str) -> tuple[int, ...]:
 
 def _available_special(main_numbers: tuple[int, ...]) -> int:
     return next(number for number in range(1, 50) if number not in main_numbers)
+
+
+def test_default_stream_composition_is_existing_six_plus_frozen_five() -> None:
+    expected_ids = (
+        "b649_new_horizon_minimax_disagreement_r1",
+        "biglotto_social_wisdom_anti_popularity",
+        "biglotto_deviation_2bet",
+        "legacy_biglotto__graph_predictor__cd70713a5709",
+        "legacy_biglotto__pure_cold_predict__9e89f2b41add",
+        "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+        "legacy_biglotto__test_asm__d39a233a4c75",
+        "legacy_biglotto__test_ces__78d17c530ab8",
+        "legacy_biglotto__test_ecp__c9d5ac6decdd",
+        "legacy_biglotto__test_mwsc__ba37643d6a3b",
+        "legacy_biglotto__test_tme__f3bb5106dfe3",
+    )
+    streams_by_id = {stream.strategy_id: stream for stream in STRATEGY_STREAMS}
+
+    assert tuple(stream.strategy_id for stream in STRATEGY_STREAMS) == expected_ids
+    assert all(stream.enabled for stream in STRATEGY_STREAMS)
+
+    catalog = production_catalog()
+    registry = ExecutableRegistry(catalog)
+    for strategy_id in expected_ids[-5:]:
+        stream = streams_by_id[strategy_id]
+        descriptor = catalog.get(strategy_id)
+        adapter_class = registry.load_adapter(strategy_id)
+        adapter = stream.adapter_factory()
+        assert descriptor.executable
+        assert descriptor.native_ticket_count == 3
+        assert isinstance(adapter, PortfolioBetAdapter)
+        assert type(adapter) is adapter_class
+        assert stream.strategy_version == descriptor.version
+        assert stream.native_ticket_count == descriptor.native_ticket_count
+        assert len(adapter.get_bets(_history().rows, LotteryType.BIG_LOTTO)) == 3
 
 
 def test_prediction_saves_two_native_tickets_with_time_and_history_identity(

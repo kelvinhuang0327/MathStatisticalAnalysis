@@ -274,9 +274,7 @@ def test_smoke_accepts_current_source_snapshot_of_any_size() -> None:
     large_ids = tuple(f"strategy_{index:03d}" for index in range(50))
     direct = expected_catalog(large_ids)
     proxied = [dict(record) for record in direct]
-    assert (
-        validate_strategy_payloads(direct, proxied, expected_strategies(large_ids)) == large_ids
-    )
+    assert validate_strategy_payloads(direct, proxied, expected_strategies(large_ids)) == large_ids
 
 
 @pytest.mark.parametrize("mutation", ["order", "lifecycle", "executable", "proxy"])
@@ -468,17 +466,12 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
             "{strategy_id}/{strategy_version}/{replicate}/research-qualification/"
             "random-baseline-evidence"
         ): {"get": {}},
+        "/api/v1/replay-execution": {"post": {}},
         "/api/v1/replay-rankings/optimal": {"get": {}},
         "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}": {"get": {}},
-        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {
-            "get": {}
-        },
-        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {
-            "get": {}
-        },
-        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {
-            "get": {}
-        },
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/predictions": {"get": {}},
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/strategy-aggregates": {"get": {}},
+        "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate": {"get": {}},
     }
 
 
@@ -499,9 +492,7 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     ],
     ids=("reference-alone", "reference-beside-approved-operation"),
 )
-def test_smoke_rejects_path_item_references(
-    path: str, path_item: dict[str, object]
-) -> None:
+def test_smoke_rejects_path_item_references(path: str, path_item: dict[str, object]) -> None:
     paths = authorized_openapi_paths()
     paths[path] = path_item
     payload: dict[str, object] = {
@@ -574,6 +565,7 @@ def test_smoke_rejects_path_item_references(
             "random-baseline-evidence",
             "get",
         ),
+        ("/api/v1/replay-execution", "post"),
         ("/api/v1/replay-rankings/optimal", "get"),
         ("/api/v1/replay-scoring/{scoring_artifact_payload_sha256}", "get"),
         (
@@ -681,6 +673,44 @@ def test_smoke_rejects_other_paths_containing_generate_word() -> None:
         validate_openapi_payload({"paths": paths})
 
 
+def test_smoke_accepts_exact_replay_execution_post() -> None:
+    paths = authorized_openapi_paths()
+
+    assert paths["/api/v1/replay-execution"] == {"post": {}}
+    validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "method",
+    ["get", "put", "patch", "delete", "options", "head", "trace"],
+)
+def test_smoke_rejects_non_post_methods_on_replay_execution(method: str) -> None:
+    paths = authorized_openapi_paths()
+    paths["/api/v1/replay-execution"] = {method: {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="unapproved method/path"):
+        validate_openapi_payload({"paths": paths})
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/api/v1/replay-executions",
+        "/api/v1/replay-execution/",
+        "/api/v1/replay-execution/run",
+        "/api/v1/replay-execute",
+        "/API/v1/replay-execution",
+    ],
+)
+def test_smoke_rejects_replay_execution_near_miss_paths(path: str) -> None:
+    paths = authorized_openapi_paths()
+    del paths["/api/v1/replay-execution"]
+    paths[path] = {"post": {}}
+
+    with pytest.raises(LocalRuntimeSafetyError, match="generation or execution"):
+        validate_openapi_payload({"paths": paths})
+
+
 def test_smoke_accepts_exact_approved_historical_results_replay_operation() -> None:
     """BLHQ R2: the read-only /replay projection path is the second narrow exception."""
     validate_openapi_payload({"paths": authorized_openapi_paths()})
@@ -727,9 +757,9 @@ def test_smoke_accepts_exact_historical_prefix_operations() -> None:
         ),
     }
 
-    assert {path for path in paths if path.startswith(
-        "/api/v1/historical-prefix-analytics"
-    )} == historical_prefix_paths
+    assert {
+        path for path in paths if path.startswith("/api/v1/historical-prefix-analytics")
+    } == historical_prefix_paths
     assert all(paths[path] == {"get": {}} for path in historical_prefix_paths)
     validate_openapi_payload({"paths": paths})
 
@@ -821,9 +851,7 @@ def test_smoke_admits_exactly_twelve_historical_prefix_success_window_gets() -> 
     }
 
     assert {
-        path
-        for path in paths
-        if path.startswith("/api/v1/historical-prefix-success-windows")
+        path for path in paths if path.startswith("/api/v1/historical-prefix-success-windows")
     } == expected
     assert all(paths[path] == {"get": {}} for path in expected)
     validate_openapi_payload({"paths": paths})
@@ -957,9 +985,7 @@ def test_smoke_accepts_all_exact_replay_scoring_get_operations_together() -> Non
     ],
 )
 @pytest.mark.parametrize("method", ["post", "put", "patch", "delete"])
-def test_smoke_rejects_mutating_methods_on_each_replay_scoring_path(
-    path: str, method: str
-) -> None:
+def test_smoke_rejects_mutating_methods_on_each_replay_scoring_path(path: str, method: str) -> None:
     paths = authorized_openapi_paths()
     paths[path] = {method: {}}
 

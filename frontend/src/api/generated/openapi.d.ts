@@ -1689,6 +1689,28 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/replay-execution": {
+      post: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["ReplayExecutionResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/t539-historical/runs": {
       get: {
           parameters: {
@@ -3381,6 +3403,46 @@ export interface components {
           "prize_tier_order": number | null
           "prize_amount": number | null
         }
+    "ReplayExecutionRequest": {
+          "lottery_type": components['schemas']["LotteryType"]
+          "dataset_id": string
+          "dataset_version": string
+          "targets": Array<components['schemas']["ReplayExecutionTargetRequest"]>
+          "strategy_ids": Array<string>
+          "maximum_history_draws"?: number | null
+          "minimum_history_draws"?: number | null
+        }
+    "ReplayExecutionResponse": {
+          "snapshots": Array<components['schemas']["ReplayExecutionSnapshotView"]>
+        }
+    "ReplayExecutionSnapshotView": {
+          "snapshot_schema_version": string
+          "dataset_id": string
+          "dataset_version": string
+          "lottery_type": components['schemas']["LotteryType"]
+          "source_mode": components['schemas']["ReplaySourceMode"]
+          "target_draw_number": string
+          "target_draw_date": string
+          "cutoff_draw_number"?: string | null
+          "cutoff_draw_date"?: string | null
+          "strategy_id": string
+          "strategy_version"?: string | null
+          "adapter_strategy_id"?: string | null
+          "adapter_strategy_name"?: string | null
+          "adapter_strategy_version"?: string | null
+          "history_status": string
+          "history_reason_code"?: string | null
+          "causal_history_count"?: number | null
+          "causal_history_sha256"?: string | null
+          "prediction_status"?: string | null
+          "prediction_reason_code"?: string | null
+          "predicted_main_numbers"?: Array<number> | null
+          "result_sha256": string
+        }
+    "ReplayExecutionTargetRequest": {
+          "draw_number": string
+          "draw_date": string
+        }
     "ReplayOverallAggregateResponse": {
           "run_payload_sha256": string
           "source_snapshot_count": number
@@ -3484,6 +3546,7 @@ export interface components {
           "scored_record_count": number
           "overall_aggregate_sha256": string
         }
+    "ReplaySourceMode": "TARGET_NATIVE"
     "ReplayStrategyAggregateView": {
           "run_payload_sha256": string
           "ordinal": number

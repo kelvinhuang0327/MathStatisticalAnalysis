@@ -801,6 +801,17 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "acb_markov_midfreq_3bet",
+        "legacy_biglotto__backtest_apriori__2abb53765703",
+        "legacy_biglotto__covering_strategy_research__214ecc206fc9",
+        "legacy_biglotto__evolution_engine__3df019c31ce4",
+        "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+        "legacy_biglotto__backtest_sum_constraint__acb3b118300d",
+        "legacy_biglotto__verify_markov_vs_triple_2bet__2094ee4bc361",
+        "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+        "zonal_entropy_2bet",
+        "power_apriori_2bet",
+        "power_lead_lag_2bet",
     }
 
 

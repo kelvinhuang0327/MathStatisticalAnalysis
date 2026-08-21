@@ -120,8 +120,13 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 52,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 81,
+            # The reconciled preceding batch made 5 catalog identities among
+            # these 221 executable; SELECTED_INTAKE_SET03_R1 added 2 more
+            # (verify_markov_vs_triple_2bet, backtest_biglotto_coldpool_15).
+            # Together they move 7 from HISTORICAL_RAW_ONLY to
+            # CURRENTLY_REPLAYABLE: 52->59, 81->74.
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 59,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 74,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,

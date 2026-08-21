@@ -16,6 +16,7 @@ import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from functools import partial
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -24,6 +25,7 @@ from zoneinfo import ZoneInfo
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from lottolab.application.use_cases.generate_bet import instantiate_portfolio_adapter
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.prize_evaluation import evaluate_big_lotto_ticket
@@ -51,7 +53,16 @@ from lottolab.strategies.adapters.biglotto_selected import (
     BigLottoSocialWisdomAntiPopularityAdapter,
 )
 from lottolab.strategies.adapters.biglotto_wave1 import BigLottoGraphPredictorAdapter
-from lottolab.strategies.adapters.biglotto_wave14 import BigLottoHpsbOptimizerAdapter
+from lottolab.strategies.adapters.biglotto_wave6 import BigLottoTmeThreeAdapter
+from lottolab.strategies.adapters.biglotto_wave8 import (
+    BigLottoCesThreeAdapter,
+    BigLottoMwscThreeAdapter,
+)
+from lottolab.strategies.adapters.biglotto_wave13 import BigLottoTestAsmAdapter
+from lottolab.strategies.adapters.biglotto_wave14 import (
+    BigLottoHpsbOptimizerAdapter,
+    BigLottoTestEcpAdapter,
+)
 
 TASK_ID = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
 LOTTERY_TYPE = LotteryType.BIG_LOTTO.value
@@ -73,6 +84,13 @@ _TEMPORAL_CLASSES = ("PRE_DRAW", "POST_DRAW")
 _M_KEYS = ("M1+", "M2+", "M3+", "M4+", "M5+", "M6")
 _AVAILABILITY_VALUES = ("AVAILABLE", "UNAVAILABLE", "TECHNICAL_FAILURE")
 _HEAD_TO_HEAD_METRICS = ("M2+", "official_any_prize")
+_SHA1 = re.compile(r"[0-9a-f]{40}", flags=re.ASCII)
+_SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+
+FROZEN_STREAM_PUBLICATION_ID = "B649_FROZEN_STREAMS_EXACT_SHA_PUBLICATION_R2"
+FROZEN_STREAM_PINNED_IMPLEMENTATION = (
+    "49a25effa62fc24f40789c16be6f11bdfb41a4a9"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,6 +116,73 @@ class PredictionTarget:
 
 
 @dataclass(frozen=True, slots=True)
+class FrozenStreamPublication:
+    """Exact legacy source identity published with a frozen stream."""
+
+    strategy_id: str
+    source_path: str
+    source_sha256: str
+    pinned_implementation: str
+
+    def __post_init__(self) -> None:
+        if not _IDENTIFIER.fullmatch(self.strategy_id):
+            raise ValueError("frozen stream strategy_id must be a safe identifier")
+        if not self.source_path or self.source_path.startswith("/"):
+            raise ValueError("frozen stream source_path must be a relative path")
+        if _SHA256.fullmatch(self.source_sha256) is None:
+            raise ValueError("frozen stream source_sha256 must be a SHA-256 digest")
+        if _SHA1.fullmatch(self.pinned_implementation) is None:
+            raise ValueError("frozen stream pinned_implementation must be a Git SHA")
+
+
+FROZEN_STREAM_PUBLICATIONS: tuple[FrozenStreamPublication, ...] = (
+    FrozenStreamPublication(
+        strategy_id="legacy_biglotto__test_asm__d39a233a4c75",
+        source_path="tools/test_asm.py",
+        source_sha256=(
+            "d39a233a4c75158cdab704e26980b89cbb96daf128e50718309731111ac55ddf"
+        ),
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    ),
+    FrozenStreamPublication(
+        strategy_id="legacy_biglotto__test_ces__78d17c530ab8",
+        source_path="tools/test_ces.py",
+        source_sha256=(
+            "78d17c530ab8cacf25146c5c39cb4017e3a3ffacde90a4e14ae07a8026b0bc22"
+        ),
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    ),
+    FrozenStreamPublication(
+        strategy_id="legacy_biglotto__test_ecp__c9d5ac6decdd",
+        source_path="tools/test_ecp.py",
+        source_sha256=(
+            "c9d5ac6decddac7940a6ad90739069afd4b13d181dddd4336586e3f718d8e6a2"
+        ),
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    ),
+    FrozenStreamPublication(
+        strategy_id="legacy_biglotto__test_mwsc__ba37643d6a3b",
+        source_path="tools/test_mwsc.py",
+        source_sha256=(
+            "ba37643d6a3b533d1e61dadf91f040e667d088e95a5163007d568931bcdc6033"
+        ),
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    ),
+    FrozenStreamPublication(
+        strategy_id="legacy_biglotto__test_tme__f3bb5106dfe3",
+        source_path="tools/test_tme.py",
+        source_sha256=(
+            "f3bb5106dfe3f255bc84317169fb5fbafa653a97c2977b66cb12a49eab07891c"
+        ),
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+    ),
+)
+FROZEN_STREAM_PUBLICATIONS_BY_ID = {
+    publication.strategy_id: publication for publication in FROZEN_STREAM_PUBLICATIONS
+}
+
+
+@dataclass(frozen=True, slots=True)
 class StrategyStream:
     """One independently configured strategy that produces its own prediction runs.
 
@@ -114,6 +199,9 @@ class StrategyStream:
     strategy_config: dict[str, object] = field(default_factory=dict[str, object])
     producer_fingerprint: str | None = None
     pinned_implementation: str | None = None
+    publication_id: str | None = None
+    source_path: str | None = None
+    source_sha256: str | None = None
 
 
 STRATEGY_STREAMS: tuple[StrategyStream, ...] = (
@@ -167,7 +255,135 @@ STRATEGY_STREAMS: tuple[StrategyStream, ...] = (
         adapter_factory=BigLottoHpsbOptimizerAdapter,
         native_ticket_count=1,
     ),
+    StrategyStream(
+        strategy_id=BigLottoTestAsmAdapter.strategy_id,
+        strategy_version=BigLottoTestAsmAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=BigLottoTestAsmAdapter,
+        native_ticket_count=BigLottoTestAsmAdapter.native_ticket_count,
+        producer_fingerprint=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTestAsmAdapter.strategy_id
+        ].source_sha256,
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+        publication_id=FROZEN_STREAM_PUBLICATION_ID,
+        source_path=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTestAsmAdapter.strategy_id
+        ].source_path,
+        source_sha256=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTestAsmAdapter.strategy_id
+        ].source_sha256,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoCesThreeAdapter.strategy_id,
+        strategy_version=BigLottoCesThreeAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=partial(
+            instantiate_portfolio_adapter,
+            BigLottoCesThreeAdapter.strategy_id,
+            BigLottoCesThreeAdapter,
+        ),
+        native_ticket_count=BigLottoCesThreeAdapter.native_ticket_count,
+        producer_fingerprint=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoCesThreeAdapter.strategy_id
+        ].source_sha256,
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+        publication_id=FROZEN_STREAM_PUBLICATION_ID,
+        source_path=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoCesThreeAdapter.strategy_id
+        ].source_path,
+        source_sha256=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoCesThreeAdapter.strategy_id
+        ].source_sha256,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoTestEcpAdapter.strategy_id,
+        strategy_version=BigLottoTestEcpAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=BigLottoTestEcpAdapter,
+        native_ticket_count=BigLottoTestEcpAdapter.native_ticket_count,
+        producer_fingerprint=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTestEcpAdapter.strategy_id
+        ].source_sha256,
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+        publication_id=FROZEN_STREAM_PUBLICATION_ID,
+        source_path=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTestEcpAdapter.strategy_id
+        ].source_path,
+        source_sha256=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTestEcpAdapter.strategy_id
+        ].source_sha256,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoMwscThreeAdapter.strategy_id,
+        strategy_version=BigLottoMwscThreeAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=partial(
+            instantiate_portfolio_adapter,
+            BigLottoMwscThreeAdapter.strategy_id,
+            BigLottoMwscThreeAdapter,
+        ),
+        native_ticket_count=BigLottoMwscThreeAdapter.native_ticket_count,
+        producer_fingerprint=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoMwscThreeAdapter.strategy_id
+        ].source_sha256,
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+        publication_id=FROZEN_STREAM_PUBLICATION_ID,
+        source_path=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoMwscThreeAdapter.strategy_id
+        ].source_path,
+        source_sha256=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoMwscThreeAdapter.strategy_id
+        ].source_sha256,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoTmeThreeAdapter.strategy_id,
+        strategy_version=BigLottoTmeThreeAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=BigLottoTmeThreeAdapter,
+        native_ticket_count=BigLottoTmeThreeAdapter.native_ticket_count,
+        producer_fingerprint=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTmeThreeAdapter.strategy_id
+        ].source_sha256,
+        pinned_implementation=FROZEN_STREAM_PINNED_IMPLEMENTATION,
+        publication_id=FROZEN_STREAM_PUBLICATION_ID,
+        source_path=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTmeThreeAdapter.strategy_id
+        ].source_path,
+        source_sha256=FROZEN_STREAM_PUBLICATIONS_BY_ID[
+            BigLottoTmeThreeAdapter.strategy_id
+        ].source_sha256,
+    ),
 )
+
+
+def validate_frozen_stream_publication(
+    streams: Sequence[StrategyStream] = STRATEGY_STREAMS,
+) -> None:
+    """Fail closed if the published frozen-stream identities drift."""
+
+    published = tuple(
+        stream
+        for stream in streams
+        if stream.publication_id == FROZEN_STREAM_PUBLICATION_ID
+    )
+    expected_ids = tuple(
+        publication.strategy_id for publication in FROZEN_STREAM_PUBLICATIONS
+    )
+    if tuple(stream.strategy_id for stream in published) != expected_ids:
+        raise RuntimeError("frozen stream publication membership or order drifted")
+    for stream, publication in zip(published, FROZEN_STREAM_PUBLICATIONS, strict=True):
+        if (
+            stream.source_path != publication.source_path
+            or stream.source_sha256 != publication.source_sha256
+            or stream.producer_fingerprint != publication.source_sha256
+            or stream.pinned_implementation != publication.pinned_implementation
+        ):
+            raise RuntimeError(
+                f"{stream.strategy_id}: frozen stream publication identity drifted"
+            )
+
+
+validate_frozen_stream_publication()
 
 
 @dataclass(slots=True)
@@ -425,6 +641,9 @@ def run_strategy_stream(
         "history_caveat": history.history_caveat,
         "producer_fingerprint": stream.producer_fingerprint,
         "pinned_implementation": stream.pinned_implementation,
+        "publication_id": stream.publication_id,
+        "source_path": stream.source_path,
+        "source_sha256": stream.source_sha256,
         "prediction_temporal_class": classify_prediction_temporal(
             created_at, scheduled_at
         ),

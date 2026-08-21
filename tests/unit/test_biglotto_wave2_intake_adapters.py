@@ -41,7 +41,6 @@ from lottolab.strategies.adapters.biglotto_wave2_intake import (
     BigLottoWave2SocialAdNegativeConsensusRemoveAdapter,
     BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
 )
-from lottolab.strategies.catalog import UnknownStrategyError, production_catalog
 
 _ResolvedCallable = Callable[[tuple[CausalDrawRow, ...]], tuple[int, ...]]
 
@@ -194,9 +193,3 @@ def test_resolved_candidate_identities_remain_exact_ordered_and_distinct() -> No
 
     assert candidate_ids == _EXPECTED_CANDIDATE_IDS
     assert len(set(candidate_ids)) == 10
-
-
-@pytest.mark.parametrize("case", _RESOLVED_CASES)
-def test_resolved_adapter_is_not_catalog_registered(case: _ResolvedCase) -> None:
-    with pytest.raises(UnknownStrategyError):
-        production_catalog().get(case.strategy_id)

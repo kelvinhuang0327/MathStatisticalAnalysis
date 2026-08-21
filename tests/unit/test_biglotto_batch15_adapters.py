@@ -391,11 +391,12 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     ``legacy_composite__quick_predict_5bet_ts3_markov_freqort``; PR #151's
     ``legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b``; and, as of
     ``B649_BASE_METHOD_MINIMAL_DUAL_BET_INTAKE_R1``,
-    ``legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4``.
+    ``legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4``; followed by ten
+    descriptors from ``BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1``.
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 72
+    assert len(catalog) == 82
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -405,7 +406,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 72
+    assert len(all_ids) == 82
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -426,6 +427,16 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_conditional",
+        "biglotto_wave2_neighbor_ad_cooccurrence_top_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_transition_pairs",
+        "biglotto_wave2_neighbor_ad_cooccurrence_triplet",
+        "biglotto_wave2_neighbor_ad_graph_bridge_bet",
+        "biglotto_wave2_neighbor_ad_graph_centrality_bet",
+        "biglotto_wave2_neighbor_ad_graph_pagerank_bet",
+        "biglotto_wave2_sum_range_ad_structural_sum_regression",
+        "biglotto_wave2_social_ad_negative_consensus_remove",
     )
 
 

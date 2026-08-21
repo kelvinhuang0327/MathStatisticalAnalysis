@@ -151,9 +151,13 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.exit_code == 0, result.stderr
     assert result.stderr == ""
     summary = json.loads(result.stdout)
+    # The reconciled preceding batch registered 5 more BIG_LOTTO identities
+    # among the 221 as executable, and SELECTED_INTAKE_SET03_R1 registered 2
+    # more (verify_markov_vs_triple_2bet, backtest_biglotto_coldpool_15): see
+    # test_b649_historical_replay.py::test_b649_identity_accounting_covers_all_221_identities.
     assert summary == {
-        "currently_replayable_identity_count": 52,
-        "historical_raw_only_identity_count": 81,
+        "currently_replayable_identity_count": 59,
+        "historical_raw_only_identity_count": 74,
         "keep_unresolved_alias_count": 3,
         "lottery_type": "BIG_LOTTO",
         "mode": "FULL_REPLAY",

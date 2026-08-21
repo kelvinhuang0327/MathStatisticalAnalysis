@@ -43,7 +43,7 @@ class BigLottoWave2NeighborAdCooccurrenceConditionalAdapter(BetAdapter):
     strategy_id = "biglotto_wave2_neighbor_ad_cooccurrence_conditional"
     strategy_name = "BigLotto Wave 2 Neighbor AD Co-occurrence Conditional"
     strategy_version = "v0.1"
-    min_history = 1
+    min_history = 50
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
     def _predict(

@@ -304,8 +304,9 @@ def test_coldpool15_generate_portfolio_returns_golden() -> None:
 def test_production_catalog_appends_batch18_after_preceding_admitted_batches() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert all_ids[-6] == MARKOV_TRIPLE_ID
-    assert all_ids[-5] == COLDPOOL15_ID
-    assert all_ids[-7] == "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
+    pre_wave2 = all_ids[:92]
+    assert pre_wave2[-6] == MARKOV_TRIPLE_ID
+    assert pre_wave2[-5] == COLDPOOL15_ID
+    assert pre_wave2[-7] == "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
     assert all_ids.count(MARKOV_TRIPLE_ID) == 1
     assert all_ids.count(COLDPOOL15_ID) == 1

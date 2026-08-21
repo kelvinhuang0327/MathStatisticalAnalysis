@@ -41,7 +41,6 @@ from lottolab.strategies.adapters.biglotto_wave2_intake import (
     BigLottoWave2SocialAdNegativeConsensusRemoveAdapter,
     BigLottoWave2SumRangeAdStructuralSumRegressionAdapter,
 )
-from lottolab.strategies.catalog import UnknownStrategyError, production_catalog
 
 _ResolvedCallable = Callable[[tuple[CausalDrawRow, ...]], tuple[int, ...]]
 
@@ -119,6 +118,10 @@ _EXPECTED_CANDIDATE_IDS = (
     "biglotto_wave2_neighbor_ad_graph_pagerank_bet::BIG_LOTTO",
 )
 
+_EXPECTED_MIN_HISTORY = {
+    "biglotto_wave2_neighbor_ad_cooccurrence_conditional": 50,
+}
+
 
 def _history(rows: int) -> tuple[CausalDrawRow, ...]:
     return tuple(
@@ -137,7 +140,7 @@ def test_resolved_adapter_identity_and_native_support(case: _ResolvedCase) -> No
 
     assert adapter.strategy_id == case.strategy_id
     assert adapter.strategy_version == "v0.1"
-    assert adapter.min_history == 1
+    assert adapter.min_history == _EXPECTED_MIN_HISTORY.get(case.strategy_id, 1)
     assert adapter.supported_lottery_types == (LotteryType.BIG_LOTTO,)
 
 
@@ -151,6 +154,18 @@ def test_resolved_adapter_rejects_wrong_lottery_type(case: _ResolvedCase) -> Non
 def test_resolved_adapter_enforces_proven_minimum_history(case: _ResolvedCase) -> None:
     with pytest.raises(InsufficientHistory):
         case.adapter_class().get_one_bet((), LotteryType.BIG_LOTTO)
+
+
+def test_conditional_adapter_enforces_source_safe_minimum_history() -> None:
+    adapter = BigLottoWave2NeighborAdCooccurrenceConditionalAdapter()
+
+    assert adapter.min_history == 50
+    with pytest.raises(InsufficientHistory):
+        adapter.get_one_bet(_history(49), LotteryType.BIG_LOTTO)
+
+    ticket, special_number = adapter.get_one_bet(_history(50), LotteryType.BIG_LOTTO)
+    assert len(ticket) == BIG_LOTTO_RULE_CONTRACT.main_number_count
+    assert special_number is None
 
 
 @pytest.mark.parametrize("case", _RESOLVED_CASES)
@@ -194,9 +209,3 @@ def test_resolved_candidate_identities_remain_exact_ordered_and_distinct() -> No
 
     assert candidate_ids == _EXPECTED_CANDIDATE_IDS
     assert len(set(candidate_ids)) == 10
-
-
-@pytest.mark.parametrize("case", _RESOLVED_CASES)
-def test_resolved_adapter_is_not_catalog_registered(case: _ResolvedCase) -> None:
-    with pytest.raises(UnknownStrategyError):
-        production_catalog().get(case.strategy_id)

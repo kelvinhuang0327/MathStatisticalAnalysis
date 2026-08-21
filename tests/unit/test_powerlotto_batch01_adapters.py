@@ -181,17 +181,18 @@ def test_production_catalog_declares_expected_shape(
     assert descriptor.lottery_types == (LotteryType.POWER_LOTTO,)
 
 
-def test_production_catalog_appends_powerlotto_batch01_in_order() -> None:
+def test_production_catalog_appends_powerlotto_batch01_before_wave2() -> None:
     """This batch adds exactly three POWER_LOTTO descriptors, appended
     directly after the BIG_LOTTO batch 18 pair and directly before the
-    DAILY_539 batch 01 descriptor -- the first three POWER_LOTTO entries
-    the production catalog has ever had."""
+    DAILY_539 batch 01 descriptor and before the Wave 2 catalog block -- the
+    first three POWER_LOTTO entries the production catalog has ever had."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert all_ids[-4] == ZONAL_ENTROPY_ID
-    assert all_ids[-3] == APRIORI_ID
-    assert all_ids[-2] == LEAD_LAG_ID
+    pre_wave2 = all_ids[:92]
+    assert pre_wave2[-4] == ZONAL_ENTROPY_ID
+    assert pre_wave2[-3] == APRIORI_ID
+    assert pre_wave2[-2] == LEAD_LAG_ID
     assert all_ids.count(ZONAL_ENTROPY_ID) == 1
     assert all_ids.count(APRIORI_ID) == 1
     assert all_ids.count(LEAD_LAG_ID) == 1

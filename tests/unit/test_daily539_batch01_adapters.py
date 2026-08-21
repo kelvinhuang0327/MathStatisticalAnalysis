@@ -111,15 +111,16 @@ def test_production_catalog_declares_expected_shape() -> None:
     assert descriptor.lottery_types == (LotteryType.DAILY_539,)
 
 
-def test_production_catalog_appends_daily539_batch01_last() -> None:
+def test_production_catalog_appends_daily539_batch01_before_wave2() -> None:
     """This is the first DAILY_539 descriptor the production catalog has
     ever had, appended directly after the three-strategy POWER_LOTTO batch
-    01 (``power_lead_lag_2bet``) and last overall."""
+    01 (``power_lead_lag_2bet``) and before the Wave 2 catalog block."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert all_ids[-1] == STRATEGY_ID
-    assert all_ids[-2] == "power_lead_lag_2bet"
+    pre_wave2 = all_ids[:92]
+    assert pre_wave2[-1] == STRATEGY_ID
+    assert pre_wave2[-2] == "power_lead_lag_2bet"
     assert all_ids.count(STRATEGY_ID) == 1
 
 

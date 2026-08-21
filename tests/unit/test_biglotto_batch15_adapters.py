@@ -514,17 +514,16 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     Total count reflects every descriptor appended after Batch 15 to date:
     ``b649_new_horizon_minimax_disagreement_r1``; PR #149's
     ``legacy_composite__quick_predict_5bet_ts3_markov_freqort``; PR #151's
-    ``legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b``; and, as of
-    ``B649_BASE_METHOD_MINIMAL_DUAL_BET_INTAKE_R1``,
-    ``legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4``; the two
-    earlier legacy mechanism migrations; the bounded Apriori migration; and
-    the DB-decoupled Smart Multi-Bet migration; the seeded Anti-Consensus
-    migration; the Cooccurrence Graph, Radical Gap, Hot-Stop Rebound, Power
-    Fourier Rhythm, and Orthogonal 5-Bet migrations.
+    ``legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b``; PR #152's
+    ``legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4``; and, as of
+    ``PENDING_INTAKE_SET02_R1``, the 8 cross-dataset Batch02 strategies
+    (``power_c01_recency_decay_1bet`` .. ``power_c07_borda_ensemble_1bet``,
+    ``acb_markov_midfreq_3bet``), the later selected intake descriptors, and
+    the 9 non-overlapping legacy-mechanism batch descriptors.
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 82
+    assert len(catalog) == 101
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -534,7 +533,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 82
+    assert len(all_ids) == 101
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -550,11 +549,31 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     )
-    assert all_ids[68:] == (
+    assert all_ids[68:101] == (
         "b649_new_horizon_minimax_disagreement_r1",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
+        "power_c01_recency_decay_1bet",
+        "power_c02_gap_overdue_1bet",
+        "power_c03_pair_centrality_1bet",
+        "power_c04_zone_balanced_1bet",
+        "power_c05_dispersion_match_1bet",
+        "power_c06_regime_cusum_1bet",
+        "power_c07_borda_ensemble_1bet",
+        "acb_markov_midfreq_3bet",
+        "legacy_biglotto__backtest_apriori__2abb53765703",
+        "legacy_biglotto__covering_strategy_research__214ecc206fc9",
+        "legacy_biglotto__evolution_engine__3df019c31ce4",
+        "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+        "legacy_biglotto__backtest_sum_constraint__acb3b118300d",
+        "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
+        "legacy_biglotto__verify_markov_vs_triple_2bet__2094ee4bc361",
+        "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+        "zonal_entropy_2bet",
+        "power_apriori_2bet",
+        "power_lead_lag_2bet",
+        "acb_single_539",
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
@@ -562,7 +581,6 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
         "legacy_biglotto__cooccurrence_graph__25fa2e473092",
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
-        "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
     )

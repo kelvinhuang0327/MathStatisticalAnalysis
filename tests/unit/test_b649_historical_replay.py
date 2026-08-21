@@ -118,28 +118,34 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 62,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 71,
+            # Current main makes 59 identities replayable. This publication
+            # adds 9 distinct legacy identities; hot-stop rebound is already
+            # owned by current main and is not counted twice. The union moves
+            # 9 from HISTORICAL_RAW_ONLY to CURRENTLY_REPLAYABLE: 59->68,
+            # 74->65.
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 68,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 65,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,
         }
     )
-    status_by_id = {
-        identity.strategy_id: identity.status for identity in use_case.identity_accounts
+    replayable_ids = {
+        identity.strategy_id
+        for identity in use_case.identity_accounts
+        if identity.status is B649IdentityStatus.CURRENTLY_REPLAYABLE
     }
     assert {
-        status_by_id["legacy_biglotto__concentrated_pool_predictor__a03b90705749"],
-        status_by_id["legacy_biglotto__constraint_filter_predictor__3a85b3995002"],
-        status_by_id["legacy_biglotto__predict_biglotto_apriori__cda690ae84c2"],
-        status_by_id["legacy_biglotto__smart_multi_bet__613c62c1f192"],
-        status_by_id["legacy_biglotto__anti_consensus_strategy__a454ddd26cef"],
-        status_by_id["legacy_biglotto__cooccurrence_graph__25fa2e473092"],
-        status_by_id["legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"],
-        status_by_id["legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"],
-        status_by_id["legacy_biglotto__power_fourier_rhythm__cb75e72e4c94"],
-        status_by_id["legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e"],
-    } == {B649IdentityStatus.CURRENTLY_REPLAYABLE}
+        "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
+        "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
+        "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
+        "legacy_biglotto__smart_multi_bet__613c62c1f192",
+        "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
+        "legacy_biglotto__cooccurrence_graph__25fa2e473092",
+        "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
+        "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+    } <= replayable_ids
 
 
 def test_b649_current_catalog_binding_reaches_controller_and_prize_evaluation(

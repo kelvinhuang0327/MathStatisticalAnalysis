@@ -16,6 +16,7 @@ import math
 import random
 from collections import Counter, defaultdict
 from collections.abc import Callable
+from functools import lru_cache
 from itertools import combinations, count
 from typing import Final
 
@@ -47,7 +48,24 @@ type _Predictor = Callable[[tuple[P638HistoryRow, ...]], P638FirstZoneTicketSet]
 type _TicketPredictor = Callable[[tuple[P638HistoryRow, ...]], tuple[int, ...]]
 
 
-def _engine_output(method: str, history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
+@lru_cache(maxsize=4096)
+def _cached_engine_output(
+    minimum: int,
+    maximum: int,
+    pick_count: int,
+    method: str,
+    history: tuple[P638HistoryRow, ...],
+) -> tuple[int, ...]:
+    """Memoize pure engine outputs across target-context boundaries.
+
+    The shared game-context manager deliberately clears the lower-level core
+    caches whenever a prediction boundary is entered.  DMS backtesting asks
+    for the same causal prefixes across adjacent target draws, so retain this
+    bounded adapter cache while including the active game contract in its key.
+    The cached values are immutable tuples; this changes no prediction value
+    or positional ordering.
+    """
+
     methods: dict[str, _TicketPredictor] = {
         "frequency": frequency_ticket,
         "bayesian": bayesian_ticket,
@@ -59,6 +77,10 @@ def _engine_output(method: str, history: tuple[P638HistoryRow, ...]) -> tuple[in
         "hot_cold_mix": hot_cold_mix_ticket,
     }
     return methods[method](history)
+
+
+def _engine_output(method: str, history: tuple[P638HistoryRow, ...]) -> tuple[int, ...]:
+    return _cached_engine_output(MINIMUM, MAXIMUM, PICK_COUNT, method, history)
 
 
 def _dms_3bet(history: tuple[P638HistoryRow, ...]) -> P638FirstZoneTicketSet:

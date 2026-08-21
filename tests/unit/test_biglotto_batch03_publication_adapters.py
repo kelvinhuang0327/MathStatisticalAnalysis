@@ -328,8 +328,8 @@ def test_pre_batch17_descriptors_are_unaffected_by_batch17() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    pre_existing_ids = all_ids[:-3]
-    batch17_ids_in_order = all_ids[-3:]
+    pre_existing_ids = all_ids[:83]
+    batch17_ids_in_order = all_ids[83:86]
     assert set(pre_existing_ids).isdisjoint(BATCH17_IDS)
     assert set(batch17_ids_in_order) == BATCH17_IDS
     assert batch17_ids_in_order == (

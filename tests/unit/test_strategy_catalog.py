@@ -254,6 +254,12 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
         "legacy_biglotto__backtest_sum_constraint__acb3b118300d",
         "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae",
+        "legacy_biglotto__verify_markov_vs_triple_2bet__2094ee4bc361",
+        "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+        "zonal_entropy_2bet",
+        "power_apriori_2bet",
+        "power_lead_lag_2bet",
+        "acb_single_539",
     ]
     online_ids = {
         descriptor.strategy_id

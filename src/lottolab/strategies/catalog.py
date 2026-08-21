@@ -2076,6 +2076,132 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__verify_markov_vs_triple_2bet__2094ee4bc361",
+        strategy_name="大樂透 Markov 2注 + Triple Strike 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch18:BigLottoMarkovTriple4BetAdapter"
+        ),
+        min_history=500,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/verify_markov_vs_triple_2bet.py",
+            "legacy_source_sha256:2094ee4bc361d87b70e49756966284bb1e996af830ae979d1fe598c75210200a",
+            "legacy_symbol:markov_2bet+triple_strike_2bet",
+            "full_strategy_catalog_id:legacy_biglotto__verify_markov_vs_triple_2bet__2094ee4bc361",
+            "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+    ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+        strategy_name="大樂透 冷號池 12 vs 15 比較 (10注)",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=("lottolab.strategies.adapters.biglotto_batch18:BigLottoColdPool15Adapter"),
+        min_history=300,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/backtest_biglotto_coldpool_15.py",
+            "legacy_source_sha256:2a80423e3cf5ee0d9543c0c7a43454a378c970d5f88edcb9b95117e4c5361223",
+            "legacy_symbol:generate_5bet(pool=12)+generate_5bet(pool=15)",
+            "full_strategy_catalog_id:legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+            "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=10,
+    ),
+    StrategyDescriptor(
+        strategy_id="zonal_entropy_2bet",
+        strategy_name="威力彩 Zonal Entropy 2注",
+        version="v0.1-p638-wave1",
+        lottery_types=(LotteryType.POWER_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.powerlotto_batch01:PowerLottoZonalEntropy2BetAdapter"
+        ),
+        min_history=30,
+        provenance=(
+            "powerlotto_wave1_strategy_id:zonal_entropy_2bet",
+            "legacy_source:lottery_api/models/p128_wave2_phase1_adapters.py",
+            "legacy_source:lottery_api/models/p56_wave5_powerlotto_adapters.py",
+            "second_zone:not_populated_see_adapter_module_docstring",
+            "full_strategy_catalog_id:zonal_entropy_2bet",
+            "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
+        strategy_id="power_apriori_2bet",
+        strategy_name="威力彩 Apriori 配對關聯 2注",
+        version="v0.1-p638-wave2",
+        lottery_types=(LotteryType.POWER_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.powerlotto_batch01:PowerLottoApriori2BetAdapter"
+        ),
+        min_history=10,
+        provenance=(
+            "powerlotto_wave2_strategy_id:power_apriori_2bet",
+            "legacy_source:tools/power_apriori_audit.py",
+            "second_zone:not_populated_see_adapter_module_docstring",
+            "full_strategy_catalog_id:power_apriori_2bet",
+            "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
+        strategy_id="power_lead_lag_2bet",
+        strategy_name="威力彩 Lead-Lag 轉移矩陣 2注",
+        version="v0.1-p638-wave2",
+        lottery_types=(LotteryType.POWER_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.powerlotto_batch01:PowerLottoLeadLag2BetAdapter"
+        ),
+        min_history=10,
+        provenance=(
+            "powerlotto_wave2_strategy_id:power_lead_lag_2bet",
+            "legacy_source:tools/power_lead_lag_audit.py",
+            "second_zone:not_populated_see_adapter_module_docstring",
+            "full_strategy_catalog_id:power_lead_lag_2bet",
+            "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
+        strategy_id="acb_single_539",
+        strategy_name="今彩539 ACB Single 1注",
+        version="v0.1-p36",
+        lottery_types=(LotteryType.DAILY_539,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.daily539_batch01:Daily539AcbSingleCatalogAdapter"
+        ),
+        min_history=100,
+        provenance=(
+            "t539_wave1_strategy_id:acb_single_539",
+            "legacy_source:src/lottolab/strategies/adapters/daily539_single_legacy.py",
+            "legacy_source:LotteryNewMeraged/lottery_api/models/p36_wave2_daily539_adapters.py",
+            "legacy_symbol:_acb_predict",
+            "full_strategy_catalog_id:acb_single_539",
+            "migration_task:SELECTED_INTAKE_SET03_R1",
+        ),
+    ),
 )
 
 

@@ -1750,7 +1750,7 @@ _PRODUCTION_DESCRIPTORS = (
             "lottolab.strategies.adapters.biglotto_wave2_intake:"
             "BigLottoWave2NeighborAdCooccurrenceConditionalAdapter"
         ),
-        min_history=1,
+        min_history=50,
         provenance=(
             "technical_intake_task:IMPLEMENT_DEFERRED_NEIGHBOR_BATCH_AND_MATRIX_REFRESH_R1",
             "implementation_head:e81bdde6b901247b47856b51378581e3daab318e",

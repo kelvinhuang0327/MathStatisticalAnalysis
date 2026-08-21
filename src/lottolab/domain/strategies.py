@@ -28,10 +28,10 @@ class ResponseShape(StrEnum):
     """Which generate-bet response path a strategy's adapter is executed through.
 
     SINGLE_TICKET strategies use the original one-ticket path (BetAdapter,
-    GenerateOneBet). PORTFOLIO strategies natively emit an ordered set of two
-    or more causally-computed tickets under one strategy identity and use the
-    dedicated portfolio path (PortfolioBetAdapter, GeneratePortfolio) so their
-    complete native output is reachable — never truncated to one ticket.
+    GenerateOneBet). PORTFOLIO strategies natively emit one bounded, ordered
+    ticket set under one strategy identity and use the dedicated portfolio path
+    (PortfolioBetAdapter, GeneratePortfolio) so their complete native output is
+    reachable — even when a donor's best-effort uniqueness rule closes at one.
     """
 
     SINGLE_TICKET = "SINGLE_TICKET"
@@ -119,8 +119,8 @@ class StrategyDescriptor:
                 f"{self.strategy_id}: SINGLE_TICKET strategies must declare "
                 "native_ticket_count=1 (minimum=maximum=1)"
             )
-        if self.response_shape is ResponseShape.PORTFOLIO and minimum_count < 2:
+        if self.response_shape is ResponseShape.PORTFOLIO and minimum_count < 1:
             raise ValueError(
                 f"{self.strategy_id}: PORTFOLIO strategies must declare "
-                "native_ticket_count >= 2 with a bounded minimum"
+                "native_ticket_count >= 1 with a positive bounded minimum"
             )

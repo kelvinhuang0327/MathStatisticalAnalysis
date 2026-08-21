@@ -150,8 +150,8 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.stderr == ""
     summary = json.loads(result.stdout)
     assert summary == {
-        "currently_replayable_identity_count": 55,
-        "historical_raw_only_identity_count": 78,
+        "currently_replayable_identity_count": 62,
+        "historical_raw_only_identity_count": 71,
         "keep_unresolved_alias_count": 3,
         "lottery_type": "BIG_LOTTO",
         "mode": "FULL_REPLAY",

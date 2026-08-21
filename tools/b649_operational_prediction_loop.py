@@ -16,6 +16,7 @@ import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
+from functools import partial
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -24,6 +25,7 @@ from zoneinfo import ZoneInfo
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from lottolab.application.use_cases.generate_bet import instantiate_portfolio_adapter
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.prize_evaluation import evaluate_big_lotto_ticket
@@ -51,7 +53,16 @@ from lottolab.strategies.adapters.biglotto_selected import (
     BigLottoSocialWisdomAntiPopularityAdapter,
 )
 from lottolab.strategies.adapters.biglotto_wave1 import BigLottoGraphPredictorAdapter
-from lottolab.strategies.adapters.biglotto_wave14 import BigLottoHpsbOptimizerAdapter
+from lottolab.strategies.adapters.biglotto_wave6 import BigLottoTmeThreeAdapter
+from lottolab.strategies.adapters.biglotto_wave8 import (
+    BigLottoCesThreeAdapter,
+    BigLottoMwscThreeAdapter,
+)
+from lottolab.strategies.adapters.biglotto_wave13 import BigLottoTestAsmAdapter
+from lottolab.strategies.adapters.biglotto_wave14 import (
+    BigLottoHpsbOptimizerAdapter,
+    BigLottoTestEcpAdapter,
+)
 
 TASK_ID = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
 LOTTERY_TYPE = LotteryType.BIG_LOTTO.value
@@ -166,6 +177,49 @@ STRATEGY_STREAMS: tuple[StrategyStream, ...] = (
         enabled=True,
         adapter_factory=BigLottoHpsbOptimizerAdapter,
         native_ticket_count=1,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoTestAsmAdapter.strategy_id,
+        strategy_version=BigLottoTestAsmAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=BigLottoTestAsmAdapter,
+        native_ticket_count=BigLottoTestAsmAdapter.native_ticket_count,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoCesThreeAdapter.strategy_id,
+        strategy_version=BigLottoCesThreeAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=partial(
+            instantiate_portfolio_adapter,
+            BigLottoCesThreeAdapter.strategy_id,
+            BigLottoCesThreeAdapter,
+        ),
+        native_ticket_count=BigLottoCesThreeAdapter.native_ticket_count,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoTestEcpAdapter.strategy_id,
+        strategy_version=BigLottoTestEcpAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=BigLottoTestEcpAdapter,
+        native_ticket_count=BigLottoTestEcpAdapter.native_ticket_count,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoMwscThreeAdapter.strategy_id,
+        strategy_version=BigLottoMwscThreeAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=partial(
+            instantiate_portfolio_adapter,
+            BigLottoMwscThreeAdapter.strategy_id,
+            BigLottoMwscThreeAdapter,
+        ),
+        native_ticket_count=BigLottoMwscThreeAdapter.native_ticket_count,
+    ),
+    StrategyStream(
+        strategy_id=BigLottoTmeThreeAdapter.strategy_id,
+        strategy_version=BigLottoTmeThreeAdapter.strategy_version,
+        enabled=True,
+        adapter_factory=BigLottoTmeThreeAdapter,
+        native_ticket_count=BigLottoTmeThreeAdapter.native_ticket_count,
     ),
 )
 

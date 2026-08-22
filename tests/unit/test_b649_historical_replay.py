@@ -118,13 +118,11 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            # Current main makes 59 identities replayable. This publication
-            # adds 9 distinct legacy identities; hot-stop rebound is already
-            # owned by current main and is not counted twice. The union moves
-            # 9 from HISTORICAL_RAW_ONLY to CURRENTLY_REPLAYABLE: 59->68,
-            # 74->65.
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 68,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 65,
+            # The prior catalog made 68 identities replayable. Native Quad
+            # Strike moves one more identity from HISTORICAL_RAW_ONLY to
+            # CURRENTLY_REPLAYABLE: 68->69, 65->64.
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 69,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 64,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,
@@ -145,6 +143,7 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+        "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
     } <= replayable_ids
 
 

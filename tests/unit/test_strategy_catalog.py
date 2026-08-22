@@ -291,6 +291,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+        "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
     ]
     online_ids = {
         descriptor.strategy_id

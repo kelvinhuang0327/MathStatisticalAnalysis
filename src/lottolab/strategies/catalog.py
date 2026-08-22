@@ -2695,6 +2695,45 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=5,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
+        strategy_name="大樂透 Quad Strike 4注（Fourier + Cold + Tail + Gray Gap）",  # noqa: RUF001
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_quad_strike:BigLottoQuadStrikeAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_biglotto_quad_strike.py",
+            "legacy_source_blob:c3416cb8ae787276a020ab4eeb2f7402612381ae",
+            "legacy_source_sha256:"
+            "e202e664208faf3f998f93f4992a8e2595fe17f2179345bba8d4587deff48a36",
+            "retained_exact_output_ledger:"
+            "lottolab.application.legacy_source_grid_native_portfolios_wave46",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
+            "donor_evidence_sha256:"
+            "a81d0c1b2a4f9ed343d547dbaeff5b83ca77bb453bcf7ecb843779ff7414f9ac",
+            "donor_parity:EXACT_ORDERED_PORTFOLIO_EXECUTION_PARITY",
+            "source_history:OLDEST_FIRST_FOURIER500_FREQ100_GRAY50_FULL_GAP",
+            "component_order:FOURIER_THEN_COLD_THEN_TAIL_THEN_GRAY_CUMULATIVE_EXCLUSION",
+            "number_ranking:DESCENDING_SCORE_ASCENDING_NUMBER_TIE_BREAK",
+            "legacy_number_ranking:NUMPY_1_26_2_DEFAULT_ARGSORT_UNSTABLE_EQUAL_TIES",
+            "portfolio_cardinality:EXACTLY_4_POSITIONAL_24_DISTINCT_NUMBERS",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LEGACY_QUAD_STRIKE_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=4,
+    ),
 )
 
 

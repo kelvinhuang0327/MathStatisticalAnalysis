@@ -149,12 +149,11 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.exit_code == 0, result.stderr
     assert result.stderr == ""
     summary = json.loads(result.stdout)
-    # Current main exposes 59 replayable BIG_LOTTO identities. This publication
-    # adds 9 distinct identities; hot-stop rebound is already owned by main and
-    # is intentionally not counted twice. See the B649 accounting unit test.
+    # Quad Strike makes one previously historical-raw-only BIG_LOTTO identity
+    # replayable while total identity accounting remains unchanged.
     assert summary == {
-        "currently_replayable_identity_count": 68,
-        "historical_raw_only_identity_count": 65,
+        "currently_replayable_identity_count": 69,
+        "historical_raw_only_identity_count": 64,
         "keep_unresolved_alias_count": 3,
         "lottery_type": "BIG_LOTTO",
         "mode": "FULL_REPLAY",

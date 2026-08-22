@@ -104,12 +104,9 @@ HTTPS_TIMEOUT_SECONDS = 15.0
 CANONICAL_REPOSITORY = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
 )
-SOURCE_WORKTREE = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
-    "B649_GOALC_LOCAL_LAUNCHD_R1"
-)
+SOURCE_WORKTREE = CANONICAL_REPOSITORY
 PYTHON_EXECUTABLE = CANONICAL_REPOSITORY / ".venv/bin/python"
-SCRIPT_PATH = SOURCE_WORKTREE / "tools/b649_goalc_local_scheduler.py"
+SCRIPT_PATH = CANONICAL_REPOSITORY / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
     "B649_OPERATIONAL_PREDICTION_LOOP_R1"

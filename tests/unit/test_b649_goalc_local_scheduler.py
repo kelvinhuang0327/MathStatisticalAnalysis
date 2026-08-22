@@ -9,6 +9,7 @@ import plistlib
 import ssl
 import stat
 from collections.abc import Sequence
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
@@ -308,23 +309,38 @@ class _FakeBackend:
 
 def test_production_config_is_the_exact_authorized_runtime() -> None:
     config = production_config()
+    canonical_repository = Path(
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
+    )
 
     assert config.label == "com.lottolab.b649-goalc-r1"
     assert config.start_interval_seconds == 300
     assert config.stale_after_seconds == 900
     assert config.expected_stream_count == len(STREAM_IDS) == 11
-    assert config.canonical_repository == Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
-    )
-    assert config.source_worktree == Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
-        "B649_GOALC_LOCAL_LAUNCHD_R1"
+    assert config.canonical_repository == canonical_repository
+    assert config.source_worktree == canonical_repository
+    assert config.script_path == (
+        canonical_repository / "tools/b649_goalc_local_scheduler.py"
     )
     assert config.operation_root == Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
         "B649_OPERATIONAL_PREDICTION_LOOP_R1"
     )
     assert config.health_path == config.operation_root / "scheduler/health.json"
+
+
+def test_production_launchd_uses_only_canonical_scheduler_authority() -> None:
+    config = production_config()
+    canonical_script = (
+        config.canonical_repository / "tools/b649_goalc_local_scheduler.py"
+    )
+
+    encoded = build_launchd_plist(config)
+    parsed = plistlib.loads(encoded)
+
+    assert parsed["ProgramArguments"][1] == str(canonical_script)
+    assert parsed["WorkingDirectory"] == str(config.canonical_repository)
+    assert b"B649_GOALC_LOCAL_LAUNCHD_R1" not in encoded
 
 
 def test_parse_official_schedule_derives_the_existing_2030_taipei_contract() -> None:
@@ -719,6 +735,38 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert backend.sync_calls == 0
     assert json.loads(config.health_path.read_text()) == result
     assert stat.S_IMODE(os.lstat(config.health_path).st_mode) == 0o600
+
+
+def test_production_cycle_resolves_source_head_from_canonical_repository(
+    tmp_path: Path,
+) -> None:
+    temporary = _config(tmp_path)
+    config = replace(
+        production_config(),
+        operation_root=temporary.operation_root,
+        scheduler_root=temporary.scheduler_root,
+        lock_path=temporary.lock_path,
+        health_path=temporary.health_path,
+        stdout_path=temporary.stdout_path,
+        stderr_path=temporary.stderr_path,
+        plist_path=temporary.plist_path,
+    )
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(11),))
+    resolved_paths: list[Path] = []
+
+    def resolve_source_head(path: Path) -> str:
+        resolved_paths.append(path)
+        return SOURCE_HEAD
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=resolve_source_head,
+    )
+
+    assert result["current_status"] == "PREDRAW_READY"
+    assert resolved_paths == [config.canonical_repository]
 
 
 def test_ready_predraw_cycle_is_no_op_and_does_not_call_generation(

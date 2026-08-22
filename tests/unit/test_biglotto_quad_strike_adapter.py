@@ -257,33 +257,33 @@ def test_fourier_first_peak_period_arithmetic_and_strict_boundary(
 ) -> None:
     series = (1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0)
 
-    def tied_spectrum(signal: tuple[float, ...]) -> tuple[complex, ...]:
-        spectrum = [0j] * len(signal)
-        spectrum[3] = 5 + 0j
-        spectrum[4] = 5 + 0j
+    def tied_spectrum(signal: tuple[float, ...]) -> tuple[float, ...]:
+        spectrum = [0.0] * len(signal)
+        spectrum[2 * 3 - 1] = 5.0
+        spectrum[2 * 4 - 1] = 5.0
         return tuple(spectrum)
 
-    monkeypatch.setattr(quad_module, "bluestein_dft", tied_spectrum)
-    donor_period = 1.0 / (3 / len(series))
+    monkeypatch.setattr(quad_module, "_pocketfft_real_packed", tied_spectrum)
+    donor_period = 1.0 / (3 * (1.0 / len(series)))
     assert quad_module._fourier_rhythm_score(series, range(1, 5)) == 1.0 / (
         donor_period + 1.0
     )
 
-    def boundary_spectrum(signal: tuple[float, ...]) -> tuple[complex, ...]:
-        spectrum = [0j] * len(signal)
-        spectrum[2] = 6 + 0j
+    def boundary_spectrum(signal: tuple[float, ...]) -> tuple[float, ...]:
+        spectrum = [0.0] * len(signal)
+        spectrum[2 * 2 - 1] = 6.0
         return tuple(spectrum)
 
-    monkeypatch.setattr(quad_module, "bluestein_dft", boundary_spectrum)
+    monkeypatch.setattr(quad_module, "_pocketfft_real_packed", boundary_spectrum)
     assert quad_module._fourier_rhythm_score(series, range(1, 5)) == 0.0
 
-    def roundoff_larger_spectrum(signal: tuple[float, ...]) -> tuple[complex, ...]:
-        spectrum = [0j] * len(signal)
-        spectrum[3] = 1 + 0j
-        spectrum[4] = complex(math.nextafter(1.0, math.inf), 0)
+    def roundoff_larger_spectrum(signal: tuple[float, ...]) -> tuple[float, ...]:
+        spectrum = [0.0] * len(signal)
+        spectrum[2 * 3 - 1] = 1.0
+        spectrum[2 * 4 - 1] = math.nextafter(1.0, math.inf)
         return tuple(spectrum)
 
-    monkeypatch.setattr(quad_module, "bluestein_dft", roundoff_larger_spectrum)
+    monkeypatch.setattr(quad_module, "_pocketfft_real_packed", roundoff_larger_spectrum)
     assert quad_module._fourier_rhythm_score(series, range(1, 5)) == 1.0 / (10 / 4 + 1.0)
 
 

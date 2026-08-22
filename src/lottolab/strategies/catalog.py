@@ -2734,6 +2734,36 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=4,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
+        strategy_name="大樂透 Frontend Markov Chain",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_markov:"
+            "BigLottoFrontendMarkovAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/MarkovStrategy.js",
+            "legacy_source_sha256:2fc1cafea55ce4b0f2f9ba1470e7979958196d8a52f679e3615e69804a762deb",
+            "legacy_symbol:MarkovStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.markov",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:NEWEST_FIRST",
+            "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "number_ranking:DESCENDING_NEXT_PROBABILITY_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

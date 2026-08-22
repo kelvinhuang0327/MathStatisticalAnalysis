@@ -215,6 +215,7 @@ def test_public_adapter_exports_are_explicit() -> None:
     assert set(public_adapters.__all__) == {
         "BetAdapter",
         "BetAdapterError",
+        "BigLottoFrontendMarkovAdapter",
         "BigLottoDeviation2BetAdapter",
         "BigLottoDeviation2BetBet2Adapter",
         "BigLottoDynamicFrequencyAdapter",

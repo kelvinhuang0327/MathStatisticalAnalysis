@@ -20,6 +20,9 @@ from lottolab.strategies.adapters.biglotto_selected import (
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
 )
+from lottolab.strategies.adapters.biglotto_frontend_markov import (
+    BigLottoFrontendMarkovAdapter,
+)
 from lottolab.strategies.adapters.biglotto_wave1 import (
     BigLottoDynamicFrequencyAdapter,
     BigLottoEchoPhase2Adapter,
@@ -31,6 +34,7 @@ from lottolab.strategies.adapters.biglotto_wave1 import (
 __all__ = [
     "BetAdapter",
     "BetAdapterError",
+    "BigLottoFrontendMarkovAdapter",
     "BigLottoDeviation2BetAdapter",
     "BigLottoDeviation2BetBet2Adapter",
     "BigLottoDynamicFrequencyAdapter",

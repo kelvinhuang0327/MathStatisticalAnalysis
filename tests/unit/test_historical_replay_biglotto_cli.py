@@ -149,9 +149,8 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.exit_code == 0, result.stderr
     assert result.stderr == ""
     summary = json.loads(result.stdout)
-    # Native Quad Strike moves one previously historical-raw-only BIG_LOTTO
-    # identity into the current catalog: 68->69 replayable and 65->64 raw-only.
-    # Total identity accounting remains unchanged; see the B649 identity test.
+    # Quad Strike makes one previously historical-raw-only BIG_LOTTO identity
+    # replayable while total identity accounting remains unchanged.
     assert summary == {
         "currently_replayable_identity_count": 69,
         "historical_raw_only_identity_count": 64,

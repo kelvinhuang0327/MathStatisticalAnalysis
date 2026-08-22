@@ -64,7 +64,6 @@ def test_adapter_imports_no_database_outer_layer_network_rng_or_numeric_dependen
         )
         for module in imports
     )
-    assert "lottolab.strategies.adapters.powerlotto_wave1" in imports
 
 
 def test_adapter_has_no_persistence_network_rng_retry_or_ledger_call_surface() -> None:

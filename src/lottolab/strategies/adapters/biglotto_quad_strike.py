@@ -28,13 +28,16 @@ Python index sorter below ports that pinned median-of-three quicksort,
 insertion-sort cutoff, and heapsort fallback without adding NumPy to the
 target runtime.
 
-Numerics are stdlib-only. The donor's SciPy transform is replaced by the
-existing dependency-free ``bluestein_dft``, which produces the same frequency
-bins for an arbitrary window length.
+Numerics are stdlib-only. The donor passes a real-valued bitstream to
+``scipy.fft.fft``; SciPy routes that input through pocketfft's real-input
+``r2c`` path rather than its complex-input path. The compact scalar
+FFTPACK/pocketfft port below preserves that implementation path without
+adding NumPy or SciPy.
 """
 
 from __future__ import annotations
 
+import math
 from collections import Counter
 from collections.abc import Sequence
 from typing import cast
@@ -45,7 +48,6 @@ from lottolab.strategies.adapters.base import (
     InvalidOutput,
     PortfolioBetAdapter,
 )
-from lottolab.strategies.adapters.powerlotto_wave1 import bluestein_dft
 
 _STRATEGY_ID = "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f"
 _MIN_NUMBER = 1
@@ -207,6 +209,761 @@ def _legacy_numpy_argsort(scores: tuple[float, ...]) -> tuple[int, ...]:
     return tuple(indices)
 
 
+def _pocketfft_sincos_table(length: int) -> tuple[tuple[float, float], ...]:
+    """Build pocketfft's quadrant-factorized ``exp(2j*pi*k/length)`` table."""
+
+    pi = 3.141592653589793238462643383279502884197
+    angle = 0.25 * pi / length
+    nvalue = (length + 2) // 2
+    shift = 1
+    while (1 << shift) * (1 << shift) < nvalue:
+        shift += 1
+    mask = (1 << shift) - 1
+
+    def calculate(index: int) -> tuple[float, float]:
+        index <<= 3
+        if index < 4 * length:
+            if index < 2 * length:
+                if index < length:
+                    return math.cos(index * angle), math.sin(index * angle)
+                return (
+                    math.sin((2 * length - index) * angle),
+                    math.cos((2 * length - index) * angle),
+                )
+            index -= 2 * length
+            if index < length:
+                return -math.sin(index * angle), math.cos(index * angle)
+            return (
+                -math.cos((2 * length - index) * angle),
+                math.sin((2 * length - index) * angle),
+            )
+
+        index = 8 * length - index
+        if index < 2 * length:
+            if index < length:
+                return math.cos(index * angle), -math.sin(index * angle)
+            return (
+                math.sin((2 * length - index) * angle),
+                -math.cos((2 * length - index) * angle),
+            )
+        index -= 2 * length
+        if index < length:
+            return -math.sin(index * angle), -math.cos(index * angle)
+        return (
+            -math.cos((2 * length - index) * angle),
+            -math.sin((2 * length - index) * angle),
+        )
+
+    first = [(1.0, 0.0)]
+    first.extend(calculate(index) for index in range(1, mask + 1))
+    second = [(1.0, 0.0)]
+    second.extend(
+        calculate(index * (mask + 1))
+        for index in range(1, (nvalue + mask) // (mask + 1))
+    )
+
+    table: list[tuple[float, float]] = []
+    for index in range(length + 1):
+        if 2 * index <= length:
+            left = first[index & mask]
+            right = second[index >> shift]
+            table.append(
+                (
+                    left[0] * right[0] - left[1] * right[1],
+                    left[0] * right[1] + left[1] * right[0],
+                )
+            )
+        else:
+            reflected = length - index
+            left = first[reflected & mask]
+            right = second[reflected >> shift]
+            table.append(
+                (
+                    left[0] * right[0] - left[1] * right[1],
+                    -(left[0] * right[1] + left[1] * right[0]),
+                )
+            )
+    return tuple(table)
+
+
+def _pocketfft_factorize(length: int) -> tuple[int, ...]:
+    """Match pocketfft's real-transform factor ordering."""
+
+    factors: list[int] = []
+    remaining = length
+    while remaining % 4 == 0:
+        factors.append(4)
+        remaining >>= 2
+    if remaining % 2 == 0:
+        remaining >>= 1
+        factors.append(2)
+        factors[0], factors[-1] = factors[-1], factors[0]
+    divisor = 3
+    while divisor * divisor <= remaining:
+        while remaining % divisor == 0:
+            factors.append(divisor)
+            remaining //= divisor
+        divisor += 2
+    if remaining > 1:
+        factors.append(remaining)
+    return tuple(factors)
+
+
+def _pocketfft_real_twiddles(
+    length: int,
+    factors: tuple[int, ...],
+) -> tuple[tuple[list[float], list[float]], ...]:
+    """Compile the real FFTPACK stages' twiddle storage layout."""
+
+    table = _pocketfft_sincos_table(length)
+    compiled: list[tuple[list[float], list[float]]] = []
+    l1 = 1
+    for factor_index, factor in enumerate(factors):
+        inner_length = length // (l1 * factor)
+        twiddle = [0.0] * ((factor - 1) * (inner_length - 1))
+        if factor_index < len(factors) - 1:
+            for j in range(1, factor):
+                for i in range(1, (inner_length - 1) // 2 + 1):
+                    value = table[j * l1 * i]
+                    offset = (j - 1) * (inner_length - 1) + 2 * i - 2
+                    twiddle[offset] = value[0]
+                    twiddle[offset + 1] = value[1]
+
+        special = [0.0] * (2 * factor)
+        if factor > 5:
+            special[0] = 1.0
+            for i in range(2, 2 * factor, 2):
+                conjugate_offset = 2 * factor - i
+                if i > conjugate_offset:
+                    break
+                value = table[(i // 2) * (length // factor)]
+                special[i] = value[0]
+                special[i + 1] = value[1]
+                special[conjugate_offset] = value[0]
+                special[conjugate_offset + 1] = -value[1]
+        compiled.append((twiddle, special))
+        l1 *= factor
+    return tuple(compiled)
+
+
+def _pocketfft_radf2(
+    inner_length: int,
+    group_count: int,
+    source: list[float],
+    target: list[float],
+    twiddle: Sequence[float],
+) -> None:
+    def source_at(a: int, b: int, c: int) -> float:
+        return source[a + inner_length * (b + group_count * c)]
+
+    def target_set(a: int, b: int, c: int, value: float) -> None:
+        target[a + inner_length * (b + 2 * c)] = value
+
+    for group in range(group_count):
+        target_set(
+            0,
+            0,
+            group,
+            source_at(0, group, 0) + source_at(0, group, 1),
+        )
+        target[inner_length - 1 + inner_length * (1 + 2 * group)] = (
+            source_at(0, group, 0) - source_at(0, group, 1)
+        )
+    if inner_length % 2 == 0:
+        for group in range(group_count):
+            target_set(0, 1, group, -source_at(inner_length - 1, group, 1))
+            target_set(
+                inner_length - 1,
+                0,
+                group,
+                source_at(inner_length - 1, group, 0),
+            )
+    if inner_length <= 2:
+        return
+
+    def multiply_pair(
+        real_twiddle: float,
+        imaginary_twiddle: float,
+        real_value: float,
+        imaginary_value: float,
+    ) -> tuple[float, float]:
+        return (
+            real_twiddle * real_value + imaginary_twiddle * imaginary_value,
+            real_twiddle * imaginary_value - imaginary_twiddle * real_value,
+        )
+
+    for group in range(group_count):
+        for index in range(2, inner_length, 2):
+            conjugate_index = inner_length - index
+            offset = index - 2
+            real_twiddle = twiddle[offset]
+            imaginary_twiddle = twiddle[offset + 1]
+            tr2, ti2 = multiply_pair(
+                real_twiddle,
+                imaginary_twiddle,
+                source_at(index - 1, group, 1),
+                source_at(index, group, 1),
+            )
+            target_set(
+                index - 1,
+                0,
+                group,
+                source_at(index - 1, group, 0) + tr2,
+            )
+            target_set(
+                conjugate_index - 1,
+                1,
+                group,
+                source_at(index - 1, group, 0) - tr2,
+            )
+            target_set(index, 0, group, ti2 + source_at(index, group, 0))
+            target_set(
+                conjugate_index,
+                1,
+                group,
+                ti2 - source_at(index, group, 0),
+            )
+
+
+def _pocketfft_radf3(
+    inner_length: int,
+    group_count: int,
+    source: list[float],
+    target: list[float],
+    twiddle: Sequence[float],
+) -> None:
+    taur = -0.5
+    taui = 0.8660254037844386467637231707529362
+
+    def source_at(a: int, b: int, c: int) -> float:
+        return source[a + inner_length * (b + group_count * c)]
+
+    def target_set(a: int, b: int, c: int, value: float) -> None:
+        target[a + inner_length * (b + 3 * c)] = value
+
+    for group in range(group_count):
+        cr2 = source_at(0, group, 1) + source_at(0, group, 2)
+        target_set(0, 0, group, source_at(0, group, 0) + cr2)
+        target_set(
+            0,
+            2,
+            group,
+            taui * (source_at(0, group, 2) - source_at(0, group, 1)),
+        )
+        target_set(
+            inner_length - 1,
+            1,
+            group,
+            source_at(0, group, 0) + taur * cr2,
+        )
+    if inner_length == 1:
+        return
+
+    def multiply_pair(
+        real_twiddle: float,
+        imaginary_twiddle: float,
+        real_value: float,
+        imaginary_value: float,
+    ) -> tuple[float, float]:
+        return (
+            real_twiddle * real_value + imaginary_twiddle * imaginary_value,
+            real_twiddle * imaginary_value - imaginary_twiddle * real_value,
+        )
+
+    for group in range(group_count):
+        for index in range(2, inner_length, 2):
+            conjugate_index = inner_length - index
+            dr2, di2 = multiply_pair(
+                twiddle[index - 2],
+                twiddle[index - 1],
+                source_at(index - 1, group, 1),
+                source_at(index, group, 1),
+            )
+            offset = inner_length - 1
+            dr3, di3 = multiply_pair(
+                twiddle[offset + index - 2],
+                twiddle[offset + index - 1],
+                source_at(index - 1, group, 2),
+                source_at(index, group, 2),
+            )
+            old_dr2, old_di2, old_dr3, old_di3 = dr2, di2, dr3, di3
+            dr2 = old_dr2 + old_dr3
+            di2 = old_di2 + old_di3
+            dr3 = old_di2 - old_di3
+            di3 = old_dr3 - old_dr2
+            target_set(
+                index - 1,
+                0,
+                group,
+                source_at(index - 1, group, 0) + dr2,
+            )
+            target_set(index, 0, group, source_at(index, group, 0) + di2)
+            tr2 = source_at(index - 1, group, 0) + taur * dr2
+            ti2 = source_at(index, group, 0) + taur * di2
+            tr3 = taui * dr3
+            ti3 = taui * di3
+            target_set(index - 1, 2, group, tr2 + tr3)
+            target_set(conjugate_index - 1, 1, group, tr2 - tr3)
+            target_set(index, 2, group, ti3 + ti2)
+            target_set(conjugate_index, 1, group, ti3 - ti2)
+
+
+def _pocketfft_radf4(
+    inner_length: int,
+    group_count: int,
+    source: list[float],
+    target: list[float],
+    twiddle: Sequence[float],
+) -> None:
+    hsqt2 = 0.707106781186547524400844362104849
+
+    def source_at(a: int, b: int, c: int) -> float:
+        return source[a + inner_length * (b + group_count * c)]
+
+    def target_set(a: int, b: int, c: int, value: float) -> None:
+        target[a + inner_length * (b + 4 * c)] = value
+
+    for group in range(group_count):
+        tr1, target_2 = (
+            source_at(0, group, 3) + source_at(0, group, 1),
+            source_at(0, group, 3) - source_at(0, group, 1),
+        )
+        tr2, target_1 = (
+            source_at(0, group, 0) + source_at(0, group, 2),
+            source_at(0, group, 0) - source_at(0, group, 2),
+        )
+        target_set(0, 0, group, tr2 + tr1)
+        target_set(inner_length - 1, 3, group, tr2 - tr1)
+        target_set(0, 2, group, target_2)
+        target_set(inner_length - 1, 1, group, target_1)
+    if inner_length % 2 == 0:
+        for group in range(group_count):
+            ti1 = -hsqt2 * (
+                source_at(inner_length - 1, group, 1)
+                + source_at(inner_length - 1, group, 3)
+            )
+            tr1 = hsqt2 * (
+                source_at(inner_length - 1, group, 1)
+                - source_at(inner_length - 1, group, 3)
+            )
+            target_set(
+                inner_length - 1,
+                0,
+                group,
+                source_at(inner_length - 1, group, 0) + tr1,
+            )
+            target_set(
+                inner_length - 1,
+                2,
+                group,
+                source_at(inner_length - 1, group, 0) - tr1,
+            )
+            target_set(
+                0,
+                3,
+                group,
+                ti1 + source_at(inner_length - 1, group, 2),
+            )
+            target_set(
+                0,
+                1,
+                group,
+                ti1 - source_at(inner_length - 1, group, 2),
+            )
+    if inner_length <= 2:
+        return
+
+    def multiply_pair(
+        real_twiddle: float,
+        imaginary_twiddle: float,
+        real_value: float,
+        imaginary_value: float,
+    ) -> tuple[float, float]:
+        return (
+            real_twiddle * real_value + imaginary_twiddle * imaginary_value,
+            real_twiddle * imaginary_value - imaginary_twiddle * real_value,
+        )
+
+    for group in range(group_count):
+        for index in range(2, inner_length, 2):
+            conjugate_index = inner_length - index
+            cr2, ci2 = multiply_pair(
+                twiddle[index - 2],
+                twiddle[index - 1],
+                source_at(index - 1, group, 1),
+                source_at(index, group, 1),
+            )
+            offset = inner_length - 1
+            cr3, ci3 = multiply_pair(
+                twiddle[offset + index - 2],
+                twiddle[offset + index - 1],
+                source_at(index - 1, group, 2),
+                source_at(index, group, 2),
+            )
+            offset *= 2
+            cr4, ci4 = multiply_pair(
+                twiddle[offset + index - 2],
+                twiddle[offset + index - 1],
+                source_at(index - 1, group, 3),
+                source_at(index, group, 3),
+            )
+            tr1, tr4 = cr4 + cr2, cr4 - cr2
+            ti1, ti4 = ci2 + ci4, ci2 - ci4
+            tr2, tr3 = source_at(index - 1, group, 0) + cr3, source_at(
+                index - 1, group, 0
+            ) - cr3
+            ti2, ti3 = source_at(index, group, 0) + ci3, source_at(index, group, 0) - ci3
+            target_set(index - 1, 0, group, tr2 + tr1)
+            target_set(conjugate_index - 1, 3, group, tr2 - tr1)
+            target_set(index, 0, group, ti1 + ti2)
+            target_set(conjugate_index, 3, group, ti1 - ti2)
+            target_set(index - 1, 2, group, tr3 + ti4)
+            target_set(conjugate_index - 1, 1, group, tr3 - ti4)
+            target_set(index, 2, group, tr4 + ti3)
+            target_set(conjugate_index, 1, group, tr4 - ti3)
+
+
+def _pocketfft_radf5(
+    inner_length: int,
+    group_count: int,
+    source: list[float],
+    target: list[float],
+    twiddle: Sequence[float],
+) -> None:
+    tr11 = 0.3090169943749474241022934171828191
+    ti11 = 0.9510565162951535721164393333793821
+    tr12 = -0.8090169943749474241022934171828191
+    ti12 = 0.5877852522924731291687059546390728
+
+    def source_at(a: int, b: int, c: int) -> float:
+        return source[a + inner_length * (b + group_count * c)]
+
+    def target_set(a: int, b: int, c: int, value: float) -> None:
+        target[a + inner_length * (b + 5 * c)] = value
+
+    for group in range(group_count):
+        cr2, ci5 = (
+            source_at(0, group, 4) + source_at(0, group, 1),
+            source_at(0, group, 4) - source_at(0, group, 1),
+        )
+        cr3, ci4 = (
+            source_at(0, group, 3) + source_at(0, group, 2),
+            source_at(0, group, 3) - source_at(0, group, 2),
+        )
+        target_set(0, 0, group, source_at(0, group, 0) + cr2 + cr3)
+        target_set(
+            inner_length - 1,
+            1,
+            group,
+            source_at(0, group, 0) + tr11 * cr2 + tr12 * cr3,
+        )
+        target_set(0, 2, group, ti11 * ci5 + ti12 * ci4)
+        target_set(
+            inner_length - 1,
+            3,
+            group,
+            source_at(0, group, 0) + tr12 * cr2 + tr11 * cr3,
+        )
+        target_set(0, 4, group, ti12 * ci5 - ti11 * ci4)
+    if inner_length == 1:
+        return
+
+    def multiply_pair(
+        real_twiddle: float,
+        imaginary_twiddle: float,
+        real_value: float,
+        imaginary_value: float,
+    ) -> tuple[float, float]:
+        return (
+            real_twiddle * real_value + imaginary_twiddle * imaginary_value,
+            real_twiddle * imaginary_value - imaginary_twiddle * real_value,
+        )
+
+    for group in range(group_count):
+        for index in range(2, inner_length, 2):
+            conjugate_index = inner_length - index
+            values: list[tuple[float, float]] = []
+            for factor in range(4):
+                offset = factor * (inner_length - 1)
+                values.append(
+                    multiply_pair(
+                        twiddle[offset + index - 2],
+                        twiddle[offset + index - 1],
+                        source_at(index - 1, group, factor + 1),
+                        source_at(index, group, factor + 1),
+                    )
+                )
+            (dr2, di2), (dr3, di3), (dr4, di4), (dr5, di5) = values
+            old_dr2, old_di2, old_dr5, old_di5 = dr2, di2, dr5, di5
+            dr2 = old_dr2 + old_dr5
+            di2 = old_di2 + old_di5
+            dr5 = old_di2 - old_di5
+            di5 = old_dr5 - old_dr2
+            old_dr3, old_di3, old_dr4, old_di4 = dr3, di3, dr4, di4
+            dr3 = old_dr3 + old_dr4
+            di3 = old_di3 + old_di4
+            dr4 = old_di3 - old_di4
+            di4 = old_dr4 - old_dr3
+            tr2 = source_at(index - 1, group, 0) + tr11 * dr2 + tr12 * dr3
+            ti2 = source_at(index, group, 0) + tr11 * di2 + tr12 * di3
+            tr3 = source_at(index - 1, group, 0) + tr12 * dr2 + tr11 * dr3
+            ti3 = source_at(index, group, 0) + tr12 * di2 + tr11 * di3
+            tr5 = ti11 * dr5 + ti12 * dr4
+            ti5 = ti11 * di5 + ti12 * di4
+            tr4 = ti12 * dr5 - ti11 * dr4
+            ti4 = ti12 * di5 - ti11 * di4
+            target_set(
+                index - 1,
+                0,
+                group,
+                source_at(index - 1, group, 0) + dr2 + dr3,
+            )
+            target_set(index, 0, group, source_at(index, group, 0) + di2 + di3)
+            target_set(index - 1, 2, group, tr2 + tr5)
+            target_set(conjugate_index - 1, 1, group, tr2 - tr5)
+            target_set(index, 2, group, ti5 + ti2)
+            target_set(conjugate_index, 1, group, ti5 - ti2)
+            target_set(index - 1, 4, group, tr3 + tr4)
+            target_set(conjugate_index - 1, 3, group, tr3 - tr4)
+            target_set(index, 4, group, ti4 + ti3)
+            target_set(conjugate_index, 3, group, ti4 - ti3)
+
+
+def _pocketfft_radfg(
+    inner_length: int,
+    factor: int,
+    group_count: int,
+    source: list[float],
+    target: list[float],
+    twiddle: Sequence[float],
+    special: Sequence[float],
+) -> None:
+    half_factor = (factor + 1) // 2
+    flattened_group = inner_length * group_count
+
+    def source_group_at(a: int, b: int) -> float:
+        return source[a + flattened_group * b]
+
+    if inner_length > 1:
+        for j in range(1, half_factor):
+            conjugate_j = factor - j
+            offset = (j - 1) * (inner_length - 1)
+            conjugate_offset = (conjugate_j - 1) * (inner_length - 1)
+            for group in range(group_count):
+                twiddle_offset = offset
+                conjugate_twiddle_offset = conjugate_offset
+                for index in range(1, inner_length - 1, 2):
+                    t1 = source[index + inner_length * (group + group_count * j)]
+                    t2 = source[index + 1 + inner_length * (group + group_count * j)]
+                    t3 = source[index + inner_length * (group + group_count * conjugate_j)]
+                    t4 = source[index + 1 + inner_length * (group + group_count * conjugate_j)]
+                    x1 = twiddle[twiddle_offset] * t1 + twiddle[twiddle_offset + 1] * t2
+                    x2 = twiddle[twiddle_offset] * t2 - twiddle[twiddle_offset + 1] * t1
+                    x3 = (
+                        twiddle[conjugate_twiddle_offset] * t3
+                        + twiddle[conjugate_twiddle_offset + 1] * t4
+                    )
+                    x4 = (
+                        twiddle[conjugate_twiddle_offset] * t4
+                        - twiddle[conjugate_twiddle_offset + 1] * t3
+                    )
+                    source[index + inner_length * (group + group_count * j)] = x3 + x1
+                    source[index + 1 + inner_length * (group + group_count * conjugate_j)] = x3 - x1
+                    source[index + 1 + inner_length * (group + group_count * j)] = x2 + x4
+                    source[index + inner_length * (group + group_count * conjugate_j)] = x2 - x4
+                    twiddle_offset += 2
+                    conjugate_twiddle_offset += 2
+
+    for j in range(1, half_factor):
+        conjugate_j = factor - j
+        for group in range(group_count):
+            first = inner_length * (group + group_count * conjugate_j)
+            second = inner_length * (group + group_count * j)
+            if first != second:
+                first_value = source[first]
+                second_value = source[second]
+                source[first] = first_value - second_value
+                source[second] = first_value + second_value
+
+    for stage in range(1, half_factor):
+        conjugate_l = factor - stage
+        for index in range(flattened_group):
+            target[index + flattened_group * stage] = (
+                source_group_at(index, 0)
+                + special[2 * stage] * source_group_at(index, 1)
+                + special[4 * stage] * source_group_at(index, 2)
+            )
+            target[index + flattened_group * conjugate_l] = (
+                special[2 * stage + 1] * source_group_at(index, factor - 1)
+                + special[4 * stage + 1] * source_group_at(index, factor - 2)
+            )
+        angle_index = 2 * stage
+        j = 3
+        conjugate_j = factor - 3
+        while j < half_factor - 3:
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar1, ai1 = special[2 * angle_index], special[2 * angle_index + 1]
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar2, ai2 = special[2 * angle_index], special[2 * angle_index + 1]
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar3, ai3 = special[2 * angle_index], special[2 * angle_index + 1]
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar4, ai4 = special[2 * angle_index], special[2 * angle_index + 1]
+            for index in range(flattened_group):
+                target[index + flattened_group * stage] += (
+                    ar1 * source_group_at(index, j)
+                    + ar2 * source_group_at(index, j + 1)
+                    + ar3 * source_group_at(index, j + 2)
+                    + ar4 * source_group_at(index, j + 3)
+                )
+                target[index + flattened_group * conjugate_l] += (
+                    ai1 * source_group_at(index, conjugate_j)
+                    + ai2 * source_group_at(index, conjugate_j - 1)
+                    + ai3 * source_group_at(index, conjugate_j - 2)
+                    + ai4 * source_group_at(index, conjugate_j - 3)
+                )
+            j += 4
+            conjugate_j -= 4
+        while j < half_factor - 1:
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar1, ai1 = special[2 * angle_index], special[2 * angle_index + 1]
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar2, ai2 = special[2 * angle_index], special[2 * angle_index + 1]
+            for index in range(flattened_group):
+                target[index + flattened_group * stage] += (
+                    ar1 * source_group_at(index, j)
+                    + ar2 * source_group_at(index, j + 1)
+                )
+                target[index + flattened_group * conjugate_l] += (
+                    ai1 * source_group_at(index, conjugate_j)
+                    + ai2 * source_group_at(index, conjugate_j - 1)
+                )
+            j += 2
+            conjugate_j -= 2
+        while j < half_factor:
+            angle_index += stage
+            if angle_index >= factor:
+                angle_index -= factor
+            ar, ai = special[2 * angle_index], special[2 * angle_index + 1]
+            for index in range(flattened_group):
+                target[index + flattened_group * stage] += ar * source_group_at(index, j)
+                target[index + flattened_group * conjugate_l] += ai * source_group_at(
+                    index, conjugate_j
+                )
+            j += 1
+            conjugate_j -= 1
+
+    for index in range(flattened_group):
+        target[index] = source_group_at(index, 0)
+        for j in range(1, half_factor):
+            target[index] += source_group_at(index, j)
+
+    for group in range(group_count):
+        for index in range(inner_length):
+            source[index + inner_length * (0 + factor * group)] = target[
+                index + inner_length * (group + group_count * 0)
+            ]
+    for j in range(1, half_factor):
+        conjugate_j = factor - j
+        output_pair = 2 * j - 1
+        for group in range(group_count):
+            source[inner_length - 1 + inner_length * (output_pair + factor * group)] = target[
+                inner_length * (group + group_count * j)
+            ]
+            source[inner_length * (output_pair + 1 + factor * group)] = target[
+                inner_length * (group + group_count * conjugate_j)
+            ]
+    if inner_length == 1:
+        return
+    for j in range(1, half_factor):
+        conjugate_j = factor - j
+        output_pair = 2 * j - 1
+        for group in range(group_count):
+            for index in range(1, inner_length - 1, 2):
+                reflected = inner_length - index - 2
+                source[index + inner_length * (output_pair + 1 + factor * group)] = (
+                    target[index + inner_length * (group + group_count * j)]
+                    + target[index + inner_length * (group + group_count * conjugate_j)]
+                )
+                source[reflected + inner_length * (output_pair + factor * group)] = (
+                    target[index + inner_length * (group + group_count * j)]
+                    - target[index + inner_length * (group + group_count * conjugate_j)]
+                )
+                source[index + 1 + inner_length * (output_pair + 1 + factor * group)] = (
+                    target[index + 1 + inner_length * (group + group_count * j)]
+                    + target[index + 1 + inner_length * (group + group_count * conjugate_j)]
+                )
+                source[reflected + 1 + inner_length * (output_pair + factor * group)] = (
+                    target[index + 1 + inner_length * (group + group_count * conjugate_j)]
+                    - target[index + 1 + inner_length * (group + group_count * j)]
+                )
+
+
+def _pocketfft_real_packed(signal: tuple[float, ...]) -> tuple[float, ...]:
+    """Return pocketfft's packed real FFT output for one causal bitstream."""
+
+    length = len(signal)
+    if length <= 1:
+        return signal
+    factors = _pocketfft_factorize(length)
+    compiled = _pocketfft_real_twiddles(length, factors)
+    first = list(signal)
+    second = [0.0] * length
+    group_length = length
+    for factor_index in range(len(factors)):
+        factor_position = len(factors) - factor_index - 1
+        factor = factors[factor_position]
+        inner_length = length // group_length
+        group_length //= factor
+        twiddle, special = compiled[factor_position]
+        if factor == 4:
+            _pocketfft_radf4(inner_length, group_length, first, second, twiddle)
+        elif factor == 2:
+            _pocketfft_radf2(inner_length, group_length, first, second, twiddle)
+        elif factor == 3:
+            _pocketfft_radf3(inner_length, group_length, first, second, twiddle)
+        elif factor == 5:
+            _pocketfft_radf5(inner_length, group_length, first, second, twiddle)
+        else:
+            _pocketfft_radfg(
+                inner_length,
+                factor,
+                group_length,
+                first,
+                second,
+                twiddle,
+                special,
+            )
+            first, second = second, first
+        first, second = second, first
+    return tuple(first)
+
+
+def _legacy_complex_magnitude(real: float, imaginary: float) -> float:
+    """Match the donor runtime's two-term complex-magnitude arithmetic."""
+
+    larger = abs(real)
+    smaller = abs(imaginary)
+    if larger < smaller:
+        larger, smaller = smaller, larger
+    if larger == 0.0:
+        return 0.0
+    ratio = smaller / larger
+    return larger * math.sqrt(1.0 + ratio * ratio)
+
+
 def _fourier_rhythm_score(
     series: tuple[float, ...],
     positive_bins: range,
@@ -218,15 +975,30 @@ def _fourier_rhythm_score(
     if appearances < 2:
         return 0.0
     mean = appearances / width
-    spectrum = bluestein_dft(tuple(value - mean for value in series))
+    packed_spectrum = _pocketfft_real_packed(
+        tuple(value - mean for value in series)
+    )
     dominant_bin = positive_bins.start
-    dominant_magnitude = abs(spectrum[dominant_bin])
+    dominant_real = packed_spectrum[2 * dominant_bin - 1]
+    dominant_imaginary = packed_spectrum[2 * dominant_bin]
+    dominant_magnitude = _legacy_complex_magnitude(
+        dominant_real,
+        dominant_imaginary,
+    )
     for candidate_bin in positive_bins:
-        candidate_magnitude = abs(spectrum[candidate_bin])
+        candidate_real = packed_spectrum[2 * candidate_bin - 1]
+        candidate_imaginary = packed_spectrum[2 * candidate_bin]
+        candidate_magnitude = _legacy_complex_magnitude(
+            candidate_real,
+            candidate_imaginary,
+        )
         if candidate_magnitude > dominant_magnitude:
             dominant_bin = candidate_bin
             dominant_magnitude = candidate_magnitude
-    frequency = dominant_bin / width
+    # ``scipy.fft.fftfreq(width, 1)`` builds its positive grid from the
+    # reciprocal ``1 / width`` and then multiplies by each bin index.  Keep
+    # that operation order so the donor's pinned IEEE-754 values are retained.
+    frequency = dominant_bin * (1.0 / width)
     period = 1.0 / frequency
     if not 2 < period < width / 2:
         return 0.0

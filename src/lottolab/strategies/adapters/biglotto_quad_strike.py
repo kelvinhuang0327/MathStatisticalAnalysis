@@ -22,10 +22,11 @@ scan. The donor draws no random values anywhere; its module-level
 ``numpy.random.seed(42)`` is dead code, is not migrated, and no RNG
 abstraction replaces it.
 
-Ticket 1 ranks Fourier scores descending and resolves equal final scores by
-ascending number, the owner-resolved deterministic rule. This makes the
-native target independent of NumPy's unspecified unstable ``argsort``
-permutation while preserving donor output whenever scores are not tied.
+Ticket 1 preserves the donor's NumPy 1.26.2 default float ``argsort``
+ordering, including its unstable equal-score permutation. The small pure
+Python index sorter below ports that pinned median-of-three quicksort,
+insertion-sort cutoff, and heapsort fallback without adding NumPy to the
+target runtime.
 
 Numerics are stdlib-only. The donor's SciPy transform is replaced by the
 existing dependency-free ``bluestein_dft``, which produces the same frequency
@@ -34,9 +35,9 @@ bins for an arbitrary window length.
 
 from __future__ import annotations
 
-import math
 from collections import Counter
 from collections.abc import Sequence
+from typing import cast
 
 from lottolab.domain.draws import LotteryType
 from lottolab.strategies.adapters.base import (
@@ -60,7 +61,6 @@ _GRAY_ZONE_DEVIATION = 1.5
 _TAIL_MODULUS = 10
 _TAIL_ROUND_LIMIT = 10
 _MIN_HISTORY = 1
-_FOURIER_MAGNITUDE_TOLERANCE = 1e-12
 
 
 def _all_numbers() -> range:
@@ -84,6 +84,129 @@ def _frequencies(rows: Sequence[CausalDrawRow]) -> Counter[int]:
     return Counter(number for row in rows for number in row.numbers)
 
 
+def _legacy_numpy_argsort(scores: tuple[float, ...]) -> tuple[int, ...]:
+    """Reproduce NumPy 1.26.2's default float ``argsort`` index order.
+
+    The donor calls ``np.argsort`` without a ``kind`` or tie-break key. Its
+    pinned runtime therefore exposes the legacy introsort implementation:
+    median-of-three partitioning, insertion sort for partitions of at most
+    sixteen elements, and heapsort after the introsort depth limit. Equality
+    is intentionally never resolved by value or original index.
+    """
+
+    indices = list(range(len(scores)))
+    if len(indices) < 2:
+        return tuple(indices)
+
+    def heapsort(start: int, end: int) -> None:
+        heap = [0, *indices[start : end + 1]]
+        size = len(heap) - 1
+
+        for root in range(size >> 1, 0, -1):
+            saved = heap[root]
+            child = root << 1
+            while child <= size:
+                if child < size and scores[heap[child]] < scores[heap[child + 1]]:
+                    child += 1
+                if scores[saved] < scores[heap[child]]:
+                    heap[root] = heap[child]
+                    root = child
+                    child <<= 1
+                else:
+                    break
+            heap[root] = saved
+
+        remaining = size
+        while remaining > 1:
+            saved = heap[remaining]
+            heap[remaining] = heap[1]
+            remaining -= 1
+            root = 1
+            child = root << 1
+            while child <= remaining:
+                if (
+                    child < remaining
+                    and scores[heap[child]] < scores[heap[child + 1]]
+                ):
+                    child += 1
+                if scores[saved] < scores[heap[child]]:
+                    heap[root] = heap[child]
+                    root = child
+                    child <<= 1
+                else:
+                    break
+            heap[root] = saved
+
+        indices[start : end + 1] = heap[1:]
+
+    stack: list[tuple[int, int, int]] = []
+    lower = 0
+    upper = len(indices) - 1
+    depth = (len(indices).bit_length() - 1) * 2
+
+    while True:
+        if depth < 0:
+            heapsort(lower, upper)
+            if not stack:
+                break
+            lower, upper, depth = stack.pop()
+            continue
+
+        while upper - lower > 15:
+            middle = lower + ((upper - lower) >> 1)
+            if scores[indices[middle]] < scores[indices[lower]]:
+                indices[middle], indices[lower] = indices[lower], indices[middle]
+            if scores[indices[upper]] < scores[indices[middle]]:
+                indices[upper], indices[middle] = indices[middle], indices[upper]
+            if scores[indices[middle]] < scores[indices[lower]]:
+                indices[middle], indices[lower] = indices[lower], indices[middle]
+
+            pivot = scores[indices[middle]]
+            left = lower
+            right = upper - 1
+            indices[middle], indices[right] = indices[right], indices[middle]
+            while True:
+                left += 1
+                while scores[indices[left]] < pivot:
+                    left += 1
+                right -= 1
+                while pivot < scores[indices[right]]:
+                    right -= 1
+                if left >= right:
+                    break
+                indices[left], indices[right] = indices[right], indices[left]
+
+            indices[left], indices[upper - 1] = indices[upper - 1], indices[left]
+            next_depth = depth - 1
+            if left - lower < upper - left:
+                stack.append((left + 1, upper, next_depth))
+                upper = left - 1
+            else:
+                stack.append((lower, left - 1, next_depth))
+                lower = left + 1
+            depth = next_depth
+
+        for position in range(lower + 1, upper + 1):
+            saved_index = indices[position]
+            saved_score = scores[saved_index]
+            insertion_position = position
+            previous = position - 1
+            while (
+                insertion_position > lower
+                and saved_score < scores[indices[previous]]
+            ):
+                indices[insertion_position] = indices[previous]
+                insertion_position -= 1
+                previous -= 1
+            indices[insertion_position] = saved_index
+
+        if not stack:
+            break
+        lower, upper, depth = stack.pop()
+
+    return tuple(indices)
+
+
 def _fourier_rhythm_score(
     series: tuple[float, ...],
     positive_bins: range,
@@ -100,12 +223,7 @@ def _fourier_rhythm_score(
     dominant_magnitude = abs(spectrum[dominant_bin])
     for candidate_bin in positive_bins:
         candidate_magnitude = abs(spectrum[candidate_bin])
-        if candidate_magnitude > dominant_magnitude and not math.isclose(
-            candidate_magnitude,
-            dominant_magnitude,
-            rel_tol=_FOURIER_MAGNITUDE_TOLERANCE,
-            abs_tol=_FOURIER_MAGNITUDE_TOLERANCE,
-        ):
+        if candidate_magnitude > dominant_magnitude:
             dominant_bin = candidate_bin
             dominant_magnitude = candidate_magnitude
     frequency = dominant_bin / width
@@ -133,10 +251,14 @@ def _fourier_rhythm_scores(history: tuple[CausalDrawRow, ...]) -> dict[int, floa
 
 
 def _fourier_rhythm_ticket(history: tuple[CausalDrawRow, ...]) -> tuple[int, ...]:
-    """Ticket 1: descending score rank with deterministic number tie-breaks."""
+    """Ticket 1: descending donor score rank with donor tie ordering."""
 
     scores = _fourier_rhythm_scores(history)
-    ranked_numbers = sorted(_all_numbers(), key=lambda number: (-scores[number], number))
+    score_values = tuple(scores[number] for number in _all_numbers())
+    ranked_indices = _legacy_numpy_argsort(score_values)
+    ranked_numbers = tuple(
+        index + _MIN_NUMBER for index in reversed(ranked_indices)
+    )
     return tuple(sorted(ranked_numbers[:_PICK_COUNT]))
 
 
@@ -271,7 +393,7 @@ class BigLottoQuadStrikeAdapter(PortfolioBetAdapter):
     strategy_name = "大樂透 Quad Strike 4注（Fourier + Cold + Tail + Gray Gap）"  # noqa: RUF001
     strategy_version = "v0.1"
     min_history = _MIN_HISTORY
-    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    supported_lottery_types = (cast(LotteryType, LotteryType.BIG_LOTTO),)
     native_ticket_count = _NATIVE_TICKET_COUNT
     minimum_native_ticket_count = _NATIVE_TICKET_COUNT
     maximum_native_ticket_count = _NATIVE_TICKET_COUNT

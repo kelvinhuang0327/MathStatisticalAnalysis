@@ -44,14 +44,14 @@ STRATEGY_ID = "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f"
 SOURCE_SHA256 = "e202e664208faf3f998f93f4992a8e2595fe17f2179345bba8d4587deff48a36"
 SOURCE_BLOB = "c3416cb8ae787276a020ab4eeb2f7402612381ae"
 
-# The one-draw case has an exact all-zero Fourier-score tie; the owner-resolved
-# ascending-number rule supersedes NumPy's unspecified quicksort permutation.
+# The one-draw case has an exact all-zero Fourier-score tie; the donor's pinned
+# NumPy 1.26.2 default quicksort permutation is part of the output semantics.
 PORTFOLIO_GOLDENS = {
     (1, 17): (
+        (19, 20, 21, 22, 24, 49),
         (1, 2, 3, 4, 5, 6),
-        (7, 8, 9, 10, 12, 13),
-        (11, 14, 20, 33, 42, 46),
-        (15, 16, 17, 18, 19, 21),
+        (10, 11, 14, 33, 42, 46),
+        (7, 8, 9, 12, 13, 15),
     ),
     (49, 17): (
         (26, 28, 35, 41, 42, 45),
@@ -175,7 +175,7 @@ def test_authoritative_identity_is_unique_cataloged_four_ticket_portfolio() -> N
 
 
 @pytest.mark.parametrize(("count", "seed"), tuple(PORTFOLIO_GOLDENS))
-def test_complete_portfolio_matches_donor_or_owner_golden(count: int, seed: int) -> None:
+def test_complete_portfolio_matches_frozen_donor_golden(count: int, seed: int) -> None:
     actual = BigLottoQuadStrikeAdapter().get_bets(
         _lcg_history(count, seed),
         LotteryType.BIG_LOTTO,
@@ -192,10 +192,64 @@ def test_complete_portfolio_matches_donor_or_owner_golden(count: int, seed: int)
     )
 
 
-def test_fourier_final_score_tie_uses_owner_number_ascending_rule() -> None:
+def test_fourier_final_score_tie_uses_pinned_numpy_argsort_order() -> None:
     history = _lcg_history(1, 17)
 
-    assert quad_module._fourier_rhythm_ticket(history) == (1, 2, 3, 4, 5, 6)
+    assert quad_module._fourier_rhythm_ticket(history) == (19, 20, 21, 22, 24, 49)
+
+
+def test_pinned_numpy_zero_score_argsort_permutation_is_reproduced() -> None:
+    assert quad_module._legacy_numpy_argsort((0.0,) * 49) == (
+        0,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        25,
+        47,
+        24,
+        22,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        23,
+        48,
+    )
 
 
 def test_fourier_first_peak_period_arithmetic_and_strict_boundary(
@@ -223,16 +277,14 @@ def test_fourier_first_peak_period_arithmetic_and_strict_boundary(
     monkeypatch.setattr(quad_module, "bluestein_dft", boundary_spectrum)
     assert quad_module._fourier_rhythm_score(series, range(1, 5)) == 0.0
 
-    def roundoff_tied_spectrum(signal: tuple[float, ...]) -> tuple[complex, ...]:
+    def roundoff_larger_spectrum(signal: tuple[float, ...]) -> tuple[complex, ...]:
         spectrum = [0j] * len(signal)
         spectrum[3] = 1 + 0j
         spectrum[4] = complex(math.nextafter(1.0, math.inf), 0)
         return tuple(spectrum)
 
-    monkeypatch.setattr(quad_module, "bluestein_dft", roundoff_tied_spectrum)
-    assert quad_module._fourier_rhythm_score(series, range(1, 5)) == 1.0 / (
-        10 / 3 + 1.0
-    )
+    monkeypatch.setattr(quad_module, "bluestein_dft", roundoff_larger_spectrum)
+    assert quad_module._fourier_rhythm_score(series, range(1, 5)) == 1.0 / (10 / 4 + 1.0)
 
 
 def test_cold_tail_and_sequential_exclusion_match_donor_positions() -> None:

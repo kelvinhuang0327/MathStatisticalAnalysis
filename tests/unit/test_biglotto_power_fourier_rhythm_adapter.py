@@ -110,8 +110,8 @@ def test_authoritative_identity_is_unique_cataloged_fixed_portfolio() -> None:
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
     strategy_ids = tuple(item.strategy_id for item in catalog)
-    assert len(strategy_ids) == 115
-    assert strategy_ids[-7:] == (
+    assert len(strategy_ids) == 116
+    assert strategy_ids[-8:] == (
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         STRATEGY_ID,
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
@@ -119,8 +119,9 @@ def test_authoritative_identity_is_unique_cataloged_fixed_portfolio() -> None:
         "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
         "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4",
         "legacy_biglotto__frontend_trend_strategy__a5f4554c80ef",
+        "legacy_biglotto__frontend_bayesian_strategy__baa3045817fb",
     )
-    assert strategy_ids[:-6].count(STRATEGY_ID) == 0
+    assert strategy_ids[:-7].count(STRATEGY_ID) == 0
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE
     assert descriptor.executable is True
     assert descriptor.response_shape is ResponseShape.PORTFOLIO

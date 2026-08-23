@@ -2808,6 +2808,37 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_trend_strategy__a5f4554c80ef",
+        strategy_name="大樂透 Frontend Trend Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_trend:"
+            "BigLottoFrontendTrendAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/TrendStrategy.js",
+            "legacy_source_sha256:a5f4554c80ef364f60afa5c9761889c28a18fd2cc79ac97b712eca573eb8e309",
+            "legacy_symbol:TrendStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.trend",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:NEWEST_FIRST",
+            "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "number_ranking:DESCENDING_PROBABILITY_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "decay_parameter:LAMBDA_0_05",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R3",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

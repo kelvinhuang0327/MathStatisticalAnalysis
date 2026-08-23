@@ -493,4 +493,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
         "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
         "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4",
+        "legacy_biglotto__frontend_trend_strategy__a5f4554c80ef",
     ]

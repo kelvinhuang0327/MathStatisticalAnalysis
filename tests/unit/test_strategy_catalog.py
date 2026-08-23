@@ -294,6 +294,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
         "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
         "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4",
+        "legacy_biglotto__frontend_trend_strategy__a5f4554c80ef",
     ]
     online_ids = {
         descriptor.strategy_id

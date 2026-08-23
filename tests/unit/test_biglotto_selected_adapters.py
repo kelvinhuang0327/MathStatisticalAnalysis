@@ -223,6 +223,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BigLottoGraphPredictorAdapter",
         "BigLottoHotCooccurrenceAdapter",
         "BigLottoMustHitTop6Adapter",
+        "BigLottoOrthogonal2BetAdapter",
         "BigLottoP02BetBet1Adapter",
         "BigLottoP02BetBet2Adapter",
         "BigLottoSocialWisdomAntiPopularityAdapter",

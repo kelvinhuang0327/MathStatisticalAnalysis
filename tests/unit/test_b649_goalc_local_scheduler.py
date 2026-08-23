@@ -18,6 +18,7 @@ from urllib.error import URLError
 import pytest
 import tools.b649_goalc_local_scheduler as scheduler_module
 from tools.b649_goalc_local_scheduler import (
+    SHADOW_HEALTH_NAMESPACE,
     AdvisoryProcessLock,
     OfficialHttpsClient,
     OfficialScheduleUnavailableError,
@@ -307,11 +308,75 @@ class _FakeBackend:
         return self.postdraw
 
 
+class _ShadowHookBackend(_FakeBackend):
+    def __init__(
+        self,
+        *,
+        target: PredictionTarget,
+        inventories: Sequence[PredictionInventory],
+        postdraw: PostDrawResult | None = None,
+        fail_refresh: Exception | None = None,
+    ) -> None:
+        super().__init__(
+            target=target,
+            inventories=inventories,
+            postdraw=postdraw,
+            fail_refresh=fail_refresh,
+        )
+        self.shadow_predraw_calls: list[tuple[str, str, str]] = []
+        self.shadow_postdraw_calls: list[tuple[str, str, str]] = []
+
+    def run_shadow_predraw(
+        self,
+        target: PredictionTarget,
+        observed_at: datetime,
+        *,
+        primary_status: str,
+        canonical_source_head: str,
+    ) -> dict[str, object]:
+        self.shadow_predraw_calls.append(
+            (target.draw_number, primary_status, canonical_source_head)
+        )
+        return {
+            "namespace": SHADOW_HEALTH_NAMESPACE,
+            "status": "PREDRAW_COMPLETE",
+            "observed_at": observed_at.isoformat(),
+        }
+
+    def run_shadow_postdraw(
+        self,
+        target: PredictionTarget,
+        observed_at: datetime,
+        *,
+        primary_status: str,
+        canonical_source_head: str,
+    ) -> dict[str, object]:
+        self.shadow_postdraw_calls.append(
+            (target.draw_number, primary_status, canonical_source_head)
+        )
+        return {
+            "namespace": SHADOW_HEALTH_NAMESPACE,
+            "status": "WAITING_FOR_OUTCOME",
+            "observed_at": observed_at.isoformat(),
+        }
+
+
+class _ShadowFailureBackend(_ShadowHookBackend):
+    def run_shadow_predraw(
+        self,
+        target: PredictionTarget,
+        observed_at: datetime,
+        *,
+        primary_status: str,
+        canonical_source_head: str,
+    ) -> dict[str, object]:
+        del target, observed_at, primary_status, canonical_source_head
+        raise RuntimeError("shadow fixture failed")
+
+
 def test_production_config_is_the_exact_authorized_runtime() -> None:
     config = production_config()
-    canonical_repository = Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
-    )
+    canonical_repository = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 
     assert config.label == "com.lottolab.b649-goalc-r1"
     assert config.start_interval_seconds == 300
@@ -319,21 +384,16 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == canonical_repository
-    assert config.script_path == (
-        canonical_repository / "tools/b649_goalc_local_scheduler.py"
-    )
+    assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
     assert config.operation_root == Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-        "B649_OPERATIONAL_PREDICTION_LOOP_R1"
+        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
     )
     assert config.health_path == config.operation_root / "scheduler/health.json"
 
 
 def test_production_launchd_uses_only_canonical_scheduler_authority() -> None:
     config = production_config()
-    canonical_script = (
-        config.canonical_repository / "tools/b649_goalc_local_scheduler.py"
-    )
+    canonical_script = config.canonical_repository / "tools/b649_goalc_local_scheduler.py"
 
     encoded = build_launchd_plist(config)
     parsed = plistlib.loads(encoded)
@@ -396,17 +456,14 @@ def test_schedule_refresh_atomically_replaces_only_b649_and_preserves_mode(
         ),
     )
     body = _schedule_body()
-    client = OfficialHttpsClient(
-        transport=lambda _request, _context, _timeout, _limit: body
-    )
+    client = OfficialHttpsClient(transport=lambda _request, _context, _timeout, _limit: body)
 
     result = refresh_official_schedule(path, client=client, observed_at=NOW)
 
     inventory = FileSystemOperationalTargetAnnouncementSource(path).read()
     assert inventory.status is TargetAnnouncementSourceStatus.AVAILABLE
     identities = {
-        (item.target.lottery_type, item.target.draw_number)
-        for item in inventory.announcements
+        (item.target.lottery_type, item.target.draw_number) for item in inventory.announcements
     }
     assert identities == {
         (LotteryType.BIG_LOTTO, "209900002"),
@@ -453,6 +510,7 @@ def test_restart_after_deadline_retains_and_records_zero_of_eleven_target(
             "LOTTOLAB_DATA_DIR": str(config.data_root),
         },
     )
+
     def sync_official_outcome(_target: PredictionTarget) -> dict[str, object]:
         return {"status": "SUCCESS", "fetched_count": 0}
 
@@ -510,9 +568,7 @@ def test_failed_schedule_validation_leaves_existing_authority_byte_identical(
         ),
     )
     before = path.read_bytes()
-    client = OfficialHttpsClient(
-        transport=lambda _request, _context, _timeout, _limit: b"invalid"
-    )
+    client = OfficialHttpsClient(transport=lambda _request, _context, _timeout, _limit: b"invalid")
 
     with pytest.raises(OfficialScheduleUnavailableError):
         refresh_official_schedule(path, client=client, observed_at=NOW)
@@ -733,8 +789,89 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
     assert backend.sync_calls == 0
-    assert json.loads(config.health_path.read_text()) == result
+    persisted = json.loads(config.health_path.read_text())
+    assert SHADOW_HEALTH_NAMESPACE not in persisted
+    assert persisted == {
+        key: value for key, value in result.items() if key != SHADOW_HEALTH_NAMESPACE
+    }
     assert stat.S_IMODE(os.lstat(config.health_path).st_mode) == 0o600
+
+
+def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream_schema(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _ShadowHookBackend(
+        target=_target(),
+        inventories=(_inventory(10), _inventory(11)),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert backend.shadow_predraw_calls == [(_target().draw_number, "PREDRAW_READY", SOURCE_HEAD)]
+    assert backend.shadow_postdraw_calls == []
+    shadow_health = cast(dict[str, object], result[SHADOW_HEALTH_NAMESPACE])
+    assert shadow_health["status"] == "PREDRAW_COMPLETE"
+    persisted = json.loads(config.health_path.read_text())
+    assert SHADOW_HEALTH_NAMESPACE not in persisted
+    assert persisted["expected_stream_count"] == 11
+    assert persisted["actual_available_stream_count"] == 11
+    assert persisted["prediction_inventory"]["missing_stream_ids"] == []
+
+
+def test_shadow_hook_is_skipped_when_primary_is_incomplete(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _ShadowHookBackend(
+        target=_target(),
+        inventories=(_inventory(10),),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: SCHEDULED,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "PRE_DRAW_INCOMPLETE"
+    assert backend.shadow_predraw_calls == []
+    assert backend.shadow_postdraw_calls == []
+    shadow_health = cast(dict[str, object], result[SHADOW_HEALTH_NAMESPACE])
+    assert shadow_health["status"] == "SKIPPED_PRIMARY_NOT_READY"
+
+
+def test_shadow_failure_is_returned_separately_without_changing_primary_status(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _ShadowFailureBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "PREDRAW_READY"
+    assert result["expected_stream_count"] == 11
+    assert result["actual_available_stream_count"] == 11
+    shadow_health = cast(dict[str, object], result[SHADOW_HEALTH_NAMESPACE])
+    assert shadow_health["status"] == "ERROR"
+    assert "shadow fixture failed" in cast(str, shadow_health["last_error"])
+    persisted = json.loads(config.health_path.read_text())
+    assert SHADOW_HEALTH_NAMESPACE not in persisted
+    assert persisted["current_status"] == "PREDRAW_READY"
 
 
 def test_production_cycle_resolves_source_head_from_canonical_repository(
@@ -996,6 +1133,7 @@ def test_official_sync_refuses_unhealthy_database_before_provider_or_writes(
         lottery_summaries=(),
         findings=(),
     )
+
     def inspect_report(_database: Path) -> DrawDataIntegrityReport:
         return report
 

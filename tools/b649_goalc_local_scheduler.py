@@ -23,6 +23,7 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time
+from inspect import signature
 from pathlib import Path
 from typing import Protocol, cast
 from urllib.error import URLError
@@ -89,6 +90,11 @@ from tools.b649_operational_prediction_loop import (
     run_strategy_stream,
     save_strategy_prediction,
 )
+from tools.b649_pair_rule_forward_shadow import (
+    SHADOW_HEALTH_NAMESPACE,
+    PairRuleForwardShadow,
+    shadow_health_not_run,
+)
 
 TASK_VERSION = "B649_GOALC_LOCAL_LAUNCHD_R1"
 HEALTH_SCHEMA_VERSION = "b649-goalc-local-scheduler-health-v1"
@@ -101,15 +107,12 @@ EXPECTED_STREAM_COUNT = 11
 SCHEDULE_MAX_RESPONSE_BYTES = 1024 * 1024
 HTTPS_TIMEOUT_SECONDS = 15.0
 
-CANONICAL_REPOSITORY = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis"
-)
+CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 SOURCE_WORKTREE = CANONICAL_REPOSITORY
 PYTHON_EXECUTABLE = CANONICAL_REPOSITORY / ".venv/bin/python"
 SCRIPT_PATH = CANONICAL_REPOSITORY / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-    "B649_OPERATIONAL_PREDICTION_LOOP_R1"
+    "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
 )
 DATA_ROOT = Path("/Users/kelvin/Library/Application Support/LottoLab")
 DATABASE_PATH = DATA_ROOT / "lottolab.db"
@@ -121,9 +124,7 @@ STDOUT_PATH = SCHEDULER_ROOT / "launchd.stdout.log"
 STDERR_PATH = SCHEDULER_ROOT / "launchd.stderr.log"
 PLIST_PATH = Path.home() / "Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist"
 
-_OFFICIAL_HTTPS_HOSTS = frozenset(
-    {"api.taiwanlottery.com", "www.taiwanlottery.com"}
-)
+_OFFICIAL_HTTPS_HOSTS = frozenset({"api.taiwanlottery.com", "www.taiwanlottery.com"})
 _DRAW_NUMBER = re.compile(r"[0-9]{1,32}", flags=re.ASCII)
 _STRICT_CHAIN_MARKERS = (
     "authority key identifier",
@@ -475,11 +476,13 @@ class ProductionSchedulerBackend:
         clock: Clock,
         https_client: OfficialHttpsClient | None = None,
         environ: Mapping[str, str] | None = None,
+        shadow: PairRuleForwardShadow | None = None,
     ) -> None:
         self._config = config
         self._clock = clock
         self._https = OfficialHttpsClient() if https_client is None else https_client
         self._environ = dict(os.environ if environ is None else environ)
+        self._shadow = PairRuleForwardShadow() if shadow is None else shadow
 
     def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
         self._validate_environment()
@@ -505,6 +508,56 @@ class ProductionSchedulerBackend:
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
         return inspect_prediction_inventory(self._config.operation_root, target)
+
+    def run_shadow_predraw(
+        self,
+        target: PredictionTarget,
+        observed_at: datetime,
+        *,
+        primary_status: str,
+        canonical_source_head: str,
+    ) -> dict[str, object]:
+        """Run the isolated shadow only after primary 11-stream readiness."""
+
+        history = load_canonical_history(
+            self._config.database,
+            target_draw_number=target.draw_number,
+            target_draw_date=target.draw_date,
+        )
+        return self._shadow.run_pre_draw(
+            target,
+            history,
+            observed_at=observed_at,
+            readiness_deadline=_target_scheduled_at(target),
+            primary_status=primary_status,
+            canonical_source_head=canonical_source_head,
+        )
+
+    def run_shadow_postdraw(
+        self,
+        target: PredictionTarget,
+        observed_at: datetime,
+        *,
+        primary_status: str,
+        canonical_source_head: str,
+    ) -> dict[str, object]:
+        """Reconcile the shadow from existing official outcome authority only."""
+
+        adapter = B649ForwardAutoCycleAdapter(
+            self._config.operation_root,
+            database=self._config.database,
+            target=target,
+            streams=(),
+            clock=self._taipei_now,
+        )
+        official = adapter.resolve_official_outcome(target)
+        return self._shadow.run_post_draw(
+            target,
+            official,
+            observed_at=observed_at,
+            primary_status=primary_status,
+            canonical_source_head=canonical_source_head,
+        )
 
     def generate_predraw(
         self,
@@ -696,9 +749,7 @@ class ProductionSchedulerBackend:
         self,
         now: datetime,
     ) -> PredictionTarget | None:
-        inventory = FileSystemOperationalTargetAnnouncementSource(
-            self._config.announcement
-        ).read()
+        inventory = FileSystemOperationalTargetAnnouncementSource(self._config.announcement).read()
         if inventory.status is TargetAnnouncementSourceStatus.NOT_CONFIGURED:
             return None
         candidates = tuple(
@@ -710,16 +761,12 @@ class ProductionSchedulerBackend:
             )
             and announcement.scheduled_at <= now
             and not (
-                self._config.operation_root
-                / "outcomes"
-                / f"{announcement.target.draw_number}.json"
+                self._config.operation_root / "outcomes" / f"{announcement.target.draw_number}.json"
             ).is_file()
         )
         if not candidates:
             return None
-        return _prediction_target_from_announcement(
-            max(candidates, key=_announcement_sort_key)
-        )
+        return _prediction_target_from_announcement(max(candidates, key=_announcement_sort_key))
 
     def _validate_environment(self) -> None:
         if self._environ.get(DRAW_PROVIDER_SOURCE_ENV) != OFFICIAL_TAIWAN_LOTTERY_SOURCE:
@@ -759,11 +806,7 @@ def refresh_official_schedule(
         if _is_official_b649_announcement(item, source_url=source_url)
         and item.scheduled_at <= observed_utc
     )
-    latest_expired = (
-        ()
-        if not expired_b649
-        else (max(expired_b649, key=_announcement_sort_key),)
-    )
+    latest_expired = () if not expired_b649 else (max(expired_b649, key=_announcement_sort_key),)
     preserved = (*non_b649, *latest_expired)
     body = client.get(source_url, max_response_bytes=SCHEDULE_MAX_RESPONSE_BYTES)
     fresh = parse_official_b649_schedule(
@@ -957,6 +1000,54 @@ def inspect_prediction_inventory(
     )
 
 
+def _primary_health_payload(payload: Mapping[str, object]) -> dict[str, object]:
+    """Remove the research namespace before persisting primary health."""
+
+    primary = dict(payload)
+    primary.pop(SHADOW_HEALTH_NAMESPACE, None)
+    return primary
+
+
+def _run_shadow_hook(
+    backend: SchedulerBackend,
+    method_name: str,
+    target: PredictionTarget,
+    observed_at: datetime,
+    *,
+    primary_status: str,
+    canonical_source_head: str,
+) -> dict[str, object]:
+    hook = getattr(backend, method_name, None)
+    if hook is None:
+        return shadow_health_not_run(
+            "NOT_CONFIGURED",
+            target=target,
+            primary_status_observed=primary_status,
+            canonical_source_head=canonical_source_head,
+        )
+    try:
+        parameters = signature(hook).parameters
+        kwargs: dict[str, object] = {}
+        if "primary_status" in parameters:
+            kwargs["primary_status"] = primary_status
+        if "canonical_source_head" in parameters:
+            kwargs["canonical_source_head"] = canonical_source_head
+        result = hook(target, observed_at, **kwargs)
+        if not isinstance(result, dict):
+            raise SchedulerInvariantError(
+                "research-shadow hook returned a non-object health record"
+            )
+        return cast(dict[str, object], result)
+    except Exception as exc:
+        return shadow_health_not_run(
+            "ERROR",
+            last_error=f"{type(exc).__name__}: {exc}",
+            target=target,
+            primary_status_observed=primary_status,
+            canonical_source_head=canonical_source_head,
+        )
+
+
 def run_scheduler_cycle(
     config: SchedulerConfig,
     backend: SchedulerBackend,
@@ -964,7 +1055,7 @@ def run_scheduler_cycle(
     clock: Clock = lambda: datetime.now(UTC),
     source_head_resolver: SourceHeadResolver = lambda path: _resolve_source_head(path),
 ) -> dict[str, object]:
-    """Run one locked schedule→target→PRE/POST→health cycle."""
+    """Run one locked schedule→primary PRE/POST→isolated shadow→health cycle."""
 
     try:
         lock = AdvisoryProcessLock(config.lock_path)
@@ -984,6 +1075,9 @@ def run_scheduler_cycle(
         source_head = source_head_resolver(config.source_worktree)
         running = _base_health(config, started_at, source_head, previous)
         _atomic_health_write(config.health_path, running)
+        shadow_summary = shadow_health_not_run(
+            "SKIPPED_PRIMARY_NOT_READY", canonical_source_head=source_head
+        )
         try:
             announcement = backend.refresh_schedule(started_at)
             target = backend.resolve_target()
@@ -1018,18 +1112,57 @@ def run_scheduler_cycle(
                     cycle_action=(
                         "PREDRAW_CREATED"
                         if inventory.ready and generation["status"] == "ATTEMPTED"
-                        else "NO_OP" if inventory.ready else "WAITING_FOR_PREDRAW"
+                        else "NO_OP"
+                        if inventory.ready
+                        else "WAITING_FOR_PREDRAW"
                     ),
                 )
                 terminal_status = "PREDRAW_READY" if inventory.ready else "WAITING_FOR_PREDRAW"
+                if inventory.ready:
+                    shadow_summary = _run_shadow_hook(
+                        backend,
+                        "run_shadow_predraw",
+                        target,
+                        _as_utc(clock()),
+                        primary_status="PREDRAW_READY",
+                        canonical_source_head=source_head,
+                    )
+                else:
+                    shadow_summary = shadow_health_not_run(
+                        "SKIPPED_PRIMARY_NOT_READY",
+                        target=target,
+                        primary_status_observed="WAITING_FOR_PREDRAW",
+                        canonical_source_head=source_head,
+                    )
             else:
                 official_sync = backend.sync_official_outcome(target)
                 postdraw = backend.complete_postdraw(target, inventory)
                 terminal_status = (
                     "PRE_DRAW_INCOMPLETE"
                     if not inventory.ready
-                    else "COMPLETE" if postdraw.outcome_available else "WAITING_FOR_OUTCOME"
+                    else "COMPLETE"
+                    if postdraw.outcome_available
+                    else "WAITING_FOR_OUTCOME"
                 )
+                if inventory.ready:
+                    shadow_primary_status = (
+                        "COMPLETE" if postdraw.outcome_available else "WAITING_FOR_OUTCOME"
+                    )
+                    shadow_summary = _run_shadow_hook(
+                        backend,
+                        "run_shadow_postdraw",
+                        target,
+                        _as_utc(clock()),
+                        primary_status=shadow_primary_status,
+                        canonical_source_head=source_head,
+                    )
+                else:
+                    shadow_summary = shadow_health_not_run(
+                        "SKIPPED_PRIMARY_NOT_READY",
+                        target=target,
+                        primary_status_observed="PRE_DRAW_INCOMPLETE",
+                        canonical_source_head=source_head,
+                    )
 
             next_target = backend.resolve_target()
             finished_at = _as_utc(clock())
@@ -1065,8 +1198,9 @@ def run_scheduler_cycle(
                 "error_message": None,
                 "consecutive_failures": 0,
                 "pre_draw_incomplete_targets": incomplete,
+                SHADOW_HEALTH_NAMESPACE: shadow_summary,
             }
-            _atomic_health_write(config.health_path, terminal)
+            _atomic_health_write(config.health_path, _primary_health_payload(terminal))
             return terminal
         except Exception as exc:
             finished_at = _as_utc(clock())
@@ -1080,8 +1214,13 @@ def run_scheduler_cycle(
                 "error_class": type(exc).__name__,
                 "error_message": str(exc),
                 "consecutive_failures": failures,
+                SHADOW_HEALTH_NAMESPACE: shadow_health_not_run(
+                    "SKIPPED_PRIMARY_ERROR",
+                    last_error=f"primary cycle: {type(exc).__name__}: {exc}",
+                    canonical_source_head=source_head,
+                ),
             }
-            _atomic_health_write(config.health_path, failed)
+            _atomic_health_write(config.health_path, _primary_health_payload(failed))
             return failed
     finally:
         lock.__exit__(None, None, None)

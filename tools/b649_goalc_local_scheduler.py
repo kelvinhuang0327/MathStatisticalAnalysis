@@ -1069,6 +1069,7 @@ def run_scheduler_cycle(
             "lock_contention": True,
         }
 
+    lock_released = False
     try:
         started_at = _as_utc(clock())
         previous = _read_optional_json_object(config.health_path)
@@ -1078,6 +1079,8 @@ def run_scheduler_cycle(
         shadow_summary = shadow_health_not_run(
             "SKIPPED_PRIMARY_NOT_READY", canonical_source_head=source_head
         )
+        shadow_hook_name: str | None = None
+        shadow_primary_status = "NOT_RUN"
         try:
             announcement = backend.refresh_schedule(started_at)
             target = backend.resolve_target()
@@ -1119,14 +1122,8 @@ def run_scheduler_cycle(
                 )
                 terminal_status = "PREDRAW_READY" if inventory.ready else "WAITING_FOR_PREDRAW"
                 if inventory.ready:
-                    shadow_summary = _run_shadow_hook(
-                        backend,
-                        "run_shadow_predraw",
-                        target,
-                        _as_utc(clock()),
-                        primary_status="PREDRAW_READY",
-                        canonical_source_head=source_head,
-                    )
+                    shadow_hook_name = "run_shadow_predraw"
+                    shadow_primary_status = "PREDRAW_READY"
                 else:
                     shadow_summary = shadow_health_not_run(
                         "SKIPPED_PRIMARY_NOT_READY",
@@ -1145,16 +1142,9 @@ def run_scheduler_cycle(
                     else "WAITING_FOR_OUTCOME"
                 )
                 if inventory.ready:
+                    shadow_hook_name = "run_shadow_postdraw"
                     shadow_primary_status = (
                         "COMPLETE" if postdraw.outcome_available else "WAITING_FOR_OUTCOME"
-                    )
-                    shadow_summary = _run_shadow_hook(
-                        backend,
-                        "run_shadow_postdraw",
-                        target,
-                        _as_utc(clock()),
-                        primary_status=shadow_primary_status,
-                        canonical_source_head=source_head,
                     )
                 else:
                     shadow_summary = shadow_health_not_run(
@@ -1198,9 +1188,20 @@ def run_scheduler_cycle(
                 "error_message": None,
                 "consecutive_failures": 0,
                 "pre_draw_incomplete_targets": incomplete,
-                SHADOW_HEALTH_NAMESPACE: shadow_summary,
             }
             _atomic_health_write(config.health_path, _primary_health_payload(terminal))
+            lock.__exit__(None, None, None)
+            lock_released = True
+            if shadow_hook_name is not None:
+                shadow_summary = _run_shadow_hook(
+                    backend,
+                    shadow_hook_name,
+                    target,
+                    _as_utc(clock()),
+                    primary_status=shadow_primary_status,
+                    canonical_source_head=source_head,
+                )
+            terminal[SHADOW_HEALTH_NAMESPACE] = shadow_summary
             return terminal
         except Exception as exc:
             finished_at = _as_utc(clock())
@@ -1223,7 +1224,8 @@ def run_scheduler_cycle(
             _atomic_health_write(config.health_path, _primary_health_payload(failed))
             return failed
     finally:
-        lock.__exit__(None, None, None)
+        if not lock_released:
+            lock.__exit__(None, None, None)
 
 
 def evaluate_health_status(

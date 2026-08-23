@@ -316,6 +316,7 @@ class _ShadowHookBackend(_FakeBackend):
         inventories: Sequence[PredictionInventory],
         postdraw: PostDrawResult | None = None,
         fail_refresh: Exception | None = None,
+        lock_path: Path | None = None,
     ) -> None:
         super().__init__(
             target=target,
@@ -325,6 +326,19 @@ class _ShadowHookBackend(_FakeBackend):
         )
         self.shadow_predraw_calls: list[tuple[str, str, str]] = []
         self.shadow_postdraw_calls: list[tuple[str, str, str]] = []
+        self.lock_path = lock_path
+        self.shadow_lock_available: bool | None = None
+
+    def _probe_primary_lock(self) -> None:
+        if self.lock_path is None:
+            return
+        try:
+            with AdvisoryProcessLock(self.lock_path):
+                pass
+        except SchedulerAlreadyRunning:
+            self.shadow_lock_available = False
+        else:
+            self.shadow_lock_available = True
 
     def run_shadow_predraw(
         self,
@@ -334,6 +348,7 @@ class _ShadowHookBackend(_FakeBackend):
         primary_status: str,
         canonical_source_head: str,
     ) -> dict[str, object]:
+        self._probe_primary_lock()
         self.shadow_predraw_calls.append(
             (target.draw_number, primary_status, canonical_source_head)
         )
@@ -351,6 +366,7 @@ class _ShadowHookBackend(_FakeBackend):
         primary_status: str,
         canonical_source_head: str,
     ) -> dict[str, object]:
+        self._probe_primary_lock()
         self.shadow_postdraw_calls.append(
             (target.draw_number, primary_status, canonical_source_head)
         )
@@ -804,6 +820,7 @@ def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream
     backend = _ShadowHookBackend(
         target=_target(),
         inventories=(_inventory(10), _inventory(11)),
+        lock_path=config.lock_path,
     )
 
     result = run_scheduler_cycle(
@@ -815,6 +832,7 @@ def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream
 
     assert backend.shadow_predraw_calls == [(_target().draw_number, "PREDRAW_READY", SOURCE_HEAD)]
     assert backend.shadow_postdraw_calls == []
+    assert backend.shadow_lock_available is True
     shadow_health = cast(dict[str, object], result[SHADOW_HEALTH_NAMESPACE])
     assert shadow_health["status"] == "PREDRAW_COMPLETE"
     persisted = json.loads(config.health_path.read_text())

@@ -395,11 +395,12 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     (``power_c01_recency_decay_1bet`` .. ``power_c07_borda_ensemble_1bet``,
     ``acb_markov_midfreq_3bet``); followed by ten descriptors from
     ``BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1`` and the nine
-    ``PR165_CURRENT_MAIN_REFRESH_AND_REVERIFY_R1`` descriptors.
+    ``PR165_CURRENT_MAIN_REFRESH_AND_REVERIFY_R1`` descriptors, followed by
+    PR #173's Frontend Markov descriptor.
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 112
+    assert len(catalog) == 113
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -409,7 +410,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 112
+    assert len(all_ids) == 113
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)
@@ -425,7 +426,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     )
-    assert all_ids[68:112] == (
+    assert all_ids[68:113] == (
         "b649_new_horizon_minimax_disagreement_r1",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
@@ -470,6 +471,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
         "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
+        "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c",
     )
 
 

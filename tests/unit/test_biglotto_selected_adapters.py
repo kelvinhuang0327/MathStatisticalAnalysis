@@ -217,6 +217,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BetAdapterError",
         "BigLotto2BetHedgingAdapter",
         "BigLottoFrontendBayesianAdapter",
+        "BigLottoFrontendFrequencyAdapter",
         "BigLottoFrontendMarkovAdapter",
         "BigLottoFrontendTrendAdapter",
         "BigLottoDeviation2BetAdapter",

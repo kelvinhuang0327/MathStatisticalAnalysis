@@ -3083,7 +3083,7 @@ export interface components {
           "normalized_record_hash": string | null
           "message": string | null
         }
-    "IngestionOperationType": "DRAW_CSV_IMPORT" | "MANUAL_SYNC" | "MISSING_DRAW_SCAN" | "BOUNDED_BACKFILL" | "SCHEDULED_SYNC"
+    "IngestionOperationType": "DRAW_CSV_IMPORT" | "MANUAL_SYNC" | "MISSING_DRAW_SCAN" | "BOUNDED_BACKFILL" | "SCHEDULED_SYNC" | "MANUAL_FUTURE_IDENTITY_SUPPLEMENT"
     "IngestionRunDetailResponse": {
           "run": components['schemas']["IngestionRunView"]
           "items": Array<components['schemas']["IngestionItemView"]>

@@ -831,6 +831,7 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
         "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f",
         "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4",
+        "legacy_biglotto__biglotto_2bet_hedging__07a3aa455074",
     }
 
 

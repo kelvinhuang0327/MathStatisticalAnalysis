@@ -189,7 +189,7 @@ def test_candidate_output_is_valid_deterministic_and_excludes_pruned_parent() ->
     assert all(ticket not in parents["MULTISCALE_FREQUENCY"] for ticket in first)
 
 
-def test_future_and_target_rows_are_not_passed_to_parent_producers() -> None:
+def test_future_target_and_pruned_family_are_not_passed_to_parent_producers() -> None:
     calls: list[tuple[str, int, int]] = []
     parents = _parent_portfolios(5)
     providers: dict[str, object] = {}
@@ -218,16 +218,48 @@ def test_future_and_target_rows_are_not_passed_to_parent_producers() -> None:
     )
 
     assert len(result) == 10
-    assert calls == [(family, 751, 751) for family in sorted(batch.INDEPENDENT_FAMILIES)]
+    assert calls == [
+        (family, 751, 751)
+        for family in batch.DEFAULT_AUTHORITY_BINDING.RETAINED_FAMILIES
+    ]
 
 
 def test_unavailable_required_parent_fails_closed() -> None:
     parents = _parent_portfolios(5)
-    del parents["MULTISCALE_FREQUENCY"]
+    del parents["MULTISCALE_OMISSION_PRESSURE"]
     with pytest.raises(batch.RequiredParentUnavailableError, match="missing"):
         batch.produce_candidate_portfolio(
             batch.CANDIDATE_IDS[0], _history(), 751, parent_portfolios=parents
         )
+
+
+def test_retained_only_parent_map_is_executable() -> None:
+    parents = _parent_portfolios(5)
+    retained_only = {
+        family: parents[family]
+        for family in batch.DEFAULT_AUTHORITY_BINDING.RETAINED_FAMILIES
+    }
+
+    result = batch.produce_candidate_portfolio(
+        batch.CANDIDATE_IDS[0],
+        _history(),
+        751,
+        parent_portfolios=retained_only,
+    )
+
+    assert result == batch.produce_candidate_portfolio(
+        batch.CANDIDATE_IDS[0],
+        _history(),
+        751,
+        parent_portfolios=parents,
+    )
+
+
+def test_default_concrete_parent_registry_is_exactly_retained() -> None:
+    producers = batch.concrete_parent_producers()
+
+    assert tuple(producers) == batch.DEFAULT_AUTHORITY_BINDING.RETAINED_FAMILIES
+    assert all(callable(provider) for provider in producers.values())
 
 
 def test_insufficient_history_fails_before_parent_execution() -> None:

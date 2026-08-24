@@ -1043,32 +1043,57 @@ def _call_parent_provider(
     return provider()
 
 
+def concrete_parent_producers() -> Mapping[str, ParentProvider]:
+    """Return the exact retained-family causal producers for V1 execution."""
+
+    from lottolab.research import (
+        biglotto_conditional_cooccurrence_parent_producer_r1 as conditional,
+    )
+    from lottolab.research import biglotto_graph_network_parent_producer_r1 as graph
+    from lottolab.research import (
+        biglotto_multiscale_omission_pressure_parent_producer_r1 as omission,
+    )
+
+    return MappingProxyType(
+        {
+            "CONDITIONAL_COOCCURRENCE": conditional.produce_parent_portfolio,
+            "GRAPH_NETWORK": graph.produce_parent_portfolio,
+            "MULTISCALE_OMISSION_PRESSURE": omission.produce_parent_portfolio,
+        }
+    )
+
+
 def _parent_portfolios_from_inputs(
     *,
     history: HistoryInput,
     target_index: int,
     constructor_id: str,
     ticket_budget: int,
+    required_families: Sequence[str],
     parent_producers: Mapping[str, object] | None,
     parent_portfolios: Mapping[str, object] | None,
 ) -> Mapping[str, TicketPortfolio]:
     if parent_producers is not None and parent_portfolios is not None:
         raise ValueError("provide parent_producers or parent_portfolios, not both")
+    if parent_producers is None and parent_portfolios is None:
+        parent_producers = concrete_parent_producers()
     source = parent_producers if parent_producers is not None else parent_portfolios
-    if source is None:
-        raise RequiredParentUnavailableError(
-            "required parent producers or parent portfolios are unavailable"
-        )
+    if source is None:  # pragma: no cover - guarded by the assignments above
+        raise RuntimeError("parent source resolution failed")
+    required = tuple(sorted(required_families))
+    required_set = frozenset(required)
+    if not required_set or not required_set <= INDEPENDENT_FAMILY_SET:
+        raise AuthorityMismatchError("required retained-family set is invalid")
     source_keys = frozenset(source)
-    if source_keys != INDEPENDENT_FAMILY_SET:
-        missing = sorted(INDEPENDENT_FAMILY_SET - source_keys)
-        extra = sorted(source_keys - INDEPENDENT_FAMILY_SET)
+    missing = sorted(required_set - source_keys)
+    extra = sorted(source_keys - INDEPENDENT_FAMILY_SET)
+    if missing or extra:
         raise RequiredParentUnavailableError(
             f"required parent set mismatch; missing={missing}, extra={extra}"
         )
     prior_history = _read_prior_prefix(history, target_index)
     resolved: dict[str, TicketPortfolio] = {}
-    for family in sorted(INDEPENDENT_FAMILIES):
+    for family in required:
         raw_parent = source[family]
         if parent_producers is not None:
             if not callable(raw_parent):
@@ -1099,11 +1124,15 @@ def union_native_ticket_sets(
     if not retained or not set(retained) <= INDEPENDENT_FAMILY_SET:
         raise AuthorityMismatchError("retained family set is invalid")
     parent_keys = frozenset(parent_portfolios)
-    if parent_keys != INDEPENDENT_FAMILY_SET:
-        raise RequiredParentUnavailableError("all four independent parents are required")
+    missing = sorted(set(retained) - parent_keys)
+    extra = sorted(parent_keys - INDEPENDENT_FAMILY_SET)
+    if missing or extra:
+        raise RequiredParentUnavailableError(
+            f"retained parent set mismatch; missing={missing}, extra={extra}"
+        )
     validated = {
         family: _validate_parent_portfolio(parent_portfolios[family], family, ticket_budget)
-        for family in sorted(INDEPENDENT_FAMILIES)
+        for family in retained
     }
     seen: set[Ticket] = set()
     union: list[Ticket] = []
@@ -1159,6 +1188,7 @@ def build_candidate_portfolio(
         target_index=target_index,
         constructor_id=metadata.CONSTRUCTOR_ID,
         ticket_budget=metadata.TICKET_BUDGET,
+        required_families=binding.RETAINED_FAMILIES,
         parent_producers=parent_producers,
         parent_portfolios=parent_portfolios,
     )
@@ -1779,6 +1809,7 @@ __all__ = [
     "candidate_id_for",
     "candidate_id_for_semantics",
     "canonicalize_semantic_record",
+    "concrete_parent_producers",
     "derive_candidate_identity",
     "load_classification_csv",
     "produce_b649_cross_family_redundancy_pruned_ensemble_v1_exposure_balanced_k5",

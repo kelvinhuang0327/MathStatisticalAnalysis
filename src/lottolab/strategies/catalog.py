@@ -2911,6 +2911,37 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=2,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_frequency_strategy__2e3e8febb5f1",
+        strategy_name="大樂透 Frontend Frequency Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_frequency:"
+            "BigLottoFrontendFrequencyAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/FrequencyStrategy.js",
+            "legacy_source_sha256:2e3e8febb5f1eea29fe2105d955b65b80188f0259d78f23b4ca80a0468a128e2",
+            "legacy_symbol:FrequencyStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.frequency",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:NEWEST_FIRST",
+            "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "number_ranking:DESCENDING_PROBABILITY_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "randomness:NONE_DETERMINISTIC",
+            "donor_execution:REVIVED_WITH_STATISTICS_SERVICE_STUB_ISOLATED",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R6",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

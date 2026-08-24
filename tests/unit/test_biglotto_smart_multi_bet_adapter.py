@@ -284,24 +284,25 @@ def test_invalid_native_cardinality_has_no_silent_fallback(
 def test_production_catalog_preserves_smart_multi_bet_append_position() -> None:
     strategy_ids = tuple(descriptor.strategy_id for descriptor in production_catalog())
 
-    assert len(strategy_ids) == 117
-    assert strategy_ids[-12] == STRATEGY_ID
-    assert strategy_ids[:-12].count(STRATEGY_ID) == 0
-    assert strategy_ids[-15:-12] == (
+    assert len(strategy_ids) == 118
+    assert strategy_ids[-13] == STRATEGY_ID
+    assert strategy_ids[:-13].count(STRATEGY_ID) == 0
+    assert strategy_ids[-16:-13] == (
         "legacy_biglotto__concentrated_pool_predictor__a03b90705749",
         "legacy_biglotto__constraint_filter_predictor__3a85b3995002",
         "legacy_biglotto__predict_biglotto_apriori__cda690ae84c2",
     )
-    assert strategy_ids[-11:-9] == (
+    assert strategy_ids[-12:-10] == (
         "legacy_biglotto__anti_consensus_strategy__a454ddd26cef",
         "legacy_biglotto__cooccurrence_graph__25fa2e473092",
     )
-    assert strategy_ids[-9] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"
-    assert strategy_ids[-8] == "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94"
-    assert strategy_ids[-7] == ("legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e")
-    assert strategy_ids[-6] == "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f"
-    assert strategy_ids[-5] == "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c"
-    assert strategy_ids[-4] == "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4"
-    assert strategy_ids[-3] == "legacy_biglotto__frontend_trend_strategy__a5f4554c80ef"
-    assert strategy_ids[-2] == "legacy_biglotto__frontend_bayesian_strategy__baa3045817fb"
-    assert strategy_ids[-1] == "legacy_biglotto__biglotto_2bet_hedging__07a3aa455074"
+    assert strategy_ids[-10] == "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6"
+    assert strategy_ids[-9] == "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94"
+    assert strategy_ids[-8] == ("legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e")
+    assert strategy_ids[-7] == "legacy_biglotto__predict_biglotto_quad_strike__e202e664208f"
+    assert strategy_ids[-6] == "legacy_biglotto__frontend_markov_strategy__2fc1cafea55c"
+    assert strategy_ids[-5] == "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4"
+    assert strategy_ids[-4] == "legacy_biglotto__frontend_trend_strategy__a5f4554c80ef"
+    assert strategy_ids[-3] == "legacy_biglotto__frontend_bayesian_strategy__baa3045817fb"
+    assert strategy_ids[-2] == "legacy_biglotto__biglotto_2bet_hedging__07a3aa455074"
+    assert strategy_ids[-1] == "legacy_biglotto__frontend_frequency_strategy__2e3e8febb5f1"

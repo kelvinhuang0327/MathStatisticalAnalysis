@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -15,13 +15,11 @@ from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
 )
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteFutureDrawIdentityReader,
+)
 from lottolab.infrastructure.persistence.replay_target_outcome_reader import (
     SQLiteReplayTargetOutcomeReader,
-)
-from lottolab.infrastructure.pre_outcome_target_operational import (
-    FileSystemOperationalTargetAnnouncementSource,
-    TargetAnnouncementSourceStatus,
-    resolve_pre_outcome_target_operational_paths,
 )
 from tools.b649_operational_prediction_loop import (
     DEFAULT_OPERATION_ROOT,
@@ -94,8 +92,8 @@ class B649ForwardAutoCycleAdapter:
 
         stored_target = self._resolve_stored_unfinished_target()
         if stored_target is not None:
-            return stored_target
-        return self._resolve_announced_target()
+            return self._resolve_canonical_stored_target(stored_target)
+        return self._resolve_canonical_future_target()
 
     def list_enabled_strategy_streams(self) -> tuple[StrategyStream, ...]:
         return tuple(stream for stream in self._streams if stream.enabled)
@@ -280,35 +278,62 @@ class B649ForwardAutoCycleAdapter:
             candidates.append(_target_from_prediction(prediction))
         return min(candidates, key=lambda value: int(value.draw_number)) if candidates else None
 
-    def _resolve_announced_target(self) -> PredictionTarget | None:
-        paths = resolve_pre_outcome_target_operational_paths()
-        inventory = FileSystemOperationalTargetAnnouncementSource(
-            paths.announcement_file
-        ).read()
-        if inventory.status is TargetAnnouncementSourceStatus.NOT_CONFIGURED:
-            return None
+    def _resolve_canonical_future_target(self) -> PredictionTarget | None:
         now = self._clock()
-        candidates = tuple(
-            announcement
-            for announcement in inventory.announcements
-            if announcement.target.lottery_type is LotteryType.BIG_LOTTO
-            and announcement.scheduled_at > now
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError("clock must return a timezone-aware datetime")
+        paths = LocalDataPaths(
+            data_directory=self.database.parent,
+            database=self.database,
         )
-        if not candidates:
+        record = SQLiteFutureDrawIdentityReader(
+            paths
+        ).find_earliest_unpopulated_future(
+            LotteryType.BIG_LOTTO,
+            now.astimezone(UTC),
+        )
+        if record is None:
             return None
-        selected = min(
-            candidates,
-            key=lambda announcement: (
-                announcement.scheduled_at,
-                int(announcement.target.draw_number),
-            ),
-        )
+        selected = record.announcement
         return PredictionTarget(
             lottery_type=LOTTERY_TYPE,
             draw_number=selected.target.draw_number,
             draw_date=selected.target.draw_date.isoformat(),
             scheduled_at=selected.scheduled_at.astimezone(TAIPEI).isoformat(),
         )
+
+    def _resolve_canonical_stored_target(
+        self,
+        stored_target: PredictionTarget,
+    ) -> PredictionTarget | None:
+        paths = LocalDataPaths(
+            data_directory=self.database.parent,
+            database=self.database,
+        )
+        record = SQLiteFutureDrawIdentityReader(paths).get_scheduled_draw(
+            LotteryType.BIG_LOTTO,
+            stored_target.draw_number,
+        )
+        if record is None:
+            return None
+        selected = record.announcement
+        canonical_target = PredictionTarget(
+            lottery_type=LOTTERY_TYPE,
+            draw_number=selected.target.draw_number,
+            draw_date=selected.target.draw_date.isoformat(),
+            scheduled_at=selected.scheduled_at.astimezone(TAIPEI).isoformat(),
+        )
+        if (
+            stored_target.lottery_type != canonical_target.lottery_type
+            or stored_target.draw_number != canonical_target.draw_number
+            or stored_target.draw_date != canonical_target.draw_date
+            or datetime.fromisoformat(stored_target.scheduled_at).astimezone(UTC)
+            != selected.scheduled_at
+        ):
+            raise ValueError(
+                "stored unfinished target conflicts with canonical draw schedule"
+            )
+        return canonical_target
 
 
 def serialize_cycle_result(

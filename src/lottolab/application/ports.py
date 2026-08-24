@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 from pathlib import Path
 from typing import Protocol, runtime_checkable
 
@@ -22,6 +22,11 @@ from lottolab.application.draw_data import (
     IngestionRunDetail,
     IngestionRunPage,
     IngestionRunQuery,
+)
+from lottolab.application.future_draw_identity import (
+    ManualFutureDrawIdentitySupplementResult,
+    OwnerCertifiedFutureDrawIdentityInput,
+    ScheduledDrawIdentityRecord,
 )
 from lottolab.application.historical_prefix_success_windows import (
     HistoricalPrefixSuccessWindowSource,
@@ -71,6 +76,7 @@ from lottolab.domain.ingestion import DrawCsvParseResult
 from lottolab.domain.ordered_candidate_materialization import (
     OrderedCandidateSourceSnapshot,
 )
+from lottolab.domain.pre_outcome_target import TargetAnnouncement
 from lottolab.domain.prize_evaluation import PrizeEvaluationResult
 from lottolab.domain.replay_history import ReplayCausalDrawRow
 from lottolab.domain.replay_scoring import (
@@ -155,6 +161,41 @@ class DrawDataRepository(
     Protocol,
 ):
     """Combined operation-scoped port implemented by local persistence."""
+
+
+@runtime_checkable
+class FutureDrawIdentityReader(Protocol):
+    """Read canonical schedule identity and DB-derived outcome state only."""
+
+    def get_scheduled_draw(
+        self,
+        lottery_type: LotteryType,
+        draw_number: str,
+    ) -> ScheduledDrawIdentityRecord | None:
+        """Return one exact immutable schedule identity, if present."""
+        ...
+
+    def find_earliest_unpopulated_future(
+        self,
+        lottery_type: LotteryType,
+        as_of: datetime,
+    ) -> ScheduledDrawIdentityRecord | None:
+        """Return the earliest explicit future schedule lacking a completed outcome."""
+        ...
+
+
+@runtime_checkable
+class ManualFutureDrawIdentitySupplementRepository(Protocol):
+    """Owner-CLI-only write boundary for one certified schedule identity."""
+
+    def apply_owner_certified_supplement(
+        self,
+        parsed_input: OwnerCertifiedFutureDrawIdentityInput,
+        selected_target: TargetAnnouncement,
+        expected_sha256: str,
+    ) -> ManualFutureDrawIdentitySupplementResult:
+        """Commit one audited insert, exact no-op, or conflicting rejection."""
+        ...
 
 
 class DrawCsvParser(Protocol):

@@ -2,7 +2,8 @@
 
 The binding is intentionally explicit and DB-local:
 
-* announcements come only from one fixed, owner-only schedule authority file;
+* operational announcements come only from canonical DB schedule identities;
+* the strict owner-only file parser remains available for manual supplementation;
 * accepted registrations live under one fixed directory below LottoLab's
   canonical local data directory;
 * an ABSENT attestation requires a successful official-provider sync audit
@@ -32,6 +33,7 @@ from pathlib import Path
 from typing import cast
 from urllib.parse import urlsplit
 
+from lottolab.application.future_draw_identity import OwnerCertifiedFutureDrawIdentityInput
 from lottolab.application.pre_outcome_target import (
     PreOutcomeTargetRegistrationService,
 )
@@ -66,6 +68,12 @@ from lottolab.infrastructure.persistence.draw_schema import (
     resolve_local_data_paths,
     verify_schema_read_only,
 )
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    OFFICIAL_SCHEDULE_SOURCE_ID,
+    OFFICIAL_SCHEDULE_SOURCE_VERSION,
+    SCHEDULE_TIMEZONE,
+    SQLiteFutureDrawIdentityReader,
+)
 from lottolab.infrastructure.pre_outcome_target_store import (
     FileSystemPreOutcomeTargetAuthorityStore,
 )
@@ -80,12 +88,9 @@ OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION = (
     "LOTTOLAB_PRE_OUTCOME_OPERATIONAL_ANNOUNCEMENTS_V1"
 )
 OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION = "LOTTOLAB_PRE_OUTCOME_CAUSAL_HISTORY_V1"
-OFFICIAL_SCHEDULE_SOURCE_ID = "TAIWAN_LOTTERY_OFFICIAL_SCHEDULE"
-OFFICIAL_SCHEDULE_SOURCE_VERSION = "taiwan-lottery-official-schedule-v1"
 OFFICIAL_PRESENCE_SOURCE_ID = "LOTTOLAB_OFFICIAL_OUTCOME_PRESENCE_AUDIT"
 ANNOUNCEMENT_FILENAME = "pre-outcome-target-announcements-v1.json"
 AUTHORITY_DIRECTORY_NAME = "pre-outcome-target-authority-v1"
-SCHEDULE_TIMEZONE = "Asia/Taipei"
 
 _MAX_ANNOUNCEMENT_BYTES = 1024 * 1024
 _MAX_ANNOUNCEMENTS = 1024
@@ -129,13 +134,12 @@ def resolve_pre_outcome_target_operational_paths(
         announcement_file=local_data.data_directory / ANNOUNCEMENT_FILENAME,
         authority_root=local_data.data_directory / AUTHORITY_DIRECTORY_NAME,
     )
-    _validate_existing_announcement_path(paths.announcement_file)
     _validate_existing_authority_root(paths.authority_root)
     return paths
 
 
 class FileSystemOperationalTargetAnnouncementSource:
-    """Read the fixed owner-certified official schedule authority document."""
+    """Legacy strict parser retained as non-operational manual input support."""
 
     def __init__(self, path: Path) -> None:
         if not path.is_absolute():
@@ -164,6 +168,75 @@ class FileSystemOperationalTargetAnnouncementSource:
             raise TargetAnnouncementAuthorityError(
                 "canonical target-announcement authority is invalid"
             ) from exc
+
+
+def read_owner_certified_future_draw_identity_input(
+    path: Path,
+) -> OwnerCertifiedFutureDrawIdentityInput:
+    """Securely read and strictly parse one explicit owner-certified input file."""
+
+    if not path.is_absolute():
+        raise TargetAnnouncementAuthorityError(
+            "owner-certified announcement input path must be absolute"
+        )
+    encoded = _read_optional_owner_file(path)
+    if encoded is None:
+        raise TargetAnnouncementAuthorityError(
+            "owner-certified announcement input does not exist"
+        )
+    return parse_owner_certified_future_draw_identity_input(
+        encoded,
+        source_filename=path.name,
+    )
+
+
+def parse_owner_certified_future_draw_identity_input(
+    encoded: bytes,
+    *,
+    source_filename: str,
+) -> OwnerCertifiedFutureDrawIdentityInput:
+    """Parse strict announcement JSON without opening SQLite or using the network."""
+
+    if type(encoded) is not bytes:
+        raise TargetAnnouncementAuthorityError(
+            "owner-certified announcement input must be exact bytes"
+        )
+    return OwnerCertifiedFutureDrawIdentityInput(
+        source_filename=_text(source_filename, "source_filename"),
+        input_sha256=hashlib.sha256(encoded).hexdigest(),
+        announcements=_decode_announcements(encoded),
+    )
+
+
+def select_owner_certified_future_draw_identity(
+    parsed_input: OwnerCertifiedFutureDrawIdentityInput,
+    *,
+    lottery_type: LotteryType,
+    draw_number: str,
+) -> TargetAnnouncement:
+    """Select exactly one explicit Big Lotto target without deriving identity."""
+
+    if type(parsed_input) is not OwnerCertifiedFutureDrawIdentityInput:
+        raise TargetAnnouncementAuthorityError(
+            "manual supplement input must be a strict parsed announcement document"
+        )
+    if lottery_type is not LotteryType.BIG_LOTTO:
+        raise TargetAnnouncementAuthorityError(
+            "manual future identity supplementation initially supports BIG_LOTTO"
+        )
+    if type(draw_number) is not str or _DRAW_NUMBER.fullmatch(draw_number) is None:
+        raise TargetAnnouncementAuthorityError("draw_number is not canonical")
+    matches = tuple(
+        announcement
+        for announcement in parsed_input.announcements
+        if announcement.target.lottery_type is lottery_type
+        and announcement.target.draw_number == draw_number
+    )
+    if len(matches) != 1:
+        raise TargetAnnouncementAuthorityError(
+            "exactly one announcement must match the explicit target selector"
+        )
+    return matches[0]
 
 
 class CanonicalPreOutcomeTargetAuthorityStore:
@@ -390,9 +463,7 @@ def compose_pre_outcome_target_operational_service(
     return PreOutcomeTargetOperationalComposition(
         paths=paths,
         service=PreOutcomeTargetOperationalService(
-            announcement_source=FileSystemOperationalTargetAnnouncementSource(
-                paths.announcement_file
-            ),
+            future_draw_identity_reader=SQLiteFutureDrawIdentityReader(paths.local_data),
             causal_history_authority=SQLitePreOutcomeCausalHistoryAuthority(
                 paths.local_data
             ),
@@ -600,19 +671,6 @@ def _read_optional_owner_file(path: Path) -> bytes | None:
         return encoded
     finally:
         os.close(descriptor)
-
-
-def _validate_existing_announcement_path(path: Path) -> None:
-    try:
-        metadata = os.lstat(path)
-    except FileNotFoundError:
-        return
-    if not stat.S_ISREG(metadata.st_mode):
-        raise LocalDataError("target-announcement authority must be a regular file")
-    if metadata.st_uid != os.getuid() or stat.S_IMODE(metadata.st_mode) != 0o600:
-        raise LocalDataError("target-announcement authority must be owner-only")
-    if metadata.st_nlink != 1:
-        raise LocalDataError("target-announcement authority must have one hard link")
 
 
 def _validate_existing_authority_root(path: Path) -> None:
@@ -884,5 +942,8 @@ __all__ = [
     "SQLiteOfficialOutcomePresenceProbe",
     "SQLitePreOutcomeCausalHistoryAuthority",
     "compose_pre_outcome_target_operational_service",
+    "parse_owner_certified_future_draw_identity_input",
+    "read_owner_certified_future_draw_identity_input",
     "resolve_pre_outcome_target_operational_paths",
+    "select_owner_certified_future_draw_identity",
 ]

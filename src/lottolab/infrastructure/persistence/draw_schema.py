@@ -15,9 +15,11 @@ from pathlib import Path
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 DATABASE_FILENAME = "lottolab.db"
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
+CONTEXT_SCHEMA_VERSION = 2
 MIGRATION_NAME = "create_local_draw_data_schema"
 CONTEXT_MIGRATION_NAME = "add_ingestion_run_context"
+DRAW_SCHEDULE_MIGRATION_NAME = "add_canonical_draw_schedules"
 BUSY_TIMEOUT_MS = 5_000
 
 
@@ -148,6 +150,86 @@ CONTEXT_MIGRATION_SQL = (
 CONTEXT_MIGRATION_CHECKSUM = hashlib.sha256(
     CONTEXT_MIGRATION_SQL.encode("utf-8")
 ).hexdigest()
+DRAW_SCHEDULE_MIGRATION_STATEMENTS = (
+    """
+    CREATE TABLE draw_schedules (
+        id INTEGER PRIMARY KEY,
+        lottery_type TEXT NOT NULL,
+        draw_number TEXT NOT NULL,
+        draw_date TEXT NOT NULL,
+        scheduled_at TEXT NOT NULL,
+        schedule_timezone TEXT NOT NULL,
+        source_id TEXT NOT NULL,
+        source_version TEXT NOT NULL,
+        source_locator TEXT NOT NULL,
+        source_payload_sha256 TEXT NOT NULL,
+        source_observed_at TEXT NOT NULL,
+        normalized_announcement_hash TEXT NOT NULL,
+        ingestion_run_id TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        UNIQUE (lottery_type, draw_number),
+        FOREIGN KEY (ingestion_run_id) REFERENCES ingestion_runs(id) ON DELETE RESTRICT
+    )
+    """,
+    """
+    CREATE INDEX idx_draw_schedules_earliest
+    ON draw_schedules (lottery_type, scheduled_at, draw_date, draw_number)
+    """,
+    """
+    CREATE TRIGGER trg_draw_schedules_reject_existing_draw
+    BEFORE INSERT ON draw_schedules
+    WHEN EXISTS (
+        SELECT 1 FROM draws
+        WHERE lottery_type = NEW.lottery_type
+          AND draw_number = NEW.draw_number
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'completed draw already exists for schedule identity');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draws_reject_schedule_date_mismatch_insert
+    BEFORE INSERT ON draws
+    WHEN EXISTS (
+        SELECT 1 FROM draw_schedules
+        WHERE lottery_type = NEW.lottery_type
+          AND draw_number = NEW.draw_number
+          AND draw_date <> NEW.draw_date
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'completed draw date conflicts with schedule identity');
+    END
+    """,
+    """
+    CREATE TRIGGER trg_draws_reject_schedule_date_mismatch_update
+    BEFORE UPDATE OF lottery_type, draw_number, draw_date ON draws
+    WHEN EXISTS (
+        SELECT 1 FROM draw_schedules
+        WHERE lottery_type = OLD.lottery_type
+          AND draw_number = OLD.draw_number
+          AND (
+              NEW.lottery_type <> OLD.lottery_type
+              OR NEW.draw_number <> OLD.draw_number
+              OR draw_date <> NEW.draw_date
+          )
+    ) OR EXISTS (
+        SELECT 1 FROM draw_schedules
+        WHERE lottery_type = NEW.lottery_type
+          AND draw_number = NEW.draw_number
+          AND draw_date <> NEW.draw_date
+    )
+    BEGIN
+        SELECT RAISE(ABORT, 'completed draw date conflicts with schedule identity');
+    END
+    """,
+)
+DRAW_SCHEDULE_MIGRATION_SQL = (
+    ";\n".join(statement.strip() for statement in DRAW_SCHEDULE_MIGRATION_STATEMENTS)
+    + ";\n"
+)
+DRAW_SCHEDULE_MIGRATION_CHECKSUM = hashlib.sha256(
+    DRAW_SCHEDULE_MIGRATION_SQL.encode("utf-8")
+).hexdigest()
 
 _EXPECTED_TABLE_XINFO = {
     "schema_migrations": (
@@ -216,6 +298,26 @@ _EXPECTED_TABLE_XINFO_V2 = {
     ),
 }
 
+_EXPECTED_TABLE_XINFO_V3 = {
+    **_EXPECTED_TABLE_XINFO_V2,
+    "draw_schedules": (
+        (0, "id", "INTEGER", 0, None, 1, 0),
+        (1, "lottery_type", "TEXT", 1, None, 0, 0),
+        (2, "draw_number", "TEXT", 1, None, 0, 0),
+        (3, "draw_date", "TEXT", 1, None, 0, 0),
+        (4, "scheduled_at", "TEXT", 1, None, 0, 0),
+        (5, "schedule_timezone", "TEXT", 1, None, 0, 0),
+        (6, "source_id", "TEXT", 1, None, 0, 0),
+        (7, "source_version", "TEXT", 1, None, 0, 0),
+        (8, "source_locator", "TEXT", 1, None, 0, 0),
+        (9, "source_payload_sha256", "TEXT", 1, None, 0, 0),
+        (10, "source_observed_at", "TEXT", 1, None, 0, 0),
+        (11, "normalized_announcement_hash", "TEXT", 1, None, 0, 0),
+        (12, "ingestion_run_id", "TEXT", 1, None, 0, 0),
+        (13, "created_at", "TEXT", 1, None, 0, 0),
+    ),
+}
+
 _EXPECTED_INDEX_LIST = {
     "schema_migrations": {},
     "ingestion_runs": {
@@ -236,6 +338,14 @@ _EXPECTED_INDEX_LIST_V2 = {
     "ingestion_run_context": {
         "idx_ingestion_run_context_trigger": (0, "c", 0),
         "sqlite_autoindex_ingestion_run_context_1": (1, "pk", 0),
+    },
+}
+
+_EXPECTED_INDEX_LIST_V3 = {
+    **_EXPECTED_INDEX_LIST_V2,
+    "draw_schedules": {
+        "idx_draw_schedules_earliest": (0, "c", 0),
+        "sqlite_autoindex_draw_schedules_1": (1, "u", 0),
     },
 }
 
@@ -282,6 +392,22 @@ _EXPECTED_INDEX_XINFO_V2 = {
     ),
 }
 
+_EXPECTED_INDEX_XINFO_V3 = {
+    **_EXPECTED_INDEX_XINFO_V2,
+    "sqlite_autoindex_draw_schedules_1": (
+        (0, 1, "lottery_type", 0, "BINARY", 1),
+        (1, 2, "draw_number", 0, "BINARY", 1),
+        (2, -1, None, 0, "BINARY", 0),
+    ),
+    "idx_draw_schedules_earliest": (
+        (0, 1, "lottery_type", 0, "BINARY", 1),
+        (1, 4, "scheduled_at", 0, "BINARY", 1),
+        (2, 3, "draw_date", 0, "BINARY", 1),
+        (3, 2, "draw_number", 0, "BINARY", 1),
+        (4, -1, None, 0, "BINARY", 0),
+    ),
+}
+
 _EXPECTED_FOREIGN_KEYS = {
     "schema_migrations": (),
     "ingestion_runs": (),
@@ -307,6 +433,22 @@ _EXPECTED_FOREIGN_KEYS_V2 = {
     ),
 }
 
+_EXPECTED_FOREIGN_KEYS_V3 = {
+    **_EXPECTED_FOREIGN_KEYS_V2,
+    "draw_schedules": (
+        (
+            0,
+            0,
+            "ingestion_runs",
+            "ingestion_run_id",
+            "id",
+            "NO ACTION",
+            "RESTRICT",
+            "NONE",
+        ),
+    ),
+}
+
 _EXPECTED_SCHEMA_SQL = {
     "schema_migrations": MIGRATION_STATEMENTS[0],
     "ingestion_runs": MIGRATION_STATEMENTS[1],
@@ -326,6 +468,16 @@ _EXPECTED_SCHEMA_SQL_V2 = {
     "sqlite_autoindex_ingestion_run_context_1": None,
 }
 
+_EXPECTED_SCHEMA_SQL_V3 = {
+    **_EXPECTED_SCHEMA_SQL_V2,
+    "draw_schedules": DRAW_SCHEDULE_MIGRATION_STATEMENTS[0],
+    "idx_draw_schedules_earliest": DRAW_SCHEDULE_MIGRATION_STATEMENTS[1],
+    "trg_draw_schedules_reject_existing_draw": DRAW_SCHEDULE_MIGRATION_STATEMENTS[2],
+    "trg_draws_reject_schedule_date_mismatch_insert": DRAW_SCHEDULE_MIGRATION_STATEMENTS[3],
+    "trg_draws_reject_schedule_date_mismatch_update": DRAW_SCHEDULE_MIGRATION_STATEMENTS[4],
+    "sqlite_autoindex_draw_schedules_1": None,
+}
+
 _EXPECTED_SCHEMA_OBJECTS = {("table", name, name) for name in _EXPECTED_TABLE_XINFO} | {
     ("index", "idx_draws_history", "draws"),
     ("index", "idx_ingestion_runs_history", "ingestion_runs"),
@@ -343,6 +495,32 @@ _EXPECTED_SCHEMA_OBJECTS_V2 = {
 } | {
     ("index", "idx_ingestion_run_context_trigger", "ingestion_run_context"),
     ("index", "sqlite_autoindex_ingestion_run_context_1", "ingestion_run_context"),
+}
+
+_EXPECTED_SCHEMA_OBJECTS_V3 = {
+    ("table", name, name) for name in _EXPECTED_TABLE_XINFO_V3
+} | {
+    (object_type, name, table)
+    for object_type, name, table in _EXPECTED_SCHEMA_OBJECTS_V2
+    if object_type == "index"
+} | {
+    ("index", "idx_draw_schedules_earliest", "draw_schedules"),
+    ("index", "sqlite_autoindex_draw_schedules_1", "draw_schedules"),
+    (
+        "trigger",
+        "trg_draw_schedules_reject_existing_draw",
+        "draw_schedules",
+    ),
+    (
+        "trigger",
+        "trg_draws_reject_schedule_date_mismatch_insert",
+        "draws",
+    ),
+    (
+        "trigger",
+        "trg_draws_reject_schedule_date_mismatch_update",
+        "draws",
+    ),
 }
 
 _SCHEMA_SQL_TOKEN = re.compile(
@@ -416,9 +594,25 @@ def initialize_schema(paths: LocalDataPaths) -> None:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            CURRENT_SCHEMA_VERSION,
+                            CONTEXT_SCHEMA_VERSION,
                             CONTEXT_MIGRATION_NAME,
                             CONTEXT_MIGRATION_CHECKSUM,
+                            _utc_now(),
+                        ),
+                    )
+                    version = _verify_migration_state(connection)
+                if version == CONTEXT_SCHEMA_VERSION:
+                    for statement in DRAW_SCHEDULE_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        """
+                        INSERT INTO schema_migrations (version, name, checksum, applied_at)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            CURRENT_SCHEMA_VERSION,
+                            DRAW_SCHEDULE_MIGRATION_NAME,
+                            DRAW_SCHEDULE_MIGRATION_CHECKSUM,
                             _utc_now(),
                         ),
                     )
@@ -546,16 +740,27 @@ def _verify_migration_state(connection: sqlite3.Connection) -> int | None:
         raise SchemaMigrationError("database migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise NewerSchemaVersionError("database schema is newer than this LottoLab build")
-    if versions not in ([1], [1, CURRENT_SCHEMA_VERSION]):
+    if versions not in (
+        [1],
+        [1, CONTEXT_SCHEMA_VERSION],
+        [1, CONTEXT_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION],
+    ):
         raise SchemaMigrationError("database migration history is incomplete")
     _, initial_name, initial_checksum = rows[0]
     if initial_name != MIGRATION_NAME or initial_checksum != MIGRATION_CHECKSUM:
         raise MigrationChecksumError("database migration checksum does not match")
-    if versions == [1, CURRENT_SCHEMA_VERSION]:
-        _, current_name, current_checksum = rows[1]
+    if len(versions) >= 2:
+        _, context_name, context_checksum = rows[1]
         if (
-            current_name != CONTEXT_MIGRATION_NAME
-            or current_checksum != CONTEXT_MIGRATION_CHECKSUM
+            context_name != CONTEXT_MIGRATION_NAME
+            or context_checksum != CONTEXT_MIGRATION_CHECKSUM
+        ):
+            raise MigrationChecksumError("database migration checksum does not match")
+    if versions == [1, CONTEXT_SCHEMA_VERSION, CURRENT_SCHEMA_VERSION]:
+        _, schedule_name, schedule_checksum = rows[2]
+        if (
+            schedule_name != DRAW_SCHEDULE_MIGRATION_NAME
+            or schedule_checksum != DRAW_SCHEDULE_MIGRATION_CHECKSUM
         ):
             raise MigrationChecksumError("database migration checksum does not match")
 
@@ -570,30 +775,36 @@ def _verify_schema_semantics(
     *,
     version: int,
 ) -> None:
-    expected_table_xinfo = (
-        _EXPECTED_TABLE_XINFO_V2 if version == CURRENT_SCHEMA_VERSION else _EXPECTED_TABLE_XINFO
-    )
-    expected_schema_objects = (
-        _EXPECTED_SCHEMA_OBJECTS_V2
-        if version == CURRENT_SCHEMA_VERSION
-        else _EXPECTED_SCHEMA_OBJECTS
-    )
-    expected_schema_sql = (
-        _EXPECTED_SCHEMA_SQL_V2 if version == CURRENT_SCHEMA_VERSION else _EXPECTED_SCHEMA_SQL
-    )
-    expected_index_list = (
-        _EXPECTED_INDEX_LIST_V2 if version == CURRENT_SCHEMA_VERSION else _EXPECTED_INDEX_LIST
-    )
-    expected_foreign_keys = (
-        _EXPECTED_FOREIGN_KEYS_V2
-        if version == CURRENT_SCHEMA_VERSION
-        else _EXPECTED_FOREIGN_KEYS
-    )
-    expected_index_xinfo = (
-        _EXPECTED_INDEX_XINFO_V2
-        if version == CURRENT_SCHEMA_VERSION
-        else _EXPECTED_INDEX_XINFO
-    )
+    expected_table_xinfo = {
+        1: _EXPECTED_TABLE_XINFO,
+        CONTEXT_SCHEMA_VERSION: _EXPECTED_TABLE_XINFO_V2,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_TABLE_XINFO_V3,
+    }[version]
+    expected_schema_objects = {
+        1: _EXPECTED_SCHEMA_OBJECTS,
+        CONTEXT_SCHEMA_VERSION: _EXPECTED_SCHEMA_OBJECTS_V2,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_SCHEMA_OBJECTS_V3,
+    }[version]
+    expected_schema_sql = {
+        1: _EXPECTED_SCHEMA_SQL,
+        CONTEXT_SCHEMA_VERSION: _EXPECTED_SCHEMA_SQL_V2,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_SCHEMA_SQL_V3,
+    }[version]
+    expected_index_list = {
+        1: _EXPECTED_INDEX_LIST,
+        CONTEXT_SCHEMA_VERSION: _EXPECTED_INDEX_LIST_V2,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_INDEX_LIST_V3,
+    }[version]
+    expected_foreign_keys = {
+        1: _EXPECTED_FOREIGN_KEYS,
+        CONTEXT_SCHEMA_VERSION: _EXPECTED_FOREIGN_KEYS_V2,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_FOREIGN_KEYS_V3,
+    }[version]
+    expected_index_xinfo = {
+        1: _EXPECTED_INDEX_XINFO,
+        CONTEXT_SCHEMA_VERSION: _EXPECTED_INDEX_XINFO_V2,
+        CURRENT_SCHEMA_VERSION: _EXPECTED_INDEX_XINFO_V3,
+    }[version]
     if table_names != set(expected_table_xinfo):
         raise SchemaMigrationError(f"database schema tables do not match version {version}")
 

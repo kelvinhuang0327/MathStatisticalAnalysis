@@ -13,6 +13,7 @@ import pytest
 from typer.testing import CliRunner
 
 import lottolab.infrastructure.pre_outcome_target_operational as operational_module
+from lottolab.application.future_draw_identity import normalized_announcement_sha256
 from lottolab.application.pre_outcome_target_operational import (
     CausalHistoryAuthorityError,
     OperationalRegistrationStatus,
@@ -216,6 +217,65 @@ def _insert_draw(
                 run_id,
                 timestamp,
                 timestamp,
+            ),
+        )
+        connection.commit()
+
+
+def _insert_schedule(
+    paths: LocalDataPaths,
+    *,
+    lottery_type: LotteryType,
+    draw_number: str,
+    suffix: str,
+) -> None:
+    run_id = f"schedule-{suffix}"
+    _insert_run(
+        paths,
+        run_id=run_id,
+        lottery_type=lottery_type,
+        requested_start=TARGET_DATE,
+        requested_end=TARGET_DATE,
+        completed_at=datetime(2099, 1, 1, 6, 30, tzinfo=UTC),
+        fetched_count=0,
+    )
+    announcement = TargetAnnouncement(
+        target=ObservationTarget(lottery_type, draw_number, TARGET_DATE),
+        schedule_timezone="Asia/Taipei",
+        scheduled_at=SCHEDULED_AT,
+        source=TargetSourceProvenance(
+            source_id=OFFICIAL_SCHEDULE_SOURCE_ID,
+            source_version=OFFICIAL_SCHEDULE_SOURCE_VERSION,
+            source_locator="https://www.taiwanlottery.com/lotto/results",
+            source_sha256=_sha256(f"official-schedule:{lottery_type.value}:{draw_number}"),
+            observed_at=datetime(2099, 1, 1, 6, tzinfo=UTC),
+        ),
+    )
+    with open_database(paths, read_only=False) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            """
+            INSERT INTO draw_schedules (
+                lottery_type, draw_number, draw_date, scheduled_at,
+                schedule_timezone, source_id, source_version, source_locator,
+                source_payload_sha256, source_observed_at,
+                normalized_announcement_hash, ingestion_run_id, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                lottery_type.value,
+                draw_number,
+                TARGET_DATE.isoformat(),
+                "2099-01-02T12:30:00.000000Z",
+                announcement.schedule_timezone,
+                announcement.source.source_id,
+                announcement.source.source_version,
+                announcement.source.source_locator,
+                announcement.source.source_payload_sha256,
+                "2099-01-01T06:00:00.000000Z",
+                normalized_announcement_sha256(announcement),
+                run_id,
+                "2099-01-01T06:30:00.000000Z",
             ),
         )
         connection.commit()
@@ -608,15 +668,87 @@ def test_composition_without_source_is_a_no_write_result(tmp_path: Path) -> None
     assert not data_directory.exists()
 
 
+def test_file_announcement_is_never_an_operational_fallback(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    _write_announcements(
+        paths.data_directory / ANNOUNCEMENT_FILENAME,
+        _announcement_item(LotteryType.BIG_LOTTO, "999999901"),
+    )
+    before = hashlib.sha256(paths.database.read_bytes()).hexdigest()
+    composition = compose_pre_outcome_target_operational_service(
+        environ={DATA_DIRECTORY_ENV: str(paths.data_directory)},
+        clock=lambda: NOW,
+    )
+
+    result = composition.service.register_earliest(LotteryType.BIG_LOTTO)
+
+    assert result.status is OperationalRegistrationStatus.NO_CANONICAL_TARGET_ANNOUNCEMENT
+    assert hashlib.sha256(paths.database.read_bytes()).hexdigest() == before
+    assert not composition.paths.authority_root.exists()
+
+
+def test_invalid_legacy_announcement_file_cannot_block_db_only_composition(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    announcement_path = paths.data_directory / ANNOUNCEMENT_FILENAME
+    announcement_path.write_text("not-json", encoding="utf-8")
+    announcement_path.chmod(0o644)
+    before = hashlib.sha256(paths.database.read_bytes()).hexdigest()
+
+    composition = compose_pre_outcome_target_operational_service(
+        environ={DATA_DIRECTORY_ENV: str(paths.data_directory)},
+        clock=lambda: NOW,
+    )
+    result = composition.service.register_earliest(LotteryType.BIG_LOTTO)
+
+    assert result.status is OperationalRegistrationStatus.NO_CANONICAL_TARGET_ANNOUNCEMENT
+    assert hashlib.sha256(paths.database.read_bytes()).hexdigest() == before
+    assert announcement_path.read_text(encoding="utf-8") == "not-json"
+    assert not composition.paths.authority_root.exists()
+
+
+def test_file_change_or_removal_cannot_change_db_selected_target(tmp_path: Path) -> None:
+    paths = _paths(tmp_path)
+    _seed_history_and_presence_audit(paths, LotteryType.BIG_LOTTO, suffix="db-only")
+    _insert_schedule(
+        paths,
+        lottery_type=LotteryType.BIG_LOTTO,
+        draw_number="999999901",
+        suffix="db-only",
+    )
+    _write_announcements(
+        paths.data_directory / ANNOUNCEMENT_FILENAME,
+        _announcement_item(LotteryType.BIG_LOTTO, "999999999"),
+    )
+    composition = compose_pre_outcome_target_operational_service(
+        environ={DATA_DIRECTORY_ENV: str(paths.data_directory)},
+        clock=lambda: NOW,
+    )
+
+    created = composition.service.register_earliest(LotteryType.BIG_LOTTO)
+    composition.paths.announcement_file.unlink()
+    replayed = composition.service.register_earliest(LotteryType.BIG_LOTTO)
+
+    assert created.status is OperationalRegistrationStatus.CREATED
+    assert created.announcement is not None
+    assert created.announcement.target.draw_number == "999999901"
+    assert replayed.status is OperationalRegistrationStatus.EXACT_IDEMPOTENT_NO_OP
+    assert replayed.announcement == created.announcement
+
+
 def test_multilottery_composition_creates_one_isolated_registration_per_lottery(
     tmp_path: Path,
 ) -> None:
     paths = _paths(tmp_path)
-    items: list[dict[str, object]] = []
     for index, lottery_type in enumerate(LotteryType, start=1):
         _seed_history_and_presence_audit(paths, lottery_type, suffix=str(index))
-        items.append(_announcement_item(lottery_type, "999999901"))
-    _write_announcements(paths.data_directory / ANNOUNCEMENT_FILENAME, *items)
+        _insert_schedule(
+            paths,
+            lottery_type=lottery_type,
+            draw_number="999999901",
+            suffix=str(index),
+        )
     composition = compose_pre_outcome_target_operational_service(
         environ={DATA_DIRECTORY_ENV: str(paths.data_directory)},
         clock=lambda: NOW,
@@ -642,9 +774,11 @@ def test_cli_success_is_create_once_idempotent_and_outcome_free(
     monkeypatch.setattr(operational_module, "_utc_now", lambda: NOW)
     paths = _paths(tmp_path)
     _seed_history_and_presence_audit(paths, LotteryType.BIG_LOTTO, suffix="cli")
-    _write_announcements(
-        paths.data_directory / ANNOUNCEMENT_FILENAME,
-        _announcement_item(LotteryType.BIG_LOTTO, "999999901"),
+    _insert_schedule(
+        paths,
+        lottery_type=LotteryType.BIG_LOTTO,
+        draw_number="999999901",
+        suffix="cli",
     )
     arguments = [
         "register-pre-outcome-target",

@@ -30,6 +30,9 @@ from lottolab.interfaces.cli.draw_data_integrity import draw_data_integrity_comm
 from lottolab.interfaces.cli.full_strategy_research import (
     export_full_strategy_research_catalog_command,
 )
+from lottolab.interfaces.cli.future_draw_identity import (
+    supplement_future_draw_identity_command,
+)
 from lottolab.interfaces.cli.historical_import import historical_import_command
 from lottolab.interfaces.cli.historical_replay_biglotto import (
     historical_replay_biglotto_command,
@@ -223,6 +226,7 @@ app.command("import-historical-results")(historical_import_command)
 app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("register-pre-outcome-target")(register_pre_outcome_target_command)
+app.command("supplement-future-draw-identity")(supplement_future_draw_identity_command)
 app.command("research-store")(research_store_command)
 app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
 app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)

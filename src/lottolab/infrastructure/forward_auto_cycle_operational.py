@@ -1,4 +1,4 @@
-"""Lottery-neutral file-backed support for forward auto-cycle adapters.
+"""Lottery-neutral support for forward auto-cycle adapters.
 
 The orchestration order remains in :mod:`forward_auto_cycle_core`.  This
 module only supplies reusable target/history value objects and the boring
@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TypeVar, cast
 from uuid import uuid4
@@ -28,11 +28,11 @@ from lottolab.infrastructure.persistence.draw_schema import (
     open_database,
     resolve_local_data_paths,
 )
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteFutureDrawIdentityReader,
+)
 from lottolab.infrastructure.pre_outcome_target_operational import (
-    FileSystemOperationalTargetAnnouncementSource,
     SQLitePreOutcomeCausalHistoryAuthority,
-    TargetAnnouncementSourceStatus,
-    resolve_pre_outcome_target_operational_paths,
 )
 from lottolab.strategies.adapters.base import BetAdapterError
 
@@ -52,7 +52,7 @@ TAIPEI = ZoneInfo("Asia/Taipei")
 
 @dataclass(frozen=True, slots=True)
 class ForwardCycleTarget:
-    """One announced draw identity shared by the file-backed adapters."""
+    """One canonical scheduled draw identity shared by the adapters."""
 
     lottery_type: str
     draw_number: str
@@ -248,7 +248,7 @@ class FileForwardAutoCycleAdapter(ABC):
         if self._target_resolver is not None:
             return self._target_resolver()
         stored = self._resolve_stored_unfinished_target()
-        return stored if stored is not None else self._resolve_announced_target()
+        return stored if stored is not None else self._resolve_canonical_future_target()
 
     def list_enabled_strategy_streams(self) -> tuple[ForwardCycleStrategyStream, ...]:
         return tuple(stream for stream in self._streams if stream.enabled)
@@ -632,30 +632,22 @@ class FileForwardAutoCycleAdapter(ABC):
             )
         return min(candidates, key=lambda value: int(value.draw_number)) if candidates else None
 
-    def _resolve_announced_target(self) -> ForwardCycleTarget | None:
-        paths = resolve_pre_outcome_target_operational_paths()
-        inventory = FileSystemOperationalTargetAnnouncementSource(
-            paths.announcement_file
-        ).read()
-        if inventory.status is TargetAnnouncementSourceStatus.NOT_CONFIGURED:
-            return None
+    def _resolve_canonical_future_target(self) -> ForwardCycleTarget | None:
         now = self._clock()
         _require_aware_datetime(now, "clock")
-        candidates = tuple(
-            announcement
-            for announcement in inventory.announcements
-            if announcement.target.lottery_type.value == self.lottery_type
-            and announcement.scheduled_at > now
+        paths = LocalDataPaths(
+            data_directory=self.database.parent,
+            database=self.database,
         )
-        if not candidates:
+        record = SQLiteFutureDrawIdentityReader(
+            paths
+        ).find_earliest_unpopulated_future(
+            LotteryType(self.lottery_type),
+            now.astimezone(UTC),
+        )
+        if record is None:
             return None
-        selected = min(
-            candidates,
-            key=lambda announcement: (
-                announcement.scheduled_at,
-                int(announcement.target.draw_number),
-            ),
-        )
+        selected = record.announcement
         return ForwardCycleTarget(
             lottery_type=self.lottery_type,
             draw_number=selected.target.draw_number,

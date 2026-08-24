@@ -7,14 +7,17 @@ from datetime import UTC, date, datetime
 
 import pytest
 
+from lottolab.application.future_draw_identity import (
+    ScheduledDrawIdentityRecord,
+    ScheduledDrawOutcomeState,
+    normalized_announcement_sha256,
+)
 from lottolab.application.pre_outcome_target import PreOutcomeTargetRegistrationService
 from lottolab.application.pre_outcome_target_operational import (
     OperationalRegistrationStatus,
     PreOutcomeTargetOperationalError,
     PreOutcomeTargetOperationalService,
     TargetAnnouncementDriftError,
-    TargetAnnouncementInventory,
-    TargetAnnouncementSourceStatus,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.pre_outcome_target import (
@@ -68,15 +71,45 @@ def _history(target: ObservationTarget) -> CausalHistoryRef:
     )
 
 
-class _Source:
-    def __init__(self, *inventories: TargetAnnouncementInventory) -> None:
-        self._inventories = inventories
-        self.calls = 0
+def _record(announcement: TargetAnnouncement) -> ScheduledDrawIdentityRecord:
+    return ScheduledDrawIdentityRecord(
+        internal_id=int(announcement.target.draw_number),
+        announcement=announcement,
+        normalized_announcement_hash=normalized_announcement_sha256(announcement),
+        ingestion_run_id=f"run-{announcement.target.draw_number}",
+        created_at=datetime(2099, 1, 1, 6, 30, tzinfo=UTC),
+        outcome_state=ScheduledDrawOutcomeState.NOT_POPULATED,
+        outcome_draw_internal_id=None,
+    )
 
-    def read(self) -> TargetAnnouncementInventory:
-        index = min(self.calls, len(self._inventories) - 1)
-        self.calls += 1
-        return self._inventories[index]
+
+class _Reader:
+    def __init__(
+        self,
+        *selections: ScheduledDrawIdentityRecord | None,
+        exact: ScheduledDrawIdentityRecord | None = None,
+    ) -> None:
+        self._selections = selections
+        self._exact = exact
+        self.find_calls: list[tuple[LotteryType, datetime]] = []
+        self.get_calls: list[tuple[LotteryType, str]] = []
+
+    def find_earliest_unpopulated_future(
+        self,
+        lottery_type: LotteryType,
+        as_of: datetime,
+    ) -> ScheduledDrawIdentityRecord | None:
+        index = min(len(self.find_calls), len(self._selections) - 1)
+        self.find_calls.append((lottery_type, as_of))
+        return self._selections[index]
+
+    def get_scheduled_draw(
+        self,
+        lottery_type: LotteryType,
+        draw_number: str,
+    ) -> ScheduledDrawIdentityRecord | None:
+        self.get_calls.append((lottery_type, draw_number))
+        return self._exact
 
 
 class _HistoryAuthority:
@@ -139,15 +172,8 @@ class _Store:
         )
 
 
-def _inventory(
-    *announcements: TargetAnnouncement,
-    status: TargetAnnouncementSourceStatus = TargetAnnouncementSourceStatus.AVAILABLE,
-) -> TargetAnnouncementInventory:
-    return TargetAnnouncementInventory(status, announcements)
-
-
 def _service(
-    source: _Source,
+    reader: _Reader,
 ) -> tuple[PreOutcomeTargetOperationalService, _HistoryAuthority, _Probe, _Store]:
     history = _HistoryAuthority()
     probe = _Probe()
@@ -159,7 +185,7 @@ def _service(
     )
     return (
         PreOutcomeTargetOperationalService(
-            announcement_source=source,
+            future_draw_identity_reader=reader,
             causal_history_authority=history,
             registration_service=registration,
             clock=lambda: NOW,
@@ -171,10 +197,8 @@ def _service(
 
 
 def test_missing_canonical_source_is_a_closed_no_write_result() -> None:
-    source = _Source(
-        _inventory(status=TargetAnnouncementSourceStatus.NOT_CONFIGURED)
-    )
-    service, history, probe, store = _service(source)
+    reader = _Reader(None)
+    service, history, probe, store = _service(reader)
 
     result = service.register_earliest(LotteryType.BIG_LOTTO)
 
@@ -182,32 +206,21 @@ def test_missing_canonical_source_is_a_closed_no_write_result() -> None:
     assert result.announcement is None
     assert result.causal_history is None
     assert result.registration is None
-    assert source.calls == 1
+    assert reader.find_calls == [(LotteryType.BIG_LOTTO, NOW)]
+    assert reader.get_calls == []
     assert history.calls == []
     assert probe.calls == []
     assert store.create_calls == 0
 
 
 def test_no_matching_future_target_is_a_closed_no_write_result() -> None:
-    past = _announcement(
-        LotteryType.BIG_LOTTO,
-        draw_number="999999900",
-        draw_date=date(2099, 1, 1),
-        scheduled_at=datetime(2099, 1, 1, 7, tzinfo=UTC),
-    )
-    other_lottery = _announcement(
-        LotteryType.DAILY_539,
-        draw_number="999999901",
-        draw_date=date(2099, 1, 2),
-        scheduled_at=datetime(2099, 1, 2, 12, 30, tzinfo=UTC),
-    )
-    source = _Source(_inventory(past, other_lottery))
-    service, history, probe, store = _service(source)
+    reader = _Reader(None)
+    service, history, probe, store = _service(reader)
 
     result = service.register_earliest(LotteryType.BIG_LOTTO)
 
-    assert result.status is OperationalRegistrationStatus.NO_REGISTERABLE_PRE_OUTCOME_TARGET
-    assert source.calls == 1
+    assert result.status is OperationalRegistrationStatus.NO_CANONICAL_TARGET_ANNOUNCEMENT
+    assert reader.find_calls == [(LotteryType.BIG_LOTTO, NOW)]
     assert history.calls == []
     assert probe.calls == []
     assert store.create_calls == 0
@@ -217,20 +230,15 @@ def test_no_matching_future_target_is_a_closed_no_write_result() -> None:
 def test_each_lottery_selects_the_earliest_future_announcement_and_registers(
     lottery_type: LotteryType,
 ) -> None:
-    later = _announcement(
-        lottery_type,
-        draw_number="999999902",
-        draw_date=date(2099, 1, 3),
-        scheduled_at=datetime(2099, 1, 3, 12, 30, tzinfo=UTC),
-    )
     earliest = _announcement(
         lottery_type,
         draw_number="999999901",
         draw_date=date(2099, 1, 2),
         scheduled_at=datetime(2099, 1, 2, 12, 30, tzinfo=UTC),
     )
-    source = _Source(_inventory(later, earliest))
-    service, history, probe, store = _service(source)
+    record = _record(earliest)
+    reader = _Reader(record, record, exact=record)
+    service, history, probe, store = _service(reader)
 
     result = service.register_earliest(lottery_type)
 
@@ -240,7 +248,8 @@ def test_each_lottery_selects_the_earliest_future_announcement_and_registers(
     assert result.registration is not None
     assert result.registration.target == earliest.target
     assert result.causal_history == _history(earliest.target)
-    assert source.calls == 2
+    assert reader.find_calls == [(lottery_type, NOW), (lottery_type, NOW)]
+    assert reader.get_calls == [(lottery_type, earliest.target.draw_number)]
     assert history.calls == [earliest.target]
     assert probe.calls == [(earliest.target, NOW)]
     assert store.create_calls == 1
@@ -260,8 +269,8 @@ def test_selected_announcement_drift_fails_before_history_or_registration() -> N
         scheduled_at=datetime(2099, 1, 2, 12, 30, tzinfo=UTC),
         variant="changed",
     )
-    source = _Source(_inventory(selected), _inventory(changed))
-    service, history, probe, store = _service(source)
+    reader = _Reader(_record(selected), _record(changed), exact=_record(changed))
+    service, history, probe, store = _service(reader)
 
     with pytest.raises(TargetAnnouncementDriftError, match="changed"):
         service.register_earliest(LotteryType.BIG_LOTTO)
@@ -284,8 +293,8 @@ def test_inventory_drift_that_adds_an_earlier_target_fails_before_write() -> Non
         draw_date=date(2099, 1, 2),
         scheduled_at=datetime(2099, 1, 2, 12, 30, tzinfo=UTC),
     )
-    source = _Source(_inventory(selected), _inventory(newly_earlier, selected))
-    service, history, probe, store = _service(source)
+    reader = _Reader(_record(selected), _record(newly_earlier), exact=_record(selected))
+    service, history, probe, store = _service(reader)
 
     with pytest.raises(TargetAnnouncementDriftError, match="authority changed"):
         service.register_earliest(LotteryType.BIG_LOTTO)
@@ -296,11 +305,11 @@ def test_inventory_drift_that_adds_an_earlier_target_fails_before_write() -> Non
 
 
 def test_operational_clock_must_be_exact_utc() -> None:
-    source = _Source(_inventory())
-    service, _, _, _ = _service(source)
+    reader = _Reader(None)
+    service, _, _, _ = _service(reader)
     object.__setattr__(service, "clock", lambda: datetime(2099, 1, 1, 8))
 
     with pytest.raises(PreOutcomeTargetOperationalError, match="UTC"):
         service.register_earliest(LotteryType.BIG_LOTTO)
 
-    assert source.calls == 0
+    assert reader.find_calls == []

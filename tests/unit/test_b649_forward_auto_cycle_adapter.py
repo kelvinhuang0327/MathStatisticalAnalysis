@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import datetime
+import json
+from datetime import UTC, datetime
 from pathlib import Path
 
 from tools.b649_forward_auto_cycle_adapter import B649ForwardAutoCycleAdapter
@@ -15,6 +16,15 @@ from tools.b649_operational_prediction_loop import (
 
 from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
 from lottolab.domain.draws import LotteryType
+from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths, initialize_schema
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteManualFutureDrawIdentitySupplementRepository,
+)
+from lottolab.infrastructure.pre_outcome_target_operational import (
+    OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION,
+    parse_owner_certified_future_draw_identity_input,
+    select_owner_certified_future_draw_identity,
+)
 from lottolab.strategies.adapters.base import BetAdapter, CausalDrawRow
 
 
@@ -183,7 +193,7 @@ def test_b649_adapter_preserves_strategy_failure_isolation(tmp_path: Path) -> No
     assert result.next_action == "PREDICTIONS_CREATED_WAITING_FOR_OUTCOME"
 
 
-def test_b649_default_target_resolution_uses_existing_unfinished_prediction(
+def test_b649_default_target_resolution_does_not_fallback_to_unfinished_prediction(
     tmp_path: Path,
 ) -> None:
     adapter = _core(
@@ -192,12 +202,77 @@ def test_b649_default_target_resolution_uses_existing_unfinished_prediction(
         official=None,
     )
     ForwardAutoCycleCore(adapter).run()
+    paths = LocalDataPaths(
+        data_directory=tmp_path / "canonical-data",
+        database=tmp_path / "canonical-data" / "lottolab.db",
+    )
+    initialize_schema(paths)
 
     resolved = B649ForwardAutoCycleAdapter(
         tmp_path,
-        database=tmp_path / "missing-database.db",
+        database=paths.database,
         streams=(_stream(_FakeSingleAdapter),),
         history_builder=lambda _target: _history(),
     ).resolve_next_target()
 
-    assert resolved == _target()
+    assert resolved is None
+
+
+def test_b649_default_future_target_resolution_uses_canonical_database_only(
+    tmp_path: Path,
+) -> None:
+    paths = LocalDataPaths(
+        data_directory=tmp_path / "canonical-data",
+        database=tmp_path / "canonical-data" / "lottolab.db",
+    )
+    initialize_schema(paths)
+    document = {
+        "announcements": [
+            {
+                "schedule_timezone": "Asia/Taipei",
+                "scheduled_at": "2099-01-02T12:30:00Z",
+                "source": {
+                    "observed_at": "2099-01-01T00:00:00Z",
+                    "source_id": "TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
+                    "source_locator": "https://www.taiwanlottery.com/schedule/synthetic",
+                    "source_payload_sha256": "a" * 64,
+                    "source_version": "taiwan-lottery-official-schedule-v1",
+                },
+                "target": {
+                    "draw_date": "2099-01-02",
+                    "draw_number": "209900001",
+                    "lottery_type": "BIG_LOTTO",
+                },
+            }
+        ],
+        "schema_version": OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION,
+    }
+    encoded = json.dumps(document, separators=(",", ":"), sort_keys=True).encode()
+    parsed = parse_owner_certified_future_draw_identity_input(
+        encoded,
+        source_filename="synthetic-owner-certified.json",
+    )
+    selected = select_owner_certified_future_draw_identity(
+        parsed,
+        lottery_type=LotteryType.BIG_LOTTO,
+        draw_number="209900001",
+    )
+    SQLiteManualFutureDrawIdentitySupplementRepository(
+        paths
+    ).apply_owner_certified_supplement(parsed, selected, parsed.input_sha256)
+    legacy_file = paths.data_directory / "pre-outcome-target-announcements-v1.json"
+    legacy_file.write_text("not-json", encoding="utf-8")
+    legacy_file.chmod(0o644)
+
+    resolved = B649ForwardAutoCycleAdapter(
+        tmp_path / "operation",
+        database=paths.database,
+        clock=lambda: datetime(2099, 1, 1, 8, tzinfo=UTC),
+    ).resolve_next_target()
+
+    assert resolved == PredictionTarget(
+        lottery_type="BIG_LOTTO",
+        draw_number="209900001",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T20:30:00+08:00",
+    )

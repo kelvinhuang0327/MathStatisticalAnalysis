@@ -1,10 +1,10 @@
 """Operational selection around the immutable pre-outcome target service.
 
-This module owns only outcome-free orchestration: load an explicit announcement
-inventory, select the earliest still-future target for one lottery, re-read the
-announcement to detect drift, bind strictly causal history, and invoke the
-existing create-once registration service.  Infrastructure decides where the
-inventory, history, presence evidence, and durable authority live.
+This module owns only outcome-free orchestration: resolve the earliest explicit
+DB schedule without a completed outcome, re-read it to detect drift, bind
+strictly causal history, and invoke the existing create-once registration
+service. Infrastructure decides where history, presence evidence, and durable
+authority live.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
+from lottolab.application.future_draw_identity import ScheduledDrawOutcomeState
+from lottolab.application.ports import FutureDrawIdentityReader
 from lottolab.application.pre_outcome_target import (
     PreOutcomeTargetRegistrationRequest,
     PreOutcomeTargetRegistrationService,
@@ -133,9 +135,9 @@ class OperationalRegistrationResult:
 
 @dataclass(frozen=True, slots=True)
 class PreOutcomeTargetOperationalService:
-    """Register the earliest explicit future announcement for one lottery."""
+    """Register the earliest canonical DB schedule without a completed outcome."""
 
-    announcement_source: TargetAnnouncementSource
+    future_draw_identity_reader: FutureDrawIdentityReader
     causal_history_authority: CausalHistoryAuthority
     registration_service: PreOutcomeTargetRegistrationService
     clock: Callable[[], datetime]
@@ -149,32 +151,39 @@ class PreOutcomeTargetOperationalService:
 
         selection_time = self.clock()
         _require_utc(selection_time)
-        inventory = self.announcement_source.read()
-        if inventory.status is TargetAnnouncementSourceStatus.NOT_CONFIGURED:
+        selected_record = self.future_draw_identity_reader.find_earliest_unpopulated_future(
+            lottery_type,
+            selection_time,
+        )
+        if selected_record is None:
             return _empty_result(
                 OperationalRegistrationStatus.NO_CANONICAL_TARGET_ANNOUNCEMENT
             )
+        if selected_record.outcome_state is not ScheduledDrawOutcomeState.NOT_POPULATED:
+            raise TargetAnnouncementDriftError(
+                "future draw identity reader returned a populated target"
+            )
+        selected = selected_record.announcement
 
-        candidates = tuple(
-            announcement
-            for announcement in inventory.announcements
-            if announcement.target.lottery_type is lottery_type
-            and announcement.scheduled_at > selection_time
+        final_selection = self.future_draw_identity_reader.find_earliest_unpopulated_future(
+            lottery_type,
+            selection_time,
         )
-        if not candidates:
-            return _empty_result(
-                OperationalRegistrationStatus.NO_REGISTERABLE_PRE_OUTCOME_TARGET
-            )
-        selected = min(candidates, key=_announcement_key)
-
-        final_inventory = self.announcement_source.read()
-        if final_inventory.status is not TargetAnnouncementSourceStatus.AVAILABLE:
+        if final_selection != selected_record:
             raise TargetAnnouncementDriftError(
-                "announcement authority disappeared during the pre-registration recheck"
+                "schedule authority changed during the pre-registration recheck"
             )
-        if final_inventory != inventory:
+        final_record = self.future_draw_identity_reader.get_scheduled_draw(
+            lottery_type,
+            selected.target.draw_number,
+        )
+        if final_record is None:
             raise TargetAnnouncementDriftError(
-                "announcement authority changed during the pre-registration recheck"
+                "schedule authority disappeared during the pre-registration recheck"
+            )
+        if final_record != selected_record:
+            raise TargetAnnouncementDriftError(
+                "schedule authority changed during the pre-registration recheck"
             )
 
         history = self.causal_history_authority.resolve(selected.target)
@@ -212,17 +221,6 @@ def _empty_result(status: OperationalRegistrationStatus) -> OperationalRegistrat
         announcement=None,
         causal_history=None,
         registration=None,
-    )
-
-
-def _announcement_key(
-    announcement: TargetAnnouncement,
-) -> tuple[datetime, str, int, str]:
-    return (
-        announcement.scheduled_at,
-        announcement.target.draw_date.isoformat(),
-        int(announcement.target.draw_number),
-        announcement.target.draw_number,
     )
 
 

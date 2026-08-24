@@ -5,6 +5,8 @@ from lottolab.infrastructure.persistence.draw_schema import (
     CURRENT_SCHEMA_VERSION,
     DATA_DIRECTORY_ENV,
     DATABASE_FILENAME,
+    DRAW_SCHEDULE_MIGRATION_CHECKSUM,
+    DRAW_SCHEDULE_MIGRATION_NAME,
     MIGRATION_CHECKSUM,
     LocalDataError,
     LocalDataPaths,
@@ -15,6 +17,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
     open_database,
     resolve_local_data_paths,
     verify_schema_read_only,
+)
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteFutureDrawIdentityReader,
 )
 from lottolab.infrastructure.persistence.repositories import (
     SQLiteDrawDataRepository,
@@ -28,6 +33,8 @@ __all__ = [
     "CURRENT_SCHEMA_VERSION",
     "DATABASE_FILENAME",
     "DATA_DIRECTORY_ENV",
+    "DRAW_SCHEDULE_MIGRATION_CHECKSUM",
+    "DRAW_SCHEDULE_MIGRATION_NAME",
     "MIGRATION_CHECKSUM",
     "LocalDataError",
     "LocalDataPaths",
@@ -35,6 +42,7 @@ __all__ = [
     "NewerSchemaVersionError",
     "SQLiteDrawDataRepository",
     "SQLiteDrawRepository",
+    "SQLiteFutureDrawIdentityReader",
     "SQLiteIngestionItemRepository",
     "SQLiteIngestionRunRepository",
     "SchemaMigrationError",

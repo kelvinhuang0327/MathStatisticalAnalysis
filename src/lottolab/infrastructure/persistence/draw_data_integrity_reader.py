@@ -21,8 +21,8 @@ from lottolab.domain.draw_data_integrity import (
     DrawDataTableCount,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
-    CURRENT_SCHEMA_VERSION,
     LocalDataPaths,
+    SchemaMigrationError,
     open_database,
     verify_schema_read_only,
 )
@@ -47,6 +47,7 @@ class SQLiteDrawDataIntegrityReader:
         with open_database(paths, read_only=True) as connection:
             connection.execute("BEGIN")
             try:
+                schema_version = _read_schema_version(connection)
                 findings = _run_integrity_checks(connection)
                 table_counts = _read_table_counts(connection)
                 lottery_summaries = _read_lottery_summaries(connection)
@@ -60,11 +61,18 @@ class SQLiteDrawDataIntegrityReader:
         )
         return DrawDataIntegrityReport(
             status=status,
-            schema_version=CURRENT_SCHEMA_VERSION,
+            schema_version=schema_version,
             table_counts=table_counts,
             lottery_summaries=lottery_summaries,
             findings=findings,
         )
+
+
+def _read_schema_version(connection: sqlite3.Connection) -> int:
+    row = connection.execute("SELECT MAX(version) FROM schema_migrations").fetchone()
+    if row is None or len(row) != 1 or type(row[0]) is not int:
+        raise SchemaMigrationError("canonical draw database schema version is invalid")
+    return row[0]
 
 
 def _run_integrity_checks(

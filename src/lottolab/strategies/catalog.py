@@ -2942,6 +2942,46 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_deviation_strategy__3c895052122e",
+        strategy_name="大樂透 Frontend Deviation Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_deviation:"
+            "BigLottoFrontendDeviationAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/DeviationStrategy.js",
+            "legacy_source_sha256:3c895052122ec899a4a5559b2a7411190621f077f5ccc53436aefac3fdc705fc",
+            "legacy_symbol:DeviationStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.deviation",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:NEWEST_FIRST_FREQUENCY_ORDER_INDEPENDENT",
+            "target_history_order:OLDEST_FIRST",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "number_range:1_TO_49",
+            "pick_count:6",
+            "expected_frequency:HISTORY_LENGTH_TIMES_6_DIVIDED_BY_49",
+            "standard_deviation:POPULATION_OVER_49_NUMBERS",
+            "scoring:z_LT_NEGATIVE_1_5_OR_Z_GT_2_0_OR_0_5_LT_Z_LT_1_5_ELSE_0_4",
+            "probability_normalization:TOTAL_SCORE_NORMALIZED",
+            "number_ranking:DESCENDING_SCORE_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "randomness:NONE_DETERMINISTIC",
+            "donor_execution:REVIVED_WITH_STATISTICS_SERVICE_STUB_ISOLATED",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R7",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

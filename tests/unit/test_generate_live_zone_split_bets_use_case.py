@@ -495,4 +495,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__orthogonal_2bet_optimizer__aa51b0e5e4a4",
         "legacy_biglotto__frontend_trend_strategy__a5f4554c80ef",
         "legacy_biglotto__frontend_bayesian_strategy__baa3045817fb",
+        "legacy_biglotto__biglotto_2bet_hedging__07a3aa455074",
     ]

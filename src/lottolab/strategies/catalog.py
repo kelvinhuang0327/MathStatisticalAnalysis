@@ -2870,6 +2870,47 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__biglotto_2bet_hedging__07a3aa455074",
+        strategy_name="大樂透 Fourier30 + Markov30 對沖 2注",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_2bet_hedging:"
+            "BigLotto2BetHedgingAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:tools/biglotto_2bet_hedging.py",
+            "legacy_source_sha256:07a3aa4550743a967e195d4e1a40d535e368f331e890247f1cd7c5e0e50e1b9b",
+            "legacy_symbol:main_default_standard_mode",
+            "legacy_symbols:bet1_fourier30,bet2_markov30,diversify_bets",
+            "legacy_runtime:main(--diversified absent)",
+            "legacy_lottery:BIG_LOTTO",
+            "legacy_history_order:OLDEST_FIRST",
+            "target_history_order:OLDEST_FIRST",
+            "legacy_response_shape:TWO_POSITIONAL_TICKETS",
+            "source_history:LATEST_30_MODEL_WINDOW_LATEST_50_HEDGE_WINDOW",
+            "weighted_frequency:LINEAR_WEIGHT_1_PLUS_2_I_DIVIDED_BY_N",
+            "markov:RAW_ADJACENT_DRAW_TRANSITION_COUNTS_FROM_PREVIOUS_SET_TO_CURRENT_DRAW",
+            "markov_fallback:WINDOW_FREQUENCY_WHEN_FEWER_THAN_6_TRANSITION_RESULTS",
+            "diversification:DEFAULT_MAX_OVERLAP_3_COLD_GAP_FILL_WITH_MAX_2_PER_ZONE",
+            "number_ranking:COUNTER_MOST_COMMON_SOURCE_INSERTION_TIES_THEN_ASCENDING_TICKET_SORT",
+            "portfolio_cardinality:EXACTLY_2_POSITIONAL_TICKETS",
+            "ticket_order:WEIGHTED_FREQUENCY_THEN_MARKOV_TRANSITION",
+            "randomness:NONE_DETERMINISTIC",
+            "donor_execution:REVIVED_DB_LOADER_AND_REPORTING_ISOLATED",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R5",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
 )
 
 

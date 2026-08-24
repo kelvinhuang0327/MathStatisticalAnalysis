@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
@@ -15,13 +15,11 @@ from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
     resolve_local_data_paths,
 )
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteFutureDrawIdentityReader,
+)
 from lottolab.infrastructure.persistence.replay_target_outcome_reader import (
     SQLiteReplayTargetOutcomeReader,
-)
-from lottolab.infrastructure.pre_outcome_target_operational import (
-    FileSystemOperationalTargetAnnouncementSource,
-    TargetAnnouncementSourceStatus,
-    resolve_pre_outcome_target_operational_paths,
 )
 from tools.b649_operational_prediction_loop import (
     DEFAULT_OPERATION_ROOT,
@@ -91,11 +89,7 @@ class B649ForwardAutoCycleAdapter:
             return self._target
         if self._target_resolver is not None:
             return self._target_resolver()
-
-        stored_target = self._resolve_stored_unfinished_target()
-        if stored_target is not None:
-            return stored_target
-        return self._resolve_announced_target()
+        return self._resolve_canonical_future_target()
 
     def list_enabled_strategy_streams(self) -> tuple[StrategyStream, ...]:
         return tuple(stream for stream in self._streams if stream.enabled)
@@ -259,50 +253,23 @@ class B649ForwardAutoCycleAdapter:
             "native_ticket_count": stream.native_ticket_count,
         }
 
-    def _resolve_stored_unfinished_target(self) -> PredictionTarget | None:
-        predictions_root = self.root / "predictions"
-        if not predictions_root.is_dir():
-            return None
-        candidates: list[PredictionTarget] = []
-        for draw_path in predictions_root.iterdir():
-            if not draw_path.is_dir() or not draw_path.name.isdigit():
-                continue
-            if (self.root / "outcomes" / f"{draw_path.name}.json").exists():
-                continue
-            prediction_paths = tuple(sorted(draw_path.glob("*.json"))) + tuple(
-                sorted(draw_path.glob("*/*.json"))
-            )
-            if not prediction_paths:
-                continue
-            prediction = _read_json_object(prediction_paths[0])
-            if prediction.get("lottery_type") != LOTTERY_TYPE:
-                continue
-            candidates.append(_target_from_prediction(prediction))
-        return min(candidates, key=lambda value: int(value.draw_number)) if candidates else None
-
-    def _resolve_announced_target(self) -> PredictionTarget | None:
-        paths = resolve_pre_outcome_target_operational_paths()
-        inventory = FileSystemOperationalTargetAnnouncementSource(
-            paths.announcement_file
-        ).read()
-        if inventory.status is TargetAnnouncementSourceStatus.NOT_CONFIGURED:
-            return None
+    def _resolve_canonical_future_target(self) -> PredictionTarget | None:
         now = self._clock()
-        candidates = tuple(
-            announcement
-            for announcement in inventory.announcements
-            if announcement.target.lottery_type is LotteryType.BIG_LOTTO
-            and announcement.scheduled_at > now
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError("clock must return a timezone-aware datetime")
+        paths = LocalDataPaths(
+            data_directory=self.database.parent,
+            database=self.database,
         )
-        if not candidates:
+        record = SQLiteFutureDrawIdentityReader(
+            paths
+        ).find_earliest_unpopulated_future(
+            LotteryType.BIG_LOTTO,
+            now.astimezone(UTC),
+        )
+        if record is None:
             return None
-        selected = min(
-            candidates,
-            key=lambda announcement: (
-                announcement.scheduled_at,
-                int(announcement.target.draw_number),
-            ),
-        )
+        selected = record.announcement
         return PredictionTarget(
             lottery_type=LOTTERY_TYPE,
             draw_number=selected.target.draw_number,
@@ -353,31 +320,11 @@ def serialize_cycle_result(
     }
 
 
-def _target_from_prediction(prediction: dict[str, object]) -> PredictionTarget:
-    lottery_type = _required_text(prediction, "lottery_type")
-    draw_number = _required_text(prediction, "draw_number")
-    draw_date = _required_text(prediction, "draw_date")
-    scheduled_at = _required_text(prediction, "scheduled_at")
-    return PredictionTarget(
-        lottery_type=lottery_type,
-        draw_number=draw_number,
-        draw_date=draw_date,
-        scheduled_at=scheduled_at,
-    )
-
-
 def _read_json_object(path: Path) -> dict[str, object]:
     parsed: object = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(parsed, dict):
         raise ValueError(f"{path} must contain one JSON object")
     return cast(dict[str, object], parsed)
-
-
-def _required_text(value: dict[str, object], key: str) -> str:
-    result = value.get(key)
-    if type(result) is not str or not result:
-        raise ValueError(f"{key} must be non-empty text")
-    return result
 
 
 def _numbers(value: dict[str, object], key: str) -> tuple[int, ...]:

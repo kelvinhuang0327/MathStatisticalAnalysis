@@ -11,6 +11,7 @@ import stat
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from inspect import getsource
 from pathlib import Path
 from typing import cast
 from urllib.error import URLError
@@ -494,9 +495,8 @@ def test_schedule_refresh_atomically_replaces_only_b649_and_preserves_mode(
     assert metadata.st_nlink == 1
 
 
-def test_restart_after_deadline_retains_and_records_zero_of_eleven_target(
+def test_production_scheduler_neither_refreshes_nor_selects_legacy_announcement(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config = _config(tmp_path)
     _write_announcement(
@@ -515,11 +515,24 @@ def test_restart_after_deadline_retains_and_records_zero_of_eleven_target(
         ),
     )
     after_deadline = SCHEDULED + timedelta(minutes=5)
+    network_calls = 0
+
+    def reject_network(
+        _request: scheduler_module.Request,
+        _context: ssl.SSLContext,
+        _timeout: float,
+        _limit: int,
+    ) -> bytes:
+        nonlocal network_calls
+        network_calls += 1
+        raise AssertionError("production schedule selection must not use the network")
+
+    before = config.announcement.read_bytes()
     backend = ProductionSchedulerBackend(
         config,
         clock=lambda: after_deadline,
         https_client=OfficialHttpsClient(
-            transport=lambda _request, _context, _timeout, _limit: _schedule_body()
+            transport=reject_network
         ),
         environ={
             "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
@@ -527,45 +540,25 @@ def test_restart_after_deadline_retains_and_records_zero_of_eleven_target(
         },
     )
 
-    def sync_official_outcome(_target: PredictionTarget) -> dict[str, object]:
-        return {"status": "SUCCESS", "fetched_count": 0}
+    refresh = backend.refresh_schedule(after_deadline)
 
-    def complete_postdraw(
-        _target: PredictionTarget,
-        _inventory: PredictionInventory,
-    ) -> PostDrawResult:
-        return PostDrawResult(
-            outcome_status="WAITING_FOR_OUTCOME",
-            scoring_status="WAITING_FOR_OUTCOME",
-            reporting_status="CURRENT",
-            cycle_action="WAITING_FOR_OUTCOME",
-        )
-
-    monkeypatch.setattr(backend, "sync_official_outcome", sync_official_outcome)
-    monkeypatch.setattr(backend, "complete_postdraw", complete_postdraw)
-
-    result = run_scheduler_cycle(
-        config,
-        backend,
-        clock=lambda: after_deadline,
-        source_head_resolver=lambda _path: SOURCE_HEAD,
-    )
-
-    inventory = FileSystemOperationalTargetAnnouncementSource(config.announcement).read()
-    retained = [
-        item.target.draw_number
-        for item in inventory.announcements
-        if item.target.lottery_type is LotteryType.BIG_LOTTO
-    ]
-    assert retained == ["209900001", "209900002"]
-    assert cast(dict[str, object], result["current_target"])["draw_number"] == "209900001"
-    assert result["current_status"] == "PRE_DRAW_INCOMPLETE"
-    assert result["actual_available_stream_count"] == 0
-    assert result["ready_before_draw"] is False
+    assert refresh.status == "DB_ONLY_NO_AUTO_SUPPLEMENT"
+    assert refresh.source_url is None
+    assert refresh.source_payload_sha256 is None
+    assert refresh.b649_targets == ()
+    assert refresh.inventory_count == 0
+    assert backend.resolve_target() is None
+    assert network_calls == 0
+    assert config.announcement.read_bytes() == before
     assert not (config.operation_root / "predictions").exists()
-    incomplete = cast(list[dict[str, object]], result["pre_draw_incomplete_targets"])
-    assert incomplete[0]["draw_number"] == "209900001"
-    assert incomplete[0]["missing_stream_ids"] == list(STREAM_IDS)
+
+
+def test_production_scheduler_has_no_automatic_legacy_schedule_wiring() -> None:
+    source = getsource(ProductionSchedulerBackend)
+
+    assert "refresh_official_schedule" not in source
+    assert "FileSystemOperationalTargetAnnouncementSource" not in source
+    assert "_resolve_latest_unrecorded_missed_target" not in source
 
 
 def test_failed_schedule_validation_leaves_existing_authority_byte_identical(

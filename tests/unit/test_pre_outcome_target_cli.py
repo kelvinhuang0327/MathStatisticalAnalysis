@@ -10,6 +10,8 @@ from click import unstyle
 from typer.testing import CliRunner
 
 import lottolab.interfaces.cli.pre_outcome_target as target_cli
+from lottolab.application.future_draw_identity import FutureDrawIdentityUnavailableError
+from lottolab.domain.draws import LotteryType
 from lottolab.infrastructure.persistence.draw_schema import DATA_DIRECTORY_ENV
 from lottolab.interfaces.cli.main import app
 
@@ -59,7 +61,7 @@ def test_unknown_lottery_type_is_rejected_before_composition(tmp_path: Path) -> 
 
 
 @pytest.mark.parametrize("lottery_type", ["BIG_LOTTO", "DAILY_539", "POWER_LOTTO"])
-def test_missing_announcement_authority_returns_closed_json_without_writes(
+def test_missing_database_schedule_authority_returns_closed_json_without_writes(
     tmp_path: Path,
     lottery_type: str,
 ) -> None:
@@ -74,11 +76,9 @@ def test_missing_announcement_authority_returns_closed_json_without_writes(
     assert result.stderr == ""
     payload = json.loads(result.stdout)
     assert payload == {
-        "announcement_authority_file": str(
-            data_directory / "pre-outcome-target-announcements-v1.json"
-        ),
         "authority_root": str(data_directory / "pre-outcome-target-authority-v1"),
         "causal_history": None,
+        "future_identity_database": str(data_directory / "lottolab.db"),
         "lottery_type": lottery_type,
         "record_path": None,
         "record_sha256": None,
@@ -109,3 +109,19 @@ def test_operational_failures_are_sanitized_without_traceback(
         "register-pre-outcome-target error: TARGET_AUTHORITY_CORRUPT\n"
     )
     assert "Traceback" not in result.stderr
+
+
+def test_future_identity_reader_failure_is_mapped_to_sanitized_authority_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise FutureDrawIdentityUnavailableError("sensitive implementation detail")
+
+    monkeypatch.setattr(target_cli, "compose_pre_outcome_target_operational_service", fail)
+
+    with pytest.raises(
+        target_cli.PreOutcomeTargetCliError,
+        match=r"^OPERATIONAL_DATA_AUTHORITY_UNAVAILABLE$",
+    ):
+        target_cli.run_pre_outcome_target_registration(LotteryType.BIG_LOTTO)

@@ -11448,7 +11448,8 @@
           "MANUAL_SYNC",
           "MISSING_DRAW_SCAN",
           "BOUNDED_BACKFILL",
-          "SCHEDULED_SYNC"
+          "SCHEDULED_SYNC",
+          "MANUAL_FUTURE_IDENTITY_SUPPLEMENT"
         ],
         "title": "IngestionOperationType",
         "description": "Stable operation identifiers stored in the local ingestion log."

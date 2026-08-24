@@ -9,6 +9,7 @@ from typing import Annotated, NoReturn
 
 import typer
 
+from lottolab.application.future_draw_identity import FutureDrawIdentityUnavailableError
 from lottolab.application.pre_outcome_target import (
     CorruptAuthorityError,
     InvalidOutcomeAbsenceAttestationError,
@@ -70,7 +71,11 @@ def run_pre_outcome_target_registration(
         raise PreOutcomeTargetCliError("TARGET_PRE_OUTCOME_WINDOW_INVALID") from exc
     except CorruptAuthorityError as exc:
         raise PreOutcomeTargetCliError("TARGET_AUTHORITY_CORRUPT") from exc
-    except (LocalDataError, SchemaMigrationError) as exc:
+    except (
+        FutureDrawIdentityUnavailableError,
+        LocalDataError,
+        SchemaMigrationError,
+    ) as exc:
         raise PreOutcomeTargetCliError("OPERATIONAL_DATA_AUTHORITY_UNAVAILABLE") from exc
     except (PreOutcomeTargetAuthorityError, PreOutcomeTargetOperationalError) as exc:
         raise PreOutcomeTargetCliError("OPERATIONAL_REGISTRATION_REJECTED") from exc
@@ -86,8 +91,8 @@ def render_pre_outcome_target_registration(
     """Render an outcome-free deterministic registration receipt."""
 
     payload: dict[str, object] = {
-        "announcement_authority_file": str(composition.paths.announcement_file),
         "authority_root": str(composition.paths.authority_root),
+        "future_identity_database": str(composition.paths.local_data.database),
         "lottery_type": lottery_type.value,
         "status": result.status.value,
     }

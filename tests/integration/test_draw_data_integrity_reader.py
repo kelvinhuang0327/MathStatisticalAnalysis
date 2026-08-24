@@ -22,8 +22,15 @@ from lottolab.infrastructure.persistence.draw_data_integrity_reader import (
     _run_integrity_checks,  # pyright: ignore[reportPrivateUsage]
 )
 from lottolab.infrastructure.persistence.draw_schema import (
+    CONTEXT_MIGRATION_CHECKSUM,
+    CONTEXT_MIGRATION_NAME,
+    CONTEXT_MIGRATION_STATEMENTS,
+    CONTEXT_SCHEMA_VERSION,
     CURRENT_SCHEMA_VERSION,
     DATA_DIRECTORY_ENV,
+    MIGRATION_CHECKSUM,
+    MIGRATION_NAME,
+    MIGRATION_STATEMENTS,
     LocalDataError,
     LocalDataPaths,
     NewerSchemaVersionError,
@@ -97,6 +104,33 @@ def _raw_connection(paths: LocalDataPaths) -> sqlite3.Connection:
     return sqlite3.connect(str(paths.database))
 
 
+def _create_v2_schema(paths: LocalDataPaths) -> None:
+    paths.data_directory.mkdir(mode=0o700, parents=True)
+    paths.data_directory.chmod(0o700)
+    descriptor = os.open(paths.database, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(descriptor)
+    paths.database.chmod(0o600)
+    with sqlite3.connect(paths.database) as connection:
+        for statement in MIGRATION_STATEMENTS:
+            connection.execute(statement)
+        connection.execute(
+            """
+            INSERT INTO schema_migrations (version, name, checksum, applied_at)
+            VALUES (1, ?, ?, '2099-01-01T00:00:00Z')
+            """,
+            (MIGRATION_NAME, MIGRATION_CHECKSUM),
+        )
+        for statement in CONTEXT_MIGRATION_STATEMENTS:
+            connection.execute(statement)
+        connection.execute(
+            """
+            INSERT INTO schema_migrations (version, name, checksum, applied_at)
+            VALUES (?, ?, ?, '2099-01-01T00:00:01Z')
+            """,
+            (CONTEXT_SCHEMA_VERSION, CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM),
+        )
+
+
 def test_absent_database_returns_absent_and_creates_nothing(tmp_path: Path) -> None:
     paths = _task_paths(tmp_path)
     reader = SQLiteDrawDataIntegrityReader()
@@ -110,6 +144,33 @@ def test_absent_database_returns_absent_and_creates_nothing(tmp_path: Path) -> N
     assert report.findings == ()
     assert not paths.data_directory.exists()
     assert not paths.database.exists()
+
+
+def test_valid_v2_database_reports_its_actual_version_without_migration(
+    tmp_path: Path,
+) -> None:
+    paths = _task_paths(tmp_path, suffix="valid-v2-data")
+    _create_v2_schema(paths)
+    before = (
+        hashlib.sha256(paths.database.read_bytes()).hexdigest(),
+        paths.database.stat().st_size,
+        paths.database.stat().st_mtime_ns,
+    )
+
+    report = SQLiteDrawDataIntegrityReader().inspect(paths.database)
+
+    after = (
+        hashlib.sha256(paths.database.read_bytes()).hexdigest(),
+        paths.database.stat().st_size,
+        paths.database.stat().st_mtime_ns,
+    )
+    assert report.status is DrawDataIntegrityStatus.HEALTHY
+    assert report.schema_version == CONTEXT_SCHEMA_VERSION
+    assert after == before
+    with sqlite3.connect(f"file:{paths.database}?mode=ro", uri=True) as connection:
+        assert connection.execute(
+            "SELECT name FROM sqlite_schema WHERE name = 'draw_schedules'"
+        ).fetchone() is None
 
 
 def test_healthy_database_reports_exact_counts_and_ranges(tmp_path: Path) -> None:
@@ -356,7 +417,10 @@ def test_newer_schema_version_fails_closed(tmp_path: Path) -> None:
     initialize_schema(paths)
     connection = _raw_connection(paths)
     try:
-        connection.execute("UPDATE schema_migrations SET version = ? WHERE version = ?", (3, 2))
+        connection.execute(
+            "UPDATE schema_migrations SET version = ? WHERE version = ?",
+            (CURRENT_SCHEMA_VERSION + 1, CURRENT_SCHEMA_VERSION),
+        )
         connection.commit()
     finally:
         connection.close()

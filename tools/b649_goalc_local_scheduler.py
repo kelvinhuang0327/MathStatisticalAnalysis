@@ -251,11 +251,11 @@ def production_config() -> SchedulerConfig:
 
 @dataclass(frozen=True, slots=True)
 class ScheduleRefreshResult:
-    """Observable result of one official schedule refresh."""
+    """Observable result of one schedule-authority check."""
 
     status: str
-    source_url: str
-    source_payload_sha256: str
+    source_url: str | None
+    source_payload_sha256: str | None
     observed_at: datetime
     inventory_count: int
     b649_targets: tuple[str, ...]
@@ -486,25 +486,25 @@ class ProductionSchedulerBackend:
 
     def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
         self._validate_environment()
-        return refresh_official_schedule(
-            self._config.announcement,
-            client=self._https,
-            observed_at=observed_at,
-            source_url=self._config.schedule_url,
+        observed_utc = _as_utc(observed_at)
+        target = self.resolve_target()
+        targets = () if target is None else (target.draw_number,)
+        return ScheduleRefreshResult(
+            status="DB_ONLY_NO_AUTO_SUPPLEMENT",
+            source_url=None,
+            source_payload_sha256=None,
+            observed_at=observed_utc,
+            inventory_count=len(targets),
+            b649_targets=targets,
+            strict_tls_fallback_used=False,
         )
 
     def resolve_target(self) -> PredictionTarget | None:
-        resolved = B649ForwardAutoCycleAdapter(
+        return B649ForwardAutoCycleAdapter(
             self._config.operation_root,
             database=self._config.database,
             clock=self._taipei_now,
         ).resolve_next_target()
-        now = _as_utc(self._clock())
-        if resolved is not None and _target_scheduled_at(resolved) <= now:
-            return resolved
-
-        missed = self._resolve_latest_unrecorded_missed_target(now)
-        return missed if missed is not None else resolved
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
         return inspect_prediction_inventory(self._config.operation_root, target)
@@ -744,29 +744,6 @@ class ProductionSchedulerBackend:
 
     def _taipei_now(self) -> datetime:
         return _as_utc(self._clock()).astimezone(TAIPEI)
-
-    def _resolve_latest_unrecorded_missed_target(
-        self,
-        now: datetime,
-    ) -> PredictionTarget | None:
-        inventory = FileSystemOperationalTargetAnnouncementSource(self._config.announcement).read()
-        if inventory.status is TargetAnnouncementSourceStatus.NOT_CONFIGURED:
-            return None
-        candidates = tuple(
-            announcement
-            for announcement in inventory.announcements
-            if _is_official_b649_announcement(
-                announcement,
-                source_url=self._config.schedule_url,
-            )
-            and announcement.scheduled_at <= now
-            and not (
-                self._config.operation_root / "outcomes" / f"{announcement.target.draw_number}.json"
-            ).is_file()
-        )
-        if not candidates:
-            return None
-        return _prediction_target_from_announcement(max(candidates, key=_announcement_sort_key))
 
     def _validate_environment(self) -> None:
         if self._environ.get(DRAW_PROVIDER_SOURCE_ENV) != OFFICIAL_TAIWAN_LOTTERY_SOURCE:
@@ -1496,17 +1473,6 @@ def _is_official_b649_announcement(
         and announcement.source.source_id == OFFICIAL_SCHEDULE_SOURCE_ID
         and announcement.source.source_version == OFFICIAL_SCHEDULE_SOURCE_VERSION
         and announcement.source.source_locator == source_url
-    )
-
-
-def _prediction_target_from_announcement(
-    announcement: TargetAnnouncement,
-) -> PredictionTarget:
-    return PredictionTarget(
-        lottery_type=LOTTERY_TYPE,
-        draw_number=announcement.target.draw_number,
-        draw_date=announcement.target.draw_date.isoformat(),
-        scheduled_at=announcement.scheduled_at.astimezone(TAIPEI).isoformat(),
     )
 
 

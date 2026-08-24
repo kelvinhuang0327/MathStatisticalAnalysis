@@ -15,8 +15,12 @@ from lottolab.infrastructure.persistence.draw_schema import (
     BUSY_TIMEOUT_MS,
     CONTEXT_MIGRATION_CHECKSUM,
     CONTEXT_MIGRATION_NAME,
+    CONTEXT_MIGRATION_STATEMENTS,
+    CONTEXT_SCHEMA_VERSION,
     CURRENT_SCHEMA_VERSION,
     DATA_DIRECTORY_ENV,
+    DRAW_SCHEDULE_MIGRATION_CHECKSUM,
+    DRAW_SCHEDULE_MIGRATION_NAME,
     MIGRATION_CHECKSUM,
     MIGRATION_NAME,
     MIGRATION_STATEMENTS,
@@ -64,6 +68,20 @@ def create_lookalike_schema(
             VALUES (?, ?, ?, '2026-07-16T00:00:00Z')
             """,
             (1, MIGRATION_NAME, MIGRATION_CHECKSUM),
+        )
+
+
+def create_v2_schema(paths: LocalDataPaths) -> None:
+    create_lookalike_schema(paths)
+    with sqlite3.connect(paths.database) as connection:
+        for statement in CONTEXT_MIGRATION_STATEMENTS:
+            connection.execute(statement)
+        connection.execute(
+            """
+            INSERT INTO schema_migrations (version, name, checksum, applied_at)
+            VALUES (?, ?, ?, '2026-07-17T00:00:00Z')
+            """,
+            (CONTEXT_SCHEMA_VERSION, CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM),
         )
 
 
@@ -129,7 +147,7 @@ def test_empty_read_is_noncreating(tmp_path: Path) -> None:
     assert not paths.database.exists()
 
 
-def test_schema_v2_creation_security_shape_and_idempotency(tmp_path: Path) -> None:
+def test_schema_v3_creation_security_shape_and_idempotency(tmp_path: Path) -> None:
     paths = task_paths(tmp_path)
     initialize_schema(paths)
 
@@ -155,6 +173,7 @@ def test_schema_v2_creation_security_shape_and_idempotency(tmp_path: Path) -> No
             "ingestion_runs",
             "ingestion_items",
             "ingestion_run_context",
+            "draw_schedules",
         }
         migrations = connection.execute(
             """
@@ -164,14 +183,20 @@ def test_schema_v2_creation_security_shape_and_idempotency(tmp_path: Path) -> No
         ).fetchall()
         assert [(row[0], row[1], row[2]) for row in migrations] == [
             (1, MIGRATION_NAME, MIGRATION_CHECKSUM),
-            (CURRENT_SCHEMA_VERSION, CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM),
+            (CONTEXT_SCHEMA_VERSION, CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM),
+            (
+                CURRENT_SCHEMA_VERSION,
+                DRAW_SCHEDULE_MIGRATION_NAME,
+                DRAW_SCHEDULE_MIGRATION_CHECKSUM,
+            ),
         ]
+        assert connection.execute("SELECT COUNT(*) FROM draw_schedules").fetchone() == (0,)
         assert all(str(row[3]).endswith("Z") for row in migrations)
         applied_at = [row[3] for row in migrations]
 
     initialize_schema(paths)
     with sqlite3.connect(paths.database) as connection:
-        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (2,)
+        assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone() == (3,)
         assert [
             row[0]
             for row in connection.execute(
@@ -230,8 +255,97 @@ def test_existing_v1_is_verified_read_only_then_upgraded_only_by_write(
             SELECT name, checksum FROM schema_migrations
             WHERE version = ?
             """,
-            (CURRENT_SCHEMA_VERSION,),
+            (CONTEXT_SCHEMA_VERSION,),
         ).fetchone() == (CONTEXT_MIGRATION_NAME, CONTEXT_MIGRATION_CHECKSUM)
+        assert connection.execute(
+            """
+            SELECT name, checksum FROM schema_migrations
+            WHERE version = ?
+            """,
+            (CURRENT_SCHEMA_VERSION,),
+        ).fetchone() == (
+            DRAW_SCHEDULE_MIGRATION_NAME,
+            DRAW_SCHEDULE_MIGRATION_CHECKSUM,
+        )
+
+
+def test_existing_v2_upgrade_is_add_only_and_preserves_completed_data(tmp_path: Path) -> None:
+    paths = task_paths(tmp_path)
+    create_v2_schema(paths)
+    with sqlite3.connect(paths.database) as connection:
+        connection.execute(
+            """
+            INSERT INTO ingestion_runs (
+                id, operation_type, status, lottery_type, source_filename,
+                source_sha256, parser_version, total_count, inserted_count,
+                skipped_count, conflict_count, failed_count, first_draw_number,
+                last_draw_number, started_at, completed_at, error_summary
+            ) VALUES (
+                'run-v2', 'DRAW_CSV_IMPORT', 'SUCCESS', 'BIG_LOTTO',
+                'synthetic.csv', ?, 'parser-v1', 1, 1, 0, 0, 0,
+                '209900001', '209900001', '2099-01-01T00:00:00Z',
+                '2099-01-01T00:00:00Z', NULL
+            )
+            """,
+            ("a" * 64,),
+        )
+        connection.execute(
+            """
+            INSERT INTO ingestion_run_context (
+                ingestion_run_id, trigger, fetched_count
+            ) VALUES ('run-v2', 'DRAW_CSV_IMPORT', 1)
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO ingestion_items (
+                ingestion_run_id, source_row_number, lottery_type, draw_number,
+                disposition, normalized_record_hash, message
+            ) VALUES ('run-v2', 1, 'BIG_LOTTO', '209900001', 'INSERTED', ?, 'inserted')
+            """,
+            ("b" * 64,),
+        )
+        connection.execute(
+            """
+            INSERT INTO draws (
+                lottery_type, draw_number, draw_date, main_numbers_json,
+                special_numbers_json, normalized_record_hash, source_name,
+                source_reference, ingestion_run_id, created_at, updated_at
+            ) VALUES (
+                'BIG_LOTTO', '209900001', '2099-01-01', '[1,2,3,4,5,6]',
+                '[7]', ?, 'synthetic.csv', 'synthetic', 'run-v2',
+                '2099-01-01T00:00:00Z', '2099-01-01T00:00:00Z'
+            )
+            """,
+            ("b" * 64,),
+        )
+        before = {
+            table: connection.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()
+            for table in (
+                "draws",
+                "ingestion_runs",
+                "ingestion_items",
+                "ingestion_run_context",
+            )
+        }
+
+    assert verify_schema_read_only(paths) is True
+    initialize_schema(paths)
+
+    with sqlite3.connect(paths.database) as connection:
+        after = {
+            table: connection.execute(f"SELECT * FROM {table} ORDER BY 1").fetchall()
+            for table in before
+        }
+        assert after == before
+        assert connection.execute("SELECT COUNT(*) FROM draw_schedules").fetchone() == (0,)
+        assert connection.execute(
+            "SELECT version, name, checksum FROM schema_migrations ORDER BY version"
+        ).fetchall()[-1] == (
+            CURRENT_SCHEMA_VERSION,
+            DRAW_SCHEDULE_MIGRATION_NAME,
+            DRAW_SCHEDULE_MIGRATION_CHECKSUM,
+        )
 
 
 def test_checksum_mismatch_and_newer_version_fail_closed(tmp_path: Path) -> None:
@@ -251,9 +365,9 @@ def test_checksum_mismatch_and_newer_version_fail_closed(tmp_path: Path) -> None
         connection.execute(
             """
             INSERT INTO schema_migrations (version, name, checksum, applied_at)
-            VALUES (3, 'future', ?, '2099-01-01T00:00:00Z')
+            VALUES (?, 'future', ?, '2099-01-01T00:00:00Z')
             """,
-            ("f" * 64,),
+            (CURRENT_SCHEMA_VERSION + 1, "f" * 64),
         )
     with pytest.raises(NewerSchemaVersionError, match="newer"):
         verify_schema_read_only(newer_paths)

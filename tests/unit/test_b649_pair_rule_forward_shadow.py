@@ -144,6 +144,39 @@ def test_predraw_composes_only_ready_candidates_and_is_idempotent(
     assert after == before
 
 
+def test_predraw_canonicalizes_equivalent_schedule_offsets_for_idempotence(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(shadow_module, "_build_component", _fake_builder)
+    shadow = shadow_module.PairRuleForwardShadow(tmp_path)
+    taipei_target = PredictionTarget(
+        lottery_type=LOTTERY_TYPE,
+        draw_number="209900001",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T20:30:00+08:00",
+    )
+    utc_target = PredictionTarget(
+        lottery_type=LOTTERY_TYPE,
+        draw_number="209900001",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T12:30:00Z",
+    )
+
+    first = shadow.run_pre_draw(taipei_target, HISTORY, observed_at=NOW)
+    prediction_root = tmp_path / "predictions" / "209900001"
+    before = {path: path.read_bytes() for path in prediction_root.glob("*.json")}
+    second = shadow.run_pre_draw(utc_target, HISTORY, observed_at=NOW)
+    after = {path: path.read_bytes() for path in prediction_root.glob("*.json")}
+
+    assert first["status"] == "PREDRAW_COMPLETE"
+    assert second["status"] == "PREDRAW_COMPLETE"
+    assert after == before
+    assert {json.loads(payload)["scheduled_at"] for payload in before.values()} == {
+        "2099-01-02T12:30:00Z"
+    }
+
+
 def test_deadline_records_missed_without_backfill_or_blocked_candidate_writes(
     tmp_path: Path,
 ) -> None:

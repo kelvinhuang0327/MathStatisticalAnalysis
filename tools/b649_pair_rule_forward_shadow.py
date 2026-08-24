@@ -794,6 +794,10 @@ def _target_deadline(target: PredictionTarget, explicit: datetime | None) -> dat
     return deadline.astimezone(UTC)
 
 
+def _canonical_scheduled_at(target: PredictionTarget) -> str:
+    return _target_deadline(target, None).isoformat().replace("+00:00", "Z")
+
+
 def _validate_target(target: PredictionTarget) -> None:
     if target.lottery_type != LotteryType.BIG_LOTTO.value:
         raise ValueError("pair-rule shadow supports BIG_LOTTO only")
@@ -938,7 +942,7 @@ def _idempotence_key(
             candidate.selection_fingerprint,
             target.draw_number,
             history.history_sha256,
-            target.scheduled_at,
+            _canonical_scheduled_at(target),
         )
     )
     return _sha256_bytes(preimage.encode("utf-8"))
@@ -1116,7 +1120,7 @@ def _prediction_record(
         "target_lottery_type": target.lottery_type,
         "target_draw_number": target.draw_number,
         "target_draw_date": target.draw_date,
-        "scheduled_at": target.scheduled_at,
+        "scheduled_at": _canonical_scheduled_at(target),
         "prediction_created_at": _utc_text(created_at),
         "prediction_temporal_class": "PRE_DRAW",
         "canonical_source_head": canonical_source_head,
@@ -1160,7 +1164,7 @@ def _verify_existing_prediction(
         ("budget", candidate.budget),
         ("target_draw_number", target.draw_number),
         ("target_draw_date", target.draw_date),
-        ("scheduled_at", target.scheduled_at),
+        ("scheduled_at", _canonical_scheduled_at(target)),
         ("history_cutoff_draw_number", history.cutoff_draw),
         ("history_identity_sha256", history.history_sha256),
         ("prediction_temporal_class", "PRE_DRAW"),

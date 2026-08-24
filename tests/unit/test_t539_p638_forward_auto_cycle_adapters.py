@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import cast
 
+import pytest
 from tools.p638_forward_auto_cycle_adapter import (
     P638_ENABLED_STRATEGY_IDS,
     P638_STRATEGY_STREAMS,
@@ -307,6 +308,48 @@ def test_stale_history_warns_but_does_not_block_t539_prediction(tmp_path: Path) 
     assert len(result.created_predictions) == 1
     assert result.warnings == ("LATEST_DRAW_NOT_INCLUDED",)
     assert result.next_action == "PREDICTIONS_CREATED_WAITING_FOR_OUTCOME"
+
+
+def test_shared_default_target_resolution_ignores_unfinished_prediction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "missing-database.db"
+    ForwardAutoCycleCore(
+        T539ForwardAutoCycleAdapter(
+            tmp_path,
+            database=database,
+            target=_t539_target(),
+            streams=(
+                _stream("daily539_markov_cold", "v0.1", _T539Single, 1),
+            ),
+            history_builder=lambda _target: _t539_history(),
+            official_outcome_resolver=lambda _target: None,
+            clock=lambda: _CLOCK,
+        )
+    ).run()
+    canonical_target = ForwardCycleTarget(
+        lottery_type="DAILY_539",
+        draw_number="115000080",
+        draw_date="2026-08-17",
+        scheduled_at="2026-08-17T20:30:00+08:00",
+    )
+    adapter = T539ForwardAutoCycleAdapter(
+        tmp_path,
+        database=database,
+        streams=(
+            _stream("daily539_markov_cold", "v0.1", _T539Single, 1),
+        ),
+        history_builder=lambda _target: _t539_history(),
+        clock=lambda: _CLOCK,
+    )
+    monkeypatch.setattr(
+        adapter,
+        "_resolve_canonical_future_target",
+        lambda: canonical_target,
+    )
+
+    assert adapter.resolve_next_target() == canonical_target
 
 
 def test_operation_roots_isolate_lotteries_and_reject_cross_owner_reuse(tmp_path: Path) -> None:

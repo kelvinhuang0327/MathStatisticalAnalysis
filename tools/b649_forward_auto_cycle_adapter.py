@@ -89,10 +89,6 @@ class B649ForwardAutoCycleAdapter:
             return self._target
         if self._target_resolver is not None:
             return self._target_resolver()
-
-        stored_target = self._resolve_stored_unfinished_target()
-        if stored_target is not None:
-            return self._resolve_canonical_stored_target(stored_target)
         return self._resolve_canonical_future_target()
 
     def list_enabled_strategy_streams(self) -> tuple[StrategyStream, ...]:
@@ -257,27 +253,6 @@ class B649ForwardAutoCycleAdapter:
             "native_ticket_count": stream.native_ticket_count,
         }
 
-    def _resolve_stored_unfinished_target(self) -> PredictionTarget | None:
-        predictions_root = self.root / "predictions"
-        if not predictions_root.is_dir():
-            return None
-        candidates: list[PredictionTarget] = []
-        for draw_path in predictions_root.iterdir():
-            if not draw_path.is_dir() or not draw_path.name.isdigit():
-                continue
-            if (self.root / "outcomes" / f"{draw_path.name}.json").exists():
-                continue
-            prediction_paths = tuple(sorted(draw_path.glob("*.json"))) + tuple(
-                sorted(draw_path.glob("*/*.json"))
-            )
-            if not prediction_paths:
-                continue
-            prediction = _read_json_object(prediction_paths[0])
-            if prediction.get("lottery_type") != LOTTERY_TYPE:
-                continue
-            candidates.append(_target_from_prediction(prediction))
-        return min(candidates, key=lambda value: int(value.draw_number)) if candidates else None
-
     def _resolve_canonical_future_target(self) -> PredictionTarget | None:
         now = self._clock()
         if now.tzinfo is None or now.utcoffset() is None:
@@ -301,39 +276,6 @@ class B649ForwardAutoCycleAdapter:
             draw_date=selected.target.draw_date.isoformat(),
             scheduled_at=selected.scheduled_at.astimezone(TAIPEI).isoformat(),
         )
-
-    def _resolve_canonical_stored_target(
-        self,
-        stored_target: PredictionTarget,
-    ) -> PredictionTarget | None:
-        paths = LocalDataPaths(
-            data_directory=self.database.parent,
-            database=self.database,
-        )
-        record = SQLiteFutureDrawIdentityReader(paths).get_scheduled_draw(
-            LotteryType.BIG_LOTTO,
-            stored_target.draw_number,
-        )
-        if record is None:
-            return None
-        selected = record.announcement
-        canonical_target = PredictionTarget(
-            lottery_type=LOTTERY_TYPE,
-            draw_number=selected.target.draw_number,
-            draw_date=selected.target.draw_date.isoformat(),
-            scheduled_at=selected.scheduled_at.astimezone(TAIPEI).isoformat(),
-        )
-        if (
-            stored_target.lottery_type != canonical_target.lottery_type
-            or stored_target.draw_number != canonical_target.draw_number
-            or stored_target.draw_date != canonical_target.draw_date
-            or datetime.fromisoformat(stored_target.scheduled_at).astimezone(UTC)
-            != selected.scheduled_at
-        ):
-            raise ValueError(
-                "stored unfinished target conflicts with canonical draw schedule"
-            )
-        return canonical_target
 
 
 def serialize_cycle_result(
@@ -378,31 +320,11 @@ def serialize_cycle_result(
     }
 
 
-def _target_from_prediction(prediction: dict[str, object]) -> PredictionTarget:
-    lottery_type = _required_text(prediction, "lottery_type")
-    draw_number = _required_text(prediction, "draw_number")
-    draw_date = _required_text(prediction, "draw_date")
-    scheduled_at = _required_text(prediction, "scheduled_at")
-    return PredictionTarget(
-        lottery_type=lottery_type,
-        draw_number=draw_number,
-        draw_date=draw_date,
-        scheduled_at=scheduled_at,
-    )
-
-
 def _read_json_object(path: Path) -> dict[str, object]:
     parsed: object = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(parsed, dict):
         raise ValueError(f"{path} must contain one JSON object")
     return cast(dict[str, object], parsed)
-
-
-def _required_text(value: dict[str, object], key: str) -> str:
-    result = value.get(key)
-    if type(result) is not str or not result:
-        raise ValueError(f"{key} must be non-empty text")
-    return result
 
 
 def _numbers(value: dict[str, object], key: str) -> tuple[int, ...]:

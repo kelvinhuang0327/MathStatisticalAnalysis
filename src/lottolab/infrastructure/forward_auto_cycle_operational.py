@@ -247,8 +247,7 @@ class FileForwardAutoCycleAdapter(ABC):
             return self._target
         if self._target_resolver is not None:
             return self._target_resolver()
-        stored = self._resolve_stored_unfinished_target()
-        return stored if stored is not None else self._resolve_canonical_future_target()
+        return self._resolve_canonical_future_target()
 
     def list_enabled_strategy_streams(self) -> tuple[ForwardCycleStrategyStream, ...]:
         return tuple(stream for stream in self._streams if stream.enabled)
@@ -609,28 +608,6 @@ class FileForwardAutoCycleAdapter(ABC):
     ) -> str:
         stamp = created_at.strftime("%Y%m%dT%H%M%S%f%z").replace("+", "p").replace("-", "m")
         return f"{draw_number}-{strategy_id}-{stamp}-{uuid4().hex[:8]}"
-
-    def _resolve_stored_unfinished_target(self) -> ForwardCycleTarget | None:
-        predictions_root = self.root / "predictions"
-        if not predictions_root.is_dir():
-            return None
-        candidates: list[ForwardCycleTarget] = []
-        for path in iter_all_prediction_files(self.root):
-            prediction = _read_json_object(path)
-            if prediction.get("lottery_type") != self.lottery_type:
-                continue
-            draw_number = _required_text(prediction, "draw_number")
-            if (self.root / "outcomes" / f"{draw_number}.json").exists():
-                continue
-            candidates.append(
-                ForwardCycleTarget(
-                    lottery_type=self.lottery_type,
-                    draw_number=draw_number,
-                    draw_date=_required_text(prediction, "draw_date"),
-                    scheduled_at=_required_text(prediction, "scheduled_at"),
-                )
-            )
-        return min(candidates, key=lambda value: int(value.draw_number)) if candidates else None
 
     def _resolve_canonical_future_target(self) -> ForwardCycleTarget | None:
         now = self._clock()

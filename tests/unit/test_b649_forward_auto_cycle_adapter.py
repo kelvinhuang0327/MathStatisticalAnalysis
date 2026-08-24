@@ -109,6 +109,52 @@ def _official(main_numbers: tuple[int, ...]) -> dict[str, object]:
     }
 
 
+def _supplement_future_identity(
+    paths: LocalDataPaths,
+    *,
+    draw_number: str,
+    draw_date: str,
+    scheduled_at: str,
+) -> None:
+    document = {
+        "announcements": [
+            {
+                "schedule_timezone": "Asia/Taipei",
+                "scheduled_at": scheduled_at,
+                "source": {
+                    "observed_at": "2099-01-01T00:00:00Z",
+                    "source_id": "TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
+                    "source_locator": (
+                        f"https://www.taiwanlottery.com/schedule/{draw_number}"
+                    ),
+                    "source_payload_sha256": hashlib.sha256(
+                        draw_number.encode()
+                    ).hexdigest(),
+                    "source_version": "taiwan-lottery-official-schedule-v1",
+                },
+                "target": {
+                    "draw_date": draw_date,
+                    "draw_number": draw_number,
+                    "lottery_type": "BIG_LOTTO",
+                },
+            }
+        ],
+        "schema_version": OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION,
+    }
+    parsed = parse_owner_certified_future_draw_identity_input(
+        json.dumps(document, separators=(",", ":"), sort_keys=True).encode(),
+        source_filename=f"synthetic-owner-certified-{draw_number}.json",
+    )
+    selected = select_owner_certified_future_draw_identity(
+        parsed,
+        lottery_type=LotteryType.BIG_LOTTO,
+        draw_number=draw_number,
+    )
+    SQLiteManualFutureDrawIdentitySupplementRepository(
+        paths
+    ).apply_owner_certified_supplement(parsed, selected, parsed.input_sha256)
+
+
 def _core(
     root: Path,
     *,
@@ -226,46 +272,71 @@ def test_b649_default_future_target_resolution_uses_canonical_database_only(
         database=tmp_path / "canonical-data" / "lottolab.db",
     )
     initialize_schema(paths)
-    document = {
-        "announcements": [
-            {
-                "schedule_timezone": "Asia/Taipei",
-                "scheduled_at": "2099-01-02T12:30:00Z",
-                "source": {
-                    "observed_at": "2099-01-01T00:00:00Z",
-                    "source_id": "TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
-                    "source_locator": "https://www.taiwanlottery.com/schedule/synthetic",
-                    "source_payload_sha256": "a" * 64,
-                    "source_version": "taiwan-lottery-official-schedule-v1",
-                },
-                "target": {
-                    "draw_date": "2099-01-02",
-                    "draw_number": "209900001",
-                    "lottery_type": "BIG_LOTTO",
-                },
-            }
-        ],
-        "schema_version": OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION,
-    }
-    encoded = json.dumps(document, separators=(",", ":"), sort_keys=True).encode()
-    parsed = parse_owner_certified_future_draw_identity_input(
-        encoded,
-        source_filename="synthetic-owner-certified.json",
-    )
-    selected = select_owner_certified_future_draw_identity(
-        parsed,
-        lottery_type=LotteryType.BIG_LOTTO,
+    _supplement_future_identity(
+        paths,
         draw_number="209900001",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T12:30:00Z",
     )
-    SQLiteManualFutureDrawIdentitySupplementRepository(
-        paths
-    ).apply_owner_certified_supplement(parsed, selected, parsed.input_sha256)
     legacy_file = paths.data_directory / "pre-outcome-target-announcements-v1.json"
     legacy_file.write_text("not-json", encoding="utf-8")
     legacy_file.chmod(0o644)
 
     resolved = B649ForwardAutoCycleAdapter(
         tmp_path / "operation",
+        database=paths.database,
+        clock=lambda: datetime(2099, 1, 1, 8, tzinfo=UTC),
+    ).resolve_next_target()
+
+    assert resolved == PredictionTarget(
+        lottery_type="BIG_LOTTO",
+        draw_number="209900001",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T20:30:00+08:00",
+    )
+
+
+def test_b649_canonical_earliest_future_outranks_later_unfinished_prediction(
+    tmp_path: Path,
+) -> None:
+    paths = LocalDataPaths(
+        data_directory=tmp_path / "canonical-data",
+        database=tmp_path / "canonical-data" / "lottolab.db",
+    )
+    initialize_schema(paths)
+    _supplement_future_identity(
+        paths,
+        draw_number="209900001",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T12:30:00Z",
+    )
+    _supplement_future_identity(
+        paths,
+        draw_number="209900002",
+        draw_date="2099-01-03",
+        scheduled_at="2099-01-03T12:30:00Z",
+    )
+    operation_root = tmp_path / "operation"
+    later_target = PredictionTarget(
+        lottery_type="BIG_LOTTO",
+        draw_number="209900002",
+        draw_date="2099-01-03",
+        scheduled_at="2099-01-03T20:30:00+08:00",
+    )
+    ForwardAutoCycleCore(
+        B649ForwardAutoCycleAdapter(
+            operation_root,
+            database=paths.database,
+            target=later_target,
+            streams=(_stream(_FakeSingleAdapter),),
+            history_builder=lambda _target: _history(),
+            official_outcome_resolver=lambda _target: None,
+            clock=lambda: datetime(2099, 1, 1, 8, tzinfo=UTC),
+        )
+    ).run()
+
+    resolved = B649ForwardAutoCycleAdapter(
+        operation_root,
         database=paths.database,
         clock=lambda: datetime(2099, 1, 1, 8, tzinfo=UTC),
     ).resolve_next_target()

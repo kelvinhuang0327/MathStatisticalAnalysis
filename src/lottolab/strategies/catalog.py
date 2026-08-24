@@ -2982,6 +2982,45 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_hot_cold_mix_strategy__92e0540fac02",
+        strategy_name="大樂透 Frontend Hot/Cold Mix Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_hot_cold:"
+            "BigLottoFrontendHotColdAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/HotColdMixStrategy.js",
+            "legacy_source_sha256:92e0540fac0260a5cc3e547642d54884fb794ab8002248f075a9533a7136fe80",
+            "legacy_symbol:HotColdMixStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.hot_cold",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:FREQUENCY_ORDER_INDEPENDENT",
+            "target_history_order:OLDEST_FIRST",
+            "legacy_response_shape:NUMBERS_METHOD_REPORT",
+            "number_range:1_TO_49",
+            "pick_count:6",
+            "hot_pool:TOP_10_BY_FREQUENCY_DESCENDING_ASCENDING_NUMBER_TIE_ORDER",
+            "cold_pool:BOTTOM_10_BY_FREQUENCY_ASCENDING_ASCENDING_NUMBER_TIE_ORDER",
+            "ticket_construction:CEIL_PICK_COUNT_DIV_2_HOT_THEN_REMAINDER_COLD",
+            "ticket_order:FINAL_NUMERIC_ASCENDING",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "randomness:NONE_DETERMINISTIC",
+            "donor_execution:REVIVED_WITH_SYNCHRONOUS_STATISTICS_SERVICE_STUB_ISOLATED",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R8",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

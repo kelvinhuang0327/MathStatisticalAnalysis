@@ -22,6 +22,9 @@ from lottolab.strategies.adapters.biglotto_frontend_deviation import (
 from lottolab.strategies.adapters.biglotto_frontend_frequency import (
     BigLottoFrontendFrequencyAdapter,
 )
+from lottolab.strategies.adapters.biglotto_frontend_hot_cold import (
+    BigLottoFrontendHotColdAdapter,
+)
 from lottolab.strategies.adapters.biglotto_frontend_markov import (
     BigLottoFrontendMarkovAdapter,
 )
@@ -60,6 +63,7 @@ __all__ = [
     "BigLottoFrontendBayesianAdapter",
     "BigLottoFrontendDeviationAdapter",
     "BigLottoFrontendFrequencyAdapter",
+    "BigLottoFrontendHotColdAdapter",
     "BigLottoFrontendMarkovAdapter",
     "BigLottoFrontendTrendAdapter",
     "BigLottoGraphPredictorAdapter",

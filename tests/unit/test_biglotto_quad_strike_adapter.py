@@ -152,9 +152,9 @@ def test_authoritative_identity_is_unique_cataloged_four_ticket_portfolio() -> N
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
     strategy_ids = tuple(item.strategy_id for item in catalog)
-    assert len(strategy_ids) == 118
-    assert len(set(strategy_ids)) == 118
-    assert strategy_ids[-10:] == (
+    assert len(strategy_ids) == 119
+    assert len(set(strategy_ids)) == 119
+    assert strategy_ids[-11:] == (
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
@@ -165,8 +165,9 @@ def test_authoritative_identity_is_unique_cataloged_four_ticket_portfolio() -> N
         "legacy_biglotto__frontend_bayesian_strategy__baa3045817fb",
         "legacy_biglotto__biglotto_2bet_hedging__07a3aa455074",
         "legacy_biglotto__frontend_frequency_strategy__2e3e8febb5f1",
+        "legacy_biglotto__frontend_deviation_strategy__3c895052122e",
     )
-    assert strategy_ids[:-7].count(STRATEGY_ID) == 0
+    assert strategy_ids[:-8].count(STRATEGY_ID) == 0
     assert descriptor.strategy_name == BigLottoQuadStrikeAdapter.strategy_name
     assert descriptor.version == BigLottoQuadStrikeAdapter.strategy_version
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE

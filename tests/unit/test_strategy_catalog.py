@@ -298,6 +298,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__frontend_bayesian_strategy__baa3045817fb",
         "legacy_biglotto__biglotto_2bet_hedging__07a3aa455074",
         "legacy_biglotto__frontend_frequency_strategy__2e3e8febb5f1",
+        "legacy_biglotto__frontend_deviation_strategy__3c895052122e",
     ]
     online_ids = {
         descriptor.strategy_id

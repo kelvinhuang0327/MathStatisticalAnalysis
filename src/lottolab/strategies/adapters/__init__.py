@@ -10,6 +10,9 @@ from lottolab.strategies.adapters.base import (
     RejectPrediction,
     UnsupportedLotteryType,
 )
+from lottolab.strategies.adapters.biglotto_frontend_bayesian import (
+    BigLottoFrontendBayesianAdapter,
+)
 from lottolab.strategies.adapters.biglotto_frontend_markov import (
     BigLottoFrontendMarkovAdapter,
 )
@@ -44,6 +47,7 @@ __all__ = [
     "BigLottoDeviation2BetBet2Adapter",
     "BigLottoDynamicFrequencyAdapter",
     "BigLottoEchoPhase2Adapter",
+    "BigLottoFrontendBayesianAdapter",
     "BigLottoFrontendMarkovAdapter",
     "BigLottoFrontendTrendAdapter",
     "BigLottoGraphPredictorAdapter",

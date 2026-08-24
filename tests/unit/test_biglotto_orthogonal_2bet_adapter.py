@@ -106,7 +106,7 @@ def test_catalog_and_registry_add_exactly_one_online_portfolio_identity() -> Non
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
 
-    assert len(catalog) == 115
+    assert len(catalog) == 116
     assert descriptor.strategy_id == BigLottoOrthogonal2BetAdapter.strategy_id
     assert descriptor.strategy_name == BigLottoOrthogonal2BetAdapter.strategy_name
     assert descriptor.version == BigLottoOrthogonal2BetAdapter.strategy_version

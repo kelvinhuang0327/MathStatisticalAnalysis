@@ -2839,6 +2839,37 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_bayesian_strategy__baa3045817fb",
+        strategy_name="大樂透 Frontend Bayesian 策略",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_bayesian:"
+            "BigLottoFrontendBayesianAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/BayesianStrategy.js",
+            "legacy_source_sha256:baa3045817fb366f3cb3332aa41646b6637beb79c2c4afde56f3c21466b5dbc2",
+            "legacy_symbol:BayesianStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.bayesian",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:NEWEST_FIRST",
+            "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "number_ranking:DESCENDING_PROBABILITY_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "model_type:BAYESIAN_PRIOR_FREQUENCY_WITH_MARKOV_TRANSITIONS",
+            "randomness:NONE_DETERMINISTIC",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R4",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

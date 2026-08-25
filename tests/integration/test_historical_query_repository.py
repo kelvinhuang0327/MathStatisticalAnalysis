@@ -524,11 +524,12 @@ def test_absent_database_creates_nothing(tmp_path: Path) -> None:
     database = tmp_path / "does-not-exist" / "historical.db"
     repository = SQLiteHistoricalResultQueryRepository(database)
 
-    page = repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
-    assert page.items == ()
-    assert page.total_count == 0
-    assert repository.get_portfolio("anything", ticket_count=10) is None
-    assert repository.list_strategies("anything", ticket_count=10) is None
+    with pytest.raises(HistoricalResultsUnavailableError):
+        repository.list_runs(HistoricalRunQuery(limit=50, offset=0))
+    with pytest.raises(HistoricalResultsUnavailableError):
+        repository.get_portfolio("anything", ticket_count=10)
+    with pytest.raises(HistoricalResultsUnavailableError):
+        repository.list_strategies("anything", ticket_count=10)
 
     assert not database.exists()
     assert not database.parent.exists()

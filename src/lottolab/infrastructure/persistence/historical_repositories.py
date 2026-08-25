@@ -405,9 +405,8 @@ def _format_utc(value: datetime) -> str:
 class SQLiteHistoricalResultQueryRepository:
     """Explicit-path, read-only SQLite implementation of ``HistoricalResultQueryRepository``.
 
-    Never calls ``initialize_schema`` and never writes. An absent database is
-    treated as "no data yet" (see :func:`_verify_available`); an existing but
-    corrupt/incompatible database fails closed with
+    Never calls ``initialize_schema`` and never writes. An absent database or
+    an existing but corrupt/incompatible database fails closed with
     :class:`HistoricalResultsUnavailableError`.
     """
 
@@ -415,10 +414,7 @@ class SQLiteHistoricalResultQueryRepository:
         self._database = database
 
     def list_runs(self, query: HistoricalRunQuery) -> HistoricalRunPage:
-        if not _verify_available(self._database):
-            return HistoricalRunPage(
-                items=(), total_count=0, limit=query.limit, offset=query.offset
-            )
+        _verify_available(self._database)
         with _read_only_connection(self._database) as connection:
             predicate = "status = 'COMPLETED'"
             predicate_parameters: tuple[object, ...] = ()
@@ -509,8 +505,7 @@ class SQLiteHistoricalResultQueryRepository:
     def list_strategies(
         self, run_id: str, *, ticket_count: int
     ) -> HistoricalStrategySummaryList | None:
-        if not _verify_available(self._database):
-            return None
+        _verify_available(self._database)
         with _read_only_connection(self._database) as connection:
             if not _run_is_completed(connection, run_id):
                 return None
@@ -534,8 +529,7 @@ class SQLiteHistoricalResultQueryRepository:
     def list_replay_portfolios(
         self, run_id: str, query: HistoricalReplayQuery
     ) -> HistoricalReplayPage | None:
-        if not _verify_available(self._database):
-            return None
+        _verify_available(self._database)
         with _read_only_connection(self._database) as connection:
             if not _run_is_completed(connection, run_id):
                 return None
@@ -586,8 +580,7 @@ class SQLiteHistoricalResultQueryRepository:
     def get_portfolio(
         self, portfolio_id: str, *, ticket_count: int
     ) -> HistoricalPortfolioRecord | None:
-        if not _verify_available(self._database):
-            return None
+        _verify_available(self._database)
         with _read_only_connection(self._database) as connection:
             row = connection.execute(
                 """
@@ -616,15 +609,19 @@ class SQLiteHistoricalResultQueryRepository:
             )
 
 
-def _verify_available(database: Path) -> bool:
-    """Return False for an absent database; raise for a corrupt/incompatible one."""
+def _verify_available(database: Path) -> None:
+    """Raise when the explicit historical-results authority is unavailable."""
 
     try:
-        return verify_schema_read_only(database)
+        available = verify_schema_read_only(database)
     except (HistoricalSchemaError, sqlite3.Error) as exc:
         raise HistoricalResultsUnavailableError(
             "historical results storage failed schema verification"
         ) from exc
+    if not available:
+        raise HistoricalResultsUnavailableError(
+            "historical results storage is unavailable"
+        )
 
 
 @contextmanager

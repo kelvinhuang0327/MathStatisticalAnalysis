@@ -166,23 +166,24 @@ def test_default_unconfigured_app_returns_not_configured(
     assert body["error_code"] == "HISTORICAL_RESULTS_NOT_CONFIGURED"
 
 
-# --- absent configured DB: empty page / not-found, no path created ----------
+# --- absent configured DB: unavailable, no path created ---------------------
 
 
-def test_absent_configured_database_returns_empty_runs_page(tmp_path: Path) -> None:
+def test_absent_configured_database_returns_unavailable_for_runs(tmp_path: Path) -> None:
     database = tmp_path / "does-not-exist" / "historical.db"
     client = _client_for(database)
 
     response = client.get(f"{PREFIX}/runs")
 
-    assert response.status_code == 200
+    assert response.status_code == 503
     body = response.json()
-    assert body["items"] == []
-    assert body["total_count"] == 0
+    assert body["error_code"] == "HISTORICAL_RESULTS_UNAVAILABLE"
+    assert str(database) not in response.text
+    assert "Traceback" not in response.text
     assert not database.exists()
 
 
-def test_absent_configured_database_returns_not_found_for_run_and_portfolio_routes(
+def test_absent_configured_database_returns_unavailable_for_run_and_portfolio_routes(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "does-not-exist" / "historical.db"
@@ -198,12 +199,11 @@ def test_absent_configured_database_returns_not_found_for_run_and_portfolio_rout
         f"{PREFIX}/portfolios/any-portfolio", params={"ticket_count": 10}
     )
 
-    assert strategies_response.status_code == 404
-    assert strategies_response.json()["error_code"] == "HISTORICAL_RUN_NOT_FOUND"
-    assert replay_response.status_code == 404
-    assert replay_response.json()["error_code"] == "HISTORICAL_RUN_NOT_FOUND"
-    assert portfolio_response.status_code == 404
-    assert portfolio_response.json()["error_code"] == "HISTORICAL_PORTFOLIO_NOT_FOUND"
+    for response in (strategies_response, replay_response, portfolio_response):
+        assert response.status_code == 503
+        assert response.json()["error_code"] == "HISTORICAL_RESULTS_UNAVAILABLE"
+        assert str(database) not in response.text
+        assert "Traceback" not in response.text
     assert not database.exists()
 
 

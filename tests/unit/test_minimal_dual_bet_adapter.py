@@ -211,7 +211,7 @@ def test_catalog_registry_and_production_portfolio_path_are_reachable() -> None:
 def test_production_catalog_appends_minimal_dual_bet_last_and_preserves_prior_order() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 123
+    assert len(all_ids) == 124
     # Scoped to the pre-PENDING_INTAKE_SET02_R1 prefix: minimal-dual-bet is
     # still last within it, and nothing in it moved.
     minimal_dual_bet_and_earlier = all_ids[:72]

@@ -69,6 +69,17 @@ from lottolab.strategies.catalog import production_catalog
 
 HISTORICAL_RESULTS_DB_ENV = "LOTTOLAB_HISTORICAL_RESULTS_DB"
 _SUPPORTED_PROTOCOL_VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
+_PRIVATE_LOCATION_MARKERS = (
+    "/Users/",
+    "/home/",
+    "/private/",
+    "/tmp/",
+    "/var/",
+    "Library/Application Support",
+    ".runs",
+    ".runtime",
+    "file:",
+)
 
 
 def _json_schema(*, required: tuple[str, ...], properties: dict[str, object]) -> dict[str, object]:
@@ -306,10 +317,7 @@ def _sanitize_public_value(value: object) -> object:
         if (
             value.startswith("/")
             or value.startswith("~")
-            or "file:" in value
-            or ".runs" in value
-            or ".runtime" in value
-            or "Library/Application Support" in value
+            or any(marker in value for marker in _PRIVATE_LOCATION_MARKERS)
         ):
             return "REDACTED_PRIVATE_LOCATION"
         return value

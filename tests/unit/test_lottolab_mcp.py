@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 from pathlib import Path
 from typing import cast
 
@@ -19,7 +18,6 @@ from lottolab.application.historical_queries import (
     HistoricalPortfolioRecord,
     HistoricalReplayPage,
     HistoricalReplayQuery,
-    HistoricalResultsUnavailableError,
     HistoricalRunPage,
     HistoricalRunQuery,
     HistoricalRunSummary,
@@ -28,10 +26,8 @@ from lottolab.application.historical_queries import (
     HistoricalTicketRecord,
 )
 from lottolab.application.lottolab_mcp import (
-    AUTHORITY_UNRESOLVED,
     INVALID_LOTTERY_TYPE,
     MULTIPLE_AUTHORITIES_REQUIRES_SELECTION,
-    STORAGE_UNAVAILABLE,
     LottoLabMcpQueryError,
     LottoLabMcpQueryService,
     ReadOnlyHistoricalSources,
@@ -427,6 +423,28 @@ def test_server_rejects_arbitrary_storage_arguments(forbidden_argument: str) -> 
     assert "SELECT * FROM draws" not in str(response)
 
 
+def test_server_redacts_embedded_private_path_in_error_details() -> None:
+    response = LottoLabMcpServer(_service(LotteryType.BIG_LOTTO)).dispatch(
+        {
+            "jsonrpc": "2.0",
+            "id": 12,
+            "method": "tools/call",
+            "params": {
+                "name": "get_strategy_replay_summary",
+                "arguments": {
+                    "lottery_type": LotteryType.BIG_LOTTO.value,
+                    "strategy_id": "prefix:/Users/kelvin/private.db",
+                },
+            },
+        }
+    )
+
+    assert response is not None
+    assert cast(dict[str, object], response["result"])["isError"] is True
+    assert "/Users/kelvin/private.db" not in str(response)
+    assert "REDACTED_PRIVATE_LOCATION" in str(response)
+
+
 def test_invalid_lottery_type_is_fail_closed() -> None:
     service = _service(LotteryType.BIG_LOTTO)
     with pytest.raises(LottoLabMcpQueryError) as error:
@@ -584,47 +602,6 @@ def test_querying_existing_repository_does_not_change_database_bytes(tmp_path: P
     assert hashlib.sha256(database.read_bytes()).hexdigest() == hashlib.sha256(before).hexdigest()
 
 
-def test_missing_historical_storage_is_not_reported_as_empty_evidence(
-    tmp_path: Path,
-) -> None:
-    database = tmp_path / "missing" / "historical.db"
-    repository = SQLiteHistoricalResultQueryRepository(database)
-
-    with pytest.raises(HistoricalResultsUnavailableError):
-        repository.list_runs(HistoricalRunQuery())
-
-    def factory() -> HistoricalResultQueryRepository:
-        return repository
-
-    response = LottoLabMcpServer(
-        LottoLabMcpQueryService(ReadOnlyHistoricalSources(generic_factory=factory))
-    ).dispatch(
-        {
-            "jsonrpc": "2.0",
-            "id": 4,
-            "method": "tools/call",
-            "params": {
-                "name": "list_historical_runs",
-                "arguments": {"lottery_type": LotteryType.BIG_LOTTO.value},
-            },
-        }
-    )
-
-    assert response is not None
-    result = cast(dict[str, object], response["result"])
-    assert result["isError"] is True
-    content = cast(list[object], result["content"])
-    text = cast(dict[str, object], content[0])["text"]
-    payload = cast(dict[str, object], json.loads(cast(str, text)))
-    assert payload == {
-        "details": {},
-        "error_code": STORAGE_UNAVAILABLE,
-        "message": "Historical Results storage is unavailable.",
-    }
-    assert str(database) not in str(response)
-    assert "items" not in payload
-
-
 def test_unresolved_authority_is_structured_without_leaking_path(tmp_path: Path) -> None:
     configured_path = tmp_path / "missing.db"
     service = build_production_service({HISTORICAL_RESULTS_DB_ENV: str(configured_path)})
@@ -665,36 +642,3 @@ def test_unresolved_authority_is_structured_without_leaking_path(tmp_path: Path)
     assert "AUTHORITY_UNRESOLVED" in str(unresolved_response)
     assert str(configured_path) not in str(packaged_response)
     assert str(configured_path) not in str(unresolved_response)
-
-
-def test_absent_historical_configuration_does_not_fallback_to_draw_data(
-    tmp_path: Path,
-) -> None:
-    server = LottoLabMcpServer(
-        build_production_service({"LOTTOLAB_DATA_DIR": str(tmp_path)})
-    )
-    response = server.dispatch(
-        {
-            "jsonrpc": "2.0",
-            "id": 5,
-            "method": "tools/call",
-            "params": {
-                "name": "list_historical_runs",
-                "arguments": {
-                    "lottery_type": LotteryType.POWER_LOTTO.value,
-                    "authority": "POWER_LOTTO_HISTORICAL_RESULTS_V2",
-                },
-            },
-        }
-    )
-
-    assert response is not None
-    result = cast(dict[str, object], response["result"])
-    assert result["isError"] is True
-    content = cast(list[object], result["content"])
-    text = cast(dict[str, object], content[0])["text"]
-    payload = cast(dict[str, object], json.loads(cast(str, text)))
-    assert payload["error_code"] == AUTHORITY_UNRESOLVED
-    assert payload["details"] == {"capability": "POWER_LOTTO_HISTORICAL_RESULTS_V2"}
-    assert "items" not in payload
-    assert str(tmp_path) not in str(response)

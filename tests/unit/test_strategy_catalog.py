@@ -301,6 +301,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__frontend_deviation_strategy__3c895052122e",
         "legacy_biglotto__frontend_hot_cold_mix_strategy__92e0540fac02",
         "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0",
+        "legacy_biglotto__frontend_sum_range_strategy__4941213e6c46",
     ]
     online_ids = {
         descriptor.strategy_id

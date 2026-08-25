@@ -396,11 +396,11 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     ``acb_markov_midfreq_3bet``); followed by ten descriptors from
     ``BIGLOTTO_WAVE2_PRODUCTION_CATALOG_WIRING_R1`` and the nine
     ``PR165_CURRENT_MAIN_REFRESH_AND_REVERIFY_R1`` descriptors, followed by
-    PR #173's Frontend Markov descriptor.
+    PR #173's Frontend Markov descriptor and the R2-R10 lane descriptors.
     """
 
     catalog = production_catalog()
-    assert len(catalog) == 121
+    assert len(catalog) == 122
 
 
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
@@ -410,7 +410,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 121
+    assert len(all_ids) == 122
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)

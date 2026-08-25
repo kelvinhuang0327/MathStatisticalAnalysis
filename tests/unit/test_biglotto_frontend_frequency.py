@@ -114,7 +114,7 @@ def test_invalid_history_and_wrong_lottery_fail_closed() -> None:
 def test_catalog_and_registry_add_exactly_one_online_identity() -> None:
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
-    assert len(catalog) == 121
+    assert len(catalog) == 122
     assert descriptor.strategy_id == BigLottoFrontendFrequencyAdapter.strategy_id
     assert descriptor.strategy_name == BigLottoFrontendFrequencyAdapter.strategy_name
     assert descriptor.version == BigLottoFrontendFrequencyAdapter.strategy_version

@@ -55,6 +55,20 @@ key, put it in a tracked `.env` file, or paste it into an MCP response.
 The placeholder values above are not valid credentials. Replace them only in
 the local shell or the tunnel-client's user-level configuration.
 
+## One-time local environment preparation
+
+Prepare the repository environment once before the first tunnel start, or
+after checking out this support commit into a new worktree. The startup and
+restart commands intentionally use `--no-sync` so the tunnel process never
+installs or changes dependencies implicitly:
+
+```sh
+uv sync --frozen
+```
+
+After this preparation, the documented `uv run --no-sync` command is
+restartable after a reboot without rebuilding the MCP implementation.
+
 ## Start
 
 Run from the repository root. `REPO_ROOT` is used only to construct the local

@@ -625,6 +625,8 @@ def _base_evidence_row(
     history: tuple[Draw, ...],
     windows: Mapping[str, Mapping[str, object]],
     seed_metadata: Mapping[str, object],
+    *,
+    history_fingerprint: str | None = None,
 ) -> dict[str, object]:
     cutoff = history[-1] if history else None
     window_names = [
@@ -646,7 +648,11 @@ def _base_evidence_row(
         "causal_cutoff_draw_number": cutoff.draw_number if cutoff else None,
         "causal_cutoff_date": cutoff.draw_date.isoformat() if cutoff else None,
         "causal_history_length": len(history),
-        "causal_history_fingerprint": _history_fingerprint(history),
+        "causal_history_fingerprint": (
+            _history_fingerprint(history)
+            if history_fingerprint is None
+            else history_fingerprint
+        ),
         "target_outcome_excluded": target not in history,
         "window_names": window_names,
         "seed_metadata": dict(seed_metadata),
@@ -737,10 +743,24 @@ def _replay_cell(
     target: Draw,
     history: tuple[Draw, ...],
     windows: Mapping[str, Mapping[str, object]],
+    *,
+    causal_rows: tuple[CausalDrawRow, ...] | None = None,
+    history_fingerprint: str | None = None,
 ) -> dict[str, object]:
-    causal_rows = tuple(draw.causal_row() for draw in history)
-    seed_metadata = _seed_metadata(binding.descriptor, causal_rows)
-    base = _base_evidence_row(binding.descriptor, target, history, windows, seed_metadata)
+    effective_causal_rows = (
+        tuple(draw.causal_row() for draw in history)
+        if causal_rows is None
+        else causal_rows
+    )
+    seed_metadata = _seed_metadata(binding.descriptor, effective_causal_rows)
+    base = _base_evidence_row(
+        binding.descriptor,
+        target,
+        history,
+        windows,
+        seed_metadata,
+        history_fingerprint=history_fingerprint,
+    )
     if binding.binding_error is not None:
         return _failure_row(
             base,
@@ -761,7 +781,7 @@ def _replay_cell(
         return _failure_row(base, status="EXECUTION_FAILURE", reason="BINDING_FAILURE")
     try:
         get_bets = cast(_PortfolioRuntime, implementation).get_bets_with_emission
-        executions = get_bets(causal_rows, LotteryType.BIG_LOTTO)
+        executions = get_bets(effective_causal_rows, LotteryType.BIG_LOTTO)
         if type(executions) is not tuple:
             raise TypeError("adapter did not return a tuple of ticket executions")
         if len(executions) != binding.descriptor.native_ticket_count:
@@ -846,8 +866,17 @@ def run_replay(output_dir: Path) -> dict[str, object]:
             target_index = index_by_number[target_number]
             history = draws[:target_index]
             _assert_causal_history(target, history)
+            causal_rows = tuple(draw.causal_row() for draw in history)
+            history_fingerprint = _history_fingerprint(history)
             for binding in bindings:
-                row = _replay_cell(binding, target, history, windows)
+                row = _replay_cell(
+                    binding,
+                    target,
+                    history,
+                    windows,
+                    causal_rows=causal_rows,
+                    history_fingerprint=history_fingerprint,
+                )
                 handle.write(
                     json.dumps(
                         row,

@@ -499,4 +499,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__frontend_frequency_strategy__2e3e8febb5f1",
         "legacy_biglotto__frontend_deviation_strategy__3c895052122e",
         "legacy_biglotto__frontend_hot_cold_mix_strategy__92e0540fac02",
+        "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0",
     ]

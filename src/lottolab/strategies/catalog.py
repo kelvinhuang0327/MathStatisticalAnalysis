@@ -3021,6 +3021,53 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0",
+        strategy_name="大樂透 Frontend Odd/Even Balance Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_odd_even:"
+            "BigLottoFrontendOddEvenBalanceAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/OddEvenBalanceStrategy.js",
+            "legacy_source_sha256:"
+            "5b7f125437d0392f09e81b01779229b1097684bfe6b392a1d18a1c5790ab3fef",
+            "legacy_symbol:OddEvenBalanceStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.odd_even",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:FREQUENCY_ORDER_INDEPENDENT",
+            "target_history_order:OLDEST_FIRST",
+            "history_consumed:NUMBERS_ONLY",
+            "legacy_response_shape:NUMBERS_METHOD_REPORT",
+            "number_range:1_TO_49",
+            "pick_count:6",
+            "frequency_map:INITIALIZED_1_TO_49_TOTAL_COUNTS",
+            "parity_selection:ODD_IF_ODD_TOTAL_GTE_EVEN_TOTAL_ELSE_EVEN",
+            "candidate_universe:SELECTED_PARITY_1_TO_49",
+            "number_ranking:DESCENDING_FREQUENCY_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "parity_tie:ODD",
+            "ticket_order:FINAL_NUMERIC_ASCENDING",
+            "minimum_history:TARGET_BOUNDARY_1_SOURCE_ACCEPTS_EMPTY",
+            "source_empty_behavior:ODD_DEFAULT_NUMBERS_1_3_5_7_9_11",
+            "target_empty_behavior:INSUFFICIENT_HISTORY",
+            "fallback:NONE",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "randomness:NONE_DETERMINISTIC",
+            "donor_execution:REVIVED_WITH_SYNCHRONOUS_STATISTICS_SERVICE_STUB_ISOLATED",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R9",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

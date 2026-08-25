@@ -28,6 +28,9 @@ from lottolab.strategies.adapters.biglotto_frontend_hot_cold import (
 from lottolab.strategies.adapters.biglotto_frontend_markov import (
     BigLottoFrontendMarkovAdapter,
 )
+from lottolab.strategies.adapters.biglotto_frontend_monte_carlo import (
+    BigLottoFrontendMonteCarloAdapter,
+)
 from lottolab.strategies.adapters.biglotto_frontend_number_pairs import (
     BigLottoFrontendNumberPairsAdapter,
 )
@@ -77,6 +80,7 @@ __all__ = [
     "BigLottoFrontendFrequencyAdapter",
     "BigLottoFrontendHotColdAdapter",
     "BigLottoFrontendMarkovAdapter",
+    "BigLottoFrontendMonteCarloAdapter",
     "BigLottoFrontendNumberPairsAdapter",
     "BigLottoFrontendOddEvenBalanceAdapter",
     "BigLottoFrontendSumRangeAdapter",

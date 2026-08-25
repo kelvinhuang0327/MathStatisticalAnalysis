@@ -1,0 +1,28 @@
+{
+  "schema_version": "B649_EXACT_NATIVE_EVIDENCE_PROMOTION_PROVENANCE_V1",
+  "source_task": "B649_K2_K3_EXACT_NATIVE_FULL_REPLAY_R1",
+  "source_branch": "codex/b649-k2-k3-exact-native-full-replay-r1",
+  "source_head": "85d2b4578d437b66bd015c60dd1f9bdc8404e755",
+  "source_tree": "c6341c36ca210e02b08bac66ff98b7c8be1fc95a",
+  "draw_authority_sha256": "8cb4a430d415c693e0ba272a6bcc186979d677eebf2e78c10816f7e5f2554ffc",
+  "replay_sha256": "f4ee7bcd2900c6c066b6aa0255031c97c1ca1a248c605ce68a46f62bfe7820f0",
+  "manifest_sha256": "9b9a9ca35252ff51bf60cf8e04a4e1e0b182a07ca34e2c2f8777f5d587445495",
+  "ranking_sha256": "3c09cf4791ac55c83bd7556d4b947cb1f80b762abf767b6b83f075c9d344753f",
+  "replay_bytes": 52228568,
+  "replay_rows": 28500,
+  "k2": 19,
+  "k3": 19,
+  "k2_k3_intersection": [],
+  "windows": [
+    "RECENT_50",
+    "RECENT_300",
+    "RECENT_750"
+  ],
+  "metric": "OFFICIAL_ANY_PRIZE",
+  "upstream_judge": "VERIFIED",
+  "two_run_byte_identity": "VERIFIED",
+  "capability": "BIG_LOTTO_EXACT_NATIVE_K2_K3_REPLAY",
+  "canonical_relative_path": "authorities/big_lotto/exact_native_k2_k3/target_evidence.jsonl",
+  "replay_execution": "NOT_RUN",
+  "future_prediction": "NOT_RUN"
+}

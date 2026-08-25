@@ -10,6 +10,7 @@ write-capable mode.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
 import sqlite3
@@ -73,6 +74,7 @@ _KNOWN_CAPABILITIES: Final = (
     "DRAW_DATA",
     "BIG_LOTTO_RAW_HISTORY",
     "BIG_LOTTO_PACKAGED_RECORDS",
+    "BIG_LOTTO_EXACT_NATIVE_K2_K3_REPLAY",
     "POWER_LOTTO_HISTORICAL_RESULTS_V2",
     "POWER_LOTTO_CURRENT_REPLAY",
     "POWER_LOTTO_CURRENT_RANKING",
@@ -130,6 +132,9 @@ class StorageAuthority:
     supersedes: tuple[str, ...]
     superseded_by: str | None
     notes: str
+    manifest_sha256: str | None = None
+    ranking_sha256: str | None = None
+    provenance_sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -449,7 +454,7 @@ class StorageAuthorityResolver:
         integrity_ok: bool | None = None
         error: str | None = None
         try:
-            schema_valid = _verify_schema(authority.schema, path)
+            schema_valid = _verify_schema(authority.schema, path, authority)
             if authority.schema in _SQLITE_SCHEMAS:
                 query_only, integrity_ok = _probe_sqlite(path, deep=deep)
         except Exception as exc:
@@ -512,7 +517,11 @@ class StorageAuthorityResolver:
         return path
 
 
-def _verify_schema(schema: str, path: Path) -> bool:
+def _verify_schema(
+    schema: str,
+    path: Path,
+    authority: StorageAuthority | None = None,
+) -> bool:
     if schema == "DRAW_DATA_V3":
         return verify_draw_schema_read_only(LocalDataPaths(path.parent, path))
     if schema == "P638_CURRENT_REPLAY":
@@ -560,9 +569,102 @@ def _verify_schema(schema: str, path: Path) -> bool:
 
         PackagedB649MultiTicketRecordReader().read()
         return True
+    if schema == "B649_EXACT_NATIVE_K2_K3_REPLAY_V1":
+        if authority is None:
+            raise StorageAuthorityError(
+                "exact-native replay verification requires its registry authority"
+            )
+        return _verify_b649_exact_native_replay_bundle(path, authority)
     if schema == "NONE":
         return True
     raise StorageAuthorityRegistryError(f"unknown authority schema verifier: {schema}")
+
+
+def _verify_b649_exact_native_replay_bundle(
+    path: Path,
+    authority: StorageAuthority,
+) -> bool:
+    """Verify the sealed exact-native bundle without executing replay code."""
+
+    bundle_root = path.parent
+    manifest_path = bundle_root / "sealed_manifest.json"
+    ranking_path = bundle_root / "ranking.json"
+    provenance_path = bundle_root / "promotion_provenance.json"
+    for sibling in (manifest_path, ranking_path, provenance_path):
+        if not sibling.is_file():
+            raise StorageAuthorityError(
+                f"exact-native replay bundle member is missing: {sibling.name}"
+            )
+
+    replay_sha256 = _sha256_file(path)
+    manifest_sha256 = _sha256_file(manifest_path)
+    ranking_sha256 = _sha256_file(ranking_path)
+    provenance_sha256 = _sha256_file(provenance_path)
+    for field, expected, actual in (
+        ("manifest_sha256", authority.manifest_sha256, manifest_sha256),
+        ("ranking_sha256", authority.ranking_sha256, ranking_sha256),
+        ("provenance_sha256", authority.provenance_sha256, provenance_sha256),
+    ):
+        if expected is not None and expected != actual:
+            raise StorageAuthorityError(f"exact-native {field} does not match the registry")
+
+    manifest = _read_json_object(manifest_path, "sealed manifest")
+    ranking = _read_json_object(ranking_path, "ranking")
+    provenance = _read_json_object(provenance_path, "promotion provenance")
+    if manifest.get("schema_version") != "B649_EXACT_NATIVE_REPLAY_SEALED_MANIFEST_V1":
+        raise StorageAuthorityError("exact-native sealed manifest schema is invalid")
+    if ranking.get("schema_version") != "B649_EXACT_NATIVE_RANKING_PROJECTION_V1":
+        raise StorageAuthorityError("exact-native ranking schema is invalid")
+    if provenance.get("schema_version") != "B649_EXACT_NATIVE_EVIDENCE_PROMOTION_PROVENANCE_V1":
+        raise StorageAuthorityError("exact-native promotion provenance schema is invalid")
+
+    evidence = _json_mapping(manifest.get("evidence"), "sealed manifest evidence")
+    if evidence.get("file") != path.name:
+        raise StorageAuthorityError("exact-native sealed evidence filename is invalid")
+    if evidence.get("sha256") != replay_sha256:
+        raise StorageAuthorityError("exact-native sealed evidence SHA-256 is invalid")
+    if ranking.get("sealed_evidence_sha256") != replay_sha256:
+        raise StorageAuthorityError("exact-native ranking evidence SHA-256 is invalid")
+    if ranking.get("sealed_manifest_sha256") != manifest_sha256:
+        raise StorageAuthorityError("exact-native ranking manifest SHA-256 is invalid")
+
+    provenance_values = {
+        "replay_sha256": replay_sha256,
+        "manifest_sha256": manifest_sha256,
+        "ranking_sha256": ranking_sha256,
+    }
+    for key, expected in provenance_values.items():
+        if provenance.get(key) != expected:
+            raise StorageAuthorityError(
+                f"exact-native promotion provenance {key} is inconsistent"
+            )
+    source = _json_mapping(manifest.get("source"), "sealed manifest source")
+    if provenance.get("source_head") != source.get("head"):
+        raise StorageAuthorityError("exact-native source HEAD provenance is inconsistent")
+    if provenance.get("source_tree") != source.get("tree"):
+        raise StorageAuthorityError("exact-native source tree provenance is inconsistent")
+    draw_authority = _json_mapping(
+        manifest.get("draw_authority"), "sealed manifest draw authority"
+    )
+    if provenance.get("draw_authority_sha256") != draw_authority.get("sha256_after"):
+        raise StorageAuthorityError("exact-native draw authority provenance is inconsistent")
+    if authority.sha256 != replay_sha256:
+        raise StorageAuthorityError("exact-native replay SHA-256 is not registry-bound")
+    return True
+
+
+def _read_json_object(path: Path, label: str) -> dict[str, object]:
+    try:
+        value: object = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise StorageAuthorityError(f"{label} is not valid JSON") from exc
+    return _json_mapping(value, label)
+
+
+def _json_mapping(value: object, label: str) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise StorageAuthorityError(f"{label} must be a JSON object")
+    return cast(dict[str, object], value)
 
 
 def _verify_p638_replay_schema(path: Path) -> bool:
@@ -760,6 +862,9 @@ def _parse_authority(raw: Mapping[str, object]) -> StorageAuthority:
         supersedes=_text_sequence(raw.get("supersedes", ()), "supersedes"),
         superseded_by=_optional_text(raw, "superseded_by"),
         notes=_optional_text(raw, "notes") or "",
+        manifest_sha256=_optional_sha(raw, "manifest_sha256"),
+        ranking_sha256=_optional_sha(raw, "ranking_sha256"),
+        provenance_sha256=_optional_sha(raw, "provenance_sha256"),
     )
 
 

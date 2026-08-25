@@ -1,0 +1,329 @@
+version = 1
+durable_root = "LOTTOLAB_APPLICATION_SUPPORT"
+required_capabilities = [
+  "DRAW_DATA",
+  "BIG_LOTTO_RAW_HISTORY",
+  "BIG_LOTTO_PACKAGED_RECORDS",
+  "POWER_LOTTO_HISTORICAL_RESULTS_V2",
+  "POWER_LOTTO_CURRENT_REPLAY",
+  "POWER_LOTTO_CURRENT_RANKING",
+  "POWER_LOTTO_ALL10",
+  "POWER_LOTTO_ALL23",
+  "DAILY_539_HISTORICAL",
+  "REPLAY_SCORING",
+]
+
+# Physical paths in this file are root-relative logical paths only.  The
+# resolver supplies the owner's application-support root at runtime.
+[[authorities]]
+id = "draw-data"
+capability = "DRAW_DATA"
+lottery_type = "MULTI_LOTTERY"
+status = "SOURCE_AUTHORITY"
+location = "DRAW_DATA"
+schema = "DRAW_DATA_V3"
+immutable = false
+draw_count = 3430
+provenance = "Owner-confirmed canonical LottoLab draw database; source of truth for persisted draws."
+evidence = ["owner-confirmed schema v3", "read-only query_only probe", "draw counts by lottery type"]
+notes = "Preserve resolve_local_data_paths() semantics; no fallback scan or filename selection."
+
+[[authorities]]
+id = "big-lotto-raw-history"
+capability = "BIG_LOTTO_RAW_HISTORY"
+lottery_type = "BIG_LOTTO"
+status = "UNRESOLVED"
+location = "UNRESOLVED"
+schema = "B649_RAW_HISTORY_ROOT"
+immutable = false
+env_override = "LOTTOLAB_BIGLOTTO_RAW_HISTORY_ROOT"
+provenance = "No owner-confirmed raw_records root was found in the reviewed evidence."
+evidence = ["explicit --raw-history-root contract"]
+notes = "Must remain an explicit operator-supplied root; do not select a directory by scan, mtime, or size."
+
+[[authorities]]
+id = "big-lotto-packaged-records"
+capability = "BIG_LOTTO_PACKAGED_RECORDS"
+lottery_type = "BIG_LOTTO"
+status = "CANONICAL_CURRENT"
+location = "REPOSITORY"
+relative_path = "src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v1.json"
+schema = "B649_MULTI_TICKET_HISTORICAL_RECORDS_V2"
+sha256 = "b0f0bca7ecdee6af9ff4cb5dfd8db4621471634415575c72617ae91bb8183cf3"
+immutable = true
+source_sha256 = "82f69939716e82d5896769b58886a300d890247c263f29f4df0c0eac534be2c4"
+provenance = "Pinned importlib.resources asset with self-validating projection and catalog checksums."
+evidence = ["B649_MULTI_TICKET_HISTORICAL_RECORDS_V2", "catalog_sha256=9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3"]
+notes = "221 records; 52 source reports; 133 metrics-available strategies; 2 metrics-unavailable strategies."
+
+[[authorities]]
+id = "power-lotto-historical-results-v2"
+capability = "POWER_LOTTO_HISTORICAL_RESULTS_V2"
+lottery_type = "POWER_LOTTO"
+status = "UNRESOLVED"
+location = "UNRESOLVED"
+schema = "P638_HISTORICAL_RESULTS_V2"
+immutable = false
+env_override = "LOTTOLAB_HISTORICAL_RESULTS_DB"
+provenance = "Two byte-distinct candidates share one completed semantic run identity and source provenance."
+evidence = [
+  "P638_PR93_INDEPENDENT_FIXED_HEAD_ADOPTION_REVIEW_R1/historical_results_v2.sqlite3",
+  "P638_REGISTRY_COMPLETE_REPLAY_V2_ANALYSIS_VERTICAL_R1/historical_results_v2.sqlite3",
+]
+notes = "No explicit supersession or adoption marker establishes a canonical winner; retain unresolved rather than guess."
+
+[[authorities]]
+id = "power-lotto-current-replay-r2"
+capability = "POWER_LOTTO_CURRENT_REPLAY"
+lottery_type = "POWER_LOTTO"
+status = "CANONICAL_CURRENT"
+location = "DURABLE"
+relative_path = "authorities/power_lotto/current_replay.sqlite3"
+schema = "P638_CURRENT_REPLAY"
+sha256 = "86de3123eca8e2484218fd7edf229db7816280299edd3c9de2611ab760b842ef"
+immutable = true
+env_override = "LOTTOLAB_P638_CURRENT_REPLAY_DB"
+run_id = "p638-wave1-f892e6fa25a394c7"
+source_sha256 = "684ebf0af4e9a0c1a4fc86fe2a65b78ce4b2fb044e271ca776bbc5a406b90583"
+source_draw_sha256 = "457a52baba575463c78dbe62f0d5b406101d24b250e26bbcc2d0eba648179af4"
+source_commit = "2573900481c376e3229b4d413f60c91cc54a1295"
+strategy_count = 70
+draw_count = 1933
+target_count = 135310
+complete_target_count = 130948
+excluded_target_count = 4362
+ticket_count = 400351
+provenance = "P638 R2 completed replay; source identity, completion counts, schema, and parity report agree."
+evidence = [
+  "P638 R2 p638_verification_core_r2.json",
+  "P638 R2 p638_baseline_parity_r2.json",
+  "source run metadata status=COMPLETE",
+]
+supersedes = ["power-lotto-current-replay-r1"]
+notes = "R2 has 70 selected strategies; the R1 baseline has 61 and is an exact common-set subset."
+
+[[authorities]]
+id = "power-lotto-current-ranking-r2"
+capability = "POWER_LOTTO_CURRENT_RANKING"
+lottery_type = "POWER_LOTTO"
+status = "CANONICAL_CURRENT"
+location = "DURABLE"
+relative_path = "authorities/power_lotto/current_ranking.sqlite3"
+schema = "P638_CURRENT_RANKING"
+sha256 = "f78809150411c6714e68955283aa82fdf721e610e51673d9f22a1a9d8ba52fd7"
+immutable = true
+env_override = "LOTTOLAB_P638_CURRENT_RANKING_DB"
+run_id = "p638-wave1-f892e6fa25a394c7"
+source_replay_sha256 = "86de3123eca8e2484218fd7edf229db7816280299edd3c9de2611ab760b842ef"
+source_draw_sha256 = "457a52baba575463c78dbe62f0d5b406101d24b250e26bbcc2d0eba648179af4"
+source_commit = "2573900481c376e3229b4d413f60c91cc54a1295"
+strategy_count = 70
+draw_count = 1933
+target_count = 135310
+complete_target_count = 130948
+ticket_count = 400351
+provenance = "P638 R2 current-prize ranking projection bound to the R2 replay SHA and canonical draw SHA."
+evidence = [
+  "P638 R2 p638_verification_core_r2.json",
+  "P638 R2 p638_baseline_parity_r2.json",
+]
+supersedes = ["power-lotto-current-ranking-r1"]
+source_authority = "power-lotto-current-replay-r2"
+notes = "Ranking count 70, ranks contiguous, excluded strategy count 0, failure count 0."
+
+[[authorities]]
+id = "power-lotto-all10-replay-r3"
+capability = "POWER_LOTTO_ALL10"
+lottery_type = "POWER_LOTTO"
+status = "SOURCE_AUTHORITY"
+location = "DURABLE"
+relative_path = "authorities/power_lotto/all10_replay.sqlite3"
+schema = "P638_CURRENT_REPLAY"
+sha256 = "c28cb72dacf1807ed7defc7ece4d191f517b2fae4c9289b7c6b9de28c38f78ae"
+immutable = true
+run_id = "p638-wave1-e9c2cf3675113927"
+source_sha256 = "684ebf0af4e9a0c1a4fc86fe2a65b78ce4b2fb044e271ca776bbc5a406b90583"
+source_draw_sha256 = "457a52baba575463c78dbe62f0d5b406101d24b250e26bbcc2d0eba648179af4"
+source_commit = "2573900481c376e3229b4d413f60c91cc54a1295"
+strategy_count = 10
+draw_count = 1933
+target_count = 19330
+complete_target_count = 18960
+excluded_target_count = 370
+ticket_count = 53144
+provenance = "All10 R3 fidelity-finish replay; run summary binds this exact replay SHA to the ranking output."
+evidence = [
+  "P638_ALL10_ORTHOGONAL_FIDELITY_FINISH_R3/run_summary_r3.json",
+  "run metadata status=COMPLETE",
+]
+supersedes = ["power-lotto-all10-replay-r1"]
+notes = "All10 R3 selected strategy count 10; eligible target failures 0; excluded targets 370."
+
+[[authorities]]
+id = "power-lotto-all10-ranking-r3"
+capability = "POWER_LOTTO_ALL10"
+lottery_type = "POWER_LOTTO"
+status = "CANONICAL_CURRENT"
+location = "DURABLE"
+relative_path = "authorities/power_lotto/all10_ranking.sqlite3"
+schema = "P638_ALL10_RANKING"
+sha256 = "d53763f4b9edf071e1d2a6f4b9db93d81a2b19740ffbeba1b4f51d4e1f1dcd23"
+immutable = true
+env_override = "LOTTOLAB_P638_ALL10_RANKING_DB"
+run_id = "p638-wave1-e9c2cf3675113927"
+source_replay_sha256 = "c28cb72dacf1807ed7defc7ece4d191f517b2fae4c9289b7c6b9de28c38f78ae"
+source_draw_sha256 = "457a52baba575463c78dbe62f0d5b406101d24b250e26bbcc2d0eba648179af4"
+source_commit = "2573900481c376e3229b4d413f60c91cc54a1295"
+strategy_count = 10
+draw_count = 1933
+target_count = 19330
+complete_target_count = 18960
+excluded_target_count = 370
+ticket_count = 53144
+provenance = "All10 R3 prize-ranking projection with exact source replay and canonical draw bindings."
+evidence = [
+  "P638_ALL10_ORTHOGONAL_FIDELITY_FINISH_R3/run_summary_r3.json",
+  "p638_all10_run contract=P638_HISTORICAL_RESULTS_ALL10_PRIZE_RANKING_V1",
+]
+source_authority = "power-lotto-all10-replay-r3"
+notes = "Ten ranks are contiguous; excluded strategy count 0; eligible target failure count 0."
+
+[[authorities]]
+id = "power-lotto-all23-ranking"
+capability = "POWER_LOTTO_ALL23"
+lottery_type = "POWER_LOTTO"
+status = "UNRESOLVED"
+location = "UNRESOLVED"
+schema = "P638_ALL23_RANKING"
+immutable = false
+env_override = "LOTTOLAB_P638_ALL23_RANKING_DB"
+provenance = "A 23-strategy replay base exists, but no owner-confirmed all-23 ranking projection was identified."
+evidence = ["existing23_base_9156 replay subset with 23 selected strategies"]
+notes = "Do not expose the replay base as an all-23 ranking authority."
+
+[[authorities]]
+id = "daily-539-historical-r2"
+capability = "DAILY_539_HISTORICAL"
+lottery_type = "DAILY_539"
+status = "CANONICAL_CURRENT"
+location = "DURABLE"
+relative_path = "authorities/daily_539/historical.sqlite3"
+schema = "T539_HISTORICAL"
+sha256 = "fa4cfc25c3e3734d66fa1939849c132e1f229915594be03f2880246cb8ae30bb"
+immutable = true
+env_override = "LOTTOLAB_T539_HISTORICAL_DB"
+run_id = "BIGLOTTO68_TO_T539_CROSS_LOTTERY_CLOSURE_R2"
+source_sha256 = "5e224e85aee87b89747c32d973ff86004dad7ff2f6d22e9edac5d1ac138dcd3a"
+source_commit = "b2ce6a3"
+strategy_count = 62
+draw_count = 5930
+target_count = 365502
+complete_target_count = 365502
+ticket_count = 1110399
+provenance = "T539 R2 cross-lottery closure; official API source ledger and read-only verification agree."
+evidence = [
+  "T539 R2 t539_verification.json",
+  "T539 R2 t539_api_verification.json",
+  "T539 R2 strategy_coverage.json",
+]
+supersedes = ["daily-539-historical-r1"]
+notes = "All 62 selected strategies complete; failures 0; source ledger SHA matches the earlier Wave1 dataset."
+
+[[authorities]]
+id = "replay-scoring"
+capability = "REPLAY_SCORING"
+lottery_type = "BIG_LOTTO"
+status = "UNRESOLVED"
+location = "UNRESOLVED"
+schema = "REPLAY_SCORING"
+immutable = false
+env_override = "LOTTOLAB_REPLAY_SCORING_DB"
+provenance = "No owner-confirmed sealed replay-scoring database was identified in the reviewed evidence."
+evidence = ["explicit LOTTOLAB_REPLAY_SCORING_DB integration contract"]
+notes = "Keep the existing explicit environment contract; do not infer a source from arbitrary files."
+
+[[evidence_candidates]]
+id = "power-lotto-current-replay-r1"
+capability = "POWER_LOTTO_CURRENT_REPLAY"
+status = "SUBSET"
+authority_id = "power-lotto-current-replay-r2"
+source_sha256 = "3308e85d4f44fe8ed34be0eaf57ad14da2f3bc8648c31545ac645f33c85150f5"
+source_replay_sha256 = "3308e85d4f44fe8ed34be0eaf57ad14da2f3bc8648c31545ac645f33c85150f5"
+source_draw_sha256 = "457a52baba575463c78dbe62f0d5b406101d24b250e26bbcc2d0eba648179af4"
+run_id = "p638-wave1-5048d8b4e6227941"
+evidence = ["P638 R2 baseline parity: common=61, new_only=9, old_only=0"]
+superseded_by = "power-lotto-current-replay-r2"
+notes = "Validated baseline with exact common-set parity; not the current 70-strategy authority."
+
+[[evidence_candidates]]
+id = "power-lotto-current-ranking-r1"
+capability = "POWER_LOTTO_CURRENT_RANKING"
+status = "SUBSET"
+authority_id = "power-lotto-current-ranking-r2"
+source_sha256 = "4b8d0b4e8fa7c27e5dae33d4df51acaf4cebdb1e89356e2de6451884c753b7f0"
+source_replay_sha256 = "3308e85d4f44fe8ed34be0eaf57ad14da2f3bc8648c31545ac645f33c85150f5"
+source_draw_sha256 = "457a52baba575463c78dbe62f0d5b406101d24b250e26bbcc2d0eba648179af4"
+run_id = "p638-wave1-5048d8b4e6227941"
+evidence = ["P638 R2 verification and baseline parity"]
+superseded_by = "power-lotto-current-ranking-r2"
+notes = "Ranking projection for the 61-strategy baseline; retained only as superseded evidence."
+
+[[evidence_candidates]]
+id = "power-lotto-all10-replay-r1"
+capability = "POWER_LOTTO_ALL10"
+status = "SUPERSEDED"
+authority_id = "power-lotto-all10-replay-r3"
+source_sha256 = "a12c0e9376063a8a5b5b6b9580487ab4cc19d19eac9d9087fde9620764e60d91"
+run_id = "p638-wave1-e9c2cf3675113927"
+evidence = ["All10 R3 run summary binds the ranking to the R3 replay SHA"]
+superseded_by = "power-lotto-all10-replay-r3"
+notes = "Same semantic run id but an earlier replay artifact; R3 is the explicitly bound output."
+
+[[evidence_candidates]]
+id = "power-lotto-all10-ranking-r1"
+capability = "POWER_LOTTO_ALL10"
+status = "SUPERSEDED"
+authority_id = "power-lotto-all10-ranking-r3"
+source_sha256 = "63f4aacb9cfa891ceebeaedb6d260961ef421708537b9ad0646be83e19d3f271"
+run_id = "p638-wave1-e9c2cf3675113927"
+evidence = ["All10 R3 run summary and exact source replay binding"]
+superseded_by = "power-lotto-all10-ranking-r3"
+notes = "Earlier projection artifact retained for provenance only."
+
+[[evidence_candidates]]
+id = "daily-539-historical-r1"
+capability = "DAILY_539_HISTORICAL"
+status = "SUBSET"
+authority_id = "daily-539-historical-r2"
+source_sha256 = "091ade9e4a91c56b674e21ca53a859a6deb2d0a54139623d6885dc8f9e698f50"
+run_id = "T539_ALL_STRATEGIES_MIGRATION_BACKTEST_WAVE1_R1"
+evidence = ["same official source payload SHA", "R2 coverage includes the earlier 8-strategy Wave1 set"]
+superseded_by = "daily-539-historical-r2"
+notes = "Eight-strategy Wave1 sealed DB is retained as a validated subset of the 62-strategy closure."
+
+[[evidence_candidates]]
+id = "power-lotto-historical-results-v2-candidate-a"
+capability = "POWER_LOTTO_HISTORICAL_RESULTS_V2"
+status = "UNRESOLVED_CANDIDATE"
+source_sha256 = "bac3943e7b5ef3692fd9370f5298de5d85df4868e15c618aca588031b4e58786"
+run_id = "p638-historical-v2-10beddd6737f4b00"
+evidence = ["P638 V2 candidate A; semantic identity equals candidate B"]
+notes = "Byte hash differs from candidate B; registry evidence does not establish a winner."
+
+[[evidence_candidates]]
+id = "power-lotto-historical-results-v2-candidate-b"
+capability = "POWER_LOTTO_HISTORICAL_RESULTS_V2"
+status = "UNRESOLVED_CANDIDATE"
+source_sha256 = "e3d48f52754a59095f88c6e22f0645efa8cb96f3cbcd778b4b5ff9678733b27b"
+run_id = "p638-historical-v2-10beddd6737f4b00"
+evidence = ["P638 V2 candidate B; semantic identity equals candidate A"]
+notes = "Byte hash differs from candidate A; registry evidence does not establish a winner."
+
+[[evidence_candidates]]
+id = "power-lotto-all23-replay-subset"
+capability = "POWER_LOTTO_ALL23"
+status = "SUBSET"
+source_sha256 = "3a02bd3c547631ac55b25d9c6d61ae973bbf323465aa4fc58e1cb1fa384ad035"
+run_id = "p638-wave1-83efd834762d8cee"
+evidence = ["23-strategy replay base exists without a ranking projection"]
+notes = "Not adopted as POWER_LOTTO_ALL23 because the required ranking artifact is absent."

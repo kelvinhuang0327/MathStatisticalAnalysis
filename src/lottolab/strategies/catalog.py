@@ -3122,6 +3122,50 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_zone_balance_strategy__6a016aa83b3e",
+        strategy_name="大樂透 Frontend Zone Balance Strategy",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_zone_balance:"
+            "BigLottoFrontendZoneBalanceAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/ZoneBalanceStrategy.js",
+            "legacy_source_sha256:"
+            "6a016aa83b3ebcaed1776fa6d8b10009c5944a4969a4dd2c3dbad8bbcb9aeda2",
+            "legacy_symbol:ZoneBalanceStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.zone_balance",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:FREQUENCY_ORDER_INDEPENDENT",
+            "target_history_order:OLDEST_FIRST",
+            "legacy_response_shape:NUMBERS_METHOD_REPORT",
+            "number_range:1_TO_49",
+            "pick_count:6",
+            "zone_count:5",
+            "zone_size:CEIL_TOTAL_NUMBER_COUNT_DIV_5",
+            "zone_selection:HIGHEST_TOTAL_FREQUENCY_EARLIEST_DECLARED_TIE",
+            "number_ranking:DESCENDING_FREQUENCY_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "ticket_order:FINAL_NUMERIC_ASCENDING",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "minimum_history:TARGET_BOUNDARY_1_SOURCE_ACCEPTS_EMPTY",
+            "source_empty_behavior:FIRST_ZONE_ZERO_FREQUENCY_TOP_6",
+            "target_empty_behavior:INSUFFICIENT_HISTORY",
+            "randomness:NONE_DETERMINISTIC",
+            "donor_execution:REVIVED_WITH_SYNCHRONOUS_STATISTICS_SERVICE_STUB_ISOLATED",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_NEXT_DONOR_READY_LEGACY_METHOD_MIGRATION_R11",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

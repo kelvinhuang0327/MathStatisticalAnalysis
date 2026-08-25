@@ -502,4 +502,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0",
         "legacy_biglotto__frontend_sum_range_strategy__4941213e6c46",
         "legacy_biglotto__frontend_zone_balance_strategy__6a016aa83b3e",
+        "legacy_biglotto__frontend_number_pairs_strategy__72ebb17b5a96",
     ]

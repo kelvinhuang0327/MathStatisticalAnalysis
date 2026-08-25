@@ -482,6 +482,30 @@ class SQLiteHistoricalResultQueryRepository:
             items=items, total_count=total_count, limit=query.limit, offset=query.offset
         )
 
+    def get_draw(self, run_id: str, draw_number: str) -> HistoricalDrawIdentity | None:
+        _verify_available(self._database)
+        with _read_only_connection(self._database) as connection:
+            if not _run_is_completed(connection, run_id):
+                return None
+            row = connection.execute(
+                """
+                SELECT draw_number, draw_date, main_numbers_json, special_numbers_json,
+                       draw_sha256
+                FROM historical_draw_snapshot
+                WHERE run_id = ? AND draw_number = ?
+                """,
+                (run_id, draw_number),
+            ).fetchone()
+        if row is None:
+            return None
+        return HistoricalDrawIdentity(
+            draw_number=str(row[0]),
+            draw_date=str(row[1]),
+            main_numbers=_decode_numbers(row[2]),
+            special_numbers=_decode_numbers(row[3]),
+            draw_sha256=str(row[4]),
+        )
+
     def list_strategies(
         self, run_id: str, *, ticket_count: int
     ) -> HistoricalStrategySummaryList | None:

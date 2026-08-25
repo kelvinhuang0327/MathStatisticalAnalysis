@@ -218,11 +218,14 @@ from lottolab.interfaces.cli.storage_authorities import storage_authorities_app
 from lottolab.interfaces.cli.taiwan_lottery_metadata_backfill import (
     taiwan_lottery_metadata_backfill_command,
 )
+from lottolab.interfaces.mcp.server import serve_stdio
 from lottolab.strategies.catalog import production_catalog
 
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
+mcp_app = typer.Typer(no_args_is_help=True, help="Local read-only LottoLab MCP server.")
 app.add_typer(local_app, name="local")
+app.add_typer(mcp_app, name="mcp")
 app.add_typer(storage_authorities_app, name="storage-authorities")
 app.command("import-historical-results")(historical_import_command)
 app.command("forward-p638-historical")(forward_p638_historical_command)
@@ -403,6 +406,12 @@ app.command("materialize-biglotto-evolution-native-wave65-batch")(
 @app.callback()
 def root() -> None:
     """LottoLab CLI (keeps sub-command mode even with a single command)."""
+
+
+@mcp_app.command("serve")
+def mcp_serve() -> None:
+    """Serve the generic read-only LottoLab MCP interface over local stdio."""
+    serve_stdio()
 
 
 @app.command()

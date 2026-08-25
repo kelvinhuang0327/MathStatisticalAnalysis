@@ -220,6 +220,7 @@ def test_public_adapter_exports_are_explicit() -> None:
         "BigLottoFrontendDeviationAdapter",
         "BigLottoFrontendFrequencyAdapter",
         "BigLottoFrontendHotColdAdapter",
+        "BigLottoFrontendOddEvenBalanceAdapter",
         "BigLottoFrontendMarkovAdapter",
         "BigLottoFrontendTrendAdapter",
         "BigLottoDeviation2BetAdapter",

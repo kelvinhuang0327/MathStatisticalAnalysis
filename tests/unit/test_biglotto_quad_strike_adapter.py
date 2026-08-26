@@ -152,9 +152,9 @@ def test_authoritative_identity_is_unique_cataloged_four_ticket_portfolio() -> N
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
     strategy_ids = tuple(item.strategy_id for item in catalog)
-    assert len(strategy_ids) == 125
-    assert len(set(strategy_ids)) == 125
-    assert strategy_ids[-17:-5] == (
+    assert len(strategy_ids) == 126
+    assert len(set(strategy_ids)) == 126
+    assert strategy_ids[-18:-6] == (
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
@@ -168,12 +168,15 @@ def test_authoritative_identity_is_unique_cataloged_four_ticket_portfolio() -> N
         "legacy_biglotto__frontend_deviation_strategy__3c895052122e",
         "legacy_biglotto__frontend_hot_cold_mix_strategy__92e0540fac02",
     )
-    assert strategy_ids[-5] == "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0"
-    assert strategy_ids[-4] == "legacy_biglotto__frontend_sum_range_strategy__4941213e6c46"
-    assert strategy_ids[-3] == "legacy_biglotto__frontend_zone_balance_strategy__6a016aa83b3e"
-    assert strategy_ids[-2] == "legacy_biglotto__frontend_number_pairs_strategy__72ebb17b5a96"
-    assert strategy_ids[-1] == "legacy_biglotto__frontend_monte_carlo_strategy__9d8fe030546e"
-    assert strategy_ids[:-14].count(STRATEGY_ID) == 0
+    assert strategy_ids[-6] == "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0"
+    assert strategy_ids[-5] == "legacy_biglotto__frontend_sum_range_strategy__4941213e6c46"
+    assert strategy_ids[-4] == "legacy_biglotto__frontend_zone_balance_strategy__6a016aa83b3e"
+    assert strategy_ids[-3] == "legacy_biglotto__frontend_number_pairs_strategy__72ebb17b5a96"
+    assert strategy_ids[-2] == "legacy_biglotto__frontend_monte_carlo_strategy__9d8fe030546e"
+    assert strategy_ids[-1] == (
+        "legacy_biglotto__frontend_statistical_analysis_strategy__a9364825de2a"
+    )
+    assert strategy_ids[:-15].count(STRATEGY_ID) == 0
     assert descriptor.strategy_name == BigLottoQuadStrikeAdapter.strategy_name
     assert descriptor.version == BigLottoQuadStrikeAdapter.strategy_version
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE

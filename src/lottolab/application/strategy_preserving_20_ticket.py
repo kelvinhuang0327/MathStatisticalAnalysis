@@ -194,6 +194,41 @@ def _cutoff_is_valid(draw_id: str, cutoff: str) -> bool:
     return cutoff_value != draw_value
 
 
+def _seed_material(
+    *,
+    strategy_id: str,
+    draw_id: str,
+    replicate_id: int,
+    user_seed: str | int,
+) -> str:
+    return "|".join(
+        (
+            SHORT_IDENTIFIER,
+            strategy_id.strip(),
+            draw_id.strip(),
+            str(replicate_id),
+            str(user_seed),
+        )
+    )
+
+
+def _seed_digest(
+    *,
+    strategy_id: str,
+    draw_id: str,
+    replicate_id: int,
+    user_seed: str | int,
+) -> str:
+    return hashlib.sha256(
+        _seed_material(
+            strategy_id=strategy_id,
+            draw_id=draw_id,
+            replicate_id=replicate_id,
+            user_seed=user_seed,
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 def _normalise_explicit_signal(
     number_scores: Mapping[int, float] | None,
     ranked_numbers: Sequence[int] | None,
@@ -380,6 +415,61 @@ def _candidate_pool(
     return sorted(candidates)
 
 
+def generate_seeded_candidate_pool(
+    *,
+    strategy_id: str,
+    draw_id: str,
+    user_seed: str | int,
+    signal_tickets: Sequence[Sequence[int]],
+    required_count: int,
+) -> tuple[Ticket, ...]:
+    """Reuse the frozen P20 seed and candidate-generation mechanics.
+
+    This helper exposes only the upstream candidate-pool stage for the
+    separate low-overlap application path.  It does not construct a final
+    portfolio and does not alter ``strategy_preserving_20_ticket/v1``'s
+    exact-20 contract.  The extracted mechanics remain the native BIG_LOTTO
+    6/49 candidate universe used by that constructor.
+    """
+
+    if type(strategy_id) is not str or not strategy_id.strip():
+        raise ValueError("strategy_id must be a non-empty string")
+    if type(draw_id) is not str or not draw_id.strip():
+        raise ValueError("draw_id must be a non-empty string")
+    if type(user_seed) not in (str, int):
+        raise ValueError("user_seed must be a string or integer")
+    if type(required_count) is not int or required_count < 0:
+        raise ValueError("required_count must be a non-negative integer")
+    raw_signal_tickets: object = signal_tickets
+    if isinstance(raw_signal_tickets, str | bytes):
+        raise ValueError("signal_tickets must be a ticket sequence")
+
+    native, _, invalid_count = _normalise_native_tickets(signal_tickets)
+    if invalid_count:
+        raise ValueError("signal_tickets contains an invalid ticket")
+    if not native:
+        raise ValueError("signal_tickets must contain at least one legal ticket")
+    if required_count == 0:
+        return ()
+
+    candidates = _candidate_pool(
+        seed_digest=_seed_digest(
+            strategy_id=strategy_id,
+            draw_id=draw_id,
+            replicate_id=0,
+            user_seed=user_seed,
+        ),
+        signal_scores=_native_signal(native),
+        existing=native,
+        required_count=required_count,
+    )
+    if len(candidates) < required_count:
+        raise ValueError(
+            "candidate generation could not reach the requested unique count"
+        )
+    return tuple(candidates)
+
+
 def _ticket_mask(ticket: Ticket) -> int:
     mask = 0
     for number in ticket:
@@ -529,16 +619,18 @@ def _construct(request: ConstructorRequest) -> ConstructorResult:
     if invalid_count:
         warnings.append(f"rejected {invalid_count} invalid native ticket(s)")
 
-    seed_material = "|".join(
-        (
-            SHORT_IDENTIFIER,
-            request.strategy_id.strip(),
-            request.draw_id.strip(),
-            str(request.replicate_id),
-            str(request.user_seed),
-        )
+    seed_material = _seed_material(
+        strategy_id=request.strategy_id,
+        draw_id=request.draw_id,
+        replicate_id=request.replicate_id,
+        user_seed=request.user_seed,
     )
-    seed_digest = hashlib.sha256(seed_material.encode("utf-8")).hexdigest()
+    seed_digest = _seed_digest(
+        strategy_id=request.strategy_id,
+        draw_id=request.draw_id,
+        replicate_id=request.replicate_id,
+        user_seed=request.user_seed,
+    )
 
     if len(native) == DEFAULT_TARGET_TICKET_COUNT:
         tickets = tuple(native)
@@ -739,5 +831,6 @@ __all__ = [
     "ConstructorResult",
     "ConstructorSuccess",
     "construct_strategy_preserving_20_ticket",
+    "generate_seeded_candidate_pool",
     "objective_constants",
 ]

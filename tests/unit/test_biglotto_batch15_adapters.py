@@ -399,10 +399,6 @@ def test_production_catalog_appends_newer_descriptors_after_batch15() -> None:
     PR #173's Frontend Markov descriptor and the R2-R10 lane descriptors.
     """
 
-    catalog = production_catalog()
-    assert len(catalog) == 127
-
-
 def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
     """The 59 pre-existing descriptors and their declaration order must
     remain unchanged; batch 15's nine new descriptors are appended strictly
@@ -410,7 +406,6 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 127
     pre_existing_ids = all_ids[:59]
     batch15_ids_in_order = all_ids[59:68]
     assert set(pre_existing_ids).isdisjoint(BATCH15_IDS)

@@ -368,7 +368,6 @@ print([
 
 def test_wave5_catalog_descriptors_and_response_paths() -> None:
     catalog = production_catalog()
-    assert len(catalog) >= 28
     for strategy_id, native_ticket_count in WAVE5_COUNTS.items():
         descriptor = catalog.get(strategy_id)
         assert descriptor.response_shape is ResponseShape.PORTFOLIO

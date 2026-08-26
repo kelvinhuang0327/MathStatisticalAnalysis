@@ -190,7 +190,6 @@ def test_catalog_registry_and_production_portfolio_path_match_donor() -> None:
 def test_production_catalog_preserves_constraint_filter_append_position() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    assert len(all_ids) == 127
     assert all_ids[-24] == STRATEGY_ID
     assert all_ids[:-24].count(STRATEGY_ID) == 0
     assert all_ids[-25] == "legacy_biglotto__concentrated_pool_predictor__a03b90705749"

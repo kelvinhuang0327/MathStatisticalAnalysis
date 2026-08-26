@@ -1,0 +1,242 @@
+{
+  "schema_version": "B649_K2_K3_FORWARD_SHADOW_PROTOCOL_V1",
+  "protocol_id": "B649_K2_K3_FORWARD_SHADOW_PROTOCOL_FREEZE_R1",
+  "status": "PRE_REGISTERED_IMMUTABLE",
+  "freeze_timestamp": "2026-08-26T10:30:27+08:00",
+  "purpose": "Prospective BIG_LOTTO K2/K3 forward-shadow confirmation of pre-selected exact-native research arms.",
+  "historical_selection": {
+    "authority": {
+      "capability": "BIG_LOTTO_EXACT_NATIVE_K2_K3_REPLAY",
+      "durable_evidence_root": "/Users/kelvin/Library/Application Support/LottoLab/authorities/big_lotto/exact_native_k2_k3",
+      "canonical_relative_path": "authorities/big_lotto/exact_native_k2_k3/target_evidence.jsonl",
+      "replay_sha256": "f4ee7bcd2900c6c066b6aa0255031c97c1ca1a248c605ce68a46f62bfe7820f0",
+      "manifest_sha256": "9b9a9ca35252ff51bf60cf8e04a4e1e0b182a07ca34e2c2f8777f5d587445495",
+      "ranking_sha256": "3c09cf4791ac55c83bd7556d4b947cb1f80b762abf767b6b83f075c9d344753f",
+      "draw_authority_sha256": "8cb4a430d415c693e0ba272a6bcc186979d677eebf2e78c10816f7e5f2554ffc"
+    },
+    "cutoff_draw_number": "115000081",
+    "selection_outcome_read_upper_bound": "115000081",
+    "post_cutoff_outcomes_allowed_for_selection": false,
+    "candidate_selection_metric": "OFFICIAL_ANY_PRIZE_RATE",
+    "success_unit": "distinct_target_draw",
+    "ranking_tie_break": [
+      "OFFICIAL_ANY_PRIZE_RATE_DESC",
+      "SUCCESSFUL_DRAWS_DESC",
+      "STRATEGY_ID_ASC"
+    ],
+    "separate_universes": true,
+    "cross_budget_composite": false,
+    "research_only": true,
+    "production_best_declaration": false
+  },
+  "implementation_source_freeze": {
+    "historical_replay_source_head": "85d2b4578d437b66bd015c60dd1f9bdc8404e755",
+    "historical_replay_source_tree": "c6341c36ca210e02b08bac66ff98b7c8be1fc95a",
+    "next_prediction_task_requirement": "Execute these exact strategy semantics or prove semantics-preserving compatibility before issuing the cohort.",
+    "strategy_identity_authority": "strategy_id",
+    "display_names_are_non_authoritative": true,
+    "native_semantics_must_be_preserved": true
+  },
+  "primary_arms": {
+    "K2": {
+      "universe": "K2",
+      "role": "PRIMARY_SAME_BUDGET_RESEARCH_ARM",
+      "native_ticket_count": 2,
+      "budget_tickets": 2,
+      "strategies": [
+        {
+          "label": "Echo",
+          "strategy_id": "legacy_biglotto__predict_biglotto_echo_2bet__59c20b25b1fa",
+          "strategy_version": "v0.1",
+          "native_ticket_count": 2
+        },
+        {
+          "label": "Horizon",
+          "strategy_id": "b649_new_horizon_minimax_disagreement_r1",
+          "strategy_version": "v0.1",
+          "native_ticket_count": 2
+        },
+        {
+          "label": "Smart",
+          "strategy_id": "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a",
+          "strategy_version": "v0.1",
+          "native_ticket_count": 2
+        }
+      ]
+    },
+    "K3": {
+      "universe": "K3",
+      "role": "PRIMARY_SAME_BUDGET_RESEARCH_ARM",
+      "native_ticket_count": 3,
+      "budget_tickets": 3,
+      "strategies": [
+        {
+          "label": "Triple Strike",
+          "strategy_id": "legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
+          "strategy_version": "v0.1",
+          "native_ticket_count": 3
+        },
+        {
+          "label": "Core Satellite",
+          "strategy_id": "legacy_biglotto__core_satellite__611284461323",
+          "strategy_version": "v0.1",
+          "native_ticket_count": 3
+        },
+        {
+          "label": "ECP",
+          "strategy_id": "legacy_biglotto__test_ecp__c9d5ac6decdd",
+          "strategy_version": "v0.1",
+          "native_ticket_count": 3
+        }
+      ]
+    }
+  },
+  "complementarity_diagnostics": {
+    "role": "SECONDARY_COVERAGE_AND_DIVERSIFICATION_DIAGNOSTIC",
+    "historical_low_overlap_pair_frozen": true,
+    "not_same_budget_comparison": true,
+    "must_not_be_ranked_directly_against_primary_arms": true,
+    "arms": [
+      {
+        "universe": "K2",
+        "member_a": {
+          "label": "Echo",
+          "strategy_id": "legacy_biglotto__predict_biglotto_echo_2bet__59c20b25b1fa"
+        },
+        "member_b": {
+          "label": "Smart",
+          "strategy_id": "legacy_biglotto__predict_big_lotto_smart_2bet__7acdaab1bd0a"
+        },
+        "union_definition": "Simple union of the two native portfolios.",
+        "union_budget_tickets": 4,
+        "member_budgets_tickets": [2, 2]
+      },
+      {
+        "universe": "K3",
+        "member_a": {
+          "label": "Core Satellite",
+          "strategy_id": "legacy_biglotto__core_satellite__611284461323"
+        },
+        "member_b": {
+          "label": "ECP",
+          "strategy_id": "legacy_biglotto__test_ecp__c9d5ac6decdd"
+        },
+        "union_definition": "Simple union of the two native portfolios.",
+        "union_budget_tickets": 6,
+        "member_budgets_tickets": [3, 3]
+      }
+    ],
+    "prospective_metrics": [
+      "union_any_prize_success",
+      "both_member_success",
+      "member_a_only_success",
+      "member_b_only_success",
+      "neither_success",
+      "unique_success_contributed_by_member_a",
+      "unique_success_contributed_by_member_b",
+      "success_overlap_jaccard"
+    ],
+    "metric_definitions": {
+      "union_any_prize_success": "A OR B has OFFICIAL_ANY_PRIZE on the target draw.",
+      "both_member_success": "A AND B each have OFFICIAL_ANY_PRIZE on the target draw.",
+      "member_a_only_success": "A has OFFICIAL_ANY_PRIZE and B does not.",
+      "member_b_only_success": "B has OFFICIAL_ANY_PRIZE and A does not.",
+      "neither_success": "Neither A nor B has OFFICIAL_ANY_PRIZE.",
+      "unique_success_contributed_by_member_a": "Count of member_a_only_success target draws.",
+      "unique_success_contributed_by_member_b": "Count of member_b_only_success target draws.",
+      "success_overlap_jaccard": "both_member_success / union_any_prize_success; report undefined when the denominator is zero."
+    }
+  },
+  "prospective_target_contract": {
+    "target_lottery": "BIG_LOTTO",
+    "latest_official_draw_observed_at_freeze": "115000082",
+    "latest_official_draw_date_observed_at_freeze": "2026-08-25",
+    "availability_check_timestamp": "2026-08-26T10:30:27+08:00",
+    "availability_check_source": "https://lotto.ctbcbank.com/result_all.htm",
+    "known_draw_outcome_used_for_selection": false,
+    "known_draw_outcome_persisted_in_protocol": false,
+    "first_target_rule": "The first official BIG_LOTTO draw whose outcome is not available when this protocol is committed.",
+    "first_forward_target": "115000083",
+    "target_sequence_rule": "After the first target, use the next 49 consecutive official BIG_LOTTO draws in draw-authority order; do not skip, substitute, or backfill targets.",
+    "scheduled_target_count": 50,
+    "primary_horizon": 50,
+    "descriptive_checkpoints": [10, 20, 30],
+    "primary_decision_endpoint": "After all 50 scheduled targets have been evaluated."
+  },
+  "primary_scoring_and_eligibility": {
+    "metric": "OFFICIAL_ANY_PRIZE",
+    "success_unit": "distinct_target_draw",
+    "K2_and_K3_scored_separately": true,
+    "cross_budget_composite_score": false,
+    "final_ranking_requires_full_window": true,
+    "required_observations": 50,
+    "full_window_eligibility": "A candidate is eligible only when observations equals 50, with one valid pre-outcome issuance for every scheduled target.",
+    "issuance_coverage": "valid pre-outcome issuances / scheduled targets",
+    "denominator_rule": "Do not silently shrink the denominator and still call a candidate fully comparable.",
+    "execution_failure_rule": "Prediction or execution failures must be typed and reported; they do not become successful observations.",
+    "failure_types": [
+      "PREDICTION_NOT_ISSUED",
+      "ISSUED_AFTER_OUTCOME_AVAILABLE",
+      "INVALID_PORTFOLIO",
+      "EXECUTION_ERROR",
+      "OUTCOME_EVALUATION_ERROR"
+    ],
+    "rank_tie_break": [
+      "OFFICIAL_ANY_PRIZE_RATE_DESC",
+      "SUCCESSFUL_DRAWS_DESC",
+      "STRATEGY_ID_ASC"
+    ]
+  },
+  "checkpoint_and_no_adaptation_rules": {
+    "checkpoints_are_descriptive_only": true,
+    "checkpoint_targets": [10, 20, 30],
+    "checkpoint_actions_forbidden": [
+      "eliminate_candidates",
+      "add_candidates",
+      "switch_candidates",
+      "change_weights",
+      "change_thresholds",
+      "change_scoring",
+      "change_tie_breaks",
+      "change_horizon",
+      "retune_strategy_semantics",
+      "stop_early_for_apparent_success"
+    ],
+    "frozen_parameters_cannot_change_after_commit": [
+      "historical_cutoff",
+      "candidate_strategy_ids",
+      "complementarity_pair_ids",
+      "native_ticket_budgets",
+      "metric",
+      "target_sequence",
+      "horizon",
+      "checkpoints",
+      "eligibility_rule",
+      "failure_types",
+      "tie_breaks",
+      "source_semantics"
+    ],
+    "adaptive_candidate_switching": false,
+    "retrospective_window_tuning": false,
+    "hidden_composite_score": false,
+    "primary_endpoint_early_stopping": false
+  },
+  "statistical_interpretation": {
+    "raw_rank_is_not_proof_of_predictive_superiority": true,
+    "confidence_and_uncertainty_are_descriptive_until_50_target_endpoint": true,
+    "historical_selection_and_prospective_confirmation_are_separate": true,
+    "prospective_results_do_not_rewrite_historical_selection": true,
+    "production_promotion_or_lifecycle_change": "Not part of this protocol."
+  },
+  "execution_status": {
+    "future_prediction": "NOT_RUN",
+    "prediction_execution": "NOT_RUN",
+    "strategy_execution": "NOT_RUN",
+    "historical_replay": "NOT_RUN",
+    "ticket_generation": "NOT_RUN",
+    "canonical_evidence_mutation": "NONE",
+    "storage_authority_registry_mutation": "NONE",
+    "production_database_write": "NONE",
+    "existing_forward_cohort_mutation": "NONE"
+  }
+}

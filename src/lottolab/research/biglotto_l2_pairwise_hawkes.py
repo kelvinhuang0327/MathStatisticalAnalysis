@@ -794,31 +794,6 @@ def _active_constraints(
     return tuple(rows), flags
 
 
-def _preserve_active_face(
-    point: tuple[Decimal, Decimal, Decimal],
-    flags: Mapping[str, bool],
-) -> tuple[Decimal, Decimal, Decimal]:
-    """Keep a projected trial on the exact face that generated its direction."""
-
-    mu, alpha_self, alpha_cross = point
-    if flags["mu_floor"]:
-        mu = _D_MU_FLOOR
-    if flags["self_zero"]:
-        alpha_self = _D_ZERO
-    if flags["cross_zero"]:
-        alpha_cross = _D_ZERO
-    if flags["alpha_sum"]:
-        if flags["self_zero"]:
-            alpha_self = _D_ZERO
-            alpha_cross = _D_RHO
-        elif flags["cross_zero"]:
-            alpha_self = _D_RHO
-            alpha_cross = _D_ZERO
-        else:
-            alpha_cross = _D_RHO - alpha_self
-    return mu, alpha_self, alpha_cross
-
-
 def _solve_kkt(
     hessian: tuple[tuple[Decimal, ...], ...],
     gradient: tuple[Decimal, Decimal, Decimal],
@@ -906,8 +881,6 @@ def _armijo_search(
     direction: tuple[Decimal, Decimal, Decimal],
     initial_step: Decimal,
     features: _RowFeatures,
-    active_flags: Mapping[str, bool],
-    preserve_face: bool,
 ) -> tuple[tuple[Decimal, Decimal, Decimal], int] | None:
     if initial_step <= _D_ZERO:
         return None
@@ -919,8 +892,6 @@ def _armijo_search(
             point[2] + step * direction[2],
         )
         trial = _project_feasible(trial_point)
-        if preserve_face:
-            trial = _preserve_active_face(trial, active_flags)
         delta = (
             trial[0] - point[0],
             trial[1] - point[1],
@@ -1043,7 +1014,7 @@ def _fit_row_features(
         if accepted_updates >= MAX_ACCEPTED_ITERATIONS_PER_ROW:
             raise SolverConvergenceError("row exceeded 256 accepted updates")
 
-        active_rows, active_flags = _active_constraints(point, gradient)
+        active_rows, _ = _active_constraints(point, gradient)
         newton_direction: tuple[Decimal, Decimal, Decimal] | None = None
         try:
             newton_direction = _solve_kkt(hessian, gradient, active_rows)
@@ -1068,8 +1039,6 @@ def _fit_row_features(
                     newton_direction,
                     initial_step,
                     features,
-                    active_flags,
-                    True,
                 )
                 if accepted is not None:
                     new_point, backtracks = accepted
@@ -1101,8 +1070,6 @@ def _fit_row_features(
             fallback_direction,
             _D_ONE,
             features,
-            active_flags,
-            False,
         )
         if accepted is None:
             raise SolverConvergenceError("Newton and projected-gradient searches exhausted")

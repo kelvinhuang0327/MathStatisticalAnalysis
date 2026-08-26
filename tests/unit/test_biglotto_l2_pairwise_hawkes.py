@@ -96,6 +96,8 @@ def test_st02_minimum_history_exact_certifies_all_rows(normal_fixture: object) -
     assert len(result.pair_matrix) == 49
     assert all(len(row) == 49 for row in result.pair_matrix)
     assert max(row.accepted_updates for row in rows) <= 13
+    assert sum(row.fallback_updates > 0 for row in rows) == 240
+    assert sum(row.fallback_updates for row in rows) == 398
     assert all(row.residual_raw <= Decimal("1e-32") for row in rows)
     assert all(
         row.self_alpha_quantum + row.cross_alpha_quantum

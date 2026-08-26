@@ -1,4 +1,4 @@
-"""Executable old/new parity for the legacy frontend Statistical Analysis donor."""
+"""Executable old/new parity for the legacy frontend Wheeling donor."""
 
 from __future__ import annotations
 
@@ -16,9 +16,11 @@ from lottolab.application.use_cases.generate_bet import (
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.strategies import LifecycleStatus, ResponseShape
-from lottolab.strategies.adapters import BigLottoFrontendStatisticalAnalysisAdapter
-from lottolab.strategies.adapters.base import (
+from lottolab.strategies.adapters import (
+    BigLottoFrontendWheelingAdapter,
     CausalDrawRow,
+)
+from lottolab.strategies.adapters.base import (
     InsufficientHistory,
     InvalidOutput,
     UnsupportedLotteryType,
@@ -26,8 +28,13 @@ from lottolab.strategies.adapters.base import (
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
 
-STRATEGY_ID = (
-    "legacy_biglotto__frontend_statistical_analysis_strategy__a9364825de2a"
+STRATEGY_ID = "legacy_biglotto__frontend_wheeling_strategy__ce978baff05b"
+SOURCE_SHA256 = (
+    "ce978baff05b9b1307794c14d048b46e682c1a317b21e34f4b0463c86988365d"
+)
+ADAPTER_PATH = (
+    "lottolab.strategies.adapters.biglotto_frontend_wheeling:"
+    "BigLottoFrontendWheelingAdapter"
 )
 
 
@@ -43,27 +50,13 @@ class FormulaRandom:
         return value
 
 
-class FallbackRandom:
-    """Repeat a low-number sequence that reaches the donor's fallback branch."""
-
-    _values = (0.001, 0.03, 0.05, 0.07, 0.09, 0.11)
-
-    def __init__(self) -> None:
-        self.calls = 0
-
-    def random(self) -> float:
-        value = self._values[self.calls % len(self._values)]
-        self.calls += 1
-        return value
-
-
 def _row(draw: str, numbers: tuple[int, ...]) -> CausalDrawRow:
     return CausalDrawRow(draw, "2020-01-01", numbers)
 
 
 def _stride_row(index: int) -> CausalDrawRow:
     numbers = tuple(sorted(((index + step * 8) % 49) + 1 for step in range(6)))
-    return _row(f"frontend-statistical-analysis-{index}", numbers)
+    return _row(f"frontend-wheeling-{index}", numbers)
 
 
 def _history(length: int) -> tuple[CausalDrawRow, ...]:
@@ -72,27 +65,31 @@ def _history(length: int) -> tuple[CausalDrawRow, ...]:
     return tuple(_stride_row(index) for index in range(length))
 
 
-DONOR_GOLDENS: dict[str, tuple[tuple[CausalDrawRow, ...], tuple[int, ...], int]] = {
+# Captured by directly importing and executing the donor JavaScript module with
+# the same fixed Math.random sequence, then checking the target port.
+DONOR_GOLDENS: dict[
+    str, tuple[tuple[CausalDrawRow, ...], tuple[int, ...], int]
+] = {
     "edge": (
         (
             _row("edge-0", (1, 2, 3, 4, 5, 6)),
             _row("edge-1", (44, 45, 46, 47, 48, 49)),
         ),
-        (1, 3, 5, 7, 47, 48),
-        3_990,
+        (4, 5, 7, 9, 12, 40),
+        2_599,
     ),
     "tie": (
         (
             _row("tie-0", (10, 20, 30, 40, 45, 49)),
             _row("tie-1", (10, 20, 30, 40, 45, 49)),
         ),
-        (1, 42, 43, 45, 47, 49),
-        6_606,
+        (1, 3, 5, 8, 10, 20),
+        2_599,
     ),
-    "stride-1": (_history(1), (1, 41, 42, 44, 46, 48), 3_990),
-    "stride-9": (_history(9), (1, 41, 42, 44, 46, 48), 3_612),
-    "stride-10": (_history(10), (1, 41, 42, 44, 46, 48), 3_990),
-    "stride-50": (_history(50), (1, 41, 42, 44, 46, 48), 3_990),
+    "stride-1": (_history(1), (6, 9, 10, 17, 25, 46), 2_599),
+    "stride-9": (_history(9), (8, 9, 17, 25, 33, 46), 2_599),
+    "stride-10": (_history(10), (6, 9, 10, 11, 17, 46), 2_599),
+    "stride-50": (_history(50), (6, 9, 10, 17, 25, 46), 2_599),
 }
 
 
@@ -100,7 +97,7 @@ DONOR_GOLDENS: dict[str, tuple[tuple[CausalDrawRow, ...], tuple[int, ...], int]]
 def test_matches_executed_donor_golden(case: str) -> None:
     history, expected, expected_calls = DONOR_GOLDENS[case]
     rng = FormulaRandom()
-    execution = BigLottoFrontendStatisticalAnalysisAdapter(rng).get_one_bet_with_emission(
+    execution = BigLottoFrontendWheelingAdapter(rng).get_one_bet_with_emission(
         history, LotteryType.BIG_LOTTO
     )
     assert execution.legal_main_numbers == expected
@@ -109,35 +106,28 @@ def test_matches_executed_donor_golden(case: str) -> None:
     assert rng.calls == expected_calls
 
 
-def test_reachable_donor_fallback_matches_executed_source() -> None:
-    rng = FallbackRandom()
-    execution = BigLottoFrontendStatisticalAnalysisAdapter(rng).get_one_bet_with_emission(
-        (_row("fallback", (1, 2, 3, 4, 5, 6)),), LotteryType.BIG_LOTTO
-    )
-    assert execution.legal_main_numbers == (1, 2, 3, 4, 5, 6)
-    assert execution.emitted_main_numbers == (1, 2, 3, 4, 5, 6)
-    assert rng.calls == 12_006
-
-
-def test_minimum_history_and_output_are_sorted_legal_and_deterministic() -> None:
-    adapter = BigLottoFrontendStatisticalAnalysisAdapter(FormulaRandom())
+def test_target_empty_boundary_is_insufficient_history() -> None:
+    # The executed source accepts empty history; the native contract closes it
+    # at its explicit minimum-history boundary.
     with pytest.raises(InsufficientHistory):
-        adapter.get_one_bet((), LotteryType.BIG_LOTTO)
+        BigLottoFrontendWheelingAdapter(FormulaRandom()).get_one_bet(
+            (), LotteryType.BIG_LOTTO
+        )
 
-    first = adapter.get_one_bet_with_emission(
+
+def test_output_contract_is_one_sorted_legal_ticket() -> None:
+    execution = BigLottoFrontendWheelingAdapter(FormulaRandom()).get_one_bet_with_emission(
         _history(10), LotteryType.BIG_LOTTO
     )
-    second = BigLottoFrontendStatisticalAnalysisAdapter(FormulaRandom()).get_one_bet_with_emission(
-        _history(10), LotteryType.BIG_LOTTO
-    )
-    assert first == second
-    assert first.emitted_main_numbers == (1, 41, 42, 44, 46, 48)
-    assert first.legal_main_numbers == (1, 41, 42, 44, 46, 48)
-    assert first.special_number is None
+    assert len(execution.legal_main_numbers) == 6
+    assert execution.legal_main_numbers == tuple(sorted(set(execution.legal_main_numbers)))
+    assert all(1 <= number <= 49 for number in execution.legal_main_numbers)
+    assert execution.emitted_main_numbers == execution.legal_main_numbers
+    assert execution.special_number is None
 
 
 def test_invalid_history_and_wrong_lottery_fail_closed() -> None:
-    adapter = BigLottoFrontendStatisticalAnalysisAdapter(FormulaRandom())
+    adapter = BigLottoFrontendWheelingAdapter(FormulaRandom())
     invalid = (_row("bad", (1, 1, 2, 3, 4, 5)),)
     with pytest.raises(InvalidOutput):
         adapter.get_one_bet(invalid, LotteryType.BIG_LOTTO)
@@ -150,32 +140,28 @@ def test_catalog_and_registry_add_exactly_one_online_identity() -> None:
     descriptor = catalog.get(STRATEGY_ID)
     assert len(catalog) == 127
     assert [item.strategy_id for item in catalog].count(STRATEGY_ID) == 1
-    assert descriptor.strategy_id == BigLottoFrontendStatisticalAnalysisAdapter.strategy_id
-    assert descriptor.strategy_name == BigLottoFrontendStatisticalAnalysisAdapter.strategy_name
-    assert descriptor.version == BigLottoFrontendStatisticalAnalysisAdapter.strategy_version
+    assert descriptor.strategy_id == BigLottoFrontendWheelingAdapter.strategy_id
+    assert descriptor.strategy_name == BigLottoFrontendWheelingAdapter.strategy_name
+    assert descriptor.version == BigLottoFrontendWheelingAdapter.strategy_version
     assert descriptor.lottery_types == (LotteryType.BIG_LOTTO,)
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE
     assert descriptor.executable is True
     assert descriptor.response_shape is ResponseShape.SINGLE_TICKET
     assert descriptor.native_ticket_count == 1
     assert descriptor.min_history == 1
-    assert descriptor.adapter_path == (
-        "lottolab.strategies.adapters.biglotto_frontend_statistical_analysis:"
-        "BigLottoFrontendStatisticalAnalysisAdapter"
-    )
+    assert descriptor.adapter_path == ADAPTER_PATH
+    assert f"legacy_source_sha256:{SOURCE_SHA256}" in descriptor.provenance
+    assert "legacy_symbol:WheelingStrategy.predict" in descriptor.provenance
+    assert "legacy_runtime:PredictionEngine.strategies.wheeling" in descriptor.provenance
+    assert "legacy_history_order:FREQUENCY_ORDER_INDEPENDENT" in descriptor.provenance
+    assert "target_history_order:OLDEST_FIRST" in descriptor.provenance
     assert (
-        "legacy_source_sha256:"
-        "a9364825de2ad648bf1e9f9406f2abe52181df29aae62e587424dfc29d86984f"
-        in descriptor.provenance
-    )
-    assert "legacy_symbol:StatisticalAnalysisStrategy.predict" in descriptor.provenance
-    assert "legacy_runtime:PredictionEngine.strategies.statistical" in descriptor.provenance
-    assert (
-        "donor_execution:EXECUTABLE_DIRECT_NODE_MODULE_IMPORT_WITH_SYNCHRONOUS_STATISTICS_SERVICE_STUB_AND_FIXED_RANDOM_SEQUENCE"
+        "donor_execution:EXECUTABLE_DIRECT_NODE_MODULE_IMPORT_WITH_SYNCHRONOUS_"
+        "STATISTICS_SERVICE_STUB_AND_FIXED_RANDOM_SEQUENCE"
         in descriptor.provenance
     )
     assert ExecutableRegistry(catalog).load_adapter(STRATEGY_ID) is (
-        BigLottoFrontendStatisticalAnalysisAdapter
+        BigLottoFrontendWheelingAdapter
     )
 
 
@@ -209,7 +195,7 @@ def test_production_generation_never_opens_a_database(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _forbidden_connect(*_args: object, **_kwargs: object) -> None:
-        raise AssertionError("Frontend Statistical Analysis Strategy must not open a database")
+        raise AssertionError("Frontend Wheeling Strategy must not open a database")
 
     monkeypatch.setattr(sqlite3, "connect", _forbidden_connect)
     result = build_production_generate_one_bet().execute(_request(_history(10)))

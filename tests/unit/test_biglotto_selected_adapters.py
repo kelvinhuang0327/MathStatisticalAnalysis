@@ -227,6 +227,7 @@ def test_public_adapter_exports_are_explicit() -> None:
             "BigLottoFrontendSumRangeAdapter",
             "BigLottoFrontendStatisticalAnalysisAdapter",
             "BigLottoFrontendTrendAdapter",
+            "BigLottoFrontendWheelingAdapter",
         "BigLottoFrontendZoneBalanceAdapter",
         "BigLottoDeviation2BetAdapter",
         "BigLottoDeviation2BetBet2Adapter",

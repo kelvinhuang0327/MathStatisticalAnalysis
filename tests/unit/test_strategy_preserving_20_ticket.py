@@ -14,6 +14,7 @@ from lottolab.application.strategy_preserving_20_ticket import (
     ConstructorRequest,
     ConstructorSuccess,
     construct_strategy_preserving_20_ticket,
+    generate_seeded_candidate_pool,
     objective_constants,
 )
 
@@ -153,3 +154,35 @@ def test_version_and_objective_constants_are_frozen() -> None:
         "parity_portfolio_sha256": V1_PARITY_PORTFOLIO_SHA256,
         "signal_score_weight": 100.0,
     }
+
+
+def test_seeded_candidate_pool_reuses_frozen_mechanics_deterministically() -> None:
+    signal_tickets = ((1, 2, 3, 4, 5, 6),)
+
+    first = generate_seeded_candidate_pool(
+        strategy_id="fixture::candidate-pool",
+        draw_id="115000069",
+        user_seed=7,
+        signal_tickets=signal_tickets,
+        required_count=19,
+    )
+    second = generate_seeded_candidate_pool(
+        strategy_id="fixture::candidate-pool",
+        draw_id="115000069",
+        user_seed=7,
+        signal_tickets=signal_tickets,
+        required_count=19,
+    )
+    changed_seed = generate_seeded_candidate_pool(
+        strategy_id="fixture::candidate-pool",
+        draw_id="115000069",
+        user_seed=8,
+        signal_tickets=signal_tickets,
+        required_count=19,
+    )
+
+    assert first == second
+    assert first != changed_seed
+    assert len(first) >= 19
+    assert len(set(first)) == len(first)
+    assert signal_tickets[0] not in first

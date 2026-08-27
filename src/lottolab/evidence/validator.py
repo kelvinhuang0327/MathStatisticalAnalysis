@@ -21,14 +21,19 @@ import os
 import stat
 import subprocess
 from collections import Counter
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
 
 from pydantic import BaseModel, ValidationError
 
-from lottolab.domain.lottery_rules import LOTTERY_RULE_CONTRACTS, resolve_lottery_rule_contract
+from lottolab.domain.draws import LotteryType
+from lottolab.domain.lottery_rules import (
+    LOTTERY_RULE_CONTRACTS,
+    resolve_lottery_rule_contract,
+    score_big_lotto_ticket,
+)
 from lottolab.evidence import canonical_json
 from lottolab.evidence.canonical_json import CanonicalizationError
 from lottolab.evidence.models import (
@@ -37,8 +42,10 @@ from lottolab.evidence.models import (
     DrawEntry,
     DrawRef,
     EvaluationProtocol,
+    EvaluationRecord,
     EvidenceStatus,
     EvidenceTrustClass,
+    ExactRational,
     FindingCategory,
     FormulaStatus,
     HashVerificationState,
@@ -51,6 +58,7 @@ from lottolab.evidence.models import (
     RuleParameters,
     SampleUnit,
     StrategyEvaluationEvidence,
+    Ticket,
 )
 
 #: Repository-relative locations the validator must never open, stat, hash, or
@@ -687,8 +695,21 @@ def _check_numbers_against_rule(
     rule: RuleParameters,
     *,
     pointer_prefix: str,
+    expected_special_count: int | None = None,
 ) -> list[Finding]:
+    """Check one number set against the rule binding.
+
+    ``expected_special_count`` selects which *shape* applies. A drawn result
+    and a declared actual outcome carry the draw shape
+    (``rule.special_number_count``, the default); a ticket carries the ticket
+    shape (``rule.resolved_ticket_special_number_count``), which is not the
+    same thing whenever the game draws a special number the player never
+    picks. Range, uniqueness and overlap rules are shared by both.
+    """
+
     findings: list[Finding] = []
+    if expected_special_count is None:
+        expected_special_count = rule.special_number_count
 
     if len(main_numbers) != rule.main_number_count:
         findings.append(
@@ -729,13 +750,13 @@ def _check_numbers_against_rule(
                 )
             )
 
-    if len(special_numbers) != rule.special_number_count:
+    if len(special_numbers) != expected_special_count:
         findings.append(
             Finding(
                 FindingCategory.SEMANTIC_FAILURE,
                 "SPECIAL_NUMBER_COUNT_MISMATCH",
                 f"{pointer_prefix}/special_numbers",
-                f"expected {rule.special_number_count} special numbers, got {len(special_numbers)}",
+                f"expected {expected_special_count} special numbers, got {len(special_numbers)}",
             )
         )
     else:
@@ -1307,10 +1328,40 @@ def _check_causality(evidence: StrategyEvaluationEvidence, findings: list[Findin
         )
 
 
+def _big_lotto_zero_selection_special_hit(ticket: Ticket, record: EvaluationRecord) -> bool:
+    """``special_hit`` for a BIG_LOTTO ticket that selects no special number.
+
+    Delegates to the sole committed BIG_LOTTO scoring authority rather than
+    restating it here: a second prize/scoring implementation inside
+    ``lottolab.evidence`` is exactly the divergence this branch exists to
+    remove. The player picks six main numbers and never a special one, so the
+    drawn special number scores against those main numbers.
+    """
+
+    return score_big_lotto_ticket(
+        predicted_main_numbers=ticket.main_numbers,
+        winning_main_numbers=record.actual_main_numbers,
+        winning_special_number=record.actual_special_numbers[0],
+    ).special_hit
+
+
+#: Committed domain scoring authorities able to decide ``special_hit`` for a
+#: ticket that selects no special number. A lottery absent from this mapping
+#: fails closed as UNVERIFIED_PROVENANCE; it is never silently scored False.
+_ZERO_SELECTION_SPECIAL_HIT_ORACLES: dict[
+    LotteryType, Callable[[Ticket, EvaluationRecord], bool]
+] = {LotteryType.BIG_LOTTO: _big_lotto_zero_selection_special_hit}
+
+
 def _check_records(
     evidence: StrategyEvaluationEvidence, findings: list[Finding], hash_checks: list[HashCheck]
-) -> None:
+) -> bool:
+    """Recompute every record and ticket. Returns True if provenance is unverified."""
+
     rule = evidence.rule_parameters
+    ticket_special_count = rule.resolved_ticket_special_number_count
+    lottery_type = evidence.dataset_reference.lottery_type
+    unverified_provenance = False
     seen_ticket_ids: set[str] = set()
 
     for r_index, record in enumerate(evidence.records):
@@ -1335,6 +1386,7 @@ def _check_records(
                 record.actual_special_numbers,
                 rule,
                 pointer_prefix=f"{pointer_prefix}/actual",
+                expected_special_count=rule.special_number_count,
             )
         )
 
@@ -1368,7 +1420,11 @@ def _check_records(
 
             findings.extend(
                 _check_numbers_against_rule(
-                    ticket.main_numbers, ticket.special_numbers, rule, pointer_prefix=t_pointer
+                    ticket.main_numbers,
+                    ticket.special_numbers,
+                    rule,
+                    pointer_prefix=t_pointer,
+                    expected_special_count=ticket_special_count,
                 )
             )
 
@@ -1396,15 +1452,54 @@ def _check_records(
                     )
                 )
 
-            recomputed_special_overlap = len(
-                set(ticket.special_numbers) & set(record.actual_special_numbers)
-            )
-            expected_special: bool | int = (
-                recomputed_special_overlap > 0
-                if rule.special_number_count <= 1
-                else recomputed_special_overlap
-            )
-            if (
+            expected_special: bool | int | None
+            # The overlap rule is correct whenever the ticket picks specials, and
+            # equally when the game draws none at all (nothing exists to hit, so
+            # a DAILY_539-shaped document keeps its original semantics exactly).
+            # Only the genuine divergence -- the draw has a special number the
+            # player never picks -- needs the domain scoring authority.
+            if ticket_special_count > 0 or rule.special_number_count == 0:
+                recomputed_special_overlap = len(
+                    set(ticket.special_numbers) & set(record.actual_special_numbers)
+                )
+                expected_special = (
+                    recomputed_special_overlap > 0
+                    if rule.special_number_count <= 1
+                    else recomputed_special_overlap
+                )
+            else:
+                # The ticket selects no special number, so overlap is
+                # structurally always empty and would score every ticket a
+                # miss. The committed domain scoring authority decides instead.
+                oracle = _ZERO_SELECTION_SPECIAL_HIT_ORACLES.get(lottery_type)
+                if oracle is None:
+                    unverified_provenance = True
+                    expected_special = None
+                    findings.append(
+                        Finding(
+                            FindingCategory.UNVERIFIED_PROVENANCE,
+                            "TICKET_SPECIAL_HIT_AUTHORITY_UNAVAILABLE",
+                            f"{t_pointer}/special_hit",
+                            f"no committed scoring authority can decide special_hit for a "
+                            f"{lottery_type.value} ticket that selects no special number; "
+                            "special_hit is not verifiable and must not be assumed",
+                        )
+                    )
+                else:
+                    try:
+                        expected_special = oracle(ticket, record)
+                    except (ValueError, IndexError):
+                        expected_special = None
+                        findings.append(
+                            Finding(
+                                FindingCategory.SEMANTIC_FAILURE,
+                                "SPECIAL_HIT_NOT_RECOMPUTABLE",
+                                f"{t_pointer}/special_hit",
+                                "the committed scoring authority rejected this ticket/outcome "
+                                "pair, so special_hit could not be recomputed",
+                            )
+                        )
+            if expected_special is not None and (
                 type(ticket.special_hit) is not type(expected_special)
                 or ticket.special_hit != expected_special
             ):
@@ -1417,6 +1512,8 @@ def _check_records(
                         f"recomputed {expected_special!r}",
                     )
                 )
+
+    return unverified_provenance
 
 
 def _check_definition_path_and_hash(
@@ -1533,8 +1630,13 @@ def _check_metric_results(
                 )
             )
 
-        value_scale_ok = result.value is None or _decimal_matches_scale(
-            result.value, definition.decimal_scale
+        # decimal_scale/rounding govern the decimal form only. An exact
+        # rational is already lossless, so quantizing it here would reintroduce
+        # precisely the rounding this representation exists to avoid.
+        value_scale_ok = (
+            result.value is None
+            or isinstance(result.value, ExactRational)
+            or _decimal_matches_scale(result.value, definition.decimal_scale)
         )
         if result.value_status is MetricValueStatus.VALUE_PRESENT and not value_scale_ok:
             findings.append(
@@ -1829,7 +1931,7 @@ def validate_evidence_artifact(
         )
 
     rule_unverified = _check_rule_binding_against_domain_contract(evidence, findings)
-    _check_records(evidence, findings, hash_checks)
+    records_unverified = _check_records(evidence, findings, hash_checks)
     _check_causality(evidence, findings)
 
     feature_bytes, feature_unverified = _check_definition_path_and_hash(
@@ -1866,7 +1968,11 @@ def validate_evidence_artifact(
         _check_dataset_cross_reference(evidence, dataset, findings)
 
     unverified_provenance = (
-        rule_unverified or feature_unverified or metric_unverified or dataset_unverified
+        rule_unverified
+        or records_unverified
+        or feature_unverified
+        or metric_unverified
+        or dataset_unverified
     )
 
     blocking_categories = (

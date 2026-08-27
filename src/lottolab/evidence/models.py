@@ -19,12 +19,17 @@ from __future__ import annotations
 import re
 from datetime import UTC, date, datetime
 from enum import StrEnum
+from math import gcd
 from typing import Annotated, Any
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, model_validator
 
 from lottolab.domain.draws import LotteryType
-from lottolab.evidence.canonical_json import CanonicalizationError, validate_value_domain
+from lottolab.evidence.canonical_json import (
+    MAX_SAFE_INTEGER,
+    CanonicalizationError,
+    validate_value_domain,
+)
 
 _CLOSED_FROZEN = ConfigDict(extra="forbid", frozen=True)
 
@@ -252,7 +257,19 @@ PER_STRATEGY_IDENTITY_DIMENSIONS: tuple[str, ...] = (
 
 
 class RuleParameters(BaseModel):
-    """Generic lottery-rule binding, self-hashed (Contract Parts 2 and 5)."""
+    """Generic lottery-rule binding, self-hashed (Contract Parts 2 and 5).
+
+    ``special_number_count`` is the *draw* shape: how many special numbers one
+    drawn result carries. It is not automatically the *ticket* shape. A player
+    picking a BIG_LOTTO ticket chooses six main numbers and no special number
+    at all, even though every BIG_LOTTO draw produces one -- the same
+    distinction ``lottolab.strategies.adapters.base._validated_special_number``
+    already documents. ``ticket_special_number_count`` records that ticket
+    shape explicitly; it is optional so that every document written before this
+    field existed keeps identical canonical bytes and an identical
+    ``rule_parameters_sha256`` (canonical serialization excludes ``None``).
+    Use :attr:`resolved_ticket_special_number_count`, never the raw field.
+    """
 
     model_config = _CLOSED_FROZEN
 
@@ -265,8 +282,22 @@ class RuleParameters(BaseModel):
     special_number_max: int
     special_numbers_unique: bool
     main_special_overlap_allowed: bool
+    ticket_special_number_count: int | None = Field(default=None, ge=0)
     rule_contract_version: str = Field(min_length=1)
     rule_parameters_sha256: Sha256Hex
+
+    @property
+    def resolved_ticket_special_number_count(self) -> int:
+        """How many special numbers one ticket declares under this binding.
+
+        A document that predates the explicit ticket shape resolves to the
+        drawn ``special_number_count``, preserving its original semantics
+        exactly; a document that declares the field means what it says.
+        """
+
+        if self.ticket_special_number_count is None:
+            return self.special_number_count
+        return self.ticket_special_number_count
 
     @model_validator(mode="after")
     def _check_ranges(self) -> RuleParameters:
@@ -280,6 +311,13 @@ class RuleParameters(BaseModel):
         special_capacity = self.special_number_max - self.special_number_min + 1
         if self.special_numbers_unique and self.special_number_count > special_capacity:
             raise ValueError("unique special numbers exceed the configured range")
+        if (
+            self.ticket_special_number_count is not None
+            and self.ticket_special_number_count > self.special_number_count
+        ):
+            raise ValueError(
+                "ticket_special_number_count must not exceed the drawn special_number_count"
+            )
         return self
 
 
@@ -394,6 +432,40 @@ class MetricDefinition(BaseModel):
         return self
 
 
+class ExactRational(BaseModel):
+    """One exactly-representable rational metric value (Contract Part 8).
+
+    The canonical decimal string cannot hold a value such as ``36/49`` without
+    rounding, and LCJ-1 forbids binary floats outright, so an evaluator that
+    computes in exact ``fractions.Fraction`` arithmetic has no lossless
+    canonical form without this shape. Two integers under LCJ-1's existing
+    integer rules give one, with no new envelope, hash rule, or serializer.
+
+    The form is unique so that one mathematical value has exactly one
+    canonical serialization: reduced to lowest terms, sign carried by the
+    numerator, and zero written as ``0/1``.
+    """
+
+    model_config = _CLOSED_FROZEN
+
+    numerator: int
+    denominator: int = Field(gt=0)
+
+    @model_validator(mode="after")
+    def _check_canonical_form(self) -> ExactRational:
+        if gcd(abs(self.numerator), self.denominator) != 1:
+            raise ValueError("exact rational must be reduced to lowest terms")
+        if self.numerator == 0 and self.denominator != 1:
+            raise ValueError("zero must be written as 0/1")
+        for name, component in (
+            ("numerator", self.numerator),
+            ("denominator", self.denominator),
+        ):
+            if abs(component) > MAX_SAFE_INTEGER:
+                raise ValueError(f"{name} exceeds the LCJ-1 integer magnitude bound")
+        return self
+
+
 class MetricResult(BaseModel):
     model_config = _CLOSED_FROZEN
 
@@ -405,7 +477,7 @@ class MetricResult(BaseModel):
     sample_unit: SampleUnit
     aggregation: str = Field(min_length=1)
     value_status: MetricValueStatus
-    value: CanonicalDecimal | None = None
+    value: CanonicalDecimal | ExactRational | None = None
     reason_code: str | None = None
     verification_state: str = Field(pattern=r"^DECLARED_NOT_RECOMPUTED$")
 

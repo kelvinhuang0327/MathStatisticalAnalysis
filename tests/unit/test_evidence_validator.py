@@ -20,6 +20,7 @@ from typing import Any, cast
 
 import pytest
 
+from lottolab.domain.lottery_rules import score_big_lotto_ticket
 from lottolab.evidence import canonical_json, validator
 from lottolab.evidence.models import (
     DatasetSnapshot,
@@ -3201,3 +3202,116 @@ def _approved_policy_stub():
             "ineligibility_reason_codes": ["NOT_REGISTERED_CANONICAL"],
         }
     )
+
+
+# --------------------------------------------------------------------------
+# Draw shape vs ticket shape (V1B)
+# --------------------------------------------------------------------------
+
+
+def _as_zero_ticket_shape(evidence: dict[str, Any]) -> dict[str, Any]:
+    """Rewrite evidence so its tickets select no special number at all.
+
+    This is the BIG_LOTTO shape: the draw carries one special number, the
+    player picks none, and special_hit is decided by the committed domain
+    scoring authority rather than by an overlap that is structurally empty.
+    """
+
+    rewritten = copy.deepcopy(evidence)
+    rewritten["rule_parameters"] = _with_self_hash(
+        {**rewritten["rule_parameters"], "ticket_special_number_count": 0},
+        "rule_parameters_sha256",
+    )
+    records: list[dict[str, Any]] = []
+    for record in rewritten["records"]:
+        tickets: list[dict[str, Any]] = []
+        for ticket in record["tickets"]:
+            scored = score_big_lotto_ticket(
+                predicted_main_numbers=tuple(ticket["main_numbers"]),
+                winning_main_numbers=tuple(record["actual_main_numbers"]),
+                winning_special_number=record["actual_special_numbers"][0],
+            )
+            tickets.append(
+                {
+                    **ticket,
+                    "special_numbers": [],
+                    "main_hit_count": scored.main_hits,
+                    "special_hit": scored.special_hit,
+                }
+            )
+        records.append(
+            _with_self_hash({**record, "tickets": tickets}, "record_sha256")
+        )
+    rewritten["records"] = records
+    return _rehash_evidence(rewritten)
+
+
+def test_zero_ticket_shape_evidence_validates_against_the_domain_scoring_rule(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    zero_shape = _as_zero_ticket_shape(evidence)
+    report = _validate(zero_shape, dataset, repo_root)
+    assert report.findings == (), report.findings
+    assert report.structurally_valid
+
+
+def test_a_ticket_that_still_declares_a_special_under_zero_shape_is_rejected(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    zero_shape = _as_zero_ticket_shape(evidence)
+    tampered = copy.deepcopy(zero_shape)
+    tampered["records"][0]["tickets"][0]["special_numbers"] = [7]
+    tampered["records"][0] = _with_self_hash(tampered["records"][0], "record_sha256")
+    report = _validate(_rehash_evidence(tampered), dataset, repo_root)
+    assert "SPECIAL_NUMBER_COUNT_MISMATCH" in _codes(report)
+
+
+def test_zero_ticket_shape_does_not_relax_the_drawn_outcome_shape(tmp_path: Path):
+    """The draw still carries one special number; dropping it must still fail."""
+
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    zero_shape = _as_zero_ticket_shape(evidence)
+    tampered = copy.deepcopy(zero_shape)
+    tampered["records"][0]["actual_special_numbers"] = []
+    tampered["records"][0] = _with_self_hash(tampered["records"][0], "record_sha256")
+    report = _validate(_rehash_evidence(tampered), dataset, repo_root)
+    assert "SPECIAL_NUMBER_COUNT_MISMATCH" in _codes(report)
+
+
+def test_zero_ticket_shape_special_hit_must_match_the_domain_authority(tmp_path: Path):
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    zero_shape = _as_zero_ticket_shape(evidence)
+    tampered = copy.deepcopy(zero_shape)
+    ticket = tampered["records"][0]["tickets"][0]
+    ticket["special_hit"] = not ticket["special_hit"]
+    tampered["records"][0] = _with_self_hash(tampered["records"][0], "record_sha256")
+    report = _validate(_rehash_evidence(tampered), dataset, repo_root)
+    assert "SPECIAL_HIT_MISMATCH" in _codes(report)
+
+
+def test_legacy_evidence_without_a_declared_ticket_shape_keeps_overlap_semantics(tmp_path: Path):
+    """The unmodified pair declares no ticket shape and its tickets do pick
+    specials; it must keep validating exactly as it did before V1B."""
+
+    dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    assert "ticket_special_number_count" not in evidence["rule_parameters"]
+    assert all(
+        ticket["special_numbers"]
+        for record in evidence["records"]
+        for ticket in record["tickets"]
+    )
+    report = _validate(evidence, dataset, repo_root)
+    assert report.findings == (), report.findings
+    assert "TICKET_SPECIAL_HIT_AUTHORITY_UNAVAILABLE" not in _codes(report)
+
+
+def test_zero_ticket_shape_for_a_lottery_without_scoring_authority_fails_closed(tmp_path: Path):
+    _dataset, evidence, repo_root = _build_valid_pair(tmp_path)
+    zero_shape = _as_zero_ticket_shape(evidence)
+    relabelled = copy.deepcopy(zero_shape)
+    relabelled["dataset_reference"]["lottery_type"] = "POWER_LOTTO"
+    report = validator.validate_evidence_artifact(
+        StrategyEvaluationEvidence.model_validate(_rehash_evidence(relabelled)),
+        repo_root=repo_root,
+        dataset=None,
+    )
+    assert "TICKET_SPECIAL_HIT_AUTHORITY_UNAVAILABLE" in _codes(report)
+    assert not report.canonical_gate_passed

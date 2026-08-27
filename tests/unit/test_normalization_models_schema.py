@@ -29,12 +29,24 @@ from lottolab.normalization.normalizer import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURES = REPO_ROOT / "tests/fixtures/normalization/synthetic"
 
+#: Drift guard: normalization depends on the evidence foundation, so these
+#: seven files must never move except by an authorized evidence-contract task.
+#:
+#: The two generated schema exports below were rebaselined once, by the V1B
+#: evidence-materialization task, when ``RuleParameters`` gained its optional
+#: ``ticket_special_number_count``. That evolution is a pure superset -- the
+#: exports' ``required`` lists are byte-for-byte unchanged and every committed
+#: evidence document keeps its original canonical bytes and
+#: ``rule_parameters_sha256`` -- and the schema files are generated, so
+#: ``tools/generate_evidence_schemas.py --check`` would otherwise report them
+#: stale against their own models. The other five pins are untouched, which is
+#: what proves that change reached nothing else.
 EVIDENCE_INVARIANTS = {
     "contracts/evidence/strategy_evaluation_evidence.schema.json": (
-        "7729010bd6f8d1a41c5f9ffe15ccdd867a5f2341d82f775fd405ca8d469f49fc"
+        "6641a841dff287bf2da72d5962928eea3dea1323d29f56bbba3bd672fbe37cc1"
     ),
     "contracts/evidence/dataset_snapshot.schema.json": (
-        "96b93ab312bc2b516b89259860b16930c87c19ce2dd938bb855324182ab44c76"
+        "a288c59c7ff8d4f7d116b5e9c261f672eaea446da28ad42f9267fd19dad339d8"
     ),
     "contracts/evidence/ranking_policy.schema.json": (
         "eccd3791ec83ba94fd4c4723e71880b17fa782d1aa57391f48ecc9ef5129eb58"

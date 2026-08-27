@@ -6,12 +6,18 @@ import math
 import pytest
 
 from lottolab.research.exact_statistics import (
+    binomial_exact_minimum_detectable_lift,
+    binomial_exact_upper_critical_value,
+    binomial_lower_tail,
+    binomial_one_sided_upper_exact_power,
     binomial_pmf,
     binomial_two_sided_exact_p_value,
     binomial_two_sided_exact_power,
+    binomial_upper_tail,
     finite_population_sum_mean,
     finite_population_sum_variance,
     holm_bonferroni_adjusted,
+    holm_step_down_rejections,
     hypergeometric_mean,
     hypergeometric_pmf,
     hypergeometric_variance,
@@ -20,6 +26,8 @@ from lottolab.research.exact_statistics import (
     order_statistic_pmf,
     order_statistic_two_sided_p_value,
 )
+
+_P0 = 7729 / 249711
 
 
 def test_binomial_pmf_sums_to_one() -> None:
@@ -68,6 +76,69 @@ def test_holm_bonferroni_is_never_smaller_than_the_raw_p_value() -> None:
     raw = [0.001, 0.2, 0.03, 0.5, 0.0001]
     adjusted = holm_bonferroni_adjusted(raw)
     assert all(a >= r for a, r in zip(adjusted, raw, strict=True))
+
+
+def test_holm_step_down_matches_adjusted_p_value_cutoff() -> None:
+    raw = [0.01, 0.04, 0.03, 0.005]
+    rejected = holm_step_down_rejections(raw, alpha=0.05)
+    adjusted = holm_bonferroni_adjusted(raw)
+    assert rejected == tuple(value <= 0.05 for value in adjusted)
+    assert rejected == (True, False, False, True)
+
+
+def test_holm_first_step_threshold_is_not_used_for_every_test() -> None:
+    # Two tiny p-values and one moderate p-value. First-step alpha/3 would
+    # reject only p < 0.05/3, but Holm still rejects the second after the
+    # first is dropped.
+    raw = [0.01, 0.02, 0.9]
+    rejected = holm_step_down_rejections(raw, alpha=0.05)
+    assert raw[1] > 0.05 / 3
+    assert rejected == (True, True, False)
+
+
+def test_binomial_upper_and_lower_tails_sum_past_the_observed_point() -> None:
+    n, k, p = 20, 7, 0.3
+    upper = binomial_upper_tail(n, k, p)
+    lower_exclusive = binomial_lower_tail(n, k - 1, p)
+    assert upper + lower_exclusive == pytest.approx(1.0, abs=1e-12)
+
+
+def test_binomial_exact_upper_critical_values_for_p0() -> None:
+    assert binomial_exact_upper_critical_value(50, _P0, 0.05) == 5
+    assert binomial_exact_upper_critical_value(300, _P0, 0.05) == 15
+    assert binomial_exact_upper_critical_value(750, _P0, 0.05) == 32
+    assert binomial_exact_upper_critical_value(1412, _P0, 0.05) == 56
+
+
+def test_one_sided_exact_power_is_the_upper_tail_at_the_critical_value() -> None:
+    n, alpha = 50, 0.05
+    k_star = binomial_exact_upper_critical_value(n, _P0, alpha)
+    p_alt = 4.2250 * _P0
+    assert binomial_one_sided_upper_exact_power(n, _P0, p_alt, alpha=alpha) == pytest.approx(
+        binomial_upper_tail(n, k_star, p_alt), abs=1e-15
+    )
+
+
+@pytest.mark.parametrize(
+    ("n", "alpha", "expected_lift"),
+    [
+        (50, 0.05, 4.2250),
+        (300, 0.05, 1.9385),
+        (750, 0.05, 1.5723),
+        (1412, 0.05, 1.4191),
+        (50, 0.05 / 21, 5.6831),
+        (300, 0.05 / 21, 2.5254),
+        (750, 0.05 / 21, 1.8934),
+        (50, 0.05 / 28, 5.6831),
+        (300, 0.05 / 28, 2.5254),
+        (750, 0.05 / 28, 1.8934),
+        (1412, 0.05 / 28, 1.6354),
+    ],
+)
+def test_exact_mde_lift_fixtures(n: int, alpha: float, expected_lift: float) -> None:
+    lift = binomial_exact_minimum_detectable_lift(n, _P0, alpha=alpha, power_target=0.80)
+    assert lift == pytest.approx(expected_lift, abs=5e-5)
+    assert binomial_one_sided_upper_exact_power(n, _P0, lift * _P0, alpha=alpha) >= 0.80 - 1e-9
 
 
 def test_hypergeometric_pmf_sums_to_one() -> None:

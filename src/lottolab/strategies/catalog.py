@@ -3474,6 +3474,68 @@ _PRODUCTION_DESCRIPTORS = (
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
     ),
+    StrategyDescriptor(
+        strategy_id="legacy_biglotto__frontend_collaborative_hybrid__97d79db161ba",
+        strategy_name="大樂透 Frontend Collaborative Hybrid",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_frontend_collaborative:"
+            "BigLottoFrontendCollaborativeHybridAdapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:src/engine/strategies/CollaborativeStrategy.js",
+            "legacy_source_sha256:"
+            "97d79db161bac5d83aa3c6f4738f33bad1183056fe26dc1dba593fdcb35447db",
+            "legacy_symbol:CollaborativeStrategy.predict",
+            "legacy_runtime:PredictionEngine.strategies.collaborative_hybrid",
+            "legacy_quick_prediction:BIG_LOTTO_TO_collaborative_hybrid",
+            "legacy_alias_remap:collaborative_relay_TO_collaborative_hybrid",
+            "legacy_alias_remap:collaborative_coop_TO_collaborative_hybrid",
+            "legacy_mode:hybrid",
+            "legacy_mode_dispatch:relay_cooperative_hybrid_DEFAULT_hybrid",
+            "legacy_lottery:src/utils/Constants.js:LOTTERY_RULES",
+            "legacy_history_order:NEWEST_FIRST",
+            "target_history_order:OLDEST_FIRST_REVERSED_AT_ADAPTER_BOUNDARY",
+            "history_consumed:IDENTICAL_FULL_HISTORY_TO_ALL_EXPERTS",
+            "expert_order:"
+            "FREQUENCY_TREND_COMBINED_BAYESIAN_DEVIATION_MONTECARLO_"
+            "MARKOV_COOCCURRENCE_FEATUREWEIGHTED_RANDOMFOREST_GENETIC",
+            "expert_weights:1.0_1.2_1.5_1.3_1.2_1.4_1.3_1.1_1.4_1.5_1.6",
+            "architecture:COLLABORATIVE_LOCAL_FROZEN_SCORING_PORT",
+            "protected_adapters:LEAF_R16_UNIFIED_ENSEMBLE_R17_ML_UNCHANGED",
+            "stages:EXPLORATION_TOP25_REFINEMENT_TOP15_DECISION_TOP6",
+            "voting:PROBABILITY_WEIGHT_CONFIDENCE_PLUS_ASCENDING_TICKET_RANK",
+            "constraints:ODD_EVEN_THEN_ZONE_COVERAGE_THEN_SUM_RANGE",
+            "legacy_response_shape:NUMBERS_PROBABILITIES_CONFIDENCE_METHOD_REPORT",
+            "load_bearing_child_metadata:PROBABILITIES_AND_CONFIDENCE",
+            "non_load_bearing_child_metadata:METHOD_AND_REPORT",
+            "number_range:1_TO_49",
+            "pick_count:6",
+            "ranking:DESCENDING_SCORE_ASCENDING_INTEGER_KEY_TIE_ORDER",
+            "ticket_order:FINAL_NUMERIC_ASCENDING",
+            "portfolio_cardinality:EXACTLY_1_SINGLE_TICKET",
+            "minimum_history:TARGET_AND_PREDICTION_ENGINE_BOUNDARY_1",
+            "target_empty_behavior:INSUFFICIENT_HISTORY",
+            "expert_error_behavior:LOG_AND_OMIT_FAILED_EXPERT_THEN_CONTINUE",
+            "randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT",
+            "rng_sharing:ONE_GLOBAL_STREAM_ACROSS_MONTECARLO_RANDOMFOREST_GENETIC",
+            "rng_boundary:EXPLICIT_ADAPTER_CONSTRUCTOR_RANDOM_SOURCE_FOR_PARITY_ONLY",
+            "seed_semantics:GENERATE_REQUEST_SEED_NOT_THREADED",
+            "donor_execution:"
+            "REVIVED_DIRECT_NODE_WITH_SYNCHRONOUS_STATISTICS_AND_BROWSER_REGISTRY_SEAMS",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:LANE3_COLLABORATIVE_STRATEGY_LEGACY_METHOD_MIGRATION_R18",
+        ),
+        response_shape=ResponseShape.SINGLE_TICKET,
+        native_ticket_count=1,
+    ),
 )
 
 

@@ -20,6 +20,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
 )
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
     SQLiteFutureDrawIdentityReader,
+    SQLiteOfficialScheduleSyncRepository,
 )
 from lottolab.infrastructure.persistence.repositories import (
     SQLiteDrawDataRepository,
@@ -45,6 +46,7 @@ __all__ = [
     "SQLiteFutureDrawIdentityReader",
     "SQLiteIngestionItemRepository",
     "SQLiteIngestionRunRepository",
+    "SQLiteOfficialScheduleSyncRepository",
     "SchemaMigrationError",
     "initialize_schema",
     "open_database",

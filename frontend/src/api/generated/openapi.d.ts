@@ -3073,7 +3073,7 @@ export interface components {
           "completed_at": string
         }
     "ImportFileStatus": "ACCEPTED" | "IMPORTED" | "PARTIAL" | "PARTIAL_SUCCESS" | "DUPLICATE" | "CONFLICTED" | "EXCLUDED" | "INVALID" | "FAILED"
-    "IngestionItemDisposition": "INSERTED" | "SKIPPED_DUPLICATE" | "CONFLICT" | "FAILED"
+    "IngestionItemDisposition": "INSERTED" | "SKIPPED_DUPLICATE" | "SKIPPED_COMPLETED" | "CONFLICT" | "FAILED"
     "IngestionItemView": {
           "source_row_number": number
           "lottery_type": components['schemas']["LotteryType"] | null
@@ -3083,7 +3083,7 @@ export interface components {
           "normalized_record_hash": string | null
           "message": string | null
         }
-    "IngestionOperationType": "DRAW_CSV_IMPORT" | "MANUAL_SYNC" | "MISSING_DRAW_SCAN" | "BOUNDED_BACKFILL" | "SCHEDULED_SYNC" | "MANUAL_FUTURE_IDENTITY_SUPPLEMENT"
+    "IngestionOperationType": "DRAW_CSV_IMPORT" | "MANUAL_SYNC" | "MISSING_DRAW_SCAN" | "BOUNDED_BACKFILL" | "SCHEDULED_SYNC" | "OFFICIAL_SCHEDULE_SYNC" | "MANUAL_FUTURE_IDENTITY_SUPPLEMENT"
     "IngestionRunDetailResponse": {
           "run": components['schemas']["IngestionRunView"]
           "items": Array<components['schemas']["IngestionItemView"]>

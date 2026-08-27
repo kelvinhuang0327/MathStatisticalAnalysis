@@ -1,0 +1,561 @@
+{
+  "candidate_id": "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1",
+  "canonical_base": {
+    "commit": "79948c6ba3b7195b85e11c690c50b70bf185b1d2",
+    "tree": "5e5c0c94550c0444ddb1e7ebd994c4223c48ca5a"
+  },
+  "draw_size": 6,
+  "exposure_ladder": [
+    10,
+    15,
+    20
+  ],
+  "gate": {
+    "any_k_delta_gt_0": true,
+    "global_optimum_status": "UNKNOWN",
+    "phase9_advance_gate": "PASS"
+  },
+  "invariants": {
+    "db_access": false,
+    "global_optimum_status": "UNKNOWN",
+    "historical_draws_used": false,
+    "monte_carlo": "NONE",
+    "p638_execution": "NOT_RUN",
+    "rng": "NONE",
+    "runtime_promotion": "NOT_AUTHORIZED",
+    "second_exchange_performed": false,
+    "t539_execution": "NOT_RUN"
+  },
+  "lottery_type": "BIG_LOTTO",
+  "owner_authorization": "AUTHORIZE_STRATEGY_MATRIX_PHASE9_REFERENCE_E_EXACT_1EXCHANGE_DISCOVERY_R1",
+  "per_k": {
+    "10": {
+      "best_neighbor_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          49
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "best_neighbor_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "classification": "ONE_EXCHANGE_IMPROVEMENT_FOUND",
+      "delta_vs_reference_e": {
+        "denominator": 1747977,
+        "exact": "40/1747977",
+        "numerator": 40
+      },
+      "evaluation_time_seconds": 321.0028572499996,
+      "k": 10,
+      "q_best_neighbor": {
+        "denominator": 499422,
+        "exact": "90995/499422",
+        "numerator": 90995
+      },
+      "q_reference_e": {
+        "denominator": 1165318,
+        "exact": "212295/1165318",
+        "numerator": 212295
+      },
+      "reference_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+      "unique_neighbor_count": 2580
+    },
+    "15": {
+      "best_neighbor_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          31
+        ],
+        [
+          2,
+          9,
+          36,
+          37,
+          43,
+          49
+        ],
+        [
+          3,
+          9,
+          15,
+          21,
+          27,
+          32
+        ],
+        [
+          4,
+          10,
+          16,
+          22,
+          28,
+          33
+        ],
+        [
+          5,
+          11,
+          17,
+          23,
+          29,
+          34
+        ],
+        [
+          6,
+          12,
+          18,
+          24,
+          30,
+          35
+        ],
+        [
+          7,
+          8,
+          10,
+          11,
+          12,
+          38
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "best_neighbor_portfolio_sha256": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+      "classification": "ONE_EXCHANGE_IMPROVEMENT_FOUND",
+      "delta_vs_reference_e": {
+        "denominator": 74382,
+        "exact": "19/74382",
+        "numerator": 19
+      },
+      "evaluation_time_seconds": 471.9857009159987,
+      "k": 15,
+      "q_best_neighbor": {
+        "denominator": 1747977,
+        "exact": "464027/1747977",
+        "numerator": 464027
+      },
+      "q_reference_e": {
+        "denominator": 3495954,
+        "exact": "927161/3495954",
+        "numerator": 927161
+      },
+      "reference_portfolio_sha256": "a4400d0f1d50f096b74bfb72f8eb10f42bb31bfc6d3d180d6781a867ad1b1d62",
+      "unique_neighbor_count": 3870
+    },
+    "20": {
+      "best_neighbor_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          12
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          1,
+          8,
+          15,
+          22,
+          38,
+          44
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          31
+        ],
+        [
+          2,
+          9,
+          36,
+          37,
+          43,
+          49
+        ],
+        [
+          3,
+          7,
+          14,
+          23,
+          39,
+          45
+        ],
+        [
+          3,
+          9,
+          15,
+          21,
+          27,
+          32
+        ],
+        [
+          4,
+          10,
+          16,
+          22,
+          28,
+          33
+        ],
+        [
+          4,
+          11,
+          13,
+          20,
+          40,
+          46
+        ],
+        [
+          5,
+          10,
+          18,
+          19,
+          41,
+          47
+        ],
+        [
+          5,
+          11,
+          17,
+          23,
+          29,
+          34
+        ],
+        [
+          6,
+          12,
+          18,
+          24,
+          30,
+          35
+        ],
+        [
+          6,
+          16,
+          21,
+          25,
+          42,
+          48
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "best_neighbor_portfolio_sha256": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+      "classification": "ONE_EXCHANGE_IMPROVEMENT_FOUND",
+      "delta_vs_reference_e": {
+        "denominator": 158907,
+        "exact": "5/158907",
+        "numerator": 5
+      },
+      "evaluation_time_seconds": 718.928122708001,
+      "k": 20,
+      "q_best_neighbor": {
+        "denominator": 499422,
+        "exact": "171323/499422",
+        "numerator": 171323
+      },
+      "q_reference_e": {
+        "denominator": 50666,
+        "exact": "17379/50666",
+        "numerator": 17379
+      },
+      "reference_portfolio_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+      "unique_neighbor_count": 5160
+    }
+  },
+  "pool_size": 49,
+  "preregistration": {
+    "path": "docs/research/matrix-native-results/reference-e-exact-one-exchange-b649-v1-preregistration.md",
+    "sha256": "68b25e8e2c7ee82d2f6c035003a3d21f67c649b00c465345e5d85423b377eb8d"
+  },
+  "primary_event": "M3_PLUS",
+  "primary_event_minimum_matches": 3,
+  "reference_constructor_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+  "reference_e_regeneration": {
+    "generation_time_seconds": 873.7942012500007,
+    "matches_sealed_phase7_authority": true,
+    "portfolio_20_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff"
+  },
+  "runtime": {
+    "method_e_generation_seconds": 873.7942012500007,
+    "neighborhood_evaluation_seconds": {
+      "10": 321.0028572499996,
+      "15": 471.9857009159987,
+      "20": 718.928122708001
+    },
+    "peak_memory_bytes": 5926846464,
+    "total_elapsed_seconds": 2385.7165086250006
+  },
+  "study_id": "STRATEGY_MATRIX_PHASE9_REFERENCE_E_EXACT_1EXCHANGE_DISCOVERY_V1",
+  "summary": {
+    "best_neighbor_portfolio_sha256": {
+      "10": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "15": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+      "20": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a"
+    },
+    "classifications": {
+      "10": "ONE_EXCHANGE_IMPROVEMENT_FOUND",
+      "15": "ONE_EXCHANGE_IMPROVEMENT_FOUND",
+      "20": "ONE_EXCHANGE_IMPROVEMENT_FOUND"
+    },
+    "delta_vs_reference_e": {
+      "10": {
+        "denominator": 1747977,
+        "exact": "40/1747977",
+        "numerator": 40
+      },
+      "15": {
+        "denominator": 74382,
+        "exact": "19/74382",
+        "numerator": 19
+      },
+      "20": {
+        "denominator": 158907,
+        "exact": "5/158907",
+        "numerator": 5
+      }
+    },
+    "q_best_neighbor": {
+      "10": {
+        "denominator": 499422,
+        "exact": "90995/499422",
+        "numerator": 90995
+      },
+      "15": {
+        "denominator": 1747977,
+        "exact": "464027/1747977",
+        "numerator": 464027
+      },
+      "20": {
+        "denominator": 499422,
+        "exact": "171323/499422",
+        "numerator": 171323
+      }
+    },
+    "q_reference_e": {
+      "10": {
+        "denominator": 1165318,
+        "exact": "212295/1165318",
+        "numerator": 212295
+      },
+      "15": {
+        "denominator": 3495954,
+        "exact": "927161/3495954",
+        "numerator": 927161
+      },
+      "20": {
+        "denominator": 50666,
+        "exact": "17379/50666",
+        "numerator": 17379
+      }
+    },
+    "unique_neighbor_counts": {
+      "10": 2580,
+      "15": 3870,
+      "20": 5160
+    }
+  },
+  "task_id": "STRATEGY_MATRIX_PHASE9_REFERENCE_E_EXACT_1EXCHANGE_DISCOVERY_R1"
+}

@@ -179,9 +179,9 @@ def test_production_catalog_invariants() -> None:
 def test_catalog_preserves_approved_strategy_append_order() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
-    assert len(catalog) == 130
-    assert len(ids) == 130
-    assert len(set(ids)) == 130
+    assert len(catalog) == 133
+    assert len(ids) == 133
+    assert len(set(ids)) == 133
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
@@ -313,6 +313,9 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__frontend_unified_ensemble_weighted__8f1183a9d8a7",
         "legacy_biglotto__frontend_unified_ensemble_combined__8f1183a9d8a7",
         "legacy_biglotto__frontend_unified_ensemble_advanced__8f1183a9d8a7",
+        "legacy_biglotto__frontend_ml_features__3a4324bc2aa9",
+        "legacy_biglotto__frontend_ml_forest__3a4324bc2aa9",
+        "legacy_biglotto__frontend_ml_genetic__3a4324bc2aa9",
     ]
     online_ids = {
         descriptor.strategy_id
@@ -324,9 +327,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
 
 
 def test_horizon_minimax_descriptor_and_adapter_identity_match_exactly() -> None:
-    descriptor = production_catalog().get(
-        BigLottoHorizonMinimaxDisagreementAdapter.strategy_id
-    )
+    descriptor = production_catalog().get(BigLottoHorizonMinimaxDisagreementAdapter.strategy_id)
     assert (
         descriptor.strategy_id,
         descriptor.strategy_name,
@@ -378,8 +379,7 @@ def test_biglotto_wave2_descriptors_and_adapter_identities_match_exactly() -> No
     for adapter_class in adapter_classes:
         descriptor = catalog.get(adapter_class.strategy_id)
         expected_adapter_path = (
-            "lottolab.strategies.adapters.biglotto_wave2_intake:"
-            f"{adapter_class.__name__}"
+            f"lottolab.strategies.adapters.biglotto_wave2_intake:{adapter_class.__name__}"
         )
         assert (
             descriptor.strategy_id,
@@ -458,8 +458,7 @@ def test_deviation_bet2_descriptor_registry_and_provenance_match_exactly() -> No
         BigLottoDeviation2BetBet2Adapter.min_history,
         LifecycleStatus.ONLINE,
         True,
-        "lottolab.strategies.adapters.biglotto_selected:"
-        "BigLottoDeviation2BetBet2Adapter",
+        "lottolab.strategies.adapters.biglotto_selected:BigLottoDeviation2BetBet2Adapter",
     )
     assert descriptor.provenance == (
         "legacy_commit:520c3922a7c8f47e5b6196fb4b0d54716fa5fd9f",

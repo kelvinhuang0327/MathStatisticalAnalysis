@@ -1,0 +1,35 @@
+{
+  "config_id": "BIGLOTTO_L2_PAIRWISE_RETROSPECTIVE_DECISION_GATE_R1",
+  "scientific_classification": "RETROSPECTIVE_BUNDLE_LEVEL_DECISION_GATE_R1",
+  "program_level_confirmatory": false,
+  "primary_candidates": ["C1", "C2", "C3", "C4", "C5", "C6", "C8"],
+  "primary_endpoints": ["750", "300", "50"],
+  "primary_family_size": 21,
+  "sensitivity_endpoints": ["750", "300", "50", "FULL_REFERENCE"],
+  "sensitivity_family_size": 28,
+  "alpha": 0.05,
+  "power_target": 0.8,
+  "null_success_probability": {
+    "numerator": 7729,
+    "denominator": 249711
+  },
+  "owner_minimum_worthwhile_lift": "UNSET",
+  "futility_rule": "UNSET",
+  "current_available_common_target_count": 1412,
+  "current_frozen_common_target_historical_budget": "EXHAUSTED",
+  "additional_retrospective_common_targets": "NONE",
+  "low_expected_count_threshold": 5,
+  "moderate_lift": 1.5,
+  "qc_candidate": "C6",
+  "qc_endpoint": "FULL_REFERENCE",
+  "c6_minimal_qc_audit": "CLOSED_NO_DEFECT_FOUND_WITHIN_AUDIT_SCOPE",
+  "c6_further_engineering_audit": "NOT_JUSTIFIED",
+  "candidate_expansion_when_futility_unresolved": "PAUSE",
+  "unresolved_candidate_status_when_futility_unresolved": "HOLD",
+  "unresolved_candidate_status_fields": {
+    "C7_V3_STATUS": "HOLD",
+    "C9_STATUS": "HOLD",
+    "C10_STATUS": "HOLD",
+    "C11_STATUS": "HOLD"
+  }
+}

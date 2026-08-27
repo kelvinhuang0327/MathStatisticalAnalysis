@@ -107,6 +107,126 @@ def binomial_two_sided_exact_power(
     return math.exp(_log_sum_exp([alt_table[k] for k in rejection_region]))
 
 
+def binomial_upper_tail(n: int, k: int, p: float) -> float:
+    """Exact P(X >= k) for X ~ Binomial(n, p)."""
+
+    if not 0 <= k <= n + 1:
+        raise ValueError("k must lie in [0, n + 1]")
+    if k == 0:
+        return 1.0
+    if k == n + 1:
+        return 0.0
+    table = binomial_log_pmf_table(n, p)
+    return min(1.0, math.exp(_log_sum_exp(table[k:])))
+
+
+def binomial_lower_tail(n: int, k: int, p: float) -> float:
+    """Exact P(X <= k) for X ~ Binomial(n, p)."""
+
+    if not 0 <= k <= n:
+        raise ValueError("k must lie in [0, n]")
+    table = binomial_log_pmf_table(n, p)
+    return min(1.0, math.exp(_log_sum_exp(table[: k + 1])))
+
+
+def binomial_exact_upper_critical_value(n: int, p: float, alpha: float) -> int:
+    """Smallest integer k* such that P_null(X >= k*) <= alpha.
+
+    Returns ``n + 1`` when even ``X = n`` is not significant, i.e. the exact
+    test never rejects at this ``alpha``.
+    """
+
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must lie in (0, 1)")
+    table = binomial_log_pmf_table(n, p)
+    log_tail = -math.inf
+    critical = n + 1
+    for k in range(n, -1, -1):
+        log_tail = _log_sum_exp((log_tail, table[k]))
+        if math.exp(log_tail) <= alpha:
+            critical = k
+        else:
+            break
+    return critical
+
+
+def binomial_one_sided_upper_exact_power(
+    n: int, p_null: float, p_alt: float, *, alpha: float
+) -> float:
+    """Exact power of the one-sided upper-tail exact binomial test.
+
+    Rejection is ``X >= k*`` with ``k*`` from
+    ``binomial_exact_upper_critical_value``. Power is the exact
+    Binomial(n, p_alt) mass on that region, not a normal approximation.
+    """
+
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must lie in (0, 1)")
+    if not 0.0 <= p_alt <= 1.0:
+        raise ValueError("p_alt must lie in [0, 1]")
+    critical = binomial_exact_upper_critical_value(n, p_null, alpha)
+    return binomial_upper_tail(n, critical, p_alt)
+
+
+def binomial_exact_minimum_detectable_lift(
+    n: int,
+    p_null: float,
+    *,
+    alpha: float,
+    power_target: float,
+) -> float:
+    """Smallest lift L such that one-sided exact power at p_alt = L * p_null
+    is at least ``power_target``.
+
+    Lift is relative to ``p_null``. This is an exact-binomial MDE, not a
+    maximum answerable lift and not a normal-approximation calculation.
+    """
+
+    if not 0.0 < p_null < 1.0:
+        raise ValueError("p_null must lie in (0, 1)")
+    if not 0.0 < power_target < 1.0:
+        raise ValueError("power_target must lie in (0, 1)")
+
+    max_lift = 1.0 / p_null
+
+    def power_at(lift: float) -> float:
+        return binomial_one_sided_upper_exact_power(
+            n, p_null, min(1.0, lift * p_null), alpha=alpha
+        )
+
+    if power_at(max_lift) < power_target:
+        raise ValueError("power target is unattainable even at p_alt = 1")
+    if power_at(1.0) >= power_target:
+        return 1.0
+
+    low = 1.0
+    high = max_lift
+    for _ in range(80):
+        mid = (low + high) / 2.0
+        if power_at(mid) >= power_target:
+            high = mid
+        else:
+            low = mid
+    return high
+
+
+def holm_step_down_rejections(
+    p_values: Sequence[float], *, alpha: float
+) -> tuple[bool, ...]:
+    """Holm step-down rejections in the original input order.
+
+    Equivalent to rejecting when the Holm-adjusted p-value is ``<= alpha``.
+    The first-step threshold is ``alpha / m``; later steps use larger
+    thresholds. That first-step cutoff is not the effective alpha of every
+    test in the family.
+    """
+
+    if not 0.0 < alpha < 1.0:
+        raise ValueError("alpha must lie in (0, 1)")
+    adjusted = holm_bonferroni_adjusted(p_values)
+    return tuple(value <= alpha for value in adjusted)
+
+
 def hypergeometric_pmf(population_size: int, success_states: int, draws: int, k: int) -> float:
     """Exact P(X = k) for X ~ Hypergeometric(N, K, n): `draws` drawn without
 

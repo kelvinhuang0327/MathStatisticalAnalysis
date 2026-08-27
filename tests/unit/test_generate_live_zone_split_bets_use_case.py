@@ -506,4 +506,7 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__frontend_monte_carlo_strategy__9d8fe030546e",
         "legacy_biglotto__frontend_statistical_analysis_strategy__a9364825de2a",
         "legacy_biglotto__frontend_wheeling_strategy__ce978baff05b",
+        "legacy_biglotto__frontend_unified_ensemble_weighted__8f1183a9d8a7",
+        "legacy_biglotto__frontend_unified_ensemble_combined__8f1183a9d8a7",
+        "legacy_biglotto__frontend_unified_ensemble_advanced__8f1183a9d8a7",
     ]

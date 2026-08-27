@@ -183,6 +183,14 @@ class FutureDrawIdentityReader(Protocol):
         """Return the earliest explicit future schedule lacking a completed outcome."""
         ...
 
+    def find_earliest_unpopulated_due(
+        self,
+        lottery_type: LotteryType,
+        as_of: datetime,
+    ) -> ScheduledDrawIdentityRecord | None:
+        """Return the earliest explicit due schedule lacking a completed outcome."""
+        ...
+
 
 @runtime_checkable
 class ManualFutureDrawIdentitySupplementRepository(Protocol):

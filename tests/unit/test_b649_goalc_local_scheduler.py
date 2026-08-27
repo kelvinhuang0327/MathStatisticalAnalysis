@@ -495,7 +495,7 @@ def test_schedule_refresh_atomically_replaces_only_b649_and_preserves_mode(
     assert metadata.st_nlink == 1
 
 
-def test_production_scheduler_neither_refreshes_nor_selects_legacy_announcement(
+def test_production_scheduler_syncs_canonical_schedule_and_ignores_legacy_file(
     tmp_path: Path,
 ) -> None:
     config = _config(tmp_path)
@@ -517,7 +517,7 @@ def test_production_scheduler_neither_refreshes_nor_selects_legacy_announcement(
     after_deadline = SCHEDULED + timedelta(minutes=5)
     network_calls = 0
 
-    def reject_network(
+    def schedule_network(
         _request: scheduler_module.Request,
         _context: ssl.SSLContext,
         _timeout: float,
@@ -525,14 +525,14 @@ def test_production_scheduler_neither_refreshes_nor_selects_legacy_announcement(
     ) -> bytes:
         nonlocal network_calls
         network_calls += 1
-        raise AssertionError("production schedule selection must not use the network")
+        return _schedule_body()
 
     before = config.announcement.read_bytes()
     backend = ProductionSchedulerBackend(
         config,
         clock=lambda: after_deadline,
         https_client=OfficialHttpsClient(
-            transport=reject_network
+            transport=schedule_network
         ),
         environ={
             "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
@@ -542,13 +542,15 @@ def test_production_scheduler_neither_refreshes_nor_selects_legacy_announcement(
 
     refresh = backend.refresh_schedule(after_deadline)
 
-    assert refresh.status == "DB_ONLY_NO_AUTO_SUPPLEMENT"
-    assert refresh.source_url is None
-    assert refresh.source_payload_sha256 is None
-    assert refresh.b649_targets == ()
-    assert refresh.inventory_count == 0
-    assert backend.resolve_target() is None
-    assert network_calls == 0
+    assert refresh.status == "REFRESHED"
+    assert refresh.source_url == scheduler_module.SCHEDULE_URL
+    assert refresh.source_payload_sha256 == hashlib.sha256(_schedule_body()).hexdigest()
+    assert refresh.b649_targets == ("209900002",)
+    assert refresh.inventory_count == 1
+    resolved = backend.resolve_target()
+    assert resolved is not None
+    assert resolved.draw_number == "209900002"
+    assert network_calls == 1
     assert config.announcement.read_bytes() == before
     assert not (config.operation_root / "predictions").exists()
 
@@ -1039,6 +1041,54 @@ def test_cycle_exception_atomically_replaces_running_with_error_and_counts_failu
     assert second["error_class"] == "RuntimeError"
     assert "synthetic refresh failure" in cast(str, second["error_message"])
     assert json.loads(config.health_path.read_text())["current_status"] == "ERROR"
+
+
+def test_schedule_sync_warning_keeps_a_valid_database_target_running(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        fail_refresh=OfficialScheduleUnavailableError("temporary official outage"),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "PREDRAW_READY"
+    warnings = cast(list[str], result["warnings"])
+    assert len(warnings) == 1
+    assert warnings[0].startswith("OFFICIAL_SCHEDULE_SYNC_WARNING:")
+    announcement = cast(dict[str, object], result["announcement"])
+    assert announcement["status"] == "SYNC_WARNING_DB_FALLBACK"
+    assert backend.generation_calls == []
+
+
+def test_scheduler_invariant_is_not_downgraded_to_schedule_sync_warning(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        fail_refresh=SchedulerInvariantError("environment mismatch"),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "ERROR"
+    assert result["error_class"] == "SchedulerInvariantError"
+    assert result["warnings"] == []
 
 
 def test_advisory_lock_contention_does_not_mutate_existing_health(tmp_path: Path) -> None:

@@ -221,7 +221,10 @@ def test_c6_lower_tail_qc_cannot_appear_as_a_superiority_discovery() -> None:
     assert lower == pytest.approx(0.000722704, abs=5e-10)
     assert result.c6_qc.two_sided_p == pytest.approx(0.0015487, abs=5e-8)
     assert lower < 0.05 / 21
-    assert c6_full.upper_tail_p == pytest.approx(0.999625484963864668, abs=1e-12)
+    # The log-gamma implementation can vary slightly across supported
+    # platforms for this near-one diagnostic tail; keep the exact reference
+    # while allowing the observed cross-platform rounding spread.
+    assert c6_full.upper_tail_p == pytest.approx(0.999625484963864668, abs=2e-12)
     assert c6_full.rejected is False
     assert "C6:FULL_REFERENCE" not in result.primary_holm_discoveries
     assert "C6:FULL_REFERENCE" not in result.sensitivity_holm_discoveries

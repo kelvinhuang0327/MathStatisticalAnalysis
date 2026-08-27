@@ -3,6 +3,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { listIngestionRuns } from '../src/api/drawData'
 import type {
   BatchImportCommit,
   BatchImportPreview,
@@ -92,6 +93,41 @@ const validPreview = {
   },
   normalized_preview: [],
   preview_truncated: false,
+} satisfies BatchImportPreview
+
+const issueRichFile = {
+  ...invalidFile,
+  source_filename: 'issues.zip',
+  source_locator: 'issues.zip!member.csv',
+  discovered_rows: 2,
+  failed_rows: 2,
+  issues: [
+    {
+      code: 'INVALID_DRAW_DATE',
+      message: 'draw_date contains <img src=x onerror=alert(1)>.',
+      row_number: 2,
+      member_name: 'member.csv',
+    },
+    {
+      code: 'MISSING_REQUIRED_VALUE',
+      message: 'Missing <tag> value.',
+      row_number: null,
+      member_name: null,
+    },
+  ],
+} satisfies BatchImportPreview['files'][number]
+
+const issueRichPreview = {
+  ...validPreview,
+  is_valid: false,
+  files: [issueRichFile],
+  summary: {
+    ...validPreview.summary,
+    accepted_files: 0,
+    parsed_rows: 2,
+    accepted_rows: 0,
+    failed_rows: 2,
+  },
 } satisfies BatchImportPreview
 
 const invalidPreview = {
@@ -238,6 +274,10 @@ function apiResponse(payload: unknown, status = 200): Response {
   } as unknown as Response
 }
 
+function requestUrl(callIndex: number): URL {
+  return new URL(String(fetchMock.mock.calls[callIndex]?.[0]), 'http://localhost')
+}
+
 function file(name: string, text: Promise<string> = Promise.resolve(csvText)): File {
   return {
     name,
@@ -284,6 +324,22 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
+describe('ingestion run lottery query', () => {
+  it('omits the lottery filter for ALL and sends each explicit internal enum', async () => {
+    fetchMock.mockResolvedValue(apiResponse(emptyRuns))
+
+    await listIngestionRuns()
+    expect(requestUrl(0).searchParams.has('lottery_type')).toBe(false)
+
+    for (const lotteryType of ['DAILY_539', 'BIG_LOTTO', 'POWER_LOTTO'] as const) {
+      await listIngestionRuns({ lotteryType })
+      expect(requestUrl(fetchMock.mock.calls.length - 1).searchParams.get('lottery_type')).toBe(
+        lotteryType,
+      )
+    }
+  })
+})
+
 describe('DataCenterPage batch ingestion', () => {
   it('renders explicit empty, audit, and disabled automation states', async () => {
     fetchMock.mockResolvedValue(apiResponse(emptyRuns))
@@ -297,6 +353,62 @@ describe('DataCenterPage batch ingestion', () => {
     expect(wrapper.text()).not.toContain('BIG_LOTTO')
     expect(wrapper.get('[data-testid="manual-sync"]').attributes('disabled')).toBeDefined()
     expect(wrapper.get('[data-testid="csv-file"]').attributes('multiple')).toBeDefined()
+    wrapper.unmount()
+  })
+
+  it('defaults history to ALL and prevents stale filtered runs from overwriting the latest selection', async () => {
+    const staleRuns = deferred<Response>()
+    const currentRuns = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockImplementationOnce(() => staleRuns.promise)
+      .mockImplementationOnce(() => currentRuns.promise)
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    expect(requestUrl(0).searchParams.has('lottery_type')).toBe(false)
+    const filter = wrapper.get('[data-testid="ingestion-run-filter"]')
+    await filter.setValue('BIG_LOTTO')
+    await flushPromises()
+    expect(requestUrl(1).searchParams.get('lottery_type')).toBe('BIG_LOTTO')
+
+    await filter.setValue('DAILY_539')
+    await flushPromises()
+    expect((fetchMock.mock.calls[1]?.[1] as RequestInit).signal?.aborted).toBe(true)
+    expect(requestUrl(2).searchParams.get('lottery_type')).toBe('DAILY_539')
+
+    staleRuns.resolve(apiResponse(populatedRuns))
+    await flushPromises()
+    expect(wrapper.text()).not.toContain(runRecord.run_id)
+
+    currentRuns.resolve(apiResponse(emptyRuns))
+    await flushPromises()
+    expect(wrapper.text()).toContain('No ingestion runs have been recorded')
+    wrapper.unmount()
+  })
+
+  it('renders every issue with member and row context while escaping issue text', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(issueRichPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('issues.zip')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    const details = wrapper.get('[data-testid="batch-issues-1"]')
+    expect(details.element.tagName).toBe('DETAILS')
+    expect(details.findAll('[data-testid^="batch-issue-1-"]')).toHaveLength(2)
+    expect(details.text()).toContain('INVALID_DRAW_DATE')
+    expect(details.text()).toContain('draw_date contains <img src=x onerror=alert(1)>.')
+    expect(details.text()).toContain('Member: member.csv')
+    expect(details.text()).toContain('Row 2')
+    expect(details.text()).toContain('MISSING_REQUIRED_VALUE')
+    expect(details.text()).toContain('Missing <tag> value.')
+    expect(wrapper.get('[data-testid="batch-first-issue-1"]').text()).toContain('INVALID_DRAW_DATE')
+    expect(wrapper.find('img').exists()).toBe(false)
     wrapper.unmount()
   })
 
@@ -328,6 +440,12 @@ describe('DataCenterPage batch ingestion', () => {
 
     expect(wrapper.get('[data-testid="batch-status"]').text()).toBe('PARTIAL_SUCCESS')
     expect(wrapper.text()).toContain(batchCommitSuccess.run_id)
+    expect(wrapper.get('[data-testid="batch-identity-summary"]').text()).toContain(
+      '1 committed chunks',
+    )
+    expect(wrapper.get('[data-testid="batch-identity-summary"]').text()).toContain(
+      '0 failed chunks',
+    )
     const previewBody = JSON.parse(
       String((fetchMock.mock.calls[1]?.[1] as RequestInit).body),
     ) as { files: Array<{ filename: string; content_base64: string }> }

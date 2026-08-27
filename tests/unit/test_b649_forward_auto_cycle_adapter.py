@@ -18,6 +18,7 @@ from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
 from lottolab.domain.draws import LotteryType
 from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths, initialize_schema
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteFutureDrawIdentityReader,
     SQLiteManualFutureDrawIdentitySupplementRepository,
 )
 from lottolab.infrastructure.pre_outcome_target_operational import (
@@ -369,16 +370,19 @@ def test_b649_due_target_outranks_later_future_target_and_future_only_remains_av
         draw_date="2099-01-03",
         scheduled_at="2099-01-03T12:30:00Z",
     )
+    as_of = datetime(2099, 1, 2, 13, tzinfo=UTC)
     adapter = B649ForwardAutoCycleAdapter(
         tmp_path / "operation",
         database=paths.database,
-        clock=lambda: datetime(2099, 1, 2, 13, tzinfo=UTC),
+        clock=lambda: as_of,
     )
 
     resolved = adapter.resolve_next_target()
-    future_only = adapter._resolve_canonical_future_target()
+    future_only = SQLiteFutureDrawIdentityReader(
+        paths
+    ).find_earliest_unpopulated_future(LotteryType.BIG_LOTTO, as_of)
 
     assert resolved is not None
     assert resolved.draw_number == "209900201"
     assert future_only is not None
-    assert future_only.draw_number == "209900202"
+    assert future_only.announcement.target.draw_number == "209900202"

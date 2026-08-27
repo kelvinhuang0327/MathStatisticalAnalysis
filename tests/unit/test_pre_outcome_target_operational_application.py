@@ -92,6 +92,7 @@ class _Reader:
         self._selections = selections
         self._exact = exact
         self.find_calls: list[tuple[LotteryType, datetime]] = []
+        self.due_calls: list[tuple[LotteryType, datetime]] = []
         self.get_calls: list[tuple[LotteryType, str]] = []
 
     def find_earliest_unpopulated_future(
@@ -102,6 +103,14 @@ class _Reader:
         index = min(len(self.find_calls), len(self._selections) - 1)
         self.find_calls.append((lottery_type, as_of))
         return self._selections[index]
+
+    def find_earliest_unpopulated_due(
+        self,
+        lottery_type: LotteryType,
+        as_of: datetime,
+    ) -> ScheduledDrawIdentityRecord | None:
+        self.due_calls.append((lottery_type, as_of))
+        return None
 
     def get_scheduled_draw(
         self,

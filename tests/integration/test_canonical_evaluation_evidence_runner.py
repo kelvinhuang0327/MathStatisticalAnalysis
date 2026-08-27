@@ -23,6 +23,7 @@ table before and after to prove the whole path stays read-only.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from datetime import UTC, date, datetime
 from fractions import Fraction
 from pathlib import Path
@@ -64,6 +65,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.interfaces.research import replay_research_session
 from lottolab.interfaces.research.replay_research_session import ReplayResearchSession
+from lottolab.research import canonical_evaluation_evidence_runner as runner_module
 from lottolab.research.base_method_evaluation import (
     AVG_MATCH_ID,
     WINDOW_SIZES,
@@ -701,5 +703,88 @@ def test_replay_returning_the_wrong_snapshot_count_fails_closed(
     with pytest.raises(
         CanonicalEvaluationEvidenceRunnerError,
         match=r"replay returned 9 snapshots for 10 targets",
+    ):
+        run_canonical_evaluation_evidence(_request(paths, dataset))
+
+
+# --------------------------------------------------------------------------
+# The runner's defensive V1B-contract assertions are load-bearing, not decorative
+#
+# These three guards exist so a future change to the materializer's contract
+# cannot silently reach a caller. A correct V1B never trips them, so nothing
+# else in this file would notice if they were deleted -- which is exactly why
+# each one is neutralised here directly.
+# --------------------------------------------------------------------------
+
+
+def _materializing(
+    documents: tuple[StrategyEvaluationEvidence, ...],
+) -> Callable[..., tuple[StrategyEvaluationEvidence, ...]]:
+    def _fixed(*args: object, **kwargs: object) -> tuple[StrategyEvaluationEvidence, ...]:
+        return documents
+
+    return _fixed
+
+
+def test_materialized_artifacts_out_of_window_order_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths, dataset = _seeded(tmp_path)
+    documents = _manual_composition(paths, dataset)[2]
+
+    monkeypatch.setattr(
+        runner_module,
+        "materialize_method_evaluation_evidence",
+        _materializing(tuple(reversed(documents))),
+    )
+
+    with pytest.raises(
+        CanonicalEvaluationEvidenceRunnerError,
+        match="is not the WINDOW_50 artifact the evaluator's window order requires",
+    ):
+        run_canonical_evaluation_evidence(_request(paths, dataset))
+
+
+def test_a_short_materialization_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    paths, dataset = _seeded(tmp_path)
+    documents = _manual_composition(paths, dataset)[2]
+
+    monkeypatch.setattr(
+        runner_module,
+        "materialize_method_evaluation_evidence",
+        _materializing(documents[:-1]),
+    )
+
+    with pytest.raises(
+        CanonicalEvaluationEvidenceRunnerError,
+        match="materialization returned 3 artifacts, expected 4",
+    ):
+        run_canonical_evaluation_evidence(_request(paths, dataset))
+
+
+def test_an_artifact_that_does_not_survive_a_canonical_round_trip_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Reload returns a different document than the bytes that were written."""
+
+    paths, dataset = _seeded(tmp_path)
+    documents = _manual_composition(paths, dataset)[2]
+    substitute = documents[1]
+    assert substitute.artifact_id != documents[0].artifact_id
+
+    class _AlwaysReloadsSomethingElse:
+        @staticmethod
+        def model_validate(value: object) -> StrategyEvaluationEvidence:
+            return substitute
+
+    monkeypatch.setattr(
+        runner_module, "StrategyEvaluationEvidence", _AlwaysReloadsSomethingElse
+    )
+
+    with pytest.raises(
+        CanonicalEvaluationEvidenceRunnerError,
+        match="WINDOW_50 artifact does not survive a canonical serialize/load round trip",
     ):
         run_canonical_evaluation_evidence(_request(paths, dataset))

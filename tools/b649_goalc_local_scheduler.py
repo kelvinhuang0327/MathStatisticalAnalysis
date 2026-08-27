@@ -22,13 +22,12 @@ import sys
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime
 from inspect import signature
 from pathlib import Path
 from typing import Protocol, cast
-from urllib.error import URLError
-from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.error import URLError  # noqa: F401  # pyright: ignore[reportUnusedImport]
+from urllib.request import Request
 from uuid import uuid4
 
 if __package__ in {None, ""}:
@@ -36,19 +35,23 @@ if __package__ in {None, ""}:
 
 from lottolab.application.draw_automation import DrawSyncRequest
 from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
+from lottolab.application.schedule_sync import (
+    OfficialScheduleSyncError,
+    OfficialScheduleUnavailableError,
+    SynchronizeOfficialSchedule,
+)
 from lottolab.application.use_cases.draw_automation import ScheduledDrawSync
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import IngestionRunStatus
-from lottolab.domain.pre_outcome_target import (
-    TargetAnnouncement,
-    TargetSourceProvenance,
-)
-from lottolab.domain.prospective_observer import ObservationTarget
+from lottolab.domain.pre_outcome_target import TargetAnnouncement
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
     CURRENT_SCHEMA_VERSION,
     LocalDataPaths,
+)
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteOfficialScheduleSyncRepository,
 )
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.pre_outcome_target_operational import (
@@ -60,13 +63,19 @@ from lottolab.infrastructure.pre_outcome_target_operational import (
     TargetAnnouncementSourceStatus,
 )
 from lottolab.infrastructure.taiwan_lottery_draw_provider import (
-    HEADERS as OFFICIAL_DRAW_HEADERS,
-)
-from lottolab.infrastructure.taiwan_lottery_draw_provider import (
     MAX_RESPONSE_BYTES as OFFICIAL_DRAW_MAX_RESPONSE_BYTES,
 )
 from lottolab.infrastructure.taiwan_lottery_draw_provider import (
     TaiwanLotteryDrawProvider,
+)
+from lottolab.infrastructure.taiwan_lottery_schedule_provider import (
+    HTTPS_TIMEOUT_SECONDS,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    SCHEDULE_GAME_CODE,  # noqa: F401  # pyright: ignore[reportUnusedImport]
+    SCHEDULE_MAX_RESPONSE_BYTES,
+    SCHEDULE_URL,
+    OfficialHttpsClient,
+    TaiwanLotteryScheduleProvider,
+    parse_official_b649_schedule,
 )
 from lottolab.interfaces.api.local_app import (
     DRAW_PROVIDER_SOURCE_ENV,
@@ -81,7 +90,6 @@ from tools.b649_operational_prediction_loop import (
     LOTTERY_TYPE,
     STRATEGY_STREAMS,
     TAIPEI,
-    TARGET_SCHEDULED_AT,
     PredictionTarget,
     StrategyStream,
     iter_prediction_files,
@@ -99,13 +107,9 @@ from tools.b649_pair_rule_forward_shadow import (
 TASK_VERSION = "B649_GOALC_LOCAL_LAUNCHD_R1"
 HEALTH_SCHEMA_VERSION = "b649-goalc-local-scheduler-health-v1"
 SCHEDULER_LABEL = "com.lottolab.b649-goalc-r1"
-SCHEDULE_URL = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/NextDrawDate"
-SCHEDULE_GAME_CODE = 5118
 START_INTERVAL_SECONDS = 300
 STALE_AFTER_SECONDS = 900
 EXPECTED_STREAM_COUNT = 11
-SCHEDULE_MAX_RESPONSE_BYTES = 1024 * 1024
-HTTPS_TIMEOUT_SECONDS = 15.0
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 SOURCE_WORKTREE = CANONICAL_REPOSITORY
@@ -124,15 +128,6 @@ STDOUT_PATH = SCHEDULER_ROOT / "launchd.stdout.log"
 STDERR_PATH = SCHEDULER_ROOT / "launchd.stderr.log"
 PLIST_PATH = Path.home() / "Library/LaunchAgents/com.lottolab.b649-goalc-r1.plist"
 
-_OFFICIAL_HTTPS_HOSTS = frozenset({"api.taiwanlottery.com", "www.taiwanlottery.com"})
-_DRAW_NUMBER = re.compile(r"[0-9]{1,32}", flags=re.ASCII)
-_STRICT_CHAIN_MARKERS = (
-    "authority key identifier",
-    "subject key identifier",
-    "basic constraints",
-    "key usage extension",
-)
-_NON_STRICT_CERT_MARKERS = ("hostname", "expired", "not yet valid")
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 _CLOEXEC = getattr(os, "O_CLOEXEC", 0)
 _NONBLOCK = getattr(os, "O_NONBLOCK", 0)
@@ -142,12 +137,7 @@ SourceHeadResolver = Callable[[Path], str]
 HttpsTransport = Callable[[Request, ssl.SSLContext, float, int], bytes]
 
 
-class GoalCSchedulerError(RuntimeError):
-    """Base class for fail-closed scheduler errors."""
-
-
-class OfficialScheduleUnavailableError(GoalCSchedulerError):
-    """The official schedule could not establish a future B649 target."""
+GoalCSchedulerError = OfficialScheduleSyncError
 
 
 class LocalSchedulerSafetyError(GoalCSchedulerError):
@@ -260,6 +250,13 @@ class ScheduleRefreshResult:
     inventory_count: int
     b649_targets: tuple[str, ...]
     strict_tls_fallback_used: bool
+    run_id: str | None = None
+    inserted_count: int = 0
+    skipped_count: int = 0
+    conflict_count: int = 0
+    exact_duplicate_count: int = 0
+    completed_count: int = 0
+    failed_count: int = 0
 
     def health_dict(self) -> dict[str, object]:
         return {
@@ -270,6 +267,13 @@ class ScheduleRefreshResult:
             "inventory_count": self.inventory_count,
             "b649_targets": list(self.b649_targets),
             "strict_tls_fallback_used": self.strict_tls_fallback_used,
+            "run_id": self.run_id,
+            "inserted_count": self.inserted_count,
+            "skipped_count": self.skipped_count,
+            "conflict_count": self.conflict_count,
+            "exact_duplicate_count": self.exact_duplicate_count,
+            "completed_count": self.completed_count,
+            "failed_count": self.failed_count,
         }
 
 
@@ -340,70 +344,6 @@ class SchedulerBackend(Protocol):
         target: PredictionTarget,
         inventory: PredictionInventory,
     ) -> PostDrawResult: ...
-
-
-class OfficialHttpsClient:
-    """Credential-free official-host HTTPS GET client with one narrow TLS retry.
-
-    The retry is available only for Python/OpenSSL strict-chain failures.  It
-    clears ``VERIFY_X509_STRICT`` and retains CA validation, certificate
-    requirements, and hostname verification.  Hostname and validity failures
-    never use the retry.
-    """
-
-    def __init__(
-        self,
-        *,
-        transport: HttpsTransport | None = None,
-        timeout_seconds: float = HTTPS_TIMEOUT_SECONDS,
-    ) -> None:
-        self._transport = _default_https_transport if transport is None else transport
-        self._timeout_seconds = timeout_seconds
-        self.strict_tls_fallback_used = False
-
-    def get(
-        self,
-        url: str,
-        *,
-        max_response_bytes: int,
-        headers: Mapping[str, str] | None = None,
-    ) -> bytes:
-        _validate_official_https_url(url)
-        request = Request(
-            url,
-            headers=dict(OFFICIAL_DRAW_HEADERS if headers is None else headers),
-            method="GET",
-        )
-        context = ssl.create_default_context()
-        _require_secure_tls_context(context)
-        try:
-            return self._transport(
-                request,
-                context,
-                self._timeout_seconds,
-                max_response_bytes,
-            )
-        except (ssl.SSLCertVerificationError, URLError) as exc:
-            verification_error = _certificate_verification_error(exc)
-            strict_flag = getattr(ssl, "VERIFY_X509_STRICT", 0)
-            if (
-                verification_error is None
-                or not strict_flag
-                or not context.verify_flags & strict_flag
-                or not _is_strict_chain_error(verification_error)
-            ):
-                raise
-
-        fallback = ssl.create_default_context()
-        fallback.verify_flags &= ~strict_flag
-        _require_secure_tls_context(fallback)
-        self.strict_tls_fallback_used = True
-        return self._transport(
-            request,
-            fallback,
-            self._timeout_seconds,
-            max_response_bytes,
-        )
 
 
 class AdvisoryProcessLock:
@@ -487,16 +427,40 @@ class ProductionSchedulerBackend:
     def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
         self._validate_environment()
         observed_utc = _as_utc(observed_at)
-        target = self.resolve_target()
-        targets = () if target is None else (target.draw_number,)
+        provider = TaiwanLotteryScheduleProvider(
+            https_client=self._https,
+            source_url=self._config.schedule_url,
+        )
+        paths = LocalDataPaths(
+            data_directory=self._config.data_root,
+            database=self._config.database,
+        )
+        try:
+            result = SynchronizeOfficialSchedule(
+                provider,
+                SQLiteOfficialScheduleSyncRepository(paths),
+            ).execute(observed_at=observed_utc)
+        except OfficialScheduleSyncError:
+            raise
+        except Exception as exc:
+            raise OfficialScheduleUnavailableError(
+                "official schedule synchronization is unavailable"
+            ) from exc
         return ScheduleRefreshResult(
-            status="DB_ONLY_NO_AUTO_SUPPLEMENT",
-            source_url=None,
-            source_payload_sha256=None,
-            observed_at=observed_utc,
-            inventory_count=len(targets),
-            b649_targets=targets,
-            strict_tls_fallback_used=False,
+            status="REFRESHED",
+            source_url=result.source_url,
+            source_payload_sha256=result.source_payload_sha256,
+            observed_at=result.observed_at,
+            inventory_count=result.total_count,
+            b649_targets=result.target_draw_numbers,
+            strict_tls_fallback_used=self._https.strict_tls_fallback_used,
+            run_id=result.run_id,
+            inserted_count=result.inserted_count,
+            skipped_count=result.skipped_count,
+            conflict_count=result.conflict_count,
+            exact_duplicate_count=result.exact_duplicate_count,
+            completed_count=result.completed_count,
+            failed_count=result.failed_count,
         )
 
     def resolve_target(self) -> PredictionTarget | None:
@@ -820,97 +784,6 @@ def refresh_official_schedule(
     )
 
 
-def parse_official_b649_schedule(
-    body: bytes,
-    *,
-    observed_at: datetime,
-    source_url: str = SCHEDULE_URL,
-) -> tuple[TargetAnnouncement, ...]:
-    """Validate the official next-draw response and return future B649 targets."""
-
-    observed_utc = _as_utc(observed_at)
-    _validate_official_https_url(source_url)
-    try:
-        decoded: object = json.loads(body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise OfficialScheduleUnavailableError(
-            "official schedule response is not valid UTF-8 JSON"
-        ) from exc
-    if not isinstance(decoded, dict):
-        raise OfficialScheduleUnavailableError("official schedule response must be an object")
-    payload = cast(dict[str, object], decoded)
-    if payload.get("rtCode") != 0:
-        raise OfficialScheduleUnavailableError("official schedule response reported an error")
-    content = payload.get("content")
-    if not isinstance(content, dict):
-        raise OfficialScheduleUnavailableError("official schedule content is missing")
-    rows = cast(dict[str, object], content).get("nextDrawDateList")
-    if not isinstance(rows, list):
-        raise OfficialScheduleUnavailableError("official schedule target list is missing")
-
-    payload_sha256 = hashlib.sha256(body).hexdigest()
-    scheduled_clock = datetime.fromisoformat(TARGET_SCHEDULED_AT).astimezone(TAIPEI).timetz()
-    announcements: list[TargetAnnouncement] = []
-    identities: set[str] = set()
-    for raw in cast(list[object], rows):
-        if not isinstance(raw, dict):
-            raise OfficialScheduleUnavailableError("official schedule row must be an object")
-        row = cast(dict[str, object], raw)
-        if row.get("gameCode") != SCHEDULE_GAME_CODE:
-            continue
-        draw_number_value = row.get("drawTerm")
-        if type(draw_number_value) not in {int, str}:
-            raise OfficialScheduleUnavailableError("B649 drawTerm is unavailable")
-        draw_number = str(draw_number_value)
-        if _DRAW_NUMBER.fullmatch(draw_number) is None:
-            raise OfficialScheduleUnavailableError("B649 drawTerm is not canonical")
-        draw_date_value = row.get("drawDate")
-        if type(draw_date_value) is not str or not re.fullmatch(
-            r"[0-9]{8}", draw_date_value, flags=re.ASCII
-        ):
-            raise OfficialScheduleUnavailableError("B649 drawDate is not canonical")
-        try:
-            draw_date = datetime.strptime(draw_date_value, "%Y%m%d").date()
-        except ValueError as exc:
-            raise OfficialScheduleUnavailableError("B649 drawDate is invalid") from exc
-        scheduled_local = datetime.combine(
-            draw_date,
-            time(
-                hour=scheduled_clock.hour,
-                minute=scheduled_clock.minute,
-                second=scheduled_clock.second,
-            ),
-            tzinfo=TAIPEI,
-        )
-        scheduled_at = scheduled_local.astimezone(UTC)
-        if scheduled_at <= observed_utc:
-            continue
-        if draw_number in identities:
-            raise OfficialScheduleUnavailableError("official B649 target is duplicated")
-        identities.add(draw_number)
-        announcements.append(
-            TargetAnnouncement(
-                target=ObservationTarget(
-                    lottery_type=LotteryType.BIG_LOTTO,
-                    draw_number=draw_number,
-                    draw_date=draw_date,
-                ),
-                schedule_timezone=SCHEDULE_TIMEZONE,
-                scheduled_at=scheduled_at,
-                source=TargetSourceProvenance(
-                    source_id=OFFICIAL_SCHEDULE_SOURCE_ID,
-                    source_version=OFFICIAL_SCHEDULE_SOURCE_VERSION,
-                    source_locator=source_url,
-                    source_sha256=payload_sha256,
-                    observed_at=observed_utc,
-                ),
-            )
-        )
-    if not announcements:
-        raise OfficialScheduleUnavailableError("official schedule has no future B649 target")
-    return tuple(sorted(announcements, key=_announcement_sort_key))
-
-
 def inspect_prediction_inventory(
     root: Path,
     target: PredictionTarget,
@@ -1058,12 +931,33 @@ def run_scheduler_cycle(
         )
         shadow_hook_name: str | None = None
         shadow_primary_status = "NOT_RUN"
+        cycle_warnings: list[str] = []
         try:
-            announcement = backend.refresh_schedule(started_at)
+            try:
+                announcement = backend.refresh_schedule(started_at)
+            except (
+                LocalSchedulerSafetyError,
+                SchedulerInvariantError,
+                SchedulerAlreadyRunning,
+            ):
+                raise
+            except OfficialScheduleSyncError as exc:
+                warning = f"OFFICIAL_SCHEDULE_SYNC_WARNING: {type(exc).__name__}: {exc}"
+                cycle_warnings.append(warning)
+                announcement = ScheduleRefreshResult(
+                    status="SYNC_WARNING_DB_FALLBACK",
+                    source_url=config.schedule_url,
+                    source_payload_sha256=None,
+                    observed_at=started_at,
+                    inventory_count=0,
+                    b649_targets=(),
+                    strict_tls_fallback_used=False,
+                )
             target = backend.resolve_target()
             if target is None:
                 raise OfficialScheduleUnavailableError(
                     "STOP_OFFICIAL_SCHEDULE_UNAVAILABLE: no target can be resolved"
+                    + (f"; {cycle_warnings[-1]}" if cycle_warnings else "")
                 )
             inventory = backend.inspect_predictions(target)
             decision_at = _as_utc(clock())
@@ -1165,6 +1059,7 @@ def run_scheduler_cycle(
                 "error_message": None,
                 "consecutive_failures": 0,
                 "pre_draw_incomplete_targets": incomplete,
+                "warnings": list(cycle_warnings),
             }
             _atomic_health_write(config.health_path, _primary_health_payload(terminal))
             lock.__exit__(None, None, None)
@@ -1192,6 +1087,7 @@ def run_scheduler_cycle(
                 "error_class": type(exc).__name__,
                 "error_message": str(exc),
                 "consecutive_failures": failures,
+                "warnings": list(cycle_warnings),
                 SHADOW_HEALTH_NAMESPACE: shadow_health_not_run(
                     "SKIPPED_PRIMARY_ERROR",
                     last_error=f"primary cycle: {type(exc).__name__}: {exc}",
@@ -1308,6 +1204,7 @@ def _base_health(
         "prediction_generation": None,
         "announcement": None,
         "official_sync": {"status": "NOT_RUN"},
+        "warnings": [],
         "outcome_status": "NOT_RUN",
         "scoring_status": "NOT_RUN",
         "reporting_status": "NOT_RUN",
@@ -1473,54 +1370,6 @@ def _is_official_b649_announcement(
         and announcement.source.source_id == OFFICIAL_SCHEDULE_SOURCE_ID
         and announcement.source.source_version == OFFICIAL_SCHEDULE_SOURCE_VERSION
         and announcement.source.source_locator == source_url
-    )
-
-
-def _validate_official_https_url(url: str) -> None:
-    parsed = urlsplit(url)
-    if (
-        parsed.scheme != "https"
-        or parsed.hostname not in _OFFICIAL_HTTPS_HOSTS
-        or parsed.username is not None
-        or parsed.password is not None
-        or parsed.port is not None
-        or parsed.fragment
-    ):
-        raise GoalCSchedulerError(
-            "official network access must use a credential-free approved HTTPS host"
-        )
-
-
-def _default_https_transport(
-    request: Request,
-    context: ssl.SSLContext,
-    timeout_seconds: float,
-    max_response_bytes: int,
-) -> bytes:
-    with urlopen(request, timeout=timeout_seconds, context=context) as response:
-        body = response.read(max_response_bytes + 1)
-    if len(body) > max_response_bytes:
-        raise GoalCSchedulerError("official HTTPS response exceeds the bounded size limit")
-    return body
-
-
-def _require_secure_tls_context(context: ssl.SSLContext) -> None:
-    if context.verify_mode is not ssl.CERT_REQUIRED or not context.check_hostname:
-        raise GoalCSchedulerError("TLS certificate and hostname verification must remain enabled")
-
-
-def _certificate_verification_error(
-    exc: ssl.SSLCertVerificationError | URLError,
-) -> ssl.SSLCertVerificationError | None:
-    if isinstance(exc, ssl.SSLCertVerificationError):
-        return exc
-    return exc.reason if isinstance(exc.reason, ssl.SSLCertVerificationError) else None
-
-
-def _is_strict_chain_error(exc: ssl.SSLCertVerificationError) -> bool:
-    message = str(exc).lower()
-    return any(marker in message for marker in _STRICT_CHAIN_MARKERS) and not any(
-        marker in message for marker in _NON_STRICT_CERT_MARKERS
     )
 
 

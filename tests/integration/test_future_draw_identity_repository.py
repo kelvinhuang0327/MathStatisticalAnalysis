@@ -20,6 +20,10 @@ from lottolab.application.future_draw_identity import (
     OwnerCertifiedFutureDrawIdentityInput,
     ScheduledDrawOutcomeState,
 )
+from lottolab.application.schedule_sync import (
+    CanonicalScheduleSyncConflictError,
+    OfficialScheduleFetchResult,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import IngestionItemDisposition, IngestionRunStatus
 from lottolab.domain.pre_outcome_target import TargetAnnouncement
@@ -41,12 +45,17 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
     SQLiteFutureDrawIdentityReader,
     SQLiteManualFutureDrawIdentitySupplementRepository,
+    SQLiteOfficialScheduleSyncRepository,
 )
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.pre_outcome_target_operational import (
     OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION,
     parse_owner_certified_future_draw_identity_input,
     select_owner_certified_future_draw_identity,
+)
+from lottolab.infrastructure.taiwan_lottery_schedule_provider import (
+    SCHEDULE_URL,
+    parse_official_b649_schedule,
 )
 
 _HEADER = "lottery_type,draw_number,draw_date,main_numbers,special_numbers,source"
@@ -185,6 +194,274 @@ def _schedule_row(paths: LocalDataPaths, draw_number: str) -> tuple[object, ...]
         ).fetchone()
     assert row is not None
     return tuple(row)
+
+
+def _official_schedule_body(*rows: tuple[str, str]) -> bytes:
+    return json.dumps(
+        {
+            "content": {
+                "nextDrawDateList": [
+                    {
+                        "drawDate": draw_date,
+                        "drawTerm": draw_number,
+                        "gameCode": 5118,
+                    }
+                    for draw_number, draw_date in rows
+                ]
+            },
+            "rtCode": 0,
+        },
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode()
+
+
+def _official_fetch(
+    body: bytes,
+    *,
+    observed_at: datetime = datetime(2099, 1, 1, tzinfo=UTC),
+) -> OfficialScheduleFetchResult:
+    announcements = parse_official_b649_schedule(
+        body,
+        observed_at=observed_at,
+        source_url=SCHEDULE_URL,
+    )
+    return OfficialScheduleFetchResult(
+        provider_id="TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
+        provider_version="taiwan-lottery-official-schedule-v1",
+        source_url=SCHEDULE_URL,
+        source_payload_sha256=hashlib.sha256(body).hexdigest(),
+        observed_at=observed_at,
+        announcements=announcements,
+    )
+
+
+def test_official_schedule_sync_inserts_explicit_identities_and_audits_batch(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    body = _official_schedule_body(
+        ("209900101", "20990102"),
+        ("209900102", "20990103"),
+    )
+
+    result = SQLiteOfficialScheduleSyncRepository(paths).apply_official_schedule_sync(
+        _official_fetch(body)
+    )
+
+    assert result.status is IngestionRunStatus.SUCCESS
+    assert result.target_draw_numbers == ("209900101", "209900102")
+    assert result.total_count == 2
+    assert result.inserted_count == 2
+    assert result.skipped_count == 0
+    assert result.conflict_count == 0
+    reader = SQLiteFutureDrawIdentityReader(paths)
+    for draw_number in result.target_draw_numbers:
+        record = reader.get_scheduled_draw(LotteryType.BIG_LOTTO, draw_number)
+        assert record is not None
+        assert record.outcome_state is ScheduledDrawOutcomeState.NOT_POPULATED
+    with open_database(paths, read_only=True) as connection:
+        audit = connection.execute(
+            """
+            SELECT r.operation_type, r.status, r.total_count, r.inserted_count,
+                   c.trigger, c.provider, c.fetched_count
+            FROM ingestion_runs AS r
+            INNER JOIN ingestion_run_context AS c ON c.ingestion_run_id = r.id
+            WHERE r.id = ?
+            """,
+            (result.run_id,),
+        ).fetchone()
+        items = connection.execute(
+            """
+            SELECT disposition, draw_number
+            FROM ingestion_items
+            WHERE ingestion_run_id = ?
+            ORDER BY source_row_number
+            """,
+            (result.run_id,),
+        ).fetchall()
+    assert audit == (
+        "OFFICIAL_SCHEDULE_SYNC",
+        "SUCCESS",
+        2,
+        2,
+        "OFFICIAL_SCHEDULE_SYNC",
+        "TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
+        2,
+    )
+    assert items == [("INSERTED", "209900101"), ("INSERTED", "209900102")]
+
+
+def test_official_schedule_sync_repeat_is_exact_audited_no_op_even_at_later_observation(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    body = _official_schedule_body(("209900110", "20990102"))
+    repository = SQLiteOfficialScheduleSyncRepository(paths)
+    first = repository.apply_official_schedule_sync(_official_fetch(body))
+    original = _schedule_row(paths, "209900110")
+
+    second = repository.apply_official_schedule_sync(
+        _official_fetch(body, observed_at=datetime(2099, 1, 1, 1, tzinfo=UTC))
+    )
+
+    assert second.status is IngestionRunStatus.SUCCESS
+    assert second.inserted_count == 0
+    assert second.skipped_count == 1
+    assert second.exact_duplicate_count == 1
+    assert second.completed_count == 0
+    assert _schedule_row(paths, "209900110") == original
+    with open_database(paths, read_only=True) as connection:
+        runs = connection.execute(
+            """
+            SELECT status, inserted_count, skipped_count
+            FROM ingestion_runs
+            WHERE operation_type = 'OFFICIAL_SCHEDULE_SYNC'
+            ORDER BY started_at, id
+            """
+        ).fetchall()
+    assert runs == [("SUCCESS", 1, 0), ("SUCCESS", 0, 1)]
+    assert first.run_id != second.run_id
+
+
+def test_official_schedule_sync_conflict_is_audited_without_mutating_schedule(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteOfficialScheduleSyncRepository(paths)
+    first_body = _official_schedule_body(("209900120", "20990102"))
+    repository.apply_official_schedule_sync(_official_fetch(first_body))
+    original = _schedule_row(paths, "209900120")
+
+    conflicting = _official_fetch(_official_schedule_body(("209900120", "20990103")))
+    with pytest.raises(CanonicalScheduleSyncConflictError) as raised:
+        repository.apply_official_schedule_sync(conflicting)
+
+    assert raised.value.result.status is IngestionRunStatus.FAILED
+    assert raised.value.result.conflict_count == 1
+    assert raised.value.result.failed_count == 0
+    assert _schedule_row(paths, "209900120") == original
+    with open_database(paths, read_only=True) as connection:
+        audit = connection.execute(
+            """
+            SELECT status, inserted_count, skipped_count, conflict_count, failed_count
+            FROM ingestion_runs
+            WHERE id = ?
+            """,
+            (raised.value.result.run_id,),
+        ).fetchone()
+        item = connection.execute(
+            """
+            SELECT disposition
+            FROM ingestion_items
+            WHERE ingestion_run_id = ?
+            """,
+            (raised.value.result.run_id,),
+        ).fetchone()
+    assert audit == ("FAILED", 0, 0, 1, 0)
+    assert item == ("CONFLICT",)
+
+
+def test_official_schedule_sync_batch_conflict_has_no_partial_schedule_writes(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteOfficialScheduleSyncRepository(paths)
+    repository.apply_official_schedule_sync(
+        _official_fetch(_official_schedule_body(("209900130", "20990102")))
+    )
+    original = _schedule_row(paths, "209900130")
+
+    conflicting_batch = _official_fetch(
+        _official_schedule_body(
+            ("209900130", "20990103"),
+            ("209900131", "20990104"),
+        )
+    )
+    with pytest.raises(CanonicalScheduleSyncConflictError) as raised:
+        repository.apply_official_schedule_sync(conflicting_batch)
+
+    assert raised.value.result.total_count == 2
+    assert raised.value.result.conflict_count == 1
+    assert raised.value.result.failed_count == 1
+    assert _schedule_row(paths, "209900130") == original
+    with open_database(paths, read_only=True) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM draw_schedules WHERE draw_number = '209900131'"
+        ).fetchone() == (0,)
+        items = connection.execute(
+            """
+            SELECT draw_number, disposition
+            FROM ingestion_items
+            WHERE ingestion_run_id = ?
+            ORDER BY source_row_number
+            """,
+            (raised.value.result.run_id,),
+        ).fetchall()
+    assert items == [("209900130", "CONFLICT"), ("209900131", "FAILED")]
+
+
+def test_official_schedule_sync_does_not_reintroduce_completed_draw_as_unresolved(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    _insert_completed_draw(paths, draw_number="209900140", draw_date="2099-01-02")
+
+    result = SQLiteOfficialScheduleSyncRepository(paths).apply_official_schedule_sync(
+        _official_fetch(_official_schedule_body(("209900140", "20990102")))
+    )
+
+    assert result.status is IngestionRunStatus.SUCCESS
+    assert result.inserted_count == 0
+    assert result.skipped_count == 1
+    assert result.exact_duplicate_count == 0
+    assert result.completed_count == 1
+    with open_database(paths, read_only=True) as connection:
+        assert connection.execute(
+            "SELECT COUNT(*) FROM draw_schedules WHERE draw_number = '209900140'"
+        ).fetchone() == (0,)
+
+
+def test_due_reader_prioritizes_due_identity_and_rolls_to_future_after_outcome(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    initialize_schema(paths)
+    writer = SQLiteManualFutureDrawIdentitySupplementRepository(paths)
+    reader = SQLiteFutureDrawIdentityReader(paths)
+    _commit_schedule(
+        writer,
+        draw_number="209900150",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T12:30:00Z",
+    )
+    _commit_schedule(
+        writer,
+        draw_number="209900151",
+        draw_date="2099-01-03",
+        scheduled_at="2099-01-03T12:30:00Z",
+    )
+    deadline = datetime(2099, 1, 2, 12, 30, tzinfo=UTC)
+
+    due = reader.find_earliest_unpopulated_due(LotteryType.BIG_LOTTO, deadline)
+    future = reader.find_earliest_unpopulated_future(
+        LotteryType.BIG_LOTTO,
+        datetime(2099, 1, 2, 12, 31, tzinfo=UTC),
+    )
+    assert due is not None
+    assert due.announcement.target.draw_number == "209900150"
+    assert future is not None
+    assert future.announcement.target.draw_number == "209900151"
+
+    _insert_completed_draw(paths, draw_number="209900150", draw_date="2099-01-02")
+
+    assert reader.find_earliest_unpopulated_due(LotteryType.BIG_LOTTO, deadline) is None
+    rolled = reader.find_earliest_unpopulated_future(
+        LotteryType.BIG_LOTTO,
+        datetime(2099, 1, 2, 12, 31, tzinfo=UTC),
+    )
+    assert rolled is not None
+    assert rolled.announcement.target.draw_number == "209900151"
 
 
 def test_future_schedule_has_no_outcome_and_state_is_derived_from_completed_draw(

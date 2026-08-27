@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import uuid
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime
 from urllib.parse import urlsplit
 
@@ -20,6 +21,12 @@ from lottolab.application.future_draw_identity import (
     ScheduledDrawOutcomeState,
     normalized_announcement_sha256,
 )
+from lottolab.application.schedule_sync import (
+    SCHEDULE_SYNC_PARSER_VERSION,
+    CanonicalScheduleSyncConflictError,
+    OfficialScheduleFetchResult,
+    OfficialScheduleSyncResult,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import (
     IngestionItemDisposition,
@@ -33,6 +40,7 @@ from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataError,
     LocalDataPaths,
     SchemaMigrationError,
+    initialize_schema,
     open_database,
     verify_schema_read_only,
 )
@@ -44,6 +52,7 @@ SCHEDULE_TIMEZONE = "Asia/Taipei"
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 _DRAW_NUMBER = re.compile(r"[0-9]{1,32}", flags=re.ASCII)
+_MAX_OFFICIAL_SCHEDULE_ANNOUNCEMENTS = 1024
 _OFFICIAL_SCHEDULE_HOSTS = frozenset(
     {"www.taiwanlottery.com", "api.taiwanlottery.com"}
 )
@@ -110,7 +119,6 @@ class SQLiteFutureDrawIdentityReader:
                           AND s.scheduled_at > ?
                           AND d.id IS NULL
                         ORDER BY s.scheduled_at ASC,
-                                 s.draw_date ASC,
                                  CAST(s.draw_number AS INTEGER) ASC,
                                  s.draw_number ASC
                         LIMIT 1
@@ -130,6 +138,162 @@ class SQLiteFutureDrawIdentityReader:
             raise FutureDrawIdentityUnavailableError(
                 "canonical future draw identity is unavailable"
             ) from exc
+
+    def find_earliest_unpopulated_due(
+        self,
+        lottery_type: LotteryType,
+        as_of: datetime,
+    ) -> ScheduledDrawIdentityRecord | None:
+        """Return the earliest explicit due schedule without a completed outcome."""
+
+        _require_lottery_type(lottery_type)
+        _require_utc(as_of, "as_of")
+        try:
+            if not verify_schema_read_only(self._paths):
+                return None
+            with open_database(self._paths, read_only=True) as connection:
+                _require_current_schema(connection)
+                connection.execute("BEGIN")
+                try:
+                    _reject_cross_table_date_mismatch(connection)
+                    row = connection.execute(
+                        """
+                        SELECT s.*, d.id AS outcome_draw_internal_id
+                        FROM draw_schedules AS s
+                        LEFT JOIN draws AS d
+                               ON d.lottery_type = s.lottery_type
+                              AND d.draw_number = s.draw_number
+                        WHERE s.lottery_type = ?
+                          AND s.scheduled_at <= ?
+                          AND d.id IS NULL
+                        ORDER BY s.scheduled_at ASC,
+                                 CAST(s.draw_number AS INTEGER) ASC,
+                                 s.draw_number ASC
+                        LIMIT 1
+                        """,
+                        (lottery_type.value, _format_utc(as_of)),
+                    ).fetchone()
+                finally:
+                    connection.rollback()
+            return None if row is None else _scheduled_record(row)
+        except (
+            LocalDataError,
+            SchemaMigrationError,
+            sqlite3.DatabaseError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise FutureDrawIdentityUnavailableError(
+                "canonical future draw identity is unavailable"
+            ) from exc
+
+
+@dataclass(frozen=True, slots=True)
+class _ScheduleDecision:
+    announcement: TargetAnnouncement
+    normalized_hash: str
+    disposition: IngestionItemDisposition
+    message: str
+
+
+class SQLiteOfficialScheduleSyncRepository:
+    """Atomically persist bounded official schedule identities and their audit."""
+
+    def __init__(self, paths: LocalDataPaths) -> None:
+        self._paths = paths
+
+    def apply_official_schedule_sync(
+        self,
+        fetched: OfficialScheduleFetchResult,
+    ) -> OfficialScheduleSyncResult:
+        run_id = str(uuid.uuid4())
+        decisions: tuple[_ScheduleDecision, ...] = ()
+        status = IngestionRunStatus.FAILED
+        try:
+            _validate_official_schedule_fetch(fetched)
+            timestamp = fetched.observed_at
+            initialize_schema(self._paths)
+            with open_database(self._paths) as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                try:
+                    decisions = _plan_schedule_decisions(connection, fetched)
+                    has_conflict = any(
+                        decision.disposition is IngestionItemDisposition.CONFLICT
+                        for decision in decisions
+                    )
+                    if has_conflict:
+                        decisions = tuple(
+                            replace(
+                                decision,
+                                disposition=(
+                                    IngestionItemDisposition.FAILED
+                                    if decision.disposition is IngestionItemDisposition.INSERTED
+                                    else decision.disposition
+                                ),
+                                message=(
+                                    "Batch rejected because another official schedule "
+                                    "identity conflicts."
+                                    if decision.disposition is IngestionItemDisposition.INSERTED
+                                    else decision.message
+                                ),
+                            )
+                            for decision in decisions
+                        )
+                    status = (
+                        IngestionRunStatus.FAILED
+                        if has_conflict
+                        else IngestionRunStatus.SUCCESS
+                    )
+                    _insert_schedule_sync_audit(
+                        connection,
+                        fetched=fetched,
+                        run_id=run_id,
+                        timestamp=timestamp,
+                        decisions=decisions,
+                        status=status,
+                        error_summary=(
+                            "Official schedule batch contains a canonical identity conflict."
+                            if has_conflict
+                            else None
+                        ),
+                    )
+                    if not has_conflict:
+                        for decision in decisions:
+                            if decision.disposition is IngestionItemDisposition.INSERTED:
+                                _insert_schedule(
+                                    connection,
+                                    announcement=decision.announcement,
+                                    normalized_hash=decision.normalized_hash,
+                                    run_id=run_id,
+                                    timestamp=timestamp,
+                                )
+                    connection.commit()
+                except BaseException:
+                    if connection.in_transaction:
+                        connection.rollback()
+                    raise
+        except CanonicalScheduleSyncConflictError:
+            raise
+        except (
+            LocalDataError,
+            SchemaMigrationError,
+            sqlite3.DatabaseError,
+            TypeError,
+            ValueError,
+        ) as exc:
+            raise FutureDrawIdentityUnavailableError(
+                "official schedule synchronization is unavailable"
+            ) from exc
+
+        result = _schedule_sync_result(
+            fetched,
+            run_id=run_id,
+            status=status,
+            decisions=decisions,
+        )
+        if status is IngestionRunStatus.FAILED:
+            raise CanonicalScheduleSyncConflictError(result)
+        return result
 
 
 class SQLiteManualFutureDrawIdentitySupplementRepository:
@@ -405,6 +569,358 @@ def _get_scheduled_draw(
     return None if row is None else _scheduled_record(row)
 
 
+def _validate_official_schedule_fetch(fetched: OfficialScheduleFetchResult) -> None:
+    if type(fetched) is not OfficialScheduleFetchResult:
+        raise ValueError("fetched must be an OfficialScheduleFetchResult")
+    if fetched.provider_id != OFFICIAL_SCHEDULE_SOURCE_ID:
+        raise ValueError("official schedule provider identity is not canonical")
+    if fetched.provider_version != OFFICIAL_SCHEDULE_SOURCE_VERSION:
+        raise ValueError("official schedule provider version is not canonical")
+    _validate_official_locator(fetched.source_url)
+    if len(fetched.announcements) > _MAX_OFFICIAL_SCHEDULE_ANNOUNCEMENTS:
+        raise ValueError("official schedule announcement batch exceeds the bounded limit")
+    for announcement in fetched.announcements:
+        if announcement.target.lottery_type is not LotteryType.BIG_LOTTO:
+            raise ValueError("official schedule synchronization supports BIG_LOTTO only")
+        if announcement.scheduled_at <= fetched.observed_at:
+            raise ValueError("official schedule synchronization cannot backfill due identities")
+        _validate_official_schedule_material(announcement)
+        source = announcement.source
+        if (
+            source.source_id != fetched.provider_id
+            or source.source_version != fetched.provider_version
+            or source.source_locator != fetched.source_url
+            or source.source_sha256 != fetched.source_payload_sha256
+            or source.observed_at != fetched.observed_at
+        ):
+            raise ValueError("official schedule announcement provenance is inconsistent")
+
+
+def _plan_schedule_decisions(
+    connection: sqlite3.Connection,
+    fetched: OfficialScheduleFetchResult,
+) -> tuple[_ScheduleDecision, ...]:
+    _reject_cross_table_date_mismatch(connection)
+    seen: dict[tuple[LotteryType, str], TargetAnnouncement] = {}
+    decisions: list[_ScheduleDecision] = []
+    for announcement in sorted(fetched.announcements, key=_schedule_sort_key):
+        key = (announcement.target.lottery_type, announcement.target.draw_number)
+        normalized_hash = normalized_announcement_sha256(announcement)
+        previous = seen.get(key)
+        if previous is not None:
+            if _same_schedule_material(previous, announcement):
+                decisions.append(
+                    _ScheduleDecision(
+                        announcement=announcement,
+                        normalized_hash=normalized_hash,
+                        disposition=IngestionItemDisposition.SKIPPED_DUPLICATE,
+                        message="Exact official schedule identity is duplicated in the batch.",
+                    )
+                )
+            else:
+                decisions.append(
+                    _ScheduleDecision(
+                        announcement=announcement,
+                        normalized_hash=normalized_hash,
+                        disposition=IngestionItemDisposition.CONFLICT,
+                        message="Official schedule batch contains conflicting identities.",
+                    )
+                )
+            continue
+        seen[key] = announcement
+
+        existing = _get_scheduled_draw(
+            connection,
+            announcement.target.lottery_type,
+            announcement.target.draw_number,
+        )
+        if existing is not None:
+            if _same_schedule_material(existing.announcement, announcement):
+                disposition = (
+                    IngestionItemDisposition.SKIPPED_COMPLETED
+                    if existing.outcome_state is ScheduledDrawOutcomeState.POPULATED
+                    else IngestionItemDisposition.SKIPPED_DUPLICATE
+                )
+                message = (
+                    "Completed official schedule identity remains authoritative."
+                    if disposition is IngestionItemDisposition.SKIPPED_COMPLETED
+                    else "Exact official schedule identity already exists."
+                )
+            else:
+                disposition = IngestionItemDisposition.CONFLICT
+                message = "Stored immutable schedule identity differs."
+        else:
+            completed_date = _completed_draw_date(connection, announcement.target)
+            if completed_date is not None:
+                if completed_date == announcement.target.draw_date:
+                    disposition = IngestionItemDisposition.SKIPPED_COMPLETED
+                    message = "Completed draw identity is not reintroduced as unresolved."
+                else:
+                    disposition = IngestionItemDisposition.CONFLICT
+                    message = "Completed draw date conflicts with the official schedule."
+            else:
+                disposition = IngestionItemDisposition.INSERTED
+                message = "Inserted explicit official future draw identity."
+        decisions.append(
+            _ScheduleDecision(
+                announcement=announcement,
+                normalized_hash=normalized_hash,
+                disposition=disposition,
+                message=message,
+            )
+        )
+    return tuple(decisions)
+
+
+def _same_schedule_material(
+    left: TargetAnnouncement,
+    right: TargetAnnouncement,
+) -> bool:
+    """Compare immutable schedule authority while allowing a later observation time."""
+
+    return (
+        left.target == right.target
+        and left.schedule_timezone == right.schedule_timezone
+        and left.scheduled_at == right.scheduled_at
+        and left.source.source_id == right.source.source_id
+        and left.source.source_version == right.source.source_version
+        and left.source.source_locator == right.source.source_locator
+        and left.source.source_sha256 == right.source.source_sha256
+    )
+
+
+def _schedule_sort_key(
+    announcement: TargetAnnouncement,
+) -> tuple[datetime, int, str]:
+    return (
+        announcement.scheduled_at,
+        int(announcement.target.draw_number),
+        announcement.target.draw_number,
+    )
+
+
+def _schedule_counts(
+    decisions: tuple[_ScheduleDecision, ...],
+) -> tuple[int, int, int, int, int, int]:
+    inserted_count = sum(
+        decision.disposition is IngestionItemDisposition.INSERTED for decision in decisions
+    )
+    skipped_count = sum(
+        decision.disposition
+        in {
+            IngestionItemDisposition.SKIPPED_DUPLICATE,
+            IngestionItemDisposition.SKIPPED_COMPLETED,
+        }
+        for decision in decisions
+    )
+    exact_duplicate_count = sum(
+        decision.disposition is IngestionItemDisposition.SKIPPED_DUPLICATE
+        for decision in decisions
+    )
+    completed_count = sum(
+        decision.disposition is IngestionItemDisposition.SKIPPED_COMPLETED
+        for decision in decisions
+    )
+    conflict_count = sum(
+        decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
+    )
+    failed_count = sum(
+        decision.disposition is IngestionItemDisposition.FAILED for decision in decisions
+    )
+    return (
+        inserted_count,
+        skipped_count,
+        exact_duplicate_count,
+        completed_count,
+        conflict_count,
+        failed_count,
+    )
+
+
+def _insert_schedule_sync_audit(
+    connection: sqlite3.Connection,
+    *,
+    fetched: OfficialScheduleFetchResult,
+    run_id: str,
+    timestamp: datetime,
+    decisions: tuple[_ScheduleDecision, ...],
+    status: IngestionRunStatus,
+    error_summary: str | None,
+) -> None:
+    ordered = tuple(
+        sorted(decisions, key=lambda decision: _schedule_sort_key(decision.announcement))
+    )
+    if not ordered:
+        raise ValueError("official schedule audit requires at least one decision")
+    (
+        inserted_count,
+        skipped_count,
+        _exact_duplicate_count,
+        _completed_count,
+        conflict_count,
+        failed_count,
+    ) = _schedule_counts(decisions)
+    dates = tuple(decision.announcement.target.draw_date for decision in ordered)
+    timestamp_text = _format_utc(timestamp)
+    connection.execute(
+        """
+        INSERT INTO ingestion_runs (
+            id, operation_type, status, lottery_type, source_filename,
+            source_sha256, parser_version, total_count, inserted_count,
+            skipped_count, conflict_count, failed_count, first_draw_number,
+            last_draw_number, started_at, completed_at, error_summary
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            run_id,
+            IngestionOperationType.OFFICIAL_SCHEDULE_SYNC.value,
+            status.value,
+            LotteryType.BIG_LOTTO.value,
+            fetched.source_url,
+            fetched.source_payload_sha256,
+            SCHEDULE_SYNC_PARSER_VERSION,
+            len(decisions),
+            inserted_count,
+            skipped_count,
+            conflict_count,
+            failed_count,
+            ordered[0].announcement.target.draw_number,
+            ordered[-1].announcement.target.draw_number,
+            timestamp_text,
+            timestamp_text,
+            error_summary,
+        ),
+    )
+    connection.execute(
+        """
+        INSERT INTO ingestion_run_context (
+            ingestion_run_id, trigger, provider, provider_version,
+            requested_start, requested_end, resolved_start, resolved_end,
+            fetched_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            run_id,
+            IngestionOperationType.OFFICIAL_SCHEDULE_SYNC.value,
+            fetched.provider_id,
+            fetched.provider_version,
+            min(dates).isoformat(),
+            max(dates).isoformat(),
+            min(dates).isoformat(),
+            max(dates).isoformat(),
+            len(decisions),
+        ),
+    )
+    for source_row_number, decision in enumerate(ordered, start=1):
+        connection.execute(
+            """
+            INSERT INTO ingestion_items (
+                ingestion_run_id, source_row_number, lottery_type, draw_number,
+                disposition, normalized_record_hash, message
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                run_id,
+                source_row_number,
+                decision.announcement.target.lottery_type.value,
+                decision.announcement.target.draw_number,
+                decision.disposition.value,
+                decision.normalized_hash,
+                decision.message,
+            ),
+        )
+
+
+def _insert_schedule(
+    connection: sqlite3.Connection,
+    *,
+    announcement: TargetAnnouncement,
+    normalized_hash: str,
+    run_id: str,
+    timestamp: datetime,
+) -> None:
+    target = announcement.target
+    connection.execute(
+        """
+        INSERT INTO draw_schedules (
+            lottery_type, draw_number, draw_date, scheduled_at,
+            schedule_timezone, source_id, source_version, source_locator,
+            source_payload_sha256, source_observed_at,
+            normalized_announcement_hash, ingestion_run_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """,
+        (
+            target.lottery_type.value,
+            target.draw_number,
+            target.draw_date.isoformat(),
+            _format_utc(announcement.scheduled_at),
+            announcement.schedule_timezone,
+            announcement.source.source_id,
+            announcement.source.source_version,
+            announcement.source.source_locator,
+            announcement.source.source_payload_sha256,
+            _format_utc(announcement.source.observed_at),
+            normalized_hash,
+            run_id,
+            _format_utc(timestamp),
+        ),
+    )
+
+
+def _completed_draw_date(
+    connection: sqlite3.Connection,
+    target: ObservationTarget,
+) -> date | None:
+    row = connection.execute(
+        """
+        SELECT draw_date
+        FROM draws
+        WHERE lottery_type = ? AND draw_number = ?
+        """,
+        (target.lottery_type.value, target.draw_number),
+    ).fetchone()
+    return None if row is None else _date_value(row[0], "completed draw date")
+
+
+def _schedule_sync_result(
+    fetched: OfficialScheduleFetchResult,
+    *,
+    run_id: str,
+    status: IngestionRunStatus,
+    decisions: tuple[_ScheduleDecision, ...],
+) -> OfficialScheduleSyncResult:
+    (
+        inserted_count,
+        skipped_count,
+        exact_duplicate_count,
+        completed_count,
+        conflict_count,
+        failed_count,
+    ) = _schedule_counts(decisions)
+    ordered = tuple(
+        sorted(decisions, key=lambda decision: _schedule_sort_key(decision.announcement))
+    )
+    return OfficialScheduleSyncResult(
+        run_id=run_id,
+        status=status,
+        provider_id=fetched.provider_id,
+        provider_version=fetched.provider_version,
+        source_url=fetched.source_url,
+        source_payload_sha256=fetched.source_payload_sha256,
+        observed_at=fetched.observed_at,
+        target_draw_numbers=tuple(
+            decision.announcement.target.draw_number for decision in ordered
+        ),
+        total_count=len(decisions),
+        inserted_count=inserted_count,
+        skipped_count=skipped_count,
+        exact_duplicate_count=exact_duplicate_count,
+        completed_count=completed_count,
+        conflict_count=conflict_count,
+        failed_count=failed_count,
+    )
+
+
 def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIdentityRecord:
     values = tuple(row)
     if len(values) not in {15, 16}:
@@ -533,14 +1049,24 @@ def _require_current_schema(connection: sqlite3.Connection) -> None:
 
 
 def _validate_official_locator(value: str) -> None:
-    parsed = urlsplit(value)
+    if type(value) is not str:
+        raise ValueError(
+            "source_locator must be a credential-free official Taiwan Lottery HTTPS URL"
+        )
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise ValueError(
+            "source_locator must be a credential-free official Taiwan Lottery HTTPS URL"
+        ) from exc
     if (
         len(value) > 2048
         or parsed.scheme != "https"
         or parsed.hostname not in _OFFICIAL_SCHEDULE_HOSTS
         or parsed.username is not None
         or parsed.password is not None
-        or parsed.port is not None
+        or port is not None
         or parsed.fragment
     ):
         raise ValueError(
@@ -609,4 +1135,5 @@ __all__ = [
     "MANUAL_FUTURE_DRAW_IDENTITY_PARSER_VERSION",
     "SQLiteFutureDrawIdentityReader",
     "SQLiteManualFutureDrawIdentitySupplementRepository",
+    "SQLiteOfficialScheduleSyncRepository",
 ]

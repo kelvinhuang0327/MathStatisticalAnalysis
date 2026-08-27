@@ -89,7 +89,7 @@ class B649ForwardAutoCycleAdapter:
             return self._target
         if self._target_resolver is not None:
             return self._target_resolver()
-        return self._resolve_canonical_future_target()
+        return self._resolve_canonical_due_or_future_target()
 
     def list_enabled_strategy_streams(self) -> tuple[StrategyStream, ...]:
         return tuple(stream for stream in self._streams if stream.enabled)
@@ -267,6 +267,35 @@ class B649ForwardAutoCycleAdapter:
             LotteryType.BIG_LOTTO,
             now.astimezone(UTC),
         )
+        if record is None:
+            return None
+        selected = record.announcement
+        return PredictionTarget(
+            lottery_type=LOTTERY_TYPE,
+            draw_number=selected.target.draw_number,
+            draw_date=selected.target.draw_date.isoformat(),
+            scheduled_at=selected.scheduled_at.astimezone(TAIPEI).isoformat(),
+        )
+
+    def _resolve_canonical_due_or_future_target(self) -> PredictionTarget | None:
+        now = self._clock()
+        if now.tzinfo is None or now.utcoffset() is None:
+            raise ValueError("clock must return a timezone-aware datetime")
+        paths = LocalDataPaths(
+            data_directory=self.database.parent,
+            database=self.database,
+        )
+        reader = SQLiteFutureDrawIdentityReader(paths)
+        as_of = now.astimezone(UTC)
+        record = reader.find_earliest_unpopulated_due(
+            LotteryType.BIG_LOTTO,
+            as_of,
+        )
+        if record is None:
+            record = reader.find_earliest_unpopulated_future(
+                LotteryType.BIG_LOTTO,
+                as_of,
+            )
         if record is None:
             return None
         selected = record.announcement

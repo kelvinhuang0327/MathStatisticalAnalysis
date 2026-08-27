@@ -347,3 +347,38 @@ def test_b649_canonical_earliest_future_outranks_later_unfinished_prediction(
         draw_date="2099-01-02",
         scheduled_at="2099-01-02T20:30:00+08:00",
     )
+
+
+def test_b649_due_target_outranks_later_future_target_and_future_only_remains_available(
+    tmp_path: Path,
+) -> None:
+    paths = LocalDataPaths(
+        data_directory=tmp_path / "canonical-data",
+        database=tmp_path / "canonical-data" / "lottolab.db",
+    )
+    initialize_schema(paths)
+    _supplement_future_identity(
+        paths,
+        draw_number="209900201",
+        draw_date="2099-01-02",
+        scheduled_at="2099-01-02T12:30:00Z",
+    )
+    _supplement_future_identity(
+        paths,
+        draw_number="209900202",
+        draw_date="2099-01-03",
+        scheduled_at="2099-01-03T12:30:00Z",
+    )
+    adapter = B649ForwardAutoCycleAdapter(
+        tmp_path / "operation",
+        database=paths.database,
+        clock=lambda: datetime(2099, 1, 2, 13, tzinfo=UTC),
+    )
+
+    resolved = adapter.resolve_next_target()
+    future_only = adapter._resolve_canonical_future_target()
+
+    assert resolved is not None
+    assert resolved.draw_number == "209900201"
+    assert future_only is not None
+    assert future_only.draw_number == "209900202"

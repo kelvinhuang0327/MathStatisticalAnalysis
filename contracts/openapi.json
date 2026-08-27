@@ -11359,6 +11359,7 @@
         "enum": [
           "INSERTED",
           "SKIPPED_DUPLICATE",
+          "SKIPPED_COMPLETED",
           "CONFLICT",
           "FAILED"
         ],
@@ -11449,6 +11450,7 @@
           "MISSING_DRAW_SCAN",
           "BOUNDED_BACKFILL",
           "SCHEDULED_SYNC",
+          "OFFICIAL_SCHEDULE_SYNC",
           "MANUAL_FUTURE_IDENTITY_SUPPLEMENT"
         ],
         "title": "IngestionOperationType",

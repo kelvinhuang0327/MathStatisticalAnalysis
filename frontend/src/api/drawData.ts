@@ -19,6 +19,7 @@ export type DrawRecord = DrawHistoryResponse['records'][number]
 export type IngestionRunPage =
   paths['/api/v1/ingestion-runs']['get']['responses'][200]['content']['application/json']
 export type IngestionRun = IngestionRunPage['records'][number]
+export type IngestionRunLotteryType = components['schemas']['LotteryType']
 export type IngestionRunDetail =
   paths['/api/v1/ingestion-runs/{run_id}']['get']['responses'][200]['content']['application/json']
 export type DrawSyncRequest = components['schemas']['DrawSyncRequestView']
@@ -70,6 +71,7 @@ export interface DrawHistoryQuery {
 }
 
 export interface IngestionRunQuery {
+  lotteryType?: IngestionRunLotteryType
   status?: 'RUNNING' | 'SUCCESS' | 'FAILED'
   operationType?: IngestionRun['operation_type']
   source?: string
@@ -234,10 +236,10 @@ export async function listIngestionRuns(
   signal?: AbortSignal,
 ): Promise<IngestionRunPage> {
   const parameters = new URLSearchParams({
-    lottery_type: 'BIG_LOTTO',
     page: String(query.page ?? 1),
     page_size: String(query.pageSize ?? 25),
   })
+  if (query.lotteryType) parameters.set('lottery_type', query.lotteryType)
   if (query.status) parameters.set('status', query.status)
   if (query.operationType) parameters.set('operation_type', query.operationType)
   if (query.source) parameters.set('source', query.source)

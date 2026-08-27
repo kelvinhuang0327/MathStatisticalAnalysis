@@ -11,6 +11,8 @@ import {
   type DrawSyncOperation,
   type DrawSyncResponse,
   type IngestionRun,
+  type IngestionRunLotteryType,
+  type IngestionRunQuery,
 } from '../../api/drawData'
 
 type FileStatus =
@@ -33,6 +35,7 @@ type CommitStatus =
   | 'CONFLICTED'
   | 'FAILED'
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
+type IngestionRunFilter = 'ALL' | IngestionRunLotteryType
 
 interface BatchFile {
   id: number
@@ -55,7 +58,9 @@ const batchConfirmed = ref(false)
 const previewBusy = ref(false)
 const commitBusy = ref(false)
 const lastBatchStatus = ref<BatchImportCommit['status'] | null>(null)
+const lastBatchResult = ref<BatchImportCommit | null>(null)
 const ingestionRuns = ref<IngestionRun[]>([])
+const ingestionRunFilter = ref<IngestionRunFilter>('ALL')
 const runsState = ref<LoadState>('loading')
 const runsMessage = ref('')
 const syncForm = reactive({ dateFrom: '', dateTo: '' })
@@ -144,6 +149,7 @@ async function previewAll(): Promise<void> {
   if (previewBusy.value) return
   previewBusy.value = true
   lastBatchStatus.value = null
+  lastBatchResult.value = null
   const entries = files.value.filter(
     (entry) => entry.contentBase64 && entry.commitStatus !== 'SUCCESS',
   )
@@ -187,6 +193,7 @@ async function commitFiles(entries: BatchFile[]): Promise<void> {
   if (!batchConfirmed.value || commitBusy.value || entries.length === 0) return
   commitBusy.value = true
   lastBatchStatus.value = null
+  lastBatchResult.value = null
   const controller = new AbortController()
   commitControllers.set(0, controller)
   const selection = selectionGeneration
@@ -219,6 +226,7 @@ async function commitFiles(entries: BatchFile[]): Promise<void> {
       controller.signal,
     )
     if (!isCurrentSelection(selection)) return
+    lastBatchResult.value = outcome.result
     lastBatchStatus.value = outcome.result?.status ?? 'FAILED'
     for (const entry of entries) {
       entry.result = outcome.result
@@ -255,6 +263,7 @@ function cancelBatch(clearInput = true): void {
   commitBusy.value = false
   batchConfirmed.value = false
   lastBatchStatus.value = null
+  lastBatchResult.value = null
   for (const entry of files.value) entry.contentBase64 = ''
   files.value = []
   if (clearInput && fileInput.value) fileInput.value.value = ''
@@ -302,7 +311,7 @@ async function loadIngestionRuns(): Promise<void> {
   runsState.value = 'loading'
   runsMessage.value = ''
   try {
-    const page = await listIngestionRuns({}, controller.signal)
+    const page = await listIngestionRuns(buildIngestionRunQuery(), controller.signal)
     if (unmounted || generation !== runsGeneration) return
     ingestionRuns.value = page.records
     runsState.value = page.records.length ? 'ready' : 'empty'
@@ -311,6 +320,16 @@ async function loadIngestionRuns(): Promise<void> {
     runsState.value = 'error'
     runsMessage.value = error instanceof Error ? error.message : 'Ingestion runs could not load.'
   }
+}
+
+function buildIngestionRunQuery(): IngestionRunQuery {
+  return ingestionRunFilter.value === 'ALL'
+    ? {}
+    : { lotteryType: ingestionRunFilter.value }
+}
+
+function reloadIngestionRuns(): void {
+  void loadIngestionRuns()
 }
 
 function isCurrentEntry(generation: number, entry: BatchFile): boolean {
@@ -350,11 +369,17 @@ function applyBatchPreview(
     else if (hasExcluded) entry.previewStatus = 'EXCLUDED'
     else if (hasInvalid) entry.previewStatus = 'INVALID'
     else entry.previewStatus = 'ERROR'
-    const firstIssue = entry.fileResults.flatMap((file) => file.issues)[0]
-    entry.error = firstIssue
-      ? `${firstIssue.code}: ${firstIssue.message}`
-      : fallbackMessage ?? ''
+    entry.error = firstIssueSummary(entry) || fallbackMessage || ''
   }
+}
+
+function firstIssueSummary(entry: BatchFile): string {
+  const firstIssue = entry.fileResults.flatMap((file) => file.issues)[0]
+  return firstIssue ? `${firstIssue.code}: ${firstIssue.message}` : ''
+}
+
+function entryIssueCount(entry: BatchFile): number {
+  return entry.fileResults.reduce((total, file) => total + file.issues.length, 0)
 }
 
 function resultsForEntry(
@@ -554,7 +579,43 @@ onBeforeUnmount(() => {
             <td><span class="status-badge">{{ entry.commitStatus }}</span></td>
             <td>
               <code>{{ displayRunIds(entry.result) }}</code>
-              <small v-if="entry.error" class="error-copy">{{ entry.error }}</small>
+              <small
+                v-if="entry.error"
+                :data-testid="`batch-first-issue-${entry.id}`"
+                class="error-copy"
+              >
+                {{ entry.error }}
+              </small>
+              <small
+                v-if="firstIssueSummary(entry) && firstIssueSummary(entry) !== entry.error"
+                :data-testid="`batch-first-issue-after-result-${entry.id}`"
+                class="error-copy"
+              >
+                {{ firstIssueSummary(entry) }}
+              </small>
+              <details
+                v-if="entryIssueCount(entry) > 0"
+                :data-testid="`batch-issues-${entry.id}`"
+                class="issue-details"
+              >
+                <summary>View {{ entryIssueCount(entry) }} issue{{ entryIssueCount(entry) === 1 ? '' : 's' }}</summary>
+                <template v-for="(fileResult, fileResultIndex) in entry.fileResults" :key="fileResult.source_locator">
+                  <div v-if="fileResult.issues.length" class="issue-group">
+                    <strong>{{ fileResult.source_locator }}</strong>
+                    <ul class="reason-list">
+                      <li
+                        v-for="(issue, issueIndex) in fileResult.issues"
+                        :key="`${fileResult.source_locator}-${issue.code}-${issue.row_number ?? 'file'}-${issueIndex}`"
+                        :data-testid="`batch-issue-${entry.id}-${fileResultIndex}-${issueIndex}`"
+                      >
+                        <span>{{ issue.code }}: {{ issue.message }}</span>
+                        <small v-if="issue.member_name !== null">Member: {{ issue.member_name }}</small>
+                        <small v-if="issue.row_number !== null">Row {{ issue.row_number }}</small>
+                      </li>
+                    </ul>
+                  </div>
+                </template>
+              </details>
             </td>
           </tr>
         </tbody>
@@ -593,6 +654,13 @@ onBeforeUnmount(() => {
       </div>
     </article>
 
+    <div v-if="lastBatchResult" class="state-panel" data-testid="batch-identity-summary">
+      <strong>Batch commit identity</strong>
+      <span>Run IDs: <code>{{ displayRunIds(lastBatchResult) }}</code></span>
+      <span>{{ lastBatchResult.committed_chunks }} committed chunks</span>
+      <span>{{ lastBatchResult.failed_chunks }} failed chunks</span>
+    </div>
+
     <article class="panel automation-panel" aria-labelledby="automation-title">
       <div class="panel__heading">
         <div>
@@ -619,7 +687,18 @@ onBeforeUnmount(() => {
     <section class="log-section" aria-labelledby="ingestion-log-title">
       <div class="section-heading">
         <div><p class="eyebrow">Append-only audit</p><h2 id="ingestion-log-title">Recent ingestion runs</h2></div>
-        <a class="button button--quiet" href="#/history">Open full history</a>
+        <div class="filter-actions">
+          <label>
+            <span>Lottery history</span>
+            <select v-model="ingestionRunFilter" data-testid="ingestion-run-filter" @change="reloadIngestionRuns">
+              <option value="ALL">ALL</option>
+              <option value="DAILY_539">Daily 539</option>
+              <option value="BIG_LOTTO">Big Lotto</option>
+              <option value="POWER_LOTTO">Power Lotto</option>
+            </select>
+          </label>
+          <a class="button button--quiet" href="#/history">Open full history</a>
+        </div>
       </div>
       <p v-if="runsState === 'loading'" class="state-panel">Loading ingestion runs…</p>
       <div v-else-if="runsState === 'error'" class="state-panel state-panel--error">
@@ -630,10 +709,11 @@ onBeforeUnmount(() => {
       <div v-else class="table-wrap">
         <table>
           <caption>Newest runs first</caption>
-          <thead><tr><th>Status</th><th>Trigger</th><th>Source</th><th>Counts</th><th>Range</th><th>Started</th></tr></thead>
+          <thead><tr><th>Status</th><th>Lottery</th><th>Trigger</th><th>Source</th><th>Counts</th><th>Range</th><th>Started</th></tr></thead>
           <tbody>
             <tr v-for="run in ingestionRuns" :key="run.run_id">
               <td><span class="status-badge">{{ run.status }}</span></td>
+              <td>{{ displayText(run.lottery_type) }}</td>
               <td>{{ run.trigger }}</td>
               <td>{{ run.provider ?? run.source_filename }}</td>
               <td>{{ run.fetched_count }} fetched · {{ run.inserted_count }} inserted · {{ run.skipped_count }} duplicate</td>

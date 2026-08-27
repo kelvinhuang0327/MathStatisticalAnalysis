@@ -20,6 +20,7 @@ from pydantic import ValidationError
 from lottolab.evidence.models import (
     ComparabilityDimensions,
     DatasetSnapshot,
+    ExactRational,
     MetricDefinition,
     RankingPolicy,
     RuleParameters,
@@ -481,3 +482,76 @@ def test_deepcopy_of_valid_documents_still_valid():
     # guards against a helper accidentally sharing mutable state across tests
     DatasetSnapshot.model_validate(copy.deepcopy(_dataset_snapshot_dict()))
     StrategyEvaluationEvidence.model_validate(copy.deepcopy(_evidence_dict()))
+
+
+# --------------------------------------------------------------------------
+# Ticket shape and exact rational values (V1B)
+# --------------------------------------------------------------------------
+
+
+def test_ticket_special_number_count_defaults_to_absent_and_falls_back():
+    binding = RuleParameters.model_validate(_rule_parameters())
+    assert binding.ticket_special_number_count is None
+    assert "ticket_special_number_count" not in binding.model_dump(
+        mode="json", exclude_none=True
+    )
+    assert binding.resolved_ticket_special_number_count == binding.special_number_count == 1
+
+
+def test_declared_ticket_special_number_count_overrides_the_draw_shape():
+    binding = RuleParameters.model_validate(
+        _rule_parameters(ticket_special_number_count=0)
+    )
+    assert binding.special_number_count == 1
+    assert binding.resolved_ticket_special_number_count == 0
+    assert binding.model_dump(mode="json")["ticket_special_number_count"] == 0
+
+
+def test_ticket_special_number_count_may_not_exceed_the_draw_shape():
+    with pytest.raises(ValidationError):
+        RuleParameters.model_validate(_rule_parameters(ticket_special_number_count=2))
+
+
+def test_negative_ticket_special_number_count_rejected():
+    with pytest.raises(ValidationError):
+        RuleParameters.model_validate(_rule_parameters(ticket_special_number_count=-1))
+
+
+def test_metric_result_accepts_a_decimal_or_an_exact_rational():
+    decimal_doc = StrategyEvaluationEvidence.model_validate(_evidence_with_metric_result())
+    assert decimal_doc.metric_results[0].value == "0.5000"
+
+    rational_doc = StrategyEvaluationEvidence.model_validate(
+        _evidence_with_metric_result(value={"numerator": 36, "denominator": 49})
+    )
+    value = rational_doc.metric_results[0].value
+    assert isinstance(value, ExactRational)
+    assert (value.numerator, value.denominator) == (36, 49)
+
+
+@pytest.mark.parametrize(
+    "bad_rational",
+    [
+        {"numerator": 72, "denominator": 98},
+        {"numerator": 1, "denominator": 0},
+        {"numerator": 1, "denominator": -2},
+        {"numerator": 0, "denominator": 5},
+        {"numerator": 1, "denominator": 2, "unexpected": 1},
+    ],
+)
+def test_non_canonical_exact_rationals_rejected(bad_rational: dict[str, int]):
+    with pytest.raises(ValidationError):
+        StrategyEvaluationEvidence.model_validate(
+            _evidence_with_metric_result(value=bad_rational)
+        )
+
+
+def test_not_computable_still_forbids_an_exact_rational_value():
+    with pytest.raises(ValidationError):
+        StrategyEvaluationEvidence.model_validate(
+            _evidence_with_metric_result(
+                value_status="NOT_COMPUTABLE",
+                value={"numerator": 1, "denominator": 2},
+                reason_code="NO_ELIGIBLE_DRAWS",
+            )
+        )

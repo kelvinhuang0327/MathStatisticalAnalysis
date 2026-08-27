@@ -20,6 +20,20 @@ from enum import StrEnum
 from fractions import Fraction
 from math import comb
 
+#: Semantic version of this module's *evaluator semantics* -- window selection,
+#: hit-tier and average-match formulas, the exact random references, the
+#: evaluable/insufficient thresholds, and the exact ``Fraction`` arithmetic that
+#: produces every value below.
+#:
+#: This is deliberately not a strategy's ``METHOD_VERSION``: two records for the
+#: same strategy and the same dataset are only meaningfully equal if the
+#: evaluator that produced them meant the same thing by "M3_PLUS". Evidence
+#: binds this identity so that a future change to any load-bearing semantic
+#: above is distinguishable in the artifact rather than silently reinterpreted.
+#: Bump it in the task that changes those semantics -- never for a refactor,
+#: comment, or type-only edit that leaves every computed value identical.
+BASE_METHOD_EVALUATOR_SEMANTIC_VERSION = "base_method_evaluation/1.0.0"
+
 MINIMUM_SUPPORTED_DRAWS = 30
 MINIMUM_EXPECTED_NULL_SUCCESSES = 5
 HIT_TIER_IDS: tuple[str, ...] = ("M1_PLUS", "M2_PLUS", "M3_PLUS", "M4_PLUS")
@@ -603,6 +617,7 @@ def evaluate_method(
 
 __all__ = [
     "AVG_MATCH_ID",
+    "BASE_METHOD_EVALUATOR_SEMANTIC_VERSION",
     "BIG_LOTTO_MATCH_CONTRACT",
     "HIT_TIER_IDS",
     "MINIMUM_EXPECTED_NULL_SUCCESSES",

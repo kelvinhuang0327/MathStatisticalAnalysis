@@ -399,6 +399,10 @@ def test_evidence_transitively_imports_no_sqlite_or_forbidden_layer() -> None:
         "lottolab.evidence.models",
         "lottolab.evidence.validator",
         "lottolab.evidence.comparability",
+        # Reaches lottolab.research, whose package siblings are not all
+        # layer-clean; pin the actual closure so that stays true by accident
+        # of neither import order nor future edits.
+        "lottolab.evidence.method_evaluation_materialization",
     ):
         imports = _transitive_imports(module)
         assert "sqlite3" not in imports, module

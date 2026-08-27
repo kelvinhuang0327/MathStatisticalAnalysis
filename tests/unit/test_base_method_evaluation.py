@@ -18,8 +18,10 @@ from lottolab.application.historical_success_random_baseline import (
     LEGAL_TICKET_COUNT,
     criterion_success_ticket_count,
 )
+from lottolab.research import base_method_evaluation
 from lottolab.research.base_method_evaluation import (
     AVG_MATCH_ID,
+    BASE_METHOD_EVALUATOR_SEMANTIC_VERSION,
     BIG_LOTTO_MATCH_CONTRACT,
     MINIMUM_EXPECTED_NULL_SUCCESSES,
     MINIMUM_SUPPORTED_DRAWS,
@@ -307,3 +309,14 @@ def test_fixed_exposure_uses_binomial_exact_baseline_method() -> None:
     record = evaluate_method(_TOY_CONTRACT, _toy_identity(2), history)
     m1 = record.windows[WindowKind.FULL_HISTORY].metrics["M1_PLUS"]
     assert m1.baseline_method is BaselineMethod.BINOMIAL_EXACT
+
+
+def test_evaluator_semantic_version_is_declared_and_distinct_from_strategy_versions():
+    """The evaluator's own semantics need an identity separate from any
+    strategy's METHOD_VERSION, or two records computed under different
+    evaluator meanings would be indistinguishable."""
+
+    assert isinstance(BASE_METHOD_EVALUATOR_SEMANTIC_VERSION, str)
+    assert BASE_METHOD_EVALUATOR_SEMANTIC_VERSION
+    assert BASE_METHOD_EVALUATOR_SEMANTIC_VERSION.startswith("base_method_evaluation/")
+    assert "BASE_METHOD_EVALUATOR_SEMANTIC_VERSION" in base_method_evaluation.__all__

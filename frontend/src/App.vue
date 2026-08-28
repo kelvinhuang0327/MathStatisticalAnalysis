@@ -5,6 +5,7 @@ import DataOperationsPage from './features/data-operations/DataOperationsPage.vu
 import HistoryPage from './features/history/HistoryPage.vue'
 import BestReplayPage from './features/best-replay/BestReplayPage.vue'
 import StrategyIntelligencePage from './features/strategy-intelligence/StrategyIntelligencePage.vue'
+import NextDrawRecommendationPage from './features/next-draw-recommendation/NextDrawRecommendationPage.vue'
 import B649ReplayPage from './features/b649-replay/B649ReplayPage.vue'
 import P638ReplayPage from './features/p638-replay/P638ReplayPage.vue'
 import T539ReplayPage from './features/t539-replay/T539ReplayPage.vue'
@@ -30,6 +31,7 @@ type Page =
   | 'draw-history'
   | 'best-replay'
   | 'strategy-intelligence'
+  | 'next-draw-recommendation'
   | 'strategies'
   | 'strategy-evidence'
   | 'historical-success-windows'
@@ -54,6 +56,7 @@ function pageFromHash(): Page {
   if (route === 'history' || route === 'draw-history') return route as Page
   if (route === 'best-replay') return 'best-replay'
   if (route === 'strategy-intelligence') return 'strategy-intelligence'
+  if (route === 'next-draw-recommendation') return 'next-draw-recommendation'
   if (route === 'strategies') return 'strategies'
   if (route === 'strategy-evidence') return 'strategy-evidence'
   if (route === 'historical-success-windows') return 'historical-success-windows'
@@ -78,6 +81,7 @@ const activeNavSection = computed(() => {
   if (p === 'history' || p === 'draw-history') return 'history'
   if (p === 'best-replay') return 'best-replay'
   if (p === 'strategy-intelligence' || p === 'strategies' || p === 'strategy-evidence' || p === 'historical-success-windows') return 'strategy-intelligence'
+  if (p === 'next-draw-recommendation') return 'next-draw-recommendation'
   if (p === 'b649-replay' || p === 'b649-multi-ticket-records' || p === 'b649-owner-ranking') return 'b649-replay'
   if (p === 'p638-replay' || p === 'p638-historical-replay' || p === 'p638-strategy-analysis') return 'p638-replay'
   if (p === 't539-replay' || p === 't539-strategy-analysis') return 't539-replay'
@@ -136,6 +140,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
           Strategy Intelligence
         </a>
         <a
+          href="#/next-draw-recommendation"
+          :aria-current="activeNavSection === 'next-draw-recommendation' ? 'page' : undefined"
+        >
+          Next Draw
+        </a>
+        <a
           href="#/b649-replay"
           :aria-current="activeNavSection === 'b649-replay' ? 'page' : undefined"
         >
@@ -169,6 +179,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <HistoryPage v-else-if="currentPage === 'history' || currentPage === 'draw-history'" />
       <BestReplayPage v-else-if="currentPage === 'best-replay'" />
       <StrategyIntelligencePage v-else-if="currentPage === 'strategy-intelligence'" />
+      <NextDrawRecommendationPage v-else-if="currentPage === 'next-draw-recommendation'" />
       <B649ReplayPage v-else-if="currentPage === 'b649-replay'" />
       <P638ReplayPage v-else-if="currentPage === 'p638-replay'" />
       <T539ReplayPage v-else-if="currentPage === 't539-replay'" />
@@ -196,6 +207,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         </template>
         <template v-else-if="activeNavSection === 'strategy-intelligence'">
           Strategy Intelligence presents descriptive quantitative metadata and evidence verification gates without prediction claims.
+        </template>
+        <template v-else-if="activeNavSection === 'next-draw-recommendation'">
+          Next Draw is a PREVIEW surface: tickets are generated from current causal history and are not bound or sealed to any future draw.
         </template>
         <template v-else-if="activeNavSection === 'b649-replay'">
           B649 historical records and rankings are descriptive research evidence only.

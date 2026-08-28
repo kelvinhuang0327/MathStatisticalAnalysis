@@ -5693,6 +5693,60 @@
           }
         }
       }
+    },
+    "/api/v1/next-draw-recommendation": {
+      "get": {
+        "tags": [
+          "next-draw-recommendation"
+        ],
+        "summary": "Get Next Draw Recommendation",
+        "operationId": "get_next_draw_recommendation_api_v1_next_draw_recommendation_get",
+        "parameters": [
+          {
+            "name": "native_ticket_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "description": "One of (1, 2, 3, 5, 10, 20).",
+              "title": "Native Ticket Count"
+            },
+            "description": "One of (1, 2, 3, 5, 10, 20)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextDrawRecommendationResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12237,6 +12291,85 @@
         ],
         "title": "MultiWindowSuccessWindowsResponse"
       },
+      "NextDrawRecommendationResponse": {
+        "properties": {
+          "ranking_policy_id": {
+            "type": "string",
+            "title": "Ranking Policy Id"
+          },
+          "recommendation_status": {
+            "type": "string",
+            "title": "Recommendation Status"
+          },
+          "target_binding": {
+            "type": "string",
+            "title": "Target Binding"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "availability": {
+            "type": "string",
+            "title": "Availability"
+          },
+          "total_candidate_count": {
+            "type": "integer",
+            "title": "Total Candidate Count"
+          },
+          "ranked": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationCandidateView"
+            },
+            "type": "array",
+            "title": "Ranked"
+          },
+          "excluded": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationExclusionView"
+            },
+            "type": "array",
+            "title": "Excluded"
+          },
+          "hit_tier_id": {
+            "type": "string",
+            "title": "Hit Tier Id"
+          },
+          "evidence_computation_status": {
+            "type": "string",
+            "title": "Evidence Computation Status"
+          },
+          "evidence_artifact_sha256": {
+            "type": "string",
+            "title": "Evidence Artifact Sha256"
+          },
+          "evidence_last_causal_draw_id": {
+            "type": "string",
+            "title": "Evidence Last Causal Draw Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ranking_policy_id",
+          "recommendation_status",
+          "target_binding",
+          "lottery_type",
+          "native_ticket_count",
+          "availability",
+          "total_candidate_count",
+          "ranked",
+          "excluded",
+          "hit_tier_id",
+          "evidence_computation_status",
+          "evidence_artifact_sha256",
+          "evidence_last_causal_draw_id"
+        ],
+        "title": "NextDrawRecommendationResponse"
+      },
       "NormalizedDrawPreviewView": {
         "properties": {
           "source_row_number": {
@@ -13567,6 +13700,171 @@
           "prize_amount"
         ],
         "title": "P638TicketView"
+      },
+      "RecommendationCandidateView": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_name": {
+            "type": "string",
+            "title": "Strategy Name"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "windows": {
+            "items": {
+              "$ref": "#/components/schemas/RecommendationWindowMetricView"
+            },
+            "type": "array",
+            "title": "Windows"
+          },
+          "cross_window_rank_sum": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cross Window Rank Sum"
+          },
+          "ticket_generation_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ticket Generation Status"
+          },
+          "tickets": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "type": "integer"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tickets"
+          },
+          "ticket_generation_detail": {
+            "type": "string",
+            "title": "Ticket Generation Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "strategy_id",
+          "strategy_name",
+          "native_ticket_count",
+          "windows",
+          "cross_window_rank_sum",
+          "ticket_generation_status",
+          "tickets",
+          "ticket_generation_detail"
+        ],
+        "title": "RecommendationCandidateView"
+      },
+      "RecommendationExclusionView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "reason",
+          "detail"
+        ],
+        "title": "RecommendationExclusionView"
+      },
+      "RecommendationWindowMetricView": {
+        "properties": {
+          "window_kind": {
+            "type": "string",
+            "title": "Window Kind"
+          },
+          "eligible_draw_count": {
+            "type": "integer",
+            "title": "Eligible Draw Count"
+          },
+          "window_complete": {
+            "type": "boolean",
+            "title": "Window Complete"
+          },
+          "observed_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Rate"
+          },
+          "random_baseline_rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Random Baseline Rate"
+          },
+          "delta_vs_random": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Delta Vs Random"
+          }
+        },
+        "type": "object",
+        "required": [
+          "window_kind",
+          "eligible_draw_count",
+          "window_complete",
+          "observed_rate",
+          "random_baseline_rate",
+          "delta_vs_random"
+        ],
+        "title": "RecommendationWindowMetricView"
       },
       "ReplayExecutionRequest": {
         "properties": {

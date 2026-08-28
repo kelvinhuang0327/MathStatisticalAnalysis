@@ -302,6 +302,7 @@ describe('App navigation', () => {
       'History',
       'Best Replay',
       'Strategy Intelligence',
+      'Next Draw',
       'B649 Replay',
       'P638 Replay',
       'T539 Replay',

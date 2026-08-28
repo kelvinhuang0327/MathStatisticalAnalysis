@@ -748,18 +748,22 @@ select:focus {
 .scope-card {
   display: grid;
   min-width: 180px;
+  max-width: 100%;
   padding: 16px 20px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   background: rgba(14, 20, 34, 0.85);
+  box-sizing: border-box;
 }
 
 .scope-card span,
 .scope-card small {
   color: var(--text-secondary);
-  font: 700 10px/1.2 var(--font-mono);
+  font: 700 10px/1.4 var(--font-mono);
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 
 .scope-card strong {
@@ -794,12 +798,14 @@ select:focus {
 
 .file-dropzone__content {
   flex: 1;
+  min-width: 0;
 }
 
 .file-dropzone__hint {
   margin: 8px 0 0;
   color: var(--text-secondary);
   font-size: 12px;
+  word-break: break-word;
 }
 
 .file-picker {
@@ -1108,6 +1114,13 @@ td code {
     width: calc(100% - 24px);
   }
 
+  .panel__heading,
+  .section-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
   .metrics-grid {
     grid-template-columns: 1fr;
   }
@@ -1119,6 +1132,7 @@ td code {
   .filter-actions {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
   }
 
   .filter-actions > * {
@@ -1127,5 +1141,23 @@ td code {
 
   .scope-card {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .section-header__actions {
+    width: 100%;
+  }
+
+  .file-dropzone {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+  }
+
+  .file-dropzone__content {
+    width: 100%;
+    min-width: 0;
   }
 }

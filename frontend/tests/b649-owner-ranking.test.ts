@@ -217,10 +217,10 @@ describe('B649OwnerRankingPage', () => {
     expect(wrapper.text()).toContain('4 Obs.')
     expect(wrapper.text()).toContain('0.19% cov')
     expect(wrapper.text()).toContain('6bet_ewma')
-    expect(wrapper.text()).toContain('20 注')
+    expect(wrapper.text()).toContain('20 Tickets')
     expect(wrapper.text()).toContain('2/20')
     expect(wrapper.get('[aria-label="B649 Owner Decision Matrix table"]').attributes('tabindex')).toBe('0')
-    expect(wrapper.text()).toContain('coverage、Obs.、delta 不隱藏')
+    expect(wrapper.text()).toContain('Coverage, Obs., and Delta fully disclosed')
     wrapper.unmount()
   })
 
@@ -230,15 +230,15 @@ describe('B649OwnerRankingPage', () => {
 
     const ticketTabs = wrapper.get('[role="tablist"]').findAll('button')
     await ticketTabs[3]?.trigger('click')
-    expect(wrapper.text()).toContain('Current view20 注')
+    expect(wrapper.text()).toContain('Current view20 Tickets')
     expect(wrapper.text()).toContain('covering_strategy_research')
     expect(wrapper.text()).toContain('10/20')
 
     const windowTabs = wrapper.get('.window-tabs').findAll('button')
     await windowTabs[3]?.trigger('click')
-    expect(wrapper.text()).toContain('50 · 短期觀察')
+    expect(wrapper.text()).toContain('50 · Short-Term Regime')
     expect(wrapper.text()).toContain('RECENT_MOVER')
-    expect(wrapper.text()).toContain('不存在跨票數 overall ranking')
+    expect(wrapper.text()).toContain('there is no cross-ticket overall ranking')
     wrapper.unmount()
   })
 
@@ -272,7 +272,7 @@ describe('B649OwnerRankingPage', () => {
     await flushPromises()
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(wrapper.text()).toContain('B649 R2 ranking projection 無法載入')
+    expect(wrapper.text()).toContain('B649 R2 ranking projection could not be loaded')
     expect(wrapper.text()).toContain('checksum-pinned B649 ranking projection is unavailable')
     wrapper.unmount()
   })

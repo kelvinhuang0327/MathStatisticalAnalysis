@@ -340,7 +340,7 @@ describe('App navigation', () => {
     window.location.hash = '#/b649-owner-ranking'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
-    expect(wrapper.text()).toContain('B649 R2 ranking projection 無法載入')
+    expect(wrapper.text()).toContain('B649 R2 ranking projection could not be loaded')
     expect(
       navigation.find('a[href="#/b649-replay"]').attributes('aria-current'),
     ).toBe('page')

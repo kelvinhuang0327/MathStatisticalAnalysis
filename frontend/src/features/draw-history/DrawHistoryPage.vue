@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 import {
   listDraws,
@@ -7,6 +7,8 @@ import {
   type DrawHistoryResponse,
 } from '../../api/drawData'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
+import { isOptionalIsoCalendarDate } from '../../utils/isoDate'
 
 type LoadState = 'loading' | 'ready' | 'empty' | 'error'
 
@@ -21,9 +23,15 @@ const query = reactive<DrawHistoryQuery>({
 const result = ref<DrawHistoryResponse | null>(null)
 const loadState = ref<LoadState>('loading')
 const errorMessage = ref('')
+const dateFiltersValid = computed(
+  () =>
+    isOptionalIsoCalendarDate(query.dateFrom) &&
+    isOptionalIsoCalendarDate(query.dateTo),
+)
 let requestController: AbortController | undefined
 
 async function loadHistory(): Promise<void> {
+  if (!dateFiltersValid.value) return
   requestController?.abort()
   requestController = new AbortController()
   loadState.value = 'loading'
@@ -41,6 +49,7 @@ async function loadHistory(): Promise<void> {
 }
 
 async function applyFilters(): Promise<void> {
+  if (!dateFiltersValid.value) return
   query.page = 1
   await loadHistory()
 }
@@ -73,7 +82,7 @@ function displayText(value: unknown): string {
 
 function formatTimestamp(value: string): string {
   const parsed = new Date(value)
-  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString()
+  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('en-US')
 }
 
 function isAbort(error: unknown): boolean {
@@ -115,15 +124,15 @@ onBeforeUnmount(() => requestController?.abort())
         </label>
         <label>
           <span>Date from</span>
-          <input v-model="query.dateFrom" name="date-from" type="date" />
+          <input v-model="query.dateFrom" name="date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
         </label>
         <label>
           <span>Date to</span>
-          <input v-model="query.dateTo" name="date-to" type="date" />
+          <input v-model="query.dateTo" name="date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
         </label>
       </div>
       <div class="filter-actions">
-        <button class="button button--primary" type="submit">Apply filters</button>
+        <button class="button button--primary" type="submit" :disabled="!dateFiltersValid">Apply filters</button>
         <button class="button button--quiet" type="button" @click="resetQuery">Reset query</button>
       </div>
     </form>
@@ -169,10 +178,26 @@ onBeforeUnmount(() => requestController?.abort())
             <td>{{ record.draw_date }}</td>
             <td>
               <span class="number-chips">
-                <span v-for="number in record.main_numbers" :key="number">{{ number }}</span>
+                <LotteryNumberBall
+                  v-for="number in record.main_numbers"
+                  :key="number"
+                  :value="number"
+                  variant="main"
+                  size="sm"
+                />
               </span>
             </td>
-            <td><span class="number-chip number-chip--special">{{ record.special_numbers.join(' · ') }}</span></td>
+            <td>
+              <span class="number-chips">
+                <LotteryNumberBall
+                  v-for="sp in record.special_numbers"
+                  :key="sp"
+                  :value="sp"
+                  variant="special"
+                  size="sm"
+                />
+              </span>
+            </td>
             <td>
               <strong>{{ displayText(record.source_name) }}</strong>
               <small>{{ displayText(record.source_reference) }}</small>

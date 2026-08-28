@@ -29,10 +29,10 @@ const hoveredPoint = ref<{
 
 // Color palette for multiple series
 const SERIES_COLORS = [
-  '#38bdf8', // Cyan
-  '#818cf8', // Indigo
+  '#60a5fa', // Blue
+  '#a78bfa', // Violet
   '#f472b6', // Pink
-  '#34d399', // Emerald
+  '#fbbf24', // Amber
 ]
 
 // Filter series with at least 1 point with valid yValue
@@ -300,9 +300,10 @@ const yAxisTicks = computed(() => {
 <style scoped>
 .replay-trend-view {
   width: 100%;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  min-width: 0;
+  background: var(--bg-card, rgba(22, 18, 40, 0.78));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-xl, 20px);
   padding: 1.5rem;
 }
 
@@ -319,7 +320,7 @@ const yAxisTicks = computed(() => {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--color-gray-100, #f1f5f9);
+  color: var(--text-primary, #f1f5f9);
 }
 
 .chart-subtitle {
@@ -331,9 +332,9 @@ const yAxisTicks = computed(() => {
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(9, 7, 20, 0.5);
   padding: 0.5rem 0.85rem;
-  border-radius: 6px;
+  border-radius: var(--radius-md, 10px);
 }
 
 .legend-item {
@@ -341,7 +342,7 @@ const yAxisTicks = computed(() => {
   align-items: center;
   gap: 0.4rem;
   font-size: 0.85rem;
-  color: var(--color-gray-200, #e2e8f0);
+  color: var(--text-secondary, #e2e8f0);
 }
 
 .legend-swatch {
@@ -367,7 +368,7 @@ const yAxisTicks = computed(() => {
 }
 
 .axis-text {
-  fill: var(--color-gray-400, #94a3b8);
+  fill: var(--text-secondary, #94a3b8);
   font-size: 11px;
 }
 
@@ -379,7 +380,7 @@ const yAxisTicks = computed(() => {
 
 .series-point {
   cursor: pointer;
-  stroke: #0f172a;
+  stroke: #120e24;
   stroke-width: 2;
   transition: r 0.15s ease;
 }
@@ -391,12 +392,12 @@ const yAxisTicks = computed(() => {
 .chart-tooltip {
   position: absolute;
   transform: translate(-50%, -120%);
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--bg-tertiary, #191432);
+  border: 1px solid var(--border-hover, rgba(192, 132, 252, 0.35));
   border-radius: 6px;
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
-  color: #fff;
+  color: var(--text-primary, #fff);
   pointer-events: none;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
@@ -407,17 +408,17 @@ const yAxisTicks = computed(() => {
 }
 
 .tooltip-val {
-  color: var(--color-cyan-300, #67e8f9);
+  color: #bfdbfe;
 }
 
 .trend-loading,
 .trend-empty {
   padding: 3rem 1rem;
   text-align: center;
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
 }
 
 .text-muted {
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
 }
 </style>

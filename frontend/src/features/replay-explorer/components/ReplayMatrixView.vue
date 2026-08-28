@@ -162,9 +162,10 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 <style scoped>
 .replay-matrix-view {
   width: 100%;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  min-width: 0;
+  background: var(--bg-card, rgba(22, 18, 40, 0.78));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-xl, 20px);
   padding: 1.25rem;
 }
 
@@ -181,7 +182,7 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
   margin: 0;
   font-size: 1.1rem;
   font-weight: 600;
-  color: var(--color-gray-100, #f1f5f9);
+  color: var(--text-primary, #f1f5f9);
 }
 
 .matrix-subtitle {
@@ -194,7 +195,7 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
   align-items: center;
   gap: 1rem;
   font-size: 0.8rem;
-  color: var(--color-gray-300, #cbd5e1);
+  color: var(--text-secondary, #cbd5e1);
 }
 
 .legend-item {
@@ -210,19 +211,20 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 }
 
 .legend-dot--available {
-  background: var(--color-cyan-400, #38bdf8);
+  background: var(--primary-color, #a855f7);
+  box-shadow: 0 0 8px var(--primary-color, #a855f7);
 }
 
 .legend-dot--unavailable {
-  background: var(--color-gray-600, #475569);
+  background: var(--text-tertiary, #64748b);
 }
 
 .matrix-scroll-container {
   width: 100%;
   overflow-x: auto;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  background: rgba(10, 14, 26, 0.7);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-lg, 14px);
+  background: rgba(9, 7, 20, 0.72);
 }
 
 .matrix-table {
@@ -235,7 +237,7 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 .matrix-table th,
 .matrix-table td {
   padding: 0.6rem 0.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
 }
 
 .th--strategy-fixed,
@@ -243,7 +245,7 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #111827;
+  background: #17122e;
   text-align: left;
   min-width: 220px;
   max-width: 260px;
@@ -253,18 +255,18 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 .th--ticket-col {
   min-width: 60px;
   font-weight: 600;
-  color: var(--color-gray-300, #cbd5e1);
+  color: var(--text-secondary, #cbd5e1);
 }
 
 .th--ticket-unavailable {
-  color: var(--color-gray-500, #64748b);
+  color: var(--text-tertiary, #64748b);
   background: rgba(0, 0, 0, 0.15);
 }
 
 .col-unavailable-tag {
   display: block;
   font-size: 0.65rem;
-  color: var(--color-gray-500, #64748b);
+  color: var(--text-tertiary, #64748b);
   font-weight: normal;
 }
 
@@ -274,7 +276,7 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 }
 
 .strategy-name {
-  color: var(--color-gray-100, #f1f5f9);
+  color: var(--text-primary, #f1f5f9);
   font-size: 0.85rem;
   word-break: break-word;
 }
@@ -289,7 +291,7 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 }
 
 .cell--unavailable {
-  background: rgba(15, 23, 42, 0.3);
+  background: rgba(9, 7, 20, 0.42);
 }
 
 .cell-content-btn {
@@ -300,17 +302,17 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
   width: 100%;
   height: 100%;
   padding: 0.2rem;
-  background: rgba(6, 182, 212, 0.1);
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(124, 58, 237, 0.38);
+  border-radius: var(--radius-sm, 6px);
   cursor: pointer;
-  color: var(--color-cyan-300, #67e8f9);
+  color: #bfdbfe;
   transition: all 0.15s ease;
 }
 
 .cell-content-btn:hover {
-  background: rgba(6, 182, 212, 0.2);
-  border-color: rgba(6, 182, 212, 0.5);
+  background: rgba(168, 85, 247, 0.22);
+  border-color: var(--border-hover, rgba(192, 132, 252, 0.35));
   transform: translateY(-1px);
 }
 
@@ -321,33 +323,33 @@ function getItem(row: StrategyMatrixRow, count: TicketCount): ReplayExplorerItem
 
 .cell-rank {
   font-size: 0.7rem;
-  color: var(--color-indigo-300, #a5b4fc);
+  color: #c4b5fd;
 }
 
 .cell-unavailable-block {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--color-gray-600, #475569);
+  color: var(--text-tertiary, #475569);
   font-size: 0.8rem;
 }
 
 .cell-na {
-  color: var(--color-gray-600, #475569);
+  color: var(--text-tertiary, #475569);
 }
 
 .cell-empty {
-  color: var(--color-gray-500, #64748b);
+  color: var(--text-tertiary, #64748b);
 }
 
 .loading-cell,
 .empty-cell {
   padding: 2rem;
   text-align: center;
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
 }
 
 .text-muted {
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
 }
 </style>

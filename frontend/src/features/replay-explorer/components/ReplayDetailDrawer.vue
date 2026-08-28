@@ -2,7 +2,19 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 
 import StatusBadge from '../../../components/StatusBadge.vue'
+import LotteryNumberBall from '../../../components/LotteryNumberBall.vue'
 import type { GameCode, ReplayExplorerAdapter, ReplayExplorerItem, TargetDetailRecord } from '../types'
+
+function isNumberHit(num: number, actualNumbers: number[] | { zone1: number[]; zone2?: number }): boolean {
+  if (Array.isArray(actualNumbers)) {
+    return actualNumbers.includes(num)
+  }
+  return actualNumbers.zone1 ? actualNumbers.zone1.includes(num) : false
+}
+
+function isZone2Hit(value: number, actualNumbers: number[] | { zone1: number[]; zone2?: number }): boolean {
+  return !Array.isArray(actualNumbers) && actualNumbers.zone2 === value
+}
 
 const props = defineProps<{
   isOpen: boolean
@@ -244,26 +256,64 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
                   <td>
                     <template v-if="Array.isArray(t.predictedNumbers)">
                       <span class="number-chips">
-                        <span v-for="(n, idx) in t.predictedNumbers" :key="idx" class="num-chip">{{ n }}</span>
+                        <LotteryNumberBall
+                          v-for="(n, idx) in t.predictedNumbers"
+                          :key="idx"
+                          :value="n"
+                          :variant="isNumberHit(n, t.actualNumbers) ? 'hit' : 'miss'"
+                          size="sm"
+                        />
                       </span>
                     </template>
                     <template v-else>
                       <span class="number-chips">
-                        <span v-for="(n, idx) in t.predictedNumbers.zone1" :key="idx" class="num-chip">{{ n }}</span>
-                        <span v-if="t.predictedNumbers.zone2" class="num-chip num-chip--special">Z2: {{ t.predictedNumbers.zone2 }}</span>
+                        <LotteryNumberBall
+                          v-for="(n, idx) in t.predictedNumbers.zone1"
+                          :key="idx"
+                          :value="n"
+                          :variant="isNumberHit(n, t.actualNumbers) ? 'hit' : 'miss'"
+                          size="sm"
+                        />
+                        <LotteryNumberBall
+                          v-if="t.predictedNumbers.zone2"
+                          :value="t.predictedNumbers.zone2"
+                          :variant="isZone2Hit(t.predictedNumbers.zone2, t.actualNumbers) ? 'hit' : 'miss'"
+                          :is-special="true"
+                          subtext="Z2"
+                          size="sm"
+                        />
                       </span>
                     </template>
                   </td>
                   <td>
                     <template v-if="Array.isArray(t.actualNumbers)">
                       <span class="number-chips">
-                        <span v-for="(n, idx) in t.actualNumbers" :key="idx" class="num-chip num-chip--actual">{{ n }}</span>
+                        <LotteryNumberBall
+                          v-for="(n, idx) in t.actualNumbers"
+                          :key="idx"
+                          :value="n"
+                          variant="main"
+                          size="sm"
+                        />
                       </span>
                     </template>
                     <template v-else>
                       <span class="number-chips">
-                        <span v-for="(n, idx) in t.actualNumbers.zone1" :key="idx" class="num-chip num-chip--actual">{{ n }}</span>
-                        <span v-if="t.actualNumbers.zone2" class="num-chip num-chip--special">Z2: {{ t.actualNumbers.zone2 }}</span>
+                        <LotteryNumberBall
+                          v-for="(n, idx) in t.actualNumbers.zone1"
+                          :key="idx"
+                          :value="n"
+                          variant="main"
+                          size="sm"
+                        />
+                        <LotteryNumberBall
+                          v-if="t.actualNumbers.zone2"
+                          :value="t.actualNumbers.zone2"
+                          variant="special"
+                          :is-special="true"
+                          subtext="Z2"
+                          size="sm"
+                        />
                       </span>
                     </template>
                   </td>
@@ -313,8 +363,8 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
+  background: rgba(5, 3, 14, 0.78);
+  backdrop-filter: blur(8px);
   z-index: 1000;
   display: flex;
   justify-content: flex-end;
@@ -324,28 +374,28 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
   width: 100%;
   max-width: 640px;
   height: 100%;
-  background: #0f172a;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--bg-secondary, #120e24);
+  border-left: 1px solid var(--border-hover, rgba(192, 132, 252, 0.35));
   display: flex;
   flex-direction: column;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.5);
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.65), -4px 0 22px rgba(168, 85, 247, 0.16);
   overflow: hidden;
 }
 
 .drawer-header {
   padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  background: #111827;
+  background: linear-gradient(135deg, rgba(42, 28, 70, 0.92), rgba(22, 18, 40, 0.96));
 }
 
 .game-badge {
   display: inline-block;
   font-size: 0.75rem;
   font-weight: 600;
-  color: var(--color-cyan-400, #38bdf8);
+  color: var(--text-accent, #c084fc);
   margin-bottom: 0.25rem;
 }
 
@@ -353,7 +403,7 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
   margin: 0;
   font-size: 1.25rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-primary, #f8fafc);
   word-break: break-word;
 }
 
@@ -362,25 +412,25 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
   gap: 0.75rem;
   margin-top: 0.4rem;
   font-size: 0.8rem;
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
   flex-wrap: wrap;
 }
 
 .meta-ticket {
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--color-cyan-300, #67e8f9);
+  background: rgba(168, 85, 247, 0.2);
+  color: #e9d5ff;
   padding: 0.1rem 0.4rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 .close-button {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-gray-300, #cbd5e1);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  color: var(--text-secondary, #cbd5e1);
   font-size: 1rem;
   width: 32px;
   height: 32px;
-  border-radius: 6px;
+  border-radius: var(--radius-md, 10px);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -389,7 +439,8 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .close-button:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(168, 85, 247, 0.22);
+  border-color: var(--border-hover, rgba(192, 132, 252, 0.35));
   color: #fff;
 }
 
@@ -402,9 +453,9 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .evidence-box {
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
+  background: var(--bg-card, rgba(22, 18, 40, 0.78));
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-lg, 14px);
   padding: 1rem;
 }
 
@@ -418,7 +469,7 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 .rank-tag {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--color-indigo-300, #a5b4fc);
+  color: #c4b5fd;
 }
 
 .evidence-notes {
@@ -434,9 +485,9 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .metric-card {
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  background: rgba(25, 20, 50, 0.78);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 10px);
   padding: 0.75rem 1rem;
   display: flex;
   flex-direction: column;
@@ -449,11 +500,11 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 
 .metric-val {
   font-size: 1.1rem;
-  color: #fff;
+  color: var(--text-primary, #fff);
 }
 
 .text-cyan {
-  color: var(--color-cyan-300, #67e8f9);
+  color: #93c5fd;
 }
 
 .text-emerald {
@@ -469,9 +520,9 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .section-card {
-  background: rgba(30, 41, 59, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
+  background: rgba(25, 20, 50, 0.68);
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-lg, 14px);
   padding: 1.25rem;
 }
 
@@ -479,7 +530,7 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
   margin: 0 0 0.85rem;
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--color-gray-200, #e2e8f0);
+  color: var(--text-primary, #e2e8f0);
 }
 
 .section-header-row {
@@ -493,8 +544,8 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
   font-size: 0.75rem;
   background: rgba(255, 255, 255, 0.1);
   padding: 0.1rem 0.4rem;
-  border-radius: 4px;
-  color: var(--color-gray-300, #cbd5e1);
+  border-radius: var(--radius-sm, 6px);
+  color: var(--text-secondary, #cbd5e1);
 }
 
 .prize-grid {
@@ -504,9 +555,9 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .prize-item {
-  background: rgba(15, 23, 42, 0.6);
+  background: rgba(9, 7, 20, 0.62);
   padding: 0.5rem 0.75rem;
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 6px);
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
@@ -514,19 +565,19 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 
 .prize-name {
   font-size: 0.75rem;
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
 }
 
 .prize-count {
   font-size: 1rem;
-  color: #fff;
+  color: var(--text-primary, #fff);
 }
 
 .targets-table-wrapper {
   max-height: 280px;
   overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 6px;
+  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
+  border-radius: var(--radius-md, 10px);
 }
 
 .targets-table {
@@ -538,12 +589,12 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 .targets-table th,
 .targets-table td {
   padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.05));
   text-align: left;
 }
 
 .targets-table th {
-  background: #111827;
+  background: #17122e;
   position: sticky;
   top: 0;
   z-index: 1;
@@ -552,32 +603,12 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 .number-chips {
   display: inline-flex;
   flex-wrap: wrap;
-  gap: 0.2rem;
-}
-
-.num-chip {
-  display: inline-block;
-  padding: 0.05rem 0.3rem;
-  border-radius: 3px;
-  background: rgba(6, 182, 212, 0.15);
-  color: var(--color-cyan-300, #67e8f9);
-  font-size: 0.75rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.num-chip--actual {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--color-gray-200, #e2e8f0);
-}
-
-.num-chip--special {
-  background: rgba(244, 114, 182, 0.15);
-  color: var(--color-pink-300, #f472b6);
+  gap: 0.35rem;
 }
 
 .hits-tag {
   font-weight: 600;
-  color: var(--color-gray-300, #cbd5e1);
+  color: var(--text-secondary, #cbd5e1);
 }
 
 .hits-tag--win {
@@ -585,10 +616,10 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .prize-tag {
-  background: rgba(251, 191, 36, 0.15);
-  color: var(--color-amber-300, #fcd34d);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fcd34d;
   padding: 0.1rem 0.35rem;
-  border-radius: 3px;
+  border-radius: var(--radius-sm, 6px);
 }
 
 .details-list {
@@ -603,7 +634,7 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
   justify-content: space-between;
   align-items: center;
   padding-bottom: 0.4rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.04));
 }
 
 .loading-box,
@@ -619,6 +650,6 @@ const drawerTitle = computed(() => props.item?.displayLabel || 'Strategy Details
 }
 
 .text-muted {
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary, #94a3b8);
 }
 </style>

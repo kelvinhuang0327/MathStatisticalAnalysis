@@ -96,19 +96,22 @@ const warningRows = computed(() => [
   {
     badge: 'HIGH_RANK_LOW_COVERAGE',
     title: 'quick_ml_predict',
-    detail: 'FULL #1／50%，但只有 4 Obs.、約 0.19% coverage；三個 recent window 沒有 successful observation。',
+    detail:
+      'FULL #1 / 50%, but only 4 Obs., ~0.19% coverage; no successful observations in the three recent windows.',
     record: findRecord('quick_ml_predict', 'FULL'),
   },
   {
     badge: 'RECENT_NO_OBS',
     title: 'Recent windows',
-    detail: 'recent rank 需要和 successful observations、coverage 及 FULL context 一起閱讀。',
+    detail:
+      'Recent rank must be evaluated alongside successful observations, coverage, and FULL context.',
     record: findRecord('quick_ml_predict', 'RECENT_50'),
   },
   {
     badge: 'LOW_COVERAGE_CONTROL',
     title: 'research_cluster_enhancements',
-    detail: 'R2 保留它的 recent movement，但 coverage 約 4%～9%，只作稀疏資料對照。',
+    detail:
+      'R2 retains its recent movement, but coverage is ~4%–9%, serving only as a sparse comparison.',
     record: findRecord('research_cluster_enhancements', 'RECENT_50'),
   },
 ])
@@ -116,7 +119,7 @@ const warningRows = computed(() => [
 const evidenceComparisons = computed(() => [
   {
     label: 'quick_ml_predict',
-    caption: 'official rank 保留，evidence strength 另讀',
+    caption: 'Official rank retained; evidence strength evaluated separately',
     record: findRecord('quick_ml_predict', 'FULL'),
   },
   {
@@ -140,7 +143,8 @@ async function load(): Promise<void> {
   } catch (error: unknown) {
     if (isAbortError(error) || currentGeneration !== generation) return
     loadState.value = 'error'
-    errorMessage.value = error instanceof Error ? error.message : 'B649 R2 資料目前無法載入。'
+    errorMessage.value =
+      error instanceof Error ? error.message : 'B649 R2 data could not be loaded.'
   }
 }
 
@@ -206,10 +210,10 @@ function formatObservations(record: B649OwnerRecord | null): string {
 }
 
 function formatWindow(window: B649HistoryWindow): string {
-  if (window === 'FULL') return 'FULL · 全歷史參考'
-  if (window === 'RECENT_750') return '750 · 長期觀察'
-  if (window === 'RECENT_300') return '300 · 中期觀察'
-  return '50 · 短期觀察'
+  if (window === 'FULL') return 'FULL · Full History Reference'
+  if (window === 'RECENT_750') return '750 · Long-Term Regime'
+  if (window === 'RECENT_300') return '300 · Mid-Term Regime'
+  return '50 · Short-Term Regime'
 }
 
 function roleClass(role: B649OwnerMetadata['role']): string {
@@ -243,8 +247,7 @@ onBeforeUnmount(() => {
         <p class="eyebrow">B649 · R2 Owner Ranking</p>
         <h1 id="b649-owner-title">B649 Owner Ranking</h1>
         <p class="b649-owner__intro">
-          用四個票數分開閱讀 FULL、750、300、50 的 official rank、coverage、observations、random baseline
-          與近期 movement。這是唯讀描述性研究介面，不是新的排名系統。
+          Review official rank, coverage, observations, random baseline, and recent movement separately across 4 ticket counts for FULL, 750, 300, and 50 windows. This is a read-only descriptive research interface, not a new ranking system.
         </p>
       </div>
       <div class="b649-owner__badges" aria-label="B649 page status">
@@ -254,22 +257,22 @@ onBeforeUnmount(() => {
     </header>
 
     <div v-if="loadState === 'loading'" class="records-state" role="status" aria-live="polite">
-      正在載入 B649 R2 ranking projection…
+      Loading B649 R2 ranking projection…
     </div>
     <div v-else-if="loadState === 'error'" class="records-state records-state--error" role="alert">
-      <strong>B649 R2 ranking projection 無法載入</strong>
+      <strong>B649 R2 ranking projection could not be loaded</strong>
       <p>{{ errorMessage }}</p>
-      <button type="button" @click="load">重試</button>
+      <button type="button" @click="load">Retry</button>
     </div>
     <div v-else-if="loadState === 'empty'" class="records-state" role="status">
-      <strong>目前沒有可顯示的 B649 ranking records</strong>
-      <p>頁面不會自行重算或補造排名資料。</p>
-      <button type="button" @click="load">重試</button>
+      <strong>No B649 ranking records available to display</strong>
+      <p>The page does not recalculate or synthesize ranking data.</p>
+      <button type="button" @click="load">Retry</button>
     </div>
 
     <template v-else-if="data">
       <aside class="research-disclaimer" role="note">
-        {{ data.summary.research_disclaimer }} 所有 research role 都不是 lifecycle、deployment status 或 production recommendation。
+        Historical success rates, rankings, and random baseline deltas are for descriptive research only and do not constitute future predictions, recommendations, deployment decisions, or prize guarantees. All research roles are exploratory designations, not lifecycle states, deployment statuses, or production recommendations.
       </aside>
 
       <div class="b649-owner__tabs" role="tablist" aria-label="B649 ticket count">
@@ -282,31 +285,31 @@ onBeforeUnmount(() => {
           :class="{ 'is-active': ticketCount === value }"
           @click="selectTicketCount(value)"
         >
-          {{ value }} 注
+          {{ value }} Tickets
         </button>
-        <p>票數完全分開比較；不存在跨票數 overall ranking。</p>
+        <p>Ticket counts are compared independently; there is no cross-ticket overall ranking.</p>
       </div>
 
       <section class="owner-summary-grid" aria-label="B649 owner summary">
         <article class="owner-summary-card owner-summary-card--accent">
           <span class="eyebrow">Current view</span>
-          <strong>{{ ticketCount }} 注</strong>
-          <small>目前只查看這一票數的 R2 evidence。</small>
+          <strong>{{ ticketCount }} Tickets</strong>
+          <small>Viewing R2 evidence for this ticket count only.</small>
         </article>
         <article class="owner-summary-card">
           <span class="eyebrow">Official criterion</span>
           <strong>OFFICIAL_ANY_PRIZE</strong>
-          <small>任一正式獎級命中即算 official win。</small>
+          <small>Any official prize tier match counts as an official win.</small>
         </article>
         <article class="owner-summary-card">
           <span class="eyebrow">Metric-bearing</span>
           <strong>{{ data.summary.metrics_available_strategy_count ?? '—' }}</strong>
-          <small>R2 的 133 個可形成正式排名的 strategy universe。</small>
+          <small>The 133-strategy universe forming official rankings in R2.</small>
         </article>
         <article class="owner-summary-card">
           <span class="eyebrow">Window semantics</span>
-          <strong>FULL ≠ 長期</strong>
-          <small>750／300／50 才是長／中／短期 regime observation。</small>
+          <strong>FULL ≠ Long-Term</strong>
+          <small>750 / 300 / 50 are the long-, mid-, and short-term regime observations.</small>
         </article>
       </section>
 
@@ -316,7 +319,7 @@ onBeforeUnmount(() => {
             <p class="eyebrow">First-screen decision summary</p>
             <h2 id="owner-observation-title">Core Observation</h2>
           </div>
-          <span class="section-note">先看 evidence，再看 rank</span>
+          <span class="section-note">Evaluate evidence before rank</span>
         </div>
         <div class="owner-card-grid">
           <article class="owner-panel owner-panel--leader">
@@ -325,7 +328,7 @@ onBeforeUnmount(() => {
                 <p class="eyebrow">RECENT_50</p>
                 <h3>Short-Term Leaders</h3>
               </div>
-              <span class="window-chip">50 · 短期</span>
+              <span class="window-chip">50 · Short-Term</span>
             </div>
             <div v-if="shortTermRankLeader" class="leader-block">
               <span class="metric-label">official rank leader</span>
@@ -418,7 +421,7 @@ onBeforeUnmount(() => {
               </div>
               <span class="role-badge role-badge--recent_mover">RESEARCH</span>
             </div>
-            <p class="owner-panel__copy">這些是 R2 已選出的研究入口，不是新的 production recommendation。</p>
+            <p class="owner-panel__copy">These are exploratory research candidates identified by R2, not production recommendations.</p>
             <div class="tag-list">
               <span v-for="candidate in R2_REGIME_CANDIDATES[ticketCount]" :key="candidate">{{ candidate }}</span>
             </div>
@@ -430,9 +433,9 @@ onBeforeUnmount(() => {
         <div class="owner-section__heading">
           <div>
             <p class="eyebrow">Evidence strength</p>
-            <h2 id="evidence-strength-title">同時看 rank、observations、coverage、delta</h2>
+            <h2 id="evidence-strength-title">Joint Evaluation: Rank, Observations, Coverage & Delta</h2>
           </div>
-          <span class="section-note">official rank 不被 UI 改寫</span>
+          <span class="section-note">Official rank is preserved without UI modification</span>
         </div>
         <div class="evidence-compare-grid">
           <article v-for="item in evidenceComparisons" :key="item.label" class="evidence-card">
@@ -458,19 +461,19 @@ onBeforeUnmount(() => {
         <div class="owner-section__heading">
           <div>
             <p class="eyebrow">Random baseline snapshot</p>
-            <h2 id="baseline-title">Top 20 中高於 random 的 strategy 數量</h2>
+            <h2 id="baseline-title">Top 20 Strategies Outperforming Random Baseline</h2>
           </div>
-          <span class="section-note">不是未來勝率</span>
+          <span class="section-note">Descriptive comparison, not future win rate</span>
         </div>
         <div class="owner-table-scroll" role="region" aria-label="Random baseline snapshot table" tabindex="0">
           <table class="owner-table baseline-table">
-            <caption>R2 source-derived baseline comparison，按票數分開顯示。</caption>
+            <caption>R2 source-derived baseline comparison displayed by ticket count.</caption>
             <thead>
               <tr><th scope="col">Ticket</th><th scope="col">FULL</th><th scope="col">750</th><th scope="col">300</th><th scope="col">50</th></tr>
             </thead>
             <tbody>
               <tr v-for="value in B649_PREFIX_COUNTS" :key="value" :class="{ 'is-current': value === ticketCount }">
-                <th scope="row">{{ value }} 注</th>
+                <th scope="row">{{ value }} Tickets</th>
                 <td>{{ R2_BASELINE_SNAPSHOT[value].full }}</td>
                 <td>{{ R2_BASELINE_SNAPSHOT[value].recent750 }}</td>
                 <td>{{ R2_BASELINE_SNAPSHOT[value].recent300 }}</td>
@@ -485,9 +488,9 @@ onBeforeUnmount(() => {
         <div class="owner-section__heading">
           <div>
             <p class="eyebrow">Owner Decision Matrix</p>
-            <h2 id="decision-matrix-title">R2 shortlist · {{ ticketCount }} 注</h2>
+            <h2 id="decision-matrix-title">R2 Shortlist · {{ ticketCount }} Tickets</h2>
           </div>
-          <span class="section-note">coverage、Obs.、delta 不隱藏</span>
+          <span class="section-note">Coverage, Obs., and Delta fully disclosed</span>
         </div>
         <div class="owner-table-scroll" role="region" aria-label="B649 Owner Decision Matrix table" tabindex="0">
           <table class="owner-table decision-table">
@@ -526,7 +529,7 @@ onBeforeUnmount(() => {
         <div class="owner-section__heading">
           <div>
             <p class="eyebrow">Ranking detail</p>
-            <h2 id="ranking-detail-title">{{ ticketCount }} 注 · Top 20</h2>
+            <h2 id="ranking-detail-title">{{ ticketCount }} Tickets · Top 20</h2>
           </div>
           <div class="window-tabs" role="tablist" aria-label="B649 ranking windows">
             <button
@@ -542,7 +545,7 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
-        <p class="window-explanation">{{ formatWindow(detailWindow) }}。排序只沿用資料中的 official_rank，沒有建立 composite score。</p>
+        <p class="window-explanation">{{ formatWindow(detailWindow) }}. Ranking follows official_rank in data without composite scoring.</p>
         <div class="owner-table-scroll" role="region" aria-label="B649 ranking detail table" tabindex="0">
           <table class="owner-table ranking-table">
             <caption>Official ranking detail；rare high-prize occurrence remains a secondary research dimension。</caption>
@@ -563,14 +566,14 @@ onBeforeUnmount(() => {
                   <span v-for="badge in warningBadges(record)" v-else :key="badge" class="warning-badge">{{ badge }}</span>
                 </td>
               </tr>
-              <tr v-if="detailRows.length === 0"><td colspan="8">此窗口沒有可用的 ranking row；頁面不會自行補算。</td></tr>
+              <tr v-if="detailRows.length === 0"><td colspan="8">No ranking rows available for this window; data is not synthesized.</td></tr>
             </tbody>
           </table>
         </div>
       </section>
 
       <footer class="owner-footer-note">
-        Support robustness 仍只能標示 <code>PROVISIONAL_SELF_VALIDATED_RESEARCH</code>；rare high-prize occurrence ≠ stable predictive edge。
+        Support robustness remains designated <code>PROVISIONAL_SELF_VALIDATED_RESEARCH</code>; rare high-prize occurrence ≠ stable predictive edge.
       </footer>
     </template>
   </section>

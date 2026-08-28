@@ -140,12 +140,16 @@ describe('B649MultiTicketRecordsPage', () => {
     expect(String(fetchMock.mock.calls[0]?.[0])).toBe(
       '/api/v1/b649-multi-ticket-records/summary',
     )
-    expect(wrapper.text()).toContain('全部方法221')
-    expect(wrapper.text()).toContain('已復現並回測135')
-    expect(wrapper.text()).toContain('正式不可執行74')
-    expect(wrapper.text()).toContain('重複別名12')
-    expect(wrapper.text()).toContain(DISCLAIMER)
-    expect(wrapper.text()).toContain('不會自動選擇排名、最新資料或最佳策略')
+    expect(wrapper.text()).toContain('All Methods221')
+    expect(wrapper.text()).toContain('Reproduced & Backtested135')
+    expect(wrapper.text()).toContain('Formally Unexecutable74')
+    expect(wrapper.text()).toContain('Duplicate Alias12')
+    expect(wrapper.text()).toContain(
+      'Historical success rates, rankings, and random baseline differences',
+    )
+    expect(wrapper.text()).toContain(
+      'does not automatically select rankings, latest data, or top strategies',
+    )
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
@@ -159,17 +163,17 @@ describe('B649MultiTicketRecordsPage', () => {
 
     expect(
       wrapper.get('select[name="prefix-count"]').findAll('option').map((option) => option.text()),
-    ).toEqual(['請選擇', '5 注', '10 注', '15 注', '20 注'])
+    ).toEqual(['Select ticket count', '5 Tickets', '10 Tickets', '15 Tickets', '20 Tickets'])
     expect(
       wrapper.get('select[name="history-window"]').findAll('option').map((option) => option.text()),
-    ).toEqual(['請選擇', 'FULL', 'RECENT_750', 'RECENT_300', 'RECENT_50'])
+    ).toEqual(['Select window', 'FULL', 'RECENT_750', 'RECENT_300', 'RECENT_50'])
     expect(
       wrapper
         .get('select[name="success-criterion"]')
         .findAll('option')
         .map((option) => option.text()),
     ).toEqual([
-      '請選擇',
+      'Select criterion',
       'M3_PLUS',
       'M4_PLUS',
       'M5_PLUS',
@@ -211,14 +215,14 @@ describe('B649MultiTicketRecordsPage', () => {
     const wrapper = mount(B649MultiTicketRecordsPage)
     await flushPromises()
 
-    expect(wrapper.text()).toContain('聚合歷史紀錄目前不可用')
-    expect(wrapper.text()).toContain('查詢維持關閉')
+    expect(wrapper.text()).toContain('Aggregate historical records are currently unavailable')
+    expect(wrapper.text()).toContain('query remains disabled')
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
 
     await wrapper.get('.records-state--warning button').trigger('click')
     await flushPromises()
     expect(fetchMock).toHaveBeenCalledTimes(2)
-    expect(wrapper.text()).toContain('尚未送出查詢')
+    expect(wrapper.text()).toContain('No query submitted yet')
     wrapper.unmount()
   })
 

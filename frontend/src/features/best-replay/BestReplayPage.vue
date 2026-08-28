@@ -1108,4 +1108,11 @@ onBeforeUnmount(() => {
   font: 700 11px/1 var(--font-mono);
   color: var(--color-success);
 }
+
+.view-mode-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-width: 100%;
+}
 </style>

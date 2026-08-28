@@ -226,6 +226,12 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(filteredItems.value.length / PAGE_SIZE)),
 )
 
+function compactStrategyLabel(strategyId: string): string {
+  const parts = strategyId.split('__')
+  if (parts.length >= 3) return parts.slice(1, -1).join(' · ')
+  return strategyId.length > 30 ? `${strategyId.slice(0, 27)}…` : strategyId
+}
+
 // Main Summary Computation
 const summary = computed<BestReplaySummary>(() => {
   const available = filteredItems.value.filter((item) => item.isAvailable)
@@ -249,7 +255,7 @@ const summary = computed<BestReplaySummary>(() => {
 
   return {
     bestStrategyId: best.strategyId,
-    bestStrategyLabel: best.strategyId,
+    bestStrategyLabel: compactStrategyLabel(best.strategyId),
     ticketCount: best.ticketCount,
     horizon: best.horizonLabel,
     historicalHitRate: best.hitRateFormatted,

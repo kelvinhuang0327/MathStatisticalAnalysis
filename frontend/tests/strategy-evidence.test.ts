@@ -73,7 +73,7 @@ describe('StrategyEvidencePage', () => {
 
     const text = wrapper.text()
     expect(text).toContain('T539')
-    expect(text).toContain('L649')
+    expect(text).toContain('B649')
     expect(text).toContain('P638')
     expect(text).not.toContain('DAILY_539')
     expect(text).not.toContain('BIG_LOTTO')

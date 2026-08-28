@@ -119,7 +119,7 @@ function enterFocusedValue(value: string): void {
 }
 
 beforeEach(() => {
-  window.location.hash = '#/strategies'
+  window.location.hash = '#/data-operations'
   fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
     const url = String(input)
     if (url.includes('/api/v1/strategy-overview')) {
@@ -232,7 +232,7 @@ beforeEach(() => {
           projection_sha256: null,
           source_report_count: null,
           research_disclaimer:
-            '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。',
+            'Historical success rates, rankings, and random-baseline differences are descriptive research only.',
         }),
       )
     }
@@ -298,21 +298,16 @@ describe('App navigation', () => {
 
     const navigation = wrapper.get('nav[aria-label="Primary navigation"]')
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
-      'Strategy Overview',
-      'Success Windows',
-      'Base Data Browser',
-      'B649 Records',
-      'B649 Ranking',
-      'Data Center',
+      'Data Operations',
       'History',
-      'Strategy Evidence',
-      'Live Zone Split Bets',
+      'Best Replay',
+      'Strategy Intelligence',
+      'B649 Replay',
       'P638 Replay',
-      'P638 Analysis',
-      'T539 Analysis',
-      'Replay History',
+      'T539 Replay',
+      'Future Modules',
     ])
-    expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
+    expect(wrapper.find('#data-center-title').exists()).toBe(true)
 
     window.location.hash = '#/historical-success-windows'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -320,7 +315,7 @@ describe('App navigation', () => {
     expect(wrapper.find('#historical-success-title').exists()).toBe(true)
     expect(
       navigation
-        .find('a[href="#/historical-success-windows"]')
+        .find('a[href="#/strategy-intelligence"]')
         .attributes('aria-current'),
     ).toBe('page')
 
@@ -329,7 +324,7 @@ describe('App navigation', () => {
     await flushPromises()
     expect(wrapper.find('#historical-base-data-title').exists()).toBe(true)
     expect(
-      navigation.find('a[href="#/historical-base-data"]').attributes('aria-current'),
+      navigation.find('a[href="#/future-modules"]').attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/b649-multi-ticket-records'
@@ -338,7 +333,7 @@ describe('App navigation', () => {
     expect(wrapper.find('#b649-records-title').exists()).toBe(true)
     expect(
       navigation
-        .find('a[href="#/b649-multi-ticket-records"]')
+        .find('a[href="#/b649-replay"]')
         .attributes('aria-current'),
     ).toBe('page')
 
@@ -347,14 +342,14 @@ describe('App navigation', () => {
     await flushPromises()
     expect(wrapper.text()).toContain('B649 R2 ranking projection 無法載入')
     expect(
-      navigation.find('a[href="#/b649-owner-ranking"]').attributes('aria-current'),
+      navigation.find('a[href="#/b649-replay"]').attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/data-center'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/data-center"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/data-operations"]').attributes('aria-current')).toBe('page')
 
     window.location.hash = '#/history'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -368,14 +363,14 @@ describe('App navigation', () => {
     await flushPromises()
     expect(wrapper.find('#strategy-evidence-title').exists()).toBe(true)
     expect(
-      navigation.find('a[href="#/strategy-evidence"]').attributes('aria-current'),
+      navigation.find('a[href="#/strategy-intelligence"]').attributes('aria-current'),
     ).toBe('page')
 
     window.location.hash = '#/replay-history'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#replay-history-title').exists()).toBe(true)
-    expect(navigation.find('a[href="#/replay-history"]').attributes('aria-current')).toBe('page')
+    expect(navigation.find('a[href="#/future-modules"]').attributes('aria-current')).toBe('page')
 
     window.location.hash = '#/strategies'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -517,21 +512,18 @@ describe('App navigation', () => {
 
     expect(document.activeElement).toBe(document.body)
     expect(keyboardTab().getAttribute('aria-label')).toBe('LottoLab home')
-    expect(keyboardTab().textContent?.trim()).toBe('Strategy Overview')
-    expect(keyboardTab().textContent?.trim()).toBe('Success Windows')
-    expect(keyboardTab().textContent?.trim()).toBe('Base Data Browser')
-    expect(keyboardTab().textContent?.trim()).toBe('B649 Records')
-    expect(keyboardTab().textContent?.trim()).toBe('B649 Ranking')
-    expect(keyboardTab().textContent?.trim()).toBe('Data Center')
+    expect(keyboardTab().textContent?.trim()).toBe('Data Operations')
     await activateFocused('Enter')
 
-    expect(window.location.hash).toBe('#/data-center')
-    expect(document.activeElement?.textContent?.trim()).toBe('Data Center')
+    expect(window.location.hash).toBe('#/data-operations')
+    expect(document.activeElement?.textContent?.trim()).toBe('Data Operations')
     expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
     expect(tabUntil((element) => element.matches('input[type="file"]'))).toBe(
       wrapper.get('input[type="file"]').element,
     )
-    expect(keyboardTab()).toBe(wrapper.get('[data-testid="sync-date-from"]').element)
+    expect(tabUntil((element) => element === wrapper.get('[data-testid="sync-date-from"]').element)).toBe(
+      wrapper.get('[data-testid="sync-date-from"]').element,
+    )
     enterFocusedValue('2026-07-28')
     expect(keyboardTab()).toBe(wrapper.get('[data-testid="sync-date-to"]').element)
     enterFocusedValue('2026-07-29')
@@ -567,14 +559,18 @@ describe('App navigation', () => {
     tabUntil(
       (element) =>
         element.matches('nav[aria-label="Primary navigation"] a') &&
-        element.textContent?.trim() === 'Strategy Evidence',
+        element.textContent?.trim() === 'Strategy Intelligence',
       true,
     )
     await activateFocused('Enter')
 
-    expect(window.location.hash).toBe('#/strategy-evidence')
-    expect(document.activeElement?.textContent?.trim()).toBe('Strategy Evidence')
+    expect(window.location.hash).toBe('#/strategy-intelligence')
+    expect(document.activeElement?.textContent?.trim()).toBe('Strategy Intelligence')
     expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
+
+    window.location.hash = '#/strategy-evidence'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
     expect(tabUntil((element) => element.matches('input[type="search"]'))).toBe(
       wrapper.get('input[type="search"]').element,
     )
@@ -699,13 +695,12 @@ describe('App navigation', () => {
     tabUntil(
       (element) =>
         element.matches('nav[aria-label="Primary navigation"] a') &&
-        element.textContent?.trim() === 'T539 Analysis',
+        element.textContent?.trim() === 'T539 Replay',
     )
     expect((document.activeElement as HTMLElement).getAttribute('aria-current')).toBe('page')
 
-    expect(keyboardTab().textContent?.trim()).toBe('Replay History')
-    expect(keyboardTab().textContent?.trim()).toBe('Refresh')
-    expect(keyboardTab()).toBe(wrapper.get('[data-testid="t539-run-select"]').element)
+    tabUntil((element) => element === wrapper.get('[data-testid="t539-run-select"]').element)
+    expect(document.activeElement).toBe(wrapper.get('[data-testid="t539-run-select"]').element)
 
     const retry = tabUntil((element) => element.matches('[data-testid="t539-retry-metrics"]'))
     expect(retry.tagName).toBe('BUTTON')

@@ -43,12 +43,11 @@ def test_capture_module_uses_inner_contracts_and_no_outer_runtime_layer() -> Non
     assert "lottolab.domain.ordered_candidate_emission" in imports
     assert "lottolab.domain.pre_outcome_target" in imports
     assert not any(
-        module.startswith(("lottolab.infrastructure", "lottolab.interfaces"))
-        for module in imports
+        module.startswith(("lottolab.infrastructure", "lottolab.interfaces")) for module in imports
     )
 
 
-def test_capture_service_has_no_later_stage_port_or_call() -> None:
+def test_capture_service_uses_presence_only_checks_and_no_later_stage_port() -> None:
     tree = _tree()
     service = next(
         node
@@ -66,6 +65,9 @@ def test_capture_service_has_no_later_stage_port_or_call() -> None:
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
     }
 
-    assert public_methods == {"capture", "seal"}
+    source = MODULE.read_text(encoding="utf-8")
+
+    assert public_methods == {"seal"}
     assert called_names.isdisjoint(FORBIDDEN_LATER_STAGE_NAMES)
-    assert "ForwardAutoCycleCore" not in MODULE.read_text(encoding="utf-8")
+    assert "OfficialOutcome" not in source
+    assert "ForwardAutoCycleCore" not in source

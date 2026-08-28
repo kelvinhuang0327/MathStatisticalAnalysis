@@ -14,7 +14,7 @@ from lottolab.application.biglotto_l2_pairwise_prospective_shadow_capture import
     ProspectiveShadowBundleShapeError,
     ProspectiveShadowBundleTamperError,
     ProspectiveShadowCaptureRequest,
-    capture_prospective_shadow_bundle,
+    _capture_prospective_shadow_bundle_with_runtime,  # pyright: ignore[reportPrivateUsage]
     deserialize_prospective_shadow_bundle,
     serialize_prospective_shadow_bundle,
     verify_prospective_shadow_bundle,
@@ -37,11 +37,19 @@ from lottolab.evidence.canonical_json import (
 
 TARGET_DRAW = "115000082"
 HISTORY_CUTOFF = "115000081"
-EXPECTED_IDS = tuple(f"S{index}" for index in range(1, 10))
+EXPECTED_IDS = ("C1", "C2", "C3", "C4", "C5", "C6", "C8", "C9", "C10")
 REPOSITORY_HEAD = "a" * 40
 REPOSITORY_TREE = "b" * 40
 GENERATED_AT = datetime(2026, 8, 31, 1, tzinfo=UTC)
 HISTORY: tuple[object, ...] = tuple(range(751))
+
+
+def _capture(request: ProspectiveShadowCaptureRequest):
+    bundle, _ = _capture_prospective_shadow_bundle_with_runtime(
+        request,
+        monotonic_ns=None,
+    )
+    return bundle
 
 
 def _announcement() -> TargetAnnouncement:
@@ -130,9 +138,8 @@ def _request(
         history=HISTORY,
         history_cutoff=HISTORY_CUTOFF,
         expected_candidate_ids=EXPECTED_IDS,
-        candidate_runtimes=runtimes or tuple(
-            _runtime(candidate_id) for candidate_id in reversed(EXPECTED_IDS)
-        ),
+        candidate_runtimes=runtimes
+        or tuple(_runtime(candidate_id) for candidate_id in reversed(EXPECTED_IDS)),
         generated_at_utc=GENERATED_AT,
         repository_head=REPOSITORY_HEAD,
         repository_tree=REPOSITORY_TREE,
@@ -155,21 +162,18 @@ def _assert_no_later_stage_keys(value: object) -> None:
 def test_capture_is_repeatable_canonical_ordered_and_stops_at_seal() -> None:
     request = _request()
 
-    first = capture_prospective_shadow_bundle(request)
-    second = capture_prospective_shadow_bundle(request)
+    first = _capture(request)
+    second = _capture(request)
     first_bytes = serialize_prospective_shadow_bundle(first)
     second_bytes = serialize_prospective_shadow_bundle(second)
 
     assert first == second
     assert first_bytes == second_bytes
     assert first.bundle_sha256 == second.bundle_sha256
-    assert first.schema_version == (
-        BIGLOTTO_L2_PAIRWISE_PROSPECTIVE_SHADOW_BUNDLE_SCHEMA_VERSION
-    )
+    assert first.schema_version == (BIGLOTTO_L2_PAIRWISE_PROSPECTIVE_SHADOW_BUNDLE_SCHEMA_VERSION)
     assert tuple(record.candidate_id for record in first.predictions) == EXPECTED_IDS
     assert all(
-        record.schema_version
-        == BIGLOTTO_L2_PAIRWISE_PROSPECTIVE_SHADOW_RECORD_SCHEMA_VERSION
+        record.schema_version == BIGLOTTO_L2_PAIRWISE_PROSPECTIVE_SHADOW_RECORD_SCHEMA_VERSION
         for record in first.predictions
     )
     assert all(
@@ -181,9 +185,7 @@ def test_capture_is_repeatable_canonical_ordered_and_stops_at_seal() -> None:
     )
     assert all(record.history_cutoff == HISTORY_CUTOFF for record in first.predictions)
     assert all(record.history_row_count == 751 for record in first.predictions)
-    assert first.target_announcement_sha256 == normalized_announcement_sha256(
-        request.announcement
-    )
+    assert first.target_announcement_sha256 == normalized_announcement_sha256(request.announcement)
 
     parsed = loads_canonical(first_bytes)
     assert canonical_bytes(parsed) == first_bytes
@@ -201,12 +203,12 @@ def test_capture_is_repeatable_canonical_ordered_and_stops_at_seal() -> None:
 )
 def test_capture_rejects_nonlegal_ticket(ticket: tuple[int, ...]) -> None:
     runtimes = tuple(
-        _runtime(candidate_id, ticket=ticket if candidate_id == "S1" else None)
+        _runtime(candidate_id, ticket=ticket if candidate_id == "C1" else None)
         for candidate_id in EXPECTED_IDS
     )
 
     with pytest.raises(ValueError, match="six distinct sorted"):
-        capture_prospective_shadow_bundle(_request(runtimes=runtimes))
+        _capture(_request(runtimes=runtimes))
 
 
 @pytest.mark.parametrize(
@@ -222,7 +224,7 @@ def test_capture_rejects_candidate_identity_or_cutoff_mismatch(
     mismatch: str,
     message: str,
 ) -> None:
-    first = _runtime("S1")
+    first = _runtime("C1")
 
     def mismatched_producer(
         history: tuple[object, ...],
@@ -232,7 +234,7 @@ def test_capture_rejects_candidate_identity_or_cutoff_mismatch(
         assert history is HISTORY
         assert history_cutoff == HISTORY_CUTOFF
         return _emission(
-            "S1",
+            "C1",
             (1, 2, 3, 4, 5, 6),
             method_id="DIFFERENT_METHOD" if mismatch == "method" else None,
             strategy_version="r2" if mismatch == "version" else "r1",
@@ -245,7 +247,7 @@ def test_capture_rejects_candidate_identity_or_cutoff_mismatch(
         *(_runtime(candidate_id) for candidate_id in EXPECTED_IDS[1:]),
     )
     with pytest.raises(ValueError, match=message):
-        capture_prospective_shadow_bundle(_request(runtimes=runtimes))
+        _capture(_request(runtimes=runtimes))
 
 
 def test_request_requires_exact_nine_candidate_set_and_common_history() -> None:
@@ -262,9 +264,7 @@ def test_request_requires_exact_nine_candidate_set_and_common_history() -> None:
 
 
 def test_bundle_rejects_byte_tampering() -> None:
-    data = serialize_prospective_shadow_bundle(
-        capture_prospective_shadow_bundle(_request())
-    )
+    data = serialize_prospective_shadow_bundle(_capture(_request()))
     typed_payload = cast(dict[str, Any], loads_canonical(data))
     predictions = typed_payload["predictions"]
     assert isinstance(predictions, list)
@@ -277,9 +277,7 @@ def test_bundle_rejects_byte_tampering() -> None:
 
 
 def test_bundle_rejects_rehashed_ticket_with_stale_prediction_digest() -> None:
-    data = serialize_prospective_shadow_bundle(
-        capture_prospective_shadow_bundle(_request())
-    )
+    data = serialize_prospective_shadow_bundle(_capture(_request()))
     payload = cast(dict[str, Any], loads_canonical(data))
     predictions = payload["predictions"]
     assert isinstance(predictions, list)
@@ -292,9 +290,7 @@ def test_bundle_rejects_rehashed_ticket_with_stale_prediction_digest() -> None:
 
 
 def test_bundle_rejects_unknown_fields_and_noncanonical_bytes() -> None:
-    data = serialize_prospective_shadow_bundle(
-        capture_prospective_shadow_bundle(_request())
-    )
+    data = serialize_prospective_shadow_bundle(_capture(_request()))
     payload = cast(dict[str, Any], loads_canonical(data))
     payload["unexpected"] = "field"
 
@@ -305,9 +301,7 @@ def test_bundle_rejects_unknown_fields_and_noncanonical_bytes() -> None:
 
 
 def test_every_required_record_field_is_present() -> None:
-    data = serialize_prospective_shadow_bundle(
-        capture_prospective_shadow_bundle(_request())
-    )
+    data = serialize_prospective_shadow_bundle(_capture(_request()))
     payload = cast(dict[str, Any], loads_canonical(data))
     predictions = payload["predictions"]
     assert isinstance(predictions, list)
@@ -335,7 +329,7 @@ def test_every_required_record_field_is_present() -> None:
 
 
 def test_canonical_parser_result_remains_json_domain() -> None:
-    bundle = capture_prospective_shadow_bundle(_request())
+    bundle = _capture(_request())
     parsed: Any = loads_canonical(serialize_prospective_shadow_bundle(bundle))
 
     assert isinstance(parsed, dict)

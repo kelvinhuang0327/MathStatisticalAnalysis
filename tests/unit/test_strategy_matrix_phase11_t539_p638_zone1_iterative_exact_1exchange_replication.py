@@ -5,9 +5,11 @@ from __future__ import annotations
 import hashlib
 import itertools
 import json
+import subprocess
 from fractions import Fraction
 from typing import Any, cast
 
+import pytest
 from tools import (
     run_strategy_matrix_phase11_t539_p638_zone1_iterative_exact_1exchange_replication as phase11,
 )
@@ -25,15 +27,112 @@ def _portfolio(payload: Any) -> tuple[tuple[int, ...], ...]:
     return tuple(tuple(row) for row in rows)
 
 
-def test_preregistration_and_base_identity_are_frozen() -> None:
+def _install_mock_git_responses(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    commit: str = phase11.PINNED_BASE_COMMIT,
+    tree: str = phase11.PINNED_BASE_TREE,
+    ancestry_returncode: int = 0,
+) -> list[tuple[str, ...]]:
+    calls: list[tuple[str, ...]] = []
+    commit_command = (
+        "git",
+        "rev-parse",
+        f"{phase11.PINNED_BASE_COMMIT}^{{commit}}",
+    )
+    tree_command = (
+        "git",
+        "rev-parse",
+        f"{phase11.PINNED_BASE_COMMIT}^{{tree}}",
+    )
+    ancestry_command = (
+        "git",
+        "merge-base",
+        "--is-ancestor",
+        phase11.PINNED_BASE_COMMIT,
+        "HEAD",
+    )
+
+    def fake_run(
+        command: list[str],
+        *,
+        check: bool,
+        capture_output: bool,
+        text: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        call = tuple(command)
+        calls.append(call)
+        assert capture_output is True
+        assert text is True
+        if call == commit_command:
+            assert check is True
+            return subprocess.CompletedProcess(
+                command, 0, stdout=f"{commit}\n", stderr=""
+            )
+        if call == tree_command:
+            assert check is True
+            return subprocess.CompletedProcess(command, 0, stdout=f"{tree}\n", stderr="")
+        if call == ancestry_command:
+            assert check is False
+            return subprocess.CompletedProcess(
+                command, ancestry_returncode, stdout="", stderr=""
+            )
+        raise AssertionError(f"unexpected Git command: {command}")
+
+    monkeypatch.setattr(phase11.subprocess, "run", fake_run)
+    return calls
+
+
+def test_preregistration_and_base_identity_are_frozen(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     assert phase11.verify_preregistration_lock() == phase11.LOCKED_PREREGISTRATION_SHA256
     assert hashlib.sha256(phase11.PREREGISTRATION_PATH.read_bytes()).hexdigest() == (
         phase11.LOCKED_PREREGISTRATION_SHA256
     )
+    calls = _install_mock_git_responses(monkeypatch)
     assert phase11.verify_current_base_identity() == {
-        "commit": "1de7bf0d51160802115aa7ade416e5e717a00461",
-        "tree": "895696e5c2ab87b7ebe1c294a2a32edcdefefe43",
+        "commit": phase11.PINNED_BASE_COMMIT,
+        "tree": phase11.PINNED_BASE_TREE,
     }
+    assert calls == [
+        ("git", "rev-parse", f"{phase11.PINNED_BASE_COMMIT}^{{commit}}"),
+        ("git", "rev-parse", f"{phase11.PINNED_BASE_COMMIT}^{{tree}}"),
+        (
+            "git",
+            "merge-base",
+            "--is-ancestor",
+            phase11.PINNED_BASE_COMMIT,
+            "HEAD",
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("commit", "tree"),
+    [
+        ("0" * 40, phase11.PINNED_BASE_TREE),
+        (phase11.PINNED_BASE_COMMIT, "0" * 40),
+    ],
+)
+def test_base_identity_rejects_commit_or_tree_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+    commit: str,
+    tree: str,
+) -> None:
+    _install_mock_git_responses(monkeypatch, commit=commit, tree=tree)
+
+    with pytest.raises(ValueError, match="CANONICAL_BASE_IDENTITY_MISMATCH"):
+        phase11.verify_current_base_identity()
+
+
+def test_base_identity_rejects_ancestry_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_mock_git_responses(monkeypatch, ancestry_returncode=1)
+
+    with pytest.raises(ValueError, match="CANONICAL_BASE_ANCESTRY_MISMATCH"):
+        phase11.verify_current_base_identity()
 
 
 def test_phase7_method_e_authorities_and_native_mappings_are_frozen() -> None:

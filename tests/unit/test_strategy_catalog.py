@@ -179,9 +179,9 @@ def test_production_catalog_invariants() -> None:
 def test_catalog_preserves_approved_strategy_append_order() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
-    assert len(catalog) == 133
-    assert len(ids) == 133
-    assert len(set(ids)) == 133
+    assert len(catalog) == 134
+    assert len(ids) == 134
+    assert len(set(ids)) == 134
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
@@ -316,6 +316,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__frontend_ml_features__3a4324bc2aa9",
         "legacy_biglotto__frontend_ml_forest__3a4324bc2aa9",
         "legacy_biglotto__frontend_ml_genetic__3a4324bc2aa9",
+        "legacy_biglotto__frontend_collaborative_hybrid__97d79db161ba",
     ]
     online_ids = {
         descriptor.strategy_id

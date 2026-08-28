@@ -129,7 +129,7 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
     catalog = production_catalog()
     descriptor = catalog.get(STRATEGY_ID)
     strategy_ids = tuple(item.strategy_id for item in catalog)
-    assert strategy_ids[-25:-13] == (
+    assert strategy_ids[-26:-14] == (
         "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6",
         "legacy_biglotto__power_fourier_rhythm__cb75e72e4c94",
         STRATEGY_ID,
@@ -143,15 +143,15 @@ def test_authoritative_identity_is_unique_cataloged_five_ticket_portfolio() -> N
         "legacy_biglotto__frontend_deviation_strategy__3c895052122e",
         "legacy_biglotto__frontend_hot_cold_mix_strategy__92e0540fac02",
     )
-    assert strategy_ids[-13] == "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0"
-    assert strategy_ids[-12] == "legacy_biglotto__frontend_sum_range_strategy__4941213e6c46"
-    assert strategy_ids[-11] == "legacy_biglotto__frontend_zone_balance_strategy__6a016aa83b3e"
-    assert strategy_ids[-10] == "legacy_biglotto__frontend_number_pairs_strategy__72ebb17b5a96"
-    assert strategy_ids[-9] == "legacy_biglotto__frontend_monte_carlo_strategy__9d8fe030546e"
-    assert strategy_ids[-8] == (
+    assert strategy_ids[-14] == "legacy_biglotto__frontend_odd_even_balance_strategy__5b7f125437d0"
+    assert strategy_ids[-13] == "legacy_biglotto__frontend_sum_range_strategy__4941213e6c46"
+    assert strategy_ids[-12] == "legacy_biglotto__frontend_zone_balance_strategy__6a016aa83b3e"
+    assert strategy_ids[-11] == "legacy_biglotto__frontend_number_pairs_strategy__72ebb17b5a96"
+    assert strategy_ids[-10] == "legacy_biglotto__frontend_monte_carlo_strategy__9d8fe030546e"
+    assert strategy_ids[-9] == (
         "legacy_biglotto__frontend_statistical_analysis_strategy__a9364825de2a"
     )
-    assert strategy_ids[:-23].count(STRATEGY_ID) == 0
+    assert strategy_ids[:-24].count(STRATEGY_ID) == 0
     assert descriptor.lifecycle_status is LifecycleStatus.ONLINE
     assert descriptor.executable is True
     assert descriptor.response_shape is ResponseShape.PORTFOLIO

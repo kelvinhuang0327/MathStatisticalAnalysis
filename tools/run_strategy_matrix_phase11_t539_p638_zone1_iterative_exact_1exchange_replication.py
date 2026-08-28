@@ -208,14 +208,25 @@ def _git_value(*arguments: str) -> str:
 
 def verify_current_base_identity() -> dict[str, str]:
     observed = {
-        "commit": _git_value("rev-parse", "HEAD"),
-        "tree": _git_value("rev-parse", "HEAD^{tree}"),
+        "commit": _git_value("rev-parse", f"{PINNED_BASE_COMMIT}^{{commit}}"),
+        "tree": _git_value("rev-parse", f"{PINNED_BASE_COMMIT}^{{tree}}"),
     }
     if observed["commit"] != PINNED_BASE_COMMIT or observed["tree"] != PINNED_BASE_TREE:
         raise ValueError(
             "CANONICAL_BASE_IDENTITY_MISMATCH: "
             f"expected {PINNED_BASE_COMMIT}/{PINNED_BASE_TREE}, got "
             f"{observed['commit']}/{observed['tree']}"
+        )
+    ancestry = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", PINNED_BASE_COMMIT, "HEAD"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if ancestry.returncode != 0:
+        raise ValueError(
+            "CANONICAL_BASE_ANCESTRY_MISMATCH: "
+            f"{PINNED_BASE_COMMIT} is not an ancestor of HEAD"
         )
     return observed
 

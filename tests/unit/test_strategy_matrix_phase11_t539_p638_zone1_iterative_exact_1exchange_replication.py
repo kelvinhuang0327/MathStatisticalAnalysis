@@ -27,29 +27,33 @@ def _portfolio(payload: Any) -> tuple[tuple[int, ...], ...]:
     return tuple(tuple(row) for row in rows)
 
 
+EXPECTED_BASE_COMMIT = "1de7bf0d51160802115aa7ade416e5e717a00461"
+EXPECTED_BASE_TREE = "895696e5c2ab87b7ebe1c294a2a32edcdefefe43"
+
+
 def _install_mock_git_responses(
     monkeypatch: pytest.MonkeyPatch,
     *,
-    commit: str = phase11.PINNED_BASE_COMMIT,
-    tree: str = phase11.PINNED_BASE_TREE,
+    commit: str = EXPECTED_BASE_COMMIT,
+    tree: str = EXPECTED_BASE_TREE,
     ancestry_returncode: int = 0,
 ) -> list[tuple[str, ...]]:
     calls: list[tuple[str, ...]] = []
     commit_command = (
         "git",
         "rev-parse",
-        f"{phase11.PINNED_BASE_COMMIT}^{{commit}}",
+        f"{EXPECTED_BASE_COMMIT}^{{commit}}",
     )
     tree_command = (
         "git",
         "rev-parse",
-        f"{phase11.PINNED_BASE_COMMIT}^{{tree}}",
+        f"{EXPECTED_BASE_COMMIT}^{{tree}}",
     )
     ancestry_command = (
         "git",
         "merge-base",
         "--is-ancestor",
-        phase11.PINNED_BASE_COMMIT,
+        EXPECTED_BASE_COMMIT,
         "HEAD",
     )
 
@@ -92,17 +96,17 @@ def test_preregistration_and_base_identity_are_frozen(
     )
     calls = _install_mock_git_responses(monkeypatch)
     assert phase11.verify_current_base_identity() == {
-        "commit": phase11.PINNED_BASE_COMMIT,
-        "tree": phase11.PINNED_BASE_TREE,
+        "commit": "1de7bf0d51160802115aa7ade416e5e717a00461",
+        "tree": "895696e5c2ab87b7ebe1c294a2a32edcdefefe43",
     }
     assert calls == [
-        ("git", "rev-parse", f"{phase11.PINNED_BASE_COMMIT}^{{commit}}"),
-        ("git", "rev-parse", f"{phase11.PINNED_BASE_COMMIT}^{{tree}}"),
+        ("git", "rev-parse", f"{EXPECTED_BASE_COMMIT}^{{commit}}"),
+        ("git", "rev-parse", f"{EXPECTED_BASE_COMMIT}^{{tree}}"),
         (
             "git",
             "merge-base",
             "--is-ancestor",
-            phase11.PINNED_BASE_COMMIT,
+            EXPECTED_BASE_COMMIT,
             "HEAD",
         ),
     ]
@@ -111,8 +115,8 @@ def test_preregistration_and_base_identity_are_frozen(
 @pytest.mark.parametrize(
     ("commit", "tree"),
     [
-        ("0" * 40, phase11.PINNED_BASE_TREE),
-        (phase11.PINNED_BASE_COMMIT, "0" * 40),
+        ("0" * 40, EXPECTED_BASE_TREE),
+        (EXPECTED_BASE_COMMIT, "0" * 40),
     ],
 )
 def test_base_identity_rejects_commit_or_tree_mismatch(

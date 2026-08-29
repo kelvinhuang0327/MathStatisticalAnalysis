@@ -6,6 +6,12 @@ export type RecommendationCandidateView = NextDrawRecommendationResponse['ranked
 export type RecommendationExclusionView = NextDrawRecommendationResponse['excluded'][number]
 export type RecommendationWindowMetricView = RecommendationCandidateView['windows'][number]
 
+export type NextDrawRecommendationLifecycleResponse =
+  paths['/api/v1/next-draw-recommendation/lifecycle']['get']['responses'][200]['content']['application/json']
+export type SealedBucketView = NextDrawRecommendationLifecycleResponse['sealed_buckets'][number]
+export type SealedTicketSetView = SealedBucketView['sealed_tickets'][number]
+export type NextDrawRecommendationLifecycleState = NextDrawRecommendationLifecycleResponse['lifecycle_state']
+
 export const NATIVE_TICKET_COUNT_BUCKETS = [1, 2, 3, 5, 10, 20] as const
 export type NativeTicketCount = (typeof NATIVE_TICKET_COUNT_BUCKETS)[number]
 
@@ -67,6 +73,51 @@ function isNextDrawRecommendationResponse(
     typeof value.evidence_artifact_sha256 === 'string' &&
     typeof value.recommendation_status === 'string' &&
     typeof value.target_binding === 'string'
+  )
+}
+
+/**
+ * Read-only lifecycle + sealed-ticket lookup. Never registers a target,
+ * generates tickets, or writes a seal -- see the backend route's own
+ * docstring (GetNextDrawRecommendationLifecycle is a pure read).
+ */
+export async function getNextDrawRecommendationLifecycle(
+  signal?: AbortSignal,
+): Promise<NextDrawRecommendationLifecycleResponse> {
+  const response = await fetch('/api/v1/next-draw-recommendation/lifecycle', {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal,
+  })
+  const payload: unknown = await response.json()
+  if (!response.ok) {
+    const error = isRecord(payload) ? payload : {}
+    throw new NextDrawRecommendationRequestError(
+      typeof error.message === 'string'
+        ? error.message
+        : `Next-Draw Recommendation lifecycle request failed with HTTP ${response.status}`,
+      response.status,
+      typeof error.error_code === 'string' ? error.error_code : undefined,
+    )
+  }
+  if (!isNextDrawRecommendationLifecycleResponse(payload)) {
+    throw new NextDrawRecommendationRequestError(
+      'Next-Draw Recommendation lifecycle returned an invalid response contract',
+      502,
+    )
+  }
+  return payload
+}
+
+function isNextDrawRecommendationLifecycleResponse(
+  value: unknown,
+): value is NextDrawRecommendationLifecycleResponse {
+  return (
+    isRecord(value) &&
+    typeof value.lifecycle_state === 'string' &&
+    typeof value.lottery_type === 'string' &&
+    typeof value.ranking_policy_id === 'string' &&
+    Array.isArray(value.sealed_buckets)
   )
 }
 

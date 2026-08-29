@@ -2129,6 +2129,23 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/next-draw-recommendation/lifecycle": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["NextDrawRecommendationLifecycleResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -3220,6 +3237,18 @@ export interface components {
           "stability": Array<components['schemas']["StabilityDeltaView"]>
           "source_authority": string
         }
+    "NextDrawRecommendationLifecycleResponse": {
+          "lifecycle_state": string
+          "lottery_type": string
+          "ranking_policy_id": string
+          "target_draw_number": string | null
+          "target_draw_date": string | null
+          "target_scheduled_at": string | null
+          "sealed_at": string | null
+          "target_registration_digest": string | null
+          "evidence_artifact_sha256": string | null
+          "sealed_buckets": Array<components['schemas']["SealedBucketView"]>
+        }
     "NextDrawRecommendationResponse": {
           "ranking_policy_id": string
           "recommendation_status": string
@@ -3642,6 +3671,21 @@ export interface components {
     "RequestValidationIssueView": {
           "location": string
           "type": string
+        }
+    "SealedBucketView": {
+          "native_ticket_count": number
+          "availability": string
+          "total_candidate_count": number
+          "ranked_strategy_ids": Array<string>
+          "sealed_tickets": Array<components['schemas']["SealedTicketSetView"]>
+        }
+    "SealedTicketSetView": {
+          "rank": number
+          "strategy_id": string
+          "strategy_name": string
+          "status": string
+          "tickets": Array<Array<number>>
+          "detail": string
         }
     "StabilityDeltaView": {
           "strategy_id": string

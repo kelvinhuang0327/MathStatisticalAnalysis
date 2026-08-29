@@ -33,6 +33,7 @@ OpenAPI-generation time.
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Query
@@ -43,9 +44,13 @@ from lottolab.application.use_cases.build_next_draw_recommendation import (
     BuildNextDrawRecommendationBucket,
 )
 from lottolab.application.use_cases.generate_next_draw_top_tickets import (
-    GenerateNextDrawTopTickets,
     GeneratedTicketSet,
+    GenerateNextDrawTopTickets,
     TicketGenerationStatus,
+)
+from lottolab.application.use_cases.get_next_draw_recommendation_lifecycle import (
+    GetNextDrawRecommendationLifecycle,
+    NextDrawRecommendationLifecycleView,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.next_draw_recommendation import (
@@ -53,6 +58,12 @@ from lottolab.domain.next_draw_recommendation import (
     RECOMMENDATION_POLICY_ID,
     TOP_N,
     RecommendationBucketView,
+)
+from lottolab.domain.next_draw_recommendation_seal import (
+    NextDrawRecommendationLifecycleState,
+    NextDrawRecommendationSeal,
+    SealedRecommendationBucket,
+    SealedStrategyTickets,
 )
 from lottolab.evidence.next_draw_recommendation_evidence import (
     NextDrawRecommendationEvidenceArtifact,
@@ -64,6 +75,9 @@ from lottolab.strategies.catalog import StrategyCatalog
 
 NextDrawEvidenceArtifactFactory = Callable[[], NextDrawRecommendationEvidenceArtifact | None]
 CausalHistoryFactory = Callable[[LotteryType], tuple[CausalDrawRow, ...]]
+NextDrawRecommendationLifecycleReaderFactory = Callable[
+    [], GetNextDrawRecommendationLifecycle | None
+]
 
 NativeTicketCount = Annotated[
     int,
@@ -127,6 +141,42 @@ class NextDrawRecommendationResponse(BaseModel):
     evidence_computation_status: str
     evidence_artifact_sha256: str
     evidence_last_causal_draw_id: str
+
+
+class SealedTicketSetView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    rank: int
+    strategy_id: str
+    strategy_name: str
+    status: str
+    tickets: list[list[int]]
+    detail: str
+
+
+class SealedBucketView(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    native_ticket_count: int
+    availability: str
+    total_candidate_count: int
+    ranked_strategy_ids: list[str]
+    sealed_tickets: list[SealedTicketSetView]
+
+
+class NextDrawRecommendationLifecycleResponse(BaseModel):
+    model_config = _FROZEN_RESPONSE
+
+    lifecycle_state: str
+    lottery_type: str
+    ranking_policy_id: str
+    target_draw_number: str | None
+    target_draw_date: str | None
+    target_scheduled_at: str | None
+    sealed_at: str | None
+    target_registration_digest: str | None
+    evidence_artifact_sha256: str | None
+    sealed_buckets: list[SealedBucketView]
 
 
 def _window_view(
@@ -209,10 +259,60 @@ def _candidate_view(
     )
 
 
+def _sealed_ticket_set_view(ticket: SealedStrategyTickets) -> SealedTicketSetView:
+    return SealedTicketSetView(
+        rank=ticket.rank,
+        strategy_id=ticket.strategy_id,
+        strategy_name=ticket.strategy_name,
+        status=ticket.status.value,
+        tickets=[list(ticket_numbers) for ticket_numbers in ticket.tickets],
+        detail=ticket.detail,
+    )
+
+
+def _sealed_bucket_view(bucket: SealedRecommendationBucket) -> SealedBucketView:
+    return SealedBucketView(
+        native_ticket_count=bucket.native_ticket_count,
+        availability=bucket.availability,
+        total_candidate_count=bucket.total_candidate_count,
+        ranked_strategy_ids=list(bucket.ranked_strategy_ids),
+        sealed_tickets=[_sealed_ticket_set_view(ticket) for ticket in bucket.sealed_tickets],
+    )
+
+
+def _lifecycle_view_to_response(
+    view: NextDrawRecommendationLifecycleView,
+    *,
+    lottery_type: LotteryType,
+) -> NextDrawRecommendationLifecycleResponse:
+    seal: NextDrawRecommendationSeal | None = view.seal
+    is_sealed = seal is not None and view.state in {
+        NextDrawRecommendationLifecycleState.PREDICTIONS_SEALED,
+        NextDrawRecommendationLifecycleState.OUTCOME_AVAILABLE,
+    }
+    return NextDrawRecommendationLifecycleResponse(
+        lifecycle_state=view.state.value,
+        lottery_type=lottery_type.value,
+        ranking_policy_id=RECOMMENDATION_POLICY_ID,
+        target_draw_number=view.target.draw_number if view.target is not None else None,
+        target_draw_date=view.target.draw_date.isoformat() if view.target is not None else None,
+        target_scheduled_at=(_utc_text(seal.target_scheduled_at) if is_sealed and seal else None),
+        sealed_at=(_utc_text(seal.sealed_at) if is_sealed and seal else None),
+        target_registration_digest=(
+            seal.target_registration_digest if is_sealed and seal else None
+        ),
+        evidence_artifact_sha256=(seal.evidence_artifact_sha256 if is_sealed and seal else None),
+        sealed_buckets=(
+            [_sealed_bucket_view(bucket) for bucket in seal.buckets] if is_sealed and seal else []
+        ),
+    )
+
+
 def create_next_draw_recommendation_router(
     catalog: StrategyCatalog,
     evidence_factory: NextDrawEvidenceArtifactFactory,
     causal_history_factory: CausalHistoryFactory,
+    lifecycle_reader_factory: NextDrawRecommendationLifecycleReaderFactory | None = None,
 ) -> APIRouter:
     router = APIRouter(prefix=API_PREFIX, tags=["next-draw-recommendation"])
     ticket_use_case = GenerateNextDrawTopTickets(catalog=catalog)
@@ -266,6 +366,29 @@ def create_next_draw_recommendation_router(
             evidence=evidence,
         )
 
+    @router.get(
+        "/next-draw-recommendation/lifecycle",
+        response_model=NextDrawRecommendationLifecycleResponse,
+        responses={503: {"model": ApiErrorResponse}},
+    )
+    def get_next_draw_recommendation_lifecycle() -> (
+        NextDrawRecommendationLifecycleResponse | JSONResponse
+    ):
+        # Read-only: resolves target/seal/outcome state without registering a
+        # target, generating tickets, or writing a seal. See
+        # GetNextDrawRecommendationLifecycle's own module docstring.
+        lifecycle_reader = lifecycle_reader_factory() if lifecycle_reader_factory else None
+        if lifecycle_reader is None:
+            return _json_response(
+                503,
+                ApiErrorResponse(
+                    error_code="NEXT_DRAW_RECOMMENDATION_LIFECYCLE_UNAVAILABLE",
+                    message="No Next-Draw Recommendation lifecycle reader is configured.",
+                ),
+            )
+        view = lifecycle_reader.execute(LotteryType.BIG_LOTTO)
+        return _lifecycle_view_to_response(view, lottery_type=LotteryType.BIG_LOTTO)
+
     return router
 
 
@@ -273,13 +396,21 @@ def _json_response(status_code: int, model: BaseModel) -> JSONResponse:
     return JSONResponse(status_code=status_code, content=model.model_dump(mode="json"))
 
 
+def _utc_text(value: datetime) -> str:
+    return value.isoformat().replace("+00:00", "Z")
+
+
 __all__ = [
     "RECOMMENDATION_STATUS_PREVIEW",
     "TARGET_BINDING_UNBOUND",
     "NextDrawEvidenceArtifactFactory",
+    "NextDrawRecommendationLifecycleReaderFactory",
+    "NextDrawRecommendationLifecycleResponse",
     "NextDrawRecommendationResponse",
     "RecommendationCandidateView",
     "RecommendationExclusionView",
     "RecommendationWindowMetricView",
+    "SealedBucketView",
+    "SealedTicketSetView",
     "create_next_draw_recommendation_router",
 ]

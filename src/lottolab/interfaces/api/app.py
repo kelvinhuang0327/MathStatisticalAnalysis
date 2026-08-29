@@ -29,6 +29,9 @@ from lottolab.application.ports import (
     StrategyEvidenceRegistryReader,
     T539HistoricalQueryRepositoryFactory,
 )
+from lottolab.application.pre_outcome_target_operational import (
+    PreOutcomeTargetOperationalError,
+)
 from lottolab.application.use_cases.generate_bet import (
     GenerateOneBet,
     build_production_generate_one_bet,
@@ -36,6 +39,9 @@ from lottolab.application.use_cases.generate_bet import (
 from lottolab.application.use_cases.generate_live_zone_split_bets import (
     GenerateLiveZoneSplitBets,
     build_production_generate_live_zone_split_bets,
+)
+from lottolab.application.use_cases.get_next_draw_recommendation_lifecycle import (
+    GetNextDrawRecommendationLifecycle,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
 from lottolab.domain.draws import LotteryType
@@ -49,6 +55,10 @@ from lottolab.infrastructure.causal_history_reader import read_full_causal_histo
 from lottolab.infrastructure.next_draw_recommendation_evidence_reader import (
     NextDrawRecommendationEvidenceUnavailableError,
     PackagedNextDrawRecommendationEvidenceReader,
+)
+from lottolab.infrastructure.next_draw_recommendation_seal_store import (
+    NextDrawRecommendationSealStoreError,
+    compose_next_draw_recommendation_seal_operational_service,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
@@ -81,7 +91,10 @@ from lottolab.interfaces.api.multiwindow_success_windows import (
 )
 from lottolab.interfaces.api.next_draw_recommendation import (
     CausalHistoryFactory as NextDrawRecommendationCausalHistoryFactory,
+)
+from lottolab.interfaces.api.next_draw_recommendation import (
     NextDrawEvidenceArtifactFactory,
+    NextDrawRecommendationLifecycleReaderFactory,
     create_next_draw_recommendation_router,
 )
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
@@ -134,20 +147,19 @@ def create_app(
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
-    t539_historical_query_repository_factory: (
-        T539HistoricalQueryRepositoryFactory | None
-    ) = None,
+    t539_historical_query_repository_factory: (T539HistoricalQueryRepositoryFactory | None) = None,
     t539_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
     ) = None,
     p638_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
     ) = None,
-    next_draw_recommendation_evidence_factory: (
-        NextDrawEvidenceArtifactFactory | None
-    ) = None,
+    next_draw_recommendation_evidence_factory: (NextDrawEvidenceArtifactFactory | None) = None,
     next_draw_recommendation_causal_history_factory: (
         NextDrawRecommendationCausalHistoryFactory | None
+    ) = None,
+    next_draw_recommendation_lifecycle_reader_factory: (
+        NextDrawRecommendationLifecycleReaderFactory | None
     ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
@@ -197,6 +209,30 @@ def create_app(
         next_draw_recommendation_causal_history_factory
         if next_draw_recommendation_causal_history_factory is not None
         else _default_next_draw_recommendation_causal_history_factory
+    )
+
+    def _default_next_draw_recommendation_lifecycle_reader_factory() -> (
+        GetNextDrawRecommendationLifecycle | None
+    ):
+        try:
+            composition = compose_next_draw_recommendation_seal_operational_service(
+                catalog=resolved_catalog,
+                evidence_factory=resolved_next_draw_recommendation_evidence_factory,
+                causal_history_rows_factory=resolved_next_draw_recommendation_causal_history_factory,
+            )
+            return composition.lifecycle_reader
+        except (
+            NextDrawRecommendationSealStoreError,
+            PreOutcomeTargetOperationalError,
+            OSError,
+            ValueError,
+        ):
+            return None
+
+    resolved_next_draw_recommendation_lifecycle_reader_factory = (
+        next_draw_recommendation_lifecycle_reader_factory
+        if next_draw_recommendation_lifecycle_reader_factory is not None
+        else _default_next_draw_recommendation_lifecycle_reader_factory
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -285,6 +321,7 @@ def create_app(
             resolved_catalog,
             resolved_next_draw_recommendation_evidence_factory,
             resolved_next_draw_recommendation_causal_history_factory,
+            resolved_next_draw_recommendation_lifecycle_reader_factory,
         )
     )
 

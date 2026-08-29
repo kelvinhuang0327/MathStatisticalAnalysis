@@ -5747,6 +5747,37 @@
           }
         }
       }
+    },
+    "/api/v1/next-draw-recommendation/lifecycle": {
+      "get": {
+        "tags": [
+          "next-draw-recommendation"
+        ],
+        "summary": "Get Next Draw Recommendation Lifecycle",
+        "operationId": "get_next_draw_recommendation_lifecycle_api_v1_next_draw_recommendation_lifecycle_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextDrawRecommendationLifecycleResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12291,6 +12322,109 @@
         ],
         "title": "MultiWindowSuccessWindowsResponse"
       },
+      "NextDrawRecommendationLifecycleResponse": {
+        "properties": {
+          "lifecycle_state": {
+            "type": "string",
+            "title": "Lifecycle State"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "ranking_policy_id": {
+            "type": "string",
+            "title": "Ranking Policy Id"
+          },
+          "target_draw_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Draw Number"
+          },
+          "target_draw_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Draw Date"
+          },
+          "target_scheduled_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Scheduled At"
+          },
+          "sealed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sealed At"
+          },
+          "target_registration_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target Registration Digest"
+          },
+          "evidence_artifact_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evidence Artifact Sha256"
+          },
+          "sealed_buckets": {
+            "items": {
+              "$ref": "#/components/schemas/SealedBucketView"
+            },
+            "type": "array",
+            "title": "Sealed Buckets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lifecycle_state",
+          "lottery_type",
+          "ranking_policy_id",
+          "target_draw_number",
+          "target_draw_date",
+          "target_scheduled_at",
+          "sealed_at",
+          "target_registration_digest",
+          "evidence_artifact_sha256",
+          "sealed_buckets"
+        ],
+        "title": "NextDrawRecommendationLifecycleResponse"
+      },
       "NextDrawRecommendationResponse": {
         "properties": {
           "ranking_policy_id": {
@@ -14774,7 +14908,7 @@
           "TARGET_NATIVE"
         ],
         "title": "ReplaySourceMode",
-        "description": "Closed for this task: history and prediction both resolve against the\ntarget's own lottery type — never a cross-lottery or hypothetical replay."
+        "description": "Closed for this task: history and prediction both resolve against the\ntarget's own lottery type \u2014 never a cross-lottery or hypothetical replay."
       },
       "ReplayStrategyAggregateView": {
         "properties": {
@@ -14907,6 +15041,89 @@
           "type"
         ],
         "title": "RequestValidationIssueView"
+      },
+      "SealedBucketView": {
+        "properties": {
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "availability": {
+            "type": "string",
+            "title": "Availability"
+          },
+          "total_candidate_count": {
+            "type": "integer",
+            "title": "Total Candidate Count"
+          },
+          "ranked_strategy_ids": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Ranked Strategy Ids"
+          },
+          "sealed_tickets": {
+            "items": {
+              "$ref": "#/components/schemas/SealedTicketSetView"
+            },
+            "type": "array",
+            "title": "Sealed Tickets"
+          }
+        },
+        "type": "object",
+        "required": [
+          "native_ticket_count",
+          "availability",
+          "total_candidate_count",
+          "ranked_strategy_ids",
+          "sealed_tickets"
+        ],
+        "title": "SealedBucketView"
+      },
+      "SealedTicketSetView": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_name": {
+            "type": "string",
+            "title": "Strategy Name"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "tickets": {
+            "items": {
+              "items": {
+                "type": "integer"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Tickets"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "strategy_id",
+          "strategy_name",
+          "status",
+          "tickets",
+          "detail"
+        ],
+        "title": "SealedTicketSetView"
       },
       "StabilityDeltaView": {
         "properties": {

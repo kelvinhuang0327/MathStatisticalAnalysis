@@ -4,9 +4,12 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   NATIVE_TICKET_COUNT_BUCKETS,
   getNextDrawRecommendation,
+  getNextDrawRecommendationLifecycle,
   type NativeTicketCount,
+  type NextDrawRecommendationLifecycleResponse,
   type NextDrawRecommendationResponse,
   type RecommendationCandidateView,
+  type SealedTicketSetView,
 } from '../../api/nextDrawRecommendation'
 
 type LoadState = 'loading' | 'ready' | 'error'
@@ -19,6 +22,10 @@ const showFullRanking = ref(false)
 let controller: AbortController | null = null
 let generation = 0
 
+const lifecycle = ref<NextDrawRecommendationLifecycleResponse | null>(null)
+const lifecycleLoadState = ref<LoadState>('loading')
+let lifecycleController: AbortController | null = null
+
 const WINDOW_LABELS: Record<string, string> = {
   WINDOW_50: 'Last 50',
   WINDOW_300: 'Last 300',
@@ -29,6 +36,24 @@ const AVAILABILITY_LABELS: Record<string, string> = {
   AVAILABLE: 'Sufficient candidate pool',
   LIMITED_POOL: 'Small candidate pool · showing every candidate',
   UNAVAILABLE: 'No strategy natively produces this ticket count',
+}
+
+const LIFECYCLE_LABELS: Record<string, string> = {
+  WAITING_FOR_ELIGIBLE_TARGET: 'Waiting for next draw',
+  TARGET_AVAILABLE: 'Target available · not sealed yet',
+  PREDICTIONS_SEALED: 'Predictions sealed',
+  OUTCOME_AVAILABLE: 'Outcome available',
+}
+
+const LIFECYCLE_DESCRIPTIONS: Record<string, string> = {
+  WAITING_FOR_ELIGIBLE_TARGET:
+    'No upcoming draw is currently eligible for sealing. The tickets below remain a live, unsealed preview.',
+  TARGET_AVAILABLE:
+    'A future draw is eligible for sealing, but no predictions have been sealed against it yet. The tickets below remain a live, unsealed preview.',
+  PREDICTIONS_SEALED:
+    'Predictions were frozen and durably sealed against the target draw below before it was drawn.',
+  OUTCOME_AVAILABLE:
+    'The target draw this seal was bound to has now completed. Sealed predictions are shown below; scoring is a separate, later step.',
 }
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -53,17 +78,59 @@ async function load(): Promise<void> {
   }
 }
 
+async function loadLifecycle(): Promise<void> {
+  lifecycleController?.abort()
+  lifecycleController = new AbortController()
+  lifecycleLoadState.value = 'loading'
+  try {
+    const response = await getNextDrawRecommendationLifecycle(lifecycleController.signal)
+    lifecycle.value = response
+    lifecycleLoadState.value = 'ready'
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return
+    lifecycle.value = null
+    lifecycleLoadState.value = 'error'
+  }
+}
+
 watch(nativeTicketCount, () => {
   showFullRanking.value = false
   void load()
 })
-onMounted(() => void load())
-onBeforeUnmount(() => controller?.abort())
+onMounted(() => {
+  void load()
+  // The lifecycle/seal state does not depend on the selected ticket-count
+  // tab -- one seal covers every supported bucket -- so it loads once.
+  void loadLifecycle()
+})
+onBeforeUnmount(() => {
+  controller?.abort()
+  lifecycleController?.abort()
+})
 
 // Never pad to a fixed card count: a bucket with two eligible strategies
 // shows exactly two cards rather than inventing a third.
 const topCandidates = computed(() => data.value?.ranked.slice(0, 3) ?? [])
 const remainingCandidates = computed(() => data.value?.ranked.slice(3) ?? [])
+
+const isSealed = computed(
+  () =>
+    lifecycle.value?.lifecycle_state === 'PREDICTIONS_SEALED' ||
+    lifecycle.value?.lifecycle_state === 'OUTCOME_AVAILABLE',
+)
+
+const sealedBucket = computed(() => {
+  if (!isSealed.value || !lifecycle.value) return null
+  return (
+    lifecycle.value.sealed_buckets.find(
+      (bucket) => bucket.native_ticket_count === nativeTicketCount.value,
+    ) ?? null
+  )
+})
+
+function sealedTicketFor(strategyId: string): SealedTicketSetView | null {
+  return sealedBucket.value?.sealed_tickets.find((ticket) => ticket.strategy_id === strategyId) ?? null
+}
 
 function windowMetric(candidate: RecommendationCandidateView, windowKind: string) {
   return candidate.windows.find((window) => window.window_kind === windowKind) ?? null
@@ -78,6 +145,16 @@ function formatDelta(value: number | null): string {
   const pct = value * 100
   return `${pct >= 0 ? '+' : ''}${pct.toFixed(2)} pp`
 }
+
+function formatSealedTimestamp(value: string | null): string {
+  if (!value) return '—'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleString(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  })
+}
 </script>
 
 <template>
@@ -88,10 +165,35 @@ function formatDelta(value: number | null): string {
         <p class="preview-banner">
           <span class="preview-banner__tag">PREVIEW</span>
           <span>
-            Tickets below are generated from causal history up to the latest completed draw. They
-            are <strong>not bound or sealed to any future draw</strong>, and this page makes no
-            prediction, probability, or future-performance claim.
+            The ranking and "as of right now" tickets below are generated from causal history up
+            to the latest completed draw. They are <strong>not bound or sealed to any future
+            draw</strong>, and this page makes no prediction, probability, or future-performance
+            claim.
           </span>
+        </p>
+        <p
+          v-if="lifecycle"
+          class="lifecycle-banner"
+          :class="`lifecycle-banner--${lifecycle.lifecycle_state.toLowerCase()}`"
+        >
+          <span class="lifecycle-banner__tag">{{
+            LIFECYCLE_LABELS[lifecycle.lifecycle_state] ?? lifecycle.lifecycle_state
+          }}</span>
+          <span>
+            {{ LIFECYCLE_DESCRIPTIONS[lifecycle.lifecycle_state] }}
+            <template v-if="lifecycle.target_draw_number">
+              Target draw <strong>{{ lifecycle.target_draw_number }}</strong> ({{
+                lifecycle.target_draw_date
+              }}).
+            </template>
+            <template v-if="isSealed">
+              Sealed {{ formatSealedTimestamp(lifecycle.sealed_at) }}.
+            </template>
+          </span>
+        </p>
+        <p v-else-if="lifecycleLoadState === 'error'" class="lifecycle-banner lifecycle-banner--error">
+          <span class="lifecycle-banner__tag">Lifecycle unavailable</span>
+          <span>The seal/target lifecycle status could not be loaded right now.</span>
         </p>
         <p class="page-intro">
           Under the <code>NEXT_DRAW_ROBUSTNESS_V1</code> policy, strategies are compared on the real
@@ -187,7 +289,40 @@ function formatDelta(value: number | null): string {
             </tbody>
           </table>
 
-          <div class="candidate-card__tickets">
+          <div v-if="isSealed && sealedTicketFor(candidate.strategy_id)" class="candidate-card__tickets">
+            <p class="candidate-card__tickets-label candidate-card__tickets-label--sealed">
+              🔒 Sealed tickets · frozen for draw {{ lifecycle?.target_draw_number }} on
+              {{ lifecycle?.target_draw_date }} · sealed
+              {{ formatSealedTimestamp(lifecycle?.sealed_at ?? null) }}
+            </p>
+            <template v-if="sealedTicketFor(candidate.strategy_id)?.status === 'OK'">
+              <div
+                v-for="(ticket, ticketIndex) in sealedTicketFor(candidate.strategy_id)?.tickets ?? []"
+                :key="ticketIndex"
+                class="ticket-row"
+              >
+                <span class="ticket-row__label">Ticket {{ ticketIndex + 1 }}</span>
+                <span class="number-chips">
+                  <span v-for="number in ticket" :key="number" class="number-chip">
+                    {{ String(number).padStart(2, '0') }}
+                  </span>
+                </span>
+              </div>
+            </template>
+            <p v-else class="ticket-row__unavailable">
+              No tickets were sealed for this strategy ({{
+                sealedTicketFor(candidate.strategy_id)?.status ?? 'UNKNOWN'
+              }}<template v-if="sealedTicketFor(candidate.strategy_id)?.detail"
+                >: {{ sealedTicketFor(candidate.strategy_id)?.detail }}</template
+              >)
+            </p>
+          </div>
+          <div v-else-if="isSealed" class="candidate-card__tickets">
+            <p class="ticket-row__unavailable">
+              This strategy was not among the sealed top candidates for this ticket count.
+            </p>
+          </div>
+          <div v-else class="candidate-card__tickets">
             <p class="candidate-card__tickets-label">
               Preview tickets · generated now from causal history through draw
               {{ data.evidence_last_causal_draw_id }} · not sealed to a future draw
@@ -325,6 +460,62 @@ function formatDelta(value: number | null): string {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
+}
+
+.lifecycle-banner {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.lifecycle-banner__tag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--surface);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.lifecycle-banner--target_available {
+  border-color: var(--amber);
+}
+
+.lifecycle-banner--target_available .lifecycle-banner__tag {
+  background: var(--amber);
+}
+
+.lifecycle-banner--predictions_sealed,
+.lifecycle-banner--outcome_available {
+  border-color: var(--mint);
+}
+
+.lifecycle-banner--predictions_sealed .lifecycle-banner__tag,
+.lifecycle-banner--outcome_available .lifecycle-banner__tag {
+  background: var(--mint);
+}
+
+.lifecycle-banner--error {
+  border-color: var(--danger);
+}
+
+.lifecycle-banner--error .lifecycle-banner__tag {
+  background: var(--danger);
+}
+
+.candidate-card__tickets-label--sealed {
+  color: var(--mint);
+  font-weight: 600;
 }
 
 .page-intro code {

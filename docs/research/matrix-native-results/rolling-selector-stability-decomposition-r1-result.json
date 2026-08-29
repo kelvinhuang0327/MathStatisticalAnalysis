@@ -1,0 +1,3319 @@
+{
+  "aggregates": {
+    "by_cell_switch_activity_profile": [
+      {
+        "available_experiment_count": 35,
+        "cell_count": 12,
+        "classification_counts": {
+          "INCONCLUSIVE": 1,
+          "NEGATIVE": 16,
+          "POSITIVE": 15,
+          "ZERO": 4
+        },
+        "dominant_identity_change_cell_count": 3,
+        "experiment_count": 36,
+        "maximum_switch_count": 889,
+        "positive_repeating_cell_count": 5,
+        "sign_reversal_cell_count": 10,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 1,
+          "SWITCHING_ACTIVE": 32,
+          "ZERO_SWITCH": 3
+        },
+        "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+        "zero_result_count": 4,
+        "zero_with_nonzero_switch_count": 1,
+        "zero_with_zero_switch_count": 3
+      },
+      {
+        "available_experiment_count": 27,
+        "cell_count": 9,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 27
+        },
+        "dominant_identity_change_cell_count": 0,
+        "experiment_count": 27,
+        "maximum_switch_count": 0,
+        "positive_repeating_cell_count": 0,
+        "sign_reversal_cell_count": 0,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 27
+        },
+        "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+        "zero_result_count": 27,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 27
+      },
+      {
+        "available_experiment_count": 0,
+        "cell_count": 1,
+        "classification_counts": {
+          "INCONCLUSIVE": 3,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 0
+        },
+        "dominant_identity_change_cell_count": 0,
+        "experiment_count": 3,
+        "maximum_switch_count": null,
+        "positive_repeating_cell_count": 0,
+        "sign_reversal_cell_count": 0,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 3,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 0
+        },
+        "switch_activity_profile": "NO_AVAILABLE_WINDOWS",
+        "zero_result_count": 0,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 0
+      }
+    ],
+    "by_k": [
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 2,
+          "POSITIVE": 3,
+          "ZERO": 1
+        },
+        "experiment_count": 6,
+        "k": 1,
+        "maximum_switch_count": 887,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 6,
+          "ZERO_SWITCH": 0
+        },
+        "zero_result_count": 1,
+        "zero_with_nonzero_switch_count": 1,
+        "zero_with_zero_switch_count": 0
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 3,
+        "classification_counts": {
+          "INCONCLUSIVE": 3,
+          "NEGATIVE": 2,
+          "POSITIVE": 4,
+          "ZERO": 0
+        },
+        "experiment_count": 9,
+        "k": 2,
+        "maximum_switch_count": 829,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 3,
+          "SWITCHING_ACTIVE": 6,
+          "ZERO_SWITCH": 0
+        },
+        "zero_result_count": 0,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 0
+      },
+      {
+        "available_experiment_count": 8,
+        "cell_count": 3,
+        "classification_counts": {
+          "INCONCLUSIVE": 1,
+          "NEGATIVE": 3,
+          "POSITIVE": 5,
+          "ZERO": 0
+        },
+        "experiment_count": 9,
+        "k": 3,
+        "maximum_switch_count": 889,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 1,
+          "SWITCHING_ACTIVE": 8,
+          "ZERO_SWITCH": 0
+        },
+        "zero_result_count": 0,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 0
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 2,
+          "POSITIVE": 1,
+          "ZERO": 3
+        },
+        "experiment_count": 6,
+        "k": 4,
+        "maximum_switch_count": 114,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 3,
+          "ZERO_SWITCH": 3
+        },
+        "zero_result_count": 3,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 3
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 4,
+          "POSITIVE": 1,
+          "ZERO": 1
+        },
+        "experiment_count": 6,
+        "k": 5,
+        "maximum_switch_count": 193,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 5,
+          "ZERO_SWITCH": 1
+        },
+        "zero_result_count": 1,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 1
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 3,
+          "POSITIVE": 1,
+          "ZERO": 2
+        },
+        "experiment_count": 6,
+        "k": 7,
+        "maximum_switch_count": 280,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 4,
+          "ZERO_SWITCH": 2
+        },
+        "zero_result_count": 2,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 2
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 6
+        },
+        "experiment_count": 6,
+        "k": 10,
+        "maximum_switch_count": 0,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 6
+        },
+        "zero_result_count": 6,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 6
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 6
+        },
+        "experiment_count": 6,
+        "k": 11,
+        "maximum_switch_count": 0,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 6
+        },
+        "zero_result_count": 6,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 6
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 6
+        },
+        "experiment_count": 6,
+        "k": 12,
+        "maximum_switch_count": 0,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 6
+        },
+        "zero_result_count": 6,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 6
+      },
+      {
+        "available_experiment_count": 6,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 6
+        },
+        "experiment_count": 6,
+        "k": 25,
+        "maximum_switch_count": 0,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 6
+        },
+        "zero_result_count": 6,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 6
+      }
+    ],
+    "by_lottery": [
+      {
+        "available_experiment_count": 2,
+        "cell_count": 2,
+        "classification_counts": {
+          "INCONCLUSIVE": 4,
+          "NEGATIVE": 1,
+          "POSITIVE": 1,
+          "ZERO": 0
+        },
+        "experiment_count": 6,
+        "lottery_id": "B649",
+        "maximum_switch_count": 69,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 4,
+          "SWITCHING_ACTIVE": 2,
+          "ZERO_SWITCH": 0
+        },
+        "zero_result_count": 0,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 0
+      },
+      {
+        "available_experiment_count": 30,
+        "cell_count": 10,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 9,
+          "POSITIVE": 7,
+          "ZERO": 14
+        },
+        "experiment_count": 30,
+        "lottery_id": "P638",
+        "maximum_switch_count": 241,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 17,
+          "ZERO_SWITCH": 13
+        },
+        "zero_result_count": 14,
+        "zero_with_nonzero_switch_count": 1,
+        "zero_with_zero_switch_count": 13
+      },
+      {
+        "available_experiment_count": 30,
+        "cell_count": 10,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 6,
+          "POSITIVE": 7,
+          "ZERO": 17
+        },
+        "experiment_count": 30,
+        "lottery_id": "T539",
+        "maximum_switch_count": 889,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 13,
+          "ZERO_SWITCH": 17
+        },
+        "zero_result_count": 17,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 17
+      }
+    ],
+    "by_switch_activity": [
+      {
+        "available_experiment_count": 32,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 16,
+          "POSITIVE": 15,
+          "ZERO": 1
+        },
+        "experiment_count": 32,
+        "maximum_switch_count": 889,
+        "switch_activity": "SWITCHING_ACTIVE",
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 32,
+          "ZERO_SWITCH": 0
+        },
+        "zero_result_count": 1,
+        "zero_with_nonzero_switch_count": 1,
+        "zero_with_zero_switch_count": 0
+      },
+      {
+        "available_experiment_count": 30,
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 30
+        },
+        "experiment_count": 30,
+        "maximum_switch_count": 0,
+        "switch_activity": "ZERO_SWITCH",
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 0,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 30
+        },
+        "zero_result_count": 30,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 30
+      },
+      {
+        "available_experiment_count": 0,
+        "classification_counts": {
+          "INCONCLUSIVE": 4,
+          "NEGATIVE": 0,
+          "POSITIVE": 0,
+          "ZERO": 0
+        },
+        "experiment_count": 4,
+        "maximum_switch_count": null,
+        "switch_activity": "INCONCLUSIVE",
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 4,
+          "SWITCHING_ACTIVE": 0,
+          "ZERO_SWITCH": 0
+        },
+        "zero_result_count": 0,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 0
+      }
+    ],
+    "by_window": [
+      {
+        "available_experiment_count": 21,
+        "cell_count": 22,
+        "classification_counts": {
+          "INCONCLUSIVE": 1,
+          "NEGATIVE": 6,
+          "POSITIVE": 6,
+          "ZERO": 9
+        },
+        "experiment_count": 22,
+        "maximum_switch_count": 889,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 1,
+          "SWITCHING_ACTIVE": 12,
+          "ZERO_SWITCH": 9
+        },
+        "window": 50,
+        "zero_result_count": 9,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 9
+      },
+      {
+        "available_experiment_count": 21,
+        "cell_count": 22,
+        "classification_counts": {
+          "INCONCLUSIVE": 1,
+          "NEGATIVE": 8,
+          "POSITIVE": 3,
+          "ZERO": 10
+        },
+        "experiment_count": 22,
+        "maximum_switch_count": 287,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 1,
+          "SWITCHING_ACTIVE": 12,
+          "ZERO_SWITCH": 9
+        },
+        "window": 300,
+        "zero_result_count": 10,
+        "zero_with_nonzero_switch_count": 1,
+        "zero_with_zero_switch_count": 9
+      },
+      {
+        "available_experiment_count": 20,
+        "cell_count": 22,
+        "classification_counts": {
+          "INCONCLUSIVE": 2,
+          "NEGATIVE": 2,
+          "POSITIVE": 6,
+          "ZERO": 12
+        },
+        "experiment_count": 22,
+        "maximum_switch_count": 174,
+        "switch_activity_counts": {
+          "INCONCLUSIVE": 2,
+          "SWITCHING_ACTIVE": 8,
+          "ZERO_SWITCH": 12
+        },
+        "window": 750,
+        "zero_result_count": 12,
+        "zero_with_nonzero_switch_count": 0,
+        "zero_with_zero_switch_count": 12
+      }
+    ],
+    "cell_switch_activity_profiles": {
+      "NO_AVAILABLE_WINDOWS": 1,
+      "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW": 12,
+      "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS": 9
+    },
+    "overall": {
+      "available_experiment_count": 62,
+      "cell_count": 22,
+      "classification_counts": {
+        "INCONCLUSIVE": 4,
+        "NEGATIVE": 16,
+        "POSITIVE": 15,
+        "ZERO": 31
+      },
+      "experiment_count": 66,
+      "maximum_switch_count": 889,
+      "switch_activity_counts": {
+        "INCONCLUSIVE": 4,
+        "SWITCHING_ACTIVE": 32,
+        "ZERO_SWITCH": 30
+      },
+      "zero_result_count": 31,
+      "zero_with_nonzero_switch_count": 1,
+      "zero_with_zero_switch_count": 30
+    }
+  },
+  "boundaries": {
+    "composite_score": "NOT_CREATED",
+    "database_access": "NO",
+    "future_selector_definition": "NOT_CREATED",
+    "new_historical_replay": "NOT_RUN",
+    "new_selector": "NOT_IMPLEMENTED",
+    "parameter_optimization": "NOT_RUN",
+    "phase12_dependency": "NONE",
+    "predictive_advantage": "NOT_ESTABLISHED",
+    "profitability": "NOT_ESTABLISHED",
+    "promotion_threshold": "NOT_CREATED",
+    "statistical_significance": "NOT_CLAIMED",
+    "strategy_execution": "NOT_RUN"
+  },
+  "cells": [
+    {
+      "available_window_count": 0,
+      "cell_id": "B649:K2",
+      "dominant_identity_materially_changes_with_window": "INCONCLUSIVE_FEWER_THAN_TWO_AVAILABLE_WINDOWS",
+      "k": 2,
+      "lottery_id": "B649",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "INCONCLUSIVE",
+        "W50": "INCONCLUSIVE",
+        "W750": "INCONCLUSIVE"
+      },
+      "sign_pattern_ordered": "W50=INCONCLUSIVE / W300=INCONCLUSIVE / W750=INCONCLUSIVE",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "NO_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": false,
+          "classification": "INCONCLUSIVE",
+          "dominant_rolling_selected_strategy_identities": [],
+          "frozen_strategy_identity": null,
+          "rolling_minus_frozen_exact_delta": null,
+          "rolling_selection_target_count": 0,
+          "source_conclusion": "INCONCLUSIVE_CANONICAL_COVERAGE_INSUFFICIENT",
+          "source_label": "SHORT",
+          "source_status": "EXCLUDED",
+          "switch_activity": "INCONCLUSIVE",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": false,
+          "classification": "INCONCLUSIVE",
+          "dominant_rolling_selected_strategy_identities": [],
+          "frozen_strategy_identity": null,
+          "rolling_minus_frozen_exact_delta": null,
+          "rolling_selection_target_count": 0,
+          "source_conclusion": "INCONCLUSIVE_CANONICAL_COVERAGE_INSUFFICIENT",
+          "source_label": "MEDIUM",
+          "source_status": "EXCLUDED",
+          "switch_activity": "INCONCLUSIVE",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": false,
+          "classification": "INCONCLUSIVE",
+          "dominant_rolling_selected_strategy_identities": [],
+          "frozen_strategy_identity": null,
+          "rolling_minus_frozen_exact_delta": null,
+          "rolling_selection_target_count": 0,
+          "source_conclusion": "INCONCLUSIVE_CANONICAL_COVERAGE_INSUFFICIENT",
+          "source_label": "LONG",
+          "source_status": "EXCLUDED",
+          "switch_activity": "INCONCLUSIVE",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 2,
+      "cell_id": "B649:K3",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 3,
+      "lottery_id": "B649",
+      "positive_classification_count": 1,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "POSITIVE",
+        "W750": "INCONCLUSIVE"
+      },
+      "sign_pattern_ordered": "W50=POSITIVE / W300=NEGATIVE / W750=INCONCLUSIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W300"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 2,
+      "windows": [
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 118,
+              "strategy_id": "legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2"
+            }
+          ],
+          "frozen_strategy_identity": "legacy_biglotto__test_mwsc__ba37643d6a3b",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 327,
+            "exact": "2/327",
+            "numerator": 2
+          },
+          "rolling_selection_target_count": 654,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 69,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 175,
+              "strategy_id": "legacy_biglotto__big_lotto_exhaustive_audit__694d353b7ca2"
+            }
+          ],
+          "frozen_strategy_identity": "legacy_biglotto__test_dcb__c3299c25ca59",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 404,
+            "exact": "-7/404",
+            "numerator": -7
+          },
+          "rolling_selection_target_count": 404,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 28,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": false,
+          "classification": "INCONCLUSIVE",
+          "dominant_rolling_selected_strategy_identities": [],
+          "frozen_strategy_identity": null,
+          "rolling_minus_frozen_exact_delta": null,
+          "rolling_selection_target_count": 0,
+          "source_conclusion": "INCONCLUSIVE_CANONICAL_COVERAGE_INSUFFICIENT",
+          "source_label": "LONG",
+          "source_status": "EXCLUDED",
+          "switch_activity": "INCONCLUSIVE",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K1",
+      "dominant_identity_materially_changes_with_window": "YES_DOMINANT_IDENTITY_CHANGED",
+      "k": 1,
+      "lottery_id": "P638",
+      "positive_classification_count": 1,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "NEGATIVE",
+        "W750": "POSITIVE"
+      },
+      "sign_pattern_ordered": "W50=NEGATIVE / W300=ZERO / W750=POSITIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 178,
+              "strategy_id": "power_biglotto_moderate_rank_1bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_c07_borda_ensemble_1bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 847,
+            "exact": "-5/847",
+            "numerator": -5
+          },
+          "rolling_selection_target_count": 847,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 115,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 264,
+              "strategy_id": "power_c07_borda_ensemble_1bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_c07_borda_ensemble_1bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 597,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 21,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": false
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 72,
+              "strategy_id": "power_biglotto_moderate_rank_1bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_c07_borda_ensemble_1bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 147,
+            "exact": "5/147",
+            "numerator": 5
+          },
+          "rolling_selection_target_count": 147,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 4,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K2",
+      "dominant_identity_materially_changes_with_window": "YES_DOMINANT_IDENTITY_CHANGED",
+      "k": 2,
+      "lottery_id": "P638",
+      "positive_classification_count": 2,
+      "positive_repeats_across_two_or_more_available_windows": true,
+      "sign_pattern": {
+        "W300": "POSITIVE",
+        "W50": "NEGATIVE",
+        "W750": "POSITIVE"
+      },
+      "sign_pattern_ordered": "W50=NEGATIVE / W300=POSITIVE / W750=POSITIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W300"
+        },
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 153,
+              "strategy_id": "power_momentum_2bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_p0_echo_2bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1783,
+            "exact": "-9/1783",
+            "numerator": -9
+          },
+          "rolling_selection_target_count": 1783,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 241,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 435,
+              "strategy_id": "power_fourier_gap_rebound_2bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_p0_echo_2bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 219,
+            "exact": "1/219",
+            "numerator": 1
+          },
+          "rolling_selection_target_count": 1533,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 69,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 662,
+              "strategy_id": "power_fourier_gap_rebound_2bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_momentum_2bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 361,
+            "exact": "9/361",
+            "numerator": 9
+          },
+          "rolling_selection_target_count": 1083,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 34,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K3",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 3,
+      "lottery_id": "P638",
+      "positive_classification_count": 2,
+      "positive_repeats_across_two_or_more_available_windows": true,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "POSITIVE",
+        "W750": "POSITIVE"
+      },
+      "sign_pattern_ordered": "W50=POSITIVE / W300=NEGATIVE / W750=POSITIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W300"
+        },
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W300",
+          "to_classification": "POSITIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 293,
+              "strategy_id": "midfreq_fourier_mk_3bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_random_zone_split_3bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 141,
+            "exact": "2/141",
+            "numerator": 2
+          },
+          "rolling_selection_target_count": 1833,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 196,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 597,
+              "strategy_id": "midfreq_fourier_mk_3bet"
+            }
+          ],
+          "frozen_strategy_identity": "midfreq_fourier_mk_3bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1583,
+            "exact": "-21/1583",
+            "numerator": -21
+          },
+          "rolling_selection_target_count": 1583,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 72,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 503,
+              "strategy_id": "midfreq_fourier_mk_3bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_exhaustive_audit_3bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1133,
+            "exact": "14/1133",
+            "numerator": 14
+          },
+          "rolling_selection_target_count": 1133,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 11,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K4",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 4,
+      "lottery_id": "P638",
+      "positive_classification_count": 1,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "POSITIVE",
+        "W750": "NEGATIVE"
+      },
+      "sign_pattern_ordered": "W50=POSITIVE / W300=NEGATIVE / W750=NEGATIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W300"
+        },
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 920,
+              "strategy_id": "pp3_freqort_4bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_apriori_ext_4bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1832,
+            "exact": "17/1832",
+            "numerator": 17
+          },
+          "rolling_selection_target_count": 1832,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 114,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1262,
+              "strategy_id": "pp3_freqort_4bet"
+            }
+          ],
+          "frozen_strategy_identity": "pp3_freqort_4bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1582,
+            "exact": "-11/1582",
+            "numerator": -11
+          },
+          "rolling_selection_target_count": 1582,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 41,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1056,
+              "strategy_id": "pp3_freqort_4bet"
+            }
+          ],
+          "frozen_strategy_identity": "pp3_freqort_4bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 566,
+            "exact": "-1/566",
+            "numerator": -1
+          },
+          "rolling_selection_target_count": 1132,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 4,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K5",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 5,
+      "lottery_id": "P638",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "NEGATIVE",
+        "W750": "NEGATIVE"
+      },
+      "sign_pattern_ordered": "W50=NEGATIVE / W300=NEGATIVE / W750=NEGATIVE",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 961,
+              "strategy_id": "power_orthogonal_5bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_orthogonal_5bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1853,
+            "exact": "-9/1853",
+            "numerator": -9
+          },
+          "rolling_selection_target_count": 1853,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 79,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 915,
+              "strategy_id": "power_orthogonal_5bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_orthogonal_5bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1603,
+            "exact": "-10/1603",
+            "numerator": -10
+          },
+          "rolling_selection_target_count": 1603,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 55,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 867,
+              "strategy_id": "power_orthogonal_5bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_orthogonal_5bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1153,
+            "exact": "-10/1153",
+            "numerator": -10
+          },
+          "rolling_selection_target_count": 1153,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 12,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K7",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 7,
+      "lottery_id": "P638",
+      "positive_classification_count": 1,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "POSITIVE",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=POSITIVE / W300=NEGATIVE / W750=ZERO",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W300"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 2,
+      "windows": [
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1170,
+              "strategy_id": "power_biglotto_elite_7bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_gemini_phase2_7bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1783,
+            "exact": "34/1783",
+            "numerator": 34
+          },
+          "rolling_selection_target_count": 1783,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 92,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1389,
+              "strategy_id": "power_biglotto_elite_7bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_elite_7bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1533,
+            "exact": "-11/1533",
+            "numerator": -11
+          },
+          "rolling_selection_target_count": 1533,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 32,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1083,
+              "strategy_id": "power_biglotto_elite_7bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_elite_7bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1083,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K10",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 10,
+      "lottery_id": "P638",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1853,
+              "strategy_id": "power_biglotto_backtest_10bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_backtest_10bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1853,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1603,
+              "strategy_id": "power_biglotto_backtest_10bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_backtest_10bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1603,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1153,
+              "strategy_id": "power_biglotto_backtest_10bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_backtest_10bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1153,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K11",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 11,
+      "lottery_id": "P638",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1853,
+              "strategy_id": "power_biglotto_variant_history_11bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_variant_history_11bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1853,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1603,
+              "strategy_id": "power_biglotto_variant_history_11bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_variant_history_11bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1603,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1153,
+              "strategy_id": "power_biglotto_variant_history_11bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_variant_history_11bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1153,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K12",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 12,
+      "lottery_id": "P638",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1853,
+              "strategy_id": "power_biglotto_core_satellite_12bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_core_satellite_12bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1853,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1603,
+              "strategy_id": "power_biglotto_core_satellite_12bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_core_satellite_12bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1603,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1153,
+              "strategy_id": "power_biglotto_core_satellite_12bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_core_satellite_12bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1153,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "P638:K25",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 25,
+      "lottery_id": "P638",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1853,
+              "strategy_id": "power_biglotto_auto_optimizer_alpha_25bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_auto_optimizer_alpha_25bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1853,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1603,
+              "strategy_id": "power_biglotto_auto_optimizer_alpha_25bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_auto_optimizer_alpha_25bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1603,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1153,
+              "strategy_id": "power_biglotto_auto_optimizer_alpha_25bet"
+            }
+          ],
+          "frozen_strategy_identity": "power_biglotto_auto_optimizer_alpha_25bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 1153,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K1",
+      "dominant_identity_materially_changes_with_window": "YES_DOMINANT_IDENTITY_CHANGED",
+      "k": 1,
+      "lottery_id": "T539",
+      "positive_classification_count": 2,
+      "positive_repeats_across_two_or_more_available_windows": true,
+      "sign_pattern": {
+        "W300": "POSITIVE",
+        "W50": "NEGATIVE",
+        "W750": "POSITIVE"
+      },
+      "sign_pattern_ordered": "W50=NEGATIVE / W300=POSITIVE / W750=POSITIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W300"
+        },
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 494,
+              "strategy_id": "acb_markov_midfreq"
+            }
+          ],
+          "frozen_strategy_identity": "539_3bet_orthogonal",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1136,
+            "exact": "-7/1136",
+            "numerator": -7
+          },
+          "rolling_selection_target_count": 5680,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 887,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 691,
+              "strategy_id": "t539_biglotto_dms_1bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_short_window_deviation_1bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1086,
+            "exact": "17/1086",
+            "numerator": 17
+          },
+          "rolling_selection_target_count": 5430,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 259,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 870,
+              "strategy_id": "t539_biglotto_dms_1bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_short_window_deviation_1bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 332,
+            "exact": "3/332",
+            "numerator": 3
+          },
+          "rolling_selection_target_count": 4980,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 174,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K2",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 2,
+      "lottery_id": "T539",
+      "positive_classification_count": 2,
+      "positive_repeats_across_two_or_more_available_windows": true,
+      "sign_pattern": {
+        "W300": "POSITIVE",
+        "W50": "NEGATIVE",
+        "W750": "POSITIVE"
+      },
+      "sign_pattern_ordered": "W50=NEGATIVE / W300=POSITIVE / W750=POSITIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W300"
+        },
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W50",
+          "to_classification": "POSITIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1049,
+              "strategy_id": "midfreq_acb_2bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_two_bet_elite_2bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 2890,
+            "exact": "-39/2890",
+            "numerator": -39
+          },
+          "rolling_selection_target_count": 5780,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 829,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1304,
+              "strategy_id": "midfreq_acb_2bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_two_bet_optimizer_v2_2bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 790,
+            "exact": "9/790",
+            "numerator": 9
+          },
+          "rolling_selection_target_count": 5530,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 287,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1509,
+              "strategy_id": "midfreq_acb_2bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_two_bet_elite_2bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 5080,
+            "exact": "1/5080",
+            "numerator": 1
+          },
+          "rolling_selection_target_count": 5080,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 126,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K3",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 3,
+      "lottery_id": "T539",
+      "positive_classification_count": 2,
+      "positive_repeats_across_two_or_more_available_windows": true,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "POSITIVE",
+        "W750": "POSITIVE"
+      },
+      "sign_pattern_ordered": "W50=POSITIVE / W300=NEGATIVE / W750=POSITIVE",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W300"
+        },
+        {
+          "from_classification": "NEGATIVE",
+          "from_window": "W300",
+          "to_classification": "POSITIVE",
+          "to_window": "W750"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 3,
+      "windows": [
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1155,
+              "strategy_id": "daily539_f4cold_3bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_zdp_3bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1156,
+            "exact": "25/1156",
+            "numerator": 25
+          },
+          "rolling_selection_target_count": 5780,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 889,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1344,
+              "strategy_id": "daily539_f4cold_3bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_exhaustive_audit_3bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 790,
+            "exact": "-1/790",
+            "numerator": -1
+          },
+          "rolling_selection_target_count": 5530,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 262,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 1991,
+              "strategy_id": "daily539_f4cold_3bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_exhaustive_audit_3bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 2540,
+            "exact": "23/2540",
+            "numerator": 23
+          },
+          "rolling_selection_target_count": 5080,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 118,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": null
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K4",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 4,
+      "lottery_id": "T539",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5879,
+              "strategy_id": "t539_biglotto_tme_optimizer_4bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_tme_optimizer_4bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5879,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5629,
+              "strategy_id": "t539_biglotto_tme_optimizer_4bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_tme_optimizer_4bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5629,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5179,
+              "strategy_id": "t539_biglotto_tme_optimizer_4bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_tme_optimizer_4bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5179,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K5",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 5,
+      "lottery_id": "T539",
+      "positive_classification_count": 1,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "POSITIVE",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=POSITIVE / W300=NEGATIVE / W750=ZERO",
+      "sign_reversal": true,
+      "sign_reversal_pairs": [
+        {
+          "from_classification": "POSITIVE",
+          "from_window": "W50",
+          "to_classification": "NEGATIVE",
+          "to_window": "W300"
+        }
+      ],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 2,
+      "windows": [
+        {
+          "available": true,
+          "classification": "POSITIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 4656,
+              "strategy_id": "daily539_f4cold_5bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_five_me_5bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 5780,
+            "exact": "477/5780",
+            "numerator": 477
+          },
+          "rolling_selection_target_count": 5780,
+          "source_conclusion": "ROLLING_HISTORICALLY_EXCEEDED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 193,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5486,
+              "strategy_id": "daily539_f4cold_5bet"
+            }
+          ],
+          "frozen_strategy_identity": "daily539_f4cold_5bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 2765,
+            "exact": "-2/2765",
+            "numerator": -2
+          },
+          "rolling_selection_target_count": 5530,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 2,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5080,
+              "strategy_id": "daily539_f4cold_5bet"
+            }
+          ],
+          "frozen_strategy_identity": "daily539_f4cold_5bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5080,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K7",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 7,
+      "lottery_id": "T539",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "NEGATIVE",
+        "W50": "NEGATIVE",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=NEGATIVE / W300=NEGATIVE / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "SWITCHING_ACTIVE_IN_AT_LEAST_ONE_AVAILABLE_WINDOW",
+      "switching_active_window_count": 2,
+      "windows": [
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 4620,
+              "strategy_id": "t539_biglotto_gemini_phase2_7bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_gemini_phase2_7bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 2890,
+            "exact": "-57/2890",
+            "numerator": -57
+          },
+          "rolling_selection_target_count": 5780,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 280,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "NEGATIVE",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5457,
+              "strategy_id": "t539_biglotto_gemini_phase2_7bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_gemini_phase2_7bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 790,
+            "exact": "-1/790",
+            "numerator": -1
+          },
+          "rolling_selection_target_count": 5530,
+          "source_conclusion": "ROLLING_HISTORICALLY_UNDERPERFORMED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "SWITCHING_ACTIVE",
+          "switch_count": 10,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": null
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5080,
+              "strategy_id": "t539_biglotto_gemini_phase2_7bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_gemini_phase2_7bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5080,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K10",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 10,
+      "lottery_id": "T539",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5879,
+              "strategy_id": "t539_biglotto_backtest_10bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_backtest_10bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5879,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5629,
+              "strategy_id": "t539_biglotto_backtest_10bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_backtest_10bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5629,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5179,
+              "strategy_id": "t539_biglotto_backtest_10bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_backtest_10bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5179,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K11",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 11,
+      "lottery_id": "T539",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5860,
+              "strategy_id": "t539_biglotto_variant_history_11bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_variant_history_11bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5860,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5610,
+              "strategy_id": "t539_biglotto_variant_history_11bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_variant_history_11bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5610,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5160,
+              "strategy_id": "t539_biglotto_variant_history_11bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_variant_history_11bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5160,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K12",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 12,
+      "lottery_id": "T539",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5879,
+              "strategy_id": "t539_biglotto_core_satellite_12bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_core_satellite_12bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5879,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5629,
+              "strategy_id": "t539_biglotto_core_satellite_12bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_core_satellite_12bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5629,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5179,
+              "strategy_id": "t539_biglotto_core_satellite_12bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_core_satellite_12bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5179,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    },
+    {
+      "available_window_count": 3,
+      "cell_id": "T539:K25",
+      "dominant_identity_materially_changes_with_window": "NO_DOMINANT_IDENTITY_STABLE",
+      "k": 25,
+      "lottery_id": "T539",
+      "positive_classification_count": 0,
+      "positive_repeats_across_two_or_more_available_windows": false,
+      "sign_pattern": {
+        "W300": "ZERO",
+        "W50": "ZERO",
+        "W750": "ZERO"
+      },
+      "sign_pattern_ordered": "W50=ZERO / W300=ZERO / W750=ZERO",
+      "sign_reversal": false,
+      "sign_reversal_pairs": [],
+      "switch_activity_profile": "ZERO_SWITCH_ACROSS_ALL_AVAILABLE_WINDOWS",
+      "switching_active_window_count": 0,
+      "windows": [
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5879,
+              "strategy_id": "t539_biglotto_auto_optimizer_alpha_25bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_auto_optimizer_alpha_25bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5879,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "SHORT",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 50,
+          "window_label": "W50",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5629,
+              "strategy_id": "t539_biglotto_auto_optimizer_alpha_25bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_auto_optimizer_alpha_25bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5629,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "MEDIUM",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 300,
+          "window_label": "W300",
+          "zero_result_accompanied_by_switch_count_zero": true
+        },
+        {
+          "available": true,
+          "classification": "ZERO",
+          "dominant_rolling_selected_strategy_identities": [
+            {
+              "selection_count": 5179,
+              "strategy_id": "t539_biglotto_auto_optimizer_alpha_25bet"
+            }
+          ],
+          "frozen_strategy_identity": "t539_biglotto_auto_optimizer_alpha_25bet",
+          "rolling_minus_frozen_exact_delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "rolling_selection_target_count": 5179,
+          "source_conclusion": "ROLLING_HISTORICALLY_MATCHED_PAIRED_CAUSAL_FROZEN_BASELINE",
+          "source_label": "LONG",
+          "source_status": "COMPLETE",
+          "switch_activity": "ZERO_SWITCH",
+          "switch_count": 0,
+          "window": 750,
+          "window_label": "W750",
+          "zero_result_accompanied_by_switch_count_zero": true
+        }
+      ]
+    }
+  ],
+  "definitions": {
+    "availability": "A window is available only when the source experiment status is COMPLETE and its exact delta is present and valid.",
+    "classification": {
+      "INCONCLUSIVE": "Source experiment is unavailable; no delta sign is inferred.",
+      "NEGATIVE": "Exact rolling-minus-frozen delta numerator is less than zero.",
+      "POSITIVE": "Exact rolling-minus-frozen delta numerator is greater than zero.",
+      "ZERO": "Exact rolling-minus-frozen delta numerator equals zero."
+    },
+    "dominant_strategy_identity": "Every rolling-selected strategy tied for the greatest exact selection count.",
+    "material_window_change": "YES only when the dominant strategy identity set differs across two or more available windows; no numeric threshold is used.",
+    "repeated_positive": "POSITIVE in at least two available windows.",
+    "sign_reversal": "At least one available-window pair contains one POSITIVE and one NEGATIVE sign.",
+    "switching_active": "Available experiment with switch_count greater than zero.",
+    "window_order": [
+      "W50",
+      "W300",
+      "W750"
+    ],
+    "zero_switch": "Available experiment with switch_count equal to zero."
+  },
+  "diagnostic_answers": [
+    {
+      "answer": {
+        "zero_experiment_count": 31,
+        "zero_with_nonzero_switch_count": 1,
+        "zero_with_nonzero_switch_experiments": [
+          {
+            "cell_id": "P638:K1",
+            "classification": "ZERO",
+            "rolling_minus_frozen_exact_delta": {
+              "denominator": 1,
+              "exact": "0/1",
+              "numerator": 0
+            },
+            "switch_count": 21,
+            "window_label": "W300"
+          }
+        ],
+        "zero_with_zero_switch_count": 30
+      },
+      "question": "How many ZERO experiments are trivially zero because switch_count=0?",
+      "question_id": 1
+    },
+    {
+      "answer": {
+        "classification_counts": {
+          "INCONCLUSIVE": 0,
+          "NEGATIVE": 16,
+          "POSITIVE": 15,
+          "ZERO": 1
+        },
+        "switching_active_experiment_count": 32
+      },
+      "question": "Among switching-active experiments only, how many are positive, negative, or zero?",
+      "question_id": 2
+    },
+    {
+      "answer": {
+        "cell_count": 5,
+        "cells": [
+          {
+            "cell_id": "P638:K2",
+            "positive_windows": [
+              "W300",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "P638:K3",
+            "positive_windows": [
+              "W50",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "T539:K1",
+            "positive_windows": [
+              "W300",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "T539:K2",
+            "positive_windows": [
+              "W300",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "T539:K3",
+            "positive_windows": [
+              "W50",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "POSITIVE"
+            }
+          }
+        ]
+      },
+      "question": "Which cells show positive delta in at least two available windows?",
+      "question_id": 3
+    },
+    {
+      "answer": {
+        "cell_count": 10,
+        "cells": [
+          {
+            "cell_id": "B649:K3",
+            "reversal_pairs": [
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W300"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "INCONCLUSIVE"
+            }
+          },
+          {
+            "cell_id": "P638:K1",
+            "reversal_pairs": [
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "ZERO",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "P638:K2",
+            "reversal_pairs": [
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W300"
+              },
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "P638:K3",
+            "reversal_pairs": [
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W300"
+              },
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W300",
+                "to_classification": "POSITIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "P638:K4",
+            "reversal_pairs": [
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W300"
+              },
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "NEGATIVE"
+            }
+          },
+          {
+            "cell_id": "P638:K7",
+            "reversal_pairs": [
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W300"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "ZERO"
+            }
+          },
+          {
+            "cell_id": "T539:K1",
+            "reversal_pairs": [
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W300"
+              },
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "T539:K2",
+            "reversal_pairs": [
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W300"
+              },
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W50",
+                "to_classification": "POSITIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "T539:K3",
+            "reversal_pairs": [
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W300"
+              },
+              {
+                "from_classification": "NEGATIVE",
+                "from_window": "W300",
+                "to_classification": "POSITIVE",
+                "to_window": "W750"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "POSITIVE"
+            }
+          },
+          {
+            "cell_id": "T539:K5",
+            "reversal_pairs": [
+              {
+                "from_classification": "POSITIVE",
+                "from_window": "W50",
+                "to_classification": "NEGATIVE",
+                "to_window": "W300"
+              }
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "ZERO"
+            }
+          }
+        ]
+      },
+      "question": "Which cells reverse sign between short, medium, and long windows?",
+      "question_id": 4
+    },
+    {
+      "answer": {
+        "k1_to_k3_positive_count": 12,
+        "k_at_maximum_positive_count": [
+          3
+        ],
+        "positive_count_by_k": [
+          {
+            "available_experiment_count": 6,
+            "k": 1,
+            "positive_count": 3
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 2,
+            "positive_count": 4
+          },
+          {
+            "available_experiment_count": 8,
+            "k": 3,
+            "positive_count": 5
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 4,
+            "positive_count": 1
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 5,
+            "positive_count": 1
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 7,
+            "positive_count": 1
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 10,
+            "positive_count": 0
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 11,
+            "positive_count": 0
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 12,
+            "positive_count": 0
+          },
+          {
+            "available_experiment_count": 6,
+            "k": 25,
+            "positive_count": 0
+          }
+        ],
+        "positive_experiment_count": 15
+      },
+      "question": "Are positive effects concentrated in particular K ranges?",
+      "question_id": 5
+    },
+    {
+      "answer": {
+        "experiments_at_global_maximum": [
+          {
+            "cell_id": "T539:K3",
+            "classification": "POSITIVE",
+            "rolling_minus_frozen_exact_delta": {
+              "denominator": 1156,
+              "exact": "25/1156",
+              "numerator": 25
+            },
+            "switch_count": 889,
+            "window_label": "W50"
+          }
+        ],
+        "global_maximum_switch_count": 889,
+        "outcome_description": "MIXED_AMONG_THREE_LARGEST_EXPERIMENTS",
+        "per_window_maxima": [
+          {
+            "experiments": [
+              {
+                "cell_id": "T539:K3",
+                "classification": "POSITIVE",
+                "rolling_minus_frozen_exact_delta": {
+                  "denominator": 1156,
+                  "exact": "25/1156",
+                  "numerator": 25
+                },
+                "switch_count": 889,
+                "window_label": "W50"
+              }
+            ],
+            "maximum_switch_count": 889,
+            "window_label": "W50"
+          },
+          {
+            "experiments": [
+              {
+                "cell_id": "T539:K2",
+                "classification": "POSITIVE",
+                "rolling_minus_frozen_exact_delta": {
+                  "denominator": 790,
+                  "exact": "9/790",
+                  "numerator": 9
+                },
+                "switch_count": 287,
+                "window_label": "W300"
+              }
+            ],
+            "maximum_switch_count": 287,
+            "window_label": "W300"
+          },
+          {
+            "experiments": [
+              {
+                "cell_id": "T539:K1",
+                "classification": "POSITIVE",
+                "rolling_minus_frozen_exact_delta": {
+                  "denominator": 332,
+                  "exact": "3/332",
+                  "numerator": 3
+                },
+                "switch_count": 174,
+                "window_label": "W750"
+              }
+            ],
+            "maximum_switch_count": 174,
+            "window_label": "W750"
+          }
+        ],
+        "three_largest_experiments": [
+          {
+            "cell_id": "T539:K3",
+            "classification": "POSITIVE",
+            "rolling_minus_frozen_exact_delta": {
+              "denominator": 1156,
+              "exact": "25/1156",
+              "numerator": 25
+            },
+            "switch_count": 889,
+            "window_label": "W50"
+          },
+          {
+            "cell_id": "T539:K1",
+            "classification": "NEGATIVE",
+            "rolling_minus_frozen_exact_delta": {
+              "denominator": 1136,
+              "exact": "-7/1136",
+              "numerator": -7
+            },
+            "switch_count": 887,
+            "window_label": "W50"
+          },
+          {
+            "cell_id": "T539:K2",
+            "classification": "NEGATIVE",
+            "rolling_minus_frozen_exact_delta": {
+              "denominator": 2890,
+              "exact": "-39/2890",
+              "numerator": -39
+            },
+            "switch_count": 829,
+            "window_label": "W50"
+          }
+        ]
+      },
+      "question": "Are the largest switching frequencies associated descriptively with better, worse, or mixed outcomes?",
+      "question_id": 6
+    },
+    {
+      "answer": {
+        "candidate_count": 5,
+        "candidates": [
+          {
+            "basis": "POSITIVE_IN_AT_LEAST_TWO_AVAILABLE_WINDOWS_WITH_SWITCHING_ACTIVE_POSITIVE_WINDOWS",
+            "cell_id": "P638:K2",
+            "positive_windows": [
+              "W300",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            },
+            "sign_reversal": true
+          },
+          {
+            "basis": "POSITIVE_IN_AT_LEAST_TWO_AVAILABLE_WINDOWS_WITH_SWITCHING_ACTIVE_POSITIVE_WINDOWS",
+            "cell_id": "P638:K3",
+            "positive_windows": [
+              "W50",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "POSITIVE"
+            },
+            "sign_reversal": true
+          },
+          {
+            "basis": "POSITIVE_IN_AT_LEAST_TWO_AVAILABLE_WINDOWS_WITH_SWITCHING_ACTIVE_POSITIVE_WINDOWS",
+            "cell_id": "T539:K1",
+            "positive_windows": [
+              "W300",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            },
+            "sign_reversal": true
+          },
+          {
+            "basis": "POSITIVE_IN_AT_LEAST_TWO_AVAILABLE_WINDOWS_WITH_SWITCHING_ACTIVE_POSITIVE_WINDOWS",
+            "cell_id": "T539:K2",
+            "positive_windows": [
+              "W300",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "POSITIVE",
+              "W50": "NEGATIVE",
+              "W750": "POSITIVE"
+            },
+            "sign_reversal": true
+          },
+          {
+            "basis": "POSITIVE_IN_AT_LEAST_TWO_AVAILABLE_WINDOWS_WITH_SWITCHING_ACTIVE_POSITIVE_WINDOWS",
+            "cell_id": "T539:K3",
+            "positive_windows": [
+              "W50",
+              "W750"
+            ],
+            "sign_pattern": {
+              "W300": "NEGATIVE",
+              "W50": "POSITIVE",
+              "W750": "POSITIVE"
+            },
+            "sign_reversal": true
+          }
+        ],
+        "scope": "DESCRIPTIVE_CANDIDATE_IDENTIFICATION_ONLY; NO_FUTURE_SELECTOR_OR_PROMOTION_THRESHOLD_DEFINED"
+      },
+      "question": "Which cells are reasonable candidates for a separately preregistered future selector experiment?",
+      "question_id": 7
+    }
+  ],
+  "independence": {
+    "input_files_read_by_analyzer": [
+      "docs/research/matrix-native-results/strategy-matrix-causal-rolling-selector-pilot-r1-result.json"
+    ],
+    "phase12_paths_read": "NONE",
+    "source_report_read_by_analyzer": "NO"
+  },
+  "schema_version": "ROLLING_SELECTOR_STABILITY_DECOMPOSITION_RESULT_V1",
+  "source_data_quality": {
+    "complete_experiment_count": 62,
+    "duplicate_cell_id_count": 0,
+    "exact_rational_delta_count_validated": 62,
+    "excluded_experiment_count": 4,
+    "experiment_count": 66,
+    "inconclusive_experiment_count": 4,
+    "negative_switch_count_rows": 0,
+    "sign_classification_uses_decimal_field": false,
+    "unexpected_window_count": 0
+  },
+  "source_identity": {
+    "result_head": "abc367bd6d8b59d01ecc4d79e56c787bbc03cd20",
+    "result_path": "docs/research/matrix-native-results/strategy-matrix-causal-rolling-selector-pilot-r1-result.json",
+    "result_sha256": "04df0bfdffcf4ecc05d4f2ac3f58cfa1fa301061c5f1c30e549ddc3b5b174157",
+    "result_size_bytes": 235086,
+    "result_tree": "bf430efd66b7ce1ac38ee04fb0052e8c55cc972c",
+    "source_schema_version": "STRATEGY_MATRIX_CAUSAL_ROLLING_SELECTOR_PILOT_RESULT_V1",
+    "source_study_id": "STRATEGY_MATRIX_CAUSAL_ROLLING_SELECTOR_PILOT_V1",
+    "source_task_id": "STRATEGY_MATRIX_CAUSAL_ROLLING_SELECTOR_PILOT_R1"
+  },
+  "study_id": "ROLLING_SELECTOR_STABILITY_DECOMPOSITION_V1",
+  "task_id": "ROLLING_SELECTOR_STABILITY_DECOMPOSITION_R1"
+}

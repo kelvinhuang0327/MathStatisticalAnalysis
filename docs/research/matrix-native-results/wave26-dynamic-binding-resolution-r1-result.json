@@ -1,0 +1,396 @@
+{
+  "classification_contract": {
+    "allowed_values": [
+      "RESOLVED_STATIC_IMPLEMENTATION",
+      "RESOLVED_RUNTIME_FACTORY_IDENTITY",
+      "REMAINS_RUNTIME_DATA_DEPENDENT",
+      "AMBIGUOUS_BINDING"
+    ],
+    "resolution_boundary": "Structural source/provider identity only; runtime outputs, historical behavior, statistical independence, and semantic equivalence are outside scope.",
+    "unresolved_policy": "Runtime-selected or multiply bound providers fail open and are never guessed."
+  },
+  "original_lineage_result": {
+    "path": "docs/research/matrix-native-results/strategy-matrix-static-lineage-redundancy-map-r1-result.json",
+    "sha256": "f2f7d1fd5e08083124aaeb43dfe889f96012f6020b9daafae49f6368f832bfad",
+    "study_id": "STRATEGY_MATRIX_STATIC_LINEAGE_REDUNDANCY_MAP_R1"
+  },
+  "records": [
+    {
+      "descriptor_locator": "src/lottolab/strategies/catalog.py:815:StrategyDescriptor[legacy_biglotto__test_ces__78d17c530ab8]",
+      "exact_reason": "The descriptor names one concrete adapter class; its inherited constructor requires wave26_authority:Wave26PortfolioAuthority; the canonical instantiator injects the single named provider src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio; the adapter's static legacy_method_id='tools/test_ces.py' selects src/lottolab/application/legacy_source_native_portfolios_wave26.py:385:_ces_rows. Runtime request/history contents affect computed tickets, not the selected class/provider/callable identity.",
+      "factory_provider_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+      "final_resolution_classification": "RESOLVED_STATIC_IMPLEMENTATION",
+      "implementation_class_callable": {
+        "adapter_class_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:61:BigLottoCesThreeAdapter",
+        "authority_provider_callable_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "execution_callable_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+        "provider_target_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "statically_selected_wave26_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:385:_ces_rows"
+      },
+      "injected_authority": {
+        "constructor_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "parameter": "wave26_authority",
+        "type_expression": "Callable[[str, str, tuple[CausalDrawRow, ...]], tuple[tuple[int, ...], ...]]",
+        "type_interface": "Wave26PortfolioAuthority",
+        "type_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority"
+      },
+      "original_resolution": {
+        "binding_group_id": "unresolved-sha256:b2cbda1064bf9d5b922780367bbcba2d9760d76fcea5accb1b28a371ef21dc46",
+        "classification": "DYNAMIC_OR_UNRESOLVED",
+        "unresolved_reason": "CONSTRUCTOR_REQUIRES_RUNTIME_ARGUMENTS:wave26_authority"
+      },
+      "registry_adapter": "lottolab.strategies.adapters.biglotto_wave8:BigLottoCesThreeAdapter",
+      "runtime_data_contents_affect_implementation_identity": "NO",
+      "source_provider_lineage": [
+        "src/lottolab/strategies/catalog.py:815:StrategyDescriptor[legacy_biglotto__test_ces__78d17c530ab8]",
+        "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:61:BigLottoCesThreeAdapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+        "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+        "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:385:_ces_rows"
+      ],
+      "static_binding_parameters": {
+        "legacy_method_id": "tools/test_ces.py"
+      },
+      "strategy_id": "legacy_biglotto__test_ces__78d17c530ab8",
+      "structural_source_components": [
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:385:_ces_rows",
+          "normalized_ast_sha256": "99e7a92bff57cd573614eae203bbeb9e26c9cb9fd5dbe58446e4441841800de0"
+        },
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+          "normalized_ast_sha256": "bacfc4e2839e0bb68a645b969cac7a3a8ab9c44bf8d2ff9589302bd8d9ca7237"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+          "normalized_ast_sha256": "72ec50205c4160d12252385e4873207880d91b77dbc10c23a6b917b443da9a68"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+          "normalized_ast_sha256": "1b41a3f07c8c1b587b2d51b8f11a14e96d67f0c1de9c90b948189c67730ddc83"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+          "normalized_ast_sha256": "aefcf11314262fd6a538485682ce7f49aa9ecc39f5900979f1279a881b6e904f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+          "normalized_ast_sha256": "d670e176891247289a107c1307ff0820db74c6da35f2588f905dc96696f7b9df"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+          "normalized_ast_sha256": "c0ae7dbe633cb779fefb10dc89e0b12f043f48990b555b8781419d98ffdb015f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:61:BigLottoCesThreeAdapter",
+          "normalized_ast_sha256": "c530da66ab81ec5645d5f8493850647ae4add982344abc7afe7647f7295a173b"
+        },
+        {
+          "locator": "src/lottolab/strategies/catalog.py:815:StrategyDescriptor[legacy_biglotto__test_ces__78d17c530ab8]",
+          "normalized_ast_sha256": "309ffa89942c1c9f7ac48252bab1a681fcb222db5105c8ee77e285fddda293f4"
+        },
+        {
+          "locator": "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+          "normalized_ast_sha256": "9a52c84513b570104236ef7264bb0c61cb0c932b2c5fb571c90335ddff213bbc"
+        }
+      ],
+      "structural_source_digest_scope": "NORMALIZED_AST_OF_DESCRIPTOR_REGISTRY_ADAPTER_CONSTRUCTOR_HOOK_AUTHORITY_INJECTION_PROVIDER_TARGET_AND_STATICALLY_SELECTED_WAVE26_CALLABLE",
+      "structural_source_digest_sha256": "1e28a4b57f88a0109fbca62fc40c1e9f35967ef6effae6b6de211c08178beeb6",
+      "supplemental_binding_fingerprint_sha256": "f46ad35a3e0d187dbff06c263695830f6d8218663d02637bb06204f59912af92"
+    },
+    {
+      "descriptor_locator": "src/lottolab/strategies/catalog.py:836:StrategyDescriptor[legacy_biglotto__test_dms__b63442289bd5]",
+      "exact_reason": "The descriptor names one concrete adapter class; its inherited constructor requires wave26_authority:Wave26PortfolioAuthority; the canonical instantiator injects the single named provider src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio; the adapter's static legacy_method_id='tools/test_dms.py' selects src/lottolab/application/legacy_source_native_portfolios_wave26.py:428:_dms_rows. Runtime request/history contents affect computed tickets, not the selected class/provider/callable identity.",
+      "factory_provider_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+      "final_resolution_classification": "RESOLVED_STATIC_IMPLEMENTATION",
+      "implementation_class_callable": {
+        "adapter_class_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:70:BigLottoDmsThreeAdapter",
+        "authority_provider_callable_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "execution_callable_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+        "provider_target_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "statically_selected_wave26_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:428:_dms_rows"
+      },
+      "injected_authority": {
+        "constructor_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "parameter": "wave26_authority",
+        "type_expression": "Callable[[str, str, tuple[CausalDrawRow, ...]], tuple[tuple[int, ...], ...]]",
+        "type_interface": "Wave26PortfolioAuthority",
+        "type_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority"
+      },
+      "original_resolution": {
+        "binding_group_id": "unresolved-sha256:0ff2f535346c9b4127e8ade1d4bcec27c5a947d555de8118991420f1be885642",
+        "classification": "DYNAMIC_OR_UNRESOLVED",
+        "unresolved_reason": "CONSTRUCTOR_REQUIRES_RUNTIME_ARGUMENTS:wave26_authority"
+      },
+      "registry_adapter": "lottolab.strategies.adapters.biglotto_wave8:BigLottoDmsThreeAdapter",
+      "runtime_data_contents_affect_implementation_identity": "NO",
+      "source_provider_lineage": [
+        "src/lottolab/strategies/catalog.py:836:StrategyDescriptor[legacy_biglotto__test_dms__b63442289bd5]",
+        "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:70:BigLottoDmsThreeAdapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+        "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+        "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:428:_dms_rows"
+      ],
+      "static_binding_parameters": {
+        "legacy_method_id": "tools/test_dms.py"
+      },
+      "strategy_id": "legacy_biglotto__test_dms__b63442289bd5",
+      "structural_source_components": [
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:428:_dms_rows",
+          "normalized_ast_sha256": "55c39bcf8e712903312616f793fcf634c630d20daf2019abd55f39384a97219c"
+        },
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+          "normalized_ast_sha256": "bacfc4e2839e0bb68a645b969cac7a3a8ab9c44bf8d2ff9589302bd8d9ca7237"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+          "normalized_ast_sha256": "72ec50205c4160d12252385e4873207880d91b77dbc10c23a6b917b443da9a68"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+          "normalized_ast_sha256": "1b41a3f07c8c1b587b2d51b8f11a14e96d67f0c1de9c90b948189c67730ddc83"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+          "normalized_ast_sha256": "aefcf11314262fd6a538485682ce7f49aa9ecc39f5900979f1279a881b6e904f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+          "normalized_ast_sha256": "d670e176891247289a107c1307ff0820db74c6da35f2588f905dc96696f7b9df"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+          "normalized_ast_sha256": "c0ae7dbe633cb779fefb10dc89e0b12f043f48990b555b8781419d98ffdb015f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:70:BigLottoDmsThreeAdapter",
+          "normalized_ast_sha256": "7a214e23ae8631195ef20bb5ee5ae687f18e83afa67147c11e2fd92baa81ae5b"
+        },
+        {
+          "locator": "src/lottolab/strategies/catalog.py:836:StrategyDescriptor[legacy_biglotto__test_dms__b63442289bd5]",
+          "normalized_ast_sha256": "03fb615b3b1abb2f610e43d4757fc32c47a31ea624603da8702e5655a2dac4aa"
+        },
+        {
+          "locator": "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+          "normalized_ast_sha256": "9a52c84513b570104236ef7264bb0c61cb0c932b2c5fb571c90335ddff213bbc"
+        }
+      ],
+      "structural_source_digest_scope": "NORMALIZED_AST_OF_DESCRIPTOR_REGISTRY_ADAPTER_CONSTRUCTOR_HOOK_AUTHORITY_INJECTION_PROVIDER_TARGET_AND_STATICALLY_SELECTED_WAVE26_CALLABLE",
+      "structural_source_digest_sha256": "e208ad41afb8cba2efd6d285928c173ab6b209a9db461e80dafa274a3e1c32f1",
+      "supplemental_binding_fingerprint_sha256": "416b774564574798d961188b0968af43b39b4721a280b9c784de65d4ff2ee25f"
+    },
+    {
+      "descriptor_locator": "src/lottolab/strategies/catalog.py:857:StrategyDescriptor[legacy_biglotto__test_greedy_optimizer__82df7f878ece]",
+      "exact_reason": "The descriptor names one concrete adapter class; its inherited constructor requires wave26_authority:Wave26PortfolioAuthority; the canonical instantiator injects the single named provider src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio; the adapter's static legacy_method_id='tools/test_greedy_optimizer.py' selects src/lottolab/application/legacy_source_native_portfolios_wave26.py:571:_greedy_rows. Runtime request/history contents affect computed tickets, not the selected class/provider/callable identity.",
+      "factory_provider_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+      "final_resolution_classification": "RESOLVED_STATIC_IMPLEMENTATION",
+      "implementation_class_callable": {
+        "adapter_class_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:80:BigLottoGreedyThreeAdapter",
+        "authority_provider_callable_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "execution_callable_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+        "provider_target_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "statically_selected_wave26_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:571:_greedy_rows"
+      },
+      "injected_authority": {
+        "constructor_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "parameter": "wave26_authority",
+        "type_expression": "Callable[[str, str, tuple[CausalDrawRow, ...]], tuple[tuple[int, ...], ...]]",
+        "type_interface": "Wave26PortfolioAuthority",
+        "type_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority"
+      },
+      "original_resolution": {
+        "binding_group_id": "unresolved-sha256:53685b717d61501a376ae290b89d0608d0429654f9bfb6d9ad0437165ee61fd7",
+        "classification": "DYNAMIC_OR_UNRESOLVED",
+        "unresolved_reason": "CONSTRUCTOR_REQUIRES_RUNTIME_ARGUMENTS:wave26_authority"
+      },
+      "registry_adapter": "lottolab.strategies.adapters.biglotto_wave8:BigLottoGreedyThreeAdapter",
+      "runtime_data_contents_affect_implementation_identity": "NO",
+      "source_provider_lineage": [
+        "src/lottolab/strategies/catalog.py:857:StrategyDescriptor[legacy_biglotto__test_greedy_optimizer__82df7f878ece]",
+        "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:80:BigLottoGreedyThreeAdapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+        "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+        "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:571:_greedy_rows"
+      ],
+      "static_binding_parameters": {
+        "legacy_method_id": "tools/test_greedy_optimizer.py"
+      },
+      "strategy_id": "legacy_biglotto__test_greedy_optimizer__82df7f878ece",
+      "structural_source_components": [
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:571:_greedy_rows",
+          "normalized_ast_sha256": "47aa523597f15c3da0d1a27752f080a0af5d5b4b01b0d5ac5d53404b0c3d6e6d"
+        },
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+          "normalized_ast_sha256": "bacfc4e2839e0bb68a645b969cac7a3a8ab9c44bf8d2ff9589302bd8d9ca7237"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+          "normalized_ast_sha256": "72ec50205c4160d12252385e4873207880d91b77dbc10c23a6b917b443da9a68"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+          "normalized_ast_sha256": "1b41a3f07c8c1b587b2d51b8f11a14e96d67f0c1de9c90b948189c67730ddc83"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+          "normalized_ast_sha256": "aefcf11314262fd6a538485682ce7f49aa9ecc39f5900979f1279a881b6e904f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+          "normalized_ast_sha256": "d670e176891247289a107c1307ff0820db74c6da35f2588f905dc96696f7b9df"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+          "normalized_ast_sha256": "c0ae7dbe633cb779fefb10dc89e0b12f043f48990b555b8781419d98ffdb015f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:80:BigLottoGreedyThreeAdapter",
+          "normalized_ast_sha256": "0443cd9132d19289a2eb0930bc7ba9e8ec9098a24a9d40d002373e64b95f8cf7"
+        },
+        {
+          "locator": "src/lottolab/strategies/catalog.py:857:StrategyDescriptor[legacy_biglotto__test_greedy_optimizer__82df7f878ece]",
+          "normalized_ast_sha256": "e3a11cd364e32482e37e014b2fda7ae88a9d0d73dc224a3b5cd8d7794e52b315"
+        },
+        {
+          "locator": "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+          "normalized_ast_sha256": "9a52c84513b570104236ef7264bb0c61cb0c932b2c5fb571c90335ddff213bbc"
+        }
+      ],
+      "structural_source_digest_scope": "NORMALIZED_AST_OF_DESCRIPTOR_REGISTRY_ADAPTER_CONSTRUCTOR_HOOK_AUTHORITY_INJECTION_PROVIDER_TARGET_AND_STATICALLY_SELECTED_WAVE26_CALLABLE",
+      "structural_source_digest_sha256": "dd79e07ca29acb7757de688b1c43716ce3224ba2e6834e41e7eba9ea8a9365b0",
+      "supplemental_binding_fingerprint_sha256": "057b47024f8fa6e65d3f8aed1ca445aade1c5e8d920468a367ab460fbdf75600"
+    },
+    {
+      "descriptor_locator": "src/lottolab/strategies/catalog.py:878:StrategyDescriptor[legacy_biglotto__test_mwsc__ba37643d6a3b]",
+      "exact_reason": "The descriptor names one concrete adapter class; its inherited constructor requires wave26_authority:Wave26PortfolioAuthority; the canonical instantiator injects the single named provider src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio; the adapter's static legacy_method_id='tools/test_mwsc.py' selects src/lottolab/application/legacy_source_native_portfolios_wave26.py:466:_mwsc_rows. Runtime request/history contents affect computed tickets, not the selected class/provider/callable identity.",
+      "factory_provider_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+      "final_resolution_classification": "RESOLVED_STATIC_IMPLEMENTATION",
+      "implementation_class_callable": {
+        "adapter_class_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:89:BigLottoMwscThreeAdapter",
+        "authority_provider_callable_locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "execution_callable_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+        "provider_target_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "statically_selected_wave26_callable_locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:466:_mwsc_rows"
+      },
+      "injected_authority": {
+        "constructor_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "parameter": "wave26_authority",
+        "type_expression": "Callable[[str, str, tuple[CausalDrawRow, ...]], tuple[tuple[int, ...], ...]]",
+        "type_interface": "Wave26PortfolioAuthority",
+        "type_locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority"
+      },
+      "original_resolution": {
+        "binding_group_id": "unresolved-sha256:aa0181196f423a559afb5a135b3bc506ca98d326070fb22c2cb4f0c81eeb1264",
+        "classification": "DYNAMIC_OR_UNRESOLVED",
+        "unresolved_reason": "CONSTRUCTOR_REQUIRES_RUNTIME_ARGUMENTS:wave26_authority"
+      },
+      "registry_adapter": "lottolab.strategies.adapters.biglotto_wave8:BigLottoMwscThreeAdapter",
+      "runtime_data_contents_affect_implementation_identity": "NO",
+      "source_provider_lineage": [
+        "src/lottolab/strategies/catalog.py:878:StrategyDescriptor[legacy_biglotto__test_mwsc__ba37643d6a3b]",
+        "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:89:BigLottoMwscThreeAdapter",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+        "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+        "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+        "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+        "src/lottolab/application/legacy_source_native_portfolios_wave26.py:466:_mwsc_rows"
+      ],
+      "static_binding_parameters": {
+        "legacy_method_id": "tools/test_mwsc.py"
+      },
+      "strategy_id": "legacy_biglotto__test_mwsc__ba37643d6a3b",
+      "structural_source_components": [
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:466:_mwsc_rows",
+          "normalized_ast_sha256": "33ba0b61e8be8fcf367ef2d784b5bc9155a69d9151d90814bde0cec937343f26"
+        },
+        {
+          "locator": "src/lottolab/application/legacy_source_native_portfolios_wave26.py:637:generate_legacy_source_native_wave26_portfolio",
+          "normalized_ast_sha256": "bacfc4e2839e0bb68a645b969cac7a3a8ab9c44bf8d2ff9589302bd8d9ca7237"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:553:_instantiated_portfolio_adapter[wave26_authority]",
+          "normalized_ast_sha256": "72ec50205c4160d12252385e4873207880d91b77dbc10c23a6b917b443da9a68"
+        },
+        {
+          "locator": "src/lottolab/application/use_cases/generate_bet.py:563:_generate_wave26_portfolio",
+          "normalized_ast_sha256": "1b41a3f07c8c1b587b2d51b8f11a14e96d67f0c1de9c90b948189c67730ddc83"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:23:Wave26PortfolioAuthority",
+          "normalized_ast_sha256": "aefcf11314262fd6a538485682ce7f49aa9ecc39f5900979f1279a881b6e904f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:46:_BigLottoWave8PortfolioAdapter.__init__",
+          "normalized_ast_sha256": "d670e176891247289a107c1307ff0820db74c6da35f2588f905dc96696f7b9df"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:49:_BigLottoWave8PortfolioAdapter._predict_all",
+          "normalized_ast_sha256": "c0ae7dbe633cb779fefb10dc89e0b12f043f48990b555b8781419d98ffdb015f"
+        },
+        {
+          "locator": "src/lottolab/strategies/adapters/biglotto_wave8.py:89:BigLottoMwscThreeAdapter",
+          "normalized_ast_sha256": "9ef3ef6ecc3d9a5ac96d8d930be03d16ef79f767e56a790b6bc6b7eaccf04fe0"
+        },
+        {
+          "locator": "src/lottolab/strategies/catalog.py:878:StrategyDescriptor[legacy_biglotto__test_mwsc__ba37643d6a3b]",
+          "normalized_ast_sha256": "2c1916f1a80e58d2afff89dc2afda3ca93cbc170ae876f05cb360f0d2d426671"
+        },
+        {
+          "locator": "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+          "normalized_ast_sha256": "9a52c84513b570104236ef7264bb0c61cb0c932b2c5fb571c90335ddff213bbc"
+        }
+      ],
+      "structural_source_digest_scope": "NORMALIZED_AST_OF_DESCRIPTOR_REGISTRY_ADAPTER_CONSTRUCTOR_HOOK_AUTHORITY_INJECTION_PROVIDER_TARGET_AND_STATICALLY_SELECTED_WAVE26_CALLABLE",
+      "structural_source_digest_sha256": "51d3b444f45840125e3668b6d6a0b9eeb51db7b0391e506612b829f5d4842f3e",
+      "supplemental_binding_fingerprint_sha256": "8d7b4cc6d782d741719373280526a2c544d299763a86a262e36582b06c18731d"
+    }
+  ],
+  "schema_version": "wave26-dynamic-binding-resolution/v1",
+  "scope": {
+    "database_access": "NO",
+    "database_write": "NO",
+    "executable_registry_locator": "src/lottolab/strategies/executable_registry.py:21:ExecutableRegistry.load_adapter",
+    "historical_replay": "NOT_RUN",
+    "method": "STATIC_SOURCE_AST_ONLY",
+    "original_result_rewritten": "NO",
+    "production_runtime_start": "NOT_RUN",
+    "semantic_equivalence": "NOT_CLAIMED",
+    "target_strategy_ids": [
+      "legacy_biglotto__test_ces__78d17c530ab8",
+      "legacy_biglotto__test_dms__b63442289bd5",
+      "legacy_biglotto__test_greedy_optimizer__82df7f878ece",
+      "legacy_biglotto__test_mwsc__ba37643d6a3b"
+    ]
+  },
+  "study_id": "WAVE26_DYNAMIC_BINDING_RESOLUTION_R1",
+  "summary": {
+    "classification_counts": {
+      "AMBIGUOUS_BINDING": 0,
+      "REMAINS_RUNTIME_DATA_DEPENDENT": 0,
+      "RESOLVED_RUNTIME_FACTORY_IDENTITY": 0,
+      "RESOLVED_STATIC_IMPLEMENTATION": 4
+    },
+    "resolved_strategy_id_count": 4,
+    "target_strategy_id_count": 4
+  },
+  "supplemental_binding_fingerprint_sha256": "b97500043e23804151673bf07aa7787468a246007ae3cc420c2ea3a6f7748bde"
+}

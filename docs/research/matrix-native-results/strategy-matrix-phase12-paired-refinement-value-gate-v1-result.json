@@ -1,0 +1,3312 @@
+{
+  "aggregate_interpretation": {
+    "classification": "INCONCLUSIVE",
+    "decision_rule": null,
+    "reason": "The canonical evaluator is descriptive and defines no paired refinement-value decision rule; no Worker-invented threshold was applied."
+  },
+  "canonical_base": {
+    "commit": "0645f31a2bcaf494760d4bc1675bc1c3ed9a076d",
+    "tree": "8b9fa40728f1bea3fb585d86f426a36489e0debf"
+  },
+  "contract_authority": {
+    "contract_file_sha256": {
+      "src/lottolab/application/use_cases/build_causal_history.py": "0ea3990629890ba18e0d09184275f391b3961f2e7c0df6ec0b887a6fabdd4e81",
+      "src/lottolab/application/use_cases/replay_historical_portfolio_predictions.py": "498e66a99dbbbe7c9185bc778ddbee63979e8efad8b0725997bc723c8d537a15",
+      "src/lottolab/domain/lottery_rules.py": "622e19e926dd74c4145c1e1e70da4c0f13a895b2b17ae61b6545c4c70227aba2",
+      "src/lottolab/domain/prize_evaluation.py": "976c977eee7475ea9b824ff6da2725308df6eef801ae8e257497bdec67ca4228",
+      "src/lottolab/domain/strategy_success_evaluation.py": "93d487233af70bd2cc622ef4f136883bcf421986a8f8a19eb509da6d516233fc",
+      "src/lottolab/domain/strategy_success_measurement.py": "9699fec3899127243ba0640608c408d4aed4adc47875e989645c1e835785fce7",
+      "src/lottolab/infrastructure/persistence/replay_history_reader.py": "fa27892eeb1d73b55dacc242ec4cfd4e3b607826a37e4f2952f3b1ff461ba020"
+    },
+    "criteria": {
+      "BIG_LOTTO": {
+        "canonical_sha256": "51595ba035fe85a8f575dffa357854166fdd84e00df3c31a04e225aa63c04235",
+        "criterion_type": "BigLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "BIG_LOTTO",
+        "minimum_main_hits": 3,
+        "require_special_hit": false
+      },
+      "DAILY_539": {
+        "canonical_sha256": "a84abde23b761d8274ac8c30df72ac758f49f00c52f8096a16374ea17848520a",
+        "criterion_type": "Daily539SuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "DAILY_539",
+        "minimum_main_hits": 3
+      },
+      "POWER_LOTTO": {
+        "canonical_sha256": "39b5a65e1b7f5ac2fe63d0b273c1b4f4e4aff7b561d4eb2e86f6dbf08a28a533",
+        "criterion_type": "PowerLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "POWER_LOTTO",
+        "minimum_zone1_hits": 3,
+        "zone2_requirement": "NOT_USED"
+      }
+    },
+    "rule_contracts": {
+      "BIG_LOTTO": {
+        "canonical_sha256": "481bc001d2a92e6b8b7df7dc5b07d9615383cfb89d2ebe2fb2c8881bd944bfa4",
+        "contract_version": "2026-07-16.1"
+      },
+      "DAILY_539": {
+        "canonical_sha256": "85c9433220abd26ae6744cca75cac705c8d49e770984dc000da97f06effab9c5",
+        "contract_version": "2026-08-04.legacy-import-r1"
+      },
+      "POWER_LOTTO": {
+        "canonical_sha256": "d40eb754d02e386c1eb7be7bc6a023976c7bba0e5e17fb7d92db2b706e93a565",
+        "contract_version": "2026-08-04.legacy-import-r1"
+      }
+    },
+    "window_policy": {
+      "canonical_sha256": "1b2422b97c4a96484b86d695f947693b94d060300a654c803b0bed18bf88a87b",
+      "full_history_role": "REFERENCE_ONLY",
+      "long_draws": 750,
+      "long_role": "PRIMARY_EVIDENCE",
+      "medium_draws": 300,
+      "medium_role": "STABILITY_CONFIRMATION",
+      "nested_windows_independent": false,
+      "policy_version": "STRATEGY_SUCCESS_WINDOWS_V1",
+      "short_draws": 50,
+      "short_role": "DEGRADATION_VETO"
+    }
+  },
+  "dataset": {
+    "access_mode": "READ_ONLY",
+    "database_locator": "resolve_local_data_paths()",
+    "database_path": "/Users/kelvin/Library/Application Support/LottoLab/lottolab.db",
+    "database_sha256_after": "4c3fc2959201fbdfc2cd3a1535758196f95ba67fb546f41e6dd3fab227c57f13",
+    "database_sha256_before": "4c3fc2959201fbdfc2cd3a1535758196f95ba67fb546f41e6dd3fab227c57f13",
+    "partitions": {
+      "BIG_LOTTO": {
+        "canonical_rows_sha256": "9f3143c61972b066c2b0bc18d296db1a704051657f39e5015ec216a35b906f51",
+        "distinct_ingestion_run_count": 5,
+        "draw_count": 2164,
+        "first_draw": {
+          "draw_date": "2007-01-02",
+          "draw_number": "96000001"
+        },
+        "last_draw": {
+          "draw_date": "2026-08-25",
+          "draw_number": "115000082"
+        },
+        "source_name_counts": {
+          "TAIWAN_LOTTERY_OFFICIAL_API": 2,
+          "biglotto-070-078-backfill.csv": 9,
+          "biglotto-079-080-backfill.csv": 2,
+          "canonical-biglotto-draws.csv": 2151
+        }
+      },
+      "DAILY_539": {
+        "canonical_rows_sha256": "e8f59eee838b15f65c361fd7e64be295048eac0e4e083f742e4dd2477add89de",
+        "distinct_ingestion_run_count": 2,
+        "draw_count": 202,
+        "first_draw": {
+          "draw_date": "2026-01-01",
+          "draw_number": "115000001"
+        },
+        "last_draw": {
+          "draw_date": "2026-08-20",
+          "draw_number": "115000202"
+        },
+        "source_name_counts": {
+          "TAIWAN_LOTTERY_OFFICIAL_API": 198,
+          "d539-199-202-backfill.csv": 4
+        }
+      },
+      "POWER_LOTTO": {
+        "canonical_rows_sha256": "c177d2f7dc5f11959598416321c44d7d5bb1349e3c5cdfbf576369c157e415a9",
+        "distinct_ingestion_run_count": 2,
+        "draw_count": 67,
+        "first_draw": {
+          "draw_date": "2026-01-01",
+          "draw_number": "115000001"
+        },
+        "last_draw": {
+          "draw_date": "2026-08-20",
+          "draw_number": "115000067"
+        },
+        "source_name_counts": {
+          "TAIWAN_LOTTERY_OFFICIAL_API": 65,
+          "p638-066-067-backfill.csv": 2
+        }
+      }
+    },
+    "schema_migrations": [
+      {
+        "checksum": "d62d235de18b9d2378cafff5b1db7c3749e8f5537b965a0c459540654ee8e4fb",
+        "name": "create_local_draw_data_schema",
+        "version": 1
+      },
+      {
+        "checksum": "c0848aefce407c252db090e35a35890f4ea326e7a3ae844eced190df411c04a6",
+        "name": "add_ingestion_run_context",
+        "version": 2
+      },
+      {
+        "checksum": "cea480160a312a52f386fd5b9b6096534dc9528c253434bbc25424db60240007",
+        "name": "add_canonical_draw_schedules",
+        "version": 3
+      }
+    ]
+  },
+  "gate": {
+    "all_nine_cells_evaluated": true,
+    "database_identity_unchanged": true,
+    "phase12_execution_gate": "PASS",
+    "refinement_value_classification": "INCONCLUSIVE"
+  },
+  "invariants": {
+    "database_writes": "NONE",
+    "decision_threshold_added": false,
+    "history_policy": "MAXIMUM_1_MINIMUM_1_STRICTLY_PRIOR_DRAW",
+    "metric_added": false,
+    "monte_carlo": "NONE",
+    "p638_zone2": "NOT_RUN",
+    "reference_promotion": "NOT_AUTHORIZED",
+    "rng": "NONE",
+    "runtime_promotion": "NOT_AUTHORIZED",
+    "second_or_higher_exchange": "NOT_RUN",
+    "source_refresh": "NOT_RUN",
+    "window_added": false
+  },
+  "owner_authorization": "AUTHORIZE_PHASE12_PAIRED_REFINEMENT_VALUE_GATE_R1",
+  "pair_count": 9,
+  "per_cell": [
+    {
+      "baseline": {
+        "all_target_count": 2164,
+        "all_target_identities_sha256": "f77ea977b1f7e329c65fa568016854f1a520b7e7c5b98159cc876e7bc245f776",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2007-01-02",
+            "target_draw_number": "96000001"
+          }
+        ],
+        "eligible_target_count": 2163,
+        "eligible_target_identities_sha256": "f6b5ecd78d1b5cd68bf2b0ab8831a7c04cf5eef3bc3bb77e9ce3177f991a4a86",
+        "portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "source_field": "per_k.10.phase9_seed_portfolio",
+        "strategy_id": "phase12_baseline_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "ticket_count": 10
+      },
+      "criterion": {
+        "criterion_type": "BigLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "BIG_LOTTO",
+        "minimum_main_hits": 3,
+        "require_special_hit": false
+      },
+      "k": 10,
+      "lottery_type": "BIG_LOTTO",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 2164,
+        "all_target_identities_sha256": "f77ea977b1f7e329c65fa568016854f1a520b7e7c5b98159cc876e7bc245f776",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2007-01-02",
+            "target_draw_number": "96000001"
+          }
+        ],
+        "eligible_target_count": 2163,
+        "eligible_target_identities_sha256": "f6b5ecd78d1b5cd68bf2b0ab8831a7c04cf5eef3bc3bb77e9ce3177f991a4a86",
+        "portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "source_field": "per_k.10.terminal_portfolio",
+        "strategy_id": "phase12_refined_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "ticket_count": 10
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json",
+        "sha256": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c"
+      },
+      "structure_id": "BIG_LOTTO",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 2163,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 1765,
+            "first_target_draw": "2007-01-05#96000002",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 2163,
+            "success_count": 398,
+            "success_rate": {
+              "available": true,
+              "denominator": 2163,
+              "numerator": 398
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 2163,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 1765,
+            "first_target_draw": "2007-01-05#96000002",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 2163,
+            "success_count": 398,
+            "success_rate": {
+              "available": true,
+              "denominator": 2163,
+              "numerator": 398
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 750,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 609,
+            "first_target_draw": "2020-02-28#109000025",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 750,
+            "success_count": 141,
+            "success_rate": {
+              "available": true,
+              "denominator": 750,
+              "numerator": 141
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 750,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 609,
+            "first_target_draw": "2020-02-28#109000025",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 750,
+            "success_count": 141,
+            "success_rate": {
+              "available": true,
+              "denominator": 750,
+              "numerator": 141
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 300,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 243,
+            "first_target_draw": "2024-02-14#113000019",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 300,
+            "success_count": 57,
+            "success_rate": {
+              "available": true,
+              "denominator": 300,
+              "numerator": 57
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 300,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 243,
+            "first_target_draw": "2024-02-14#113000019",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 300,
+            "success_count": 57,
+            "success_rate": {
+              "available": true,
+              "denominator": 300,
+              "numerator": 57
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 38,
+            "first_target_draw": "2026-03-06#115000033",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 50,
+            "success_count": 12,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 12
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 38,
+            "first_target_draw": "2026-03-06#115000033",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "strategy_version": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+              "ticket_count": 10
+            },
+            "source_draw_count": 50,
+            "success_count": 12,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 12
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": null
+    },
+    {
+      "baseline": {
+        "all_target_count": 2164,
+        "all_target_identities_sha256": "f77ea977b1f7e329c65fa568016854f1a520b7e7c5b98159cc876e7bc245f776",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2007-01-02",
+            "target_draw_number": "96000001"
+          }
+        ],
+        "eligible_target_count": 2163,
+        "eligible_target_identities_sha256": "f6b5ecd78d1b5cd68bf2b0ab8831a7c04cf5eef3bc3bb77e9ce3177f991a4a86",
+        "portfolio_sha256": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+        "source_field": "per_k.15.phase9_seed_portfolio",
+        "strategy_id": "phase12_baseline_ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+        "ticket_count": 15
+      },
+      "criterion": {
+        "criterion_type": "BigLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "BIG_LOTTO",
+        "minimum_main_hits": 3,
+        "require_special_hit": false
+      },
+      "k": 15,
+      "lottery_type": "BIG_LOTTO",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 2164,
+        "all_target_identities_sha256": "f77ea977b1f7e329c65fa568016854f1a520b7e7c5b98159cc876e7bc245f776",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2007-01-02",
+            "target_draw_number": "96000001"
+          }
+        ],
+        "eligible_target_count": 2163,
+        "eligible_target_identities_sha256": "f6b5ecd78d1b5cd68bf2b0ab8831a7c04cf5eef3bc3bb77e9ce3177f991a4a86",
+        "portfolio_sha256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+        "source_field": "per_k.15.terminal_portfolio",
+        "strategy_id": "phase12_refined_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+        "ticket_count": 15
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json",
+        "sha256": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c"
+      },
+      "structure_id": "BIG_LOTTO",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 2163,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 1584,
+            "first_target_draw": "2007-01-05#96000002",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "strategy_version": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "ticket_count": 15
+            },
+            "source_draw_count": 2163,
+            "success_count": 579,
+            "success_rate": {
+              "available": true,
+              "denominator": 2163,
+              "numerator": 579
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 2163,
+            "exact": "-2/2163",
+            "numerator": -2
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 2163,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 1586,
+            "first_target_draw": "2007-01-05#96000002",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "strategy_version": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "ticket_count": 15
+            },
+            "source_draw_count": 2163,
+            "success_count": 577,
+            "success_rate": {
+              "available": true,
+              "denominator": 2163,
+              "numerator": 577
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 750,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 546,
+            "first_target_draw": "2020-02-28#109000025",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "strategy_version": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "ticket_count": 15
+            },
+            "source_draw_count": 750,
+            "success_count": 204,
+            "success_rate": {
+              "available": true,
+              "denominator": 750,
+              "numerator": 204
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 375,
+            "exact": "-11/375",
+            "numerator": -11
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 750,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 568,
+            "first_target_draw": "2020-02-28#109000025",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "strategy_version": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "ticket_count": 15
+            },
+            "source_draw_count": 750,
+            "success_count": 182,
+            "success_rate": {
+              "available": true,
+              "denominator": 750,
+              "numerator": 182
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 300,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 216,
+            "first_target_draw": "2024-02-14#113000019",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "strategy_version": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "ticket_count": 15
+            },
+            "source_draw_count": 300,
+            "success_count": 84,
+            "success_rate": {
+              "available": true,
+              "denominator": 300,
+              "numerator": 84
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 50,
+            "exact": "-1/50",
+            "numerator": -1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 300,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 222,
+            "first_target_draw": "2024-02-14#113000019",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "strategy_version": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "ticket_count": 15
+            },
+            "source_draw_count": 300,
+            "success_count": 78,
+            "success_rate": {
+              "available": true,
+              "denominator": 300,
+              "numerator": 78
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 30,
+            "first_target_draw": "2026-03-06#115000033",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "strategy_version": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+              "ticket_count": 15
+            },
+            "source_draw_count": 50,
+            "success_count": 20,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 20
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 25,
+            "exact": "-2/25",
+            "numerator": -2
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 34,
+            "first_target_draw": "2026-03-06#115000033",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "strategy_version": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+              "ticket_count": 15
+            },
+            "source_draw_count": 50,
+            "success_count": 16,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 16
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": null
+    },
+    {
+      "baseline": {
+        "all_target_count": 2164,
+        "all_target_identities_sha256": "f77ea977b1f7e329c65fa568016854f1a520b7e7c5b98159cc876e7bc245f776",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2007-01-02",
+            "target_draw_number": "96000001"
+          }
+        ],
+        "eligible_target_count": 2163,
+        "eligible_target_identities_sha256": "f6b5ecd78d1b5cd68bf2b0ab8831a7c04cf5eef3bc3bb77e9ce3177f991a4a86",
+        "portfolio_sha256": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+        "source_field": "per_k.20.phase9_seed_portfolio",
+        "strategy_id": "phase12_baseline_a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+        "ticket_count": 20
+      },
+      "criterion": {
+        "criterion_type": "BigLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "BIG_LOTTO",
+        "minimum_main_hits": 3,
+        "require_special_hit": false
+      },
+      "k": 20,
+      "lottery_type": "BIG_LOTTO",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 2164,
+        "all_target_identities_sha256": "f77ea977b1f7e329c65fa568016854f1a520b7e7c5b98159cc876e7bc245f776",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2007-01-02",
+            "target_draw_number": "96000001"
+          }
+        ],
+        "eligible_target_count": 2163,
+        "eligible_target_identities_sha256": "f6b5ecd78d1b5cd68bf2b0ab8831a7c04cf5eef3bc3bb77e9ce3177f991a4a86",
+        "portfolio_sha256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+        "source_field": "per_k.20.terminal_portfolio",
+        "strategy_id": "phase12_refined_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+        "ticket_count": 20
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json",
+        "sha256": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c"
+      },
+      "structure_id": "BIG_LOTTO",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 2163,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 1397,
+            "first_target_draw": "2007-01-05#96000002",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "strategy_version": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "ticket_count": 20
+            },
+            "source_draw_count": 2163,
+            "success_count": 766,
+            "success_rate": {
+              "available": true,
+              "denominator": 2163,
+              "numerator": 766
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 2163,
+            "exact": "8/2163",
+            "numerator": 8
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 2163,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 1389,
+            "first_target_draw": "2007-01-05#96000002",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "strategy_version": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "ticket_count": 20
+            },
+            "source_draw_count": 2163,
+            "success_count": 774,
+            "success_rate": {
+              "available": true,
+              "denominator": 2163,
+              "numerator": 774
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 750,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 483,
+            "first_target_draw": "2020-02-28#109000025",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "strategy_version": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "ticket_count": 20
+            },
+            "source_draw_count": 750,
+            "success_count": 267,
+            "success_rate": {
+              "available": true,
+              "denominator": 750,
+              "numerator": 267
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 125,
+            "exact": "-1/125",
+            "numerator": -1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 750,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 489,
+            "first_target_draw": "2020-02-28#109000025",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "strategy_version": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "ticket_count": 20
+            },
+            "source_draw_count": 750,
+            "success_count": 261,
+            "success_rate": {
+              "available": true,
+              "denominator": 750,
+              "numerator": 261
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 300,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 188,
+            "first_target_draw": "2024-02-14#113000019",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "strategy_version": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "ticket_count": 20
+            },
+            "source_draw_count": 300,
+            "success_count": 112,
+            "success_rate": {
+              "available": true,
+              "denominator": 300,
+              "numerator": 112
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 100,
+            "exact": "-1/100",
+            "numerator": -1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 300,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 191,
+            "first_target_draw": "2024-02-14#113000019",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "strategy_version": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "ticket_count": 20
+            },
+            "source_draw_count": 300,
+            "success_count": 109,
+            "success_rate": {
+              "available": true,
+              "denominator": 300,
+              "numerator": 109
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 27,
+            "first_target_draw": "2026-03-06#115000033",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "strategy_version": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+              "ticket_count": 20
+            },
+            "source_draw_count": 50,
+            "success_count": 23,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 23
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 50,
+            "exact": "-1/50",
+            "numerator": -1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"BigLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"BIG_LOTTO\",\"minimum_main_hits\":3,\"require_special_hit\":false}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 28,
+            "first_target_draw": "2026-03-06#115000033",
+            "last_target_draw": "2026-08-25#115000082",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "BIG_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "strategy_version": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+              "ticket_count": 20
+            },
+            "source_draw_count": 50,
+            "success_count": 22,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 22
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": null
+    },
+    {
+      "baseline": {
+        "all_target_count": 202,
+        "all_target_identities_sha256": "787d7b731cc026d300d01dfe7152fa3e8a25fa3417945247cc2cc753042fcdb1",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 201,
+        "eligible_target_identities_sha256": "bbad4d84c659d8e74d6ca639a61f398705dd67c0698a1d574288209ed04efd1b",
+        "portfolio_sha256": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+        "source_field": "structures.DAILY_539.per_k.10.seed_method_e_portfolio",
+        "strategy_id": "phase12_baseline_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+        "ticket_count": 10
+      },
+      "criterion": {
+        "criterion_type": "Daily539SuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "DAILY_539",
+        "minimum_main_hits": 3
+      },
+      "k": 10,
+      "lottery_type": "DAILY_539",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 202,
+        "all_target_identities_sha256": "787d7b731cc026d300d01dfe7152fa3e8a25fa3417945247cc2cc753042fcdb1",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 201,
+        "eligible_target_identities_sha256": "bbad4d84c659d8e74d6ca639a61f398705dd67c0698a1d574288209ed04efd1b",
+        "portfolio_sha256": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+        "source_field": "structures.DAILY_539.per_k.10.terminal_portfolio",
+        "strategy_id": "phase12_refined_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+        "ticket_count": 10
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "structure_id": "DAILY_539",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 178,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 201,
+            "success_count": 23,
+            "success_rate": {
+              "available": true,
+              "denominator": 201,
+              "numerator": 23
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 178,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 201,
+            "success_count": 23,
+            "success_rate": {
+              "available": true,
+              "denominator": 201,
+              "numerator": 23
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 178,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 201,
+            "success_count": 23,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 178,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 201,
+            "success_count": 23,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 178,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 201,
+            "success_count": 23,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 178,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 201,
+            "success_count": 23,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 46,
+            "first_target_draw": "2026-06-24#115000153",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 50,
+            "success_count": 4,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 4
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 46,
+            "first_target_draw": "2026-06-24#115000153",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "strategy_version": "6a938cdc39299fb5545ad95dd6ce893413637acfa95abd2f0c861168c06521cc",
+              "ticket_count": 10
+            },
+            "source_draw_count": 50,
+            "success_count": 4,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 4
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": null
+    },
+    {
+      "baseline": {
+        "all_target_count": 202,
+        "all_target_identities_sha256": "787d7b731cc026d300d01dfe7152fa3e8a25fa3417945247cc2cc753042fcdb1",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 201,
+        "eligible_target_identities_sha256": "bbad4d84c659d8e74d6ca639a61f398705dd67c0698a1d574288209ed04efd1b",
+        "portfolio_sha256": "2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+        "source_field": "structures.DAILY_539.per_k.15.seed_method_e_portfolio",
+        "strategy_id": "phase12_baseline_2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+        "ticket_count": 15
+      },
+      "criterion": {
+        "criterion_type": "Daily539SuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "DAILY_539",
+        "minimum_main_hits": 3
+      },
+      "k": 15,
+      "lottery_type": "DAILY_539",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 202,
+        "all_target_identities_sha256": "787d7b731cc026d300d01dfe7152fa3e8a25fa3417945247cc2cc753042fcdb1",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 201,
+        "eligible_target_identities_sha256": "bbad4d84c659d8e74d6ca639a61f398705dd67c0698a1d574288209ed04efd1b",
+        "portfolio_sha256": "09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+        "source_field": "structures.DAILY_539.per_k.15.terminal_portfolio",
+        "strategy_id": "phase12_refined_09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+        "ticket_count": 15
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "structure_id": "DAILY_539",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 171,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "strategy_version": "2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "ticket_count": 15
+            },
+            "source_draw_count": 201,
+            "success_count": 30,
+            "success_rate": {
+              "available": true,
+              "denominator": 201,
+              "numerator": 30
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 67,
+            "exact": "1/67",
+            "numerator": 1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 168,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "strategy_version": "09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "ticket_count": 15
+            },
+            "source_draw_count": 201,
+            "success_count": 33,
+            "success_rate": {
+              "available": true,
+              "denominator": 201,
+              "numerator": 33
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 171,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "strategy_version": "2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "ticket_count": 15
+            },
+            "source_draw_count": 201,
+            "success_count": 30,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 168,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "strategy_version": "09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "ticket_count": 15
+            },
+            "source_draw_count": 201,
+            "success_count": 33,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 171,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "strategy_version": "2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "ticket_count": 15
+            },
+            "source_draw_count": 201,
+            "success_count": 30,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 168,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "strategy_version": "09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "ticket_count": 15
+            },
+            "source_draw_count": 201,
+            "success_count": 33,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 44,
+            "first_target_draw": "2026-06-24#115000153",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "strategy_version": "2fafb5277e561782b34e82bf8d7eb3b84e99a166cd6256214891beb2330e932b",
+              "ticket_count": 15
+            },
+            "source_draw_count": 50,
+            "success_count": 6,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 6
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 25,
+            "exact": "1/25",
+            "numerator": 1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 42,
+            "first_target_draw": "2026-06-24#115000153",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "strategy_version": "09734dae0c4c752d797f54ef7cbfa60bedb2e2e5b971bca7188a953da60c2a51",
+              "ticket_count": 15
+            },
+            "source_draw_count": 50,
+            "success_count": 8,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 8
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": null
+    },
+    {
+      "baseline": {
+        "all_target_count": 202,
+        "all_target_identities_sha256": "787d7b731cc026d300d01dfe7152fa3e8a25fa3417945247cc2cc753042fcdb1",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 201,
+        "eligible_target_identities_sha256": "bbad4d84c659d8e74d6ca639a61f398705dd67c0698a1d574288209ed04efd1b",
+        "portfolio_sha256": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+        "source_field": "structures.DAILY_539.per_k.20.seed_method_e_portfolio",
+        "strategy_id": "phase12_baseline_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+        "ticket_count": 20
+      },
+      "criterion": {
+        "criterion_type": "Daily539SuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "DAILY_539",
+        "minimum_main_hits": 3
+      },
+      "k": 20,
+      "lottery_type": "DAILY_539",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 202,
+        "all_target_identities_sha256": "787d7b731cc026d300d01dfe7152fa3e8a25fa3417945247cc2cc753042fcdb1",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 201,
+        "eligible_target_identities_sha256": "bbad4d84c659d8e74d6ca639a61f398705dd67c0698a1d574288209ed04efd1b",
+        "portfolio_sha256": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+        "source_field": "structures.DAILY_539.per_k.20.terminal_portfolio",
+        "strategy_id": "phase12_refined_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+        "ticket_count": 20
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "structure_id": "DAILY_539",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 164,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 201,
+            "success_count": 37,
+            "success_rate": {
+              "available": true,
+              "denominator": 201,
+              "numerator": 37
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 164,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 201,
+            "success_count": 37,
+            "success_rate": {
+              "available": true,
+              "denominator": 201,
+              "numerator": 37
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 164,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 201,
+            "success_count": 37,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 164,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 201,
+            "success_count": 37,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 164,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 201,
+            "success_count": 37,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 201,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 164,
+            "first_target_draw": "2026-01-02#115000002",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 201,
+            "success_count": 37,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 43,
+            "first_target_draw": "2026-06-24#115000153",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 50,
+            "success_count": 7,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 7
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"Daily539SuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"DAILY_539\",\"minimum_main_hits\":3}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 43,
+            "first_target_draw": "2026-06-24#115000153",
+            "last_target_draw": "2026-08-20#115000202",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "DAILY_539",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "strategy_version": "2015e3f326a136ab34ea8fe2b98f15fd0a519cb44df28f418d488d5b6d6a33f7",
+              "ticket_count": 20
+            },
+            "source_draw_count": 50,
+            "success_count": 7,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 7
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": null
+    },
+    {
+      "baseline": {
+        "all_target_count": 67,
+        "all_target_identities_sha256": "b9f13fa617b09be2cd4eb50325de40f1b270ecf6f11f2665632be0bbfadfb3ef",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 66,
+        "eligible_target_identities_sha256": "31dea543582d497be7fc178914154e80d73d73fb89d79804a0616ab63ddce135",
+        "portfolio_sha256": "3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+        "source_field": "structures.POWER_LOTTO_ZONE1.per_k.10.seed_method_e_portfolio",
+        "strategy_id": "phase12_baseline_3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+        "ticket_count": 10
+      },
+      "criterion": {
+        "criterion_type": "PowerLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "POWER_LOTTO",
+        "minimum_zone1_hits": 3,
+        "zone2_requirement": "NOT_USED"
+      },
+      "k": 10,
+      "lottery_type": "POWER_LOTTO",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 67,
+        "all_target_identities_sha256": "b9f13fa617b09be2cd4eb50325de40f1b270ecf6f11f2665632be0bbfadfb3ef",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 66,
+        "eligible_target_identities_sha256": "31dea543582d497be7fc178914154e80d73d73fb89d79804a0616ab63ddce135",
+        "portfolio_sha256": "47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+        "source_field": "structures.POWER_LOTTO_ZONE1.per_k.10.terminal_portfolio",
+        "strategy_id": "phase12_refined_47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+        "ticket_count": 10
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "structure_id": "POWER_LOTTO_ZONE1",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 44,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "strategy_version": "3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "ticket_count": 10
+            },
+            "source_draw_count": 66,
+            "success_count": 22,
+            "success_rate": {
+              "available": true,
+              "denominator": 66,
+              "numerator": 22
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 33,
+            "exact": "1/33",
+            "numerator": 1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 42,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "strategy_version": "47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "ticket_count": 10
+            },
+            "source_draw_count": 66,
+            "success_count": 24,
+            "success_rate": {
+              "available": true,
+              "denominator": 66,
+              "numerator": 24
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 44,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "strategy_version": "3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "ticket_count": 10
+            },
+            "source_draw_count": 66,
+            "success_count": 22,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 42,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "strategy_version": "47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "ticket_count": 10
+            },
+            "source_draw_count": 66,
+            "success_count": 24,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 44,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "strategy_version": "3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "ticket_count": 10
+            },
+            "source_draw_count": 66,
+            "success_count": 22,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 42,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "strategy_version": "47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "ticket_count": 10
+            },
+            "source_draw_count": 66,
+            "success_count": 24,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 33,
+            "first_target_draw": "2026-03-02#115000018",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_baseline_3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "strategy_version": "3a03740b2f1b5ca676bc5abdaba331ed1e5dff22e68155dc74e13c6ec0e6cab1",
+              "ticket_count": 10
+            },
+            "source_draw_count": 50,
+            "success_count": 17,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 17
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 25,
+            "exact": "1/25",
+            "numerator": 1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 31,
+            "first_target_draw": "2026-03-02#115000018",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 10,
+              "strategy_id": "phase12_refined_47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "strategy_version": "47b8b68929e3ac99a9fb5029fc4465dafe9cefbbe2202e25c3a2d0b8ab342a57",
+              "ticket_count": 10
+            },
+            "source_draw_count": 50,
+            "success_count": 19,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 19
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": "ZONE1"
+    },
+    {
+      "baseline": {
+        "all_target_count": 67,
+        "all_target_identities_sha256": "b9f13fa617b09be2cd4eb50325de40f1b270ecf6f11f2665632be0bbfadfb3ef",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 66,
+        "eligible_target_identities_sha256": "31dea543582d497be7fc178914154e80d73d73fb89d79804a0616ab63ddce135",
+        "portfolio_sha256": "365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+        "source_field": "structures.POWER_LOTTO_ZONE1.per_k.15.seed_method_e_portfolio",
+        "strategy_id": "phase12_baseline_365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+        "ticket_count": 15
+      },
+      "criterion": {
+        "criterion_type": "PowerLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "POWER_LOTTO",
+        "minimum_zone1_hits": 3,
+        "zone2_requirement": "NOT_USED"
+      },
+      "k": 15,
+      "lottery_type": "POWER_LOTTO",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 67,
+        "all_target_identities_sha256": "b9f13fa617b09be2cd4eb50325de40f1b270ecf6f11f2665632be0bbfadfb3ef",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 66,
+        "eligible_target_identities_sha256": "31dea543582d497be7fc178914154e80d73d73fb89d79804a0616ab63ddce135",
+        "portfolio_sha256": "be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+        "source_field": "structures.POWER_LOTTO_ZONE1.per_k.15.terminal_portfolio",
+        "strategy_id": "phase12_refined_be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+        "ticket_count": 15
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "structure_id": "POWER_LOTTO_ZONE1",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 33,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "strategy_version": "365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "ticket_count": 15
+            },
+            "source_draw_count": 66,
+            "success_count": 33,
+            "success_rate": {
+              "available": true,
+              "denominator": 66,
+              "numerator": 33
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 66,
+            "exact": "-1/66",
+            "numerator": -1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 34,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "strategy_version": "be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "ticket_count": 15
+            },
+            "source_draw_count": 66,
+            "success_count": 32,
+            "success_rate": {
+              "available": true,
+              "denominator": 66,
+              "numerator": 32
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 33,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "strategy_version": "365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "ticket_count": 15
+            },
+            "source_draw_count": 66,
+            "success_count": 33,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 34,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "strategy_version": "be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "ticket_count": 15
+            },
+            "source_draw_count": 66,
+            "success_count": 32,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 33,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "strategy_version": "365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "ticket_count": 15
+            },
+            "source_draw_count": 66,
+            "success_count": 33,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 34,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "strategy_version": "be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "ticket_count": 15
+            },
+            "source_draw_count": 66,
+            "success_count": 32,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 24,
+            "first_target_draw": "2026-03-02#115000018",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_baseline_365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "strategy_version": "365e8552780e46ec2c81e82cc3708a29bc7665b8642d452535e4f78386b06dbc",
+              "ticket_count": 15
+            },
+            "source_draw_count": 50,
+            "success_count": 26,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 26
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 50,
+            "exact": "-1/50",
+            "numerator": -1
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 25,
+            "first_target_draw": "2026-03-02#115000018",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 15,
+              "strategy_id": "phase12_refined_be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "strategy_version": "be4dfc831ba8ccf31b6c85e869970b51f3ea8472d5283e4bbc42b2127d0d755c",
+              "ticket_count": 15
+            },
+            "source_draw_count": 50,
+            "success_count": 25,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 25
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": "ZONE1"
+    },
+    {
+      "baseline": {
+        "all_target_count": 67,
+        "all_target_identities_sha256": "b9f13fa617b09be2cd4eb50325de40f1b270ecf6f11f2665632be0bbfadfb3ef",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 66,
+        "eligible_target_identities_sha256": "31dea543582d497be7fc178914154e80d73d73fb89d79804a0616ab63ddce135",
+        "portfolio_sha256": "94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+        "source_field": "structures.POWER_LOTTO_ZONE1.per_k.20.seed_method_e_portfolio",
+        "strategy_id": "phase12_baseline_94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+        "ticket_count": 20
+      },
+      "criterion": {
+        "criterion_type": "PowerLottoSuccessCriterion",
+        "expected_mode": "LEGAL_TICKET_PRIZE",
+        "lottery": "POWER_LOTTO",
+        "minimum_zone1_hits": 3,
+        "zone2_requirement": "NOT_USED"
+      },
+      "k": 20,
+      "lottery_type": "POWER_LOTTO",
+      "pair_checks": {
+        "all_target_identities_equal": true,
+        "criterion_and_scoring_equal": true,
+        "eligible_target_identities_equal": true,
+        "no_result_silently_omitted": true,
+        "ticket_count_equal": true,
+        "ticket_position_semantics": "SOURCE_ORDER_PRESERVED"
+      },
+      "refined": {
+        "all_target_count": 67,
+        "all_target_identities_sha256": "b9f13fa617b09be2cd4eb50325de40f1b270ecf6f11f2665632be0bbfadfb3ef",
+        "closure_count": 1,
+        "closures": [
+          {
+            "causal_history_count": null,
+            "cutoff_draw_date": null,
+            "cutoff_draw_number": null,
+            "history_reason_code": "AVAILABLE_HISTORY_BELOW_MINIMUM",
+            "history_status": "INSUFFICIENT_HISTORY",
+            "prediction_reason_code": null,
+            "prediction_status": null,
+            "target_draw_date": "2026-01-01",
+            "target_draw_number": "115000001"
+          }
+        ],
+        "eligible_target_count": 66,
+        "eligible_target_identities_sha256": "31dea543582d497be7fc178914154e80d73d73fb89d79804a0616ab63ddce135",
+        "portfolio_sha256": "63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+        "source_field": "structures.POWER_LOTTO_ZONE1.per_k.20.terminal_portfolio",
+        "strategy_id": "phase12_refined_63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+        "ticket_count": 20
+      },
+      "source_artifact": {
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "structure_id": "POWER_LOTTO_ZONE1",
+      "windows": {
+        "FULL_HISTORY": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 24,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "strategy_version": "94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "ticket_count": 20
+            },
+            "source_draw_count": 66,
+            "success_count": 42,
+            "success_rate": {
+              "available": true,
+              "denominator": 66,
+              "numerator": 42
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 33,
+            "exact": "-4/33",
+            "numerator": -4
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 32,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": null,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "strategy_version": "63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "ticket_count": 20
+            },
+            "source_draw_count": 66,
+            "success_count": 34,
+            "success_rate": {
+              "available": true,
+              "denominator": 66,
+              "numerator": 34
+            },
+            "window_kind": "FULL_HISTORY",
+            "window_role": "REFERENCE_ONLY"
+          }
+        },
+        "LONG": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 24,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "strategy_version": "94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "ticket_count": 20
+            },
+            "source_draw_count": 66,
+            "success_count": 42,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 32,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 750,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "strategy_version": "63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "ticket_count": 20
+            },
+            "source_draw_count": 66,
+            "success_count": 34,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "LONG",
+            "window_role": "PRIMARY_EVIDENCE"
+          }
+        },
+        "MEDIUM": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 24,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "strategy_version": "94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "ticket_count": 20
+            },
+            "source_draw_count": 66,
+            "success_count": 42,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          },
+          "paired_delta_success_rate": {
+            "available": false,
+            "denominator": 0,
+            "exact": null,
+            "numerator": 0
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 66,
+            "evaluation_status": "INSUFFICIENT_DRAWS",
+            "evidence_status": "NOT_READY",
+            "excluded_draw_count": 0,
+            "failure_count": 32,
+            "first_target_draw": "2026-01-05#115000002",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 300,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "strategy_version": "63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "ticket_count": 20
+            },
+            "source_draw_count": 66,
+            "success_count": 34,
+            "success_rate": {
+              "available": false,
+              "denominator": 0,
+              "numerator": 0
+            },
+            "window_kind": "MEDIUM",
+            "window_role": "STABILITY_CONFIRMATION"
+          }
+        },
+        "SHORT": {
+          "baseline": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 17,
+            "first_target_draw": "2026-03-02#115000018",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_baseline_94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "strategy_version": "94e969e7c87b8781a9a6fe7f008b68a3098d9587de697eec35556f20dfcfdf57",
+              "ticket_count": 20
+            },
+            "source_draw_count": 50,
+            "success_count": 33,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 33
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          },
+          "paired_delta_success_rate": {
+            "available": true,
+            "denominator": 25,
+            "exact": "-2/25",
+            "numerator": -2
+          },
+          "refined": {
+            "criterion_identity": "{\"criterion_type\":\"PowerLottoSuccessCriterion\",\"expected_mode\":\"LEGAL_TICKET_PRIZE\",\"lottery\":\"POWER_LOTTO\",\"minimum_zone1_hits\":3,\"zone2_requirement\":\"NOT_USED\"}",
+            "eligible_draw_count": 50,
+            "evaluation_status": "COMPLETE",
+            "evidence_status": "DESCRIPTIVE_ONLY",
+            "excluded_draw_count": 0,
+            "failure_count": 21,
+            "first_target_draw": "2026-03-02#115000018",
+            "last_target_draw": "2026-08-20#115000067",
+            "nested_windows_independent": false,
+            "requested_draw_count": 50,
+            "selection_identity": {
+              "candidate_k": null,
+              "cost_units": null,
+              "lottery": "POWER_LOTTO",
+              "max_bet_index": 20,
+              "strategy_id": "phase12_refined_63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "strategy_version": "63ca63cac6a94fc956fe344ff026818d3322f6f3610c9ed7d7004c5eec894728",
+              "ticket_count": 20
+            },
+            "source_draw_count": 50,
+            "success_count": 29,
+            "success_rate": {
+              "available": true,
+              "denominator": 50,
+              "numerator": 29
+            },
+            "window_kind": "SHORT",
+            "window_role": "DEGRADATION_VETO"
+          }
+        }
+      },
+      "zone": "ZONE1"
+    }
+  ],
+  "replay_contract": {
+    "causal_history_entrypoint": "lottolab.application.use_cases.build_causal_history.BuildCausalHistory",
+    "portfolio_replay_entrypoint": "lottolab.application.use_cases.replay_historical_portfolio_predictions.ReplayHistoricalPortfolioPredictions",
+    "source_order": "draw_date ASC, CAST(draw_number AS INTEGER) ASC",
+    "target_exclusion": "cutoff strictly precedes target by date and numeric draw",
+    "typed_first_draw_closure": "INSUFFICIENT_HISTORY"
+  },
+  "reproduction_policy": {
+    "canonical_json": "UTF-8, indent=2, sort_keys=True, LF terminal newline",
+    "fresh_process_byte_identity_required": true,
+    "non_deterministic_fields_in_payload": [],
+    "performance_measurements_in_payload": false,
+    "result_self_sha256_in_payload": false
+  },
+  "study_id": "STRATEGY_MATRIX_PHASE12_PAIRED_REFINEMENT_VALUE_GATE_V1",
+  "task_id": "STRATEGY_MATRIX_PHASE12_PAIRED_REFINEMENT_VALUE_GATE_R1"
+}

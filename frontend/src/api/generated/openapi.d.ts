@@ -3245,6 +3245,8 @@ export interface components {
           "target_draw_date": string | null
           "target_scheduled_at": string | null
           "sealed_at": string | null
+          "source_head": string | null
+          "source_tree": string | null
           "target_registration_digest": string | null
           "evidence_artifact_sha256": string | null
           "sealed_buckets": Array<components['schemas']["SealedBucketView"]>

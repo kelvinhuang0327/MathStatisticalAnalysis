@@ -87,6 +87,8 @@ def test_protected_seal_shapes_are_unchanged() -> None:
         "target_scheduled_at",
         "sealed_at",
         "ranking_policy_id",
+        "source_head",
+        "source_tree",
         "target_registration_digest",
         "evidence_artifact_sha256",
         "causal_history_sha256",

@@ -14,7 +14,9 @@ own concern).
 from __future__ import annotations
 
 import hashlib
+import subprocess
 from datetime import UTC, date, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -37,10 +39,14 @@ from lottolab.application.use_cases.seal_next_draw_recommendation import (
     SealEvidenceUnavailableError,
     SealNextDrawRecommendation,
     SealOutcomeStatus,
+    SealSourceGitIdentityError,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.next_draw_recommendation import NATIVE_TICKET_COUNT_BUCKETS
-from lottolab.domain.next_draw_recommendation_seal import NextDrawRecommendationSeal
+from lottolab.domain.next_draw_recommendation_seal import (
+    NextDrawRecommendationSeal,
+    SourceGitIdentity,
+)
 from lottolab.domain.pre_outcome_target import (
     OutcomePresenceAttestation,
     TargetAnnouncement,
@@ -55,6 +61,7 @@ from lottolab.domain.prospective_observer import (
 from lottolab.evidence.next_draw_recommendation_evidence import (
     NextDrawRecommendationEvidenceArtifact,
 )
+from lottolab.infrastructure.source_git_identity import GitSourceIdentityResolver
 from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.catalog import StrategyCatalog
 
@@ -64,6 +71,7 @@ DRAW_DATE = date(2099, 9, 1)
 TARGET = ObservationTarget(lottery_type=LOTTERY_TYPE, draw_number=DRAW_NUMBER, draw_date=DRAW_DATE)
 SCHEDULED_AT = datetime(2099, 9, 1, 8, 30, tzinfo=UTC)  # local (Asia/Taipei) date stays 2099-09-01
 REGISTERED_AT = datetime(2099, 8, 30, 6, 0, tzinfo=UTC)
+SOURCE_GIT_IDENTITY = SourceGitIdentity(source_head="1" * 40, source_tree="2" * 40)
 
 
 def _sha256(value: str) -> str:
@@ -234,6 +242,10 @@ def _causal_rows() -> tuple[CausalDrawRow, ...]:
     )
 
 
+def _source_git_identity() -> SourceGitIdentity:
+    return SOURCE_GIT_IDENTITY
+
+
 def _build_use_case(
     *,
     reader: _Reader,
@@ -243,6 +255,7 @@ def _build_use_case(
     seal_store: _SealStore,
     clock,
     evidence_factory=_evidence,
+    source_git_identity_factory=_source_git_identity,
 ) -> SealNextDrawRecommendation:
     registration_service = PreOutcomeTargetRegistrationService(
         store=authority_store, outcome_presence_probe=presence_probe, clock=clock
@@ -259,6 +272,7 @@ def _build_use_case(
         causal_history_authority=history_authority,
         causal_history_rows_factory=lambda lottery_type: _causal_rows(),
         evidence_factory=evidence_factory,
+        source_git_identity_factory=source_git_identity_factory,
         outcome_presence_probe=presence_probe,
         seal_store=seal_store,
         clock=clock,
@@ -301,8 +315,42 @@ def test_target_available_seals_successfully_across_every_supported_bucket() -> 
     assert result.status is SealOutcomeStatus.CREATED
     assert result.seal is not None
     assert result.seal.target == TARGET
+    assert result.seal.source_head == SOURCE_GIT_IDENTITY.source_head
+    assert result.seal.source_tree == SOURCE_GIT_IDENTITY.source_tree
     assert tuple(b.native_ticket_count for b in result.seal.buckets) == NATIVE_TICKET_COUNT_BUCKETS
     assert seal_store.get_seal(TARGET) == result.seal
+
+
+def test_clean_exact_commit_worktree_identity_flows_into_created_seal(tmp_path: Path) -> None:
+    repository = tmp_path / "source-repository"
+    repository.mkdir()
+    _git(repository, "init", "-q")
+    _git(repository, "config", "user.name", "LottoLab Test")
+    _git(repository, "config", "user.email", "lottolab@example.test")
+    source_file = repository / "runtime.py"
+    source_file.write_text("VALUE = 1\n", encoding="utf-8")
+    _git(repository, "add", "runtime.py")
+    _git(repository, "commit", "-q", "-m", "synthetic source")
+    expected_head = _git(repository, "rev-parse", "--verify", "HEAD^{commit}")
+    expected_tree = _git(repository, "rev-parse", "--verify", "HEAD^{tree}")
+
+    seal_store = _SealStore()
+    use_case = _build_use_case(
+        reader=_Reader(_record(_announcement())),
+        history_authority=_HistoryAuthority(_history()),
+        authority_store=_AuthorityStore(),
+        presence_probe=_PresenceProbe(OutcomePresenceAtPrediction.ABSENT),
+        seal_store=seal_store,
+        clock=_clock(REGISTERED_AT, REGISTERED_AT, REGISTERED_AT + timedelta(minutes=1)),
+        source_git_identity_factory=GitSourceIdentityResolver(source_file),
+    )
+
+    result = use_case.execute(LOTTERY_TYPE)
+
+    assert result.status is SealOutcomeStatus.CREATED
+    assert result.seal is not None
+    assert result.seal.source_head == expected_head
+    assert result.seal.source_tree == expected_tree
 
 
 def test_outcome_already_available_before_generation_fails_closed_without_writing() -> None:
@@ -387,6 +435,50 @@ def test_causal_history_drift_during_generation_fails_closed_without_writing() -
     )
 
     with pytest.raises(SealCausalHistoryDriftError):
+        use_case.execute(LOTTERY_TYPE)
+
+    assert seal_store.create_calls == 0
+    assert seal_store.get_seal(TARGET) is None
+
+
+def test_source_git_identity_drift_during_generation_fails_closed_without_writing() -> None:
+    first = SOURCE_GIT_IDENTITY
+    second = SourceGitIdentity(source_head="3" * 40, source_tree="4" * 40)
+    answers = iter((first, second))
+    seal_store = _SealStore()
+    use_case = _build_use_case(
+        reader=_Reader(_record(_announcement())),
+        history_authority=_HistoryAuthority(_history()),
+        authority_store=_AuthorityStore(),
+        presence_probe=_PresenceProbe(OutcomePresenceAtPrediction.ABSENT),
+        seal_store=seal_store,
+        clock=_clock(REGISTERED_AT, REGISTERED_AT, REGISTERED_AT + timedelta(minutes=1)),
+        source_git_identity_factory=lambda: next(answers),
+    )
+
+    with pytest.raises(SealSourceGitIdentityError, match="changed"):
+        use_case.execute(LOTTERY_TYPE)
+
+    assert seal_store.create_calls == 0
+    assert seal_store.get_seal(TARGET) is None
+
+
+def test_unavailable_source_git_identity_fails_closed_without_writing() -> None:
+    def unavailable() -> SourceGitIdentity:
+        raise SealSourceGitIdentityError("identity unavailable")
+
+    seal_store = _SealStore()
+    use_case = _build_use_case(
+        reader=_Reader(_record(_announcement())),
+        history_authority=_HistoryAuthority(_history()),
+        authority_store=_AuthorityStore(),
+        presence_probe=_PresenceProbe(OutcomePresenceAtPrediction.ABSENT),
+        seal_store=seal_store,
+        clock=_clock(REGISTERED_AT),
+        source_git_identity_factory=unavailable,
+    )
+
+    with pytest.raises(SealSourceGitIdentityError, match="unavailable"):
         use_case.execute(LOTTERY_TYPE)
 
     assert seal_store.create_calls == 0
@@ -556,3 +648,13 @@ def test_evidence_for_a_different_lottery_type_is_rejected_without_writing() -> 
 
     assert seal_store.create_calls == 0
     assert seal_store.get_seal(TARGET) is None
+
+
+def _git(repository: Path, *args: str) -> str:
+    completed = subprocess.run(
+        ["git", "-C", str(repository), *args],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return completed.stdout.strip()

@@ -37,6 +37,7 @@ from lottolab.application.use_cases.seal_next_draw_recommendation import (
     SealEvidenceLotteryTypeMismatchError,
     SealEvidenceUnavailableError,
     SealNextDrawRecommendationResult,
+    SealSourceGitIdentityError,
     SealStoreCorruptionError,
 )
 from lottolab.domain.draws import LotteryType
@@ -103,6 +104,8 @@ def run_next_draw_recommendation_seal(
         raise NextDrawRecommendationSealCliError("SEAL_EVIDENCE_LOTTERY_TYPE_MISMATCH") from exc
     except SealCausalHistoryDriftError as exc:
         raise NextDrawRecommendationSealCliError("SEAL_CAUSAL_HISTORY_DRIFT") from exc
+    except SealSourceGitIdentityError as exc:
+        raise NextDrawRecommendationSealCliError("SEAL_SOURCE_GIT_IDENTITY_INVALID") from exc
     except SealStoreCorruptionError as exc:
         raise NextDrawRecommendationSealCliError("SEAL_STORE_CORRUPT") from exc
     except NextDrawRecommendationSealStoreError as exc:

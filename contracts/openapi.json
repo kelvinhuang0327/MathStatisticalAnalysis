@@ -12380,6 +12380,28 @@
             ],
             "title": "Sealed At"
           },
+          "source_head": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Head"
+          },
+          "source_tree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Tree"
+          },
           "target_registration_digest": {
             "anyOf": [
               {
@@ -12419,6 +12441,8 @@
           "target_draw_date",
           "target_scheduled_at",
           "sealed_at",
+          "source_head",
+          "source_tree",
           "target_registration_digest",
           "evidence_artifact_sha256",
           "sealed_buckets"

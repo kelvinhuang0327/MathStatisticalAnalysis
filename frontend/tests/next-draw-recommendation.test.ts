@@ -66,6 +66,8 @@ function lifecycleResponse(
     target_draw_date: null,
     target_scheduled_at: null,
     sealed_at: null,
+    source_head: null,
+    source_tree: null,
     target_registration_digest: null,
     evidence_artifact_sha256: null,
     sealed_buckets: [],
@@ -80,6 +82,8 @@ function sealedLifecycleResponse(): NextDrawRecommendationLifecycleResponse {
     target_draw_date: '2099-09-01',
     target_scheduled_at: '2099-09-01T08:30:00Z',
     sealed_at: '2099-08-30T10:00:00Z',
+    source_head: '1'.repeat(40),
+    source_tree: '2'.repeat(40),
     target_registration_digest: 'd'.repeat(64),
     evidence_artifact_sha256: 'e'.repeat(64),
     sealed_buckets: [

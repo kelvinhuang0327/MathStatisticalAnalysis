@@ -117,12 +117,18 @@ function isNextDrawRecommendationLifecycleResponse(
     typeof value.lifecycle_state === 'string' &&
     typeof value.lottery_type === 'string' &&
     typeof value.ranking_policy_id === 'string' &&
+    isNullableString(value.source_head) &&
+    isNullableString(value.source_tree) &&
     Array.isArray(value.sealed_buckets)
   )
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === 'string'
 }
 
 function isNonNegativeInteger(value: unknown): value is number {

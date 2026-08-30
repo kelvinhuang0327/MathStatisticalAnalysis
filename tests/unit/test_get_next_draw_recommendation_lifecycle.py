@@ -30,6 +30,8 @@ TARGET = ObservationTarget(
 )
 SCHEDULED_AT = datetime(2099, 9, 1, 8, 30, tzinfo=UTC)
 NOW = datetime(2099, 8, 30, 6, 0, tzinfo=UTC)
+SOURCE_HEAD = "1" * 40
+SOURCE_TREE = "2" * 40
 
 
 def _announcement() -> TargetAnnouncement:
@@ -138,6 +140,8 @@ def _seal() -> NextDrawRecommendationSeal:
         target=TARGET,
         target_scheduled_at=SCHEDULED_AT,
         sealed_at=NOW,
+        source_head=SOURCE_HEAD,
+        source_tree=SOURCE_TREE,
         target_registration_digest="d" * 64,
         evidence_artifact_sha256="e" * 64,
         causal_history_sha256="f" * 64,

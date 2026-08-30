@@ -51,6 +51,7 @@ from lottolab.domain.next_draw_recommendation_seal import (
     NextDrawRecommendationSeal,
     SealedRecommendationBucket,
     SealedStrategyTickets,
+    SourceGitIdentity,
     TicketSealStatus,
 )
 from lottolab.domain.pre_outcome_target import PreOutcomeTargetRegistration
@@ -81,6 +82,10 @@ class SealEvidenceLotteryTypeMismatchError(SealNextDrawRecommendationError):
 
 class SealCausalHistoryDriftError(SealNextDrawRecommendationError):
     """The causal history authority or bulk reader disagreed during generation."""
+
+
+class SealSourceGitIdentityError(SealNextDrawRecommendationError):
+    """The exact clean-worktree Git identity is unavailable, invalid, or drifted."""
 
 
 class SealStoreCorruptionError(SealNextDrawRecommendationError):
@@ -120,6 +125,7 @@ class NextDrawRecommendationSealStore(Protocol):
 
 CausalHistoryRowsFactory = Callable[[LotteryType], tuple[CausalDrawRow, ...]]
 EvidenceArtifactFactory = Callable[[], NextDrawRecommendationEvidenceArtifact | None]
+SourceGitIdentityFactory = Callable[[], SourceGitIdentity]
 
 
 class SealNextDrawRecommendation:
@@ -133,6 +139,7 @@ class SealNextDrawRecommendation:
         causal_history_authority: CausalHistoryAuthority,
         causal_history_rows_factory: CausalHistoryRowsFactory,
         evidence_factory: EvidenceArtifactFactory,
+        source_git_identity_factory: SourceGitIdentityFactory,
         outcome_presence_probe: OutcomePresenceProbe,
         seal_store: NextDrawRecommendationSealStore,
         clock: Callable[[], datetime],
@@ -142,6 +149,7 @@ class SealNextDrawRecommendation:
         self._causal_history_authority = causal_history_authority
         self._causal_history_rows_factory = causal_history_rows_factory
         self._evidence_factory = evidence_factory
+        self._source_git_identity_factory = source_git_identity_factory
         self._outcome_presence_probe = outcome_presence_probe
         self._seal_store = seal_store
         self._clock = clock
@@ -174,6 +182,7 @@ class SealNextDrawRecommendation:
                 f"target is {target.lottery_type.value!r}"
             )
 
+        source_git_identity = self._resolve_source_git_identity()
         existing = self._seal_store.get_seal(target)
         if existing is not None:
             # "One seal per target": once any valid seal exists, never
@@ -185,6 +194,8 @@ class SealNextDrawRecommendation:
             if existing.matches_frozen_inputs(
                 target=target,
                 target_scheduled_at=registration.announcement.scheduled_at,
+                source_head=source_git_identity.source_head,
+                source_tree=source_git_identity.source_tree,
                 target_registration_digest=registration.registration_digest,
                 evidence_artifact_sha256=evidence.artifact_sha256,
                 causal_history_sha256=registration.causal_history.history_sha256,
@@ -213,6 +224,8 @@ class SealNextDrawRecommendation:
             target=target,
             target_scheduled_at=registration.announcement.scheduled_at,
             sealed_at=self._clock(),
+            source_head=source_git_identity.source_head,
+            source_tree=source_git_identity.source_tree,
             target_registration_digest=registration.registration_digest,
             evidence_artifact_sha256=evidence.artifact_sha256,
             causal_history_sha256=registration.causal_history.history_sha256,
@@ -220,7 +233,11 @@ class SealNextDrawRecommendation:
             buckets=buckets,
         )
 
-        self._require_fresh_final_gate(target=target, registration=registration)
+        self._require_fresh_final_gate(
+            target=target,
+            registration=registration,
+            source_git_identity=source_git_identity,
+        )
 
         outcome = self._seal_store.create_seal(seal)
         if outcome is CreateOnceOutcome.INSERTED:
@@ -237,6 +254,8 @@ class SealNextDrawRecommendation:
             if persisted.matches_frozen_inputs(
                 target=seal.target,
                 target_scheduled_at=seal.target_scheduled_at,
+                source_head=seal.source_head,
+                source_tree=seal.source_tree,
                 target_registration_digest=seal.target_registration_digest,
                 evidence_artifact_sha256=seal.evidence_artifact_sha256,
                 causal_history_sha256=seal.causal_history_sha256,
@@ -247,6 +266,14 @@ class SealNextDrawRecommendation:
                 )
             return SealNextDrawRecommendationResult(SealOutcomeStatus.FAIL_CLOSED_CONFLICT, None)
         raise SealStoreCorruptionError(f"seal store returned an unsupported outcome: {outcome!r}")
+
+    def _resolve_source_git_identity(self) -> SourceGitIdentity:
+        identity = self._source_git_identity_factory()
+        if type(identity) is not SourceGitIdentity:
+            raise SealSourceGitIdentityError(
+                "source Git identity resolver returned an unsupported value"
+            )
+        return identity
 
     def _seal_one_bucket(
         self,
@@ -300,14 +327,21 @@ class SealNextDrawRecommendation:
         *,
         target: ObservationTarget,
         registration: PreOutcomeTargetRegistration,
+        source_git_identity: SourceGitIdentity,
     ) -> None:
-        """Re-verify absence, the pre-draw window, and history, right before accept.
+        """Re-verify source, absence, pre-draw window, and history before accept.
 
         Bucket/ticket generation across every supported ticket count can take
         real wall-clock time; this closes the window where the outcome became
         available, the schedule passed, or new draws landed *during*
         generation -- never trusting the registration-time checks alone.
         """
+
+        fresh_source_git_identity = self._resolve_source_git_identity()
+        if fresh_source_git_identity != source_git_identity:
+            raise SealSourceGitIdentityError(
+                "source Git HEAD/tree changed while generating sealed buckets"
+            )
 
         fresh_history = self._causal_history_authority.resolve(target)
         if fresh_history != registration.causal_history:
@@ -433,5 +467,7 @@ __all__ = [
     "SealNextDrawRecommendationError",
     "SealNextDrawRecommendationResult",
     "SealOutcomeStatus",
+    "SealSourceGitIdentityError",
     "SealStoreCorruptionError",
+    "SourceGitIdentityFactory",
 ]

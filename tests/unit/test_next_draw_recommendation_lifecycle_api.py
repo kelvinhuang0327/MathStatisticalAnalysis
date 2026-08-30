@@ -29,6 +29,8 @@ TARGET = ObservationTarget(
 SCHEDULED_AT = datetime(2099, 9, 1, 8, 30, tzinfo=UTC)
 SEALED_AT = datetime(2099, 8, 30, 10, 0, tzinfo=UTC)
 NOW = datetime(2099, 8, 30, 6, 0, tzinfo=UTC)
+SOURCE_HEAD = "1" * 40
+SOURCE_TREE = "2" * 40
 
 
 class _Reader:
@@ -105,6 +107,8 @@ def _seal() -> NextDrawRecommendationSeal:
         target=TARGET,
         target_scheduled_at=SCHEDULED_AT,
         sealed_at=SEALED_AT,
+        source_head=SOURCE_HEAD,
+        source_tree=SOURCE_TREE,
         target_registration_digest="d" * 64,
         evidence_artifact_sha256="e" * 64,
         causal_history_sha256="f" * 64,
@@ -170,6 +174,8 @@ def test_lifecycle_route_reports_target_available_with_no_sealed_data() -> None:
     assert body["target_draw_number"] == "115000090"
     assert body["target_draw_date"] == "2099-09-01"
     assert body["sealed_at"] is None
+    assert body["source_head"] is None
+    assert body["source_tree"] is None
     assert body["sealed_buckets"] == []
 
 
@@ -191,6 +197,8 @@ def test_lifecycle_route_reports_predictions_sealed_with_full_sealed_buckets() -
     assert body["target_draw_number"] == "115000090"
     assert body["sealed_at"] == "2099-08-30T10:00:00Z"
     assert body["target_scheduled_at"] == "2099-09-01T08:30:00Z"
+    assert body["source_head"] == SOURCE_HEAD
+    assert body["source_tree"] == SOURCE_TREE
     assert body["evidence_artifact_sha256"] == "e" * 64
     assert len(body["sealed_buckets"]) == len(NATIVE_TICKET_COUNT_BUCKETS)
     one_ticket_bucket = next(b for b in body["sealed_buckets"] if b["native_ticket_count"] == 1)

@@ -30,6 +30,8 @@ OTHER_TARGET = ObservationTarget(
 SCHEDULED_AT = datetime(2099, 9, 1, 8, 30, tzinfo=UTC)
 OTHER_SCHEDULED_AT = datetime(2099, 9, 8, 8, 30, tzinfo=UTC)
 SEALED_AT = datetime(2099, 8, 30, 10, 0, tzinfo=UTC)
+SOURCE_HEAD = "1" * 40
+SOURCE_TREE = "2" * 40
 
 
 def _seal(
@@ -53,6 +55,8 @@ def _seal(
         target=target,
         target_scheduled_at=scheduled_at,
         sealed_at=SEALED_AT,
+        source_head=SOURCE_HEAD,
+        source_tree=SOURCE_TREE,
         target_registration_digest="d" * 64,
         evidence_artifact_sha256="e" * 64,
         causal_history_sha256="f" * 64,
@@ -86,7 +90,11 @@ def test_create_then_get_round_trips_exactly(tmp_path: Path) -> None:
     outcome = store.create_seal(seal)
 
     assert outcome is CreateOnceOutcome.INSERTED
-    assert store.get_seal(TARGET) == seal
+    restored = store.get_seal(TARGET)
+    assert restored == seal
+    assert restored is not None
+    assert restored.source_head == SOURCE_HEAD
+    assert restored.source_tree == SOURCE_TREE
 
 
 def test_second_create_for_the_same_target_reports_conflict_and_never_overwrites(

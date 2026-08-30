@@ -174,14 +174,14 @@ class NextDrawRecommendationLifecycleResponse(BaseModel):
     target_draw_date: str | None
     target_scheduled_at: str | None
     sealed_at: str | None
+    source_head: str | None
+    source_tree: str | None
     target_registration_digest: str | None
     evidence_artifact_sha256: str | None
     sealed_buckets: list[SealedBucketView]
 
 
-def _window_view(
-    windows: tuple, window_kind: str
-) -> RecommendationWindowMetricView | None:
+def _window_view(windows: tuple, window_kind: str) -> RecommendationWindowMetricView | None:
     for window in windows:
         if window.window_kind == window_kind:
             return RecommendationWindowMetricView(
@@ -190,7 +190,9 @@ def _window_view(
                 window_complete=window.window_complete,
                 observed_rate=None if window.observed_rate is None else float(window.observed_rate),
                 random_baseline_rate=(
-                    None if window.random_baseline_rate is None else float(window.random_baseline_rate)
+                    None
+                    if window.random_baseline_rate is None
+                    else float(window.random_baseline_rate)
                 ),
                 delta_vs_random=(
                     None if window.delta_vs_random is None else float(window.delta_vs_random)
@@ -298,6 +300,8 @@ def _lifecycle_view_to_response(
         target_draw_date=view.target.draw_date.isoformat() if view.target is not None else None,
         target_scheduled_at=(_utc_text(seal.target_scheduled_at) if is_sealed and seal else None),
         sealed_at=(_utc_text(seal.sealed_at) if is_sealed and seal else None),
+        source_head=(seal.source_head if is_sealed and seal else None),
+        source_tree=(seal.source_tree if is_sealed and seal else None),
         target_registration_digest=(
             seal.target_registration_digest if is_sealed and seal else None
         ),

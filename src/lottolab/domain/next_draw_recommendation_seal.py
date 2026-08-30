@@ -42,9 +42,10 @@ from lottolab.domain.next_draw_recommendation import (
 )
 from lottolab.domain.prospective_observer import ObservationTarget
 
-NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION = "LOTTOLAB_NEXT_DRAW_RECOMMENDATION_SEAL_V1"
+NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION = "LOTTOLAB_NEXT_DRAW_RECOMMENDATION_SEAL_V2"
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+_GIT_OBJECT_ID = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", flags=re.ASCII)
 _PLACEHOLDER_SHA256 = "0" * 64
 
 
@@ -81,6 +82,17 @@ def _require_text(value: object, label: str) -> None:
 def _require_sha256(value: object, label: str) -> None:
     if type(value) is not str or _SHA256.fullmatch(value) is None:
         raise NextDrawRecommendationSealContractError(f"{label} must be a lowercase SHA-256 digest")
+
+
+def _require_git_object_id(value: object, label: str) -> None:
+    if (
+        type(value) is not str
+        or _GIT_OBJECT_ID.fullmatch(value) is None
+        or value == "0" * len(value)
+    ):
+        raise NextDrawRecommendationSealContractError(
+            f"{label} must be a canonical non-placeholder full Git object ID"
+        )
 
 
 def _require_utc(value: object, label: str) -> None:
@@ -277,6 +289,22 @@ class SealedRecommendationBucket:
 
 
 @dataclass(frozen=True, slots=True)
+class SourceGitIdentity:
+    """Exact commit and corresponding tree for the clean executing worktree."""
+
+    source_head: str
+    source_tree: str
+
+    def __post_init__(self) -> None:
+        _require_git_object_id(self.source_head, "source_head")
+        _require_git_object_id(self.source_tree, "source_tree")
+        if len(self.source_head) != len(self.source_tree):
+            raise NextDrawRecommendationSealContractError(
+                "source_head and source_tree must use the same Git object format"
+            )
+
+
+@dataclass(frozen=True, slots=True)
 class NextDrawRecommendationSeal:
     """Self-verifying, immutable pre-draw seal binding a target to frozen output.
 
@@ -289,6 +317,8 @@ class NextDrawRecommendationSeal:
     target_scheduled_at: datetime
     sealed_at: datetime
     ranking_policy_id: str
+    source_head: str
+    source_tree: str
     target_registration_digest: str
     evidence_artifact_sha256: str
     causal_history_sha256: str
@@ -303,6 +333,8 @@ class NextDrawRecommendationSeal:
         target: ObservationTarget,
         target_scheduled_at: datetime,
         sealed_at: datetime,
+        source_head: str,
+        source_tree: str,
         target_registration_digest: str,
         evidence_artifact_sha256: str,
         causal_history_sha256: str,
@@ -315,6 +347,8 @@ class NextDrawRecommendationSeal:
             target_scheduled_at=target_scheduled_at,
             sealed_at=sealed_at,
             ranking_policy_id=RECOMMENDATION_POLICY_ID,
+            source_head=source_head,
+            source_tree=source_tree,
             target_registration_digest=target_registration_digest,
             evidence_artifact_sha256=evidence_artifact_sha256,
             causal_history_sha256=causal_history_sha256,
@@ -327,6 +361,8 @@ class NextDrawRecommendationSeal:
             target_scheduled_at=target_scheduled_at,
             sealed_at=sealed_at,
             ranking_policy_id=RECOMMENDATION_POLICY_ID,
+            source_head=source_head,
+            source_tree=source_tree,
             target_registration_digest=target_registration_digest,
             evidence_artifact_sha256=evidence_artifact_sha256,
             causal_history_sha256=causal_history_sha256,
@@ -345,6 +381,12 @@ class NextDrawRecommendationSeal:
         if self.ranking_policy_id != RECOMMENDATION_POLICY_ID:
             raise NextDrawRecommendationSealContractError(
                 "ranking_policy_id must match the frozen NEXT_DRAW_ROBUSTNESS_V1 policy"
+            )
+        _require_git_object_id(self.source_head, "source_head")
+        _require_git_object_id(self.source_tree, "source_tree")
+        if len(self.source_head) != len(self.source_tree):
+            raise NextDrawRecommendationSealContractError(
+                "source_head and source_tree must use the same Git object format"
             )
         _require_sha256(self.target_registration_digest, "target_registration_digest")
         _require_sha256(self.evidence_artifact_sha256, "evidence_artifact_sha256")
@@ -377,6 +419,8 @@ class NextDrawRecommendationSeal:
             target_scheduled_at=self.target_scheduled_at,
             sealed_at=self.sealed_at,
             ranking_policy_id=self.ranking_policy_id,
+            source_head=self.source_head,
+            source_tree=self.source_tree,
             target_registration_digest=self.target_registration_digest,
             evidence_artifact_sha256=self.evidence_artifact_sha256,
             causal_history_sha256=self.causal_history_sha256,
@@ -398,6 +442,8 @@ class NextDrawRecommendationSeal:
         *,
         target: ObservationTarget,
         target_scheduled_at: datetime,
+        source_head: str,
+        source_tree: str,
         target_registration_digest: str,
         evidence_artifact_sha256: str,
         causal_history_sha256: str,
@@ -406,8 +452,8 @@ class NextDrawRecommendationSeal:
         """Whether another seal attempt shares this seal's frozen prediction inputs.
 
         "One seal per target" (see the sealing use case) is enforced against
-        these *inputs* -- the registration, evidence, and causal-history
-        identity a seal was built from -- never against the generated
+        these *inputs* -- the source Git identity, registration, evidence, and
+        causal-history identity a seal was built from -- never against the generated
         ``buckets`` bytes. Some catalog strategies are not reproducible run to
         run (see the Method Universe reproducibility axis); a strategy's
         generated ticket numbers may legitimately differ between two sealing
@@ -421,6 +467,8 @@ class NextDrawRecommendationSeal:
         return (
             self.target == target
             and self.target_scheduled_at == target_scheduled_at
+            and self.source_head == source_head
+            and self.source_tree == source_tree
             and self.target_registration_digest == target_registration_digest
             and self.evidence_artifact_sha256 == evidence_artifact_sha256
             and self.causal_history_sha256 == causal_history_sha256
@@ -441,6 +489,8 @@ class NextDrawRecommendationSeal:
                 "schema_version",
                 "seal_digest",
                 "sealed_at",
+                "source_head",
+                "source_tree",
                 "target",
                 "target_registration_digest",
                 "target_scheduled_at",
@@ -458,6 +508,8 @@ class NextDrawRecommendationSeal:
             ),
             sealed_at=_datetime(mapping["sealed_at"], "seal.sealed_at"),
             ranking_policy_id=_string(mapping["ranking_policy_id"], "seal.ranking_policy_id"),
+            source_head=_git_object_id(mapping["source_head"], "seal.source_head"),
+            source_tree=_git_object_id(mapping["source_tree"], "seal.source_tree"),
             target_registration_digest=_sha256(
                 mapping["target_registration_digest"], "seal.target_registration_digest"
             ),
@@ -484,6 +536,8 @@ def _seal_material(
     target_scheduled_at: datetime,
     sealed_at: datetime,
     ranking_policy_id: str,
+    source_head: str,
+    source_tree: str,
     target_registration_digest: str,
     evidence_artifact_sha256: str,
     causal_history_sha256: str,
@@ -498,6 +552,8 @@ def _seal_material(
         "ranking_policy_id": ranking_policy_id,
         "schema_version": schema_version,
         "sealed_at": _utc_text(sealed_at),
+        "source_head": source_head,
+        "source_tree": source_tree,
         "target": target.canonical_dict(),
         "target_registration_digest": target_registration_digest,
         "target_scheduled_at": _utc_text(target_scheduled_at),
@@ -552,6 +608,11 @@ def _sha256(value: object, label: str) -> str:
     return cast(str, value)
 
 
+def _git_object_id(value: object, label: str) -> str:
+    _require_git_object_id(value, label)
+    return cast(str, value)
+
+
 def _int(value: object, label: str) -> int:
     if type(value) is not int:
         raise NextDrawRecommendationSealContractError(f"{label} must be an exact integer")
@@ -595,5 +656,6 @@ __all__ = [
     "NextDrawRecommendationSealTamperError",
     "SealedRecommendationBucket",
     "SealedStrategyTickets",
+    "SourceGitIdentity",
     "TicketSealStatus",
 ]

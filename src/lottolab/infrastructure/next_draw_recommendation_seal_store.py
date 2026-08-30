@@ -47,9 +47,12 @@ from lottolab.infrastructure.pre_outcome_target_operational import (
     SQLitePreOutcomeCausalHistoryAuthority,
     compose_pre_outcome_target_operational_service,
 )
+from lottolab.infrastructure.source_git_identity import GitSourceIdentityResolver
 from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.catalog import StrategyCatalog
 
+# The record schema advances to V2, but the target-keyed store namespace stays
+# fixed so an older noncompliant record still blocks any replacement write.
 NEXT_DRAW_RECOMMENDATION_SEAL_DIRECTORY_NAME = "next-draw-recommendation-seals-v1"
 _RECORD_NAME = "seal.json"
 _MAX_RECORD_BYTES = 4 * 1024 * 1024
@@ -238,6 +241,7 @@ def compose_next_draw_recommendation_seal_operational_service(
         causal_history_authority=causal_history_authority,
         causal_history_rows_factory=causal_history_rows_factory,
         evidence_factory=evidence_factory,
+        source_git_identity_factory=GitSourceIdentityResolver(Path(__file__)),
         outcome_presence_probe=presence_probe,
         seal_store=store,
         clock=selected_clock,

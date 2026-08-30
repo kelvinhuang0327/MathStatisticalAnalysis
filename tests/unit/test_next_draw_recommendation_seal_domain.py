@@ -27,6 +27,8 @@ SEALED_AT = datetime(2099, 8, 30, 10, 0, tzinfo=UTC)
 SHA_A = "a" * 64
 SHA_B = "b" * 64
 SHA_C = "c" * 64
+SOURCE_HEAD = "1" * 40
+SOURCE_TREE = "2" * 40
 
 
 def _sealed_ticket(rank: int = 1, strategy_id: str = "s1") -> SealedStrategyTickets:
@@ -59,6 +61,8 @@ def _seal(**overrides: object) -> NextDrawRecommendationSeal:
         "target": TARGET,
         "target_scheduled_at": SCHEDULED_AT,
         "sealed_at": SEALED_AT,
+        "source_head": SOURCE_HEAD,
+        "source_tree": SOURCE_TREE,
         "target_registration_digest": SHA_A,
         "evidence_artifact_sha256": SHA_B,
         "causal_history_sha256": SHA_C,
@@ -74,6 +78,8 @@ def test_seal_round_trips_through_canonical_dict() -> None:
     restored = NextDrawRecommendationSeal.from_canonical_dict(seal.canonical_dict())
     assert restored == seal
     assert restored.seal_digest == seal.seal_digest
+    assert restored.source_head == SOURCE_HEAD
+    assert restored.source_tree == SOURCE_TREE
 
 
 def test_seal_self_verifies_and_rejects_tampered_content() -> None:
@@ -82,6 +88,45 @@ def test_seal_self_verifies_and_rejects_tampered_content() -> None:
     tampered["causal_history_draw_count"] = seal.causal_history_draw_count + 1
     with pytest.raises(NextDrawRecommendationSealTamperError):
         NextDrawRecommendationSeal.from_canonical_dict(tampered)
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement"),
+    (("source_head", "3" * 40), ("source_tree", "4" * 40)),
+)
+def test_seal_digest_rejects_tampered_source_git_identity(field: str, replacement: str) -> None:
+    tampered = dict(_seal().canonical_dict())
+    tampered[field] = replacement
+
+    with pytest.raises(NextDrawRecommendationSealTamperError):
+        NextDrawRecommendationSeal.from_canonical_dict(tampered)
+
+
+@pytest.mark.parametrize(
+    ("field", "invalid"),
+    (
+        ("source_head", ""),
+        ("source_head", "0"),
+        ("source_head", "0" * 40),
+        ("source_head", "UNKNOWN"),
+        ("source_tree", "0" * 40),
+    ),
+)
+def test_seal_rejects_unavailable_or_placeholder_source_git_identity(
+    field: str, invalid: str
+) -> None:
+    with pytest.raises(NextDrawRecommendationSealContractError):
+        _seal(**{field: invalid})
+
+
+def test_legacy_v1_shape_without_source_identity_remains_noncompliant() -> None:
+    legacy = dict(_seal().canonical_dict())
+    legacy["schema_version"] = "LOTTOLAB_NEXT_DRAW_RECOMMENDATION_SEAL_V1"
+    legacy.pop("source_head")
+    legacy.pop("source_tree")
+
+    with pytest.raises(NextDrawRecommendationSealContractError, match="fields differ"):
+        NextDrawRecommendationSeal.from_canonical_dict(legacy)
 
 
 def test_seal_rejects_a_hand_edited_digest_that_matches_nothing() -> None:
@@ -173,6 +218,8 @@ def test_matches_frozen_inputs_ignores_sealed_at_and_generated_buckets() -> None
     assert seal.matches_frozen_inputs(
         target=other.target,
         target_scheduled_at=other.target_scheduled_at,
+        source_head=other.source_head,
+        source_tree=other.source_tree,
         target_registration_digest=other.target_registration_digest,
         evidence_artifact_sha256=other.evidence_artifact_sha256,
         causal_history_sha256=other.causal_history_sha256,
@@ -185,8 +232,24 @@ def test_matches_frozen_inputs_rejects_a_different_evidence_hash() -> None:
     assert not seal.matches_frozen_inputs(
         target=seal.target,
         target_scheduled_at=seal.target_scheduled_at,
+        source_head=seal.source_head,
+        source_tree=seal.source_tree,
         target_registration_digest=seal.target_registration_digest,
         evidence_artifact_sha256="f" * 64,
+        causal_history_sha256=seal.causal_history_sha256,
+        causal_history_draw_count=seal.causal_history_draw_count,
+    )
+
+
+def test_matches_frozen_inputs_rejects_a_different_source_tree() -> None:
+    seal = _seal()
+    assert not seal.matches_frozen_inputs(
+        target=seal.target,
+        target_scheduled_at=seal.target_scheduled_at,
+        source_head=seal.source_head,
+        source_tree="9" * 40,
+        target_registration_digest=seal.target_registration_digest,
+        evidence_artifact_sha256=seal.evidence_artifact_sha256,
         causal_history_sha256=seal.causal_history_sha256,
         causal_history_draw_count=seal.causal_history_draw_count,
     )

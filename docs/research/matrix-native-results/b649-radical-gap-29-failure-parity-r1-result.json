@@ -1,0 +1,7046 @@
+{
+  "boundaries": {
+    "canonical_semantics_changed": false,
+    "database_access": "NO",
+    "historical_replay": "NOT_RUN",
+    "repair_implemented": false,
+    "strategy_exclusion": "NOT_RUN",
+    "successor_created": false
+  },
+  "classification_counts": {
+    "DONOR_FAITHFUL_SOURCE_CLOSURE": 29,
+    "PORT_REGRESSION": 0,
+    "SOURCE_AUTHORITY_UNRESOLVED": 0
+  },
+  "frozen_input_condition_clusters": [
+    {
+      "condition": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,11",
+      "target_count": 1,
+      "targets": [
+        "114000065"
+      ]
+    },
+    {
+      "condition": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "target_count": 7,
+      "targets": [
+        "113000027",
+        "113000088",
+        "114000050",
+        "114000054",
+        "114000059",
+        "114000096",
+        "115000019"
+      ]
+    },
+    {
+      "condition": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,11",
+      "target_count": 1,
+      "targets": [
+        "112000116"
+      ]
+    },
+    {
+      "condition": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "target_count": 20,
+      "targets": [
+        "111000108",
+        "113000024",
+        "113000025",
+        "113000028",
+        "113000046",
+        "113000068",
+        "113000102",
+        "113000103",
+        "113000109",
+        "113000110",
+        "113000114",
+        "114000006",
+        "114000058",
+        "114000060",
+        "114000077",
+        "114000078",
+        "114000108",
+        "115000039",
+        "115000062",
+        "115000065"
+      ]
+    }
+  ],
+  "questions": {
+    "1_are_all_29_failures_donor_faithful": true,
+    "2_current_port_regression_count": 0,
+    "3_fewer_than_six_is_exact_load_bearing_closure_for_each_donor_faithful_row": true,
+    "4_positional_component_attribution": "ONE_POSITIONAL_COMPONENT:GAP_01_19",
+    "5_clustered_around_identifiable_frozen_input_conditions": true,
+    "6_semantics_preserving_adapter_repair": "NO",
+    "7_corrected_successor_or_new_lineage_required_to_change_closures": "YES"
+  },
+  "recommended_next_technical_disposition": "Keep the current donor-faithful adapter unchanged. Any attempt to emit tickets for these closures requires a corrected successor/new lineage decision.",
+  "rows": [
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              33,
+              31,
+              29,
+              30,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              17,
+              4,
+              7,
+              33,
+              31,
+              12,
+              15,
+              30,
+              19,
+              1,
+              44,
+              9
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            33,
+            31,
+            29,
+            30,
+            44
+          ],
+          [
+            17,
+            4,
+            7,
+            33,
+            31,
+            12,
+            15,
+            30,
+            19,
+            1,
+            44,
+            9
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              12,
+              15,
+              17,
+              29,
+              30,
+              33
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              7,
+              17,
+              19,
+              31,
+              44
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              4,
+              7,
+              9,
+              31,
+              33
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2020-03-31",
+        "first_draw_number": "109000034",
+        "last_draw_date": "2022-12-06",
+        "last_draw_number": "111000107",
+        "sha256": "0dea0e71a6c1c30c2e91a1fdb955ecf2363c7c08a3f693ca9c4db1e39dda6147"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              33,
+              31,
+              29,
+              30,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              17,
+              4,
+              7,
+              33,
+              31,
+              12,
+              15,
+              30,
+              19,
+              1,
+              44,
+              9
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            33,
+            31,
+            29,
+            30,
+            44
+          ],
+          [
+            17,
+            4,
+            7,
+            33,
+            31,
+            12,
+            15,
+            30,
+            19,
+            1,
+            44,
+            9
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              12,
+              15,
+              17,
+              29,
+              30,
+              33
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              7,
+              17,
+              19,
+              31,
+              44
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              4,
+              7,
+              9,
+              31,
+              33
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "83de12622c43725da2207086bea30d5213f5185e468e84e5af3c0c90c8a8dd04",
+      "sealed_causal_history_length": 1723,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2022-12-09",
+      "target_draw_number": "111000108"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              41,
+              24,
+              27,
+              39,
+              25
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 11,
+            "candidates": [
+              2,
+              6,
+              3,
+              41,
+              4,
+              5,
+              16,
+              7,
+              39,
+              13,
+              17
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            41,
+            24,
+            27,
+            39,
+            25
+          ],
+          [
+            2,
+            6,
+            3,
+            41,
+            4,
+            5,
+            16,
+            7,
+            39,
+            13,
+            17
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              16,
+              24,
+              27,
+              39,
+              41
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              13,
+              17,
+              25,
+              41
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-04-30",
+        "first_draw_number": "110000044",
+        "last_draw_date": "2023-12-26",
+        "last_draw_number": "112000115",
+        "sha256": "01e99f308de4f2298d8d33988b0e24107b889c74e6d410ecaf24ccdafdfab653"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,11",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              41,
+              24,
+              27,
+              39,
+              25
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 11,
+            "candidates": [
+              2,
+              6,
+              3,
+              41,
+              4,
+              5,
+              16,
+              7,
+              39,
+              13,
+              17
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            41,
+            24,
+            27,
+            39,
+            25
+          ],
+          [
+            2,
+            6,
+            3,
+            41,
+            4,
+            5,
+            16,
+            7,
+            39,
+            13,
+            17
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              16,
+              24,
+              27,
+              39,
+              41
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              13,
+              17,
+              25,
+              41
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "33c1039474dc986c11b411c787577fba1dc68681d668510426a6084702337573",
+      "sealed_causal_history_length": 1845,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2023-12-29",
+      "target_draw_number": "112000116"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              20,
+              28,
+              40,
+              41,
+              48
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              5,
+              2,
+              3,
+              7,
+              4,
+              9,
+              8,
+              10,
+              40,
+              15,
+              17
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            20,
+            28,
+            40,
+            41,
+            48
+          ],
+          [
+            1,
+            5,
+            2,
+            3,
+            7,
+            4,
+            9,
+            8,
+            10,
+            40,
+            15,
+            17
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              5,
+              8,
+              20,
+              28,
+              40
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              10,
+              15,
+              17,
+              41,
+              48
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-07-23",
+        "first_draw_number": "110000068",
+        "last_draw_date": "2024-02-18",
+        "last_draw_number": "113000023",
+        "sha256": "f1b1e2df6a513947cdb9134c43b322ac20404052d2337430d91105fbda74a54a"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              20,
+              28,
+              40,
+              41,
+              48
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              5,
+              2,
+              3,
+              7,
+              4,
+              9,
+              8,
+              10,
+              40,
+              15,
+              17
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            20,
+            28,
+            40,
+            41,
+            48
+          ],
+          [
+            1,
+            5,
+            2,
+            3,
+            7,
+            4,
+            9,
+            8,
+            10,
+            40,
+            15,
+            17
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              5,
+              8,
+              20,
+              28,
+              40
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              10,
+              15,
+              17,
+              41,
+              48
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "4fe63b8ad3cdafc354c7555c0468f8c526dd929ee8e9743a678db8996d49df30",
+      "sealed_causal_history_length": 1869,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-02-19",
+      "target_draw_number": "113000024"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              36,
+              44,
+              21,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              3,
+              2,
+              5,
+              7,
+              6,
+              9,
+              12,
+              30,
+              36,
+              44,
+              14
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            36,
+            44,
+            21,
+            41
+          ],
+          [
+            1,
+            3,
+            2,
+            5,
+            7,
+            6,
+            9,
+            12,
+            30,
+            36,
+            44,
+            14
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              1,
+              6,
+              12,
+              30,
+              36,
+              44
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              14,
+              15,
+              21,
+              41
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-07-27",
+        "first_draw_number": "110000069",
+        "last_draw_date": "2024-02-19",
+        "last_draw_number": "113000024",
+        "sha256": "50199c5ceaa92b612bd100fb341e5bb5affb30dcb4c1c67d6f9e47b28180f06c"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              36,
+              44,
+              21,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              3,
+              2,
+              5,
+              7,
+              6,
+              9,
+              12,
+              30,
+              36,
+              44,
+              14
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            36,
+            44,
+            21,
+            41
+          ],
+          [
+            1,
+            3,
+            2,
+            5,
+            7,
+            6,
+            9,
+            12,
+            30,
+            36,
+            44,
+            14
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              1,
+              6,
+              12,
+              30,
+              36,
+              44
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              14,
+              15,
+              21,
+              41
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "08b99c91f15f03b3cf3c11671fb8887d8b7e8fa8978c91ca6a2019af34850dda",
+      "sealed_causal_history_length": 1870,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-02-20",
+      "target_draw_number": "113000025"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              30,
+              42,
+              47,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              3,
+              9,
+              4,
+              5,
+              7,
+              2,
+              6,
+              16,
+              30,
+              42,
+              47
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            42,
+            47,
+            41
+          ],
+          [
+            1,
+            3,
+            9,
+            4,
+            5,
+            7,
+            2,
+            6,
+            16,
+            30,
+            42,
+            47
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              6,
+              16,
+              30,
+              42,
+              47
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              9,
+              14,
+              15,
+              41
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-08-03",
+        "first_draw_number": "110000071",
+        "last_draw_date": "2024-02-21",
+        "last_draw_number": "113000026",
+        "sha256": "41abe692650a145950fabc74a06be9a36a5f1c309ec0e7534af4033e7d909128"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              30,
+              42,
+              47,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              3,
+              9,
+              4,
+              5,
+              7,
+              2,
+              6,
+              16,
+              30,
+              42,
+              47
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            42,
+            47,
+            41
+          ],
+          [
+            1,
+            3,
+            9,
+            4,
+            5,
+            7,
+            2,
+            6,
+            16,
+            30,
+            42,
+            47
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              5,
+              7,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              6,
+              16,
+              30,
+              42,
+              47
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              9,
+              14,
+              15,
+              41
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "d8ea7bfbc8e71d430f3fbf75d334ad8ca810282fa00c303c1d819c7c28caddcc",
+      "sealed_causal_history_length": 1872,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-02-22",
+      "target_draw_number": "113000027"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              20,
+              30,
+              47,
+              37,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              2,
+              1,
+              4,
+              5,
+              7,
+              16,
+              30,
+              47,
+              14,
+              15,
+              37
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            20,
+            30,
+            47,
+            37,
+            41
+          ],
+          [
+            3,
+            2,
+            1,
+            4,
+            5,
+            7,
+            16,
+            30,
+            47,
+            14,
+            15,
+            37
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              7
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              16,
+              20,
+              30,
+              47
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              14,
+              15,
+              37,
+              41
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-08-06",
+        "first_draw_number": "110000072",
+        "last_draw_date": "2024-02-22",
+        "last_draw_number": "113000027",
+        "sha256": "7f754578c96ceb33e7eaca31dbdccdbd7d3620b5d79e7c7e21309158e7f4ffa5"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              20,
+              30,
+              47,
+              37,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              2,
+              1,
+              4,
+              5,
+              7,
+              16,
+              30,
+              47,
+              14,
+              15,
+              37
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            20,
+            30,
+            47,
+            37,
+            41
+          ],
+          [
+            3,
+            2,
+            1,
+            4,
+            5,
+            7,
+            16,
+            30,
+            47,
+            14,
+            15,
+            37
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              7
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              16,
+              20,
+              30,
+              47
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              14,
+              15,
+              37,
+              41
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "718300c28e501b4abebbf1a7c00d3b33b1e0c7ec723609c1efb6e2353c052a20",
+      "sealed_causal_history_length": 1873,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-02-23",
+      "target_draw_number": "113000028"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              39,
+              23,
+              28,
+              42,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              8,
+              9,
+              1,
+              2,
+              4,
+              6,
+              5,
+              12,
+              15,
+              17,
+              11,
+              39
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            39,
+            23,
+            28,
+            42,
+            44
+          ],
+          [
+            8,
+            9,
+            1,
+            2,
+            4,
+            6,
+            5,
+            12,
+            15,
+            17,
+            11,
+            39
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              4,
+              6,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              8,
+              12,
+              15,
+              17,
+              39
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              9,
+              11,
+              23,
+              28,
+              42,
+              44
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-10-08",
+        "first_draw_number": "110000090",
+        "last_draw_date": "2024-04-19",
+        "last_draw_number": "113000045",
+        "sha256": "8d8d87e7f9f55bb55a1a80794a4a39eaecb358d815ea8f55be21c3524bf292fd"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              39,
+              23,
+              28,
+              42,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              8,
+              9,
+              1,
+              2,
+              4,
+              6,
+              5,
+              12,
+              15,
+              17,
+              11,
+              39
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            39,
+            23,
+            28,
+            42,
+            44
+          ],
+          [
+            8,
+            9,
+            1,
+            2,
+            4,
+            6,
+            5,
+            12,
+            15,
+            17,
+            11,
+            39
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              4,
+              6,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              8,
+              12,
+              15,
+              17,
+              39
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              9,
+              11,
+              23,
+              28,
+              42,
+              44
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "4e2c659679a2592daf05b310407537df397704bda8c8c00e9588ef44ece20045",
+      "sealed_causal_history_length": 1891,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-04-23",
+      "target_draw_number": "113000046"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              21,
+              34,
+              39,
+              22,
+              26
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              5,
+              8,
+              4,
+              7,
+              1,
+              6,
+              9,
+              34,
+              39,
+              13,
+              15
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            21,
+            34,
+            39,
+            22,
+            26
+          ],
+          [
+            3,
+            5,
+            8,
+            4,
+            7,
+            1,
+            6,
+            9,
+            34,
+            39,
+            13,
+            15
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              3,
+              4,
+              5,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              1,
+              6,
+              8,
+              21,
+              34,
+              39
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              13,
+              15,
+              22,
+              26
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2021-12-24",
+        "first_draw_number": "110000112",
+        "last_draw_date": "2024-07-05",
+        "last_draw_number": "113000067",
+        "sha256": "8b52e420abd96ffdd2e2a739bbca3f619b9884190981ffb0613a6faf39802582"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              21,
+              34,
+              39,
+              22,
+              26
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              5,
+              8,
+              4,
+              7,
+              1,
+              6,
+              9,
+              34,
+              39,
+              13,
+              15
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            21,
+            34,
+            39,
+            22,
+            26
+          ],
+          [
+            3,
+            5,
+            8,
+            4,
+            7,
+            1,
+            6,
+            9,
+            34,
+            39,
+            13,
+            15
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              3,
+              4,
+              5,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              1,
+              6,
+              8,
+              21,
+              34,
+              39
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              13,
+              15,
+              22,
+              26
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "97cb9b534dbcb6d4fc71abdb57e504680777422b4dc3e7c26d2e854bd1a2e3cf",
+      "sealed_causal_history_length": 1913,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-07-09",
+      "target_draw_number": "113000068"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              33,
+              49,
+              21,
+              23
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              7,
+              8,
+              1,
+              4,
+              5,
+              9,
+              12,
+              15,
+              33,
+              49,
+              11
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            33,
+            49,
+            21,
+            23
+          ],
+          [
+            3,
+            7,
+            8,
+            1,
+            4,
+            5,
+            9,
+            12,
+            15,
+            33,
+            49,
+            11
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              12,
+              15,
+              33,
+              49
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              7,
+              8,
+              11,
+              21,
+              23
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-02-07",
+        "first_draw_number": "111000018",
+        "last_draw_date": "2024-09-13",
+        "last_draw_number": "113000087",
+        "sha256": "b0de41a9ae49a5f0c77dac2e5006374ec186887bbe28f0940a405bf4b42c0693"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              33,
+              49,
+              21,
+              23
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              7,
+              8,
+              1,
+              4,
+              5,
+              9,
+              12,
+              15,
+              33,
+              49,
+              11
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            33,
+            49,
+            21,
+            23
+          ],
+          [
+            3,
+            7,
+            8,
+            1,
+            4,
+            5,
+            9,
+            12,
+            15,
+            33,
+            49,
+            11
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              7,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              12,
+              15,
+              33,
+              49
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              7,
+              8,
+              11,
+              21,
+              23
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "e87aa6eac71df002eda0c0060d5a5f3f90efa695f2ccf995c6fe0379af53fc98",
+      "sealed_causal_history_length": 1933,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-09-17",
+      "target_draw_number": "113000088"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              35,
+              49,
+              22,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              4,
+              1,
+              9,
+              18,
+              3,
+              5,
+              8,
+              30,
+              35,
+              11,
+              49,
+              15
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            35,
+            49,
+            22,
+            44
+          ],
+          [
+            4,
+            1,
+            9,
+            18,
+            3,
+            5,
+            8,
+            30,
+            35,
+            11,
+            49,
+            15
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              9,
+              18,
+              30,
+              35,
+              49
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              11,
+              15,
+              18,
+              22,
+              44
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-03-18",
+        "first_draw_number": "111000032",
+        "last_draw_date": "2024-11-01",
+        "last_draw_number": "113000101",
+        "sha256": "9e6b8444a916a1d6b7cc7c8834502ece39671546db2751d35a8852ebe0542eda"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              35,
+              49,
+              22,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              4,
+              1,
+              9,
+              18,
+              3,
+              5,
+              8,
+              30,
+              35,
+              11,
+              49,
+              15
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            35,
+            49,
+            22,
+            44
+          ],
+          [
+            4,
+            1,
+            9,
+            18,
+            3,
+            5,
+            8,
+            30,
+            35,
+            11,
+            49,
+            15
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              9,
+              18,
+              30,
+              35,
+              49
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              11,
+              15,
+              18,
+              22,
+              44
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "c4be3217dfc70fbe52b6ab98643b523458cb5a1e0ed8cc38c0395d0b65ac39a1",
+      "sealed_causal_history_length": 1947,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-11-05",
+      "target_draw_number": "113000102"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              35,
+              37,
+              38,
+              22,
+              43
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              5,
+              2,
+              3,
+              8,
+              14,
+              9,
+              16,
+              35,
+              37,
+              11,
+              38
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            35,
+            37,
+            38,
+            22,
+            43
+          ],
+          [
+            1,
+            5,
+            2,
+            3,
+            8,
+            14,
+            9,
+            16,
+            35,
+            37,
+            11,
+            38
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              14,
+              16,
+              35,
+              37,
+              38
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              11,
+              15,
+              18,
+              22,
+              43
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-03-22",
+        "first_draw_number": "111000033",
+        "last_draw_date": "2024-11-05",
+        "last_draw_number": "113000102",
+        "sha256": "31c7b630da432467e2a2bb844f6be13701288ab702815056f192408a8bff4d25"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              35,
+              37,
+              38,
+              22,
+              43
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              1,
+              5,
+              2,
+              3,
+              8,
+              14,
+              9,
+              16,
+              35,
+              37,
+              11,
+              38
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            35,
+            37,
+            38,
+            22,
+            43
+          ],
+          [
+            1,
+            5,
+            2,
+            3,
+            8,
+            14,
+            9,
+            16,
+            35,
+            37,
+            11,
+            38
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              14,
+              16,
+              35,
+              37,
+              38
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              11,
+              15,
+              18,
+              22,
+              43
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "1fe7dff7c1cd1369b26f2771bd5598f43efce96c4679ba2ca5457743c44d5c83",
+      "sealed_causal_history_length": 1948,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-11-08",
+      "target_draw_number": "113000103"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              35,
+              38,
+              28,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              8,
+              18,
+              1,
+              2,
+              3,
+              5,
+              14,
+              16,
+              9,
+              30,
+              35,
+              12
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            35,
+            38,
+            28,
+            37
+          ],
+          [
+            8,
+            18,
+            1,
+            2,
+            3,
+            5,
+            14,
+            16,
+            9,
+            30,
+            35,
+            12
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              14,
+              16,
+              18,
+              30,
+              35,
+              38
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              12,
+              15,
+              18,
+              28,
+              37
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-04-12",
+        "first_draw_number": "111000039",
+        "last_draw_date": "2024-11-26",
+        "last_draw_number": "113000108",
+        "sha256": "eb535ab916f8cef008fa2bbbc340f3769ea61c13e961f9222d5fec91a1bb569d"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              35,
+              38,
+              28,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              8,
+              18,
+              1,
+              2,
+              3,
+              5,
+              14,
+              16,
+              9,
+              30,
+              35,
+              12
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            35,
+            38,
+            28,
+            37
+          ],
+          [
+            8,
+            18,
+            1,
+            2,
+            3,
+            5,
+            14,
+            16,
+            9,
+            30,
+            35,
+            12
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              14,
+              16,
+              18,
+              30,
+              35,
+              38
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              12,
+              15,
+              18,
+              28,
+              37
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "8a2832dfccb115bc32adac2bcc35f57170b1f90e3f9e4cc77ebc23d31c922c75",
+      "sealed_causal_history_length": 1954,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-11-29",
+      "target_draw_number": "113000109"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              27,
+              42,
+              43,
+              29,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              8,
+              12,
+              1,
+              2,
+              3,
+              5,
+              17,
+              9,
+              19,
+              42,
+              43,
+              15
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            27,
+            42,
+            43,
+            29,
+            37
+          ],
+          [
+            8,
+            12,
+            1,
+            2,
+            3,
+            5,
+            17,
+            9,
+            19,
+            42,
+            43,
+            15
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              12,
+              17,
+              19,
+              27,
+              42,
+              43
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              12,
+              15,
+              18,
+              29,
+              37
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-04-15",
+        "first_draw_number": "111000040",
+        "last_draw_date": "2024-11-29",
+        "last_draw_number": "113000109",
+        "sha256": "973086099dc78753392d4db3dcaca9cf843503429ca73c174c3b657cbdd57c9f"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              27,
+              42,
+              43,
+              29,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              8,
+              12,
+              1,
+              2,
+              3,
+              5,
+              17,
+              9,
+              19,
+              42,
+              43,
+              15
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            27,
+            42,
+            43,
+            29,
+            37
+          ],
+          [
+            8,
+            12,
+            1,
+            2,
+            3,
+            5,
+            17,
+            9,
+            19,
+            42,
+            43,
+            15
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              5,
+              8,
+              9
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              12,
+              17,
+              19,
+              27,
+              42,
+              43
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              12,
+              15,
+              18,
+              29,
+              37
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "9fbcc3b4d7c5ec3922b448fa3171843b8c105880a49e6d6f9e01e9c3965a6611",
+      "sealed_causal_history_length": 1955,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-12-03",
+      "target_draw_number": "113000110"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              33,
+              35,
+              23,
+              31,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              2,
+              5,
+              3,
+              6,
+              1,
+              4,
+              12,
+              17,
+              33,
+              35,
+              10,
+              31
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            33,
+            35,
+            23,
+            31,
+            37
+          ],
+          [
+            2,
+            5,
+            3,
+            6,
+            1,
+            4,
+            12,
+            17,
+            33,
+            35,
+            10,
+            31
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              6,
+              12,
+              17,
+              33,
+              35
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              10,
+              23,
+              31,
+              37
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-04-29",
+        "first_draw_number": "111000044",
+        "last_draw_date": "2024-12-13",
+        "last_draw_number": "113000113",
+        "sha256": "dd0a02d8b84bdf236952e32da52899a5d6de0e61a4341d2600bfe0562dce29fc"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              33,
+              35,
+              23,
+              31,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              2,
+              5,
+              3,
+              6,
+              1,
+              4,
+              12,
+              17,
+              33,
+              35,
+              10,
+              31
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            33,
+            35,
+            23,
+            31,
+            37
+          ],
+          [
+            2,
+            5,
+            3,
+            6,
+            1,
+            4,
+            12,
+            17,
+            33,
+            35,
+            10,
+            31
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              6,
+              12,
+              17,
+              33,
+              35
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              3,
+              10,
+              23,
+              31,
+              37
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "569fe08fa700d0dd102f1150c721624ca2c9f7c81d3860521f7ab29e5f45cd9e",
+      "sealed_causal_history_length": 1959,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2024-12-17",
+      "target_draw_number": "113000114"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              27,
+              33,
+              23,
+              41,
+              43
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              2,
+              19,
+              1,
+              4,
+              5,
+              7,
+              10,
+              12,
+              8,
+              13,
+              33,
+              41
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            27,
+            33,
+            23,
+            41,
+            43
+          ],
+          [
+            2,
+            19,
+            1,
+            4,
+            5,
+            7,
+            10,
+            12,
+            8,
+            13,
+            33,
+            41
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              4,
+              5,
+              7,
+              8
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              19,
+              27,
+              33
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              19,
+              23,
+              27,
+              41,
+              43
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-06-03",
+        "first_draw_number": "111000054",
+        "last_draw_date": "2025-01-17",
+        "last_draw_number": "114000005",
+        "sha256": "2decf4585a88e7f0e7113c80888a95f2d539ba0aa9e342f96f6796d411c2793b"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              27,
+              33,
+              23,
+              41,
+              43
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              2,
+              19,
+              1,
+              4,
+              5,
+              7,
+              10,
+              12,
+              8,
+              13,
+              33,
+              41
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            27,
+            33,
+            23,
+            41,
+            43
+          ],
+          [
+            2,
+            19,
+            1,
+            4,
+            5,
+            7,
+            10,
+            12,
+            8,
+            13,
+            33,
+            41
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              4,
+              5,
+              7,
+              8
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              19,
+              27,
+              33
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              19,
+              23,
+              27,
+              41,
+              43
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "1c9ebe67b96b358751deea75fff346d087b1a6b57f2acd3000cb07e23e860413",
+      "sealed_causal_history_length": 1969,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-01-21",
+      "target_draw_number": "114000006"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              23,
+              21,
+              34,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              13,
+              12,
+              17,
+              10,
+              16,
+              6,
+              7,
+              18,
+              3,
+              9,
+              34,
+              44
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            23,
+            21,
+            34,
+            44
+          ],
+          [
+            13,
+            12,
+            17,
+            10,
+            16,
+            6,
+            7,
+            18,
+            3,
+            9,
+            34,
+            44
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              7,
+              13,
+              17,
+              21,
+              23
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              9,
+              12,
+              23,
+              34,
+              44
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-11-04",
+        "first_draw_number": "111000098",
+        "last_draw_date": "2025-05-02",
+        "last_draw_number": "114000049",
+        "sha256": "d745568a9d5d6f96ad2dfc15100c74cf1f74dee928d827ea739a119225f0e861"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              23,
+              21,
+              34,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              13,
+              12,
+              17,
+              10,
+              16,
+              6,
+              7,
+              18,
+              3,
+              9,
+              34,
+              44
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            23,
+            21,
+            34,
+            44
+          ],
+          [
+            13,
+            12,
+            17,
+            10,
+            16,
+            6,
+            7,
+            18,
+            3,
+            9,
+            34,
+            44
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              7,
+              13,
+              17,
+              21,
+              23
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              9,
+              12,
+              23,
+              34,
+              44
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "c926bf7bc797aae17939d2638114b15330fdec6ed07de456c3ee0080e1937a09",
+      "sealed_causal_history_length": 2013,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-05-06",
+      "target_draw_number": "114000050"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              40,
+              43,
+              21,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              12,
+              18,
+              40,
+              13,
+              14,
+              17,
+              2,
+              9,
+              3,
+              43,
+              44
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            40,
+            43,
+            21,
+            44
+          ],
+          [
+            10,
+            12,
+            18,
+            40,
+            13,
+            14,
+            17,
+            2,
+            9,
+            3,
+            43,
+            44
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              9,
+              10,
+              18,
+              40,
+              43
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              10,
+              12,
+              21,
+              40,
+              44
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-11-18",
+        "first_draw_number": "111000102",
+        "last_draw_date": "2025-05-16",
+        "last_draw_number": "114000053",
+        "sha256": "cced308843d083cb71a2c66170b6a30bedbc3ef17738e2faa61e1dad138b3f66"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              40,
+              43,
+              21,
+              44
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              12,
+              18,
+              40,
+              13,
+              14,
+              17,
+              2,
+              9,
+              3,
+              43,
+              44
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            40,
+            43,
+            21,
+            44
+          ],
+          [
+            10,
+            12,
+            18,
+            40,
+            13,
+            14,
+            17,
+            2,
+            9,
+            3,
+            43,
+            44
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              9,
+              10,
+              18,
+              40,
+              43
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              10,
+              12,
+              21,
+              40,
+              44
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "df48a7e31823f2f223ba155a7f30879ec4eb962bb85825431cd4af9fb651dcb2",
+      "sealed_causal_history_length": 2017,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-05-20",
+      "target_draw_number": "114000054"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              40,
+              48,
+              23,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              12,
+              18,
+              13,
+              14,
+              15,
+              7,
+              17,
+              30,
+              8,
+              40,
+              48
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            40,
+            48,
+            23,
+            36
+          ],
+          [
+            10,
+            12,
+            18,
+            13,
+            14,
+            15,
+            7,
+            17,
+            30,
+            8,
+            40,
+            48
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              15,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              7,
+              17,
+              18,
+              30,
+              40,
+              48
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              12,
+              19,
+              23,
+              36
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-12-02",
+        "first_draw_number": "111000106",
+        "last_draw_date": "2025-05-30",
+        "last_draw_number": "114000057",
+        "sha256": "570102c059ca20bbe1a47277c9a3c0799cf00acaba3582e18d657ac360f3554a"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              40,
+              48,
+              23,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              12,
+              18,
+              13,
+              14,
+              15,
+              7,
+              17,
+              30,
+              8,
+              40,
+              48
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            40,
+            48,
+            23,
+            36
+          ],
+          [
+            10,
+            12,
+            18,
+            13,
+            14,
+            15,
+            7,
+            17,
+            30,
+            8,
+            40,
+            48
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              15,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              7,
+              17,
+              18,
+              30,
+              40,
+              48
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              12,
+              19,
+              23,
+              36
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "3ced4a6d07e6b9a7ff0bb0c9615a47cf0319eea1d74fb1f9ecba0c96f0e1b88a",
+      "sealed_causal_history_length": 2021,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-06-03",
+      "target_draw_number": "114000058"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              27,
+              30,
+              23,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              12,
+              15,
+              13,
+              14,
+              1,
+              7,
+              18,
+              11,
+              8,
+              30,
+              19
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            27,
+            30,
+            23,
+            36
+          ],
+          [
+            10,
+            12,
+            15,
+            13,
+            14,
+            1,
+            7,
+            18,
+            11,
+            8,
+            30,
+            19
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              15,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              1,
+              7,
+              11,
+              15,
+              27,
+              30
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              12,
+              19,
+              23,
+              36
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-12-06",
+        "first_draw_number": "111000107",
+        "last_draw_date": "2025-06-03",
+        "last_draw_number": "114000058",
+        "sha256": "95dd21a86ccf8bdf1cd47af2f374b288a0e922db2f3a5d30e096849db1bceabe"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              27,
+              30,
+              23,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              12,
+              15,
+              13,
+              14,
+              1,
+              7,
+              18,
+              11,
+              8,
+              30,
+              19
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            27,
+            30,
+            23,
+            36
+          ],
+          [
+            10,
+            12,
+            15,
+            13,
+            14,
+            1,
+            7,
+            18,
+            11,
+            8,
+            30,
+            19
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              15,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              1,
+              7,
+              11,
+              15,
+              27,
+              30
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              12,
+              19,
+              23,
+              36
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "5e325c046f6895c382c59c70a3f22555e96740be9343d5bed3cdd7ca2022ae76",
+      "sealed_causal_history_length": 2022,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-06-06",
+      "target_draw_number": "114000059"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              29,
+              35,
+              37,
+              23,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              16,
+              12,
+              18,
+              13,
+              14,
+              4,
+              8,
+              35,
+              37,
+              19,
+              36
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            29,
+            35,
+            37,
+            23,
+            36
+          ],
+          [
+            10,
+            16,
+            12,
+            18,
+            13,
+            14,
+            4,
+            8,
+            35,
+            37,
+            19,
+            36
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              16,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              16,
+              18,
+              29,
+              35,
+              37
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              12,
+              19,
+              23,
+              36
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-12-09",
+        "first_draw_number": "111000108",
+        "last_draw_date": "2025-06-06",
+        "last_draw_number": "114000059",
+        "sha256": "947241696a1e64b60f2f5cb780b3ff41a0e39d0d67a170434e82d904cc597e01"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              29,
+              35,
+              37,
+              23,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              16,
+              12,
+              18,
+              13,
+              14,
+              4,
+              8,
+              35,
+              37,
+              19,
+              36
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            29,
+            35,
+            37,
+            23,
+            36
+          ],
+          [
+            10,
+            16,
+            12,
+            18,
+            13,
+            14,
+            4,
+            8,
+            35,
+            37,
+            19,
+            36
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              16,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              16,
+              18,
+              29,
+              35,
+              37
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              12,
+              19,
+              23,
+              36
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "ac16256265c591b817add2a2630ed3aa91741e03ec97c94a8c0eacf4cffcdf98",
+      "sealed_causal_history_length": 2023,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-06-10",
+      "target_draw_number": "114000060"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              23,
+              21,
+              28,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 11,
+            "candidates": [
+              13,
+              14,
+              18,
+              10,
+              12,
+              17,
+              6,
+              7,
+              9,
+              19,
+              36
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            23,
+            21,
+            28,
+            36
+          ],
+          [
+            13,
+            14,
+            18,
+            10,
+            12,
+            17,
+            6,
+            7,
+            9,
+            19,
+            36
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              7,
+              9,
+              13,
+              21,
+              23
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              14,
+              18,
+              19,
+              23,
+              28,
+              36
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2022-12-27",
+        "first_draw_number": "111000113",
+        "last_draw_date": "2025-06-24",
+        "last_draw_number": "114000064",
+        "sha256": "215c13b0b1794236b3389d4e39e6e5050de7ae9ed153b92b168ba0c818120624"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,11",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              23,
+              21,
+              28,
+              36
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 11,
+            "candidates": [
+              13,
+              14,
+              18,
+              10,
+              12,
+              17,
+              6,
+              7,
+              9,
+              19,
+              36
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            23,
+            21,
+            28,
+            36
+          ],
+          [
+            13,
+            14,
+            18,
+            10,
+            12,
+            17,
+            6,
+            7,
+            9,
+            19,
+            36
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              7,
+              9,
+              13,
+              21,
+              23
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              14,
+              18,
+              19,
+              23,
+              28,
+              36
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "241af9c7940d74fba0aa59a5e99863133a58eb88b4a3efd26eccf66b33b4ebe1",
+      "sealed_causal_history_length": 2028,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-06-27",
+      "target_draw_number": "114000065"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              41,
+              22,
+              29,
+              43
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              11,
+              13,
+              30,
+              12,
+              16,
+              4,
+              7,
+              18,
+              14,
+              41,
+              43
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            41,
+            22,
+            29,
+            43
+          ],
+          [
+            10,
+            11,
+            13,
+            30,
+            12,
+            16,
+            4,
+            7,
+            18,
+            14,
+            41,
+            43
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              11,
+              12,
+              13,
+              16,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              7,
+              13,
+              14,
+              30,
+              41
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              10,
+              11,
+              22,
+              29,
+              30,
+              43
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-01-25",
+        "first_draw_number": "112000011",
+        "last_draw_date": "2025-08-05",
+        "last_draw_number": "114000076",
+        "sha256": "5e73cfe7efe8b160785543481f0e1f7a66c574dcce42d9bd7dcd05c82d9712c6"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              30,
+              41,
+              22,
+              29,
+              43
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              11,
+              13,
+              30,
+              12,
+              16,
+              4,
+              7,
+              18,
+              14,
+              41,
+              43
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            30,
+            41,
+            22,
+            29,
+            43
+          ],
+          [
+            10,
+            11,
+            13,
+            30,
+            12,
+            16,
+            4,
+            7,
+            18,
+            14,
+            41,
+            43
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              11,
+              12,
+              13,
+              16,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              4,
+              7,
+              13,
+              14,
+              30,
+              41
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              10,
+              11,
+              22,
+              29,
+              30,
+              43
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "ea6bb89b64cbe996c68563f43841d8eb63abe09f28b7e319b38cfdb32a460fdd",
+      "sealed_causal_history_length": 2040,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-08-08",
+      "target_draw_number": "114000077"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              43,
+              47,
+              22,
+              30,
+              31
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              7,
+              43,
+              12,
+              13,
+              14,
+              15,
+              2,
+              5,
+              18,
+              8,
+              47
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            43,
+            47,
+            22,
+            30,
+            31
+          ],
+          [
+            10,
+            7,
+            43,
+            12,
+            13,
+            14,
+            15,
+            2,
+            5,
+            18,
+            8,
+            47
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              15,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              5,
+              7,
+              8,
+              43,
+              47
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              7,
+              10,
+              22,
+              30,
+              31,
+              43
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-01-26",
+        "first_draw_number": "112000012",
+        "last_draw_date": "2025-08-08",
+        "last_draw_number": "114000077",
+        "sha256": "1eb9382713f9f7f59f1cafdde5f95d2e4b58fcaca9e95a349bbadc9a66d7687d"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              43,
+              47,
+              22,
+              30,
+              31
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              7,
+              43,
+              12,
+              13,
+              14,
+              15,
+              2,
+              5,
+              18,
+              8,
+              47
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            43,
+            47,
+            22,
+            30,
+            31
+          ],
+          [
+            10,
+            7,
+            43,
+            12,
+            13,
+            14,
+            15,
+            2,
+            5,
+            18,
+            8,
+            47
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              12,
+              13,
+              14,
+              15,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              2,
+              5,
+              7,
+              8,
+              43,
+              47
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              7,
+              10,
+              22,
+              30,
+              31,
+              43
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "15b7da03492919a5114fd08eaa283dbdb48da74d536811aeaf088722c2bd8bc0",
+      "sealed_causal_history_length": 2041,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-08-12",
+      "target_draw_number": "114000078"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              21,
+              31,
+              44,
+              48
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              15,
+              11,
+              12,
+              13,
+              14,
+              3,
+              5,
+              6,
+              7,
+              8,
+              17
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            21,
+            31,
+            44,
+            48
+          ],
+          [
+            10,
+            15,
+            11,
+            12,
+            13,
+            14,
+            3,
+            5,
+            6,
+            7,
+            8,
+            17
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              11,
+              12,
+              13,
+              14,
+              15
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              6,
+              7,
+              15,
+              17
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              21,
+              31,
+              44,
+              48
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-03-03",
+        "first_draw_number": "112000030",
+        "last_draw_date": "2025-10-10",
+        "last_draw_number": "114000095",
+        "sha256": "0f241260a76207e62f2ec1c4cb65b545ded332bd50f3c02e88f85a87d5baf532"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              21,
+              31,
+              44,
+              48
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              10,
+              15,
+              11,
+              12,
+              13,
+              14,
+              3,
+              5,
+              6,
+              7,
+              8,
+              17
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            21,
+            31,
+            44,
+            48
+          ],
+          [
+            10,
+            15,
+            11,
+            12,
+            13,
+            14,
+            3,
+            5,
+            6,
+            7,
+            8,
+            17
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              10,
+              11,
+              12,
+              13,
+              14,
+              15
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              6,
+              7,
+              15,
+              17
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              8,
+              10,
+              21,
+              31,
+              44,
+              48
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "94c6915bb0984e657ae031fef336c776b5c5850b58b95d90239438e222858e96",
+      "sealed_causal_history_length": 2059,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-10-14",
+      "target_draw_number": "114000096"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              22,
+              48,
+              30,
+              34,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              12,
+              16,
+              13,
+              15,
+              17,
+              3,
+              5,
+              18,
+              1,
+              6,
+              48,
+              19
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            22,
+            48,
+            30,
+            34,
+            37
+          ],
+          [
+            12,
+            16,
+            13,
+            15,
+            17,
+            3,
+            5,
+            18,
+            1,
+            6,
+            48,
+            19
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              12,
+              13,
+              15,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              12,
+              16,
+              22,
+              48
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              6,
+              19,
+              30,
+              34,
+              37
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-04-14",
+        "first_draw_number": "112000042",
+        "last_draw_date": "2025-11-21",
+        "last_draw_number": "114000107",
+        "sha256": "a9dd961d723d324ea4b9aee08f2a5d3e55ed6e40f67dffded546b0325e46506c"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              22,
+              48,
+              30,
+              34,
+              37
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              12,
+              16,
+              13,
+              15,
+              17,
+              3,
+              5,
+              18,
+              1,
+              6,
+              48,
+              19
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            22,
+            48,
+            30,
+            34,
+            37
+          ],
+          [
+            12,
+            16,
+            13,
+            15,
+            17,
+            3,
+            5,
+            18,
+            1,
+            6,
+            48,
+            19
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              12,
+              13,
+              15,
+              16,
+              17,
+              18
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              5,
+              12,
+              16,
+              22,
+              48
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              1,
+              6,
+              19,
+              30,
+              34,
+              37
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "51683adee51618c0c6f197240e9715a4b918ede75135b456f2d4b2c685d5b708",
+      "sealed_causal_history_length": 2071,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2025-11-25",
+      "target_draw_number": "114000108"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              25,
+              30,
+              34,
+              47
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              5,
+              17,
+              1,
+              2,
+              6,
+              7,
+              9,
+              13,
+              10,
+              14,
+              19,
+              30
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            25,
+            30,
+            34,
+            47
+          ],
+          [
+            5,
+            17,
+            1,
+            2,
+            6,
+            7,
+            9,
+            13,
+            10,
+            14,
+            19,
+            30
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              5,
+              6,
+              7,
+              13
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              9,
+              10,
+              14,
+              17,
+              25
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              5,
+              17,
+              19,
+              30,
+              34,
+              47
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-07-25",
+        "first_draw_number": "112000071",
+        "last_draw_date": "2026-02-17",
+        "last_draw_number": "115000018",
+        "sha256": "3c37fd59cd4c4e6f1eb557b3d9970fdcbf9a5c5bb860b2a5000f795c67076441"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=4,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 4,
+            "candidates": [
+              25,
+              30,
+              34,
+              47
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              5,
+              17,
+              1,
+              2,
+              6,
+              7,
+              9,
+              13,
+              10,
+              14,
+              19,
+              30
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            25,
+            30,
+            34,
+            47
+          ],
+          [
+            5,
+            17,
+            1,
+            2,
+            6,
+            7,
+            9,
+            13,
+            10,
+            14,
+            19,
+            30
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              5,
+              6,
+              7,
+              13
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              9,
+              10,
+              14,
+              17,
+              25
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              5,
+              17,
+              19,
+              30,
+              34,
+              47
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "5bf565dfc0e4eba9e37eee70c295edce043aff30ecbba8c8c45f270b9d9cab28",
+      "sealed_causal_history_length": 2100,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2026-02-18",
+      "target_draw_number": "115000019"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              24,
+              20,
+              21,
+              30,
+              32
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              8,
+              1,
+              4,
+              6,
+              7,
+              5,
+              9,
+              10,
+              18,
+              19,
+              30
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            24,
+            20,
+            21,
+            30,
+            32
+          ],
+          [
+            3,
+            8,
+            1,
+            4,
+            6,
+            7,
+            5,
+            9,
+            10,
+            18,
+            19,
+            30
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              9,
+              10,
+              18,
+              19,
+              24
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              8,
+              20,
+              21,
+              30,
+              32
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-10-03",
+        "first_draw_number": "112000091",
+        "last_draw_date": "2026-03-24",
+        "last_draw_number": "115000038",
+        "sha256": "d8e1ba44eb9b0b212ade39817c1ecb647b2eada6cf83eaccfdf57b83ac81e0a5"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              24,
+              20,
+              21,
+              30,
+              32
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              3,
+              8,
+              1,
+              4,
+              6,
+              7,
+              5,
+              9,
+              10,
+              18,
+              19,
+              30
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            24,
+            20,
+            21,
+            30,
+            32
+          ],
+          [
+            3,
+            8,
+            1,
+            4,
+            6,
+            7,
+            5,
+            9,
+            10,
+            18,
+            19,
+            30
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              3,
+              4,
+              6,
+              7,
+              8
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              5,
+              9,
+              10,
+              18,
+              19,
+              24
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              3,
+              8,
+              20,
+              21,
+              30,
+              32
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "4ca5505d1c3529c2932b81d2089be4785d073a68d4c8665d1cfb26f52da40bf8",
+      "sealed_causal_history_length": 2120,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2026-03-27",
+      "target_draw_number": "115000039"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              28,
+              33,
+              21,
+              48,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              2,
+              5,
+              15,
+              1,
+              9,
+              3,
+              4,
+              33,
+              8,
+              48,
+              11,
+              19
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            28,
+            33,
+            21,
+            48,
+            41
+          ],
+          [
+            2,
+            5,
+            15,
+            1,
+            9,
+            3,
+            4,
+            33,
+            8,
+            48,
+            11,
+            19
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              5,
+              9,
+              28,
+              33
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              4,
+              8,
+              15,
+              21,
+              48
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              5,
+              11,
+              15,
+              19,
+              41
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2023-12-22",
+        "first_draw_number": "112000114",
+        "last_draw_date": "2026-06-12",
+        "last_draw_number": "115000061",
+        "sha256": "0ebeb2a3667562731247b2f16c1c99e408ebe8c956d286cffe3213aace39c7d7"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              28,
+              33,
+              21,
+              48,
+              41
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              2,
+              5,
+              15,
+              1,
+              9,
+              3,
+              4,
+              33,
+              8,
+              48,
+              11,
+              19
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            28,
+            33,
+            21,
+            48,
+            41
+          ],
+          [
+            2,
+            5,
+            15,
+            1,
+            9,
+            3,
+            4,
+            33,
+            8,
+            48,
+            11,
+            19
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              2,
+              5,
+              9,
+              28,
+              33
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              3,
+              4,
+              8,
+              15,
+              21,
+              48
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              2,
+              5,
+              11,
+              15,
+              19,
+              41
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "19cfd9f9f7c3c928e4986be521d9d9cfd318caee09ecd9366b83c2072ba7f3b8",
+      "sealed_causal_history_length": 2143,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2026-06-16",
+      "target_draw_number": "115000062"
+    },
+    {
+      "classification": "DONOR_FAITHFUL_SOURCE_CLOSURE",
+      "current_adapter": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              41,
+              28,
+              20,
+              37,
+              38
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              6,
+              5,
+              7,
+              41,
+              1,
+              9,
+              16,
+              17,
+              37,
+              15,
+              19,
+              38
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            41,
+            28,
+            20,
+            37,
+            38
+          ],
+          [
+            6,
+            5,
+            7,
+            41,
+            1,
+            9,
+            16,
+            17,
+            37,
+            15,
+            19,
+            38
+          ]
+        ],
+        "closure_reason": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              5,
+              6,
+              7,
+              9,
+              28
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              16,
+              17,
+              20,
+              37,
+              41
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              5,
+              7,
+              15,
+              19,
+              38,
+              41
+            ]
+          }
+        ],
+        "exception_message": "legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+        "exception_type": "InvalidOutput",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "deficient_current_adapter_positional_components": [
+        "GAP_01_19"
+      ],
+      "deficient_retained_source_positional_components": [
+        "GAP_01_19"
+      ],
+      "direct_causal_history": {
+        "draw_count": 300,
+        "first_draw_date": "2024-01-02",
+        "first_draw_number": "113000001",
+        "last_draw_date": "2026-06-23",
+        "last_draw_number": "115000064",
+        "sha256": "3324517fad4f6038fe5f2651b23bc61e4fae00389b399fafedc01c788292bac3"
+      },
+      "exact_load_bearing_closure": true,
+      "failed_retained_source_engine_components": [],
+      "first_divergent_intermediate": null,
+      "frozen_input_condition_key": "deficient=GAP_01_19;failed_engines=NONE;pool_sizes=5,12",
+      "retained_source": {
+        "candidate_pool_details": [
+          {
+            "candidate_count": 5,
+            "candidates": [
+              41,
+              28,
+              20,
+              37,
+              38
+            ],
+            "fewer_than_six_legal_candidates": true,
+            "positional_component": "GAP_01_19"
+          },
+          {
+            "candidate_count": 12,
+            "candidates": [
+              6,
+              5,
+              7,
+              41,
+              1,
+              9,
+              16,
+              17,
+              37,
+              15,
+              19,
+              38
+            ],
+            "fewer_than_six_legal_candidates": false,
+            "positional_component": "GAP_20_29"
+          }
+        ],
+        "candidate_pools": [
+          [
+            41,
+            28,
+            20,
+            37,
+            38
+          ],
+          [
+            6,
+            5,
+            7,
+            41,
+            1,
+            9,
+            16,
+            17,
+            37,
+            15,
+            19,
+            38
+          ]
+        ],
+        "closure_reason": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "components": [
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "deviation",
+            "status": "OK",
+            "ticket": [
+              1,
+              5,
+              6,
+              7,
+              9,
+              28
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "markov",
+            "status": "OK",
+            "ticket": [
+              6,
+              16,
+              17,
+              20,
+              37,
+              41
+            ]
+          },
+          {
+            "error_message": null,
+            "error_type": null,
+            "method_name": "frequency",
+            "status": "OK",
+            "ticket": [
+              5,
+              7,
+              15,
+              19,
+              38,
+              41
+            ]
+          }
+        ],
+        "exception_message": "FROZEN_SOURCE_EMITTED_INVALID_NATIVE_TICKET",
+        "exception_type": "LegacySourceNativeWave31SourceError",
+        "outcome_status": "CLOSED",
+        "tickets": null
+      },
+      "sealed_causal_history_fingerprint": "7aa20b997e13dddc3e7699e05450ab302b651f50fb45126621de262e91771e18",
+      "sealed_causal_history_length": 2146,
+      "sealed_failure_reason": "InvalidOutput: legacy_biglotto__backtest_radical_strategy__e54cc0812bc6: frozen donor emitted fewer than six legal candidates",
+      "target_draw_date": "2026-06-26",
+      "target_draw_number": "115000065"
+    }
+  ],
+  "schema_version": "B649_RADICAL_GAP_29_FAILURE_PARITY_ATTRIBUTION_V1",
+  "source_identity": {
+    "authority_directory": "/Users/kelvin/Library/Application Support/LottoLab/authorities/big_lotto/exact_native_k2_k3",
+    "authority_files": {
+      "promotion_provenance.json": {
+        "sha256": "63057f07c33d92c18bfc4f35975407624ea6464778bfb7d110576f4589a36632",
+        "size_bytes": 1182
+      },
+      "ranking.json": {
+        "sha256": "3c09cf4791ac55c83bd7556d4b947cb1f80b762abf767b6b83f075c9d344753f",
+        "size_bytes": 74122
+      },
+      "sealed_manifest.json": {
+        "sha256": "9b9a9ca35252ff51bf60cf8e04a4e1e0b182a07ca34e2c2f8777f5d587445495",
+        "size_bytes": 63279
+      },
+      "target_evidence.jsonl": {
+        "sha256": "f4ee7bcd2900c6c066b6aa0255031c97c1ca1a248c605ce68a46f62bfe7820f0",
+        "size_bytes": 52228568
+      }
+    },
+    "authority_hash_stable_before_after_load": true,
+    "current_adapter": "lottolab.strategies.adapters.biglotto_radical_gap:BigLottoRadicalGapBacktestAdapter",
+    "donor_path": "tools/backtest_radical_strategy.py",
+    "donor_sha256": "e54cc0812bc6fff14a259282a37821810d264c023c4fb87517305b511db08fd9",
+    "retained_reference": "lottolab.application.legacy_source_native_portfolios_wave31:generate_legacy_source_native_wave31_portfolio",
+    "sealed_replay_run_id": "B649_K2_K3_EXACT_NATIVE_FULL_REPLAY_R1",
+    "sealed_replay_source_head": "85d2b4578d437b66bd015c60dd1f9bdc8404e755",
+    "sealed_replay_source_tree": "c6341c36ca210e02b08bac66ff98b7c8be1fc95a",
+    "taxonomy_result_path": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_K2_FIXED_UNIVERSE_FAILURE_TAXONOMY_R1/docs/research/matrix-native-results/b649-k2-fixed-universe-failure-taxonomy-r1-result.json",
+    "taxonomy_result_sha256": "d70359c611a49f2fb414767145531da35d0ebc33532e5f36d16631fb89901856",
+    "taxonomy_source_head": "1c171c9fbe6398a6af36425cf61d1ba3e6f27532",
+    "taxonomy_source_tree": "ccb336ed3538834f922db58d4d1b687bc72a3dbc"
+  },
+  "summary": {
+    "all_failures_donor_faithful": true,
+    "exact_failure_target_count": 29,
+    "port_regression_count": 0,
+    "positional_component_counts": {
+      "GAP_01_19": 29
+    },
+    "source_authority_unresolved_count": 0
+  },
+  "task_id": "B649_RADICAL_GAP_29_FAILURE_PARITY_ATTRIBUTION_R1"
+}

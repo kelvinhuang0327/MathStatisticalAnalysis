@@ -214,6 +214,9 @@ from lottolab.interfaces.cli.research_backtest_runner import (
     run_biglotto_research_backtest_command,
 )
 from lottolab.interfaces.cli.research_store import research_store_command
+from lottolab.interfaces.cli.t539_p638_schedule_certificate import (
+    t539_p638_schedule_certificate_command,
+)
 from lottolab.interfaces.cli.taiwan_lottery_metadata_backfill import (
     taiwan_lottery_metadata_backfill_command,
 )
@@ -227,6 +230,7 @@ app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("register-pre-outcome-target")(register_pre_outcome_target_command)
 app.command("supplement-future-draw-identity")(supplement_future_draw_identity_command)
+app.command("t539-p638-schedule-certificate")(t539_p638_schedule_certificate_command)
 app.command("research-store")(research_store_command)
 app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
 app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)

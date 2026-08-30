@@ -294,6 +294,9 @@ def test_projection_uses_exact_window_order_counts_and_reduced_fractions() -> No
 
 def test_repeated_assembly_has_identical_canonical_bytes_and_digest() -> None:
     manifests = _accepted_manifests()
+    _, run_a, run_b, _ = manifests
+    assert run_a["deterministic_payload_sha256"] == run_b["deterministic_payload_sha256"]
+    assert run_a["manifest_sha256"] != run_b["manifest_sha256"]
     artifact_a = _assemble(manifests)
     artifact_b = _assemble(copy.deepcopy(manifests))
 
@@ -307,6 +310,36 @@ def test_repeated_assembly_has_identical_canonical_bytes_and_digest() -> None:
     assert artifact_a.artifact_sha256 == self_key_removed_sha256(
         artifact_a.canonical_dict(), "artifact_sha256"
     )
+
+
+@pytest.mark.parametrize("manifest_index", [0, 1, 2, 3])
+def test_operational_metadata_is_bound_by_each_manifest_self_digest(
+    manifest_index: int,
+) -> None:
+    manifests = list(_accepted_manifests())
+    tampered_manifest = manifests[manifest_index]
+    original_run_digest = tampered_manifest.get("deterministic_payload_sha256")
+    tampered_manifest["operational"]["post_seal_tamper"] = True
+
+    if original_run_digest is not None:
+        assert assembler.deterministic_run_sha256(tampered_manifest) == original_run_digest
+    assert assembler.manifest_sha256(tampered_manifest) != tampered_manifest["manifest_sha256"]
+    with pytest.raises(
+        assembler.EvidenceAssemblyError,
+        match="manifest_sha256 does not match",
+    ):
+        _assemble(cast(ManifestSet, tuple(manifests)))
+
+
+def test_same_run_manifest_cannot_satisfy_both_acceptance_slots() -> None:
+    plan, run_a, _, _ = _accepted_manifests()
+    acceptance = _acceptance_manifest(plan, run_a, run_a)
+
+    with pytest.raises(
+        assembler.EvidenceAssemblyError,
+        match="two distinct run manifest identities are required",
+    ):
+        assembler.assemble_artifact(plan, run_a, run_a, acceptance)
 
 
 def test_artifact_round_trip_and_tamper_rejection(tmp_path: Path) -> None:

@@ -9,9 +9,10 @@ domain model.
 The input contract is intentionally local to this tooling task.  It is
 content-addressed with LCJ-1 and keeps run-specific operational metadata in an
 explicit ``operational`` envelope.  That envelope is required for provenance
-documents but is excluded from deterministic hashes, so two independent
-synthetic runs can differ in paths, timestamps, or process identifiers without
-being mistaken for different empirical results.
+documents and is covered by each manifest's self-digest.  It is excluded only
+from the run's deterministic comparison digest, so two independent synthetic
+runs can differ in paths, timestamps, or process identifiers without being
+mistaken for different empirical results.
 
 No adapter, replay session, database, or packaged evidence artifact is
 imported by this module.  The only production-domain import is the immutable
@@ -359,21 +360,10 @@ def _canonical_equal(left: object, right: object) -> bool:
     return canonical_bytes(left) == canonical_bytes(right)
 
 
-def _manifest_deterministic_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        key: value
-        for key, value in payload.items()
-        if key not in {"manifest_sha256", "operational"}
-    }
-
-
 def manifest_sha256(payload: Mapping[str, Any]) -> str:
-    """Compute a manifest's self hash while excluding its operational envelope."""
+    """Compute a manifest identity covering every field except the digest itself."""
 
-    deterministic = _manifest_deterministic_payload(payload)
-    candidate = dict(deterministic)
-    candidate["manifest_sha256"] = "0" * 64
-    return self_key_removed_sha256(candidate, "manifest_sha256")
+    return self_key_removed_sha256(dict(payload), "manifest_sha256")
 
 
 def deterministic_run_sha256(payload: Mapping[str, Any]) -> str:
@@ -734,6 +724,10 @@ def _validate_acceptance(
         raise EvidenceAssemblyError("acceptance_manifest: run-A binding mismatch")
     if payload["run_b_manifest_sha256"] != run_b.payload["manifest_sha256"]:
         raise EvidenceAssemblyError("acceptance_manifest: run-B binding mismatch")
+    if run_a.payload["manifest_sha256"] == run_b.payload["manifest_sha256"]:
+        raise EvidenceAssemblyError(
+            "acceptance_manifest: two distinct run manifest identities are required"
+        )
     _validate_common_identity(payload, path="acceptance_manifest")
     _validate_plan_binding(payload, plan, path="acceptance_manifest")
     if payload["acceptance_status"] != "PASS":

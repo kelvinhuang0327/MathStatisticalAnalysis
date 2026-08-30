@@ -217,6 +217,39 @@ def test_typed_exception_veto_blocks_ordinary_acceptance_without_notice_text_par
     assert p638.vetoes == (veto,)
 
 
+def test_typed_exception_veto_is_retained_when_current_game_row_is_absent() -> None:
+    veto = AuthoritativeScheduleVeto(
+        lottery_type=LotteryType.DAILY_539,
+        official_game_code=T539_SCHEDULE_GAME_CODE,
+        draw_number="1234",
+        exception_kind=ScheduleExceptionKind.CANCELLATION,
+        source=TargetSourceProvenance(
+            source_id="TAIWAN_LOTTERY_OFFICIAL_EXCEPTION_NOTICE",
+            source_version="fixture-v1",
+            source_locator="https://www.taiwanlottery.com/announcement/1234",
+            source_sha256="c" * 64,
+            observed_at=OBSERVED_AT,
+        ),
+    )
+    result = parse_official_t539_p638_schedule(
+        _body(
+            _row(
+                game_code=P638_SCHEDULE_GAME_CODE,
+                draw_date="20990103",
+                draw_term="2234",
+            )
+        ),
+        observed_at=OBSERVED_AT,
+        active_vetoes=(veto,),
+    )
+
+    t539 = _game(result, LotteryType.DAILY_539)
+    assert t539.status is ScheduleAuthorityStatus.AUTHORITATIVE_VETO
+    assert t539.schedules == ()
+    assert t539.vetoes == (veto,)
+    assert _game(result, LotteryType.POWER_LOTTO).status is ScheduleAuthorityStatus.COMPLETE
+
+
 @pytest.mark.parametrize(
     "body",
     [

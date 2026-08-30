@@ -11451,7 +11451,8 @@
           "BOUNDED_BACKFILL",
           "SCHEDULED_SYNC",
           "OFFICIAL_SCHEDULE_SYNC",
-          "MANUAL_FUTURE_IDENTITY_SUPPLEMENT"
+          "MANUAL_FUTURE_IDENTITY_SUPPLEMENT",
+          "MANUAL_SCHEDULE_CERTIFICATE"
         ],
         "title": "IngestionOperationType",
         "description": "Stable operation identifiers stored in the local ingestion log."

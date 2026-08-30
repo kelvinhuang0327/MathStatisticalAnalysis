@@ -443,6 +443,29 @@ def _parse_canonical_game_authority(
     game_rows = tuple(
         row for row in rows if type(row.get("gameCode")) is int and row.get("gameCode") == game_code
     )
+    game_vetoes = tuple(
+        veto for veto in active_vetoes if veto.lottery_type is lottery_type
+    )
+    if game_vetoes:
+        evidence_draw_dates = tuple(
+            sorted(
+                {
+                    parsed_date
+                    for row in game_rows
+                    if (parsed_date := _strict_canonical_draw_date(row.get("drawDate")))
+                    is not None
+                }
+            )
+        )
+        return OfficialGameScheduleAuthority(
+            lottery_type=lottery_type,
+            official_game_code=game_code,
+            status=ScheduleAuthorityStatus.AUTHORITATIVE_VETO,
+            schedules=(),
+            detail_code="AUTHORITATIVE_EXCEPTION_VETO",
+            evidence_draw_dates=evidence_draw_dates,
+            vetoes=game_vetoes,
+        )
     if not game_rows:
         return OfficialGameScheduleAuthority(
             lottery_type=lottery_type,
@@ -548,25 +571,6 @@ def _parse_canonical_game_authority(
         unique[key] = fact
 
     ordered = tuple(sorted(unique.values(), key=_canonical_fact_sort_key))
-    target_numbers = {fact.announcement.target.draw_number for fact in ordered}
-    matching_vetoes = tuple(
-        veto
-        for veto in active_vetoes
-        if veto.lottery_type is lottery_type
-        and (veto.draw_number is None or veto.draw_number in target_numbers)
-    )
-    if matching_vetoes:
-        return OfficialGameScheduleAuthority(
-            lottery_type=lottery_type,
-            official_game_code=game_code,
-            status=ScheduleAuthorityStatus.AUTHORITATIVE_VETO,
-            schedules=(),
-            detail_code="AUTHORITATIVE_EXCEPTION_VETO",
-            evidence_draw_dates=tuple(
-                sorted({fact.announcement.target.draw_date for fact in ordered})
-            ),
-            vetoes=matching_vetoes,
-        )
     return OfficialGameScheduleAuthority(
         lottery_type=lottery_type,
         official_game_code=game_code,

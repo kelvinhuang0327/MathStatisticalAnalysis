@@ -314,6 +314,76 @@ def test_cancellation_preserves_schedule_but_removes_it_from_runnable_resolution
     ) is None
 
 
+def test_cancellation_survives_absent_row_and_later_complete_reobservation(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteCanonicalScheduleAuthorityRepository(paths)
+    repository.apply_canonical_schedule_authority(
+        _fetch(
+            _row(T539_SCHEDULE_GAME_CODE, "7002", "20990102"),
+            _row(P638_SCHEDULE_GAME_CODE, "8002", "20990103"),
+        )
+    )
+    original = _schedule_snapshot(paths, LotteryType.DAILY_539, "7002")
+    veto = AuthoritativeScheduleVeto(
+        lottery_type=LotteryType.DAILY_539,
+        official_game_code=T539_SCHEDULE_GAME_CODE,
+        draw_number="7002",
+        exception_kind=ScheduleExceptionKind.CANCELLATION,
+        source=TargetSourceProvenance(
+            source_id="TAIWAN_LOTTERY_OFFICIAL_EXCEPTION_NOTICE",
+            source_version="fixture-v1",
+            source_locator="https://www.taiwanlottery.com/announcement/7002",
+            source_sha256="e" * 64,
+            observed_at=datetime(2099, 1, 1, 1, tzinfo=UTC),
+        ),
+    )
+
+    cancelled = repository.apply_canonical_schedule_authority(
+        _fetch(
+            _row(P638_SCHEDULE_GAME_CODE, "8002", "20990103"),
+            observed_at=datetime(2099, 1, 1, 1, tzinfo=UTC),
+            marker=31,
+            active_vetoes=(veto,),
+        )
+    )
+
+    assert _game_result(cancelled, LotteryType.DAILY_539).apply_status is (
+        ScheduleAuthorityApplyStatus.VETOED
+    )
+    assert _schedule_snapshot(paths, LotteryType.DAILY_539, "7002") == original
+    reader = SQLiteFutureDrawIdentityReader(paths)
+    assert reader.find_earliest_unpopulated_future(
+        LotteryType.DAILY_539,
+        datetime(2099, 1, 1, tzinfo=UTC),
+    ) is None
+    with open_database(paths, read_only=True) as connection:
+        cancellation = connection.execute(
+            """
+            SELECT draw_number, event_kind, disposition
+            FROM draw_schedule_authority_evidence
+            WHERE lottery_type = 'DAILY_539' AND event_kind = 'CANCELLATION'
+            """
+        ).fetchone()
+    assert cancellation == ("7002", "CANCELLATION", "VETOED")
+
+    repository.apply_canonical_schedule_authority(
+        _fetch(
+            _row(T539_SCHEDULE_GAME_CODE, "7002", "20990102"),
+            _row(P638_SCHEDULE_GAME_CODE, "8002", "20990103"),
+            observed_at=datetime(2099, 1, 1, 2, tzinfo=UTC),
+            marker=32,
+        )
+    )
+
+    assert _schedule_snapshot(paths, LotteryType.DAILY_539, "7002") == original
+    assert reader.find_earliest_unpopulated_future(
+        LotteryType.DAILY_539,
+        datetime(2099, 1, 1, tzinfo=UTC),
+    ) is None
+
+
 def test_successful_disappearance_blocks_cached_row_but_later_complete_reobservation_restores(
     tmp_path: Path,
 ) -> None:

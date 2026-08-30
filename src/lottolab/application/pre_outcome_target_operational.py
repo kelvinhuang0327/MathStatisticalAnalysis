@@ -9,6 +9,7 @@ authority live.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -28,6 +29,8 @@ from lottolab.domain.pre_outcome_target import (
     TargetAnnouncement,
 )
 from lottolab.domain.prospective_observer import CausalHistoryRef, ObservationTarget
+
+_SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 
 
 class PreOutcomeTargetOperationalError(RuntimeError):
@@ -103,6 +106,7 @@ class OperationalRegistrationResult:
     announcement: TargetAnnouncement | None
     causal_history: CausalHistoryRef | None
     registration: PreOutcomeTargetRegistration | None
+    immutable_schedule_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.status) is not OperationalRegistrationStatus:
@@ -120,9 +124,18 @@ class OperationalRegistrationResult:
             raise ValueError("completed registration results require all authority values")
         if not completed and any(
             value is not None
-            for value in (self.announcement, self.causal_history, self.registration)
+            for value in (
+                self.announcement,
+                self.causal_history,
+                self.registration,
+                self.immutable_schedule_sha256,
+            )
         ):
             raise ValueError("no-target results must not expose partial authority values")
+        if self.immutable_schedule_sha256 is not None and (
+            _SHA256.fullmatch(self.immutable_schedule_sha256) is None
+        ):
+            raise ValueError("immutable_schedule_sha256 must be a lowercase SHA-256 digest")
         if completed:
             assert self.announcement is not None
             assert self.causal_history is not None
@@ -212,6 +225,7 @@ class PreOutcomeTargetOperationalService:
             announcement=selected,
             causal_history=history,
             registration=result.registration,
+            immutable_schedule_sha256=selected_record.immutable_schedule_sha256,
         )
 
 
@@ -221,6 +235,7 @@ def _empty_result(status: OperationalRegistrationStatus) -> OperationalRegistrat
         announcement=None,
         causal_history=None,
         registration=None,
+        immutable_schedule_sha256=None,
     )
 
 

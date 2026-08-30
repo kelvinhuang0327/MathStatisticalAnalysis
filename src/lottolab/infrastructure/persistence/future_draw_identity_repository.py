@@ -6,7 +6,7 @@ import re
 import sqlite3
 import uuid
 from dataclasses import dataclass, replace
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from urllib.parse import urlsplit
 
 from lottolab.application.future_draw_identity import (
@@ -36,6 +36,7 @@ from lottolab.application.schedule_sync import (
     CANONICAL_NORMAL_DRAW_LOCAL_TIME,
     CANONICAL_SCHEDULE_AUTHORITY_PARSER_VERSION,
     SCHEDULE_SYNC_PARSER_VERSION,
+    SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES,
     AuthoritativeScheduleVeto,
     CanonicalScheduleAuthorityFetchResult,
     CanonicalScheduleAuthorityGameSyncResult,
@@ -130,11 +131,15 @@ class SQLiteFutureDrawIdentityReader:
                     _reject_cross_table_date_mismatch(connection)
                     row = connection.execute(
                         """
-                        SELECT s.*, d.id AS outcome_draw_internal_id
+                        SELECT s.*, d.id AS outcome_draw_internal_id,
+                               f.official_game_code, f.scheduled_local_time,
+                               f.source_period_identifier, f.immutable_schedule_hash,
+                               f.authority_origin
                         FROM draw_schedules AS s
                         LEFT JOIN draws AS d
                                ON d.lottery_type = s.lottery_type
                               AND d.draw_number = s.draw_number
+                        LEFT JOIN draw_schedule_facts AS f ON f.schedule_id = s.id
                         WHERE s.lottery_type = ?
                           AND s.scheduled_at > ?
                           AND d.id IS NULL
@@ -210,11 +215,15 @@ class SQLiteFutureDrawIdentityReader:
                     _reject_cross_table_date_mismatch(connection)
                     row = connection.execute(
                         """
-                        SELECT s.*, d.id AS outcome_draw_internal_id
+                        SELECT s.*, d.id AS outcome_draw_internal_id,
+                               f.official_game_code, f.scheduled_local_time,
+                               f.source_period_identifier, f.immutable_schedule_hash,
+                               f.authority_origin
                         FROM draw_schedules AS s
                         LEFT JOIN draws AS d
                                ON d.lottery_type = s.lottery_type
                               AND d.draw_number = s.draw_number
+                        LEFT JOIN draw_schedule_facts AS f ON f.schedule_id = s.id
                         WHERE s.lottery_type = ?
                           AND s.scheduled_at <= ?
                           AND d.id IS NULL
@@ -1692,11 +1701,15 @@ def _get_scheduled_draw(
     row = connection.execute(
         """
         SELECT s.*, d.id AS outcome_draw_internal_id,
-               d.draw_date AS outcome_draw_date
+               d.draw_date AS outcome_draw_date,
+               f.official_game_code, f.scheduled_local_time,
+               f.source_period_identifier, f.immutable_schedule_hash,
+               f.authority_origin
         FROM draw_schedules AS s
         LEFT JOIN draws AS d
                ON d.lottery_type = s.lottery_type
               AND d.draw_number = s.draw_number
+        LEFT JOIN draw_schedule_facts AS f ON f.schedule_id = s.id
         WHERE s.lottery_type = ? AND s.draw_number = ?
         """,
         (lottery_type.value, draw_number),
@@ -2054,7 +2067,7 @@ def _schedule_sync_result(
 
 def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIdentityRecord:
     values = tuple(row)
-    if len(values) not in {15, 16}:
+    if len(values) not in {15, 16, 20, 21}:
         raise ValueError("stored schedule row shape is invalid")
     lottery_type = LotteryType(_required_text(values[1], "lottery_type"))
     draw_number = _required_text(values[2], "draw_number")
@@ -2080,10 +2093,17 @@ def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIde
         raise ValueError("stored normalized announcement hash is invalid")
     outcome_id_value = values[14]
     outcome_id = None if outcome_id_value is None else _positive_integer(outcome_id_value)
-    if len(values) == 16 and outcome_id is not None:
+    has_outcome_date = len(values) in {16, 21}
+    if has_outcome_date and outcome_id is not None:
         outcome_date = _date_value(values[15], "outcome_draw_date")
         if outcome_date != draw_date_value:
             raise ValueError("stored schedule and completed draw dates conflict")
+    fact_start = 16 if len(values) == 21 else 15
+    fact_values = values[fact_start:] if len(values) in {20, 21} else ()
+    immutable_schedule_sha256 = _immutable_schedule_sha256(
+        announcement,
+        fact_values,
+    )
     return ScheduledDrawIdentityRecord(
         internal_id=_positive_integer(values[0]),
         announcement=announcement,
@@ -2096,7 +2116,50 @@ def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIde
             else ScheduledDrawOutcomeState.POPULATED
         ),
         outcome_draw_internal_id=outcome_id,
+        immutable_schedule_sha256=immutable_schedule_sha256,
     )
+
+
+def _immutable_schedule_sha256(
+    announcement: TargetAnnouncement,
+    values: tuple[object, ...],
+) -> str | None:
+    lottery_type = announcement.target.lottery_type
+    if not values or all(value is None for value in values):
+        if lottery_type in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES:
+            raise ValueError("canonical T539/P638 schedule fact is missing")
+        return None
+    if len(values) != 5:
+        raise ValueError("stored canonical schedule fact shape is invalid")
+    game_code, local_time_value, period_value, immutable_hash_value, origin_value = values
+    local_time_text = _required_text(local_time_value, "scheduled_local_time")
+    try:
+        scheduled_local_time = time.fromisoformat(local_time_text)
+    except ValueError as exc:
+        raise ValueError("scheduled_local_time is invalid") from exc
+    if scheduled_local_time.isoformat(timespec="seconds") != local_time_text:
+        raise ValueError("scheduled_local_time is not canonical")
+    source_period_identifier = (
+        None
+        if period_value is None
+        else _required_text(period_value, "source_period_identifier")
+    )
+    origin = _required_text(origin_value, "authority_origin")
+    if origin not in {"OFFICIAL", "MANUAL"}:
+        raise ValueError("authority_origin is invalid")
+    fact = CanonicalScheduleFact(
+        announcement=announcement,
+        official_game_code=_positive_integer(game_code),
+        scheduled_local_time=scheduled_local_time,
+        source_period_identifier=source_period_identifier,
+    )
+    immutable_hash = _required_sha256(
+        immutable_hash_value,
+        "immutable_schedule_hash",
+    )
+    if immutable_hash != fact.immutable_schedule_sha256:
+        raise ValueError("stored immutable schedule hash is invalid")
+    return immutable_hash
 
 
 def _validate_manual_request(

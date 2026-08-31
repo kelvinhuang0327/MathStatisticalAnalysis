@@ -33,6 +33,7 @@ class ScheduledDrawIdentityRecord:
     created_at: datetime
     outcome_state: ScheduledDrawOutcomeState
     outcome_draw_internal_id: int | None
+    immutable_schedule_sha256: str | None = None
 
     def __post_init__(self) -> None:
         if type(self.internal_id) is not int or self.internal_id < 1:
@@ -49,6 +50,11 @@ class ScheduledDrawIdentityRecord:
             or self.outcome_draw_internal_id < 1
         ):
             raise ValueError("outcome_draw_internal_id must be a positive integer or None")
+        if self.immutable_schedule_sha256 is not None:
+            _require_sha256(
+                self.immutable_schedule_sha256,
+                "immutable_schedule_sha256",
+            )
         populated = self.outcome_state is ScheduledDrawOutcomeState.POPULATED
         has_outcome_identity = self.outcome_draw_internal_id is not None
         if populated != has_outcome_identity:

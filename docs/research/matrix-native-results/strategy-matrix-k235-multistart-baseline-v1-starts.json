@@ -1,0 +1,1387 @@
+{
+  "canonical_base": {
+    "commit": "07a5c3479123c03fd91b6f1ae2402046b5f16c2a",
+    "tree": "cff549183e67ad49f12afb5076a11b1f8b712dde"
+  },
+  "canonical_method": {
+    "method_id": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+    "objective_id": "EXACT_PORTFOLIO_M3_PLUS_COVERAGE",
+    "path": "src/lottolab/research/reference_e_iterative_exact_one_exchange_ascent.py",
+    "sha256": "01e634924797355d4f19487a7abfaeed8910bc3b0c5ee8a6d95ebe617a368577"
+  },
+  "owner_authorization": "AUTHORIZE_STRATEGY_MATRIX_K235_MULTISTART_BASELINE_R1",
+  "requested_k_scope": [
+    2,
+    3,
+    5
+  ],
+  "seed_policy": {
+    "all_predeclared_starts_retained": true,
+    "objective_evaluated_during_freeze": false,
+    "random_derived_starts": "NONE",
+    "start_ids": [
+      "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+      "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+      "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+      "CYCLIC_SIDON_SHIFT_OFFSET3_V1"
+    ],
+    "start_offsets": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "source_file_sha256": {
+    "src/lottolab/research/cyclic_sidon_shift.py": "b4b9891c076bf403efd0b3072d52a2547f2d817580926ac97099d07eb27e281a",
+    "src/lottolab/research/cyclic_sidon_shift_p638.py": "0c7a686b89554898a0bd7d8fb60b15aa8b658275d37f591a4fa04e3c65532d56",
+    "src/lottolab/research/cyclic_sidon_shift_t539.py": "4e950e25618876b3ff4aed426e26ad1800ab6f22550a88061087010766a426dd",
+    "src/lottolab/research/reference_e_iterative_exact_one_exchange_ascent.py": "01e634924797355d4f19487a7abfaeed8910bc3b0c5ee8a6d95ebe617a368577"
+  },
+  "structures": {
+    "BIG_LOTTO": {
+      "draw_size": 6,
+      "lottery_type": "BIG_LOTTO",
+      "per_k": {
+        "2": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  13,
+                  21
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14,
+                  22
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "3068accd9a6841503235e71e791201ec6733b2e36fd4e5ae78eff34a42040474",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14,
+                  22
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "3166624b21fcc8e1de18fffb7c2b81ab54794104c3c7a0e1ff91e48dfc1565c5",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "4601bafefa2f97538ff4823c486428ad55d5533d10accf7ab08ae9db07ad1c4f",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "499e2acb1e8daef3076dccab7e8a3e3280b627523e731abdbf993edae61dd5f7",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        },
+        "3": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  13,
+                  21
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14,
+                  22
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "c43bad28dfc5ac89fc3b935d586b825061f5b024aa2673917d87a081d34721b5",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14,
+                  22
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "e4aeed3f715c7696880162ff6e8440487265278e2ac7eed952133cd85e9b14e2",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "973d2547d42aaad84a075c8d95d04df0d7d47fb846ae82ab0229dc9ba919bafb",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18,
+                  26
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "724c0e37bf009ba77a99e385ae5ba0f10c8b47bc9736e69f8a6b3b66e77c7f42",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        },
+        "5": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  13,
+                  21
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14,
+                  22
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "4a473059d513f06746c701bb6001e078fc274874a51f0ed69a536c68e27255ec",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14,
+                  22
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18,
+                  26
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "f5e9f00adefed2e48f284d36e199bae53e9f17ac0fccebc56c344ee01c62b9d8",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15,
+                  23
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18,
+                  26
+                ],
+                [
+                  7,
+                  8,
+                  10,
+                  14,
+                  19,
+                  27
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "98016c3b2a1f9a9d1f7b2ce5e691b09a52958950fe89aa1b2e327c4262039329",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16,
+                  24
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17,
+                  25
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18,
+                  26
+                ],
+                [
+                  7,
+                  8,
+                  10,
+                  14,
+                  19,
+                  27
+                ],
+                [
+                  8,
+                  9,
+                  11,
+                  15,
+                  20,
+                  28
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "049213c50c3dc699ed3abb84d803aaa99348764879ce23cbaf0937734f16b9da",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        }
+      },
+      "pool_size": 49,
+      "primary_event": "M3_PLUS",
+      "zone": null
+    },
+    "DAILY_539": {
+      "draw_size": 5,
+      "lottery_type": "DAILY_539",
+      "per_k": {
+        "2": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  13
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "6549c5c5fa990e08f0dac62969e57eb625ee013530e2d65a12b7d0493bd92d65",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "36b6d86dcb30ff60fa5dca0aebefd7f3e8232600f22472778b30bccab5bcc2b5",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "609f9a7bf5b8182ca76ee8d3065205c9844cc83d5d16e8aecceb36eb295e642b",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "9f95eed27ff5bf2bc116f14b2939e8e1b6ed1e5d027e23c38c6eed3088465f8d",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        },
+        "3": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  13
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "a7412c250b7828b5d26cc1471aa5939384c133ce37b000cc4e0c3d1811907b9b",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "1f2d57d345ec85cba84b9ea3e088288d37dc995b18677bbd54abb160055afe79",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "c1b3d01ba1b4295443fa0b95b9cb3c98b49c9aa074209db74ec766ba84ace082",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "923ae7afa099b0ef23bfc9945c65037cdae04312d53a14973f4a1ea987e72664",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        },
+        "5": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  13
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "bd725c0226df4974d1464945e3cd5ebc2f379d71763269d83f9b5215dc5c3b82",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  14
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "c2542deb9d3f836f8f0c177e72800ef249d0c3cfd04b5f773e8bbc8d31f5fd3b",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  15
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18
+                ],
+                [
+                  7,
+                  8,
+                  10,
+                  14,
+                  19
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "a2412c6827640ac8f1f2d13d9c74458f6cbc1e1cbaf03cb8e8b93e438da61b1f",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  16
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  17
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  18
+                ],
+                [
+                  7,
+                  8,
+                  10,
+                  14,
+                  19
+                ],
+                [
+                  8,
+                  9,
+                  11,
+                  15,
+                  20
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "e9da226533ce79ad69fad057ebdf25abbb53cd208a3c95d14aa07e4b93833e39",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        }
+      },
+      "pool_size": 39,
+      "primary_event": "M3_PLUS",
+      "zone": null
+    },
+    "POWER_LOTTO_ZONE1": {
+      "draw_size": 6,
+      "lottery_type": "POWER_LOTTO",
+      "per_k": {
+        "2": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  18,
+                  31
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  19,
+                  32
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "761ba73efd79f290dbb25f405545848ee580882cfdbfc40af7297dbaf0d1fe38",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  19,
+                  32
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "11e47e3f186c7573685c35bc8603f7c2b266c6a56fd4d10a825e578e1a3cc646",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "39b96487c01ed0c626c240e985d1307c9d8983b2064ac709d99b10461b5e4816",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "1be5ae7efd65597c7d21a3ebed3032024224e5c11354f72310f0981f4425f0b4",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        },
+        "3": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  18,
+                  31
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  19,
+                  32
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "a7f399ad8c57606d5f35e29d8bf2857343707467cce4b7280c78d4f389fe748e",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  19,
+                  32
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "6b7fc319b9b07e68167a64ac802923d6ece60f295508e8891d66de8560441997",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "1ca5d9f15734cfdafa4eb4fd57d211fbe29cbaa545a4082999bbe4f8cecf985d",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  23,
+                  36
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "d2c2b8371e719c874f915a168910a76e490713362c3ffa995432f6b1f9de52ef",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        },
+        "5": {
+          "STARTS": [
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  1,
+                  2,
+                  4,
+                  8,
+                  18,
+                  31
+                ],
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  19,
+                  32
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "1829d8fd68787c102b4617ac6bb33b076689dbe1581e6618ffdd177649b73b76",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET0_V1",
+              "START_OFFSET": 0
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  2,
+                  3,
+                  5,
+                  9,
+                  19,
+                  32
+                ],
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  23,
+                  36
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "ca968894c0906cbcef2733cb2519f13d7b31d5198ab734d40b72cfec1ff59ccb",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET1_V1",
+              "START_OFFSET": 1
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  3,
+                  4,
+                  6,
+                  10,
+                  20,
+                  33
+                ],
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  23,
+                  36
+                ],
+                [
+                  7,
+                  8,
+                  10,
+                  14,
+                  24,
+                  37
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "0e351f1d3da7a2e6ccbcbb19d37e093f99034af01814e771e8b88739d0aabd17",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET2_V1",
+              "START_OFFSET": 2
+            },
+            {
+              "CONSTRUCTOR_OR_SOURCE_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "RANDOM_DERIVED": false,
+              "SEED_PORTFOLIO": [
+                [
+                  4,
+                  5,
+                  7,
+                  11,
+                  21,
+                  34
+                ],
+                [
+                  5,
+                  6,
+                  8,
+                  12,
+                  22,
+                  35
+                ],
+                [
+                  6,
+                  7,
+                  9,
+                  13,
+                  23,
+                  36
+                ],
+                [
+                  7,
+                  8,
+                  10,
+                  14,
+                  24,
+                  37
+                ],
+                [
+                  8,
+                  9,
+                  11,
+                  15,
+                  25,
+                  38
+                ]
+              ],
+              "SEED_PORTFOLIO_SHA256": "6bfe03654d6c9b44a5c1e519f718bbfbe935785af75103cac8c67e9cad168cf6",
+              "START_ID": "CYCLIC_SIDON_SHIFT_OFFSET3_V1",
+              "START_OFFSET": 3
+            }
+          ],
+          "START_COUNT": 4,
+          "UNIQUE_START_PORTFOLIO_COUNT": 4
+        }
+      },
+      "pool_size": 38,
+      "primary_event": "ZONE1_M3_PLUS",
+      "zone": "ZONE1"
+    }
+  },
+  "study_id": "STRATEGY_MATRIX_K235_MULTISTART_BASELINE_V1",
+  "supported_k_scope": [
+    2,
+    3,
+    5
+  ],
+  "task_id": "STRATEGY_MATRIX_K235_MULTISTART_BASELINE_R1",
+  "unsupported_scope": {
+    "K_10_20": {
+      "STATUS": "PHASE13_OWNED_NOT_RUN",
+      "SUPPORTED": false,
+      "reason": "k=10 and k=20 remain owned by Phase13"
+    },
+    "POWER_LOTTO_ZONE2": {
+      "STATUS": "OUT_OF_SCOPE_NOT_RUN",
+      "SUPPORTED": false,
+      "reason": "This task covers POWER_LOTTO_ZONE1 only"
+    }
+  }
+}

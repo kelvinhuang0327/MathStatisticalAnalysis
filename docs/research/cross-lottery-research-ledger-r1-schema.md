@@ -24,7 +24,7 @@ prospective activation directly; it only ever proposes.
 truth. `docs/research/cross-lottery-research-ledger-r1.md` is generated from
 it by `tools/generate_research_ledger_report.py` — never hand-edited.
 
-## Two top-level arrays
+## Top-level authority surfaces
 
 - **`priors`**: mechanism-level coverage facts from program-wide audits
   (currently: Phase -1's `PRIOR_COVERAGE_MAP`). Not a hypothesis result —
@@ -32,6 +32,30 @@ it by `tools/generate_research_ledger_report.py` — never hand-edited.
   individual cells can cite.
 - **`cells`**: one row per `(hypothesis_variant_id, lottery_type, zone)`
   evidence attempt.
+- **`imported_optimizer_matrix`**: canonical intake metadata and pinned evidence
+  locators for already-implemented portfolio constructors and optimizers. It is
+  not a second result ledger; its `canonical_result_path` names the one derived,
+  reproducible comparison artifact under `matrix-native-results/`.
+
+## Imported optimizer Matrix fields
+
+Each `methods` entry records `strategy_family`, `strategy_id`, `method_type`,
+`portfolio_or_ticket_level`, `supported_lottery`, `supported_k`, `objective`,
+`search_type`, `neighborhood_radius`, `exact_or_heuristic`,
+`diversification_constraint`, `deterministic`, `source_status`,
+`evidence_source`, and `proof_status`. `source_files` and
+`correctness_evidence` are repository-relative SHA-256-pinned locators;
+`native_evidence` locators identify existing exact artifacts that the canonical
+runner may normalize without replaying or rewriting them.
+
+Comparison rows use four disjoint statuses: `MEASURED` for a newly executed
+outcome-free deterministic comparison, `REUSED_VERIFIED` for pinned native
+evidence, `NOT_APPLICABLE` for a genuine implementation boundary, and
+`NOT_RUN` for a supported cell without semantically matching native evidence.
+An exact objective value is not a global-optimum proof. `proof_status` and the
+row-level local/global certificate fields must state the actual proof boundary;
+only an attained mathematical upper bound or an independently valid exhaustive
+certificate may mark a global optimum.
 
 ## Cell fields
 

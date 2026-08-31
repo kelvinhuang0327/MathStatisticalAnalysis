@@ -197,6 +197,9 @@ from lottolab.interfaces.cli.legacy_source_native_batch_wave41 import (
 from lottolab.interfaces.cli.legacy_xgboost_native_batch_wave64 import (
     materialize_legacy_xgboost_native_wave64_batch_command,
 )
+from lottolab.interfaces.cli.next_draw_p4_attribution import (
+    attribute_sealed_next_draw_outcome_command,
+)
 from lottolab.interfaces.cli.next_draw_recommendation_seal import (
     seal_next_draw_recommendation_command,
 )
@@ -230,6 +233,9 @@ app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("register-pre-outcome-target")(register_pre_outcome_target_command)
 app.command("seal-next-draw-recommendation")(seal_next_draw_recommendation_command)
+app.command("attribute-sealed-next-draw-outcome")(
+    attribute_sealed_next_draw_outcome_command
+)
 app.command("supplement-future-draw-identity")(supplement_future_draw_identity_command)
 app.command("research-store")(research_store_command)
 app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)

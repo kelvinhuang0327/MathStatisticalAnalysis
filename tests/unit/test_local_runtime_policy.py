@@ -377,6 +377,11 @@ def authorized_openapi_paths() -> dict[str, dict[str, object]]:
         "/api/v1/ingestion-runs/{run_id}": {"get": {}},
         "/api/v1/generate-bet": {"post": {}},
         "/api/v1/live-zone-split-bets": {"post": {}},
+        "/api/v1/next-draw-p4-attributions": {"get": {}},
+        (
+            "/api/v1/next-draw-p4-attributions/"
+            "{lottery_type}/{target_draw_number}/{target_draw_date}"
+        ): {"get": {}},
         "/api/v1/next-draw-recommendation": {"get": {}},
         "/api/v1/next-draw-recommendation/lifecycle": {"get": {}},
         "/api/v1/historical-results/runs": {"get": {}},

@@ -19,6 +19,7 @@ from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReader,
     HistoricalResultQueryRepository,
     MultiWindowSuccessSourceReader,
+    NextDrawP4AttributionReader,
     P638All10RankingQueryRepository,
     P638All23RankingQueryRepository,
     P638CurrentRankingQueryRepository,
@@ -56,6 +57,12 @@ from lottolab.infrastructure.persistence.historical_repositories import (
 from lottolab.infrastructure.persistence.historical_schema import verify_schema_read_only
 from lottolab.infrastructure.persistence.multiwindow_success_windows_repositories import (
     SQLiteMultiWindowSuccessSourceReader,
+)
+from lottolab.infrastructure.persistence.next_draw_p4_repository import (
+    SQLiteNextDrawP4AttributionRepository,
+)
+from lottolab.infrastructure.persistence.next_draw_p4_schema import (
+    resolve_next_draw_p4_database_paths,
 )
 from lottolab.infrastructure.persistence.p638_all10_ranking_repositories import (
     SQLiteP638All10RankingQueryRepository,
@@ -109,6 +116,7 @@ DRAW_PROVIDER_URL_ENV = "LOTTOLAB_DRAW_PROVIDER_URL"
 DRAW_PROVIDER_SOURCE_ENV = "LOTTOLAB_DRAW_PROVIDER_SOURCE"
 OFFICIAL_TAIWAN_LOTTERY_SOURCE = "OFFICIAL_TAIWAN_LOTTERY"
 REPLAY_SCORING_DB_ENV = "LOTTOLAB_REPLAY_SCORING_DB"
+NEXT_DRAW_P4_ATTRIBUTION_DB_ENV = "LOTTOLAB_NEXT_DRAW_P4_ATTRIBUTION_DB"
 
 LocalDataPathsProvider = Callable[[], LocalDataPaths]
 
@@ -235,6 +243,28 @@ def local_replay_scoring_composition(
     if configured is None or configured == "":
         return None
     return LocalReplayScoringComposition(database=Path(configured))
+
+
+@dataclass(frozen=True)
+class LocalNextDrawP4AttributionComposition:
+    """Lazy GET-only P4 reader bound to one explicit isolated database."""
+
+    database: Path
+
+    def next_draw_p4_attribution_reader(self) -> NextDrawP4AttributionReader:
+        return SQLiteNextDrawP4AttributionRepository(self.database)
+
+
+def local_next_draw_p4_attribution_composition(
+    environment: Mapping[str, str],
+) -> LocalNextDrawP4AttributionComposition | None:
+    """Resolve one explicit absolute P4 path without scanning or filesystem I/O."""
+
+    configured = environment.get(NEXT_DRAW_P4_ATTRIBUTION_DB_ENV)
+    if configured is None or configured == "":
+        return None
+    paths = resolve_next_draw_p4_database_paths(Path(configured))
+    return LocalNextDrawP4AttributionComposition(database=paths.database)
 
 
 def local_historical_composition(
@@ -433,6 +463,7 @@ def create_local_app() -> FastAPI:
     )
     composition = local_historical_composition(os.environ)
     replay_scoring_composition = local_replay_scoring_composition(os.environ)
+    next_draw_p4_composition = local_next_draw_p4_attribution_composition(os.environ)
     all10_ranking_composition = local_p638_all10_ranking_composition(os.environ)
     all23_ranking_composition = local_p638_all23_ranking_composition(os.environ)
     current_ranking_composition = local_p638_current_ranking_composition(os.environ)
@@ -443,6 +474,11 @@ def create_local_app() -> FastAPI:
         replay_scoring_composition.replay_scoring_projection_reader
         if replay_scoring_composition is not None
         else None
+    )
+    next_draw_p4_attribution_reader_factory = (
+        None
+        if next_draw_p4_composition is None
+        else next_draw_p4_composition.next_draw_p4_attribution_reader
     )
     all10_ranking_factory = (
         None
@@ -495,6 +531,9 @@ def create_local_app() -> FastAPI:
             t539_historical_query_repository_factory=t539_historical_query_repository_factory,
             t539_multiwindow_success_source_reader_factory=t539_multiwindow_factory,
             p638_multiwindow_success_source_reader_factory=p638_multiwindow_factory,
+            next_draw_p4_attribution_reader_factory=(
+                next_draw_p4_attribution_reader_factory
+            ),
         )
     return create_app(
         catalog=replay_catalog,
@@ -513,6 +552,9 @@ def create_local_app() -> FastAPI:
         t539_historical_query_repository_factory=t539_historical_query_repository_factory,
         t539_multiwindow_success_source_reader_factory=t539_multiwindow_factory,
         p638_multiwindow_success_source_reader_factory=p638_multiwindow_factory,
+        next_draw_p4_attribution_reader_factory=(
+            next_draw_p4_attribution_reader_factory
+        ),
     )
 
 
@@ -540,6 +582,7 @@ __all__ = [
     "DRAW_PROVIDER_SOURCE_ENV",
     "DRAW_PROVIDER_URL_ENV",
     "HISTORICAL_RESULTS_DB_ENV",
+    "NEXT_DRAW_P4_ATTRIBUTION_DB_ENV",
     "OFFICIAL_TAIWAN_LOTTERY_SOURCE",
     "P638_ALL10_RANKING_DB_ENV",
     "P638_ALL23_RANKING_DB_ENV",
@@ -548,6 +591,7 @@ __all__ = [
     "REPLAY_SCORING_DB_ENV",
     "T539_HISTORICAL_DB_ENV",
     "LocalHistoricalComposition",
+    "LocalNextDrawP4AttributionComposition",
     "LocalP638CurrentRankingComposition",
     "LocalP638CurrentReplayComposition",
     "LocalReplayExecutor",
@@ -556,6 +600,7 @@ __all__ = [
     "create_local_app",
     "local_draw_provider",
     "local_historical_composition",
+    "local_next_draw_p4_attribution_composition",
     "local_p638_current_ranking_composition",
     "local_p638_current_replay_composition",
     "local_replay_scoring_composition",

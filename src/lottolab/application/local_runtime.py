@@ -55,6 +55,11 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
     "/api/v1/generate-bet": frozenset({"post"}),
     "/api/v1/live-zone-split-bets": frozenset({"post"}),
+    "/api/v1/next-draw-p4-attributions": frozenset({"get"}),
+    (
+        "/api/v1/next-draw-p4-attributions/"
+        "{lottery_type}/{target_draw_number}/{target_draw_date}"
+    ): frozenset({"get"}),
     "/api/v1/next-draw-recommendation": frozenset({"get"}),
     "/api/v1/next-draw-recommendation/lifecycle": frozenset({"get"}),
     "/api/v1/historical-results/runs": frozenset({"get"}),

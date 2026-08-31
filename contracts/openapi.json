@@ -5778,6 +5778,179 @@
           }
         }
       }
+    },
+    "/api/v1/next-draw-p4-attributions/{lottery_type}/{target_draw_number}/{target_draw_date}": {
+      "get": {
+        "tags": [
+          "next-draw-p4-attributions"
+        ],
+        "summary": "Get Next Draw P4 Attribution",
+        "operationId": "getNextDrawP4Attribution",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/LotteryType"
+            }
+          },
+          {
+            "name": "target_draw_number",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9]{1,32}$",
+              "title": "Target Draw Number"
+            }
+          },
+          {
+            "name": "target_draw_date",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "title": "Target Draw Date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextDrawP4AttributionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
+    "/api/v1/next-draw-p4-attributions": {
+      "get": {
+        "tags": [
+          "next-draw-p4-attributions"
+        ],
+        "summary": "List Next Draw P4 Attributions",
+        "operationId": "listNextDrawP4Attributions",
+        "parameters": [
+          {
+            "name": "lottery_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LotteryType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery Type"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 20,
+              "title": "Page Size"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NextDrawP4AttributionHistoryResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -12322,6 +12495,395 @@
         ],
         "title": "MultiWindowSuccessWindowsResponse"
       },
+      "NextDrawP4AttributionHistoryResponse": {
+        "properties": {
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/NextDrawP4AttributionResponse"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "page_size": {
+            "type": "integer",
+            "title": "Page Size"
+          },
+          "total_count": {
+            "type": "integer",
+            "title": "Total Count"
+          },
+          "total_pages": {
+            "type": "integer",
+            "title": "Total Pages"
+          }
+        },
+        "type": "object",
+        "required": [
+          "records",
+          "page",
+          "page_size",
+          "total_count",
+          "total_pages"
+        ],
+        "title": "NextDrawP4AttributionHistoryResponse"
+      },
+      "NextDrawP4AttributionResponse": {
+        "properties": {
+          "attribution_sha256": {
+            "type": "string",
+            "title": "Attribution Sha256"
+          },
+          "buckets": {
+            "items": {
+              "$ref": "#/components/schemas/NextDrawP4BucketAttributionView"
+            },
+            "type": "array",
+            "title": "Buckets"
+          },
+          "official_outcome": {
+            "$ref": "#/components/schemas/NextDrawP4OfficialOutcomeView"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "scoring_contract_id": {
+            "type": "string",
+            "title": "Scoring Contract Id"
+          },
+          "scoring_contract_sha256": {
+            "type": "string",
+            "title": "Scoring Contract Sha256"
+          },
+          "seal_digest": {
+            "type": "string",
+            "title": "Seal Digest"
+          },
+          "seal_file_sha256": {
+            "type": "string",
+            "title": "Seal File Sha256"
+          },
+          "seal_schema_version": {
+            "type": "string",
+            "title": "Seal Schema Version"
+          },
+          "seal_source_head": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seal Source Head"
+          },
+          "seal_source_tree": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seal Source Tree"
+          },
+          "target": {
+            "$ref": "#/components/schemas/NextDrawP4TargetView"
+          }
+        },
+        "type": "object",
+        "required": [
+          "attribution_sha256",
+          "buckets",
+          "official_outcome",
+          "schema_version",
+          "scoring_contract_id",
+          "scoring_contract_sha256",
+          "seal_digest",
+          "seal_file_sha256",
+          "seal_schema_version",
+          "seal_source_head",
+          "seal_source_tree",
+          "target"
+        ],
+        "title": "NextDrawP4AttributionResponse"
+      },
+      "NextDrawP4BucketAttributionView": {
+        "properties": {
+          "availability": {
+            "type": "string",
+            "title": "Availability"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "title": "Native Ticket Count"
+          },
+          "strategies": {
+            "items": {
+              "$ref": "#/components/schemas/NextDrawP4StrategyAttributionView"
+            },
+            "type": "array",
+            "title": "Strategies"
+          },
+          "total_candidate_count": {
+            "type": "integer",
+            "title": "Total Candidate Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "availability",
+          "native_ticket_count",
+          "strategies",
+          "total_candidate_count"
+        ],
+        "title": "NextDrawP4BucketAttributionView"
+      },
+      "NextDrawP4OfficialOutcomeView": {
+        "properties": {
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          },
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "normalized_record_hash": {
+            "type": "string",
+            "title": "Normalized Record Hash"
+          },
+          "outcome_sha256": {
+            "type": "string",
+            "title": "Outcome Sha256"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/NextDrawP4OutcomeProvenanceView"
+          },
+          "winning_main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Winning Main Numbers"
+          },
+          "winning_special_number": {
+            "type": "integer",
+            "title": "Winning Special Number"
+          }
+        },
+        "type": "object",
+        "required": [
+          "draw_date",
+          "draw_number",
+          "lottery_type",
+          "normalized_record_hash",
+          "outcome_sha256",
+          "provenance",
+          "winning_main_numbers",
+          "winning_special_number"
+        ],
+        "title": "NextDrawP4OfficialOutcomeView"
+      },
+      "NextDrawP4OutcomeProvenanceView": {
+        "properties": {
+          "completed_at": {
+            "type": "string",
+            "title": "Completed At"
+          },
+          "ingestion_run_id": {
+            "type": "string",
+            "title": "Ingestion Run Id"
+          },
+          "operation_type": {
+            "type": "string",
+            "title": "Operation Type"
+          },
+          "parser_version": {
+            "type": "string",
+            "title": "Parser Version"
+          },
+          "source_filename": {
+            "type": "string",
+            "title": "Source Filename"
+          },
+          "source_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Name"
+          },
+          "source_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Reference"
+          },
+          "source_sha256": {
+            "type": "string",
+            "title": "Source Sha256"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "completed_at",
+          "ingestion_run_id",
+          "operation_type",
+          "parser_version",
+          "source_filename",
+          "source_name",
+          "source_reference",
+          "source_sha256",
+          "status"
+        ],
+        "title": "NextDrawP4OutcomeProvenanceView"
+      },
+      "NextDrawP4StrategyAttributionView": {
+        "properties": {
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "seal_status": {
+            "type": "string",
+            "title": "Seal Status"
+          },
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_name": {
+            "type": "string",
+            "title": "Strategy Name"
+          },
+          "ticket_attributions": {
+            "items": {
+              "$ref": "#/components/schemas/NextDrawP4TicketAttributionView"
+            },
+            "type": "array",
+            "title": "Ticket Attributions"
+          }
+        },
+        "type": "object",
+        "required": [
+          "detail",
+          "rank",
+          "seal_status",
+          "strategy_id",
+          "strategy_name",
+          "ticket_attributions"
+        ],
+        "title": "NextDrawP4StrategyAttributionView"
+      },
+      "NextDrawP4TargetView": {
+        "properties": {
+          "lottery_type": {
+            "type": "string",
+            "title": "Lottery Type"
+          },
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "lottery_type",
+          "draw_number",
+          "draw_date"
+        ],
+        "title": "NextDrawP4TargetView"
+      },
+      "NextDrawP4TicketAttributionView": {
+        "properties": {
+          "is_winner": {
+            "type": "boolean",
+            "title": "Is Winner"
+          },
+          "main_number_hit_count": {
+            "type": "integer",
+            "title": "Main Number Hit Count"
+          },
+          "predicted_main_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Predicted Main Numbers"
+          },
+          "prize_rule_provenance": {
+            "type": "string",
+            "title": "Prize Rule Provenance"
+          },
+          "prize_rule_version": {
+            "type": "string",
+            "title": "Prize Rule Version"
+          },
+          "prize_tier": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prize Tier"
+          },
+          "special_number_hit": {
+            "type": "boolean",
+            "title": "Special Number Hit"
+          },
+          "ticket_position": {
+            "type": "integer",
+            "title": "Ticket Position"
+          }
+        },
+        "type": "object",
+        "required": [
+          "is_winner",
+          "main_number_hit_count",
+          "predicted_main_numbers",
+          "prize_rule_provenance",
+          "prize_rule_version",
+          "prize_tier",
+          "special_number_hit",
+          "ticket_position"
+        ],
+        "title": "NextDrawP4TicketAttributionView"
+      },
       "NextDrawRecommendationLifecycleResponse": {
         "properties": {
           "lifecycle_state": {
@@ -14932,7 +15494,7 @@
           "TARGET_NATIVE"
         ],
         "title": "ReplaySourceMode",
-        "description": "Closed for this task: history and prediction both resolve against the\ntarget's own lottery type \u2014 never a cross-lottery or hypothetical replay."
+        "description": "Closed for this task: history and prediction both resolve against the\ntarget's own lottery type — never a cross-lottery or hypothetical replay."
       },
       "ReplayStrategyAggregateView": {
         "properties": {

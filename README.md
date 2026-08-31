@@ -276,6 +276,32 @@ target identity 與 audit metadata，不選取 winning-number columns。若 anno
 `NO_REGISTERABLE_PRE_OUTCOME_TARGET`。這個命令只註冊 target authority，不執行 prediction、matched
 control、score、checkpoint 或 prospective-observer runtime。
 
+## Next-Draw P4 封存票券結果歸因
+
+P4 只評分已存在且通過 raw-file SHA、self digest、canonical bytes、target path 與六個 bucket
+驗證的 V1／V2 seal；不重新排名、不重新產票，也不執行 strategy。官方結果只從明確指定、通過
+`DRAW_DATA_V3` 唯讀驗證的 DB 取得，並要求 exact lottery／draw／date、SUCCESS ingestion provenance、
+合法號碼與可重算的 normalized record hash。省略 `--commit` 時只輸出完整 preview，不建立 P4 DB：
+
+```bash
+uv run --no-sync lottolab attribute-sealed-next-draw-outcome \
+  --lottery-type BIG_LOTTO \
+  --draw-number 209900777 \
+  --draw-date 2099-09-02 \
+  --seal-file /absolute/seals/BIG_LOTTO/2099-09-02_209900777/seal.json \
+  --expected-seal-file-sha256 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
+  --expected-seal-digest fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210 \
+  --draw-database /absolute/draw-data/lottolab.db \
+  --database /absolute/next-draw-p4-attribution.db
+```
+
+明確加上 `--commit` 才會以 `BEGIN IMMEDIATE` 寫入隔離的
+`LOTTOLAB_NEXT_DRAW_P4_SQLITE_V1` authority；相同 target 與相同 bytes 回傳 `ALREADY_PRESENT`，
+任何不同 seal／outcome／contract／output 都回傳 `CONFLICT` 且 rollback，沒有 update、delete、replace
+或 overwrite。Local API 只在 `LOTTOLAB_NEXT_DRAW_P4_ATTRIBUTION_DB` 設為絕對路徑時啟用 persisted
+query，提供 exact-target 與 paginated-history 兩個 GET route；GET 不會評分、初始化、backfill 或寫入。
+上面的 `2099` identity 與 digest 都只示範參數格式，不是可用的真實 target 或 authority。
+
 ### History
 
 `#/history` 統一三個唯讀分頁：

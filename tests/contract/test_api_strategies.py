@@ -433,10 +433,16 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "get",
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
+        ("get", "/api/v1/next-draw-p4-attributions"),
+        (
+            "get",
+            "/api/v1/next-draw-p4-attributions/"
+            "{lottery_type}/{target_draw_number}/{target_draw_date}",
+        ),
         ("get", "/api/v1/next-draw-recommendation"),
         ("get", "/api/v1/next-draw-recommendation/lifecycle"),
     }
-    assert len(operations) == 70
+    assert len(operations) == 72
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

@@ -42,7 +42,9 @@ from lottolab.domain.next_draw_recommendation import (
 )
 from lottolab.domain.prospective_observer import ObservationTarget
 
-NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION = "LOTTOLAB_NEXT_DRAW_RECOMMENDATION_SEAL_V2"
+NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V1 = "LOTTOLAB_NEXT_DRAW_RECOMMENDATION_SEAL_V1"
+NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V2 = "LOTTOLAB_NEXT_DRAW_RECOMMENDATION_SEAL_V2"
+NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION = NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V2
 
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 _GIT_OBJECT_ID = re.compile(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", flags=re.ASCII)
@@ -176,14 +178,23 @@ class SealedStrategyTickets:
         raw_tickets = mapping["tickets"]
         if type(raw_tickets) is not list:
             raise NextDrawRecommendationSealContractError("sealed_ticket.tickets must be a list")
+        ticket_values = cast(list[object], raw_tickets)
+        for ticket in ticket_values:
+            if type(ticket) is not list:
+                raise NextDrawRecommendationSealContractError(
+                    "sealed_ticket.tickets[] must be a list"
+                )
         return cls(
             rank=_int(mapping["rank"], "sealed_ticket.rank"),
             strategy_id=_string(mapping["strategy_id"], "sealed_ticket.strategy_id"),
             strategy_name=_string(mapping["strategy_name"], "sealed_ticket.strategy_name"),
             status=TicketSealStatus(_string(mapping["status"], "sealed_ticket.status")),
             tickets=tuple(
-                tuple(_int(number, "sealed_ticket.tickets[]") for number in ticket)
-                for ticket in raw_tickets
+                tuple(
+                    _int(number, "sealed_ticket.tickets[]")
+                    for number in cast(list[object], ticket)
+                )
+                for ticket in ticket_values
             ),
             detail=_string_allow_empty(mapping["detail"], "sealed_ticket.detail"),
         )
@@ -277,14 +288,149 @@ class SealedRecommendationBucket:
                 mapping["total_candidate_count"], "sealed_bucket.total_candidate_count"
             ),
             ranked_strategy_ids=tuple(
-                _string(item, "sealed_bucket.ranked_strategy_ids[]") for item in raw_ids
+                _string(item, "sealed_bucket.ranked_strategy_ids[]")
+                for item in cast(list[object], raw_ids)
             ),
             ranking_projection_sha256=_sha256(
                 mapping["ranking_projection_sha256"], "sealed_bucket.ranking_projection_sha256"
             ),
             sealed_tickets=tuple(
-                SealedStrategyTickets.from_canonical_dict(item) for item in raw_tickets
+                SealedStrategyTickets.from_canonical_dict(
+                    _mapping(item, "sealed_bucket.sealed_tickets[]")
+                )
+                for item in cast(list[object], raw_tickets)
             ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class NextDrawRecommendationSealV1:
+    """Permanent read-compatible representation of the original V1 seal.
+
+    V1 predates source-Git binding. It is intentionally a separate immutable
+    type: reading a historical V1 record must never manufacture V2 fields or
+    rewrite the record as a newer schema.
+    """
+
+    schema_version: str
+    target: ObservationTarget
+    target_scheduled_at: datetime
+    sealed_at: datetime
+    ranking_policy_id: str
+    target_registration_digest: str
+    evidence_artifact_sha256: str
+    causal_history_sha256: str
+    causal_history_draw_count: int
+    buckets: tuple[SealedRecommendationBucket, ...]
+    seal_digest: str
+
+    def __post_init__(self) -> None:
+        if self.schema_version != NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V1:
+            raise NextDrawRecommendationSealContractError("unsupported V1 seal schema_version")
+        if type(self.target) is not ObservationTarget:
+            raise NextDrawRecommendationSealContractError("target must be an ObservationTarget")
+        _require_utc(self.target_scheduled_at, "target_scheduled_at")
+        _require_utc(self.sealed_at, "sealed_at")
+        if self.ranking_policy_id != RECOMMENDATION_POLICY_ID:
+            raise NextDrawRecommendationSealContractError(
+                "ranking_policy_id must match the frozen NEXT_DRAW_ROBUSTNESS_V1 policy"
+            )
+        _require_sha256(self.target_registration_digest, "target_registration_digest")
+        _require_sha256(self.evidence_artifact_sha256, "evidence_artifact_sha256")
+        _require_sha256(self.causal_history_sha256, "causal_history_sha256")
+        if self.causal_history_draw_count < 0:
+            raise NextDrawRecommendationSealContractError(
+                "causal_history_draw_count must be non-negative"
+            )
+        bucket_counts = tuple(bucket.native_ticket_count for bucket in self.buckets)
+        if bucket_counts != NATIVE_TICKET_COUNT_BUCKETS:
+            raise NextDrawRecommendationSealContractError(
+                "buckets must cover every supported native_ticket_count exactly once, in order"
+            )
+        if self.sealed_at >= self.target_scheduled_at:
+            raise NextDrawRecommendationSealContractError(
+                "a seal must be accepted strictly before its target's scheduled time"
+            )
+        _require_sha256(self.seal_digest, "seal_digest")
+        expected = _canonical_sha256(self.canonical_material())
+        if self.seal_digest != expected:
+            raise NextDrawRecommendationSealTamperError(
+                f"declared seal_digest={self.seal_digest} != recomputed {expected}"
+            )
+
+    def canonical_material(self) -> dict[str, object]:
+        return _seal_v1_material(
+            schema_version=self.schema_version,
+            target=self.target,
+            target_scheduled_at=self.target_scheduled_at,
+            sealed_at=self.sealed_at,
+            ranking_policy_id=self.ranking_policy_id,
+            target_registration_digest=self.target_registration_digest,
+            evidence_artifact_sha256=self.evidence_artifact_sha256,
+            causal_history_sha256=self.causal_history_sha256,
+            causal_history_draw_count=self.causal_history_draw_count,
+            buckets=self.buckets,
+        )
+
+    def canonical_dict(self) -> dict[str, object]:
+        return {**self.canonical_material(), "seal_digest": self.seal_digest}
+
+    def bucket(self, native_ticket_count: int) -> SealedRecommendationBucket | None:
+        for candidate in self.buckets:
+            if candidate.native_ticket_count == native_ticket_count:
+                return candidate
+        return None
+
+    @classmethod
+    def from_canonical_dict(cls, value: Mapping[str, object]) -> NextDrawRecommendationSealV1:
+        mapping = _mapping(value, "seal")
+        _expect_keys(
+            mapping,
+            {
+                "buckets",
+                "causal_history_draw_count",
+                "causal_history_sha256",
+                "evidence_artifact_sha256",
+                "ranking_policy_id",
+                "schema_version",
+                "seal_digest",
+                "sealed_at",
+                "target",
+                "target_registration_digest",
+                "target_scheduled_at",
+            },
+            "seal",
+        )
+        raw_buckets = mapping["buckets"]
+        if type(raw_buckets) is not list:
+            raise NextDrawRecommendationSealContractError("seal.buckets must be a list")
+        return cls(
+            schema_version=_string(mapping["schema_version"], "seal.schema_version"),
+            target=_target_from_canonical_dict(mapping["target"]),
+            target_scheduled_at=_datetime(
+                mapping["target_scheduled_at"], "seal.target_scheduled_at"
+            ),
+            sealed_at=_datetime(mapping["sealed_at"], "seal.sealed_at"),
+            ranking_policy_id=_string(mapping["ranking_policy_id"], "seal.ranking_policy_id"),
+            target_registration_digest=_sha256(
+                mapping["target_registration_digest"], "seal.target_registration_digest"
+            ),
+            evidence_artifact_sha256=_sha256(
+                mapping["evidence_artifact_sha256"], "seal.evidence_artifact_sha256"
+            ),
+            causal_history_sha256=_sha256(
+                mapping["causal_history_sha256"], "seal.causal_history_sha256"
+            ),
+            causal_history_draw_count=_int(
+                mapping["causal_history_draw_count"], "seal.causal_history_draw_count"
+            ),
+            buckets=tuple(
+                SealedRecommendationBucket.from_canonical_dict(
+                    _mapping(item, "seal.buckets[]")
+                )
+                for item in cast(list[object], raw_buckets)
+            ),
+            seal_digest=_sha256(mapping["seal_digest"], "seal.seal_digest"),
         )
 
 
@@ -523,10 +669,59 @@ class NextDrawRecommendationSeal:
                 mapping["causal_history_draw_count"], "seal.causal_history_draw_count"
             ),
             buckets=tuple(
-                SealedRecommendationBucket.from_canonical_dict(item) for item in raw_buckets
+                SealedRecommendationBucket.from_canonical_dict(
+                    _mapping(item, "seal.buckets[]")
+                )
+                for item in cast(list[object], raw_buckets)
             ),
             seal_digest=_sha256(mapping["seal_digest"], "seal.seal_digest"),
         )
+
+
+type ReadableNextDrawRecommendationSeal = (
+    NextDrawRecommendationSealV1 | NextDrawRecommendationSeal
+)
+
+
+def parse_next_draw_recommendation_seal(
+    value: Mapping[str, object],
+) -> ReadableNextDrawRecommendationSeal:
+    """Strictly parse a supported immutable seal without schema conversion."""
+
+    mapping = _mapping(value, "seal")
+    schema_version = _string(mapping.get("schema_version"), "seal.schema_version")
+    if schema_version == NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V1:
+        return NextDrawRecommendationSealV1.from_canonical_dict(mapping)
+    if schema_version == NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V2:
+        return NextDrawRecommendationSeal.from_canonical_dict(mapping)
+    raise NextDrawRecommendationSealContractError("unsupported seal schema_version")
+
+
+def _seal_v1_material(
+    *,
+    schema_version: str,
+    target: ObservationTarget,
+    target_scheduled_at: datetime,
+    sealed_at: datetime,
+    ranking_policy_id: str,
+    target_registration_digest: str,
+    evidence_artifact_sha256: str,
+    causal_history_sha256: str,
+    causal_history_draw_count: int,
+    buckets: tuple[SealedRecommendationBucket, ...],
+) -> dict[str, object]:
+    return {
+        "buckets": [bucket.canonical_dict() for bucket in buckets],
+        "causal_history_draw_count": causal_history_draw_count,
+        "causal_history_sha256": causal_history_sha256,
+        "evidence_artifact_sha256": evidence_artifact_sha256,
+        "ranking_policy_id": ranking_policy_id,
+        "schema_version": schema_version,
+        "sealed_at": _utc_text(sealed_at),
+        "target": target.canonical_dict(),
+        "target_registration_digest": target_registration_digest,
+        "target_scheduled_at": _utc_text(target_scheduled_at),
+    }
 
 
 def _seal_material(
@@ -650,12 +845,17 @@ def _datetime(value: object, label: str) -> datetime:
 
 __all__ = [
     "NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION",
+    "NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V1",
+    "NEXT_DRAW_RECOMMENDATION_SEAL_SCHEMA_VERSION_V2",
     "NextDrawRecommendationLifecycleState",
     "NextDrawRecommendationSeal",
     "NextDrawRecommendationSealContractError",
     "NextDrawRecommendationSealTamperError",
+    "NextDrawRecommendationSealV1",
+    "ReadableNextDrawRecommendationSeal",
     "SealedRecommendationBucket",
     "SealedStrategyTickets",
     "SourceGitIdentity",
     "TicketSealStatus",
+    "parse_next_draw_recommendation_seal",
 ]

@@ -73,6 +73,13 @@ from lottolab.domain.batch_imports import (
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.historical_results import HistoricalImportCommitResult, HistoricalRunImport
 from lottolab.domain.ingestion import DrawCsvParseResult
+from lottolab.domain.next_draw_outcome_attribution import (
+    NextDrawOfficialOutcome,
+    NextDrawOutcomeAttribution,
+    NextDrawOutcomeAttributionPage,
+    NextDrawP4PersistResult,
+    VerifiedNextDrawRecommendationSeal,
+)
 from lottolab.domain.ordered_candidate_materialization import (
     OrderedCandidateSourceSnapshot,
 )
@@ -638,3 +645,75 @@ class LotteryPrizeEvaluator(Protocol):
     ) -> PrizeEvaluationResult:
         """Score one ticket against one draw under that lottery's official rules."""
         ...
+
+
+@runtime_checkable
+class NextDrawRecommendationSealAuthorityReader(Protocol):
+    """Verify one explicit immutable V1/V2 seal file before P4 attribution."""
+
+    def read_verified_seal(
+        self,
+        seal_file: Path,
+        *,
+        expected_file_sha256: str,
+        expected_seal_digest: str,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+        target_draw_date: date,
+    ) -> VerifiedNextDrawRecommendationSeal:
+        """Return a raw-byte, self-hash, path, target, and schema-verified seal."""
+        ...
+
+
+@runtime_checkable
+class NextDrawOfficialOutcomeReader(Protocol):
+    """Read one exact legal outcome from an explicit DRAW_DATA_V3 database."""
+
+    def read_official_outcome(
+        self,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+        target_draw_date: date,
+    ) -> NextDrawOfficialOutcome | None:
+        """Return the exact successful-ingestion outcome, or ``None`` if absent."""
+        ...
+
+
+@runtime_checkable
+class NextDrawP4AttributionWriter(Protocol):
+    """Create one complete P4 artifact atomically without overwrite semantics."""
+
+    def persist_next_draw_outcome_attribution(
+        self,
+        artifact: NextDrawOutcomeAttribution,
+        canonical_bytes: bytes,
+    ) -> NextDrawP4PersistResult:
+        """Insert, acknowledge identical content, or reject a target conflict."""
+        ...
+
+
+@runtime_checkable
+class NextDrawP4AttributionReader(Protocol):
+    """GET-only boundary over the isolated P4 attribution authority."""
+
+    def get_attribution(
+        self,
+        lottery_type: LotteryType,
+        target_draw_number: str,
+        target_draw_date: date,
+    ) -> NextDrawOutcomeAttribution | None:
+        """Return one exact target artifact without deriving or writing data."""
+        ...
+
+    def list_attributions(
+        self,
+        *,
+        lottery_type: LotteryType | None,
+        page: int,
+        page_size: int,
+    ) -> NextDrawOutcomeAttributionPage:
+        """Return deterministic reverse-insertion history with explicit pagination."""
+        ...
+
+
+type NextDrawP4AttributionReaderFactory = Callable[[], NextDrawP4AttributionReader]

@@ -21,6 +21,7 @@ from lottolab.application.ports import (
     HistoricalPrefixSuccessWindowSourceReaderFactory,
     HistoricalResultQueryRepositoryFactory,
     MultiWindowSuccessSourceReaderFactory,
+    NextDrawP4AttributionReaderFactory,
     P638All10RankingQueryRepositoryFactory,
     P638All23RankingQueryRepositoryFactory,
     P638CurrentRankingQueryRepositoryFactory,
@@ -88,6 +89,9 @@ from lottolab.interfaces.api.historical_results import create_historical_results
 from lottolab.interfaces.api.live_zone_split import create_live_zone_split_router
 from lottolab.interfaces.api.multiwindow_success_windows import (
     create_multiwindow_success_windows_router,
+)
+from lottolab.interfaces.api.next_draw_p4_attributions import (
+    create_next_draw_p4_attributions_router,
 )
 from lottolab.interfaces.api.next_draw_recommendation import (
     CausalHistoryFactory as NextDrawRecommendationCausalHistoryFactory,
@@ -160,6 +164,9 @@ def create_app(
     ) = None,
     next_draw_recommendation_lifecycle_reader_factory: (
         NextDrawRecommendationLifecycleReaderFactory | None
+    ) = None,
+    next_draw_p4_attribution_reader_factory: (
+        NextDrawP4AttributionReaderFactory | None
     ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
@@ -322,6 +329,11 @@ def create_app(
             resolved_next_draw_recommendation_evidence_factory,
             resolved_next_draw_recommendation_causal_history_factory,
             resolved_next_draw_recommendation_lifecycle_reader_factory,
+        )
+    )
+    app.include_router(
+        create_next_draw_p4_attributions_router(
+            next_draw_p4_attribution_reader_factory
         )
     )
 

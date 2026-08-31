@@ -2146,6 +2146,72 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/next-draw-p4-attributions/{lottery_type}/{target_draw_number}/{target_draw_date}": {
+      get: {
+          parameters: {
+            "path": {
+              "lottery_type": components['schemas']["LotteryType"]
+              "target_draw_number": string
+              "target_draw_date": string
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["NextDrawP4AttributionResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
+  "/api/v1/next-draw-p4-attributions": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery_type"?: components['schemas']["LotteryType"] | null
+              "page"?: number
+              "page_size"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["NextDrawP4AttributionHistoryResponse"]
+                                  }
+                        }
+                  404: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -3236,6 +3302,77 @@ export interface components {
           "rows": Array<components['schemas']["MultiWindowRowView"]>
           "stability": Array<components['schemas']["StabilityDeltaView"]>
           "source_authority": string
+        }
+    "NextDrawP4AttributionHistoryResponse": {
+          "records": Array<components['schemas']["NextDrawP4AttributionResponse"]>
+          "page": number
+          "page_size": number
+          "total_count": number
+          "total_pages": number
+        }
+    "NextDrawP4AttributionResponse": {
+          "attribution_sha256": string
+          "buckets": Array<components['schemas']["NextDrawP4BucketAttributionView"]>
+          "official_outcome": components['schemas']["NextDrawP4OfficialOutcomeView"]
+          "schema_version": string
+          "scoring_contract_id": string
+          "scoring_contract_sha256": string
+          "seal_digest": string
+          "seal_file_sha256": string
+          "seal_schema_version": string
+          "seal_source_head": string | null
+          "seal_source_tree": string | null
+          "target": components['schemas']["NextDrawP4TargetView"]
+        }
+    "NextDrawP4BucketAttributionView": {
+          "availability": string
+          "native_ticket_count": number
+          "strategies": Array<components['schemas']["NextDrawP4StrategyAttributionView"]>
+          "total_candidate_count": number
+        }
+    "NextDrawP4OfficialOutcomeView": {
+          "draw_date": string
+          "draw_number": string
+          "lottery_type": string
+          "normalized_record_hash": string
+          "outcome_sha256": string
+          "provenance": components['schemas']["NextDrawP4OutcomeProvenanceView"]
+          "winning_main_numbers": Array<number>
+          "winning_special_number": number
+        }
+    "NextDrawP4OutcomeProvenanceView": {
+          "completed_at": string
+          "ingestion_run_id": string
+          "operation_type": string
+          "parser_version": string
+          "source_filename": string
+          "source_name": string | null
+          "source_reference": string | null
+          "source_sha256": string
+          "status": string
+        }
+    "NextDrawP4StrategyAttributionView": {
+          "detail": string
+          "rank": number
+          "seal_status": string
+          "strategy_id": string
+          "strategy_name": string
+          "ticket_attributions": Array<components['schemas']["NextDrawP4TicketAttributionView"]>
+        }
+    "NextDrawP4TargetView": {
+          "lottery_type": string
+          "draw_number": string
+          "draw_date": string
+        }
+    "NextDrawP4TicketAttributionView": {
+          "is_winner": boolean
+          "main_number_hit_count": number
+          "predicted_main_numbers": Array<number>
+          "prize_rule_provenance": string
+          "prize_rule_version": string
+          "prize_tier": string | null
+          "special_number_hit": boolean
+          "ticket_position": number
         }
     "NextDrawRecommendationLifecycleResponse": {
           "lifecycle_state": string

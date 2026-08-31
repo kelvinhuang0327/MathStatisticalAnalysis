@@ -1,9 +1,16 @@
-"""Synthetic contract tests for the R2 Next-Draw evidence assembler."""
+"""Direct canonical Runner-contract tests for the R2 artifact assembler."""
 
 from __future__ import annotations
 
 import copy
+import inspect
+import os
+import subprocess
+import sys
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
 from fractions import Fraction
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, cast
 
@@ -13,46 +20,62 @@ from tools import build_biglotto_next_draw_recommendation_evidence_r2 as assembl
 from lottolab.evidence.canonical_json import (
     canonical_bytes,
     canonical_file_bytes,
-    self_key_removed_sha256,
     sha256_hex,
 )
 from lottolab.strategies.catalog import production_catalog
 
-Manifest = dict[str, Any]
-ManifestSet = tuple[Manifest, Manifest, Manifest, Manifest]
-
-_PLAN_BINDING_FIELDS = (
-    "protocol_version",
-    "canonicalization",
-    "old_84_reuse",
-    "source_fingerprint",
-    "dataset_fingerprint",
-    "runtime_fingerprint",
-    "target_identity",
-    "evaluator_contract",
-    "strategy_order_sha256",
-    "strategy_universe_sha256",
-    "rng_classification_sha256",
-    "strategy_universe",
-    "zone_exclusion",
-    "execution_contract",
-)
+Document = dict[str, Any]
+ZERO_SHA = "0" * 64
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RUNNER_WORKTREE_NAME = "NEXT_DRAW_54_REPLAY_PROTOCOL_R2_RUNNER_IMPLEMENTATION_R1"
 
 
-def _fraction_pair(value: Fraction) -> dict[str, str]:
+@dataclass
+class Bundle:
+    plan: Document
+    run_a: Document
+    run_b: Document
+    acceptance: Document
+
+
+def _digest(value: object) -> str:
+    return sha256_hex(canonical_bytes(value))
+
+
+def _file_digest(value: object) -> str:
+    return sha256_hex(canonical_file_bytes(value))
+
+
+def _seal(value: Document, key: str) -> Document:
+    sealed = copy.deepcopy(value)
+    sealed.pop(key, None)
+    sealed[key] = _digest(sealed)
+    return sealed
+
+
+def _pair(value: Fraction) -> dict[str, str]:
     return {
         "numerator": str(value.numerator),
         "denominator": str(value.denominator),
     }
 
 
-def _strategy_universe() -> list[Manifest]:
+def _rng_class(strategy_id: str) -> str:
+    if strategy_id in assembler.PRIVATE_RNG_STRATEGY_IDS:
+        return "ADAPTER_LOCAL_DETERMINISTIC_RNG"
+    if strategy_id in assembler.GLOBAL_RNG_STRATEGY_IDS:
+        return "PROCESS_GLOBAL_PYTHON_RANDOM"
+    return "NO_RNG"
+
+
+def _strategy_contract() -> Document:
     catalog = production_catalog()
-    rows: list[Manifest] = []
+    identities: list[Document] = []
+    names: list[Document] = []
     for strategy_id in assembler.EXPECTED_STRATEGY_IDS:
         descriptor = catalog.get(strategy_id)
         assert descriptor.adapter_path is not None
-        rows.append(
+        identities.append(
             {
                 "strategy_id": descriptor.strategy_id,
                 "strategy_version": descriptor.version,
@@ -62,320 +85,594 @@ def _strategy_universe() -> list[Manifest]:
                 "response_shape": "SINGLE_TICKET",
             }
         )
-    return rows
-
-
-def _common_fields() -> Manifest:
-    runtime_details: Manifest = {
-        "implementation": "synthetic-test-runtime",
-        "python_version": "3.13",
-    }
-    universe = _strategy_universe()
-    assert sha256_hex(canonical_bytes([row["strategy_id"] for row in universe])) == (
-        assembler.EXPECTED_STRATEGY_ORDER_SHA256
-    )
-    assert sha256_hex(canonical_bytes(universe)) == assembler.EXPECTED_STRATEGY_UNIVERSE_SHA256
-    return {
-        "protocol_version": assembler.PROTOCOL_VERSION,
-        "canonicalization": assembler.CANONICALIZATION_VERSION,
-        "old_84_reuse": False,
-        "source_fingerprint": {
-            "repository_head": assembler.REPOSITORY_HEAD,
-            "repository_tree": assembler.REPOSITORY_TREE,
-            "source_tree_sha256": "1" * 64,
-            "source_draw_db_sha256": "2" * 64,
-        },
-        "dataset_fingerprint": {
-            "lottery_type": "BIG_LOTTO",
-            "dataset_schema_version": "SYNTHETIC_DRAW_DATASET_V1",
-            "logical_dataset_sha256": "3" * 64,
-            "source_draw_count": 900,
-            "last_causal_draw_id": "synthetic-0900",
-        },
-        "runtime_fingerprint": {
-            "fingerprint_sha256": sha256_hex(canonical_bytes(runtime_details)),
-            "details": runtime_details,
-        },
-        "target_identity": {
-            "target_count": assembler.EXPECTED_REPLAY_DEPTH,
-            "target_order_sha256": "4" * 64,
-        },
-        "evaluator_contract": {
-            "evaluator_semantic_version": "base_method_evaluation/1.0.0",
-            "lottery_type": "BIG_LOTTO",
-            "hit_tier_id": assembler.EXPECTED_HIT_TIER_ID,
-            "window_order": list(assembler.EXPECTED_WINDOW_ORDER),
-            "eligible_draw_counts": list(assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS),
-            "random_reference": _fraction_pair(assembler.EXPECTED_RANDOM_REFERENCE),
-            "native_ticket_count": 1,
-        },
-        "strategy_order_sha256": assembler.EXPECTED_STRATEGY_ORDER_SHA256,
-        "strategy_universe_sha256": assembler.EXPECTED_STRATEGY_UNIVERSE_SHA256,
-        "rng_classification_sha256": assembler.EXPECTED_RNG_CLASSIFICATION_SHA256,
-        "strategy_universe": universe,
-        "zone_exclusion": {
+        names.append(
+            {
+                "strategy_id": descriptor.strategy_id,
+                "strategy_name": descriptor.strategy_name,
+            }
+        )
+    classifications = [
+        {
+            "strategy_id": row["strategy_id"],
+            "strategy_version": row["strategy_version"],
+            "rng_class": _rng_class(cast(str, row["strategy_id"])),
+        }
+        for row in identities
+    ]
+    excluded = catalog.get(assembler.ZONE_STRATEGY_ID)
+    result: Document = {
+        "count": 54,
+        "records": identities,
+        "names": names,
+        "excluded": {
             "strategy_id": assembler.ZONE_STRATEGY_ID,
-            "catalog_ordinal": 19,
+            "strategy_name": excluded.strategy_name,
+            "filtered_catalog_ordinal": 19,
             "status": "DRIVER_ERROR",
             "windows": [],
         },
-        "execution_contract": {
-            "process_model": "ONE_PROCESS_PER_STRATEGY",
-            "seed_timing": "POST_IMPORT_CATALOG_ADAPTER_CONSTRUCTION_PRE_TARGET_1",
-            "cache_policy": "NO_REPLAY_RESULT_CACHE",
-            "cache_constructor": "ReplayHistoricalPredictions(cache=None)",
-            "parallelization": "SERIAL_ONLY_R1",
-            "max_concurrency": 1,
-            "replay_depth": assembler.EXPECTED_REPLAY_DEPTH,
-            "source_import_policy": "EXACT_REPLAY_SOURCE_TREE",
+        "strategy_order_sha256": assembler.EXPECTED_STRATEGY_ORDER_SHA256,
+        "strategy_universe_sha256": assembler.EXPECTED_STRATEGY_UNIVERSE_SHA256,
+        "rng_classification": classifications,
+        "rng_classification_sha256": assembler.EXPECTED_RNG_CLASSIFICATION_SHA256,
+    }
+    assert _digest([row["strategy_id"] for row in identities]) == (
+        assembler.EXPECTED_STRATEGY_ORDER_SHA256
+    )
+    assert _digest(identities) == assembler.EXPECTED_STRATEGY_UNIVERSE_SHA256
+    assert _digest(classifications) == assembler.EXPECTED_RNG_CLASSIFICATION_SHA256
+    return result
+
+
+def _snapshot(*, synthetic: bool, draw_count: int) -> Document:
+    first = date(2020, 1, 1)
+    draws = [
+        {
+            "source_row_id": index + 1,
+            "draw_date": (first + timedelta(days=index)).isoformat(),
+            "draw_number": f"{index + 1:09d}",
+            "main_numbers": [1, 2, 3, 4, 5, 6],
+            "special_number": 7,
+        }
+        for index in range(draw_count)
+    ]
+    return {
+        "snapshot_schema_version": "NEXT_DRAW_54_SOURCE_SNAPSHOT_V2",
+        "kind": (
+            assembler.SYNTHETIC_DATA_KIND if synthetic else assembler.REAL_DATA_KIND
+        ),
+        "lottery_type": "BIG_LOTTO",
+        "draws": draws,
+    }
+
+
+def _authority() -> Document:
+    inventory = [
+        {
+            "path": "src/lottolab/strategies/catalog.py",
+            "sha256": assembler.CATALOG_SHA256,
+            "git_blob": assembler.CATALOG_GIT_BLOB,
+            "mode": "100644",
         },
+        {
+            "path": "uv.lock",
+            "sha256": assembler.UV_LOCK_SHA256,
+            "git_blob": "1" * 40,
+            "mode": "100644",
+        },
+    ]
+    return {
+        "repository_head": assembler.REPOSITORY_HEAD,
+        "repository_tree": assembler.REPOSITORY_TREE,
+        "catalog_git_blob": assembler.CATALOG_GIT_BLOB,
+        "catalog_sha256": assembler.CATALOG_SHA256,
+        "uv_lock_sha256": assembler.UV_LOCK_SHA256,
+        "load_bearing_blobs": inventory,
+        "source_inventory_sha256": _digest(inventory),
     }
 
 
-def _plan_manifest() -> Manifest:
-    payload: Manifest = {
-        "manifest_schema_version": assembler.PLAN_MANIFEST_SCHEMA_VERSION,
-        **_common_fields(),
-        "manifest_sha256": "0" * 64,
-        "operational": {"fixture_role": "plan"},
-    }
-    return assembler.seal_manifest(payload)
-
-
-def _plan_binding(plan: Manifest) -> Manifest:
-    return {field: copy.deepcopy(plan[field]) for field in _PLAN_BINDING_FIELDS}
-
-
-def _success_count(strategy_index: int, window_index: int, eligible_count: int) -> int:
-    return (strategy_index * 7 + window_index * 11) % (eligible_count + 1)
-
-
-def _evaluation_records() -> list[Manifest]:
-    catalog = production_catalog()
-    records: list[Manifest] = []
-    for strategy_index, strategy_id in enumerate(assembler.EXPECTED_STRATEGY_IDS, 1):
-        descriptor = catalog.get(strategy_id)
-        windows = [
+def _runtime(authority: Document) -> Document:
+    return {
+        "schema_version": "NEXT_DRAW_54_REPLAY_RUNTIME_V2",
+        "python": {"fixture": "canonical-runner-shape"},
+        "platform": {"fixture": "canonical-runner-shape"},
+        "numeric": {"fixture": "canonical-runner-shape"},
+        "distributions": [],
+        "installer": {"fixture": "canonical-runner-shape"},
+        "environment": [],
+        "source_inventory_sha256": authority["source_inventory_sha256"],
+        "runner_files": [
             {
-                "window_kind": window_kind,
-                "window_status": "COMPLETE",
-                "eligible_draw_count": eligible_count,
-                "success_count": _success_count(
-                    strategy_index,
-                    window_index,
-                    eligible_count,
-                ),
-            }
-            for window_index, (window_kind, eligible_count) in enumerate(
-                zip(
-                    assembler.EXPECTED_WINDOW_ORDER,
-                    assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS,
-                    strict=True,
-                )
-            )
+                "path": "tools/next_draw_54_replay_r2.py",
+                "sha256": "2" * 64,
+            },
+            {
+                "path": "tools/next_draw_54_replay_r2_lib.py",
+                "sha256": "3" * 64,
+            },
+            {
+                "path": "tools/next_draw_54_replay_r2_runtime.py",
+                "sha256": "4" * 64,
+            },
+        ],
+    }
+
+
+def _private_exceptions() -> list[Document]:
+    return [
+        {
+            "strategy_id": strategy_id,
+            "policy": (
+                "DONOR_HISTORY_JSON_SHA256_PRIVATE_RANDOM_THREE_SEQUENTIAL_SAMPLES"
+                if index < 3
+                else "PRIVATE_RANDOM_LEN_HISTORY_EVERY_TRANSITIVE_INVOCATION"
+            ),
+        }
+        for index, strategy_id in enumerate(assembler.PRIVATE_RNG_STRATEGY_IDS)
+    ]
+
+
+def _rng(strategies: Document, common_hash: str) -> Document:
+    seeds: list[Document] = []
+    for identity in strategies["records"]:
+        parts = [
+            assembler.PROTOCOL_VERSION,
+            common_hash,
+            identity["strategy_id"],
+            identity["strategy_version"],
+            identity["adapter_path"],
         ]
-        records.append(
+        digest = sha256_hex(b"\x00".join(part.encode("utf-8") for part in parts))
+        seeds.append(
             {
-                "strategy_id": strategy_id,
-                "strategy_name": descriptor.strategy_name,
-                "native_ticket_count": 1,
-                "hit_tier_id": assembler.EXPECTED_HIT_TIER_ID,
-                "windows": windows,
+                "strategy_id": identity["strategy_id"],
+                "strategy_version": identity["strategy_version"],
+                "adapter_path": identity["adapter_path"],
+                "seed_digest": digest,
+                "seed_integer": str(int(digest, 16)),
             }
         )
+    return {
+        "seed_policy": "MANIFEST_BOUND_PER_STRATEGY_SHA256",
+        "seed_timing": "POST_IMPORT_CATALOG_ADAPTER_CONSTRUCTION_PRE_TARGET_1",
+        "global_random_policy": (
+            "PER_STRATEGY_STDLIB_MODULE_GLOBAL_RANDOM_CONTINUOUS_800_TARGET_STREAM"
+        ),
+        "private_rng_policy": "PRIVATE_RNG_SOURCE_SEMANTICS_PRESERVED_EXACTLY",
+        "private_rng_exceptions": _private_exceptions(),
+        "seeds": seeds,
+    }
+
+
+def _plan(*, synthetic: bool) -> Document:
+    authority = _authority()
+    strategies = _strategy_contract()
+    largest_minimum = max(row["min_history"] for row in strategies["records"])
+    snapshot = _snapshot(
+        synthetic=synthetic,
+        draw_count=assembler.EXPECTED_REPLAY_DEPTH + largest_minimum,
+    )
+    dataset: Document = {
+        "dataset_id": "NEXT_DRAW_BIG_LOTTO_R2",
+        "dataset_version": _digest(snapshot),
+        "snapshot": snapshot,
+        "dataset_snapshot_sha256": _digest(snapshot),
+        "source_db": {
+            "sha256": "5" * 64,
+            "size_bytes": 1,
+            "read_only": True,
+            "sqlite_mode": "ro_immutable_no_wal",
+        },
+        "rule_contract": copy.deepcopy(assembler.EXPECTED_RULE_CONTRACT),
+        "rule_contract_sha256": _digest(assembler.EXPECTED_RULE_CONTRACT),
+    }
+    targets: Document = {
+        "order": "BOUND_800_VECTOR_OLDEST_FIRST",
+        "count": 800,
+        "vector": [
+            {"draw_date": row["draw_date"], "draw_number": row["draw_number"]}
+            for row in snapshot["draws"][-assembler.EXPECTED_REPLAY_DEPTH :]
+        ],
+    }
+    targets["target_order_sha256"] = _digest(targets["vector"])
+    runtime = _runtime(authority)
+    runtime_hash = _digest(runtime)
+    common: Document = {
+        "canonicalization_version": assembler.CANONICALIZATION_VERSION,
+        "protocol_version": assembler.PROTOCOL_VERSION,
+        "repository_head": assembler.REPOSITORY_HEAD,
+        "repository_tree": assembler.REPOSITORY_TREE,
+        "source_draw_db_sha256": dataset["source_db"]["sha256"],
+        "dataset_snapshot_sha256": dataset["dataset_snapshot_sha256"],
+        "target_count": 800,
+        "target_order_sha256": targets["target_order_sha256"],
+        "strategy_count": 54,
+        "strategy_order_sha256": assembler.EXPECTED_STRATEGY_ORDER_SHA256,
+        "strategy_universe_sha256": assembler.EXPECTED_STRATEGY_UNIVERSE_SHA256,
+        "rng_classification_sha256": assembler.EXPECTED_RNG_CLASSIFICATION_SHA256,
+        "runtime_fingerprint_sha256": runtime_hash,
+        "process_model": "ONE_PROCESS_PER_STRATEGY",
+        "seed_timing": "POST_IMPORT_CATALOG_ADAPTER_CONSTRUCTION_PRE_TARGET_1",
+        "global_random_policy": (
+            "PER_STRATEGY_STDLIB_MODULE_GLOBAL_RANDOM_CONTINUOUS_800_TARGET_STREAM"
+        ),
+        "cache_policy": "NO_REPLAY_RESULT_CACHE",
+        "strategy_parallelization": "SERIAL_ONLY",
+        "max_concurrency": 1,
+        "failure_restart_boundary": "ENTIRE_STRATEGY_PROCESS",
+        "metric_contract": "M3_PLUS",
+        "window_order": list(assembler.EXPECTED_WINDOW_ORDER),
+        "excluded_strategy_id": assembler.ZONE_STRATEGY_ID,
+        "old_84_reuse": False,
+    }
+    common_hash = _digest(common)
+    return _seal(
+        {
+            "manifest_schema_version": assembler.PLAN_MANIFEST_SCHEMA_VERSION,
+            "canonicalization_version": assembler.CANONICALIZATION_VERSION,
+            "protocol_version": assembler.PROTOCOL_VERSION,
+            "common_manifest": common,
+            "common_manifest_sha256": common_hash,
+            "authority": authority,
+            "dataset": dataset,
+            "targets": targets,
+            "strategies": strategies,
+            "rng": _rng(strategies, common_hash),
+            "runtime_fingerprint": runtime,
+            "runtime_fingerprint_sha256": runtime_hash,
+            "execution": copy.deepcopy(assembler.EXPECTED_EXECUTION),
+            "evaluation": copy.deepcopy(assembler.EXPECTED_EVALUATION),
+        },
+        "plan_manifest_sha256",
+    )
+
+
+def _success_count(strategy_index: int, window_index: int, eligible: int) -> int:
+    return (strategy_index * 7 + window_index * 11) % (eligible + 1)
+
+
+def _evaluation_records() -> list[Document]:
+    records: list[Document] = []
+    for strategy_index, strategy_id in enumerate(assembler.EXPECTED_STRATEGY_IDS, 1):
+        windows: list[Document] = []
+        for window_index, (label, eligible) in enumerate(
+            zip(
+                assembler.EXPECTED_WINDOW_ORDER,
+                assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS,
+                strict=True,
+            )
+        ):
+            success = _success_count(strategy_index, window_index, eligible)
+            windows.append(
+                {
+                    "window": label,
+                    "success_count": success,
+                    "eligible_draw_count": eligible,
+                    "observed_value": _pair(Fraction(success, eligible)),
+                }
+            )
+        records.append({"strategy_id": strategy_id, "windows": windows})
     return records
 
 
-def _run_manifest(plan: Manifest, *, run_label: str) -> Manifest:
-    payload: Manifest = {
-        "manifest_schema_version": assembler.RUN_MANIFEST_SCHEMA_VERSION,
-        "plan_manifest_sha256": plan["manifest_sha256"],
-        **_plan_binding(plan),
-        "evaluation_records": _evaluation_records(),
-        "deterministic_payload_sha256": "0" * 64,
-        "manifest_sha256": "0" * 64,
-        "operational": {"run_label": run_label},
+def _artifact(plan: Document, evaluations: list[Document], *, synthetic: bool) -> Document:
+    names = {
+        row["strategy_id"]: row["strategy_name"] for row in plan["strategies"]["names"]
     }
-    return assembler.seal_run_manifest(payload)
-
-
-def _acceptance_manifest(
-    plan: Manifest,
-    run_a: Manifest,
-    run_b: Manifest,
-    *,
-    acceptance_status: str = "PASS",
-    comparison_status: str = "PASS",
-) -> Manifest:
-    payload: Manifest = {
-        "manifest_schema_version": assembler.ACCEPTANCE_MANIFEST_SCHEMA_VERSION,
-        "plan_manifest_sha256": plan["manifest_sha256"],
-        "run_a_manifest_sha256": run_a["manifest_sha256"],
-        "run_b_manifest_sha256": run_b["manifest_sha256"],
-        **_plan_binding(plan),
-        "comparison": {
-            "status": comparison_status,
-            "run_a_deterministic_payload_sha256": run_a["deterministic_payload_sha256"],
-            "run_b_deterministic_payload_sha256": run_b["deterministic_payload_sha256"],
-            "evaluated_strategy_count": assembler.EXPECTED_STRATEGY_COUNT,
-            "eligible_cell_count": assembler.EXPECTED_EVALUATED_CELL_COUNT,
-            "zone_status": "DRIVER_ERROR",
-            "target_order_sha256": plan["target_identity"]["target_order_sha256"],
+    records: list[Document] = []
+    for evaluation in evaluations:
+        windows: list[Document] = []
+        for source in evaluation["windows"]:
+            observed = Fraction(
+                source["success_count"], source["eligible_draw_count"]
+            )
+            windows.append(
+                {
+                    "window_kind": source["window"],
+                    "window_status": "COMPLETE",
+                    "eligible_draw_count": source["eligible_draw_count"],
+                    "observed_value": _pair(observed),
+                    "random_reference": _pair(assembler.EXPECTED_RANDOM_REFERENCE),
+                    "delta_vs_random": _pair(
+                        observed - assembler.EXPECTED_RANDOM_REFERENCE
+                    ),
+                }
+            )
+        strategy_id = evaluation["strategy_id"]
+        records.append(
+            {
+                "strategy_id": strategy_id,
+                "strategy_name": names[strategy_id],
+                "native_ticket_count": 1,
+                "status": "EVALUATED",
+                "hit_tier_id": "M3_PLUS",
+                "windows": windows,
+            }
+        )
+    excluded = plan["strategies"]["excluded"]
+    records.insert(
+        18,
+        {
+            "strategy_id": excluded["strategy_id"],
+            "strategy_name": excluded["strategy_name"],
+            "native_ticket_count": 1,
+            "status": "DRIVER_ERROR",
+            "hit_tier_id": "M3_PLUS",
+            "windows": [],
         },
-        "acceptance_status": acceptance_status,
-        "manifest_sha256": "0" * 64,
-        "operational": {"fixture_role": "acceptance"},
+    )
+    return _seal(
+        {
+            "artifact_schema_version": assembler.ARTIFACT_SCHEMA_VERSION,
+            "evaluator_version": "base_method_evaluation/1.0.0",
+            "window_order": list(assembler.EXPECTED_WINDOW_ORDER),
+            "computation_status": (
+                assembler.SYNTHETIC_COMPUTATION_STATUS
+                if synthetic
+                else assembler.REAL_COMPUTATION_STATUS
+            ),
+            "lottery_type": "BIG_LOTTO",
+            "source_draw_db_sha256": plan["dataset"]["source_db"]["sha256"],
+            "source_draw_count": len(plan["dataset"]["snapshot"]["draws"]),
+            "last_causal_draw_id": plan["targets"]["vector"][-1]["draw_number"],
+            "replay_depth": 800,
+            "hit_tier_id": "M3_PLUS",
+            "records": records,
+        },
+        "artifact_sha256",
+    )
+
+
+def _deterministic_payload(plan: Document, *, synthetic: bool) -> Document:
+    evaluations = _evaluation_records()
+    artifact = _artifact(plan, evaluations, synthetic=synthetic)
+    matrix = [ZERO_SHA] * assembler.EXPECTED_EVALUATED_CELL_COUNT
+    return {
+        "runtime_fingerprint": copy.deepcopy(plan["runtime_fingerprint"]),
+        "authority": copy.deepcopy(plan["authority"]),
+        "strategy_results": [
+            {"strategy_identity": {"strategy_id": strategy_id}}
+            for strategy_id in assembler.EXPECTED_STRATEGY_IDS
+        ],
+        "matrix_order": "TARGET_MAJOR_STRATEGY_MINOR",
+        "matrix_cell_count": assembler.EXPECTED_EVALUATED_CELL_COUNT,
+        "matrix": matrix,
+        "matrix_sha256": _digest(matrix),
+        "evaluation_records": evaluations,
+        "evaluation_sha256": _digest(evaluations),
+        "excluded_strategy": copy.deepcopy(plan["strategies"]["excluded"]),
+        "artifact": artifact,
+        "artifact_content_sha256": artifact["artifact_sha256"],
+        "artifact_file_sha256": _file_digest(artifact),
+        "old_84_reuse": False,
+        "final_status": (
+            assembler.SYNTHETIC_FINAL_STATUS
+            if synthetic
+            else assembler.REAL_FINAL_STATUS
+        ),
     }
-    return assembler.seal_manifest(payload)
 
 
-def _accepted_manifests() -> ManifestSet:
-    plan = _plan_manifest()
-    run_a = _run_manifest(plan, run_label="A")
-    run_b = _run_manifest(plan, run_label="B")
-    acceptance = _acceptance_manifest(plan, run_a, run_b)
-    return plan, run_a, run_b, acceptance
+def _timestamp(day_offset: int) -> str:
+    value = datetime(2026, 1, 1, tzinfo=UTC) + timedelta(days=day_offset)
+    return value.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def _assemble(manifests: ManifestSet) -> assembler.NextDrawRecommendationEvidenceArtifact:
-    return assembler.assemble_artifact(*manifests)
+def _operational(label: str, *, day_offset: int) -> Document:
+    attempts = [
+        {
+            "attempt_id": f"{label}-{index:02d}-01",
+            "strategy_id": strategy_id,
+            "ordinal": 1,
+            "pid": 1000 + index,
+            "started_at_utc": _timestamp(day_offset),
+            "ended_at_utc": _timestamp(day_offset),
+            "elapsed_ns": 1,
+            "exit_status": 0,
+            "status": "SUCCEEDED",
+            "failure_kind": "",
+            "previous_attempt_id": "",
+            "result_sha256": ZERO_SHA,
+            "partial_output_sha256": "",
+            "bootstrap_before_sha256": ZERO_SHA,
+            "bootstrap_after_sha256": ZERO_SHA,
+        }
+        for index, strategy_id in enumerate(assembler.EXPECTED_STRATEGY_IDS, 1)
+    ]
+    return {
+        "run_id": label,
+        "output_root": f"/fixture/{label}",
+        "source_root": "/fixture/source",
+        "source_db_path": "/fixture/source.sqlite3",
+        "host_label": "fixture-host",
+        "started_at_utc": _timestamp(day_offset),
+        "ended_at_utc": _timestamp(day_offset),
+        "elapsed_ns": 54,
+        "attempts": attempts,
+    }
 
 
-def test_accepted_r2_material_projects_exact_55_record_census() -> None:
-    artifact = _assemble(_accepted_manifests())
-    payload = cast(Manifest, artifact.canonical_dict())
-    payload_records = cast(list[Manifest], payload["records"])
+def _run(plan: Document, deterministic: Document, label: str, day_offset: int) -> Document:
+    return _seal(
+        {
+            "manifest_schema_version": assembler.RUN_MANIFEST_SCHEMA_VERSION,
+            "canonicalization_version": assembler.CANONICALIZATION_VERSION,
+            "protocol_version": assembler.PROTOCOL_VERSION,
+            "plan_manifest_sha256": plan["plan_manifest_sha256"],
+            "common_manifest_sha256": plan["common_manifest_sha256"],
+            "campaign_label": f"CAMPAIGN_{label.upper()}",
+            "operational_envelope": _operational(label, day_offset=day_offset),
+            "deterministic_payload": copy.deepcopy(deterministic),
+            "deterministic_payload_sha256": _digest(deterministic),
+        },
+        "run_manifest_sha256",
+    )
 
-    assert len(artifact.records) == 55
-    assert sum(record["status"] == "EVALUATED" for record in payload_records) == 54
-    assert sum(record["status"] == "DRIVER_ERROR" for record in payload_records) == 1
-    expected_ids: list[str] = list(assembler.EXPECTED_STRATEGY_IDS)
-    expected_ids.insert(18, assembler.ZONE_STRATEGY_ID)
-    assert [record.strategy_id for record in artifact.records] == expected_ids
 
-    zone = artifact.records[18]
-    assert zone.strategy_id == assembler.ZONE_STRATEGY_ID
-    assert payload_records[18]["status"] == "DRIVER_ERROR"
-    assert zone.windows == ()
+def _acceptance(plan: Document, run_a: Document, run_b: Document) -> Document:
+    return _seal(
+        {
+            "manifest_schema_version": assembler.ACCEPTANCE_MANIFEST_SCHEMA_VERSION,
+            "canonicalization_version": assembler.CANONICALIZATION_VERSION,
+            "protocol_version": assembler.PROTOCOL_VERSION,
+            "plan_manifest_sha256": plan["plan_manifest_sha256"],
+            "common_manifest_sha256": plan["common_manifest_sha256"],
+            "run_a_manifest_file_sha256": _file_digest(run_a),
+            "run_b_manifest_file_sha256": _file_digest(run_b),
+            "run_a_deterministic_payload_sha256": run_a[
+                "deterministic_payload_sha256"
+            ],
+            "run_b_deterministic_payload_sha256": run_b[
+                "deterministic_payload_sha256"
+            ],
+            "comparison_contract": "EXACT_LF_FREE_LCJ1_DETERMINISTIC_PAYLOAD_BYTES",
+            "comparison_results": copy.deepcopy(
+                assembler.EXPECTED_COMPARISON_RESULTS
+            ),
+            "old_84_reuse_attestation": False,
+            "final_status": run_a["deterministic_payload"]["final_status"],
+        },
+        "acceptance_manifest_sha256",
+    )
 
 
-def test_projection_uses_exact_window_order_counts_and_reduced_fractions() -> None:
-    artifact = _assemble(_accepted_manifests())
-    reachable_index = 0
-    for record in artifact.records:
-        if record.strategy_id == assembler.ZONE_STRATEGY_ID:
+@lru_cache(maxsize=2)
+def _cached_bundle(synthetic: bool) -> Bundle:
+    plan = _plan(synthetic=synthetic)
+    deterministic = _deterministic_payload(plan, synthetic=synthetic)
+    run_a = _run(plan, deterministic, "run-a", 0)
+    run_b = _run(plan, deterministic, "run-b", 1)
+    return Bundle(plan, run_a, run_b, _acceptance(plan, run_a, run_b))
+
+
+def _bundle(*, synthetic: bool = True) -> Bundle:
+    return copy.deepcopy(_cached_bundle(synthetic))
+
+
+def _assemble(bundle: Bundle, *, synthetic_test: bool = True) -> Document:
+    return assembler.assemble_artifact(
+        bundle.plan,
+        bundle.run_a,
+        bundle.run_b,
+        bundle.acceptance,
+        synthetic_test=synthetic_test,
+    )
+
+
+def _resign_run(run: Document) -> Document:
+    deterministic = run["deterministic_payload"]
+    artifact = _seal(deterministic["artifact"], "artifact_sha256")
+    deterministic["artifact"] = artifact
+    deterministic["artifact_content_sha256"] = artifact["artifact_sha256"]
+    deterministic["artifact_file_sha256"] = _file_digest(artifact)
+    deterministic["matrix_sha256"] = _digest(deterministic["matrix"])
+    deterministic["evaluation_sha256"] = _digest(deterministic["evaluation_records"])
+    run["deterministic_payload_sha256"] = _digest(deterministic)
+    return _seal(run, "run_manifest_sha256")
+
+
+def _rebind_plan_and_downstream_documents(bundle: Bundle) -> Bundle:
+    plan = bundle.plan
+    snapshot = plan["dataset"]["snapshot"]
+    plan["dataset"]["dataset_version"] = _digest(snapshot)
+    plan["dataset"]["dataset_snapshot_sha256"] = _digest(snapshot)
+    plan["targets"]["target_order_sha256"] = _digest(plan["targets"]["vector"])
+    plan["common_manifest"]["dataset_snapshot_sha256"] = plan["dataset"][
+        "dataset_snapshot_sha256"
+    ]
+    plan["common_manifest"]["target_order_sha256"] = plan["targets"][
+        "target_order_sha256"
+    ]
+    plan["common_manifest_sha256"] = _digest(plan["common_manifest"])
+    plan["rng"] = _rng(plan["strategies"], plan["common_manifest_sha256"])
+    bundle.plan = _seal(plan, "plan_manifest_sha256")
+
+    for field in ("run_a", "run_b"):
+        run = getattr(bundle, field)
+        run["plan_manifest_sha256"] = bundle.plan["plan_manifest_sha256"]
+        run["common_manifest_sha256"] = bundle.plan["common_manifest_sha256"]
+        setattr(bundle, field, _resign_run(run))
+    bundle.acceptance = _acceptance(bundle.plan, bundle.run_a, bundle.run_b)
+    return bundle
+
+
+def test_four_direct_canonical_runner_documents_round_trip_embedded_artifact() -> None:
+    bundle = _bundle()
+    artifact = _assemble(bundle)
+    direct = bundle.run_a["deterministic_payload"]["artifact"]
+
+    assert canonical_bytes(artifact) == canonical_bytes(direct)
+    assert artifact["artifact_sha256"] == direct["artifact_sha256"]
+    assert len(artifact["records"]) == 55
+    assert sum(record["status"] == "EVALUATED" for record in artifact["records"]) == 54
+    assert artifact["records"][18]["strategy_id"] == assembler.ZONE_STRATEGY_ID
+    assert artifact["records"][18]["status"] == "DRIVER_ERROR"
+    assert artifact["records"][18]["windows"] == []
+
+
+def test_run_a_b_are_operationally_distinct_but_deterministically_identical() -> None:
+    bundle = _bundle()
+    assert bundle.run_a["run_manifest_sha256"] != bundle.run_b["run_manifest_sha256"]
+    assert canonical_file_bytes(bundle.run_a) != canonical_file_bytes(bundle.run_b)
+    assert bundle.run_a["campaign_label"] != bundle.run_b["campaign_label"]
+    assert (
+        bundle.run_a["operational_envelope"]["run_id"]
+        != bundle.run_b["operational_envelope"]["run_id"]
+    )
+    assert canonical_bytes(bundle.run_a["deterministic_payload"]) == canonical_bytes(
+        bundle.run_b["deterministic_payload"]
+    )
+    assert canonical_bytes(bundle.run_a["deterministic_payload"]["artifact"]) == (
+        canonical_bytes(bundle.run_b["deterministic_payload"]["artifact"])
+    )
+    _assemble(bundle)
+
+
+def test_frozen_windows_counts_metric_and_reduced_fraction_semantics() -> None:
+    artifact = _assemble(_bundle())
+    for record in artifact["records"]:
+        if record["strategy_id"] == assembler.ZONE_STRATEGY_ID:
             continue
-        reachable_index += 1
-        assert tuple(window.window_kind for window in record.windows) == (
+        assert [window["window_kind"] for window in record["windows"]] == list(
             assembler.EXPECTED_WINDOW_ORDER
         )
-        assert tuple(window.eligible_draw_count for window in record.windows) == (
+        assert [window["eligible_draw_count"] for window in record["windows"]] == list(
             assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS
         )
-        for window_index, window in enumerate(record.windows):
-            eligible_count = assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS[window_index]
-            expected_observed = Fraction(
-                _success_count(reachable_index, window_index, eligible_count),
-                eligible_count,
-            )
-            assert window.observed_value == expected_observed
-            assert window.random_reference == Fraction(4654, 249711)
-            assert window.delta_vs_random == expected_observed - Fraction(4654, 249711)
-
-    payload = cast(Manifest, artifact.canonical_dict())
-    payload_records = cast(list[Manifest], payload["records"])
-    first_windows = cast(list[Manifest], payload_records[0]["windows"])
-    for raw_window in first_windows:
-        for fraction_key in ("observed_value", "random_reference", "delta_vs_random"):
-            pair = cast(dict[str, str], raw_window[fraction_key])
-            value = Fraction(int(pair["numerator"]), int(pair["denominator"]))
-            assert pair == _fraction_pair(value)
+        for window in record["windows"]:
+            assert Fraction(
+                int(window["random_reference"]["numerator"]),
+                int(window["random_reference"]["denominator"]),
+            ) == Fraction(4654, 249711)
 
 
-def test_repeated_assembly_has_identical_canonical_bytes_and_digest() -> None:
-    manifests = _accepted_manifests()
-    _, run_a, run_b, _ = manifests
-    assert run_a["deterministic_payload_sha256"] == run_b["deterministic_payload_sha256"]
-    assert run_a["manifest_sha256"] != run_b["manifest_sha256"]
-    artifact_a = _assemble(manifests)
-    artifact_b = _assemble(copy.deepcopy(manifests))
+def test_real_pass_path_accepts_and_synthetic_path_is_strictly_separated() -> None:
+    real = _bundle(synthetic=False)
+    artifact = _assemble(real, synthetic_test=False)
+    assert real.acceptance["final_status"] == "PASS"
+    assert artifact["computation_status"] == "FRESH_UNREVIEWED"
 
-    file_bytes_a = assembler.artifact_canonical_file_bytes(artifact_a)
-    file_bytes_b = assembler.artifact_canonical_file_bytes(artifact_b)
-    assert file_bytes_a == file_bytes_b
-    assert artifact_a.artifact_sha256 == artifact_b.artifact_sha256
-    assert file_bytes_a.endswith(b"\n")
-    assert not file_bytes_a.endswith(b"\n\n")
-    assert assembler.artifact_canonical_bytes(artifact_a) + b"\n" == file_bytes_a
-    assert artifact_a.artifact_sha256 == self_key_removed_sha256(
-        artifact_a.canonical_dict(), "artifact_sha256"
-    )
+    with pytest.raises(assembler.EvidenceAssemblyError, match="SYNTHETIC_TEST_ONLY"):
+        _assemble(_bundle(), synthetic_test=False)
+    with pytest.raises(assembler.EvidenceAssemblyError, match="synthetic-test path"):
+        _assemble(real, synthetic_test=True)
 
 
-@pytest.mark.parametrize("manifest_index", [0, 1, 2, 3])
-def test_operational_metadata_is_bound_by_each_manifest_self_digest(
-    manifest_index: int,
+def test_exact_canonical_files_use_lcj1_one_lf_and_emit_direct_artifact(
+    tmp_path: Path,
 ) -> None:
-    manifests = list(_accepted_manifests())
-    tampered_manifest = manifests[manifest_index]
-    original_run_digest = tampered_manifest.get("deterministic_payload_sha256")
-    tampered_manifest["operational"]["post_seal_tamper"] = True
-
-    if original_run_digest is not None:
-        assert assembler.deterministic_run_sha256(tampered_manifest) == original_run_digest
-    assert assembler.manifest_sha256(tampered_manifest) != tampered_manifest["manifest_sha256"]
-    with pytest.raises(
-        assembler.EvidenceAssemblyError,
-        match="manifest_sha256 does not match",
-    ):
-        _assemble(cast(ManifestSet, tuple(manifests)))
-
-
-def test_same_run_manifest_cannot_satisfy_both_acceptance_slots() -> None:
-    plan, run_a, _, _ = _accepted_manifests()
-    acceptance = _acceptance_manifest(plan, run_a, run_a)
-
-    with pytest.raises(
-        assembler.EvidenceAssemblyError,
-        match="two distinct run manifest identities are required",
-    ):
-        assembler.assemble_artifact(plan, run_a, run_a, acceptance)
-
-
-def test_artifact_round_trip_and_tamper_rejection(tmp_path: Path) -> None:
-    artifact = _assemble(_accepted_manifests())
-    artifact_path = tmp_path / "assembled.json"
-    artifact_path.write_bytes(assembler.artifact_canonical_file_bytes(artifact))
-    assert assembler.load_artifact_file(artifact_path) == artifact
-
-    tampered = cast(Manifest, copy.deepcopy(artifact.canonical_dict()))
-    tampered["source_draw_count"] = int(tampered["source_draw_count"]) + 1
-    with pytest.raises(assembler.EvidenceAssemblyError, match="self digest mismatch"):
-        assembler.validate_assembled_artifact(tampered)
-
-    self_hashed_but_invalid = cast(Manifest, copy.deepcopy(artifact.canonical_dict()))
-    invalid_records = cast(list[Manifest], self_hashed_but_invalid["records"])
-    invalid_windows = cast(list[Manifest], invalid_records[0]["windows"])
-    delta = cast(dict[str, str], invalid_windows[0]["delta_vs_random"])
-    delta["numerator"] = "1"
-    delta["denominator"] = "1"
-    self_hashed_but_invalid["artifact_sha256"] = self_key_removed_sha256(
-        self_hashed_but_invalid, "artifact_sha256"
-    )
-    with pytest.raises(assembler.EvidenceAssemblyError, match="delta fraction mismatch"):
-        assembler.validate_assembled_artifact(self_hashed_but_invalid)
-
-
-def test_path_wrapper_consumes_only_canonical_manifests(tmp_path: Path) -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    input_payloads = {
-        "plan.json": plan,
-        "run-a.json": run_a,
-        "run-b.json": run_b,
-        "acceptance.json": acceptance,
+    bundle = _bundle()
+    documents = {
+        "plan.json": bundle.plan,
+        "run-a.json": bundle.run_a,
+        "run-b.json": bundle.run_b,
+        "acceptance.json": bundle.acceptance,
     }
-    for name, payload in input_payloads.items():
-        (tmp_path / name).write_bytes(canonical_file_bytes(payload))
+    for name, document in documents.items():
+        raw = canonical_file_bytes(document)
+        assert raw.endswith(b"\n") and not raw.endswith(b"\n\n")
+        (tmp_path / name).write_bytes(raw)
 
     output = tmp_path / "artifact.json"
     artifact = assembler.assemble_from_paths(
@@ -384,162 +681,254 @@ def test_path_wrapper_consumes_only_canonical_manifests(tmp_path: Path) -> None:
         run_b_path=tmp_path / "run-b.json",
         acceptance_path=tmp_path / "acceptance.json",
         output_path=output,
+        synthetic_test=True,
     )
-    assert output.read_bytes() == assembler.artifact_canonical_file_bytes(artifact)
+    assert output.read_bytes() == canonical_file_bytes(
+        bundle.run_a["deterministic_payload"]["artifact"]
+    )
+    assert assembler.load_artifact_file(output, synthetic_test=True) == artifact
 
-    noncanonical_plan = tmp_path / "noncanonical-plan.json"
-    noncanonical_plan.write_bytes(canonical_file_bytes(plan) + b"\n")
-    with pytest.raises(assembler.EvidenceAssemblyError, match="exactly one LF"):
-        assembler.load_manifest_file(noncanonical_plan)
+    invalid = tmp_path / "invalid-plan.json"
+    invalid.write_bytes(canonical_file_bytes(bundle.plan) + b"\n")
+    with pytest.raises(assembler.EvidenceAssemblyError, match="exactly one"):
+        assembler.load_manifest_file(invalid)
 
 
-@pytest.mark.parametrize("case", ["duplicate", "missing", "extra", "reordered"])
-def test_duplicate_missing_extra_or_reordered_strategy_records_reject(case: str) -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    records = run_a["evaluation_records"]
-    if case == "duplicate":
-        records[1]["strategy_id"] = records[0]["strategy_id"]
+def test_no_old_wrapper_translation_or_compatibility_api_remains() -> None:
+    assert not hasattr(assembler, "build_evidence")
+    assert not hasattr(assembler, "seal_manifest")
+    assert not hasattr(assembler, "seal_run_manifest")
+    assert not hasattr(assembler, "deterministic_run_sha256")
+    parameters = list(inspect.signature(assembler.assemble_artifact).parameters)
+    assert parameters == ["plan", "run_a", "run_b", "acceptance", "synthetic_test"]
+    source = inspect.getsource(assembler)
+    for translated_key in (
+        '"canonicalization"',
+        '"manifest_sha256"',
+        '"acceptance_status"',
+        '"run_a_manifest_sha256"',
+        '"run_b_manifest_sha256"',
+    ):
+        assert translated_key not in source
+
+
+@pytest.mark.parametrize("document_name", ["plan", "run_a", "run_b", "acceptance"])
+def test_each_document_self_hash_is_load_bearing(document_name: str) -> None:
+    bundle = _bundle()
+    document = getattr(bundle, document_name)
+    document["post_seal_tamper"] = True
+    with pytest.raises(assembler.EvidenceAssemblyError):
+        _assemble(bundle)
+
+
+@pytest.mark.parametrize("document_name", ["plan", "run_a", "acceptance"])
+def test_superseded_protocol_is_rejected_directly(document_name: str) -> None:
+    bundle = _bundle()
+    document = getattr(bundle, document_name)
+    document["protocol_version"] = "NEXT_DRAW_54_REACHABLE_FULL_REPLAY_PROTOCOL_R1"
+    key = {
+        "plan": "plan_manifest_sha256",
+        "run_a": "run_manifest_sha256",
+        "acceptance": "acceptance_manifest_sha256",
+    }[document_name]
+    setattr(bundle, document_name, _seal(document, key))
+    with pytest.raises(assembler.EvidenceAssemblyError, match="superseded"):
+        _assemble(bundle)
+
+
+def test_one_run_identity_cannot_fill_both_slots() -> None:
+    bundle = _bundle()
+    acceptance = _acceptance(bundle.plan, bundle.run_a, bundle.run_a)
+    with pytest.raises(assembler.EvidenceAssemblyError, match="distinct run identities"):
+        assembler.assemble_artifact(
+            bundle.plan,
+            bundle.run_a,
+            bundle.run_a,
+            acceptance,
+            synthetic_test=True,
+        )
+
+
+@pytest.mark.parametrize("field", ["run_id", "output_root"])
+def test_run_operational_identities_must_be_distinct(field: str) -> None:
+    bundle = _bundle()
+    bundle.run_b["operational_envelope"][field] = bundle.run_a["operational_envelope"][field]
+    bundle = Bundle(
+        bundle.plan,
+        bundle.run_a,
+        _resign_run(bundle.run_b),
+        bundle.acceptance,
+    )
+    bundle = Bundle(
+        bundle.plan,
+        bundle.run_a,
+        bundle.run_b,
+        _acceptance(bundle.plan, bundle.run_a, bundle.run_b),
+    )
+    with pytest.raises(assembler.EvidenceAssemblyError, match=r"run IDs|output roots"):
+        _assemble(bundle)
+
+
+@pytest.mark.parametrize("case", ["reordered", "missing", "duplicate"])
+def test_strategy_order_missing_and_duplicate_controls(case: str) -> None:
+    bundle = _bundle()
+    records = bundle.plan["strategies"]["records"]
+    if case == "reordered":
+        records[0], records[1] = records[1], records[0]
     elif case == "missing":
         records.pop()
-    elif case == "extra":
-        extra = copy.deepcopy(records[-1])
-        extra["strategy_id"] = "synthetic_extra_strategy"
-        records.append(extra)
     else:
-        records[0], records[1] = records[1], records[0]
-
+        records[1]["strategy_id"] = records[0]["strategy_id"]
+    bundle.plan = _seal(bundle.plan, "plan_manifest_sha256")
     with pytest.raises(assembler.EvidenceAssemblyError):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
+        _assemble(bundle)
 
 
-@pytest.mark.parametrize("case", ["duplicate", "missing", "extra", "reordered"])
-def test_duplicate_missing_extra_or_reordered_windows_reject(case: str) -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    windows = run_a["evaluation_records"][0]["windows"]
-    if case == "duplicate":
-        windows[1] = copy.deepcopy(windows[0])
-    elif case == "missing":
-        windows.pop()
-    elif case == "extra":
-        windows.append(copy.deepcopy(windows[-1]))
-    else:
-        windows[0], windows[1] = windows[1], windows[0]
+def test_fully_resealed_and_rebound_target_reorder_is_rejected() -> None:
+    bundle = _bundle()
+    vector = bundle.plan["targets"]["vector"]
+    vector[0], vector[1] = vector[1], vector[0]
+    bundle = _rebind_plan_and_downstream_documents(bundle)
 
-    with pytest.raises(assembler.EvidenceAssemblyError):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    [
-        ("old_84_reuse", True, "old_84_reuse must be false"),
-        (
-            "protocol_version",
-            "NEXT_DRAW_54_REACHABLE_FULL_REPLAY_PROTOCOL_R1",
-            "old protocol is forbidden",
-        ),
-        (
-            "protocol_version",
-            "NEXT_DRAW_REPLAY_STRATEGY_ISOLATED_MANIFEST_SEED_V1",
-            "old protocol is forbidden",
-        ),
-    ],
-)
-def test_old84_reuse_and_old_protocols_reject(field: str, value: object, message: str) -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    plan[field] = value
-    with pytest.raises(assembler.EvidenceAssemblyError, match=message):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-
-def test_mixed_protocol_run_rejects() -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    run_a["protocol_version"] = "NEXT_DRAW_54_REACHABLE_FULL_REPLAY_PROTOCOL_R1"
-    with pytest.raises(assembler.EvidenceAssemblyError, match="old protocol is forbidden"):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-
-@pytest.mark.parametrize(
-    ("acceptance_status", "comparison_status"),
-    [("FAIL", "PASS"), ("PASS", "FAIL")],
-)
-def test_two_run_acceptance_must_be_pass(
-    acceptance_status: str,
-    comparison_status: str,
-) -> None:
-    plan, run_a, run_b, _ = _accepted_manifests()
-    acceptance = _acceptance_manifest(
-        plan,
-        run_a,
-        run_b,
-        acceptance_status=acceptance_status,
-        comparison_status=comparison_status,
+    assert bundle.run_a["plan_manifest_sha256"] == bundle.plan[
+        "plan_manifest_sha256"
+    ]
+    assert bundle.run_b["common_manifest_sha256"] == bundle.plan[
+        "common_manifest_sha256"
+    ]
+    assert bundle.acceptance["run_a_manifest_file_sha256"] == _file_digest(
+        bundle.run_a
     )
-    with pytest.raises(assembler.EvidenceAssemblyError, match="must be PASS"):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-
-def test_two_runs_must_be_deterministically_identical() -> None:
-    plan, run_a, run_b, _ = _accepted_manifests()
-    run_b["evaluation_records"][0]["windows"][0]["success_count"] += 1
-    run_b = assembler.seal_run_manifest(run_b)
-    acceptance = _acceptance_manifest(plan, run_a, run_b)
-
-    with pytest.raises(assembler.EvidenceAssemblyError, match="two runs differ deterministically"):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    [
-        ("native_ticket_count", 2, "native_ticket_count must be one"),
-        ("hit_tier_id", "M2_PLUS", "hit tier must be M3_PLUS"),
-    ],
-)
-def test_incorrect_record_ticket_count_or_hit_tier_rejects(
-    field: str,
-    value: object,
-    message: str,
-) -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    run_a["evaluation_records"][0][field] = value
-    with pytest.raises(assembler.EvidenceAssemblyError, match=message):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-
-def test_wrong_target_identity_and_fingerprint_drift_reject() -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    plan["target_identity"]["target_count"] = 799
-    with pytest.raises(assembler.EvidenceAssemblyError, match="exactly 800 targets"):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    run_a["dataset_fingerprint"]["logical_dataset_sha256"] = "5" * 64
-    with pytest.raises(assembler.EvidenceAssemblyError, match="does not match the accepted plan"):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
-
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    run_a["runtime_fingerprint"]["details"]["implementation"] = "tampered"
+    assert bundle.acceptance["run_b_manifest_file_sha256"] == _file_digest(
+        bundle.run_b
+    )
     with pytest.raises(
-        assembler.EvidenceAssemblyError, match="runtime fingerprint digest mismatch"
+        assembler.EvidenceAssemblyError,
+        match="exact dataset-derived frozen 800-target vector",
     ):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
+        _assemble(bundle)
 
 
-@pytest.mark.parametrize("mutation", ["extra", "missing"])
-def test_closed_manifest_schema_rejects_unknown_or_missing_fields(mutation: str) -> None:
-    plan, run_a, run_b, acceptance = _accepted_manifests()
-    if mutation == "extra":
-        plan["unexpected"] = "forbidden"
+def test_fully_resealed_plan_with_ineligible_target_history_is_rejected() -> None:
+    bundle = _bundle()
+    snapshot = bundle.plan["dataset"]["snapshot"]
+    snapshot["draws"] = snapshot["draws"][-assembler.EXPECTED_REPLAY_DEPTH :]
+    bundle = _rebind_plan_and_downstream_documents(bundle)
+
+    assert bundle.plan["targets"]["vector"] == [
+        {"draw_date": row["draw_date"], "draw_number": row["draw_number"]}
+        for row in snapshot["draws"]
+    ]
+    with pytest.raises(
+        assembler.EvidenceAssemblyError,
+        match="all 43,200 cells must be eligible",
+    ):
+        _assemble(bundle)
+
+
+def test_old_84_reuse_true_is_rejected_even_when_plan_is_resealed() -> None:
+    bundle = _bundle()
+    bundle.plan["execution"]["old_84_reuse"] = True
+    bundle.plan = _seal(bundle.plan, "plan_manifest_sha256")
+    with pytest.raises(assembler.EvidenceAssemblyError, match=r"plan\.execution"):
+        _assemble(bundle)
+
+
+def test_nonaccepted_final_status_is_rejected() -> None:
+    bundle = _bundle()
+    bundle.acceptance["final_status"] = "FAIL"
+    bundle.acceptance = _seal(
+        bundle.acceptance, "acceptance_manifest_sha256"
+    )
+    with pytest.raises(assembler.EvidenceAssemblyError, match="final_status"):
+        _assemble(bundle)
+
+
+def test_empirical_zone_record_is_rejected() -> None:
+    bundle = _bundle()
+    zone = bundle.run_a["deterministic_payload"]["artifact"]["records"][18]
+    zone["status"] = "EVALUATED"
+    bundle = Bundle(
+        bundle.plan,
+        _resign_run(bundle.run_a),
+        bundle.run_b,
+        bundle.acceptance,
+    )
+    with pytest.raises(assembler.EvidenceAssemblyError, match="DRIVER_ERROR"):
+        _assemble(bundle)
+
+
+def test_altered_window_contract_is_rejected() -> None:
+    bundle = _bundle()
+    window = bundle.run_a["deterministic_payload"]["artifact"]["records"][0][
+        "windows"
+    ][0]
+    window["eligible_draw_count"] = 49
+    bundle = Bundle(
+        bundle.plan,
+        _resign_run(bundle.run_a),
+        bundle.run_b,
+        bundle.acceptance,
+    )
+    with pytest.raises(assembler.EvidenceAssemblyError, match="window contract"):
+        _assemble(bundle)
+
+
+def test_deterministic_payload_mismatch_is_rejected_after_valid_resealing() -> None:
+    bundle = _bundle()
+    bundle.run_b["deterministic_payload"]["matrix"][0] = "9" * 64
+    run_b = _resign_run(bundle.run_b)
+    acceptance = _acceptance(bundle.plan, bundle.run_a, run_b)
+    mismatched = Bundle(bundle.plan, bundle.run_a, run_b, acceptance)
+    with pytest.raises(assembler.EvidenceAssemblyError, match="payload bytes differ"):
+        _assemble(mismatched)
+
+
+def test_acceptance_file_hash_binding_is_load_bearing() -> None:
+    bundle = _bundle()
+    bundle.acceptance["run_a_manifest_file_sha256"] = "8" * 64
+    bundle.acceptance = _seal(
+        bundle.acceptance, "acceptance_manifest_sha256"
+    )
+    with pytest.raises(assembler.EvidenceAssemblyError, match="file_sha256"):
+        _assemble(bundle)
+
+
+@pytest.mark.parametrize("kind", ["wrapper", "renamed_plan", "renamed_run", "renamed_acceptance"])
+def test_old_local_wrapper_and_translated_fields_are_rejected(kind: str) -> None:
+    bundle = _bundle()
+    if kind == "wrapper":
+        plan: Document = {"plan": bundle.plan}
     else:
-        del plan["source_fingerprint"]
-    with pytest.raises(assembler.EvidenceAssemblyError, match="keys mismatch"):
-        assembler.assemble_artifact(plan, run_a, run_b, acceptance)
+        plan = bundle.plan
+        target = {
+            "renamed_plan": plan,
+            "renamed_run": bundle.run_a,
+            "renamed_acceptance": bundle.acceptance,
+        }[kind]
+        old, new = {
+            "renamed_plan": ("canonicalization_version", "canonicalization"),
+            "renamed_run": ("run_manifest_sha256", "manifest_sha256"),
+            "renamed_acceptance": (
+                "acceptance_manifest_sha256",
+                "manifest_sha256",
+            ),
+        }[kind]
+        target[new] = target.pop(old)
+    with pytest.raises(assembler.EvidenceAssemblyError, match="canonical Runner keys"):
+        assembler.assemble_artifact(
+            plan,
+            bundle.run_a,
+            bundle.run_b,
+            bundle.acceptance,
+            synthetic_test=True,
+        )
 
 
-def test_packaged_strategy_evidence_output_is_refused(tmp_path: Path) -> None:
-    protected_output = (
-        tmp_path / "src/lottolab/strategies/data/biglotto_next_draw_recommendation_evidence_v1.json"
+def test_packaged_v1_output_is_refused_before_input_reads(tmp_path: Path) -> None:
+    protected = (
+        tmp_path
+        / "src/lottolab/strategies/data/biglotto_next_draw_recommendation_evidence_v1.json"
     )
     with pytest.raises(assembler.EvidenceAssemblyError, match="refusing to overwrite"):
         assembler.assemble_from_paths(
@@ -547,5 +936,91 @@ def test_packaged_strategy_evidence_output_is_refused(tmp_path: Path) -> None:
             run_a_path=tmp_path / "unused-run-a.json",
             run_b_path=tmp_path / "unused-run-b.json",
             acceptance_path=tmp_path / "unused-acceptance.json",
-            output_path=protected_output,
+            output_path=protected,
         )
+
+
+def _runner_root() -> Path:
+    configured = os.environ.get("NEXT_DRAW_R2_RUNNER_ROOT")
+    if configured:
+        return Path(configured)
+    return REPO_ROOT.parent / RUNNER_WORKTREE_NAME
+
+
+def test_exact_runner_generated_objects_and_files_are_accepted_without_mapping(
+    tmp_path: Path,
+) -> None:
+    runner_root = _runner_root()
+    runner_test = runner_root / "tests/unit/test_next_draw_54_replay_r2.py"
+    if not runner_test.is_file():
+        pytest.skip("pinned Runner worktree is not available for cross-component integration")
+
+    script = r'''
+import importlib.util
+import sys
+from pathlib import Path
+
+runner_root = Path(sys.argv[1])
+assembler_root = Path(sys.argv[2])
+output_root = Path(sys.argv[3])
+sys.path.insert(0, str(assembler_root / "src"))
+sys.path.insert(0, str(runner_root))
+
+runner_spec = importlib.util.spec_from_file_location(
+    "runner_contract_tests", runner_root / "tests/unit/test_next_draw_54_replay_r2.py"
+)
+assert runner_spec is not None and runner_spec.loader is not None
+runner_tests = importlib.util.module_from_spec(runner_spec)
+sys.modules[runner_spec.name] = runner_tests
+runner_spec.loader.exec_module(runner_tests)
+bundle = runner_tests._build_synthetic_bundle()
+c = runner_tests.c
+
+assembler_spec = importlib.util.spec_from_file_location(
+    "direct_runner_assembler",
+    assembler_root / "tools/build_biglotto_next_draw_recommendation_evidence_r2.py",
+)
+assert assembler_spec is not None and assembler_spec.loader is not None
+assembler = importlib.util.module_from_spec(assembler_spec)
+sys.modules[assembler_spec.name] = assembler
+assembler_spec.loader.exec_module(assembler)
+
+artifact = assembler.assemble_artifact(
+    bundle.plan, bundle.run_a, bundle.run_b, bundle.acceptance, synthetic_test=True
+)
+direct = bundle.run_a["deterministic_payload"]["artifact"]
+assert c.canonical_bytes(artifact) == c.canonical_bytes(direct)
+
+paths = {}
+for name, document in (
+    ("plan", bundle.plan),
+    ("run-a", bundle.run_a),
+    ("run-b", bundle.run_b),
+    ("acceptance", bundle.acceptance),
+):
+    path = output_root / f"{name}.json"
+    path.write_bytes(c.file_bytes(document))
+    paths[name] = path
+artifact_path = output_root / "artifact.json"
+from_files = assembler.assemble_from_paths(
+    plan_path=paths["plan"],
+    run_a_path=paths["run-a"],
+    run_b_path=paths["run-b"],
+    acceptance_path=paths["acceptance"],
+    output_path=artifact_path,
+    synthetic_test=True,
+)
+assert c.canonical_bytes(from_files) == c.canonical_bytes(direct)
+assert artifact_path.read_bytes() == c.file_bytes(direct)
+'''
+    environment = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
+    completed = subprocess.run(
+        [sys.executable, "-c", script, str(runner_root), str(REPO_ROOT), str(tmp_path)],
+        cwd=runner_root,
+        env=environment,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    assert completed.returncode == 0, completed.stderr

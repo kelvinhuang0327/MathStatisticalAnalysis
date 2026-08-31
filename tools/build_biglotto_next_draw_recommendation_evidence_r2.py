@@ -129,9 +129,7 @@ EXPECTED_STRATEGY_IDS = (
     "legacy_biglotto__frontend_collaborative_hybrid__97d79db161ba",
     "legacy_biglotto__frontend_auto_optimize_strategy__a121d28125c6",
 )
-EXPECTED_STRATEGY_ORDER_SHA256 = (
-    "1efeba5519693c58f1b407f859d5b37f54647efcd4a34b424b9eed71ff7c9493"
-)
+EXPECTED_STRATEGY_ORDER_SHA256 = "1efeba5519693c58f1b407f859d5b37f54647efcd4a34b424b9eed71ff7c9493"
 EXPECTED_STRATEGY_UNIVERSE_SHA256 = (
     "02cf7c5403e4714416824ae1a71ef7478a4a975ff973b7f237f9992b6f9dd0a9"
 )
@@ -228,12 +226,31 @@ STRATEGY_NAME_KEYS = _keys("strategy_id strategy_name")
 RNG_CLASSIFICATION_KEYS = _keys("strategy_id strategy_version rng_class")
 EXCLUDED_KEYS = _keys("strategy_id strategy_name filtered_catalog_ordinal status windows")
 RNG_KEYS = _keys(
-    "seed_policy seed_timing global_random_policy private_rng_policy "
-    "private_rng_exceptions seeds"
+    "seed_policy seed_timing global_random_policy private_rng_policy private_rng_exceptions seeds"
 )
-RNG_SEED_KEYS = _keys(
-    "strategy_id strategy_version adapter_path seed_digest seed_integer"
+RNG_SEED_KEYS = _keys("strategy_id strategy_version adapter_path seed_digest seed_integer")
+STRATEGY_RESULT_KEYS = _keys(
+    "result_schema_version strategy_identity seed rng_class bootstrap_rng_guard "
+    "post_seed_rng_sha256 final_rng_sha256 adapter_invocation_count cache "
+    "source_integrity runtime_fingerprint_sha256 cells final_status "
+    "strategy_output_sha256"
 )
+BOOTSTRAP_RNG_GUARD_KEYS = _keys("unchanged state_version")
+CACHE_KEYS = _keys("cache_configured lookups stores hits misses entries evictions")
+SOURCE_INTEGRITY_KEYS = _keys(
+    "repository_head repository_tree source_inventory_sha256_before "
+    "source_inventory_sha256_after source_draw_db_sha256_before "
+    "source_draw_db_sha256_after import_anchor_verified imported_modules"
+)
+IMPORTED_MODULE_KEYS = _keys("module path sha256")
+CELL_KEYS = _keys(
+    "target outcome outcome_sha256 causal_history_count cutoff "
+    "causal_history_sha256 adapter_input_sha256 strategy_id strategy_version "
+    "history_status history_reason prediction_status prediction_reason emitted_ticket "
+    "legal_ticket hit_count rng_before_sha256 rng_after_sha256 replay_result_sha256 "
+    "cell_sha256"
+)
+OUTCOME_KEYS = _keys("draw_date draw_number main_numbers special_number")
 RUNTIME_KEYS = _keys(
     "schema_version python platform numeric distributions installer environment "
     "source_inventory_sha256 runner_files"
@@ -254,9 +271,7 @@ DETERMINISTIC_PAYLOAD_KEYS = _keys(
     "artifact_content_sha256 artifact_file_sha256 old_84_reuse final_status"
 )
 EVALUATION_RECORD_KEYS = _keys("strategy_id windows")
-EVALUATION_WINDOW_KEYS = _keys(
-    "window success_count eligible_draw_count observed_value"
-)
+EVALUATION_WINDOW_KEYS = _keys("window success_count eligible_draw_count observed_value")
 ARTIFACT_KEYS = _keys(
     "artifact_schema_version evaluator_version window_order computation_status lottery_type "
     "source_draw_db_sha256 source_draw_count last_causal_draw_id replay_depth hit_tier_id "
@@ -266,8 +281,7 @@ ARTIFACT_RECORD_KEYS = _keys(
     "strategy_id strategy_name native_ticket_count status hit_tier_id windows"
 )
 ARTIFACT_WINDOW_KEYS = _keys(
-    "window_kind window_status eligible_draw_count observed_value random_reference "
-    "delta_vs_random"
+    "window_kind window_status eligible_draw_count observed_value random_reference delta_vs_random"
 )
 COMPARISON_RESULTS_KEYS = _keys(
     "equal run_a_accepted_cell_count run_b_accepted_cell_count total_empirical_cell_count "
@@ -326,6 +340,15 @@ EXPECTED_COMPARISON_RESULTS: dict[str, object] = {
     "source_db_unchanged": True,
     "artifact_bytes_equal": True,
 }
+EXPECTED_CACHE_ZERO: dict[str, object] = {
+    "cache_configured": False,
+    "lookups": 0,
+    "stores": 0,
+    "hits": 0,
+    "misses": 0,
+    "entries": 0,
+    "evictions": 0,
+}
 
 
 class EvidenceAssemblyError(ValueError):
@@ -363,9 +386,7 @@ def _as_list(value: object, *, path: str) -> list[Any]:
     return cast(list[Any], value)
 
 
-def _require_exact_keys(
-    value: Mapping[str, Any], expected: frozenset[str], *, path: str
-) -> None:
+def _require_exact_keys(value: Mapping[str, Any], expected: frozenset[str], *, path: str) -> None:
     actual = set(value)
     if actual != set(expected):
         missing = sorted(set(expected) - actual)
@@ -581,16 +602,12 @@ def _validate_dataset(
             or len(set(main_numbers)) != 6
         ):
             raise EvidenceAssemblyError(f"{row_path}.main_numbers: illegal ticket")
-        special = _require_int(
-            row["special_number"], path=f"{row_path}.special_number", minimum=1
-        )
+        special = _require_int(row["special_number"], path=f"{row_path}.special_number", minimum=1)
         if special > 49 or special in main_numbers:
             raise EvidenceAssemblyError(f"{row_path}.special_number: illegal special number")
         validated_draws.append(row)
     if validated_draws != sorted(validated_draws, key=_draw_key):
-        raise EvidenceAssemblyError(
-            f"{path}.snapshot.draws: causal rows must be oldest first"
-        )
+        raise EvidenceAssemblyError(f"{path}.snapshot.draws: causal rows must be oldest first")
     if dataset["dataset_version"] != _digest(snapshot):
         raise EvidenceAssemblyError(f"{path}.dataset_version: hash mismatch")
     if dataset["dataset_snapshot_sha256"] != _digest(snapshot):
@@ -652,9 +669,7 @@ def _validate_strategies(value: object, *, path: str) -> tuple[str, ...]:
             _require_string(name["strategy_name"], path=f"{row_path}.strategy_name")
         )
 
-    classifications = _as_list(
-        strategies["rng_classification"], path=f"{path}.rng_classification"
-    )
+    classifications = _as_list(strategies["rng_classification"], path=f"{path}.rng_classification")
     expected_classifications = [
         {
             "strategy_id": row["strategy_id"],
@@ -700,17 +715,13 @@ def _validate_rng(value: object, plan: dict[str, Any], *, path: str) -> None:
     for key, expected in expected_scalars.items():
         if rng[key] != expected:
             raise EvidenceAssemblyError(f"{path}.{key}: Runner contract mismatch")
-    exceptions = _as_list(
-        rng["private_rng_exceptions"], path=f"{path}.private_rng_exceptions"
-    )
+    exceptions = _as_list(rng["private_rng_exceptions"], path=f"{path}.private_rng_exceptions")
     exception_ids: list[str] = []
     for index, raw in enumerate(exceptions):
         row_path = f"{path}.private_rng_exceptions[{index}]"
         row = _as_dict(raw, path=row_path)
         _require_exact_keys(row, _keys("strategy_id policy"), path=row_path)
-        exception_ids.append(
-            _require_string(row["strategy_id"], path=f"{row_path}.strategy_id")
-        )
+        exception_ids.append(_require_string(row["strategy_id"], path=f"{row_path}.strategy_id"))
         _require_string(row["policy"], path=f"{row_path}.policy")
     if tuple(exception_ids) != PRIVATE_RNG_STRATEGY_IDS:
         raise EvidenceAssemblyError(f"{path}.private_rng_exceptions: mismatch")
@@ -741,9 +752,7 @@ def _validate_rng(value: object, plan: dict[str, Any], *, path: str) -> None:
             raise EvidenceAssemblyError(f"{row_path}: manifest-bound seed mismatch")
 
 
-def _validate_runtime(
-    value: object, authority: dict[str, Any], *, path: str
-) -> dict[str, Any]:
+def _validate_runtime(value: object, authority: dict[str, Any], *, path: str) -> dict[str, Any]:
     runtime = _as_dict(value, path=path)
     _require_exact_keys(runtime, RUNTIME_KEYS, path=path)
     if runtime["schema_version"] != "NEXT_DRAW_54_REPLAY_RUNTIME_V2":
@@ -780,12 +789,8 @@ def _validate_plan(value: Mapping[str, Any]) -> _ValidatedPlan:
     _validate_self_hash(payload, "plan_manifest_sha256", path="plan")
 
     authority = _validate_authority(payload["authority"], path="plan.authority")
-    dataset, synthetic, draw_rows = _validate_dataset(
-        payload["dataset"], path="plan.dataset"
-    )
-    strategy_names = _validate_strategies(
-        payload["strategies"], path="plan.strategies"
-    )
+    dataset, synthetic, draw_rows = _validate_dataset(payload["dataset"], path="plan.dataset")
+    strategy_names = _validate_strategies(payload["strategies"], path="plan.strategies")
     runtime = _validate_runtime(
         payload["runtime_fingerprint"], authority, path="plan.runtime_fingerprint"
     )
@@ -822,8 +827,7 @@ def _validate_plan(value: Mapping[str, Any]) -> _ValidatedPlan:
     strategy_records = cast(list[dict[str, Any]], payload["strategies"]["records"])
     largest_minimum = max(cast(int, row["min_history"]) for row in strategy_records)
     if not all(
-        sum(_draw_key(row) < _draw_key(target) for row in draw_rows)
-        >= largest_minimum
+        sum(_draw_key(row) < _draw_key(target) for row in draw_rows) >= largest_minimum
         for target in vector
     ):
         raise EvidenceAssemblyError(
@@ -877,9 +881,441 @@ def _validate_plan(value: Mapping[str, Any]) -> _ValidatedPlan:
     )
 
 
-def _validate_evaluation_records(
-    value: object, *, path: str
+def _target_identity(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {"draw_date": row["draw_date"], "draw_number": row["draw_number"]}
+
+
+def _causal_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {key: row[key] for key in ("draw_date", "draw_number", "main_numbers", "special_number")}
+
+
+def _adapter_row(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "draw": row["draw_number"],
+        "date": row["draw_date"],
+        "numbers": row["main_numbers"],
+    }
+
+
+def _target_contexts(plan: _ValidatedPlan) -> tuple[dict[str, Any], ...]:
+    rows = cast(list[dict[str, Any]], plan.payload["dataset"]["snapshot"]["draws"])
+    targets = cast(list[dict[str, Any]], plan.payload["targets"]["vector"])
+    by_number = {cast(str, row["draw_number"]): row for row in rows}
+    contexts: list[dict[str, Any]] = []
+    for target in targets:
+        history = [row for row in rows if _draw_key(row) < _draw_key(target)]
+        outcome = _causal_row(by_number[cast(str, target["draw_number"])])
+        contexts.append(
+            {
+                "target": target,
+                "outcome": outcome,
+                "outcome_sha256": _digest(outcome),
+                "causal_history_count": len(history),
+                "cutoff": _target_identity(history[-1]),
+                "causal_history_sha256": _digest([_causal_row(row) for row in history]),
+                "adapter_input_sha256": _digest([_adapter_row(row) for row in history]),
+            }
+        )
+    return tuple(contexts)
+
+
+def _validate_ticket(value: object, *, path: str) -> list[int]:
+    ticket = _as_list(value, path=path)
+    if (
+        len(ticket) != 6
+        or any(type(number) is not int or not 1 <= number <= 49 for number in ticket)
+        or len(set(ticket)) != 6
+    ):
+        raise EvidenceAssemblyError(f"{path}: ticket must contain six unique integers from 1 to 49")
+    return cast(list[int], ticket)
+
+
+def _seeded_state_digest(seed: Mapping[str, Any]) -> str:
+    import random
+
+    state = random.Random(int(cast(str, seed["seed_integer"]))).getstate()
+    if len(state) != 3 or state[0] != 3 or state[2] is not None:
+        raise EvidenceAssemblyError("strategy result: unsupported seeded RNG state")
+    return _digest(
+        {
+            "state_version": 3,
+            "mt19937_state": list(cast(tuple[int, ...], state[1])),
+            "gaussian_cache": "NONE",
+        }
+    )
+
+
+def _snapshot_hash(
+    plan: _ValidatedPlan,
+    identity: Mapping[str, Any],
+    context: Mapping[str, Any],
+    ticket: list[int],
+) -> str:
+    names = cast(list[dict[str, Any]], plan.payload["strategies"]["names"])
+    strategy_name = next(
+        cast(str, row["strategy_name"])
+        for row in names
+        if row["strategy_id"] == identity["strategy_id"]
+    )
+    return _digest(
+        {
+            "snapshot_schema_version": "1.0.0",
+            "dataset_id": plan.payload["dataset"]["dataset_id"],
+            "dataset_version": plan.payload["dataset"]["dataset_version"],
+            "lottery_type": "BIG_LOTTO",
+            "source_mode": "TARGET_NATIVE",
+            "target_draw_number": context["target"]["draw_number"],
+            "target_draw_date": context["target"]["draw_date"],
+            "cutoff_draw_number": context["cutoff"]["draw_number"],
+            "cutoff_draw_date": context["cutoff"]["draw_date"],
+            "strategy_id": identity["strategy_id"],
+            "strategy_version": identity["strategy_version"],
+            "adapter_strategy_id": identity["strategy_id"],
+            "adapter_strategy_name": strategy_name,
+            "adapter_strategy_version": identity["strategy_version"],
+            "history_status": "OK",
+            "causal_history_count": context["causal_history_count"],
+            "causal_history_sha256": context["causal_history_sha256"],
+            "prediction_status": "OK",
+            "predicted_main_numbers": ticket,
+        }
+    )
+
+
+def _expected_cell(
+    plan: _ValidatedPlan,
+    identity: Mapping[str, Any],
+    context: Mapping[str, Any],
+    value: dict[str, Any],
+    previous_rng_sha256: str,
+    *,
+    path: str,
+) -> dict[str, Any]:
+    emitted = _validate_ticket(value["emitted_ticket"], path=f"{path}.emitted_ticket")
+    legal = _validate_ticket(value["legal_ticket"], path=f"{path}.legal_ticket")
+    _require_equal(legal, sorted(emitted), path=f"{path}.legal_ticket")
+    after = _require_hash(value["rng_after_sha256"], path=f"{path}.rng_after_sha256")
+    expected: dict[str, Any] = {
+        **context,
+        "strategy_id": identity["strategy_id"],
+        "strategy_version": identity["strategy_version"],
+        "history_status": "OK",
+        "history_reason": "NONE",
+        "prediction_status": "OK",
+        "prediction_reason": "NONE",
+        "emitted_ticket": emitted,
+        "legal_ticket": legal,
+        "hit_count": len(set(legal) & set(context["outcome"]["main_numbers"])),
+        "rng_before_sha256": previous_rng_sha256,
+        "rng_after_sha256": after,
+        "replay_result_sha256": _snapshot_hash(plan, identity, context, legal),
+    }
+    expected["cell_sha256"] = _digest(expected)
+    return expected
+
+
+def _validate_source_integrity(
+    plan: _ValidatedPlan,
+    identity: Mapping[str, Any],
+    value: object,
+    *,
+    path: str,
+) -> dict[str, Any]:
+    integrity = _as_dict(value, path=path)
+    _require_exact_keys(integrity, SOURCE_INTEGRITY_KEYS, path=path)
+    expected_values = {
+        "repository_head": REPOSITORY_HEAD,
+        "repository_tree": REPOSITORY_TREE,
+        "source_inventory_sha256_before": plan.payload["authority"]["source_inventory_sha256"],
+        "source_inventory_sha256_after": plan.payload["authority"]["source_inventory_sha256"],
+        "source_draw_db_sha256_before": plan.payload["dataset"]["source_db"]["sha256"],
+        "source_draw_db_sha256_after": plan.payload["dataset"]["source_db"]["sha256"],
+        "import_anchor_verified": True,
+    }
+    for key, expected in expected_values.items():
+        _require_equal(integrity[key], expected, path=f"{path}.{key}")
+
+    inventory = {
+        cast(str, row["path"]): cast(str, row["sha256"])
+        for row in cast(list[dict[str, Any]], plan.payload["authority"]["load_bearing_blobs"])
+    }
+    modules = _as_list(integrity["imported_modules"], path=f"{path}.imported_modules")
+    names: list[str] = []
+    for index, raw in enumerate(modules):
+        row_path = f"{path}.imported_modules[{index}]"
+        module = _as_dict(raw, path=row_path)
+        _require_exact_keys(module, IMPORTED_MODULE_KEYS, path=row_path)
+        name = _require_string(module["module"], path=f"{row_path}.module")
+        source_path = _require_string(module["path"], path=f"{row_path}.path")
+        source_sha256 = _require_hash(module["sha256"], path=f"{row_path}.sha256")
+        if name != "lottolab" and not name.startswith("lottolab."):
+            raise EvidenceAssemblyError(f"{row_path}.module: outside LottoLab")
+        stem = "src/" + name.replace(".", "/")
+        if source_path not in (stem + ".py", stem + "/__init__.py"):
+            raise EvidenceAssemblyError(f"{row_path}.path: module source mismatch")
+        if inventory.get(source_path) != source_sha256:
+            raise EvidenceAssemblyError(f"{row_path}.sha256: frozen inventory mismatch")
+        names.append(name)
+    if names != sorted(set(names)):
+        raise EvidenceAssemblyError(f"{path}.imported_modules: canonical order required")
+    required = {
+        "lottolab",
+        "lottolab.application.use_cases.replay_historical_predictions",
+        "lottolab.strategies.catalog",
+        cast(str, identity["adapter_path"]).split(":")[0],
+    }
+    if not required.issubset(names):
+        raise EvidenceAssemblyError(f"{path}.imported_modules: incomplete source evidence")
+    return integrity
+
+
+def _validate_strategy_results(
+    value: object,
+    plan: _ValidatedPlan,
+    *,
+    path: str,
 ) -> tuple[dict[str, Any], ...]:
+    raw_results = _as_list(value, path=path)
+    if len(raw_results) != EXPECTED_STRATEGY_COUNT:
+        raise EvidenceAssemblyError(f"{path}: exactly 54 strategy results required")
+    contexts = _target_contexts(plan)
+    identities = cast(list[dict[str, Any]], plan.payload["strategies"]["records"])
+    seeds = cast(list[dict[str, Any]], plan.payload["rng"]["seeds"])
+    results: list[dict[str, Any]] = []
+    for index, (raw, identity, seed) in enumerate(zip(raw_results, identities, seeds, strict=True)):
+        result_path = f"{path}[{index}]"
+        result = _as_dict(raw, path=result_path)
+        _require_exact_keys(result, STRATEGY_RESULT_KEYS, path=result_path)
+        _validate_self_hash(result, "strategy_output_sha256", path=result_path)
+        if result["result_schema_version"] != "NEXT_DRAW_54_STRATEGY_RESULT_V2":
+            raise EvidenceAssemblyError(f"{result_path}.result_schema_version: mismatch")
+
+        result_identity = _as_dict(
+            result["strategy_identity"], path=f"{result_path}.strategy_identity"
+        )
+        _require_exact_keys(
+            result_identity,
+            STRATEGY_IDENTITY_KEYS,
+            path=f"{result_path}.strategy_identity",
+        )
+        _require_equal(result_identity, identity, path=f"{result_path}.strategy_identity")
+        _require_equal(result["seed"], seed, path=f"{result_path}.seed")
+        rng_class = _rng_class(cast(str, identity["strategy_id"]))
+        if result["rng_class"] != rng_class:
+            raise EvidenceAssemblyError(f"{result_path}.rng_class: mismatch")
+
+        guard = _as_dict(
+            result["bootstrap_rng_guard"],
+            path=f"{result_path}.bootstrap_rng_guard",
+        )
+        _require_exact_keys(
+            guard,
+            BOOTSTRAP_RNG_GUARD_KEYS,
+            path=f"{result_path}.bootstrap_rng_guard",
+        )
+        _require_equal(
+            guard,
+            {"unchanged": True, "state_version": 3},
+            path=f"{result_path}.bootstrap_rng_guard",
+        )
+        post_seed = _require_hash(
+            result["post_seed_rng_sha256"],
+            path=f"{result_path}.post_seed_rng_sha256",
+        )
+        if post_seed != _seeded_state_digest(seed):
+            raise EvidenceAssemblyError(
+                f"{result_path}.post_seed_rng_sha256: seeded state mismatch"
+            )
+        final_rng = _require_hash(
+            result["final_rng_sha256"], path=f"{result_path}.final_rng_sha256"
+        )
+        if result["adapter_invocation_count"] != EXPECTED_REPLAY_DEPTH:
+            raise EvidenceAssemblyError(
+                f"{result_path}.adapter_invocation_count: exactly 800 required"
+            )
+
+        cache = _as_dict(result["cache"], path=f"{result_path}.cache")
+        _require_exact_keys(cache, CACHE_KEYS, path=f"{result_path}.cache")
+        _require_equal(cache, EXPECTED_CACHE_ZERO, path=f"{result_path}.cache")
+        source_integrity = _validate_source_integrity(
+            plan,
+            identity,
+            result["source_integrity"],
+            path=f"{result_path}.source_integrity",
+        )
+        if result["runtime_fingerprint_sha256"] != plan.payload["runtime_fingerprint_sha256"]:
+            raise EvidenceAssemblyError(f"{result_path}.runtime_fingerprint_sha256: plan mismatch")
+        if result["final_status"] != "COMPLETE":
+            raise EvidenceAssemblyError(f"{result_path}.final_status: mismatch")
+
+        cells = _as_list(result["cells"], path=f"{result_path}.cells")
+        if len(cells) != EXPECTED_REPLAY_DEPTH:
+            raise EvidenceAssemblyError(f"{result_path}.cells: exactly 800 required")
+        previous = post_seed
+        validated_cells: list[dict[str, Any]] = []
+        for cell_index, (raw_cell, context) in enumerate(zip(cells, contexts, strict=True)):
+            cell_path = f"{result_path}.cells[{cell_index}]"
+            cell = _as_dict(raw_cell, path=cell_path)
+            _require_exact_keys(cell, CELL_KEYS, path=cell_path)
+            for nested_key in ("target", "cutoff"):
+                nested_path = f"{cell_path}.{nested_key}"
+                nested = _as_dict(cell[nested_key], path=nested_path)
+                _require_exact_keys(nested, TARGET_IDENTITY_KEYS, path=nested_path)
+            outcome = _as_dict(cell["outcome"], path=f"{cell_path}.outcome")
+            _require_exact_keys(outcome, OUTCOME_KEYS, path=f"{cell_path}.outcome")
+            before = _require_hash(cell["rng_before_sha256"], path=f"{cell_path}.rng_before_sha256")
+            if before != previous:
+                raise EvidenceAssemblyError(
+                    f"{cell_path}.rng_before_sha256: continuous RNG ledger mismatch"
+                )
+            expected_cell = _expected_cell(
+                plan,
+                identity,
+                context,
+                cell,
+                previous,
+                path=cell_path,
+            )
+            if rng_class != "PROCESS_GLOBAL_PYTHON_RANDOM" and (
+                expected_cell["rng_after_sha256"] != previous
+            ):
+                raise EvidenceAssemblyError(
+                    f"{cell_path}.rng_after_sha256: forbidden RNG state change"
+                )
+            _require_equal(cell, expected_cell, path=f"{cell_path}.closed_payload")
+            previous = cast(str, expected_cell["rng_after_sha256"])
+            validated_cells.append(cell)
+        if final_rng != previous:
+            raise EvidenceAssemblyError(f"{result_path}.final_rng_sha256: terminal state mismatch")
+
+        expected_result: dict[str, Any] = {
+            "result_schema_version": "NEXT_DRAW_54_STRATEGY_RESULT_V2",
+            "strategy_identity": identity,
+            "seed": seed,
+            "rng_class": rng_class,
+            "bootstrap_rng_guard": {"unchanged": True, "state_version": 3},
+            "post_seed_rng_sha256": post_seed,
+            "final_rng_sha256": previous,
+            "adapter_invocation_count": EXPECTED_REPLAY_DEPTH,
+            "cache": EXPECTED_CACHE_ZERO,
+            "source_integrity": source_integrity,
+            "runtime_fingerprint_sha256": plan.payload["runtime_fingerprint_sha256"],
+            "cells": validated_cells,
+            "final_status": "COMPLETE",
+        }
+        expected_result["strategy_output_sha256"] = _digest(expected_result)
+        _require_equal(result, expected_result, path=f"{result_path}.closed_payload")
+        results.append(result)
+    return tuple(results)
+
+
+def _fraction_payload(value: Fraction) -> dict[str, str]:
+    return {"numerator": str(value.numerator), "denominator": str(value.denominator)}
+
+
+def _derive_evaluations_and_artifact(
+    plan: _ValidatedPlan, results: Sequence[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    evaluations: list[dict[str, Any]] = []
+    records: list[dict[str, Any]] = []
+    names = cast(list[dict[str, Any]], plan.payload["strategies"]["names"])
+    for result, name in zip(results, names, strict=True):
+        cells = cast(list[dict[str, Any]], result["cells"])
+        counts: list[dict[str, Any]] = []
+        windows: list[dict[str, Any]] = []
+        for label, size in zip(EXPECTED_WINDOW_ORDER, EXPECTED_WINDOW_ELIGIBLE_COUNTS, strict=True):
+            success = sum(cell["hit_count"] >= 3 for cell in cells[-size:])
+            observed = Fraction(success, size)
+            counts.append(
+                {
+                    "window": label,
+                    "success_count": success,
+                    "eligible_draw_count": size,
+                    "observed_value": _fraction_payload(observed),
+                }
+            )
+            windows.append(
+                {
+                    "window_kind": label,
+                    "window_status": "COMPLETE",
+                    "eligible_draw_count": size,
+                    "observed_value": _fraction_payload(observed),
+                    "random_reference": _fraction_payload(EXPECTED_RANDOM_REFERENCE),
+                    "delta_vs_random": _fraction_payload(observed - EXPECTED_RANDOM_REFERENCE),
+                }
+            )
+        strategy_id = result["strategy_identity"]["strategy_id"]
+        evaluations.append({"strategy_id": strategy_id, "windows": counts})
+        records.append(
+            {
+                "strategy_id": strategy_id,
+                "strategy_name": name["strategy_name"],
+                "native_ticket_count": 1,
+                "status": "EVALUATED",
+                "hit_tier_id": EXPECTED_HIT_TIER_ID,
+                "windows": windows,
+            }
+        )
+    excluded = plan.payload["strategies"]["excluded"]
+    records.insert(
+        EXPECTED_ZONE_ORDINAL - 1,
+        {
+            "strategy_id": ZONE_STRATEGY_ID,
+            "strategy_name": excluded["strategy_name"],
+            "native_ticket_count": 1,
+            "status": ZONE_STATUS,
+            "hit_tier_id": EXPECTED_HIT_TIER_ID,
+            "windows": [],
+        },
+    )
+    artifact: dict[str, Any] = {
+        "artifact_schema_version": ARTIFACT_SCHEMA_VERSION,
+        "evaluator_version": EXPECTED_EVALUATOR_SEMANTIC_VERSION,
+        "window_order": list(EXPECTED_WINDOW_ORDER),
+        "computation_status": (
+            SYNTHETIC_COMPUTATION_STATUS if plan.synthetic else REAL_COMPUTATION_STATUS
+        ),
+        "lottery_type": "BIG_LOTTO",
+        "source_draw_db_sha256": plan.payload["dataset"]["source_db"]["sha256"],
+        "source_draw_count": plan.source_draw_count,
+        "last_causal_draw_id": plan.last_causal_draw_id,
+        "replay_depth": EXPECTED_REPLAY_DEPTH,
+        "hit_tier_id": EXPECTED_HIT_TIER_ID,
+        "records": records,
+    }
+    artifact["artifact_sha256"] = _digest(artifact)
+    return evaluations, artifact
+
+
+def _expected_deterministic_payload(
+    plan: _ValidatedPlan, results: Sequence[dict[str, Any]]
+) -> dict[str, Any]:
+    matrix = [
+        result["cells"][target_index]["cell_sha256"]
+        for target_index in range(EXPECTED_REPLAY_DEPTH)
+        for result in results
+    ]
+    evaluations, artifact = _derive_evaluations_and_artifact(plan, results)
+    return {
+        "runtime_fingerprint": plan.payload["runtime_fingerprint"],
+        "authority": plan.payload["authority"],
+        "strategy_results": list(results),
+        "matrix_order": "TARGET_MAJOR_STRATEGY_MINOR",
+        "matrix_cell_count": EXPECTED_EVALUATED_CELL_COUNT,
+        "matrix": matrix,
+        "matrix_sha256": _digest(matrix),
+        "evaluation_records": evaluations,
+        "evaluation_sha256": _digest(evaluations),
+        "excluded_strategy": plan.payload["strategies"]["excluded"],
+        "artifact": artifact,
+        "artifact_content_sha256": artifact["artifact_sha256"],
+        "artifact_file_sha256": _file_digest(artifact),
+        "old_84_reuse": False,
+        "final_status": (SYNTHETIC_FINAL_STATUS if plan.synthetic else REAL_FINAL_STATUS),
+    }
+
+
+def _validate_evaluation_records(value: object, *, path: str) -> tuple[dict[str, Any], ...]:
     records = _as_list(value, path=path)
     if len(records) != EXPECTED_STRATEGY_COUNT:
         raise EvidenceAssemblyError(f"{path}: exactly 54 evaluation records required")
@@ -904,9 +1340,7 @@ def _validate_evaluation_records(
                 raise EvidenceAssemblyError(f"{window_path}.window: order mismatch")
             if window["eligible_draw_count"] != eligible:
                 raise EvidenceAssemblyError(f"{window_path}.eligible_draw_count: mismatch")
-            success = _require_int(
-                window["success_count"], path=f"{window_path}.success_count"
-            )
+            success = _require_int(window["success_count"], path=f"{window_path}.success_count")
             if success > eligible:
                 raise EvidenceAssemblyError(f"{window_path}.success_count: too large")
             _validate_fraction(
@@ -935,31 +1369,20 @@ def _validate_artifact(
         raise EvidenceAssemblyError("artifact.evaluator_version: mismatch")
     if artifact["window_order"] != list(EXPECTED_WINDOW_ORDER):
         raise EvidenceAssemblyError("artifact.window_order: mismatch")
-    expected_status = (
-        SYNTHETIC_COMPUTATION_STATUS if synthetic else REAL_COMPUTATION_STATUS
-    )
+    expected_status = SYNTHETIC_COMPUTATION_STATUS if synthetic else REAL_COMPUTATION_STATUS
     if artifact["computation_status"] != expected_status:
         raise EvidenceAssemblyError("artifact.computation_status: path mismatch")
     if artifact["lottery_type"] != "BIG_LOTTO":
         raise EvidenceAssemblyError("artifact.lottery_type: mismatch")
-    _require_hash(
-        artifact["source_draw_db_sha256"], path="artifact.source_draw_db_sha256"
-    )
-    _require_int(
-        artifact["source_draw_count"], path="artifact.source_draw_count", minimum=1
-    )
-    _require_string(
-        artifact["last_causal_draw_id"], path="artifact.last_causal_draw_id"
-    )
+    _require_hash(artifact["source_draw_db_sha256"], path="artifact.source_draw_db_sha256")
+    _require_int(artifact["source_draw_count"], path="artifact.source_draw_count", minimum=1)
+    _require_string(artifact["last_causal_draw_id"], path="artifact.last_causal_draw_id")
     if artifact["replay_depth"] != EXPECTED_REPLAY_DEPTH:
         raise EvidenceAssemblyError("artifact.replay_depth: exactly 800 required")
     if artifact["hit_tier_id"] != EXPECTED_HIT_TIER_ID:
         raise EvidenceAssemblyError("artifact.hit_tier_id: M3_PLUS required")
     if plan is not None:
-        if (
-            artifact["source_draw_db_sha256"]
-            != plan.payload["dataset"]["source_db"]["sha256"]
-        ):
+        if artifact["source_draw_db_sha256"] != plan.payload["dataset"]["source_db"]["sha256"]:
             raise EvidenceAssemblyError("artifact.source_draw_db_sha256: plan mismatch")
         if artifact["source_draw_count"] != plan.source_draw_count:
             raise EvidenceAssemblyError("artifact.source_draw_count: plan mismatch")
@@ -981,10 +1404,7 @@ def _validate_artifact(
         if record["strategy_id"] != strategy_id:
             raise EvidenceAssemblyError(f"{row_path}.strategy_id: order mismatch")
         _require_string(record["strategy_name"], path=f"{row_path}.strategy_name")
-        if (
-            record["native_ticket_count"] != 1
-            or record["hit_tier_id"] != EXPECTED_HIT_TIER_ID
-        ):
+        if record["native_ticket_count"] != 1 or record["hit_tier_id"] != EXPECTED_HIT_TIER_ID:
             raise EvidenceAssemblyError(f"{row_path}: native M3_PLUS record required")
         windows = _as_list(record["windows"], path=f"{row_path}.windows")
         if index == EXPECTED_ZONE_ORDINAL - 1:
@@ -1000,10 +1420,7 @@ def _validate_artifact(
             continue
         if record["status"] != "EVALUATED" or len(windows) != 4:
             raise EvidenceAssemblyError(f"{row_path}: complete EVALUATED record required")
-        if (
-            plan is not None
-            and record["strategy_name"] != plan.strategy_names[reachable_index]
-        ):
+        if plan is not None and record["strategy_name"] != plan.strategy_names[reachable_index]:
             raise EvidenceAssemblyError(f"{row_path}.strategy_name: plan mismatch")
         evaluation = evaluations[reachable_index] if evaluations is not None else None
         evaluated_count += 1
@@ -1043,15 +1460,11 @@ def _validate_artifact(
     return artifact
 
 
-def _validate_operational(
-    value: object, *, path: str
-) -> tuple[str, str, frozenset[str]]:
+def _validate_operational(value: object, *, path: str) -> tuple[str, str, frozenset[str]]:
     operational = _as_dict(value, path=path)
     _require_exact_keys(operational, OPERATIONAL_KEYS, path=path)
     run_id = _require_string(operational["run_id"], path=f"{path}.run_id")
-    output_root = _require_string(
-        operational["output_root"], path=f"{path}.output_root"
-    )
+    output_root = _require_string(operational["output_root"], path=f"{path}.output_root")
     for key in (
         "source_root",
         "source_db_path",
@@ -1068,15 +1481,11 @@ def _validate_operational(
         row_path = f"{path}.attempts[{index}]"
         attempt = _as_dict(raw, path=row_path)
         _require_exact_keys(attempt, ATTEMPT_KEYS, path=row_path)
-        attempt_id = _require_string(
-            attempt["attempt_id"], path=f"{row_path}.attempt_id"
-        )
+        attempt_id = _require_string(attempt["attempt_id"], path=f"{row_path}.attempt_id")
         if attempt_id in attempt_ids:
             raise EvidenceAssemblyError(f"{row_path}.attempt_id: duplicate")
         attempt_ids.add(attempt_id)
-        strategy_id = _require_string(
-            attempt["strategy_id"], path=f"{row_path}.strategy_id"
-        )
+        strategy_id = _require_string(attempt["strategy_id"], path=f"{row_path}.strategy_id")
         if strategy_id not in EXPECTED_STRATEGY_IDS:
             raise EvidenceAssemblyError(f"{row_path}.strategy_id: outside universe")
         if attempt["status"] == "SUCCEEDED":
@@ -1086,9 +1495,7 @@ def _validate_operational(
     return run_id, output_root, frozenset(attempt_ids)
 
 
-def _validate_run(
-    value: Mapping[str, Any], plan: _ValidatedPlan, *, label: str
-) -> _ValidatedRun:
+def _validate_run(value: Mapping[str, Any], plan: _ValidatedPlan, *, label: str) -> _ValidatedRun:
     payload = copy.deepcopy(dict(value))
     validate_value_domain(payload)
     _require_exact_keys(payload, RUN_KEYS, path=label)
@@ -1127,34 +1534,29 @@ def _validate_run(
         plan.payload["authority"],
         path=f"{label}.deterministic_payload.authority",
     )
-    strategy_results = _as_list(
+    strategy_results = _validate_strategy_results(
         deterministic["strategy_results"],
+        plan,
         path=f"{label}.deterministic_payload.strategy_results",
     )
-    if len(strategy_results) != EXPECTED_STRATEGY_COUNT:
-        raise EvidenceAssemblyError(f"{label}: exactly 54 strategy results required")
-    result_ids: list[str] = []
-    for index, raw in enumerate(strategy_results):
-        result_path = f"{label}.deterministic_payload.strategy_results[{index}]"
-        result = _as_dict(raw, path=result_path)
-        identity = _as_dict(
-            result.get("strategy_identity"), path=f"{result_path}.strategy_identity"
-        )
-        result_ids.append(
-            _require_string(
-                identity.get("strategy_id"),
-                path=f"{result_path}.strategy_identity.strategy_id",
+    successful_attempts = [
+        attempt
+        for attempt in payload["operational_envelope"]["attempts"]
+        if attempt["status"] == "SUCCEEDED"
+    ]
+    for index, (attempt, result) in enumerate(
+        zip(successful_attempts, strategy_results, strict=True)
+    ):
+        if attempt["result_sha256"] != result["strategy_output_sha256"]:
+            raise EvidenceAssemblyError(
+                f"{label}.operational_envelope.attempts[{index}].result_sha256: "
+                "strategy result mismatch"
             )
-        )
-    if tuple(result_ids) != EXPECTED_STRATEGY_IDS:
-        raise EvidenceAssemblyError(f"{label}: strategy result order mismatch")
     if deterministic["matrix_order"] != "TARGET_MAJOR_STRATEGY_MINOR":
         raise EvidenceAssemblyError(f"{label}.deterministic_payload.matrix_order: mismatch")
     if deterministic["matrix_cell_count"] != EXPECTED_EVALUATED_CELL_COUNT:
         raise EvidenceAssemblyError(f"{label}.deterministic_payload.matrix_cell_count: mismatch")
-    matrix = _as_list(
-        deterministic["matrix"], path=f"{label}.deterministic_payload.matrix"
-    )
+    matrix = _as_list(deterministic["matrix"], path=f"{label}.deterministic_payload.matrix")
     if len(matrix) != EXPECTED_EVALUATED_CELL_COUNT:
         raise EvidenceAssemblyError(f"{label}.deterministic_payload.matrix: cell count")
     if deterministic["matrix_sha256"] != _digest(matrix):
@@ -1164,9 +1566,7 @@ def _validate_run(
         path=f"{label}.deterministic_payload.evaluation_records",
     )
     if deterministic["evaluation_sha256"] != _digest(list(evaluations)):
-        raise EvidenceAssemblyError(
-            f"{label}.deterministic_payload.evaluation_sha256: mismatch"
-        )
+        raise EvidenceAssemblyError(f"{label}.deterministic_payload.evaluation_sha256: mismatch")
     _require_equal(
         deterministic["excluded_strategy"],
         plan.payload["strategies"]["excluded"],
@@ -1187,6 +1587,27 @@ def _validate_run(
     expected_final = SYNTHETIC_FINAL_STATUS if plan.synthetic else REAL_FINAL_STATUS
     if deterministic["final_status"] != expected_final:
         raise EvidenceAssemblyError(f"{label}.final_status: path mismatch")
+    expected_deterministic = _expected_deterministic_payload(plan, strategy_results)
+    _require_equal(
+        matrix,
+        expected_deterministic["matrix"],
+        path=f"{label}.deterministic_payload.matrix.canonical_cells",
+    )
+    _require_equal(
+        list(evaluations),
+        expected_deterministic["evaluation_records"],
+        path=f"{label}.deterministic_payload.evaluation_records.canonical_cells",
+    )
+    _require_equal(
+        artifact,
+        expected_deterministic["artifact"],
+        path=f"{label}.deterministic_payload.artifact.canonical_cells",
+    )
+    _require_equal(
+        deterministic,
+        expected_deterministic,
+        path=f"{label}.deterministic_payload.closed_canonical_runner_payload",
+    )
     return _ValidatedRun(
         payload=payload,
         deterministic_payload=deterministic,
@@ -1232,20 +1653,11 @@ def _validate_acceptance(
         != run_b.payload["deterministic_payload_sha256"]
     ):
         raise EvidenceAssemblyError("acceptance.run_b_deterministic_payload_sha256: mismatch")
-    if (
-        acceptance["comparison_contract"]
-        != "EXACT_LF_FREE_LCJ1_DETERMINISTIC_PAYLOAD_BYTES"
-    ):
+    if acceptance["comparison_contract"] != "EXACT_LF_FREE_LCJ1_DETERMINISTIC_PAYLOAD_BYTES":
         raise EvidenceAssemblyError("acceptance.comparison_contract: mismatch")
-    comparison = _as_dict(
-        acceptance["comparison_results"], path="acceptance.comparison_results"
-    )
-    _require_exact_keys(
-        comparison, COMPARISON_RESULTS_KEYS, path="acceptance.comparison_results"
-    )
-    _require_equal(
-        comparison, EXPECTED_COMPARISON_RESULTS, path="acceptance.comparison_results"
-    )
+    comparison = _as_dict(acceptance["comparison_results"], path="acceptance.comparison_results")
+    _require_exact_keys(comparison, COMPARISON_RESULTS_KEYS, path="acceptance.comparison_results")
+    _require_equal(comparison, EXPECTED_COMPARISON_RESULTS, path="acceptance.comparison_results")
     if acceptance["old_84_reuse_attestation"] is not False:
         raise EvidenceAssemblyError("acceptance.old_84_reuse_attestation: must be false")
     expected_final = SYNTHETIC_FINAL_STATUS if plan.synthetic else REAL_FINAL_STATUS
@@ -1253,9 +1665,7 @@ def _validate_acceptance(
         raise EvidenceAssemblyError("acceptance.final_status: plan/run mismatch")
     if synthetic_test:
         if not plan.synthetic or acceptance["final_status"] != SYNTHETIC_FINAL_STATUS:
-            raise EvidenceAssemblyError(
-                "synthetic-test path requires SYNTHETIC_TEST_ONLY evidence"
-            )
+            raise EvidenceAssemblyError("synthetic-test path requires SYNTHETIC_TEST_ONLY evidence")
     elif plan.synthetic or acceptance["final_status"] != REAL_FINAL_STATUS:
         raise EvidenceAssemblyError(
             "SYNTHETIC_TEST_ONLY is forbidden on the real-evidence assembly path"

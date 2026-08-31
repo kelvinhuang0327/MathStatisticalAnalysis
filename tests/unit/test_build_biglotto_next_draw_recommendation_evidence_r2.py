@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import inspect
 import os
+import random
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -138,29 +139,42 @@ def _snapshot(*, synthetic: bool, draw_count: int) -> Document:
     ]
     return {
         "snapshot_schema_version": "NEXT_DRAW_54_SOURCE_SNAPSHOT_V2",
-        "kind": (
-            assembler.SYNTHETIC_DATA_KIND if synthetic else assembler.REAL_DATA_KIND
-        ),
+        "kind": (assembler.SYNTHETIC_DATA_KIND if synthetic else assembler.REAL_DATA_KIND),
         "lottery_type": "BIG_LOTTO",
         "draws": draws,
     }
 
 
-def _authority() -> Document:
-    inventory = [
-        {
-            "path": "src/lottolab/strategies/catalog.py",
-            "sha256": assembler.CATALOG_SHA256,
-            "git_blob": assembler.CATALOG_GIT_BLOB,
-            "mode": "100644",
-        },
-        {
-            "path": "uv.lock",
-            "sha256": assembler.UV_LOCK_SHA256,
-            "git_blob": "1" * 40,
-            "mode": "100644",
-        },
-    ]
+def _module_path(name: str) -> str:
+    stem = "src/" + name.replace(".", "/")
+    return stem + "/__init__.py" if name == "lottolab" else stem + ".py"
+
+
+def _authority(strategies: Document) -> Document:
+    modules = {
+        "lottolab",
+        "lottolab.application.use_cases.replay_historical_predictions",
+        "lottolab.strategies.catalog",
+        *(row["adapter_path"].split(":")[0] for row in strategies["records"]),
+    }
+    paths = {_module_path(name) for name in modules} | {"uv.lock"}
+    inventory: list[Document] = []
+    for path in sorted(paths):
+        sha256 = _digest(path)
+        git_blob = _digest("blob:" + path)[:40]
+        if path == "src/lottolab/strategies/catalog.py":
+            sha256 = assembler.CATALOG_SHA256
+            git_blob = assembler.CATALOG_GIT_BLOB
+        elif path == "uv.lock":
+            sha256 = assembler.UV_LOCK_SHA256
+        inventory.append(
+            {
+                "path": path,
+                "sha256": sha256,
+                "git_blob": git_blob,
+                "mode": "100644",
+            }
+        )
     return {
         "repository_head": assembler.REPOSITORY_HEAD,
         "repository_tree": assembler.REPOSITORY_TREE,
@@ -246,8 +260,8 @@ def _rng(strategies: Document, common_hash: str) -> Document:
 
 
 def _plan(*, synthetic: bool) -> Document:
-    authority = _authority()
     strategies = _strategy_contract()
+    authority = _authority(strategies)
     largest_minimum = max(row["min_history"] for row in strategies["records"])
     snapshot = _snapshot(
         synthetic=synthetic,
@@ -329,7 +343,201 @@ def _plan(*, synthetic: bool) -> Document:
 
 
 def _success_count(strategy_index: int, window_index: int, eligible: int) -> int:
-    return (strategy_index * 7 + window_index * 11) % (eligible + 1)
+    count_50 = (strategy_index * 7) % 51
+    count_300 = count_50 + (strategy_index * 11) % 251
+    count_750 = count_300 + (strategy_index * 13) % 451
+    count_800 = count_750 + (strategy_index * 17) % 51
+    assert eligible == assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS[window_index]
+    return (count_50, count_300, count_750, count_800)[window_index]
+
+
+def _draw_key(row: Document) -> tuple[str, int]:
+    return cast(str, row["draw_date"]), int(cast(str, row["draw_number"]))
+
+
+def _target_identity(row: Document) -> Document:
+    return {"draw_date": row["draw_date"], "draw_number": row["draw_number"]}
+
+
+def _causal_row(row: Document) -> Document:
+    return {key: row[key] for key in ("draw_date", "draw_number", "main_numbers", "special_number")}
+
+
+def _adapter_row(row: Document) -> Document:
+    return {
+        "draw": row["draw_number"],
+        "date": row["draw_date"],
+        "numbers": row["main_numbers"],
+    }
+
+
+def _target_contexts(plan: Document) -> list[Document]:
+    rows = cast(list[Document], plan["dataset"]["snapshot"]["draws"])
+    by_number = {row["draw_number"]: row for row in rows}
+    contexts: list[Document] = []
+    for target in plan["targets"]["vector"]:
+        history = [row for row in rows if _draw_key(row) < _draw_key(target)]
+        outcome = _causal_row(by_number[target["draw_number"]])
+        contexts.append(
+            {
+                "target": target,
+                "outcome": outcome,
+                "outcome_sha256": _digest(outcome),
+                "causal_history_count": len(history),
+                "cutoff": _target_identity(history[-1]),
+                "causal_history_sha256": _digest([_causal_row(row) for row in history]),
+                "adapter_input_sha256": _digest([_adapter_row(row) for row in history]),
+            }
+        )
+    return contexts
+
+
+def _seeded_state_digest(seed: Document) -> str:
+    state = random.Random(int(seed["seed_integer"])).getstate()
+    assert len(state) == 3 and state[0] == 3 and state[2] is None
+    return _digest(
+        {
+            "state_version": 3,
+            "mt19937_state": list(state[1]),
+            "gaussian_cache": "NONE",
+        }
+    )
+
+
+def _snapshot_hash(plan: Document, identity: Document, context: Document, ticket: list[int]) -> str:
+    strategy_name = next(
+        row["strategy_name"]
+        for row in plan["strategies"]["names"]
+        if row["strategy_id"] == identity["strategy_id"]
+    )
+    return _digest(
+        {
+            "snapshot_schema_version": "1.0.0",
+            "dataset_id": plan["dataset"]["dataset_id"],
+            "dataset_version": plan["dataset"]["dataset_version"],
+            "lottery_type": "BIG_LOTTO",
+            "source_mode": "TARGET_NATIVE",
+            "target_draw_number": context["target"]["draw_number"],
+            "target_draw_date": context["target"]["draw_date"],
+            "cutoff_draw_number": context["cutoff"]["draw_number"],
+            "cutoff_draw_date": context["cutoff"]["draw_date"],
+            "strategy_id": identity["strategy_id"],
+            "strategy_version": identity["strategy_version"],
+            "adapter_strategy_id": identity["strategy_id"],
+            "adapter_strategy_name": strategy_name,
+            "adapter_strategy_version": identity["strategy_version"],
+            "history_status": "OK",
+            "causal_history_count": context["causal_history_count"],
+            "causal_history_sha256": context["causal_history_sha256"],
+            "prediction_status": "OK",
+            "predicted_main_numbers": ticket,
+        }
+    )
+
+
+def _source_integrity(plan: Document, identity: Document) -> Document:
+    inventory = {row["path"]: row["sha256"] for row in plan["authority"]["load_bearing_blobs"]}
+    names = sorted(
+        {
+            "lottolab",
+            "lottolab.application.use_cases.replay_historical_predictions",
+            "lottolab.strategies.catalog",
+            identity["adapter_path"].split(":")[0],
+        }
+    )
+    modules = [
+        {
+            "module": name,
+            "path": _module_path(name),
+            "sha256": inventory[_module_path(name)],
+        }
+        for name in names
+    ]
+    return {
+        "repository_head": assembler.REPOSITORY_HEAD,
+        "repository_tree": assembler.REPOSITORY_TREE,
+        "source_inventory_sha256_before": plan["authority"]["source_inventory_sha256"],
+        "source_inventory_sha256_after": plan["authority"]["source_inventory_sha256"],
+        "source_draw_db_sha256_before": plan["dataset"]["source_db"]["sha256"],
+        "source_draw_db_sha256_after": plan["dataset"]["source_db"]["sha256"],
+        "import_anchor_verified": True,
+        "imported_modules": modules,
+    }
+
+
+def _success_flags(strategy_index: int) -> list[bool]:
+    count_50, count_300, count_750, count_800 = [
+        _success_count(strategy_index, index, eligible)
+        for index, eligible in enumerate(assembler.EXPECTED_WINDOW_ELIGIBLE_COUNTS)
+    ]
+    shell_counts = (
+        count_800 - count_750,
+        count_750 - count_300,
+        count_300 - count_50,
+        count_50,
+    )
+    shell_ranges = ((0, 50), (50, 500), (500, 750), (750, 800))
+    flags = [False] * assembler.EXPECTED_REPLAY_DEPTH
+    for count, (start, stop) in zip(shell_counts, shell_ranges, strict=True):
+        assert 0 <= count <= stop - start
+        for index in range(start, start + count):
+            flags[index] = True
+    return flags
+
+
+def _strategy_result(
+    plan: Document,
+    contexts: list[Document],
+    identity: Document,
+    strategy_index: int,
+) -> Document:
+    seed = cast(list[Document], plan["rng"]["seeds"])[strategy_index - 1]
+    state = _seeded_state_digest(seed)
+    cells: list[Document] = []
+    for context, success in zip(contexts, _success_flags(strategy_index), strict=True):
+        ticket = [1, 2, 3, 8, 9, 10] if success else [8, 9, 10, 11, 12, 13]
+        cell: Document = {
+            **context,
+            "strategy_id": identity["strategy_id"],
+            "strategy_version": identity["strategy_version"],
+            "history_status": "OK",
+            "history_reason": "NONE",
+            "prediction_status": "OK",
+            "prediction_reason": "NONE",
+            "emitted_ticket": ticket,
+            "legal_ticket": ticket,
+            "hit_count": 3 if success else 0,
+            "rng_before_sha256": state,
+            "rng_after_sha256": state,
+            "replay_result_sha256": _snapshot_hash(plan, identity, context, ticket),
+        }
+        cell["cell_sha256"] = _digest(cell)
+        cells.append(cell)
+    result: Document = {
+        "result_schema_version": "NEXT_DRAW_54_STRATEGY_RESULT_V2",
+        "strategy_identity": identity,
+        "seed": seed,
+        "rng_class": _rng_class(cast(str, identity["strategy_id"])),
+        "bootstrap_rng_guard": {"unchanged": True, "state_version": 3},
+        "post_seed_rng_sha256": state,
+        "final_rng_sha256": state,
+        "adapter_invocation_count": assembler.EXPECTED_REPLAY_DEPTH,
+        "cache": copy.deepcopy(assembler.EXPECTED_CACHE_ZERO),
+        "source_integrity": _source_integrity(plan, identity),
+        "runtime_fingerprint_sha256": plan["runtime_fingerprint_sha256"],
+        "cells": cells,
+        "final_status": "COMPLETE",
+    }
+    result["strategy_output_sha256"] = _digest(result)
+    return result
+
+
+def _strategy_results(plan: Document) -> list[Document]:
+    contexts = _target_contexts(plan)
+    return [
+        _strategy_result(plan, contexts, identity, index)
+        for index, identity in enumerate(plan["strategies"]["records"], 1)
+    ]
 
 
 def _evaluation_records() -> list[Document]:
@@ -357,16 +565,12 @@ def _evaluation_records() -> list[Document]:
 
 
 def _artifact(plan: Document, evaluations: list[Document], *, synthetic: bool) -> Document:
-    names = {
-        row["strategy_id"]: row["strategy_name"] for row in plan["strategies"]["names"]
-    }
+    names = {row["strategy_id"]: row["strategy_name"] for row in plan["strategies"]["names"]}
     records: list[Document] = []
     for evaluation in evaluations:
         windows: list[Document] = []
         for source in evaluation["windows"]:
-            observed = Fraction(
-                source["success_count"], source["eligible_draw_count"]
-            )
+            observed = Fraction(source["success_count"], source["eligible_draw_count"])
             windows.append(
                 {
                     "window_kind": source["window"],
@@ -374,9 +578,7 @@ def _artifact(plan: Document, evaluations: list[Document], *, synthetic: bool) -
                     "eligible_draw_count": source["eligible_draw_count"],
                     "observed_value": _pair(observed),
                     "random_reference": _pair(assembler.EXPECTED_RANDOM_REFERENCE),
-                    "delta_vs_random": _pair(
-                        observed - assembler.EXPECTED_RANDOM_REFERENCE
-                    ),
+                    "delta_vs_random": _pair(observed - assembler.EXPECTED_RANDOM_REFERENCE),
                 }
             )
         strategy_id = evaluation["strategy_id"]
@@ -425,16 +627,18 @@ def _artifact(plan: Document, evaluations: list[Document], *, synthetic: bool) -
 
 
 def _deterministic_payload(plan: Document, *, synthetic: bool) -> Document:
+    strategy_results = _strategy_results(plan)
     evaluations = _evaluation_records()
     artifact = _artifact(plan, evaluations, synthetic=synthetic)
-    matrix = [ZERO_SHA] * assembler.EXPECTED_EVALUATED_CELL_COUNT
+    matrix = [
+        result["cells"][target_index]["cell_sha256"]
+        for target_index in range(assembler.EXPECTED_REPLAY_DEPTH)
+        for result in strategy_results
+    ]
     return {
         "runtime_fingerprint": copy.deepcopy(plan["runtime_fingerprint"]),
         "authority": copy.deepcopy(plan["authority"]),
-        "strategy_results": [
-            {"strategy_identity": {"strategy_id": strategy_id}}
-            for strategy_id in assembler.EXPECTED_STRATEGY_IDS
-        ],
+        "strategy_results": strategy_results,
         "matrix_order": "TARGET_MAJOR_STRATEGY_MINOR",
         "matrix_cell_count": assembler.EXPECTED_EVALUATED_CELL_COUNT,
         "matrix": matrix,
@@ -447,9 +651,7 @@ def _deterministic_payload(plan: Document, *, synthetic: bool) -> Document:
         "artifact_file_sha256": _file_digest(artifact),
         "old_84_reuse": False,
         "final_status": (
-            assembler.SYNTHETIC_FINAL_STATUS
-            if synthetic
-            else assembler.REAL_FINAL_STATUS
+            assembler.SYNTHETIC_FINAL_STATUS if synthetic else assembler.REAL_FINAL_STATUS
         ),
     }
 
@@ -459,11 +661,11 @@ def _timestamp(day_offset: int) -> str:
     return value.isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def _operational(label: str, *, day_offset: int) -> Document:
+def _operational(results: list[Document], label: str, *, day_offset: int) -> Document:
     attempts = [
         {
             "attempt_id": f"{label}-{index:02d}-01",
-            "strategy_id": strategy_id,
+            "strategy_id": result["strategy_identity"]["strategy_id"],
             "ordinal": 1,
             "pid": 1000 + index,
             "started_at_utc": _timestamp(day_offset),
@@ -473,12 +675,12 @@ def _operational(label: str, *, day_offset: int) -> Document:
             "status": "SUCCEEDED",
             "failure_kind": "",
             "previous_attempt_id": "",
-            "result_sha256": ZERO_SHA,
+            "result_sha256": result["strategy_output_sha256"],
             "partial_output_sha256": "",
             "bootstrap_before_sha256": ZERO_SHA,
             "bootstrap_after_sha256": ZERO_SHA,
         }
-        for index, strategy_id in enumerate(assembler.EXPECTED_STRATEGY_IDS, 1)
+        for index, result in enumerate(results, 1)
     ]
     return {
         "run_id": label,
@@ -494,6 +696,7 @@ def _operational(label: str, *, day_offset: int) -> Document:
 
 
 def _run(plan: Document, deterministic: Document, label: str, day_offset: int) -> Document:
+    results = cast(list[Document], deterministic["strategy_results"])
     return _seal(
         {
             "manifest_schema_version": assembler.RUN_MANIFEST_SCHEMA_VERSION,
@@ -502,7 +705,7 @@ def _run(plan: Document, deterministic: Document, label: str, day_offset: int) -
             "plan_manifest_sha256": plan["plan_manifest_sha256"],
             "common_manifest_sha256": plan["common_manifest_sha256"],
             "campaign_label": f"CAMPAIGN_{label.upper()}",
-            "operational_envelope": _operational(label, day_offset=day_offset),
+            "operational_envelope": _operational(results, label, day_offset=day_offset),
             "deterministic_payload": copy.deepcopy(deterministic),
             "deterministic_payload_sha256": _digest(deterministic),
         },
@@ -520,16 +723,10 @@ def _acceptance(plan: Document, run_a: Document, run_b: Document) -> Document:
             "common_manifest_sha256": plan["common_manifest_sha256"],
             "run_a_manifest_file_sha256": _file_digest(run_a),
             "run_b_manifest_file_sha256": _file_digest(run_b),
-            "run_a_deterministic_payload_sha256": run_a[
-                "deterministic_payload_sha256"
-            ],
-            "run_b_deterministic_payload_sha256": run_b[
-                "deterministic_payload_sha256"
-            ],
+            "run_a_deterministic_payload_sha256": run_a["deterministic_payload_sha256"],
+            "run_b_deterministic_payload_sha256": run_b["deterministic_payload_sha256"],
             "comparison_contract": "EXACT_LF_FREE_LCJ1_DETERMINISTIC_PAYLOAD_BYTES",
-            "comparison_results": copy.deepcopy(
-                assembler.EXPECTED_COMPARISON_RESULTS
-            ),
+            "comparison_results": copy.deepcopy(assembler.EXPECTED_COMPARISON_RESULTS),
             "old_84_reuse_attestation": False,
             "final_status": run_a["deterministic_payload"]["final_status"],
         },
@@ -578,12 +775,8 @@ def _rebind_plan_and_downstream_documents(bundle: Bundle) -> Bundle:
     plan["dataset"]["dataset_version"] = _digest(snapshot)
     plan["dataset"]["dataset_snapshot_sha256"] = _digest(snapshot)
     plan["targets"]["target_order_sha256"] = _digest(plan["targets"]["vector"])
-    plan["common_manifest"]["dataset_snapshot_sha256"] = plan["dataset"][
-        "dataset_snapshot_sha256"
-    ]
-    plan["common_manifest"]["target_order_sha256"] = plan["targets"][
-        "target_order_sha256"
-    ]
+    plan["common_manifest"]["dataset_snapshot_sha256"] = plan["dataset"]["dataset_snapshot_sha256"]
+    plan["common_manifest"]["target_order_sha256"] = plan["targets"]["target_order_sha256"]
     plan["common_manifest_sha256"] = _digest(plan["common_manifest"])
     plan["rng"] = _rng(plan["strategies"], plan["common_manifest_sha256"])
     bundle.plan = _seal(plan, "plan_manifest_sha256")
@@ -790,18 +983,10 @@ def test_fully_resealed_and_rebound_target_reorder_is_rejected() -> None:
     vector[0], vector[1] = vector[1], vector[0]
     bundle = _rebind_plan_and_downstream_documents(bundle)
 
-    assert bundle.run_a["plan_manifest_sha256"] == bundle.plan[
-        "plan_manifest_sha256"
-    ]
-    assert bundle.run_b["common_manifest_sha256"] == bundle.plan[
-        "common_manifest_sha256"
-    ]
-    assert bundle.acceptance["run_a_manifest_file_sha256"] == _file_digest(
-        bundle.run_a
-    )
-    assert bundle.acceptance["run_b_manifest_file_sha256"] == _file_digest(
-        bundle.run_b
-    )
+    assert bundle.run_a["plan_manifest_sha256"] == bundle.plan["plan_manifest_sha256"]
+    assert bundle.run_b["common_manifest_sha256"] == bundle.plan["common_manifest_sha256"]
+    assert bundle.acceptance["run_a_manifest_file_sha256"] == _file_digest(bundle.run_a)
+    assert bundle.acceptance["run_b_manifest_file_sha256"] == _file_digest(bundle.run_b)
     with pytest.raises(
         assembler.EvidenceAssemblyError,
         match="exact dataset-derived frozen 800-target vector",
@@ -837,9 +1022,7 @@ def test_old_84_reuse_true_is_rejected_even_when_plan_is_resealed() -> None:
 def test_nonaccepted_final_status_is_rejected() -> None:
     bundle = _bundle()
     bundle.acceptance["final_status"] = "FAIL"
-    bundle.acceptance = _seal(
-        bundle.acceptance, "acceptance_manifest_sha256"
-    )
+    bundle.acceptance = _seal(bundle.acceptance, "acceptance_manifest_sha256")
     with pytest.raises(assembler.EvidenceAssemblyError, match="final_status"):
         _assemble(bundle)
 
@@ -860,9 +1043,7 @@ def test_empirical_zone_record_is_rejected() -> None:
 
 def test_altered_window_contract_is_rejected() -> None:
     bundle = _bundle()
-    window = bundle.run_a["deterministic_payload"]["artifact"]["records"][0][
-        "windows"
-    ][0]
+    window = bundle.run_a["deterministic_payload"]["artifact"]["records"][0]["windows"][0]
     window["eligible_draw_count"] = 49
     bundle = Bundle(
         bundle.plan,
@@ -880,16 +1061,44 @@ def test_deterministic_payload_mismatch_is_rejected_after_valid_resealing() -> N
     run_b = _resign_run(bundle.run_b)
     acceptance = _acceptance(bundle.plan, bundle.run_a, run_b)
     mismatched = Bundle(bundle.plan, bundle.run_a, run_b, acceptance)
-    with pytest.raises(assembler.EvidenceAssemblyError, match="payload bytes differ"):
+    with pytest.raises(assembler.EvidenceAssemblyError, match=r"matrix\.canonical_cells"):
         _assemble(mismatched)
+
+
+def test_fully_resigned_cells_to_renamed_cells_is_rejected() -> None:
+    bundle = _bundle()
+    for field in ("run_a", "run_b"):
+        run = getattr(bundle, field)
+        result = run["deterministic_payload"]["strategy_results"][0]
+        result["renamed_cells"] = result.pop("cells")
+        result = _seal(result, "strategy_output_sha256")
+        run["deterministic_payload"]["strategy_results"][0] = result
+        run["operational_envelope"]["attempts"][0]["result_sha256"] = result[
+            "strategy_output_sha256"
+        ]
+        setattr(bundle, field, _resign_run(run))
+    bundle.acceptance = _acceptance(bundle.plan, bundle.run_a, bundle.run_b)
+
+    with pytest.raises(assembler.EvidenceAssemblyError, match="canonical Runner keys"):
+        _assemble(bundle)
+
+
+def test_fully_resigned_matrix_inconsistent_with_canonical_cells_is_rejected() -> None:
+    bundle = _bundle()
+    for field in ("run_a", "run_b"):
+        run = getattr(bundle, field)
+        run["deterministic_payload"]["matrix"][0] = "9" * 64
+        setattr(bundle, field, _resign_run(run))
+    bundle.acceptance = _acceptance(bundle.plan, bundle.run_a, bundle.run_b)
+
+    with pytest.raises(assembler.EvidenceAssemblyError, match="canonical_cells"):
+        _assemble(bundle)
 
 
 def test_acceptance_file_hash_binding_is_load_bearing() -> None:
     bundle = _bundle()
     bundle.acceptance["run_a_manifest_file_sha256"] = "8" * 64
-    bundle.acceptance = _seal(
-        bundle.acceptance, "acceptance_manifest_sha256"
-    )
+    bundle.acceptance = _seal(bundle.acceptance, "acceptance_manifest_sha256")
     with pytest.raises(assembler.EvidenceAssemblyError, match="file_sha256"):
         _assemble(bundle)
 
@@ -927,8 +1136,7 @@ def test_old_local_wrapper_and_translated_fields_are_rejected(kind: str) -> None
 
 def test_packaged_v1_output_is_refused_before_input_reads(tmp_path: Path) -> None:
     protected = (
-        tmp_path
-        / "src/lottolab/strategies/data/biglotto_next_draw_recommendation_evidence_v1.json"
+        tmp_path / "src/lottolab/strategies/data/biglotto_next_draw_recommendation_evidence_v1.json"
     )
     with pytest.raises(assembler.EvidenceAssemblyError, match="refusing to overwrite"):
         assembler.assemble_from_paths(
@@ -955,7 +1163,8 @@ def test_exact_runner_generated_objects_and_files_are_accepted_without_mapping(
     if not runner_test.is_file():
         pytest.skip("pinned Runner worktree is not available for cross-component integration")
 
-    script = r'''
+    script = r"""
+import copy
 import importlib.util
 import sys
 from pathlib import Path
@@ -985,6 +1194,7 @@ assembler = importlib.util.module_from_spec(assembler_spec)
 sys.modules[assembler_spec.name] = assembler
 assembler_spec.loader.exec_module(assembler)
 
+c.validate_run(bundle.plan, bundle.run_a)
 artifact = assembler.assemble_artifact(
     bundle.plan, bundle.run_a, bundle.run_b, bundle.acceptance, synthetic_test=True
 )
@@ -1012,7 +1222,61 @@ from_files = assembler.assemble_from_paths(
 )
 assert c.canonical_bytes(from_files) == c.canonical_bytes(direct)
 assert artifact_path.read_bytes() == c.file_bytes(direct)
-'''
+
+def seal_run(run):
+    run["deterministic_payload_sha256"] = c.digest(run["deterministic_payload"])
+    return c.seal(run, "run_manifest_sha256")
+
+def seal_acceptance(original, run_a, run_b):
+    acceptance = copy.deepcopy(original)
+    acceptance["run_a_manifest_file_sha256"] = c.sha256(c.file_bytes(run_a))
+    acceptance["run_b_manifest_file_sha256"] = c.sha256(c.file_bytes(run_b))
+    acceptance["run_a_deterministic_payload_sha256"] = run_a[
+        "deterministic_payload_sha256"
+    ]
+    acceptance["run_b_deterministic_payload_sha256"] = run_b[
+        "deterministic_payload_sha256"
+    ]
+    return c.seal(acceptance, "acceptance_manifest_sha256")
+
+def assert_runner_and_assembler_reject(run_a, run_b, acceptance):
+    try:
+        c.validate_run(bundle.plan, run_a)
+    except c.ProtocolError:
+        pass
+    else:
+        raise AssertionError("canonical Runner admitted semantic tampering")
+    try:
+        assembler.assemble_artifact(
+            bundle.plan, run_a, run_b, acceptance, synthetic_test=True
+        )
+    except assembler.EvidenceAssemblyError:
+        pass
+    else:
+        raise AssertionError("Assembler admitted Runner-rejected semantic tampering")
+
+renamed_a, renamed_b = copy.deepcopy(bundle.run_a), copy.deepcopy(bundle.run_b)
+for run in (renamed_a, renamed_b):
+    result = run["deterministic_payload"]["strategy_results"][0]
+    result["renamed_cells"] = result.pop("cells")
+    result = c.seal(result, "strategy_output_sha256")
+    run["deterministic_payload"]["strategy_results"][0] = result
+    run["operational_envelope"]["attempts"][0]["result_sha256"] = result[
+        "strategy_output_sha256"
+    ]
+renamed_a, renamed_b = seal_run(renamed_a), seal_run(renamed_b)
+renamed_acceptance = seal_acceptance(bundle.acceptance, renamed_a, renamed_b)
+assert_runner_and_assembler_reject(renamed_a, renamed_b, renamed_acceptance)
+
+matrix_a, matrix_b = copy.deepcopy(bundle.run_a), copy.deepcopy(bundle.run_b)
+for run in (matrix_a, matrix_b):
+    payload = run["deterministic_payload"]
+    payload["matrix"][0] = "9" * 64
+    payload["matrix_sha256"] = c.digest(payload["matrix"])
+matrix_a, matrix_b = seal_run(matrix_a), seal_run(matrix_b)
+matrix_acceptance = seal_acceptance(bundle.acceptance, matrix_a, matrix_b)
+assert_runner_and_assembler_reject(matrix_a, matrix_b, matrix_acceptance)
+"""
     environment = {**os.environ, "PYTHONDONTWRITEBYTECODE": "1"}
     completed = subprocess.run(
         [sys.executable, "-c", script, str(runner_root), str(REPO_ROOT), str(tmp_path)],
@@ -1021,6 +1285,6 @@ assert artifact_path.read_bytes() == c.file_bytes(direct)
         check=False,
         capture_output=True,
         text=True,
-        timeout=180,
+        timeout=300,
     )
     assert completed.returncode == 0, completed.stderr

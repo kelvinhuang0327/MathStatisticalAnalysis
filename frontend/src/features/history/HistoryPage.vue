@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 
 import {
   getIngestionRun,
@@ -14,6 +14,7 @@ import {
 } from '../../api/historicalImports'
 import DrawHistoryPage from '../draw-history/DrawHistoryPage.vue'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import { isOptionalIsoCalendarDate } from '../../utils/isoDate'
 
 type Tab = 'draws' | 'ingestion' | 'imports'
 type State = 'loading' | 'ready' | 'empty' | 'error' | 'not-configured'
@@ -33,6 +34,11 @@ const runFilters = reactive({
   dateFrom: '',
   dateTo: '',
 })
+const runDateFiltersValid = computed(
+  () =>
+    isOptionalIsoCalendarDate(runFilters.dateFrom) &&
+    isOptionalIsoCalendarDate(runFilters.dateTo),
+)
 let ingestionController: AbortController | undefined
 let detailController: AbortController | undefined
 let importsController: AbortController | undefined
@@ -42,6 +48,7 @@ let importsGeneration = 0
 let unmounted = false
 
 async function loadIngestionRuns(): Promise<void> {
+  if (!runDateFiltersValid.value) return
   ingestionController?.abort()
   invalidateRunDetail()
   const controller = new AbortController()
@@ -144,7 +151,7 @@ function resetRunFilters(): void {
 function formatTimestamp(value: string | null): string {
   if (!value) return '—'
   const parsed = new Date(value)
-  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString()
+  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('en-US')
 }
 
 function isAbort(error: unknown): boolean {
@@ -192,11 +199,11 @@ onBeforeUnmount(() => {
           <label><span>Status</span><select v-model="runFilters.status"><option value="">All</option><option>RUNNING</option><option>SUCCESS</option><option>FAILED</option></select></label>
           <label><span>Trigger</span><select v-model="runFilters.operationType"><option value="">All</option><option>DRAW_CSV_IMPORT</option><option>MANUAL_SYNC</option><option>MISSING_DRAW_SCAN</option><option>BOUNDED_BACKFILL</option><option>SCHEDULED_SYNC</option></select></label>
           <label><span>Provider or filename</span><input v-model="runFilters.source" maxlength="255" /></label>
-          <label><span>Date from</span><input v-model="runFilters.dateFrom" type="date" /></label>
-          <label><span>Date to</span><input v-model="runFilters.dateTo" type="date" /></label>
+          <label><span>Date from</span><input v-model="runFilters.dateFrom" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>Date to</span><input v-model="runFilters.dateTo" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
         </div>
         <div class="filter-actions">
-          <button class="button button--primary" type="submit">Apply filters</button>
+          <button class="button button--primary" type="submit" :disabled="!runDateFiltersValid">Apply filters</button>
           <button class="button button--quiet" type="button" @click="resetRunFilters">Reset</button>
         </div>
       </form>

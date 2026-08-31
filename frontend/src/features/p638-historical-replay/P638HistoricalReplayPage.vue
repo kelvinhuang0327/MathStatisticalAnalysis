@@ -14,6 +14,8 @@ import {
   type P638Status,
   type P638StrategyPage,
 } from '../../api/p638Historical'
+import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
+import { isOptionalIsoCalendarDate } from '../../utils/isoDate'
 
 type State = 'loading' | 'ready' | 'empty' | 'not-configured' | 'unavailable' | 'error'
 type StatusFilter = '' | P638Status
@@ -53,6 +55,11 @@ const replayPageNumber = computed(() => Math.floor(replayOffset.value / PAGE_SIZ
 const replayPageCount = computed(() =>
   replayPage.value ? Math.max(1, Math.ceil(replayPage.value.total_count / PAGE_SIZE)) : 1,
 )
+const dateFiltersValid = computed(
+  () =>
+    isOptionalIsoCalendarDate(filters.dateFrom) &&
+    isOptionalIsoCalendarDate(filters.dateTo),
+)
 
 async function loadRuns(): Promise<void> {
   runsController?.abort()
@@ -80,7 +87,7 @@ async function loadRuns(): Promise<void> {
 }
 
 async function loadSelectedRun(runId: string): Promise<void> {
-  if (!runId) return
+  if (!runId || !dateFiltersValid.value) return
   selectedRunId.value = runId
   replayOffset.value = 0
   // A detail response is scoped to the selected run. Invalidate it before
@@ -123,7 +130,7 @@ async function loadSelectedRun(runId: string): Promise<void> {
 }
 
 function applyFilters(): void {
-  if (selectedRunId.value) void loadSelectedRun(selectedRunId.value)
+  if (dateFiltersValid.value && selectedRunId.value) void loadSelectedRun(selectedRunId.value)
 }
 
 function changeReplayPage(delta: number): void {
@@ -135,7 +142,7 @@ function changeReplayPage(delta: number): void {
 }
 
 async function loadReplayPage(): Promise<void> {
-  if (!selectedRunId.value) return
+  if (!selectedRunId.value || !dateFiltersValid.value) return
   dataController?.abort()
   const controller = new AbortController()
   dataController = controller
@@ -213,6 +220,10 @@ function formatCount(value: number): string {
   return value.toLocaleString()
 }
 
+function isNumberHit(value: number, actualNumbers: number[]): boolean {
+  return actualNumbers.includes(value)
+}
+
 onMounted(() => {
   mounted = true
   void loadRuns()
@@ -266,9 +277,9 @@ onBeforeUnmount(() => {
           <div class="filter-grid filter-grid--p638">
             <label class="filter-field"><span>Strategy identity</span><select v-model="filters.strategyId"><option value="">All current identities</option><option v-for="strategy in strategiesPage?.items ?? []" :key="strategy.strategy_id" :value="strategy.strategy_id">{{ strategy.strategy_id }} · {{ strategy.replay_status }}</option></select></label>
             <label class="filter-field"><span>Status</span><select v-model="filters.status"><option value="">All statuses</option><option value="COMPLETE">COMPLETE</option><option value="EXCLUDED_INSUFFICIENT_HISTORY">EXCLUDED_INSUFFICIENT_HISTORY</option><option value="FAILED">FAILED</option></select></label>
-            <label class="filter-field"><span>Draw date from</span><input v-model="filters.dateFrom" type="date" /></label><label class="filter-field"><span>Draw date to</span><input v-model="filters.dateTo" type="date" /></label>
+            <label class="filter-field"><span>Draw date from</span><input v-model="filters.dateFrom" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label><label class="filter-field"><span>Draw date to</span><input v-model="filters.dateTo" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
           </div>
-          <button class="button button--primary" type="button" @click="applyFilters">Apply server-side filters</button>
+          <button class="button button--primary" type="button" :disabled="!dateFiltersValid" @click="applyFilters">Apply server-side filters</button>
         </article>
       </div>
 
@@ -287,8 +298,26 @@ onBeforeUnmount(() => {
       <div v-else-if="detailState === 'error'" class="state-panel state-panel--error"><p>{{ detailMessage }}</p><button class="button button--quiet" type="button" @click="closeDetail">Close</button></div>
       <article v-else-if="detail" class="panel p638-detail-panel" aria-labelledby="p638-detail-title">
         <div class="panel__heading"><div><p class="step-label">Target detail</p><h2 id="p638-detail-title">{{ detail.target_id }}</h2></div><button class="button button--quiet" type="button" @click="closeDetail">Close</button></div>
-        <p class="panel__note">Actual draw: {{ detail.actual_zone1_numbers.join(', ') }} + {{ detail.actual_zone2_number }}. This is a historical comparison record, not a generated bet.</p>
-        <div v-if="detail.tickets.length" class="table-wrap"><table><caption>Stored ticket comparisons</caption><thead><tr><th>Position</th><th>Predicted zone 1</th><th>Predicted zone 2</th><th>Hits</th><th>Provenance</th></tr></thead><tbody><tr v-for="ticket in detail.tickets" :key="ticket.ticket_id"><td>{{ ticket.ticket_position }}</td><td>{{ ticket.predicted_zone1_numbers.join(', ') }}</td><td>{{ ticket.predicted_zone2_number }}</td><td>{{ ticket.zone1_hit_count }} + zone 2 {{ ticket.zone2_hit ? 'HIT' : 'MISS' }}</td><td><code>{{ ticket.source_record_locator ?? ticket.source_replay_sha256 }}</code></td></tr></tbody></table></div>
+        <p class="panel__note">Actual draw:</p>
+        <div class="number-chips historical-result-chips" aria-label="Actual P638 draw numbers">
+          <LotteryNumberBall
+            v-for="number in detail.actual_zone1_numbers"
+            :key="`actual-zone1-${number}`"
+            :value="number"
+            variant="main"
+            size="sm"
+          />
+          <LotteryNumberBall
+            :value="detail.actual_zone2_number"
+            variant="special"
+            :is-special="true"
+            subtext="Z2"
+            size="sm"
+          />
+          <span class="sr-only">{{ detail.actual_zone1_numbers.join(', ') }} + {{ detail.actual_zone2_number }}</span>
+        </div>
+        <p class="panel__note">This is a historical comparison record, not a generated bet.</p>
+        <div v-if="detail.tickets.length" class="table-wrap"><table><caption>Stored ticket comparisons</caption><thead><tr><th>Position</th><th>Predicted zone 1</th><th>Predicted zone 2</th><th>Hits</th><th>Provenance</th></tr></thead><tbody><tr v-for="ticket in detail.tickets" :key="ticket.ticket_id"><td>{{ ticket.ticket_position }}</td><td><span class="number-chips" :aria-label="`Predicted zone 1: ${ticket.predicted_zone1_numbers.join(', ')}`"><LotteryNumberBall v-for="number in ticket.predicted_zone1_numbers" :key="`predicted-zone1-${ticket.ticket_id}-${number}`" :value="number" :variant="isNumberHit(number, ticket.actual_zone1_numbers) ? 'hit' : 'miss'" size="sm" /><span class="sr-only">{{ ticket.predicted_zone1_numbers.join(', ') }}</span></span></td><td><LotteryNumberBall :value="ticket.predicted_zone2_number" :variant="ticket.zone2_hit ? 'hit' : 'miss'" :is-special="true" subtext="Z2" size="sm" /></td><td>{{ ticket.zone1_hit_count }} + zone 2 {{ ticket.zone2_hit ? 'HIT' : 'MISS' }}</td><td><code>{{ ticket.source_record_locator ?? ticket.source_replay_sha256 }}</code></td></tr></tbody></table></div>
         <p v-else class="state-panel">This target has no stored tickets because it is explicitly excluded or failed.</p><p class="provenance-line">{{ detail.provenance }}</p>
       </article>
     </template>

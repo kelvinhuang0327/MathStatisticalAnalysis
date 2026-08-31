@@ -15,6 +15,7 @@ import {
   type IngestionRunQuery,
 } from '../../api/drawData'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import { isValidIsoCalendarDate } from '../../utils/isoDate'
 import MetricCard from '../../components/MetricCard.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import SectionHeader from '../../components/SectionHeader.vue'
@@ -71,6 +72,9 @@ const runsState = ref<LoadState>('loading')
 const runsMessage = ref('')
 const syncLotteryType = ref<IngestionRunLotteryType>('BIG_LOTTO')
 const syncForm = reactive({ dateFrom: '', dateTo: '' })
+const syncDatesValid = computed(() =>
+  isValidIsoCalendarDate(syncForm.dateFrom) && isValidIsoCalendarDate(syncForm.dateTo),
+)
 const syncPending = ref<DrawSyncOperation | null>(null)
 const syncResult = ref<DrawSyncResponse | null>(null)
 const syncMessage = ref('')
@@ -327,7 +331,7 @@ function cancelBatch(clearInput = true): void {
 }
 
 async function runSync(operation: DrawSyncOperation): Promise<void> {
-  if (!syncForm.dateFrom || !syncForm.dateTo || syncPending.value) return
+  if (!syncDatesValid.value || syncPending.value) return
   syncController?.abort()
   const controller = new AbortController()
   syncController = controller
@@ -529,7 +533,7 @@ function displayText(value: unknown): string {
 function formatTimestamp(value: unknown): string {
   if (typeof value !== 'string' || !value) return '—'
   const parsed = new Date(value)
-  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString()
+  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('en-US')
 }
 
 function isAbort(error: unknown): boolean {
@@ -618,9 +622,16 @@ onBeforeUnmount(() => {
         <div class="file-dropzone__content">
           <label class="file-picker">
             <span>Select or drag & drop one or more import files</span>
+            <span class="file-picker__control">
+              <span class="button button--secondary file-picker__button" aria-hidden="true">Choose files</span>
+              <span class="file-picker__selection" aria-live="polite">
+                {{ files.length ? `${files.length} file${files.length === 1 ? '' : 's'} selected` : 'No files selected' }}
+              </span>
+            </span>
             <input
               ref="fileInput"
               data-testid="csv-file"
+              aria-label="Select import files"
               type="file"
               accept=".csv,.txt,.zip,text/csv,text/plain,application/zip"
               multiple
@@ -823,11 +834,11 @@ onBeforeUnmount(() => {
       <div class="filter-grid" style="margin-top: 14px">
         <label>
           <span>Date from</span>
-          <input v-model="syncForm.dateFrom" data-testid="sync-date-from" type="date" />
+          <input v-model="syncForm.dateFrom" data-testid="sync-date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
         </label>
         <label>
           <span>Date to</span>
-          <input v-model="syncForm.dateTo" data-testid="sync-date-to" type="date" />
+          <input v-model="syncForm.dateTo" data-testid="sync-date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
         </label>
       </div>
 
@@ -836,7 +847,7 @@ onBeforeUnmount(() => {
           class="button button--primary"
           data-testid="manual-sync"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('manual')"
         >
           Manual sync
@@ -844,7 +855,7 @@ onBeforeUnmount(() => {
         <button
           class="button button--quiet"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('missing-scan')"
         >
           Scan missing draws
@@ -852,7 +863,7 @@ onBeforeUnmount(() => {
         <button
           class="button button--quiet"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('backfill')"
         >
           Bounded backfill
@@ -861,7 +872,7 @@ onBeforeUnmount(() => {
           class="button button--quiet"
           data-testid="scheduled-sync"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('scheduled')"
         >
           Run scheduled trigger

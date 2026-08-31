@@ -1,0 +1,775 @@
+{
+  "authority": {
+    "freeze_boundary": "115000186",
+    "freeze_sha256": "f1b299ace019393440bce8bd2768f6618b2362d220d81b4cc14151a5080908a8",
+    "metric": "OFFICIAL_ANY_PRIZE_TARGET_RATE",
+    "rule_fingerprint": "eb4eb89082cd782041c240e80858efd8453c3bbf08edec3b76e98e2e8051f446",
+    "source_result_schema_version": "T539_PROSPECTIVE_TARGET_SCORE_V1"
+  },
+  "confidence_sequence": {
+    "bisection_count": 49,
+    "bisection_interval": [
+      "-1",
+      "1"
+    ],
+    "certified_width": "2^-48",
+    "confidence_set": "(L_t,1]",
+    "conservative_scalar": "LOWER_BRACKET_ENDPOINT",
+    "empty_rejection_set_lower_endpoint": "-1",
+    "equality_is_rejected": true,
+    "lower_endpoint_definition": "sup{delta:M_t(delta)>=1200}",
+    "rejection_set": "{delta:M_t(delta)>=1200}",
+    "running_max_not_current_e": true,
+    "threshold": 1200
+  },
+  "e_process": {
+    "boundary_delta_minus_one": {
+      "empty": "1",
+      "nonempty_all_D_minus_one": "1/(t+1)",
+      "otherwise": "POSITIVE_INFINITY"
+    },
+    "boundary_delta_plus_one": {
+      "running_max": "1_FOR_EVERY_PATH"
+    },
+    "current_null_integral": "integral_0^1 product_i(1+gamma*D_i) dgamma",
+    "current_null_reduced_integral": "integral_0^1 (1+gamma)^n10 (1-gamma)^n01 dgamma",
+    "gamma_distribution": "UNIFORM_0_1",
+    "initial_e": "1",
+    "lambda_density": "1+delta",
+    "lambda_support": "[0,1/(1+delta)]",
+    "no_adaptive_stake": true,
+    "numeric_semantics": {
+      "arithmetic": "ARBITRARY_INTEGER_EXACT_RATIONAL",
+      "clipping": "FORBIDDEN",
+      "float_overflow_saturation": "FORBIDDEN",
+      "float_residual_tolerance": "FORBIDDEN",
+      "underflow_to_zero": "FORBIDDEN"
+    },
+    "positive_term_conformance": {
+      "A_u_k": "sum_{j=max(0,k-z)}^{min(k,p)} C(p,j)C(z,k-j)2^j",
+      "E_u_delta": "1/(u+1) sum_{k=0}^{p+z} A_u_k/C(u,k)*(1+delta)^(-k)",
+      "authoritative_evaluation": "EXACT_POSITIVE_TERM_RATIONAL",
+      "generic_numerical_quadrature": "FORBIDDEN",
+      "p": "n10_at_prefix_u",
+      "r": "n01_at_prefix_u",
+      "z": "n11_at_prefix_u+n00_at_prefix_u"
+    },
+    "running_max": "M_t(delta)=max_{0<=u<=t}E_u(delta)",
+    "running_max_reset": "FORBIDDEN",
+    "shifted_null_integral": "integral_0^1 product_i[1+gamma*(D_i-delta)/(1+delta)] dgamma",
+    "shifted_null_range": "-1<delta<=1",
+    "ties_at_delta_zero_factor": "1"
+  },
+  "evidence_tiers": {
+    "confirmatory_crossing": "M_t(0)>=1200",
+    "further_study_cell_rule": "B_MINUS_A_M>=600 AND B_MINUS_C_M>=600 AND both_current_delta_hat>0",
+    "further_study_label": "SUPPORTS_FURTHER_STUDY",
+    "further_study_not_confirmatory_advantage": true,
+    "further_study_threshold": 600,
+    "no_95_percent_claim_at_600": true,
+    "no_best_cell_designation": true,
+    "predictive_advantage_cell_label": "PREDICTIVE_ADVANTAGE_ESTABLISHED_AT_K_AND_WINDOW",
+    "predictive_advantage_cell_rule": "B_MINUS_A_M>=1200 AND B_MINUS_C_M>=1200 AND both_current_delta_hat>0",
+    "whole_surface_rule": "ALL_60_STREAMS_CONFIRMATORY_AND_POSITIVE"
+  },
+  "frozen_surface": {
+    "arms": {
+      "A": "ORIGINAL_ROLLING",
+      "B": "CALLABLE_FAMILY_DEDUP_ROLLING",
+      "C": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE"
+    },
+    "comparisons": [
+      {
+        "comparison_id": "B_MINUS_A",
+        "minuend_arm": "CALLABLE_FAMILY_DEDUP_ROLLING",
+        "subtrahend_arm": "ORIGINAL_ROLLING"
+      },
+      {
+        "comparison_id": "B_MINUS_C",
+        "minuend_arm": "CALLABLE_FAMILY_DEDUP_ROLLING",
+        "subtrahend_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE"
+      }
+    ],
+    "experiment_count": 30,
+    "k_values": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      10,
+      11,
+      12,
+      25
+    ],
+    "stream_count": 60,
+    "windows": [
+      {
+        "label": "W50",
+        "size": 50
+      },
+      {
+        "label": "W300",
+        "size": 300
+      },
+      {
+        "label": "W750",
+        "size": 750
+      }
+    ]
+  },
+  "integrity": {
+    "database_access": "NO",
+    "embedded_real_results": [],
+    "network_draw_refresh": "NOT_RUN",
+    "prospective_observations_at_contract_freeze": 0,
+    "real_future_outcome_access": "NO",
+    "synthetic_fixture_policy": "TESTS_ONLY"
+  },
+  "multiplicity": {
+    "adjusted_anytime_p": "min(1,60/M_t(0))",
+    "confirmatory_threshold": 1200,
+    "equality_is_crossing": true,
+    "family_alpha": "1/20",
+    "per_stream_alpha": "1/1200",
+    "stream_count": 60
+  },
+  "observation_eligibility": {
+    "accepted_target_cannot_be_dropped_by_result": true,
+    "all_30_experiments_and_3_arms_required": true,
+    "invalid_status_denominator_contribution": 0,
+    "invalid_statuses": [
+      "INCOMPLETE_FROZEN_EXPERIMENT_SURFACE",
+      "MISSED_PRETARGET_SEAL",
+      "OUTCOME_AUTHORITY_UNAVAILABLE",
+      "PRETARGET_SNAPSHOT_INVALID",
+      "RULE_FINGERPRINT_MISMATCH",
+      "TARGET_IDENTITY_MISMATCH"
+    ],
+    "missed_pretarget_seal_denominator_contribution": 0,
+    "no_partial_cell_ingestion": true,
+    "observation_unit": "ONE_OFFICIAL_TARGET",
+    "valid_pretarget_seal_status": "PRETARGET_SEAL_CONFIRMED_BEFORE_OUTCOME",
+    "valid_status": "VALID_PROSPECTIVE_OBSERVATION"
+  },
+  "paired_statistic": {
+    "D_domain": [
+      -1,
+      0,
+      1
+    ],
+    "D_formula": "Y_B-Y_X",
+    "Y_domain": [
+      0,
+      1
+    ],
+    "counts": [
+      "n11",
+      "n10",
+      "n01",
+      "n00",
+      "N"
+    ],
+    "delta_hat": "(n10-n01)/N",
+    "floating_counts": "FORBIDDEN"
+  },
+  "persistence": {
+    "accepted_target_order": "ASCENDING_NUMERIC_TARGET_IDENTITY",
+    "conflicting_duplicate": "CONFLICT",
+    "exact_duplicate": "EXACT_IDEMPOTENT_NO_OP",
+    "no_reset_after_evidence": true,
+    "preserved_state_fields": [
+      "statistical_schema_version",
+      "freeze_sha256",
+      "rule_fingerprint",
+      "statistical_contract_fingerprint",
+      "accepted_target_identities",
+      "raw_90_arm_source_identity_and_hash",
+      "all_60_replay_complete_paired_records",
+      "paired_counts",
+      "current_E_0",
+      "running_M_0",
+      "lower_confidence_sequence_bracket",
+      "evidence_tier_flags"
+    ],
+    "replay_complete_paired_records": true,
+    "running_max_reset": "FORBIDDEN",
+    "serialization": "UTF8_INDENT2_SORTED_KEYS_TRAILING_NEWLINE",
+    "state_contract_bindings": [
+      "schema_version",
+      "freeze_sha256",
+      "rule_fingerprint",
+      "statistical_contract_fingerprint"
+    ]
+  },
+  "reporting": {
+    "formal_common_denominators": "N=50,100,150,...",
+    "ledger_update": "EVERY_ELIGIBLE_TARGET",
+    "no_best_cell_output": true,
+    "terminal_report": true,
+    "whole_surface_stream_count": 60
+  },
+  "schema_version": "T540_ANYTIME_VALID_INFERENCE_CONTRACT_V1",
+  "statistical_contract_fingerprint": "57d6b1109d1b00b2af3cf42e1fa323bf616963abe1f959943b1e4b3aef538492",
+  "stopping": {
+    "administrative_termination_may_reset": false,
+    "cell_specific_winner_stop": "FORBIDDEN",
+    "efficacy_stop": "ALL_60_M>=1200_AND_ALL_CURRENT_DELTA_HAT>0",
+    "futility_stop": "FORBIDDEN",
+    "semantic_change_disposition": "TERMINAL_NEW_EXPERIMENT_REQUIRED",
+    "successor_evidence_sharing_after_semantic_change": "FORBIDDEN"
+  },
+  "streams": [
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K1:W50",
+      "k": 1,
+      "stream_id": "T539:K1:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K1:W50",
+      "k": 1,
+      "stream_id": "T539:K1:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K1:W300",
+      "k": 1,
+      "stream_id": "T539:K1:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K1:W300",
+      "k": 1,
+      "stream_id": "T539:K1:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K1:W750",
+      "k": 1,
+      "stream_id": "T539:K1:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K1:W750",
+      "k": 1,
+      "stream_id": "T539:K1:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K2:W50",
+      "k": 2,
+      "stream_id": "T539:K2:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K2:W50",
+      "k": 2,
+      "stream_id": "T539:K2:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K2:W300",
+      "k": 2,
+      "stream_id": "T539:K2:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K2:W300",
+      "k": 2,
+      "stream_id": "T539:K2:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K2:W750",
+      "k": 2,
+      "stream_id": "T539:K2:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K2:W750",
+      "k": 2,
+      "stream_id": "T539:K2:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K3:W50",
+      "k": 3,
+      "stream_id": "T539:K3:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K3:W50",
+      "k": 3,
+      "stream_id": "T539:K3:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K3:W300",
+      "k": 3,
+      "stream_id": "T539:K3:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K3:W300",
+      "k": 3,
+      "stream_id": "T539:K3:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K3:W750",
+      "k": 3,
+      "stream_id": "T539:K3:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K3:W750",
+      "k": 3,
+      "stream_id": "T539:K3:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K4:W50",
+      "k": 4,
+      "stream_id": "T539:K4:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K4:W50",
+      "k": 4,
+      "stream_id": "T539:K4:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K4:W300",
+      "k": 4,
+      "stream_id": "T539:K4:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K4:W300",
+      "k": 4,
+      "stream_id": "T539:K4:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K4:W750",
+      "k": 4,
+      "stream_id": "T539:K4:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K4:W750",
+      "k": 4,
+      "stream_id": "T539:K4:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K5:W50",
+      "k": 5,
+      "stream_id": "T539:K5:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K5:W50",
+      "k": 5,
+      "stream_id": "T539:K5:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K5:W300",
+      "k": 5,
+      "stream_id": "T539:K5:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K5:W300",
+      "k": 5,
+      "stream_id": "T539:K5:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K5:W750",
+      "k": 5,
+      "stream_id": "T539:K5:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K5:W750",
+      "k": 5,
+      "stream_id": "T539:K5:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K7:W50",
+      "k": 7,
+      "stream_id": "T539:K7:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K7:W50",
+      "k": 7,
+      "stream_id": "T539:K7:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K7:W300",
+      "k": 7,
+      "stream_id": "T539:K7:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K7:W300",
+      "k": 7,
+      "stream_id": "T539:K7:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K7:W750",
+      "k": 7,
+      "stream_id": "T539:K7:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K7:W750",
+      "k": 7,
+      "stream_id": "T539:K7:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K10:W50",
+      "k": 10,
+      "stream_id": "T539:K10:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K10:W50",
+      "k": 10,
+      "stream_id": "T539:K10:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K10:W300",
+      "k": 10,
+      "stream_id": "T539:K10:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K10:W300",
+      "k": 10,
+      "stream_id": "T539:K10:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K10:W750",
+      "k": 10,
+      "stream_id": "T539:K10:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K10:W750",
+      "k": 10,
+      "stream_id": "T539:K10:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K11:W50",
+      "k": 11,
+      "stream_id": "T539:K11:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K11:W50",
+      "k": 11,
+      "stream_id": "T539:K11:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K11:W300",
+      "k": 11,
+      "stream_id": "T539:K11:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K11:W300",
+      "k": 11,
+      "stream_id": "T539:K11:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K11:W750",
+      "k": 11,
+      "stream_id": "T539:K11:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K11:W750",
+      "k": 11,
+      "stream_id": "T539:K11:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K12:W50",
+      "k": 12,
+      "stream_id": "T539:K12:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K12:W50",
+      "k": 12,
+      "stream_id": "T539:K12:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K12:W300",
+      "k": 12,
+      "stream_id": "T539:K12:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K12:W300",
+      "k": 12,
+      "stream_id": "T539:K12:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K12:W750",
+      "k": 12,
+      "stream_id": "T539:K12:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K12:W750",
+      "k": 12,
+      "stream_id": "T539:K12:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K25:W50",
+      "k": 25,
+      "stream_id": "T539:K25:W50:B_MINUS_A",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K25:W50",
+      "k": 25,
+      "stream_id": "T539:K25:W50:B_MINUS_C",
+      "window_label": "W50",
+      "window_size": 50
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K25:W300",
+      "k": 25,
+      "stream_id": "T539:K25:W300:B_MINUS_A",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K25:W300",
+      "k": 25,
+      "stream_id": "T539:K25:W300:B_MINUS_C",
+      "window_label": "W300",
+      "window_size": 300
+    },
+    {
+      "comparator_arm": "ORIGINAL_ROLLING",
+      "comparison_id": "B_MINUS_A",
+      "experiment_id": "T539:K25:W750",
+      "k": 25,
+      "stream_id": "T539:K25:W750:B_MINUS_A",
+      "window_label": "W750",
+      "window_size": 750
+    },
+    {
+      "comparator_arm": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "comparison_id": "B_MINUS_C",
+      "experiment_id": "T539:K25:W750",
+      "k": 25,
+      "stream_id": "T539:K25:W750:B_MINUS_C",
+      "window_label": "W750",
+      "window_size": 750
+    }
+  ],
+  "synthetic_reference_cases": {
+    "(+1,-1)_L": "-2397/2399",
+    "(-1,+1)_L": "-3598/3599",
+    "13_consecutive_+1_M0": "16383/14",
+    "14_consecutive_+1_M0": "32767/15",
+    "EMPTY_L": "-1",
+    "all_-1_L": "-1",
+    "single_+1_L": "-2397/2399",
+    "single_tie_L": "-2398/2399"
+  }
+}

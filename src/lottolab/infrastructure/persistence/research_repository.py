@@ -74,6 +74,19 @@ class ResearchConflictError(ResearchRepositoryError):
     """Stored immutable bytes conflict with a recomputed identity."""
 
 
+@dataclass(frozen=True, slots=True)
+class HistoricalReplayDiscoveryCorpusRows:
+    """Raw read-only rows for one target-bounded historical replay corpus."""
+
+    table_names: frozenset[str]
+    source_metadata: tuple[object, ...] | None
+    source_latest_status: object | None
+    strategy_rows: tuple[tuple[object, ...], ...]
+    run_inventory_rows: tuple[tuple[object, ...], ...]
+    bounded_profile_counts: tuple[object, ...]
+    common_rows: tuple[dict[str, object], ...]
+
+
 class SQLiteResearchRepository:
     """The only production-authorized SQL writer for research tables."""
 
@@ -1764,6 +1777,369 @@ def fetch_research_draw_bindings_for_dataset(
     )
 
 
+def fetch_historical_replay_discovery_corpus_rows(
+    connection: sqlite3.Connection,
+    *,
+    source_run_id: str,
+    last_target_draw_date: str,
+    last_target_draw_number: int,
+) -> HistoricalReplayDiscoveryCorpusRows:
+    """Read one replay cohort capped at an inclusive discovery boundary.
+
+    The caller must own a query-only connection. The boundary is repeated in
+    every label-bearing query so rows after the discovery partition never
+    reach the study process.
+    """
+
+    query_only_row = connection.execute("PRAGMA query_only").fetchone()
+    if query_only_row is None or int(query_only_row[0]) != 1:
+        raise ResearchRepositoryError("historical replay corpus connection is not query-only")
+
+    table_names = fetch_research_table_names(connection)
+    source_row = connection.execute(
+        """
+        SELECT run_kind, input_dataset_identity, input_dataset_sha256, rule_contract_id
+        FROM research_runs
+        WHERE id = ?
+        """,
+        (source_run_id,),
+    ).fetchone()
+    source_status_row = connection.execute(
+        """
+        SELECT status
+        FROM research_run_status_events
+        WHERE run_id = ?
+        ORDER BY sequence DESC, id DESC
+        LIMIT 1
+        """,
+        (source_run_id,),
+    ).fetchone()
+    strategy_rows = connection.execute(
+        """
+        SELECT strategy_id, strategy_version
+        FROM research_strategy_snapshots
+        WHERE run_id = ?
+        ORDER BY strategy_id, strategy_version, id
+        """,
+        (source_run_id,),
+    ).fetchall()
+
+    inventory_rows: list[tuple[object, ...]] = []
+    runs = connection.execute(
+        "SELECT id, run_kind FROM research_runs ORDER BY started_at, id"
+    ).fetchall()
+    for run_row in runs:
+        run_id = run_row[0]
+        latest_status_row = connection.execute(
+            """
+            SELECT status
+            FROM research_run_status_events
+            WHERE run_id = ?
+            ORDER BY sequence DESC, id DESC
+            LIMIT 1
+            """,
+            (run_id,),
+        ).fetchone()
+        counts = connection.execute(
+            """
+            SELECT
+                (SELECT COUNT(*) FROM research_strategy_snapshots WHERE run_id = ?),
+                (SELECT COUNT(*) FROM research_prediction_targets WHERE run_id = ?),
+                (
+                    SELECT COUNT(*)
+                    FROM (
+                        SELECT target_draw_date, target_draw_number
+                        FROM research_prediction_targets
+                        WHERE run_id = ?
+                        GROUP BY target_draw_date, target_draw_number
+                    )
+                )
+            """,
+            (run_id, run_id, run_id),
+        ).fetchone()
+        if counts is None:
+            raise ResearchRepositoryError("historical replay inventory count returned no row")
+        inventory_rows.append(
+            (
+                run_row[0],
+                run_row[1],
+                None if latest_status_row is None else latest_status_row[0],
+                counts[0],
+                counts[1],
+                counts[2],
+            )
+        )
+
+    boundary = (
+        source_run_id,
+        last_target_draw_date,
+        last_target_draw_date,
+        last_target_draw_number,
+    )
+    profile_queries = (
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_tickets AS ticket
+        JOIN research_prediction_targets AS target ON target.id = ticket.target_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_ticket_results AS result
+        JOIN research_prediction_targets AS target ON target.id = result.target_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_tickets AS ticket
+        JOIN research_prediction_targets AS target ON target.id = ticket.target_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              ticket.native_duplicate_of_position IS NOT NULL
+              OR ticket.portfolio_duplicate_of_position IS NOT NULL
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM (
+            SELECT result.ticket_id, COUNT(*) AS version_count
+            FROM research_ticket_results AS result
+            JOIN research_prediction_targets AS target ON target.id = result.target_id
+            WHERE target.run_id = ?
+              AND (
+                  target.target_draw_date < ?
+                  OR (
+                      target.target_draw_date = ?
+                      AND CAST(target.target_draw_number AS INTEGER) <= ?
+                  )
+              )
+            GROUP BY result.ticket_id
+            HAVING COUNT(*) > 1
+        )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        JOIN research_prediction_tickets AS ticket ON ticket.target_id = target.id
+        JOIN research_ticket_results AS result
+          ON result.target_id = target.id AND result.ticket_id = ticket.id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              target.target_draw_number IS NULL
+              OR target.target_draw_date IS NULL
+              OR target.history_cutoff_draw_number IS NULL
+              OR target.history_cutoff_draw_date IS NULL
+              OR ticket.main_numbers_json IS NULL
+              OR ticket.ticket_sha256 IS NULL
+              OR result.main_hit_count IS NULL
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        JOIN research_prediction_tickets AS ticket ON ticket.target_id = target.id
+        JOIN research_draw_bindings AS draw ON draw.id = target.target_draw_binding_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              json_valid(ticket.main_numbers_json) = 0
+              OR json_valid(draw.main_numbers_json) = 0
+              OR json_array_length(ticket.main_numbers_json) != 6
+              OR json_array_length(draw.main_numbers_json) != 6
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_ticket_results AS result
+        JOIN research_prediction_targets AS target ON target.id = result.target_id
+        JOIN research_prediction_tickets AS ticket ON ticket.id = result.ticket_id
+        JOIN research_draw_bindings AS draw ON draw.id = result.draw_binding_id
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND result.main_hit_count != (
+              SELECT COUNT(*)
+              FROM json_each(ticket.main_numbers_json) AS predicted
+              WHERE CAST(predicted.value AS INTEGER) IN (
+                  SELECT CAST(winning.value AS INTEGER)
+                  FROM json_each(draw.main_numbers_json) AS winning
+              )
+          )
+        """,
+        """
+        SELECT COUNT(*)
+        FROM research_prediction_targets AS target
+        WHERE target.run_id = ?
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+          AND (
+              target.causal_eligible != 1
+              OR target.history_cutoff_draw_date >= target.target_draw_date
+              OR target.history_cutoff_draw_number = target.target_draw_number
+          )
+        """,
+    )
+    profile_counts: list[object] = []
+    for query in profile_queries:
+        count_row = connection.execute(query, boundary).fetchone()
+        if count_row is None:
+            raise ResearchRepositoryError("historical replay profile count returned no row")
+        profile_counts.append(count_row[0])
+
+    common_rows = connection.execute(
+        """
+        WITH common_targets AS (
+            SELECT target_draw_date, target_draw_number
+            FROM research_prediction_targets
+            WHERE run_id = ?
+              AND execution_status = 'OK'
+              AND (
+                  target_draw_date < ?
+                  OR (
+                      target_draw_date = ?
+                      AND CAST(target_draw_number AS INTEGER) <= ?
+                  )
+              )
+            GROUP BY target_draw_date, target_draw_number
+            HAVING COUNT(DISTINCT strategy_snapshot_id) = ?
+        )
+        SELECT
+            target.id AS target_id,
+            target.target_draw_date,
+            target.target_draw_number,
+            target.native_ticket_count,
+            target.history_cutoff_draw_date,
+            target.history_cutoff_draw_number,
+            strategy.strategy_id,
+            strategy.strategy_version,
+            ticket.native_position,
+            ticket.main_numbers_json AS ticket_main_numbers_json,
+            ticket.ticket_sha256,
+            result.main_hit_count,
+            result.result_version,
+            target_draw.main_numbers_json AS winning_main_numbers_json,
+            target_draw.draw_sha256 AS target_draw_sha256,
+            cutoff_draw.draw_sha256 AS cutoff_draw_sha256
+        FROM research_prediction_targets AS target
+        JOIN common_targets AS common
+          ON common.target_draw_date = target.target_draw_date
+         AND common.target_draw_number = target.target_draw_number
+        JOIN research_strategy_snapshots AS strategy
+          ON strategy.id = target.strategy_snapshot_id
+        JOIN research_prediction_tickets AS ticket ON ticket.target_id = target.id
+        JOIN research_ticket_results AS result
+          ON result.target_id = target.id AND result.ticket_id = ticket.id
+        JOIN research_draw_bindings AS target_draw
+          ON target_draw.id = target.target_draw_binding_id
+        JOIN research_draw_bindings AS cutoff_draw
+          ON cutoff_draw.id = target.history_cutoff_binding_id
+        WHERE target.run_id = ?
+          AND target.execution_status = 'OK'
+          AND (
+              target.target_draw_date < ?
+              OR (
+                  target.target_draw_date = ?
+                  AND CAST(target.target_draw_number AS INTEGER) <= ?
+              )
+          )
+        ORDER BY
+            target.target_draw_date,
+            CAST(target.target_draw_number AS INTEGER),
+            strategy.strategy_id,
+            ticket.native_position,
+            result.result_version
+        """,
+        (
+            source_run_id,
+            last_target_draw_date,
+            last_target_draw_date,
+            last_target_draw_number,
+            len(strategy_rows),
+            source_run_id,
+            last_target_draw_date,
+            last_target_draw_date,
+            last_target_draw_number,
+        ),
+    ).fetchall()
+
+    return HistoricalReplayDiscoveryCorpusRows(
+        table_names=table_names,
+        source_metadata=None if source_row is None else tuple(source_row),
+        source_latest_status=(None if source_status_row is None else source_status_row[0]),
+        strategy_rows=tuple(tuple(row) for row in strategy_rows),
+        run_inventory_rows=tuple(inventory_rows),
+        bounded_profile_counts=tuple(profile_counts),
+        common_rows=tuple(dict(row) for row in common_rows),
+    )
+
+
+def fetch_research_table_names(connection: sqlite3.Connection) -> frozenset[str]:
+    """Return research-store table names without changing the store."""
+
+    return frozenset(
+        str(row[0])
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
+        ).fetchall()
+    )
+
+
 __all__ = [
     "BUSY_TIMEOUT_MS",
     "IMMUTABLE_TABLE_NAMES",
@@ -1775,6 +2151,7 @@ __all__ = [
     "CoverageRow",
     "DrawBindingInput",
     "DuplicateIdempotencyKeyError",
+    "HistoricalReplayDiscoveryCorpusRows",
     "QueryPage",
     "RankingCursor",
     "RankingRow",
@@ -1790,5 +2167,7 @@ __all__ = [
     "TicketCursor",
     "TicketInput",
     "TicketResultInput",
+    "fetch_historical_replay_discovery_corpus_rows",
     "fetch_research_draw_bindings_for_dataset",
+    "fetch_research_table_names",
 ]

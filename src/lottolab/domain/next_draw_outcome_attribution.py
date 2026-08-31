@@ -214,10 +214,12 @@ class VerifiedNextDrawRecommendationSeal:
                 "seal buckets must cover the exact six-bucket universe in order"
             )
         for bucket in self.buckets:
-            _validate_verified_seal_bucket(bucket)
+            _validate_verified_seal_bucket(bucket, schema_version=self.schema_version)
 
 
-def _validate_verified_seal_bucket(bucket: SealedRecommendationBucket) -> None:
+def _validate_verified_seal_bucket(
+    bucket: SealedRecommendationBucket, *, schema_version: str
+) -> None:
     try:
         availability = BucketAvailabilityStatus(bucket.availability)
     except ValueError as exc:
@@ -230,13 +232,17 @@ def _validate_verified_seal_bucket(bucket: SealedRecommendationBucket) -> None:
             "seal bucket availability contradicts total_candidate_count"
         )
     expected_ranked = min(bucket.total_candidate_count, TOP_N)
-    if len(bucket.ranked_strategy_ids) != expected_ranked:
+    if schema_version == NEXT_DRAW_RECOMMENDATION_SEAL_V1:
+        # V1 retains the full ranked list; candidate-pool metadata can include
+        # excluded candidates, which must never become fabricated seal children.
+        expected_ranked = min(len(bucket.ranked_strategy_ids), TOP_N)
+    elif len(bucket.ranked_strategy_ids) != expected_ranked:
         raise NextDrawOutcomeAttributionContractError(
             "seal bucket ranked_strategy_ids do not cover the frozen top-N projection"
         )
     if len(bucket.sealed_tickets) != expected_ranked:
         raise NextDrawOutcomeAttributionContractError(
-            "seal bucket must preserve one ticket status for every ranked strategy"
+            "seal bucket must preserve one ticket status for every strategy in its top-N prefix"
         )
     if availability is BucketAvailabilityStatus.UNAVAILABLE and bucket.sealed_tickets:
         raise NextDrawOutcomeAttributionContractError(
@@ -637,8 +643,10 @@ class NextDrawBucketOutcomeAttribution:
             raise NextDrawOutcomeAttributionContractError(
                 "UNAVAILABLE buckets must have zero score children"
             )
+        # Exact cardinality belongs to the enclosing seal schema: V1 pool
+        # metadata can exceed its actual sealed prefix. V2 remains exact below.
         expected_count = min(self.total_candidate_count, TOP_N)
-        if len(self.strategies) != expected_count:
+        if len(self.strategies) > expected_count:
             raise NextDrawOutcomeAttributionContractError(
                 "bucket strategy count must preserve the sealed top-N projection"
             )
@@ -689,6 +697,40 @@ class NextDrawBucketOutcomeAttribution:
         )
 
 
+def _validate_v1_attribution_projection(
+    seal: VerifiedNextDrawRecommendationSeal,
+    buckets: tuple[NextDrawBucketOutcomeAttribution, ...],
+) -> None:
+    """Bind V1 output to actual sealed children, never to candidate-pool size."""
+
+    if tuple(bucket.native_ticket_count for bucket in buckets) != tuple(
+        bucket.native_ticket_count for bucket in seal.buckets
+    ):
+        raise NextDrawOutcomeAttributionContractError("V1 attribution bucket projection changed")
+    for projected, sealed in zip(buckets, seal.buckets, strict=True):
+        if (
+            projected.availability.value != sealed.availability
+            or projected.total_candidate_count != sealed.total_candidate_count
+            or len(projected.strategies) != len(sealed.sealed_tickets)
+        ):
+            raise NextDrawOutcomeAttributionContractError(
+                "V1 attribution must preserve bucket metadata and actual sealed strategy count"
+            )
+        for strategy, original in zip(projected.strategies, sealed.sealed_tickets, strict=True):
+            if (
+                strategy.rank != original.rank
+                or strategy.strategy_id != original.strategy_id
+                or strategy.strategy_name != original.strategy_name
+                or strategy.seal_status is not original.status
+                or strategy.detail != original.detail
+                or tuple(item.predicted_main_numbers for item in strategy.ticket_attributions)
+                != original.tickets
+            ):
+                raise NextDrawOutcomeAttributionContractError(
+                    "V1 attribution must preserve only the actual sealed strategies and tickets"
+                )
+
+
 @dataclass(frozen=True, slots=True)
 class NextDrawOutcomeAttribution:
     """Complete deterministic P4 artifact for one sealed target and outcome."""
@@ -714,6 +756,8 @@ class NextDrawOutcomeAttribution:
         official_outcome: NextDrawOfficialOutcome,
         buckets: tuple[NextDrawBucketOutcomeAttribution, ...],
     ) -> NextDrawOutcomeAttribution:
+        if seal.schema_version == NEXT_DRAW_RECOMMENDATION_SEAL_V1:
+            _validate_v1_attribution_projection(seal, buckets)
         material = _attribution_material(
             schema_version=NEXT_DRAW_P4_ATTRIBUTION_SCHEMA_VERSION,
             target=seal.target,
@@ -790,6 +834,12 @@ class NextDrawOutcomeAttribution:
             raise NextDrawOutcomeAttributionContractError(
                 "P4 output must contain the exact six-bucket projection in order"
             )
+        if self.seal_schema_version == NEXT_DRAW_RECOMMENDATION_SEAL_V2:
+            for bucket in self.buckets:
+                if len(bucket.strategies) != min(bucket.total_candidate_count, TOP_N):
+                    raise NextDrawOutcomeAttributionContractError(
+                        "bucket strategy count must preserve the sealed top-N projection"
+                    )
         _require_sha256(self.attribution_sha256, "attribution_sha256")
         if self.attribution_sha256 != _canonical_sha256(self.canonical_material()):
             raise NextDrawOutcomeAttributionTamperError(

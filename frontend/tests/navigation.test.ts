@@ -376,6 +376,11 @@ describe('App navigation', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
+
+    window.location.hash = '#/ranking-matrix'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('[data-testid="ranking-matrix-page"]').exists()).toBe(true)
     wrapper.unmount()
   })
 

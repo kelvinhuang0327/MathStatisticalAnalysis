@@ -22,6 +22,7 @@ import P638HistoricalReplayPage from './features/p638-historical-replay/P638Hist
 import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638StrategyAnalysisPage.vue'
 import T539StrategyAnalysisPage from './features/t539-strategy-analysis/T539StrategyAnalysisPage.vue'
 import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
+import RankingMatrixPage from './features/ranking-matrix/RankingMatrixPage.vue'
 
 type Page =
   | 'data-operations'
@@ -45,6 +46,7 @@ type Page =
   | 'historical-base-data'
   | 'live-zone-split-bets'
   | 'replay-history'
+  | 'ranking-matrix'
 
 const currentPage = ref<Page>(pageFromHash())
 
@@ -69,6 +71,7 @@ function pageFromHash(): Page {
   if (route === 'historical-base-data') return 'historical-base-data'
   if (route === 'live-zone-split-bets') return 'live-zone-split-bets'
   if (route === 'replay-history') return 'replay-history'
+  if (route === 'ranking-matrix' || route === 'strategy-ranking' || route === 'ranking-matrix-results') return 'ranking-matrix'
   return 'data-operations'
 }
 
@@ -76,7 +79,7 @@ const activeNavSection = computed(() => {
   const p = currentPage.value
   if (p === 'data-operations' || p === 'data-center') return 'data-operations'
   if (p === 'history' || p === 'draw-history') return 'history'
-  if (p === 'best-replay') return 'best-replay'
+  if (p === 'best-replay' || p === 'ranking-matrix') return 'best-replay'
   if (p === 'strategy-intelligence' || p === 'strategies' || p === 'strategy-evidence' || p === 'historical-success-windows') return 'strategy-intelligence'
   if (p === 'b649-replay' || p === 'b649-multi-ticket-records' || p === 'b649-owner-ranking') return 'b649-replay'
   if (p === 'p638-replay' || p === 'p638-historical-replay' || p === 'p638-strategy-analysis') return 'p638-replay'
@@ -175,6 +178,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <FutureModulesPage v-else-if="currentPage === 'future-modules'" />
 
       <!-- Deep Link / Legacy Route Direct Support -->
+      <RankingMatrixPage v-else-if="currentPage === 'ranking-matrix'" />
       <StrategyCatalogPage v-else-if="currentPage === 'strategies'" />
       <HistoricalSuccessWindowsPage v-else-if="currentPage === 'historical-success-windows'" />
       <HistoricalBaseDataPage v-else-if="currentPage === 'historical-base-data'" />

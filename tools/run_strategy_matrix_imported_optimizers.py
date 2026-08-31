@@ -7,9 +7,12 @@ import hashlib
 from pathlib import Path
 
 from lottolab.research.strategy_matrix_comparison import (
+    NATIVE_MEASUREMENT_PATH,
     RESULT_PATH,
     build_comparison,
     canonical_json_bytes,
+    measure_native_coverage,
+    repair_native_coverage,
 )
 
 
@@ -18,8 +21,50 @@ def main() -> None:
     parser.add_argument(
         "--check", action="store_true", help="Recompute and compare without writing."
     )
+    parser.add_argument(
+        "--measure-native",
+        action="store_true",
+        help="Execute and write the pinned native evidence-completion artifact.",
+    )
+    parser.add_argument(
+        "--repair-native",
+        action="store_true",
+        help="Complete and rewrite an existing native measurement checkpoint.",
+    )
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
+    if sum((args.check, args.measure_native, args.repair_native)) > 1:
+        parser.error("--check, --measure-native, and --repair-native are mutually exclusive")
+    if args.repair_native:
+        payload = repair_native_coverage(root)
+        serialized = canonical_json_bytes(payload)
+        (root / NATIVE_MEASUREMENT_PATH).write_bytes(serialized)
+        print(
+            "PASS: repaired native measurement artifact; "
+            f"{payload['new_native_measured_count']} measured; "
+            f"{payload['remaining_native_not_run_count']} not run"
+        )
+        print(
+            "START_SUPPORTED_NATIVE_NOT_RUN_COUNT: "
+            f"{payload['starting_supported_native_not_run_count']}"
+        )
+        print(f"NATIVE_MEASUREMENT_SHA256: {hashlib.sha256(serialized).hexdigest()}")
+        return
+    if args.measure_native:
+        payload = measure_native_coverage(root)
+        serialized = canonical_json_bytes(payload)
+        (root / NATIVE_MEASUREMENT_PATH).write_bytes(serialized)
+        print(
+            "PASS: native measurement artifact; "
+            f"{payload['new_native_measured_count']} measured; "
+            f"{payload['remaining_native_not_run_count']} not run"
+        )
+        print(
+            "START_SUPPORTED_NATIVE_NOT_RUN_COUNT: "
+            f"{payload['starting_supported_native_not_run_count']}"
+        )
+        print(f"NATIVE_MEASUREMENT_SHA256: {hashlib.sha256(serialized).hexdigest()}")
+        return
     payload = build_comparison(root)
     serialized = canonical_json_bytes(payload)
     result_path = root / RESULT_PATH

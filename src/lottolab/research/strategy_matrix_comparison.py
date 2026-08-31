@@ -31,6 +31,10 @@ from lottolab.research.cyclic_sidon_shift import sidon_shift_portfolio as sidon_
 from lottolab.research.cyclic_sidon_shift_p638_zone1 import sidon_shift_portfolio as sidon_p638
 from lottolab.research.cyclic_sidon_shift_t539 import sidon_shift_portfolio as sidon_t539
 from lottolab.research.exact_coverage_baseline import exact_random_portfolio_coverage
+from lottolab.research.exact_coverage_fast_evaluator import (
+    clear_cache,
+    fast_exact_portfolio_coverage,
+)
 from lottolab.research.greedy_min_overlap_constructor import greedy_min_overlap_portfolio
 from lottolab.research.greedy_minmax_sum_then_reuse_dispersion_constructor import (
     greedy_minmax_sum_then_reuse_dispersion_portfolio,
@@ -55,6 +59,14 @@ LEDGER_PATH = Path("docs/research/cross_lottery_research_ledger_r1.json")
 RESULT_PATH = Path(
     "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json"
 )
+NATIVE_MEASUREMENT_KEY = "native_coverage_r1"
+NATIVE_MEASUREMENT_PATH = Path(
+    "docs/research/matrix-native-results/strategy-matrix-native-evidence-coverage-r1-result.json"
+)
+NATIVE_MEASUREMENT_SCHEMA_VERSION = "1.0.0"
+NATIVE_CANDIDATE_POOL_KIND = "clustered_plus_sidon"
+NATIVE_MEASUREMENT_MINIMUM_MATCHES = 3
+NATIVE_MAX_SAMPLE_ATTEMPTS = 200
 SIDON = "CYCLIC_SIDON_SHIFT_V1"
 ARM_B = "GREEDY_MIN_OVERLAP_V1"
 ARM_E = "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
@@ -575,13 +587,529 @@ def _native_locator(method_id: str, lottery: str, k: int) -> tuple[str, str] | N
     return None
 
 
+def _native_supported_specs(
+    methods: Mapping[str, JsonObject],
+) -> list[tuple[str, LotteryRuleContract, str, JsonObject, int]]:
+    """Derive supported native cells from the canonical method/lottery matrix."""
+
+    return [
+        (lottery, rules, method_id, method, k)
+        for lottery, rules in RULES.items()
+        for method_id, method in methods.items()
+        for k in K_SCOPE
+        if lottery in method["supported_lottery"] and k in method["supported_k"]
+    ]
+
+
+def _native_row_id(lottery: str, method_id: str, k: int) -> str:
+    return f"NATIVE_{lottery}|{method_id}|default|k{k}|m{NATIVE_MEASUREMENT_MINIMUM_MATCHES}"
+
+
+def _native_supported_not_run_row_ids(methods: Mapping[str, JsonObject]) -> list[str]:
+    """Return the open native identities without maintaining a second cell list."""
+
+    return sorted(
+        _native_row_id(lottery, method_id, k)
+        for lottery, _rules, method_id, _method, k in _native_supported_specs(methods)
+        if _native_locator(method_id, lottery, k) is None
+    )
+
+
+def _load_native_documents(root: Path, matrix: JsonObject) -> dict[str, JsonObject]:
+    entries = cast(dict[str, JsonObject], matrix["native_evidence"])
+    return {
+        key: cast(JsonObject, json.loads((root / entry["path"]).read_text()))
+        for key, entry in entries.items()
+        if key != NATIVE_MEASUREMENT_KEY
+    }
+
+
+def _native_search_budget(documents: Mapping[str, JsonObject]) -> dict[str, int]:
+    """Reuse the already-sealed native bounded-search budget."""
+
+    optimizer = cast(JsonObject, documents["frontier_b649"]["optimizer"])
+    keys = ("seed", "restart_count", "candidate_sample_size", "max_swap_passes")
+    budget = {key: optimizer[key] for key in keys}
+    if any(type(budget[key]) is not int or budget[key] <= 0 for key in keys):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: invalid native search budget")
+    budget["max_sample_attempts"] = NATIVE_MAX_SAMPLE_ATTEMPTS
+    return cast(dict[str, int], budget)
+
+
+def _portfolio_from_json(value: Any) -> Portfolio:
+    if not isinstance(value, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: measured portfolio is not a list")
+    tickets = cast(list[list[int]], value)
+    return tuple(tuple(ticket) for ticket in tickets)
+
+
+def _measure_native_row(
+    method: JsonObject,
+    lottery: str,
+    rules: LotteryRuleContract,
+    k: int,
+    search_budget: Mapping[str, int],
+    documents: Mapping[str, JsonObject],
+) -> JsonObject:
+    """Execute one supported native cell through an existing deterministic method."""
+
+    method_id = cast(str, method["strategy_id"])
+    minimum_matches = NATIVE_MEASUREMENT_MINIMUM_MATCHES
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    number_max = rules.main_number_max
+    draw_size = rules.main_number_count
+    measurement_evidence: JsonObject = {
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": method_id,
+        "minimum_matches": minimum_matches,
+    }
+
+    reference_portfolio: Portfolio | None = None
+    reference_q: Fraction
+    portfolio: Portfolio
+    q: Fraction
+    reference_locator = _native_locator(ARM_E, lottery, k)
+    if reference_locator is not None:
+        reference_source, reference_pointer = reference_locator
+        reference_q = parse_rational(_pointer(documents[reference_source], reference_pointer))
+        measurement_evidence["reference_q_reused_from_native_evidence"] = True
+        measurement_evidence["reference_q_locator"] = {
+            "source_key": reference_source,
+            "json_pointer": reference_pointer,
+        }
+        if method_id in (ONE_EXCHANGE, ITERATIVE):
+            reference_portfolio = GREEDY_CONSTRUCTORS[ARM_E](number_max, draw_size, k)
+    else:
+        reference_portfolio = GREEDY_CONSTRUCTORS[ARM_E](number_max, draw_size, k)
+        reference_q = fast_exact_portfolio_coverage(
+            number_max, draw_size, minimum_matches, reference_portfolio
+        )
+
+    if method_id == CANDIDATE:
+        candidates = candidate_pool(lottery, NATIVE_CANDIDATE_POOL_KIND)
+        portfolio = build_low_overlap_portfolio(candidates, k, rules)
+        row["candidate_pool_kind"] = NATIVE_CANDIDATE_POOL_KIND
+        row["candidate_pool_sha256"] = hashlib.sha256(
+            canonical_json_bytes(candidates)
+        ).hexdigest()
+        row["candidate_count"] = len(candidates)
+        measurement_evidence.update(
+            {
+                "candidate_pool_kind": NATIVE_CANDIDATE_POOL_KIND,
+                "candidate_pool_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_POOL",
+                "candidate_selection_mode": "GEOMETRY_ONLY",
+            }
+        )
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id in CONSTRUCTORS:
+        candidates = candidate_pool("BIG_LOTTO", NATIVE_CANDIDATE_POOL_KIND)
+        portfolio = CONSTRUCTORS[method_id](candidates, k)
+        row["candidate_pool_kind"] = NATIVE_CANDIDATE_POOL_KIND
+        row["candidate_pool_sha256"] = hashlib.sha256(
+            canonical_json_bytes(candidates)
+        ).hexdigest()
+        row["candidate_count"] = len(candidates)
+        measurement_evidence.update(
+            {
+                "candidate_pool_kind": NATIVE_CANDIDATE_POOL_KIND,
+                "candidate_pool_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_POOL",
+                "candidate_selection_mode": "FROZEN_B649_CONSTRUCTOR",
+            }
+        )
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id == SIDON:
+        portfolio = SIDON_CONSTRUCTORS[lottery](k)
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id in GREEDY_CONSTRUCTORS:
+        portfolio = GREEDY_CONSTRUCTORS[method_id](number_max, draw_size, k)
+        clear_cache()
+        q = fast_exact_portfolio_coverage(number_max, draw_size, minimum_matches, portfolio)
+    elif method_id == BOUNDED:
+        result = restart_greedy_swap_search_fast(
+            number_max,
+            draw_size,
+            minimum_matches,
+            k,
+            seed=search_budget["seed"],
+            restart_count=search_budget["restart_count"],
+            candidate_sample_size=search_budget["candidate_sample_size"],
+            max_swap_passes=search_budget["max_swap_passes"],
+            max_sample_attempts=search_budget["max_sample_attempts"],
+        )
+        portfolio, q = result.portfolio, result.coverage
+        row["local_optimum_status"] = "NOT_CERTIFIED_SAMPLED_NEIGHBORHOOD"
+        row["search_evidence"] = {
+            "budget": dict(search_budget),
+            "evaluations_used_entire_invocation": result.evaluations_used,
+            "best_restart_index": result.best_restart_index,
+            "restart_coverages": [
+                rational(item.coverage) for item in result.restart_outcomes
+            ],
+            "sampled_converged_by_restart": [
+                item.converged for item in result.restart_outcomes
+            ],
+            "neighborhood_unit": "SAMPLED_WHOLE_TICKET_REPLACEMENT",
+        }
+        measurement_evidence["search_budget"] = dict(search_budget)
+    elif method_id == ONE_EXCHANGE:
+        assert reference_portfolio is not None
+        evaluated = evaluate_one_exchange_neighborhood(
+            number_max, draw_size, minimum_matches, reference_portfolio
+        )
+        accepted = evaluated["delta_vs_reference"] > 0
+        portfolio = evaluated["best_neighbor"] if accepted else reference_portfolio
+        q = evaluated["q_best_neighbor"] if accepted else evaluated["q_reference"]
+        reference_q = evaluated["q_reference"]
+        row["search_evidence"] = {
+            "all_neighbors_evaluated": evaluated["all_neighbors_evaluated"],
+            "unique_legal_neighbor_count": evaluated["unique_neighbor_count"],
+            "best_neighbor_q": rational(evaluated["q_best_neighbor"]),
+            "best_neighbor_delta": rational(evaluated["delta_vs_reference"]),
+            "accepted_move": accepted,
+            "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        }
+        if not accepted:
+            row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+            row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+        measurement_evidence["seed_policy"] = ARM_E
+    elif method_id == ITERATIVE:
+        assert reference_portfolio is not None
+        result = iterative_exact_one_exchange_ascent(
+            number_max, draw_size, minimum_matches, reference_portfolio
+        )
+        portfolio, q, reference_q = result.terminal_portfolio, result.terminal_q, result.seed_q
+        row["search_evidence"] = {
+            "move_count": result.move_count,
+            "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+            "iterations": [
+                {
+                    "input_q": rational(item.input_q),
+                    "best_neighbor_q": rational(item.best_neighbor_q),
+                    "delta": rational(item.delta),
+                    "accepted_move": item.accepted_move,
+                    "unique_legal_neighbor_count": item.unique_legal_neighbor_count,
+                    "input_portfolio": item.input_portfolio,
+                    "best_neighbor_portfolio": item.best_neighbor_portfolio,
+                }
+                for item in result.iterations
+            ],
+        }
+        row["local_optimum_status"] = "CERTIFIED_ONE_NUMBER_EXCHANGE"
+        row["proof_status"] = "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_NO_GLOBAL_PROOF"
+        measurement_evidence["seed_policy"] = ARM_E
+    else:
+        raise ValueError(f"NATIVE_MEASUREMENT_UNSUPPORTED_METHOD:{method_id}")
+
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, q, reference_q, ARM_E)
+    row["measurement_evidence"] = measurement_evidence
+    return row
+
+
+def _native_measurement_failure(
+    method: JsonObject,
+    lottery: str,
+    k: int,
+    error: Exception,
+) -> JsonObject:
+    reason = f"EXISTING_NATIVE_EXECUTION_FAILED:{type(error).__name__}:{error}"
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        status="NOT_RUN",
+        reason=reason,
+        minimum_matches=NATIVE_MEASUREMENT_MINIMUM_MATCHES,
+    )
+    row["measurement_evidence"] = {
+        "execution_classification": "ATTEMPTED_EXISTING_NATIVE_METHOD",
+        "failure_type": type(error).__name__,
+        "failure_reason": str(error),
+    }
+    return row
+
+
+def _native_resource_bound_reason(lottery: str, method_id: str, k: int) -> str | None:
+    if lottery == "BIG_LOTTO" and method_id in (ONE_EXCHANGE, ITERATIVE) and k in (2, 3, 5):
+        return (
+            "RESOURCE_BOUND_NATIVE_M3_ONE_EXCHANGE_B649_LOW_K: the existing exact "
+            "one-number-exchange evaluator reached approximately 1.3 GB RSS during "
+            "the bounded measurement attempt; a memory-bounded evaluator change is "
+            "outside this task."
+        )
+    return None
+
+
+def _native_measurement_resource_bound(
+    method: JsonObject,
+    lottery: str,
+    k: int,
+    reason: str,
+) -> JsonObject:
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        status="NOT_RUN",
+        reason=reason,
+        minimum_matches=NATIVE_MEASUREMENT_MINIMUM_MATCHES,
+    )
+    row["measurement_evidence"] = {
+        "execution_classification": "NOT_RUN_RESOURCE_BOUND",
+        "dependency": "MEMORY_BOUNDED_EXACT_ONE_EXCHANGE_EVALUATOR",
+        "reason": reason,
+    }
+    return row
+
+
+def measure_native_coverage(root: Path) -> JsonObject:
+    """Execute every currently open supported native cell once."""
+
+    matrix = load_matrix(root)
+    methods = {method["strategy_id"]: method for method in matrix["methods"]}
+    documents = _load_native_documents(root, matrix)
+    search_budget = _native_search_budget(documents)
+    expected_open = _native_supported_not_run_row_ids(methods)
+    rows: list[JsonObject] = []
+
+    for lottery, rules, method_id, method, k in _native_supported_specs(methods):
+        if _native_locator(method_id, lottery, k) is not None:
+            continue
+        resource_bound_reason = _native_resource_bound_reason(lottery, method_id, k)
+        if resource_bound_reason is not None:
+            rows.append(
+                _native_measurement_resource_bound(method, lottery, k, resource_bound_reason)
+            )
+            continue
+        clear_cache()
+        try:
+            row = _measure_native_row(method, lottery, rules, k, search_budget, documents)
+        except Exception as error:
+            row = _native_measurement_failure(method, lottery, k, error)
+        finally:
+            clear_cache()
+        rows.append(row)
+
+    rows.sort(key=lambda row: row["row_id"])
+    actual_ids = [row["row_id"] for row in rows]
+    if actual_ids != expected_open:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native measurement identity drift")
+    measured_count = sum(row["status"] == "MEASURED" for row in rows)
+    return {
+        "artifact_id": "STRATEGY_MATRIX_NATIVE_EVIDENCE_COVERAGE_R1",
+        "schema_version": NATIVE_MEASUREMENT_SCHEMA_VERSION,
+        "source_type": "STRATEGY_MATRIX_NATIVE",
+        "execution_policy": "OUTCOME_FREE_DETERMINISTIC_EXISTING_IMPLEMENTATION",
+        "matrix_authority_base_head": matrix["base_head"],
+        "matrix_authority_base_tree": matrix["base_tree"],
+        "minimum_matches": NATIVE_MEASUREMENT_MINIMUM_MATCHES,
+        "candidate_pool": {
+            "kind": NATIVE_CANDIDATE_POOL_KIND,
+            "scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_POOL",
+            "selection_mode": "EXISTING_DECLARED_CANDIDATE_POOL",
+        },
+        "seed_policy": ARM_E,
+        "search_budget": search_budget,
+        "supported_native_not_run_row_ids": expected_open,
+        "starting_supported_native_not_run_count": len(expected_open),
+        "rows": rows,
+        "new_native_measured_count": measured_count,
+        "remaining_native_not_run_count": len(rows) - measured_count,
+    }
+
+
+def repair_native_coverage(root: Path) -> JsonObject:
+    """Complete a previously interrupted native measurement artifact."""
+
+    matrix = load_matrix(root)
+    methods = {method["strategy_id"]: method for method in matrix["methods"]}
+    documents = _load_native_documents(root, matrix)
+    search_budget = _native_search_budget(documents)
+    expected_open = _native_supported_not_run_row_ids(methods)
+    path = root / NATIVE_MEASUREMENT_PATH
+    if not path.is_file():
+        raise ValueError("NATIVE_MEASUREMENT_CHECKPOINT_MISSING")
+    checkpoint = cast(JsonObject, json.loads(path.read_text()))
+    if (
+        checkpoint.get("artifact_id") != "STRATEGY_MATRIX_NATIVE_EVIDENCE_COVERAGE_R1"
+        or checkpoint.get("schema_version") != NATIVE_MEASUREMENT_SCHEMA_VERSION
+        or checkpoint.get("matrix_authority_base_head") != matrix["base_head"]
+        or checkpoint.get("matrix_authority_base_tree") != matrix["base_tree"]
+        or checkpoint.get("supported_native_not_run_row_ids") != expected_open
+    ):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native checkpoint drift")
+    raw_rows = checkpoint.get("rows")
+    if not isinstance(raw_rows, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint rows")
+    raw_rows = cast(list[object], raw_rows)
+    checkpoint_rows: dict[str, JsonObject] = {}
+    for raw_row in raw_rows:
+        if not isinstance(raw_row, dict):
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint row")
+        row = cast(JsonObject, raw_row)
+        row_id = row.get("row_id")
+        if not isinstance(row_id, str) or row_id in checkpoint_rows:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint row id")
+        if row_id not in expected_open or row.get("evidence_scope") != (
+            "NATIVE_UNIFORM_WINNING_SPACE"
+        ):
+            raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native checkpoint row scope")
+        if row.get("status") not in {"MEASURED", "NOT_RUN"}:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint status")
+        if row["status"] == "MEASURED":
+            if row.get("exact_q") is None or row.get("portfolio") is None:
+                raise ValueError(
+                    "CANONICAL_METRIC_CONTRACT_CONFLICT: native checkpoint measured row"
+                )
+            parse_rational(cast(JsonObject, row["exact_q"]))
+        checkpoint_rows[row_id] = row
+    if set(checkpoint_rows) != set(expected_open):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: incomplete native checkpoint rows")
+
+    rows: list[JsonObject] = []
+    for lottery, rules, method_id, method, k in _native_supported_specs(methods):
+        if _native_locator(method_id, lottery, k) is not None:
+            continue
+        row_id = _native_row_id(lottery, method_id, k)
+        checkpoint_row = checkpoint_rows[row_id]
+        classification = cast(JsonObject, checkpoint_row.get("measurement_evidence", {})).get(
+            "execution_classification"
+        )
+        if checkpoint_row["status"] == "MEASURED" or classification == "NOT_RUN_RESOURCE_BOUND":
+            rows.append(checkpoint_row)
+            continue
+        clear_cache()
+        try:
+            row = _measure_native_row(method, lottery, rules, k, search_budget, documents)
+        except Exception as error:
+            row = _native_measurement_failure(method, lottery, k, error)
+        finally:
+            clear_cache()
+        rows.append(row)
+
+    rows.sort(key=lambda row: row["row_id"])
+    if [row["row_id"] for row in rows] != expected_open:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native repair identity drift")
+    measured_count = sum(row["status"] == "MEASURED" for row in rows)
+    repaired = dict(checkpoint)
+    repaired["rows"] = rows
+    repaired["starting_supported_native_not_run_count"] = len(expected_open)
+    repaired["new_native_measured_count"] = measured_count
+    repaired["remaining_native_not_run_count"] = len(rows) - measured_count
+    return repaired
+
+
+def _load_native_measurement_rows(
+    root: Path, matrix: JsonObject, methods: Mapping[str, JsonObject]
+) -> dict[str, tuple[int, JsonObject]]:
+    entries = cast(dict[str, JsonObject], matrix["native_evidence"])
+    entry = entries.get(NATIVE_MEASUREMENT_KEY)
+    if entry is None:
+        return {}
+    path = _pinned_file(root, entry)
+    artifact = cast(JsonObject, json.loads(path.read_text()))
+    if artifact.get("schema_version") != NATIVE_MEASUREMENT_SCHEMA_VERSION:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement schema")
+    expected_open = _native_supported_not_run_row_ids(methods)
+    if artifact.get("supported_native_not_run_row_ids") != expected_open:
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: native measurement open cells drifted")
+    raw_rows = artifact.get("rows")
+    if not isinstance(raw_rows, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement rows")
+    raw_rows = cast(list[object], raw_rows)
+    records: dict[str, tuple[int, JsonObject]] = {}
+    for index, raw_row in enumerate(raw_rows):
+        if not isinstance(raw_row, dict):
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement row")
+        record = cast(JsonObject, raw_row)
+        row_id = record.get("row_id")
+        if not isinstance(row_id, str) or row_id in records:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement row id")
+        if row_id not in expected_open:
+            raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: unexpected native measurement row")
+        if record.get("status") not in {"MEASURED", "NOT_RUN"}:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement status")
+        if record.get("evidence_scope") != "NATIVE_UNIFORM_WINNING_SPACE":
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native measurement scope")
+        if record["status"] == "MEASURED":
+            if record.get("exact_q") is None or record.get("portfolio") is None:
+                raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: incomplete measured row")
+            if (
+                cast(JsonObject, record.get("measurement_evidence", {})).get(
+                    "execution_classification"
+                )
+                != "EXECUTED_EXISTING_NATIVE_METHOD"
+            ):
+                raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: measured execution proof")
+            parse_rational(cast(JsonObject, record["exact_q"]))
+        records[row_id] = (index, record)
+    if set(records) != set(expected_open):
+        raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: incomplete native measurement rows")
+    return records
+
+
+def _apply_native_measurement(
+    row: JsonObject,
+    record: JsonObject,
+    entry: JsonObject,
+    index: int,
+    rules: LotteryRuleContract,
+) -> None:
+    if record["status"] == "NOT_RUN":
+        row["status"] = "NOT_RUN"
+        row["status_reason"] = record.get("status_reason") or (
+            "EXISTING_NATIVE_EXECUTION_DID_NOT_COMPLETE"
+        )
+        row["measurement_evidence"] = record.get("measurement_evidence")
+        return
+
+    q = parse_rational(cast(JsonObject, record["exact_q"]))
+    reference = cast(JsonObject, record["reference"])
+    if reference.get("strategy_id") != ARM_E:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: native reference strategy")
+    reference_q = parse_rational(cast(JsonObject, reference["exact_q"]))
+    portfolio = _portfolio_from_json(record["portfolio"])
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, q, reference_q, ARM_E)
+    for field in (
+        "candidate_pool_kind",
+        "candidate_pool_sha256",
+        "candidate_count",
+        "search_evidence",
+        "local_optimum_status",
+        "proof_status",
+        "measurement_evidence",
+    ):
+        if field in record:
+            row[field] = record[field]
+    row["status"] = "MEASURED"
+    row["status_reason"] = None
+    row["source_evidence"] = {
+        **entry,
+        "json_pointer": f"/rows/{index}",
+    }
+
+
 def _native_rows(
     root: Path, matrix: JsonObject, methods: Mapping[str, JsonObject]
 ) -> list[JsonObject]:
-    entries: JsonObject = matrix["native_evidence"]
-    documents = {
-        key: json.loads((root / entry["path"]).read_text()) for key, entry in entries.items()
-    }
+    entries = cast(dict[str, JsonObject], matrix["native_evidence"])
+    documents = _load_native_documents(root, matrix)
+    measured_rows = _load_native_measurement_rows(root, matrix, methods)
     rows: list[JsonObject] = []
     for lottery, rules in RULES.items():
         for method_id, method in methods.items():
@@ -600,7 +1128,16 @@ def _native_rows(
                     continue
                 locator = _native_locator(method_id, lottery, k)
                 if locator is None:
-                    row.update(status="NOT_RUN", status_reason="NO_EXISTING_NATIVE_EXACT_EVIDENCE")
+                    measured = measured_rows.get(row["row_id"])
+                    if measured is None:
+                        row.update(
+                            status="NOT_RUN", status_reason="NO_EXISTING_NATIVE_EXACT_EVIDENCE"
+                        )
+                    else:
+                        index, record = measured
+                        _apply_native_measurement(
+                            row, record, entries[NATIVE_MEASUREMENT_KEY], index, rules
+                        )
                     rows.append(row)
                     continue
                 source_key, pointer = locator

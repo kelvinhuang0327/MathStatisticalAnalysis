@@ -15,6 +15,7 @@ from lottolab.research.strategy_matrix_comparison import (
     BOUNDED,
     K_SCOPE,
     LEDGER_PATH,
+    NATIVE_MEASUREMENT_PATH,
     RESULT_PATH,
     build_comparison,
     canonical_json_bytes,
@@ -140,6 +141,66 @@ def test_new_comparisons_and_reused_native_evidence_remain_disjoint(
         for row in comparison["rows"]
         if row["status"] == "REUSED_VERIFIED"
     )
+
+
+def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
+    comparison: dict[str, Any],
+) -> None:
+    ledger = json.loads((ROOT / LEDGER_PATH).read_text())
+    entry = ledger["imported_optimizer_matrix"]["native_evidence"]["native_coverage_r1"]
+    artifact_path = ROOT / NATIVE_MEASUREMENT_PATH
+    artifact = json.loads(artifact_path.read_text())
+
+    assert entry["evidence_class"] == "NEW_NATIVE_MEASURED_EVIDENCE"
+    assert entry["path"] == NATIVE_MEASUREMENT_PATH.as_posix()
+    assert entry["sha256"] == hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+    assert artifact["starting_supported_native_not_run_count"] == 79
+    assert artifact["new_native_measured_count"] == 73
+    assert artifact["remaining_native_not_run_count"] == 6
+    assert len(artifact["rows"]) == 79
+    assert canonical_json_bytes(artifact) == artifact_path.read_bytes()
+
+    measured = [row for row in artifact["rows"] if row["status"] == "MEASURED"]
+    not_run = [row for row in artifact["rows"] if row["status"] == "NOT_RUN"]
+    assert all(
+        row["measurement_evidence"]["execution_classification"]
+        == "EXECUTED_EXISTING_NATIVE_METHOD"
+        for row in measured
+    )
+    assert all(
+        row["measurement_evidence"]["execution_classification"]
+        == "NOT_RUN_RESOURCE_BOUND"
+        and row["measurement_evidence"]["dependency"]
+        == "MEMORY_BOUNDED_EXACT_ONE_EXCHANGE_EVALUATOR"
+        and row["exact_q"] is None
+        and row["portfolio"] is None
+        for row in not_run
+    )
+
+    native_rows = [row for row in comparison["rows"] if row["case_id"].startswith("NATIVE_")]
+    new_native_rows = [
+        row
+        for row in native_rows
+        if row["status"] == "MEASURED"
+        and row["source_evidence"] is not None
+        and row["source_evidence"]["path"] == NATIVE_MEASUREMENT_PATH.as_posix()
+    ]
+    assert len(new_native_rows) == 73
+    assert all(row["evidence_scope"] == "NATIVE_UNIFORM_WINNING_SPACE" for row in new_native_rows)
+    assert all(
+        row["status"] in {"REUSED_VERIFIED", "NOT_APPLICABLE", "NOT_RUN"}
+        or row["source_evidence"]["evidence_class"] == "NEW_NATIVE_MEASURED_EVIDENCE"
+        for row in native_rows
+    )
+
+    geometry_rows = [
+        row
+        for row in comparison["rows"]
+        if row["evidence_scope"] == "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY"
+        and row.get("coverage_status") is not None
+    ]
+    assert geometry_rows
+    assert all(row["coverage_status"] == "NOT_RUN" for row in geometry_rows)
 
 
 def test_canonical_ledger_is_consumed_and_build_is_deterministic(

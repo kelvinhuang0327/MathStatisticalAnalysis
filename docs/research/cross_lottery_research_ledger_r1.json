@@ -1193,6 +1193,11 @@
         "path": "docs/research/matrix-native-results/method-f-reuse-dispersion-tiebreak-b649-v1-result.json",
         "sha256": "f5560722af766f72611463b7db1995697798846995a72d2b7c3302bbd3a38f89"
       },
+      "native_coverage_r1": {
+        "evidence_class": "NEW_NATIVE_MEASURED_EVIDENCE",
+        "path": "docs/research/matrix-native-results/strategy-matrix-native-evidence-coverage-r1-result.json",
+        "sha256": "8d2b2f5ea7d3fef36e74d8380706dbbb855e5ed934d814f3ec0aec5a0eb6bad4"
+      },
       "next_b649": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/constructor-frontier-next-generation-v1-result.json",

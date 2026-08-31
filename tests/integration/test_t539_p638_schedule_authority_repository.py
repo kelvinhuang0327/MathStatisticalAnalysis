@@ -133,6 +133,24 @@ def test_complete_authority_persists_both_natural_keys_and_generic_reader_resolv
     assert p638 is not None
     assert t539.announcement.target.draw_number == "1001"
     assert p638.announcement.target.draw_number == "1001"
+    assert t539.immutable_schedule_sha256 == _schedule_snapshot(
+        paths,
+        LotteryType.DAILY_539,
+        "1001",
+    )[-2]
+    assert p638.immutable_schedule_sha256 == _schedule_snapshot(
+        paths,
+        LotteryType.POWER_LOTTO,
+        "1001",
+    )[-2]
+    assert (
+        reader.get_scheduled_draw(LotteryType.DAILY_539, "1001")
+        == t539
+    )
+    assert (
+        reader.get_scheduled_draw(LotteryType.POWER_LOTTO, "1001")
+        == p638
+    )
     with open_database(paths, read_only=True) as connection:
         facts = connection.execute(
             """

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import inspect
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import cast
 
@@ -20,6 +20,11 @@ from lottolab.application.pre_outcome_target_operational import (
     OutcomePresenceEvidenceUnavailableError,
     TargetAnnouncementAuthorityError,
     TargetAnnouncementSourceStatus,
+)
+from lottolab.application.schedule_sync import (
+    SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES,
+    CanonicalScheduleFact,
+    expected_schedule_game_code,
 )
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import IngestionOperationType, IngestionRunStatus
@@ -253,7 +258,7 @@ def _insert_schedule(
     )
     with open_database(paths, read_only=False) as connection:
         connection.execute("BEGIN IMMEDIATE")
-        connection.execute(
+        inserted = connection.execute(
             """
             INSERT INTO draw_schedules (
                 lottery_type, draw_number, draw_date, scheduled_at,
@@ -278,6 +283,29 @@ def _insert_schedule(
                 "2099-01-01T06:30:00.000000Z",
             ),
         )
+        if lottery_type in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES:
+            fact = CanonicalScheduleFact(
+                announcement=announcement,
+                official_game_code=expected_schedule_game_code(lottery_type),
+                scheduled_local_time=time(20, 30),
+                source_period_identifier=draw_number,
+            )
+            connection.execute(
+                """
+                INSERT INTO draw_schedule_facts (
+                    schedule_id, official_game_code, scheduled_local_time,
+                    source_period_identifier, immutable_schedule_hash,
+                    authority_origin
+                ) VALUES (?, ?, ?, ?, ?, 'OFFICIAL')
+                """,
+                (
+                    inserted.lastrowid,
+                    fact.official_game_code,
+                    fact.scheduled_local_time.isoformat(timespec="seconds"),
+                    fact.source_period_identifier,
+                    fact.immutable_schedule_sha256,
+                ),
+            )
         connection.commit()
 
 

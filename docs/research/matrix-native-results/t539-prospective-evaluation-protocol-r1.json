@@ -1,0 +1,1023 @@
+{
+  "accumulation_contract": {
+    "chronological_target_order": "ASCENDING_NUMERIC_TARGET_IDENTITY",
+    "per_experiment_required_report_fields": [
+      "valid_target_count",
+      "arm_success_counts",
+      "exact_arm_rate_numerators_and_denominator",
+      "exact_paired_rate_deltas",
+      "chronological_target_identities",
+      "technical_exclusions"
+    ],
+    "raw_target_level_outcomes": "RETAIN",
+    "raw_target_record_required_fields": [
+      "target_identity",
+      "pretarget_snapshot_identity",
+      "snapshot_rule_fingerprint",
+      "outcome_authority_identity",
+      "experiment_id",
+      "A_success_indicator",
+      "B_success_indicator",
+      "C_success_indicator"
+    ],
+    "success_indicator_domain": [
+      0,
+      1
+    ],
+    "technical_exclusions_reported_separately": true
+  },
+  "arms": [
+    {
+      "arm_id": "A",
+      "frozen_arm_id": "ORIGINAL_ROLLING",
+      "selection_mode": "STRICTLY_CAUSAL_ROLLING_WINDOW_SELECTOR",
+      "universe_reference": "cells[].original_candidate_universe",
+      "universe_sha256_field": "cells[].original_candidate_universe_sha256"
+    },
+    {
+      "arm_id": "B",
+      "frozen_arm_id": "CALLABLE_FAMILY_DEDUP_ROLLING",
+      "selection_mode": "STRICTLY_CAUSAL_ROLLING_WINDOW_SELECTOR",
+      "universe_reference": "cells[].callable_families[].representative_identity",
+      "universe_sha256_field": "cells[].callable_reduced_universe_sha256"
+    },
+    {
+      "arm_id": "C",
+      "baseline_identity_field": "cells[].windows[].callable_family_dedup_frozen_baseline_identity",
+      "frozen_arm_id": "CALLABLE_FAMILY_DEDUP_FROZEN_BASELINE",
+      "selection_mode": "STATIC_EXACT_PILOT_FROZEN_BASELINE_IDENTITY",
+      "universe_reference": "cells[].callable_families[].representative_identity",
+      "universe_sha256_field": "cells[].callable_reduced_universe_sha256"
+    }
+  ],
+  "authority": {
+    "freeze_boundary": "115000186",
+    "freeze_id": "T539_CALLABLE_FAMILY_DEDUP_PROSPECTIVE_SHADOW_FREEZE_R1",
+    "freeze_path": "docs/research/matrix-native-results/t539-callable-family-dedup-prospective-shadow-freeze-r1.json",
+    "freeze_sha256": "f1b299ace019393440bce8bd2768f6618b2362d220d81b4cc14151a5080908a8",
+    "primary_metric_field": "selector_contract.primary_metric_id",
+    "rule_fingerprint": "eb4eb89082cd782041c240e80858efd8453c3bbf08edec3b76e98e2e8051f446"
+  },
+  "frozen_surface": {
+    "experiment_count": 30,
+    "experiments": [
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K1",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K1:W50",
+        "native_ticket_count": 1,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "539_3bet_orthogonal",
+            "v0.1-p36"
+          ],
+          "callable_reduced_universe_sha256": "3d1c189f599f7612c08b09d1684cf1efc2283a15b487d1ac9c83af73aaa8ea81",
+          "original_candidate_universe_sha256": "f2a264f546c17791ccac7708df91d2bdbbab40f850655a89c9f06ff34717dc47"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K1",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K1:W300",
+        "native_ticket_count": 1,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_attention_replay_1bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3d1c189f599f7612c08b09d1684cf1efc2283a15b487d1ac9c83af73aaa8ea81",
+          "original_candidate_universe_sha256": "f2a264f546c17791ccac7708df91d2bdbbab40f850655a89c9f06ff34717dc47"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K1",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K1:W750",
+        "native_ticket_count": 1,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "539_3bet_orthogonal",
+            "v0.1-p36"
+          ],
+          "callable_reduced_universe_sha256": "3d1c189f599f7612c08b09d1684cf1efc2283a15b487d1ac9c83af73aaa8ea81",
+          "original_candidate_universe_sha256": "f2a264f546c17791ccac7708df91d2bdbbab40f850655a89c9f06ff34717dc47"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K2",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K2:W50",
+        "native_ticket_count": 2,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "midfreq_acb_2bet",
+            "v0.1"
+          ],
+          "callable_reduced_universe_sha256": "dcee5db9eae282bad7e11431ab6e3abc7ca51ed07d31bebfd94382174d4a9d05",
+          "original_candidate_universe_sha256": "5945ae44a8f159539380644934aca151b316d283ef83a134774c4b7b816871a7"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K2",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K2:W300",
+        "native_ticket_count": 2,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_deviation_2bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "dcee5db9eae282bad7e11431ab6e3abc7ca51ed07d31bebfd94382174d4a9d05",
+          "original_candidate_universe_sha256": "5945ae44a8f159539380644934aca151b316d283ef83a134774c4b7b816871a7"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K2",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K2:W750",
+        "native_ticket_count": 2,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_deviation_2bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "dcee5db9eae282bad7e11431ab6e3abc7ca51ed07d31bebfd94382174d4a9d05",
+          "original_candidate_universe_sha256": "5945ae44a8f159539380644934aca151b316d283ef83a134774c4b7b816871a7"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K3",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K3:W50",
+        "native_ticket_count": 3,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "acb_markov_midfreq_3bet",
+            "v0.1"
+          ],
+          "callable_reduced_universe_sha256": "fd7cbd2a7feeb5de2c3ab9613d8111b66b8253cdd238473c7dfe170ad55eb192",
+          "original_candidate_universe_sha256": "8e5e57fa72afd80ac1c0293a225fbaaee29c896176b43828235f5791a0409d69"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K3",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K3:W300",
+        "native_ticket_count": 3,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_3bet",
+            "v0.1"
+          ],
+          "callable_reduced_universe_sha256": "fd7cbd2a7feeb5de2c3ab9613d8111b66b8253cdd238473c7dfe170ad55eb192",
+          "original_candidate_universe_sha256": "8e5e57fa72afd80ac1c0293a225fbaaee29c896176b43828235f5791a0409d69"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K3",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K3:W750",
+        "native_ticket_count": 3,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_3bet",
+            "v0.1"
+          ],
+          "callable_reduced_universe_sha256": "fd7cbd2a7feeb5de2c3ab9613d8111b66b8253cdd238473c7dfe170ad55eb192",
+          "original_candidate_universe_sha256": "8e5e57fa72afd80ac1c0293a225fbaaee29c896176b43828235f5791a0409d69"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K4",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K4:W50",
+        "native_ticket_count": 4,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3395e00950399a06ddd9d40efe7673688ebf2c8867fd40c39fd1ef243b6db3e8",
+          "original_candidate_universe_sha256": "658772781782371d20a38bacd4df79e240904f776ad5c5390b3aafc5157154bc"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K4",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K4:W300",
+        "native_ticket_count": 4,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3395e00950399a06ddd9d40efe7673688ebf2c8867fd40c39fd1ef243b6db3e8",
+          "original_candidate_universe_sha256": "658772781782371d20a38bacd4df79e240904f776ad5c5390b3aafc5157154bc"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K4",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K4:W750",
+        "native_ticket_count": 4,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_tme_optimizer_4bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3395e00950399a06ddd9d40efe7673688ebf2c8867fd40c39fd1ef243b6db3e8",
+          "original_candidate_universe_sha256": "658772781782371d20a38bacd4df79e240904f776ad5c5390b3aafc5157154bc"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K5",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K5:W50",
+        "native_ticket_count": 5,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_five_me_5bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "810d83e99c0e945f66f407366d6fa0576977a067da252e09933f2a88788dba79",
+          "original_candidate_universe_sha256": "b99f1c5ff32bbecf4ddace7dc1c27a6cda928bcc61b58e815fcf80903f04a0cb"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K5",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K5:W300",
+        "native_ticket_count": 5,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_5bet",
+            "v0.1"
+          ],
+          "callable_reduced_universe_sha256": "810d83e99c0e945f66f407366d6fa0576977a067da252e09933f2a88788dba79",
+          "original_candidate_universe_sha256": "b99f1c5ff32bbecf4ddace7dc1c27a6cda928bcc61b58e815fcf80903f04a0cb"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K5",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K5:W750",
+        "native_ticket_count": 5,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "daily539_f4cold_5bet",
+            "v0.1"
+          ],
+          "callable_reduced_universe_sha256": "810d83e99c0e945f66f407366d6fa0576977a067da252e09933f2a88788dba79",
+          "original_candidate_universe_sha256": "b99f1c5ff32bbecf4ddace7dc1c27a6cda928bcc61b58e815fcf80903f04a0cb"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K7",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K7:W50",
+        "native_ticket_count": 7,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "4f00afe92eeee7a68a9231e3f6edc7d2dfa55c49407eae3243e54f13b45605c1",
+          "original_candidate_universe_sha256": "b836801e3208b89d69dc175a9d4365d8fa01b44a7715dbc8265becaceb909198"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K7",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K7:W300",
+        "native_ticket_count": 7,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "4f00afe92eeee7a68a9231e3f6edc7d2dfa55c49407eae3243e54f13b45605c1",
+          "original_candidate_universe_sha256": "b836801e3208b89d69dc175a9d4365d8fa01b44a7715dbc8265becaceb909198"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K7",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K7:W750",
+        "native_ticket_count": 7,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_elite_7bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "4f00afe92eeee7a68a9231e3f6edc7d2dfa55c49407eae3243e54f13b45605c1",
+          "original_candidate_universe_sha256": "b836801e3208b89d69dc175a9d4365d8fa01b44a7715dbc8265becaceb909198"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K10",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K10:W50",
+        "native_ticket_count": 10,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3b9bd4b748f7e2b3d191fc6cfbdbfd58dc99695ae68ab20579c68383f6d29663",
+          "original_candidate_universe_sha256": "141fcaef9005b3fc5b402a32c0eb741a21789071ceb1988c30320bcd92737ff9"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K10",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K10:W300",
+        "native_ticket_count": 10,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3b9bd4b748f7e2b3d191fc6cfbdbfd58dc99695ae68ab20579c68383f6d29663",
+          "original_candidate_universe_sha256": "141fcaef9005b3fc5b402a32c0eb741a21789071ceb1988c30320bcd92737ff9"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K10",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K10:W750",
+        "native_ticket_count": 10,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_backtest_10bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "3b9bd4b748f7e2b3d191fc6cfbdbfd58dc99695ae68ab20579c68383f6d29663",
+          "original_candidate_universe_sha256": "141fcaef9005b3fc5b402a32c0eb741a21789071ceb1988c30320bcd92737ff9"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K11",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K11:W50",
+        "native_ticket_count": 11,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "42d465f853807cf099da5414cb80ae5f5c88f4e3d1564277254d57454df16839",
+          "original_candidate_universe_sha256": "3d7c6d120d4bf71f95f703f9bb01e8b19112c14bd98733842a99efd03383ec32"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K11",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K11:W300",
+        "native_ticket_count": 11,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "42d465f853807cf099da5414cb80ae5f5c88f4e3d1564277254d57454df16839",
+          "original_candidate_universe_sha256": "3d7c6d120d4bf71f95f703f9bb01e8b19112c14bd98733842a99efd03383ec32"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K11",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K11:W750",
+        "native_ticket_count": 11,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_variant_history_11bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "42d465f853807cf099da5414cb80ae5f5c88f4e3d1564277254d57454df16839",
+          "original_candidate_universe_sha256": "3d7c6d120d4bf71f95f703f9bb01e8b19112c14bd98733842a99efd03383ec32"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K12",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K12:W50",
+        "native_ticket_count": 12,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "49d05e7189f4f382e30820c68a79a36427137ef25d835b0c02b9ca93afc8cd74",
+          "original_candidate_universe_sha256": "f7692eb6cb4094abd4f015a7bf374db2ec5ec541f21bf918d7096a68b328adec"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K12",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K12:W300",
+        "native_ticket_count": 12,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "49d05e7189f4f382e30820c68a79a36427137ef25d835b0c02b9ca93afc8cd74",
+          "original_candidate_universe_sha256": "f7692eb6cb4094abd4f015a7bf374db2ec5ec541f21bf918d7096a68b328adec"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K12",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K12:W750",
+        "native_ticket_count": 12,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_core_satellite_12bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "49d05e7189f4f382e30820c68a79a36427137ef25d835b0c02b9ca93afc8cd74",
+          "original_candidate_universe_sha256": "f7692eb6cb4094abd4f015a7bf374db2ec5ec541f21bf918d7096a68b328adec"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K25",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K25:W50",
+        "native_ticket_count": 25,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "156380d6f3d2df21c7ea670b9c75a54608725bfeb69a323d9196243c1ed929fc",
+          "original_candidate_universe_sha256": "080a6315691ff6fa7ec38e8980ca55bf2901ee0573e22526c35582e1c27c34c4"
+        },
+        "window": {
+          "label": "W50",
+          "size": 50
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K25",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K25:W300",
+        "native_ticket_count": 25,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "156380d6f3d2df21c7ea670b9c75a54608725bfeb69a323d9196243c1ed929fc",
+          "original_candidate_universe_sha256": "080a6315691ff6fa7ec38e8980ca55bf2901ee0573e22526c35582e1c27c34c4"
+        },
+        "window": {
+          "label": "W300",
+          "size": 300
+        }
+      },
+      {
+        "arm_ids": [
+          "A",
+          "B",
+          "C"
+        ],
+        "cell_id": "T539:K25",
+        "comparison_ids": [
+          "B_MINUS_A",
+          "B_MINUS_C"
+        ],
+        "experiment_id": "T539:K25:W750",
+        "native_ticket_count": 25,
+        "source_freeze_binding": {
+          "callable_family_dedup_frozen_baseline_identity": [
+            "T539_HISTORICAL_SQLITE",
+            "T539",
+            "t539_biglotto_auto_optimizer_alpha_25bet",
+            "v0.1-t539-cross-lottery-r2"
+          ],
+          "callable_reduced_universe_sha256": "156380d6f3d2df21c7ea670b9c75a54608725bfeb69a323d9196243c1ed929fc",
+          "original_candidate_universe_sha256": "080a6315691ff6fa7ec38e8980ca55bf2901ee0573e22526c35582e1c27c34c4"
+        },
+        "window": {
+          "label": "W750",
+          "size": 750
+        }
+      }
+    ],
+    "lottery_id": "T539",
+    "native_ticket_counts": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      7,
+      10,
+      11,
+      12,
+      25
+    ],
+    "windows": [
+      {
+        "label": "W50",
+        "size": 50
+      },
+      {
+        "label": "W300",
+        "size": 300
+      },
+      {
+        "label": "W750",
+        "size": 750
+      }
+    ]
+  },
+  "inferential_guardrails": {
+    "best_window_selection": "FORBIDDEN",
+    "composite_score": "NOT_DEFINED",
+    "cross_k_rank": "FORBIDDEN",
+    "cross_window_rank": "FORBIDDEN",
+    "early_stopping_winner_rule": "FORBIDDEN",
+    "materiality_threshold": "NOT_DEFINED",
+    "p_value_threshold": "NOT_DEFINED",
+    "promotion_threshold": "NOT_DEFINED",
+    "significance_claim": "NOT_DEFINED",
+    "weighted_score": "NOT_DEFINED"
+  },
+  "integrity": {
+    "database_access": "NO",
+    "future_outcome_access": "NO",
+    "historical_replay": "NOT_RUN",
+    "post_freeze_outcome_records": [],
+    "predictive_advantage": "NOT_ESTABLISHED",
+    "profitability": "NOT_ESTABLISHED",
+    "promotion_rule": "NOT_DEFINED",
+    "prospective_observation_records": [],
+    "prospective_observations": 0,
+    "significance_rule": "NOT_DEFINED",
+    "strategy_execution": "NOT_RUN"
+  },
+  "measurement_contract": {
+    "aggregation_scope": "ONE_K_X_WINDOW_EXPERIMENT_AT_A_TIME",
+    "arm_rate": {
+      "denominator": "VALID_TARGET_COUNT",
+      "exact_fraction_required": true,
+      "numerator": "ARM_SUCCESS_COUNT"
+    },
+    "paired_comparisons": [
+      {
+        "comparison_id": "B_MINUS_A",
+        "delta_denominator": "VALID_TARGET_COUNT",
+        "delta_formula": "(B_SUCCESS_COUNT - A_SUCCESS_COUNT) / VALID_TARGET_COUNT",
+        "delta_numerator": "B_SUCCESS_COUNT - A_SUCCESS_COUNT",
+        "minuend_arm_id": "B",
+        "subtrahend_arm_id": "A"
+      },
+      {
+        "comparison_id": "B_MINUS_C",
+        "delta_denominator": "VALID_TARGET_COUNT",
+        "delta_formula": "(B_SUCCESS_COUNT - C_SUCCESS_COUNT) / VALID_TARGET_COUNT",
+        "delta_numerator": "B_SUCCESS_COUNT - C_SUCCESS_COUNT",
+        "minuend_arm_id": "B",
+        "subtrahend_arm_id": "C"
+      }
+    ],
+    "primary_metric_id": "OFFICIAL_ANY_PRIZE_TARGET_RATE",
+    "target_level_measurement": "OFFICIAL_ANY_PRIZE_BINARY_SUCCESS_INDICATOR",
+    "unit_of_analysis": "TARGET"
+  },
+  "prospective_inclusion": {
+    "all_conditions_required": [
+      "TARGET_IDENTITY_STRICTLY_AFTER_115000186",
+      "COMPLETE_PRETARGET_SNAPSHOT_SEALED_BEFORE_OUTCOME_AVAILABILITY",
+      "SNAPSHOT_RULE_FINGERPRINT_MATCHES_FROZEN_RULE",
+      "OUTCOME_AUTHORITY_MATCHES_THE_SAME_TARGET_IDENTITY",
+      "OBSERVATION_IS_OTHERWISE_TECHNICALLY_VALID"
+    ],
+    "historical_reconstruction_policy": "SEPARATE_ONLY_NEVER_RELABEL_AS_PROSPECTIVE",
+    "included_status": "VALID_PROSPECTIVE",
+    "missed_pretarget_seal": {
+      "backfill": "FORBIDDEN",
+      "performance_classification": "NEITHER_POSITIVE_NOR_NEGATIVE",
+      "status": "MISSED_PRETARGET_SEAL"
+    },
+    "target_predicate": "int(target_identity) > 115000186"
+  },
+  "protocol_id": "T539_PROSPECTIVE_EVALUATION_PROTOCOL_R1",
+  "schema_version": "T539_PROSPECTIVE_EVALUATION_PROTOCOL_V1",
+  "selection_guards": {
+    "cross_k_aggregation": "FORBIDDEN",
+    "cross_window_aggregation": "FORBIDDEN",
+    "historical_performance_filtering": "FORBIDDEN"
+  },
+  "technical_exclusion_contract": {
+    "allowed_reasons": [
+      "MISSED_PRETARGET_SEAL",
+      "PRETARGET_SNAPSHOT_INVALID",
+      "RULE_FINGERPRINT_MISMATCH",
+      "TARGET_IDENTITY_MISMATCH",
+      "OUTCOME_AUTHORITY_UNAVAILABLE",
+      "INCOMPLETE_FROZEN_EXPERIMENT_SURFACE"
+    ],
+    "arm_performance_dependency": "FORBIDDEN",
+    "input_domain": "TECHNICAL_METADATA_ONLY"
+  }
+}

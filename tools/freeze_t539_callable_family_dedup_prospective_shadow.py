@@ -1,8 +1,10 @@
 """Build the outcome-free T539 callable-family-dedup prospective freeze.
 
-The only research input is the sealed pilot JSON addressed by its exact Git
-commit, tree, path, byte size, and SHA-256.  This builder never opens a draw
-database, fetches a draw, replays a strategy, or scores an observation.
+The only research input is the sealed pilot JSON authenticated from ordinary
+file bytes by its exact path, byte size, SHA-256, schema, and embedded authority
+manifest.  Its historical commit and tree are descriptive origin metadata only.
+This builder never opens a draw database, fetches a draw, replays a strategy, or
+scores an observation.
 """
 
 from __future__ import annotations
@@ -11,8 +13,7 @@ import argparse
 import hashlib
 import json
 import re
-import subprocess
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any, cast
 
@@ -25,8 +26,12 @@ PILOT_RESULT_PATH = (
     "docs/research/matrix-native-results/"
     "callable-family-dedup-causal-selector-pilot-r1-result.json"
 )
+PILOT_RESULT_BLOB_OID = "6448d6f2cdd4f6a14406ba1fd68115bbc2db9120"
 PILOT_RESULT_SHA256 = "1a4fbd067f3d9b4735a4a1143b3694222f38f05eb3ec91e4e8b782e0e90c5c86"
 PILOT_RESULT_SIZE_BYTES = 532_005
+SOURCE_AUTHORITIES_MANIFEST_SHA256 = (
+    "53278d1c5bc44f274ae5a102bac6fee73bc71c0af5b6896bb91e3f4b65db8a72"
+)
 CANONICAL_BASE_HEAD = "07a5c3479123c03fd91b6f1ae2402046b5f16c2a"
 CANONICAL_BASE_TREE = "cff549183e67ad49f12afb5076a11b1f8b712dde"
 
@@ -151,44 +156,26 @@ def _callable_identity(value: object, *, context: str) -> list[str | int]:
     return cast(list[str | int], raw)
 
 
-def _git_bytes(repository_root: Path, arguments: Sequence[str]) -> bytes:
-    completed = subprocess.run(
-        ["git", "-C", str(repository_root), *arguments],
-        capture_output=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        message = completed.stderr.decode("utf-8", errors="replace").strip()
-        raise FreezeContractError(f"git {' '.join(arguments)} failed: {message}")
-    return completed.stdout
-
-
 def load_sealed_pilot(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]:
-    """Load and authenticate the exact committed pilot artifact, without a checkout."""
+    """Load and authenticate the exact committed pilot artifact from ordinary bytes."""
 
-    observed_tree = _git_bytes(
-        repository_root,
-        ("rev-parse", f"{PILOT_COMMIT}^{{tree}}"),
-    ).decode("ascii").strip()
-    if observed_tree != PILOT_TREE:
+    pilot_path = repository_root / PILOT_RESULT_PATH
+    try:
+        payload_bytes = pilot_path.read_bytes()
+    except OSError as error:
         raise FreezeContractError(
-            f"pilot tree mismatch: expected {PILOT_TREE}, observed {observed_tree}"
+            f"sealed pilot result is unavailable at {PILOT_RESULT_PATH}"
+        ) from error
+    if len(payload_bytes) != PILOT_RESULT_SIZE_BYTES:
+        raise FreezeContractError(
+            "pilot result byte-size mismatch: "
+            f"expected {PILOT_RESULT_SIZE_BYTES}, observed {len(payload_bytes)}"
         )
-
-    payload_bytes = _git_bytes(
-        repository_root,
-        ("show", f"{PILOT_COMMIT}:{PILOT_RESULT_PATH}"),
-    )
     observed_sha256 = _sha256(payload_bytes)
     if observed_sha256 != PILOT_RESULT_SHA256:
         raise FreezeContractError(
             "pilot result SHA-256 mismatch: "
             f"expected {PILOT_RESULT_SHA256}, observed {observed_sha256}"
-        )
-    if len(payload_bytes) != PILOT_RESULT_SIZE_BYTES:
-        raise FreezeContractError(
-            "pilot result byte-size mismatch: "
-            f"expected {PILOT_RESULT_SIZE_BYTES}, observed {len(payload_bytes)}"
         )
     try:
         parsed = json.loads(payload_bytes)
@@ -197,13 +184,22 @@ def load_sealed_pilot(repository_root: Path = REPOSITORY_ROOT) -> dict[str, Any]
     pilot = _mapping(parsed, context="sealed pilot")
     if pilot.get("schema_version") != PILOT_SCHEMA_VERSION:
         raise FreezeContractError("sealed pilot schema_version changed")
+    source_authorities = _mapping(
+        pilot.get("source_authorities"), context="source_authorities"
+    )
+    observed_manifest_sha256 = _canonical_sha256(source_authorities)
+    if observed_manifest_sha256 != SOURCE_AUTHORITIES_MANIFEST_SHA256:
+        raise FreezeContractError(
+            "sealed pilot source_authorities manifest SHA-256 mismatch: "
+            f"expected {SOURCE_AUTHORITIES_MANIFEST_SHA256}, "
+            f"observed {observed_manifest_sha256}"
+        )
     canonical_base = _mapping(pilot.get("canonical_base"), context="canonical_base")
     if canonical_base != {
         "expected_head": CANONICAL_BASE_HEAD,
         "expected_tree": CANONICAL_BASE_TREE,
     }:
         raise FreezeContractError("sealed pilot canonical base changed")
-    _mapping(pilot.get("source_authorities"), context="source_authorities")
     return pilot
 
 

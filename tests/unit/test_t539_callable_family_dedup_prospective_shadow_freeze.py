@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -14,6 +16,15 @@ EXPECTED_TICKET_COUNTS = [1, 2, 3, 4, 5, 7, 10, 11, 12, 25]
 EXPECTED_ORIGINAL_COUNT = 62
 EXPECTED_CALLABLE_COUNT = 26
 EXPECTED_REMOVED_COUNT = 36
+EXPECTED_RULE_FINGERPRINT = (
+    "eb4eb89082cd782041c240e80858efd8453c3bbf08edec3b76e98e2e8051f446"
+)
+EXPECTED_FREEZE_JSON_SHA256 = (
+    "f1b299ace019393440bce8bd2768f6618b2362d220d81b4cc14151a5080908a8"
+)
+EXPECTED_FREEZE_MARKDOWN_SHA256 = (
+    "fa129a1f3b2d72091c79a53d18a571cd76163a034ee380aa96d95f6f1352b88d"
+)
 
 
 @pytest.fixture(scope="module")
@@ -38,18 +49,160 @@ def _source_t539_cell(pilot: dict[str, Any], cell_id: str) -> dict[str, Any]:
     )
 
 
+def _git_blob_oid(payload: bytes) -> str:
+    header = f"blob {len(payload)}\0".encode("ascii")
+    return hashlib.sha1(header + payload, usedforsecurity=False).hexdigest()
+
+
+def _canonical_sha256(value: object) -> str:
+    payload = json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _write_pilot(repository_root: Path, payload: bytes) -> None:
+    pilot_path = repository_root / freeze.PILOT_RESULT_PATH
+    pilot_path.parent.mkdir(parents=True, exist_ok=True)
+    pilot_path.write_bytes(payload)
+
+
+def _write_authenticated_variant(
+    repository_root: Path,
+    variant: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    payload = freeze.canonical_json_bytes(variant)
+    _write_pilot(repository_root, payload)
+    monkeypatch.setattr(freeze, "PILOT_RESULT_SIZE_BYTES", len(payload))
+    monkeypatch.setattr(
+        freeze,
+        "PILOT_RESULT_SHA256",
+        hashlib.sha256(payload).hexdigest(),
+    )
+
+
+def _copy_self_contained_file(
+    source_root: Path,
+    target_root: Path,
+    relative_path: str | Path,
+) -> None:
+    relative = Path(relative_path)
+    target = target_root / relative
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes((source_root / relative).read_bytes())
+
+
 def test_exact_pilot_source_identity_and_hash(
     pilot: dict[str, Any], manifest: dict[str, Any]
 ) -> None:
     source = cast(dict[str, Any], manifest["source_pilot"])
+    payload = (freeze.REPOSITORY_ROOT / freeze.PILOT_RESULT_PATH).read_bytes()
 
+    assert len(payload) == freeze.PILOT_RESULT_SIZE_BYTES
+    assert hashlib.sha256(payload).hexdigest() == freeze.PILOT_RESULT_SHA256
+    assert _git_blob_oid(payload) == freeze.PILOT_RESULT_BLOB_OID
     assert pilot["schema_version"] == freeze.PILOT_SCHEMA_VERSION
+    assert _canonical_sha256(pilot["source_authorities"]) == (
+        freeze.SOURCE_AUTHORITIES_MANIFEST_SHA256
+    )
     assert source["commit"] == freeze.PILOT_COMMIT
     assert source["tree"] == freeze.PILOT_TREE
     assert source["result_path"] == freeze.PILOT_RESULT_PATH
     assert source["result_sha256"] == freeze.PILOT_RESULT_SHA256
     assert source["result_size_bytes"] == freeze.PILOT_RESULT_SIZE_BYTES
+    assert source["embedded_authority_manifest_sha256"] == (
+        freeze.SOURCE_AUTHORITIES_MANIFEST_SHA256
+    )
     assert source["supporting_research_locator_policy"] == "SOLE_EMBEDDED_AUTHORITY_MANIFEST"
+
+
+def test_missing_pilot_file_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(freeze.FreezeContractError, match="is unavailable"):
+        freeze.load_sealed_pilot(tmp_path)
+
+
+def test_pilot_byte_size_mismatch_fails_before_parsing(tmp_path: Path) -> None:
+    payload = (freeze.REPOSITORY_ROOT / freeze.PILOT_RESULT_PATH).read_bytes()
+    _write_pilot(tmp_path, payload + b"\n")
+
+    with pytest.raises(freeze.FreezeContractError, match="byte-size mismatch"):
+        freeze.load_sealed_pilot(tmp_path)
+
+
+def test_same_size_pilot_tamper_fails_sha_authentication(tmp_path: Path) -> None:
+    payload = bytearray(
+        (freeze.REPOSITORY_ROOT / freeze.PILOT_RESULT_PATH).read_bytes()
+    )
+    payload[0] ^= 1
+    _write_pilot(tmp_path, bytes(payload))
+
+    with pytest.raises(freeze.FreezeContractError, match="SHA-256 mismatch"):
+        freeze.load_sealed_pilot(tmp_path)
+
+
+def test_pilot_schema_is_authenticated_after_byte_checks(
+    pilot: dict[str, Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    variant = copy.deepcopy(pilot)
+    variant["schema_version"] = "TAMPERED_SCHEMA"
+    _write_authenticated_variant(tmp_path, variant, monkeypatch)
+
+    with pytest.raises(freeze.FreezeContractError, match="schema_version changed"):
+        freeze.load_sealed_pilot(tmp_path)
+
+
+def test_embedded_source_authorities_manifest_is_authenticated(
+    pilot: dict[str, Any],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    variant = copy.deepcopy(pilot)
+    source_authorities = cast(dict[str, Any], variant["source_authorities"])
+    runner = cast(dict[str, Any], source_authorities["original_selector_runner"])
+    runner["sha256"] = "0" * 64
+    _write_authenticated_variant(tmp_path, variant, monkeypatch)
+
+    with pytest.raises(
+        freeze.FreezeContractError,
+        match="source_authorities manifest SHA-256 mismatch",
+    ):
+        freeze.load_sealed_pilot(tmp_path)
+
+
+def test_self_contained_check_works_without_git_repository_or_executable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    for relative_path in (
+        freeze.PILOT_RESULT_PATH,
+        freeze.JSON_OUTPUT_PATH,
+        freeze.MARKDOWN_OUTPUT_PATH,
+    ):
+        _copy_self_contained_file(freeze.REPOSITORY_ROOT, tmp_path, relative_path)
+
+    assert not (tmp_path / ".git").exists()
+    monkeypatch.setenv("PATH", "")
+    assert freeze.load_sealed_pilot(tmp_path)["schema_version"] == (
+        freeze.PILOT_SCHEMA_VERSION
+    )
+    first = freeze.check_artifacts(tmp_path)
+    second = freeze.check_artifacts(tmp_path)
+    assert first == second
+    assert first["json_sha256"] == EXPECTED_FREEZE_JSON_SHA256
+    assert first["markdown_sha256"] == EXPECTED_FREEZE_MARKDOWN_SHA256
+
+    pilot_path = tmp_path / freeze.PILOT_RESULT_PATH
+    tampered = bytearray(pilot_path.read_bytes())
+    tampered[0] ^= 1
+    pilot_path.write_bytes(tampered)
+    with pytest.raises(freeze.FreezeContractError, match="SHA-256 mismatch"):
+        freeze.load_sealed_pilot(tmp_path)
 
 
 def test_freeze_boundary_is_derived_from_the_sealed_pilot(
@@ -218,6 +371,7 @@ def test_rule_fingerprint_is_deterministic_and_counterfactual_sensitive(
     observed = cast(dict[str, Any], manifest["immutable_rule_fingerprint"])["sha256"]
 
     assert rebuilt == manifest
+    assert observed == EXPECTED_RULE_FINGERPRINT
     assert observed == freeze.compute_rule_fingerprint(manifest)
     mutated = copy.deepcopy(manifest)
     mutated["selector_contract"]["weighted_windows"] = "COUNTERFACTUAL"

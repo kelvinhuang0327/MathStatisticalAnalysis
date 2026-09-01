@@ -155,8 +155,8 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
     assert entry["path"] == NATIVE_MEASUREMENT_PATH.as_posix()
     assert entry["sha256"] == hashlib.sha256(artifact_path.read_bytes()).hexdigest()
     assert artifact["starting_supported_native_not_run_count"] == 79
-    assert artifact["new_native_measured_count"] == 73
-    assert artifact["remaining_native_not_run_count"] == 6
+    assert artifact["new_native_measured_count"] == 79
+    assert artifact["remaining_native_not_run_count"] == 0
     assert len(artifact["rows"]) == 79
     assert canonical_json_bytes(artifact) == artifact_path.read_bytes()
 
@@ -167,15 +167,7 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
         == "EXECUTED_EXISTING_NATIVE_METHOD"
         for row in measured
     )
-    assert all(
-        row["measurement_evidence"]["execution_classification"]
-        == "NOT_RUN_RESOURCE_BOUND"
-        and row["measurement_evidence"]["dependency"]
-        == "MEMORY_BOUNDED_EXACT_ONE_EXCHANGE_EVALUATOR"
-        and row["exact_q"] is None
-        and row["portfolio"] is None
-        for row in not_run
-    )
+    assert not not_run
 
     native_rows = [row for row in comparison["rows"] if row["case_id"].startswith("NATIVE_")]
     new_native_rows = [
@@ -185,7 +177,7 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
         and row["source_evidence"] is not None
         and row["source_evidence"]["path"] == NATIVE_MEASUREMENT_PATH.as_posix()
     ]
-    assert len(new_native_rows) == 73
+    assert len(new_native_rows) == 79
     assert all(row["evidence_scope"] == "NATIVE_UNIFORM_WINNING_SPACE" for row in new_native_rows)
     assert all(
         row["status"] in {"REUSED_VERIFIED", "NOT_APPLICABLE", "NOT_RUN"}

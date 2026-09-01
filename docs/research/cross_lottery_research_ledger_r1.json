@@ -983,7 +983,7 @@
         "correctness_evidence": [
           {
             "path": "tests/unit/test_reference_e_exact_one_exchange_refinement.py",
-            "sha256": "a11f83e93bb909519bb8360d846d90f9633eff071e9cf4ce00d3f5bb37a2e680"
+            "sha256": "260b57a7fea2c80c032280c045eef912c8cc544efcae3cea372cf0423f2ddde1"
           }
         ],
         "deterministic": true,
@@ -999,7 +999,7 @@
         "source_files": [
           {
             "path": "src/lottolab/research/reference_e_exact_one_exchange_refinement.py",
-            "sha256": "83a69b45e622aedaf5e3e98552fa10b1cda75e21d5ee40aac4938b893b82e63e"
+            "sha256": "920277a75e6de1895f72349e3ddc5919bf7b6a4d12ecfe0cfb63f0eaebef1f35"
           }
         ],
         "source_status": "IMPLEMENTED",
@@ -1196,7 +1196,7 @@
       "native_coverage_r1": {
         "evidence_class": "NEW_NATIVE_MEASURED_EVIDENCE",
         "path": "docs/research/matrix-native-results/strategy-matrix-native-evidence-coverage-r1-result.json",
-        "sha256": "8d2b2f5ea7d3fef36e74d8380706dbbb855e5ed934d814f3ec0aec5a0eb6bad4"
+        "sha256": "c0788bfab10729887d812b9f8ffe7023cbd2f2320cc4430b13365879cf2a04c7"
       },
       "next_b649": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",

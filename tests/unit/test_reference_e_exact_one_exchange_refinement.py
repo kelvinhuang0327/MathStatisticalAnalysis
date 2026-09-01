@@ -21,6 +21,7 @@ from pathlib import Path
 
 import pytest
 
+from lottolab.research import reference_e_exact_one_exchange_refinement as refinement
 from lottolab.research.exact_coverage_fast_evaluator import fast_exact_portfolio_coverage
 from lottolab.research.reference_e_exact_one_exchange_refinement import (
     canonicalize_portfolio,
@@ -137,6 +138,24 @@ def test_exact_fast_coverage_parity_against_brute_force() -> None:
             pool_size, draw_size, minimum_matches, neighbor
         )
         assert fast_cov == brute_cov
+
+
+def test_one_use_candidate_cache_is_cleared_after_every_evaluation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    portfolio = ((1, 2, 3), (4, 5, 6))
+    clear_count = 0
+    real_clear_cache = refinement.clear_cache
+
+    def counting_clear_cache() -> None:
+        nonlocal clear_count
+        clear_count += 1
+        real_clear_cache()
+
+    monkeypatch.setattr(refinement, "clear_cache", counting_clear_cache)
+    result = refinement.evaluate_one_exchange_neighborhood(6, 3, 2, portfolio)
+
+    assert clear_count == len(portfolio) + result["all_neighbors_evaluated"]
 
 
 def test_known_local_improvement_fixture() -> None:

@@ -113,8 +113,8 @@ def evaluate_one_exchange_neighborhood(
     """Exhaustively evaluate all legal 1-exchange neighbors of a portfolio.
 
     Evaluates exact M3+ coverage using `coverage_with_base` per slot and
-    clears the evaluator cache at slot boundaries to maintain strict O(1)
-    memory bounds.
+    clears the evaluator cache after each one-use candidate to maintain a
+    strict memory bound independent of neighborhood size.
 
     Returns a comprehensive result dictionary with exact fractions:
     - q_reference: baseline coverage of `portfolio`
@@ -149,6 +149,12 @@ def evaluate_one_exchange_neighborhood(
         base_draws = portfolio_qualifying_draws(
             pool_size, draw_size, minimum_matches, remaining_tickets
         )
+        # ``base_draws`` owns the immutable union, so the per-ticket cache used
+        # to construct it is no longer needed.  More importantly, every
+        # candidate below is evaluated exactly once; retaining its roughly
+        # 260k qualifying B649 draws until the slot ends makes memory grow with
+        # neighborhood size without providing any reuse.
+        clear_cache()
         for mutated_ticket in legal_one_exchange_tickets(pool_size, original_ticket):
             if mutated_ticket in portfolio_set:
                 # Reject duplicate tickets
@@ -160,9 +166,7 @@ def evaluate_one_exchange_neighborhood(
                 pool_size, draw_size, minimum_matches, base_draws, mutated_ticket
             )
             neighbor_coverages[neighbor_portfolio] = q_neighbor
-
-        # Clear per-ticket cache after slot to keep peak memory strictly bounded
-        clear_cache()
+            clear_cache()
 
     unique_neighbor_count = len(neighbor_coverages)
     if unique_neighbor_count == 0:

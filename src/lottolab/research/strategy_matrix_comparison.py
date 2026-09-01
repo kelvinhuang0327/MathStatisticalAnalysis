@@ -841,41 +841,6 @@ def _native_measurement_failure(
     return row
 
 
-def _native_resource_bound_reason(lottery: str, method_id: str, k: int) -> str | None:
-    if lottery == "BIG_LOTTO" and method_id in (ONE_EXCHANGE, ITERATIVE) and k in (2, 3, 5):
-        return (
-            "RESOURCE_BOUND_NATIVE_M3_ONE_EXCHANGE_B649_LOW_K: the existing exact "
-            "one-number-exchange evaluator reached approximately 1.3 GB RSS during "
-            "the bounded measurement attempt; a memory-bounded evaluator change is "
-            "outside this task."
-        )
-    return None
-
-
-def _native_measurement_resource_bound(
-    method: JsonObject,
-    lottery: str,
-    k: int,
-    reason: str,
-) -> JsonObject:
-    row = _row(
-        method,
-        f"NATIVE_{lottery}",
-        lottery,
-        k,
-        scope="NATIVE_UNIFORM_WINNING_SPACE",
-        status="NOT_RUN",
-        reason=reason,
-        minimum_matches=NATIVE_MEASUREMENT_MINIMUM_MATCHES,
-    )
-    row["measurement_evidence"] = {
-        "execution_classification": "NOT_RUN_RESOURCE_BOUND",
-        "dependency": "MEMORY_BOUNDED_EXACT_ONE_EXCHANGE_EVALUATOR",
-        "reason": reason,
-    }
-    return row
-
-
 def measure_native_coverage(root: Path) -> JsonObject:
     """Execute every currently open supported native cell once."""
 
@@ -888,12 +853,6 @@ def measure_native_coverage(root: Path) -> JsonObject:
 
     for lottery, rules, method_id, method, k in _native_supported_specs(methods):
         if _native_locator(method_id, lottery, k) is not None:
-            continue
-        resource_bound_reason = _native_resource_bound_reason(lottery, method_id, k)
-        if resource_bound_reason is not None:
-            rows.append(
-                _native_measurement_resource_bound(method, lottery, k, resource_bound_reason)
-            )
             continue
         clear_cache()
         try:
@@ -986,10 +945,7 @@ def repair_native_coverage(root: Path) -> JsonObject:
             continue
         row_id = _native_row_id(lottery, method_id, k)
         checkpoint_row = checkpoint_rows[row_id]
-        classification = cast(JsonObject, checkpoint_row.get("measurement_evidence", {})).get(
-            "execution_classification"
-        )
-        if checkpoint_row["status"] == "MEASURED" or classification == "NOT_RUN_RESOURCE_BOUND":
+        if checkpoint_row["status"] == "MEASURED":
             rows.append(checkpoint_row)
             continue
         clear_cache()

@@ -13,6 +13,7 @@ from typer.testing import CliRunner
 from lottolab.application.biglotto_multi_ticket_backtest import (
     INPUT_SCHEMA_VERSION,
     MultiTicketBacktestInputError,
+    evaluate_biglotto_exact_native_official_metrics,
     evaluate_biglotto_multi_ticket_backtest,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import (
@@ -183,6 +184,61 @@ def test_report_exposes_official_primary_metrics_and_isolates_ticket_windows(
     }
     assert metric["official_random_baseline_probability"]["numerator"] > 0
     assert metric["official_random_baseline_delta"]["numerator"] > 0
+
+
+def test_exact_native_metrics_score_only_the_two_native_ticket_positions() -> None:
+    exact_report = evaluate_biglotto_exact_native_official_metrics(_input_bytes())
+    records = cast(list[dict[str, Any]], exact_report["records"])
+    k2_full = next(
+        row
+        for row in records
+        if row["ticket_count"] == 2 and row["window"] == "FULL"
+    )
+    k3_full = next(
+        row
+        for row in records
+        if row["ticket_count"] == 3 and row["window"] == "FULL"
+    )
+
+    assert k2_full["metric_status"] == "AVAILABLE"
+    assert k2_full["available_observation_count"] == 2
+    assert k2_full["ticket_position_count"] == 4
+    assert k2_full["official_any_prize_count"] == 1
+    assert k2_full["official_any_prize_rate"] == {
+        "decimal_18": "0.500000000000000000",
+        "denominator": 2,
+        "numerator": 1,
+    }
+    assert k2_full["official_prize_tier_counts"]["FIRST"] == 2
+    assert k2_full["no_prize_count"] == 2
+    assert k3_full["metric_status"] == "UNAVAILABLE"
+    assert k3_full["unavailable_reason"] == "NATIVE_TICKET_COUNT_MISMATCH"
+    assert k3_full["official_any_prize_count"] is None
+    assert k3_full["official_any_prize_rate"] is None
+
+
+def test_variable_native_cardinality_is_typed_unavailable_not_partially_scored() -> None:
+    document = _input_document()
+    executions = cast(list[dict[str, object]], document["executions"])
+    native_tickets = cast(list[object], executions[1]["native_tickets"])
+    executions[1]["native_tickets"] = [*native_tickets, native_tickets[0]]
+    executions[1]["native_ticket_count"] = 3
+
+    exact_report = evaluate_biglotto_exact_native_official_metrics(
+        _input_bytes(document)
+    )
+    records = cast(list[dict[str, Any]], exact_report["records"])
+
+    assert len(records) == 8
+    assert {row["metric_status"] for row in records} == {"UNAVAILABLE"}
+    assert {
+        row["native_ticket_count_classification"] for row in records
+    } == {"VARIABLE_NATIVE_TICKET_COUNT"}
+    assert {row["unavailable_reason"] for row in records} == {
+        "VARIABLE_NATIVE_TICKET_COUNT"
+    }
+    assert all(row["official_any_prize_count"] is None for row in records)
+    assert all(row["official_any_prize_rate"] is None for row in records)
 
 
 def test_two_main_plus_special_is_official_success_but_not_m3_plus() -> None:

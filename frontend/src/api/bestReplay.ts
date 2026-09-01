@@ -212,9 +212,12 @@ export function createUnavailableItem(
   methodFamily: string,
   ticketCount: TicketCount,
   horizon: HorizonKey,
+  reasonCode = 'NO_CANONICAL_REPLAY_EVIDENCE',
+  customNote?: string,
 ): BestReplayItem {
   const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
   const horizonLabel = horizonDef?.label ?? horizon
+  const notes = customNote ?? `No canonical multi-ticket backtest evidence is recorded for ticket count ${ticketCount}.`
   return {
     id: `${game}-${strategyId}-${ticketCount}-${horizon}`,
     rank: null,
@@ -236,8 +239,9 @@ export function createUnavailableItem(
     bestHit: 'Unavailable',
     prizeCounts: null,
     evidenceStatus: 'EVIDENCE UNAVAILABLE',
-    notes: `No canonical multi-ticket backtest evidence is recorded for ticket count ${ticketCount}.`,
+    notes,
     isAvailable: false,
+    unavailableReasonCode: reasonCode,
   }
 }
 

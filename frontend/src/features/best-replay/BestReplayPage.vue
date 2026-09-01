@@ -12,11 +12,13 @@ import StatusBadge from '../../components/StatusBadge.vue'
 
 import BestReplayHorizonComparison from './BestReplayHorizonComparison.vue'
 import BestReplayMatrix from './BestReplayMatrix.vue'
+import BestReplayOneToFiveOverview from './BestReplayOneToFiveOverview.vue'
 import {
   ALL_TICKET_COUNTS,
   B649_AVAILABLE_TICKET_COUNTS,
   CANONICAL_HORIZONS,
   P638_AVAILABLE_TICKET_COUNTS,
+  PRIMARY_TICKET_COUNTS,
   T539_AVAILABLE_TICKET_COUNTS,
   type BestReplayItem,
   type BestReplayMatrixRow,
@@ -24,6 +26,7 @@ import {
   type GameCode,
   type GameFilter,
   type HorizonKey,
+  type PrimaryTicketCount,
   type TicketCount,
 } from './types'
 import {
@@ -58,6 +61,7 @@ const activeInspectTicketCount = ref<TicketCount>(5)
 const state = ref<LoadingState>('loading')
 const errorMessage = ref('')
 const rawItems = ref<BestReplayItem[]>([])
+const allLoadedItems = ref<BestReplayItem[]>([])
 let abortController: AbortController | undefined
 let fetchGeneration = 0
 
@@ -76,11 +80,26 @@ const availableFamilies = computed<string[]>(() => {
   return ['ALL', ...Array.from(families).sort()]
 })
 
+function selectGame(game: GameFilter): void {
+  if (selectedGame.value === game) return
+  selectedGame.value = game
+  if (game === 'B649') {
+    selectedTicketCounts.value = [5]
+    activeInspectTicketCount.value = 5
+  } else if (game === 'P638' || game === 'T539') {
+    selectedTicketCounts.value = [1]
+    activeInspectTicketCount.value = 1
+  }
+  activeInspectStrategyId.value = null
+  currentPage.value = 1
+  resetSort()
+}
+
 // Quick Preset Handlers
-function applyPreset(preset: '1' | '2' | '3' | '5' | '10' | '20' | 'all'): void {
+function applyPreset(preset: '1' | '2' | '3' | '4' | '5' | '10' | '20' | 'all'): void {
   if (preset === 'all') {
     selectedTicketCounts.value = [...availableTicketCountsForGame.value]
-    if (!selectedTicketCounts.value.length) selectedTicketCounts.value = [5]
+    if (!selectedTicketCounts.value.length) selectedTicketCounts.value = [1]
     isMultiSelectMode.value = true
   } else {
     const num = Number.parseInt(preset, 10) as TicketCount
@@ -106,6 +125,24 @@ function toggleTicketCount(count: TicketCount): void {
   }
 }
 
+function handleSelectTicketFromOverview(count: PrimaryTicketCount): void {
+  selectedTicketCounts.value = [count]
+  activeInspectTicketCount.value = count
+  isMultiSelectMode.value = false
+}
+
+function resetSort(): void {
+  sortField.value = 'rank'
+  sortDirection.value = 'asc'
+}
+
+function resetToOfficialRank(): void {
+  resetSort()
+  searchQuery.value = ''
+  selectedFamily.value = 'ALL'
+  currentPage.value = 1
+}
+
 async function loadData(): Promise<void> {
   abortController?.abort()
   const controller = new AbortController()
@@ -116,30 +153,43 @@ async function loadData(): Promise<void> {
   errorMessage.value = ''
 
   try {
+    const activeGame = selectedGame.value
+    const gameCode = (activeGame === 'ALL' ? 'B649' : activeGame) as GameCode
+
+    // Query ticket counts needed: all primary 1..5 plus currently selected counts
+    const countsToQuery = Array.from(new Set([...PRIMARY_TICKET_COUNTS, ...selectedTicketCounts.value]))
+
     const promises: Promise<BestReplayItem[]>[] = []
 
-    if (selectedGame.value === 'B649' || selectedGame.value === 'ALL') {
-      promises.push(loadB649BestReplayData(selectedTicketCounts.value, selectedHorizon.value, controller.signal))
+    if (activeGame === 'B649' || activeGame === 'ALL') {
+      promises.push(loadB649BestReplayData(countsToQuery, selectedHorizon.value, controller.signal))
     }
-    if (selectedGame.value === 'P638' || selectedGame.value === 'ALL') {
-      promises.push(loadP638BestReplayData(selectedTicketCounts.value, selectedHorizon.value, controller.signal))
+    if (activeGame === 'P638' || activeGame === 'ALL') {
+      promises.push(loadP638BestReplayData(countsToQuery, selectedHorizon.value, controller.signal))
     }
-    if (selectedGame.value === 'T539' || selectedGame.value === 'ALL') {
-      promises.push(loadT539BestReplayData(selectedTicketCounts.value, selectedHorizon.value, controller.signal))
+    if (activeGame === 'T539' || activeGame === 'ALL') {
+      promises.push(loadT539BestReplayData(countsToQuery, selectedHorizon.value, controller.signal))
     }
 
     const results = await Promise.all(promises)
     if (generation !== fetchGeneration) return
 
-    const combined = results.flat()
+    const fetchedItems = results.flat()
+    allLoadedItems.value = fetchedItems
+
+    // Filter items for the currently selected ticket counts
+    const filteredBySelectedTickets = fetchedItems.filter(
+      (item) => selectedTicketCounts.value.includes(item.ticketCount) && (activeGame === 'ALL' || item.game === activeGame),
+    )
 
     // For any queried ticket counts where NO canonical evidence exists for the active game,
-    // explicitly generate unavailable placeholder items so they are rendered as UNAVAILABLE rather than hidden/zero.
+    // generate explicit unavailable placeholder items so they are rendered as UNAVAILABLE rather than hidden/zero.
     for (const count of selectedTicketCounts.value) {
-      const hasCount = combined.some((item) => item.ticketCount === count && (selectedGame.value === 'ALL' || item.game === selectedGame.value))
+      const hasCount = filteredBySelectedTickets.some(
+        (item) => item.ticketCount === count && (activeGame === 'ALL' || item.game === activeGame),
+      )
       if (!hasCount) {
-        const gameCode = (selectedGame.value === 'ALL' ? 'B649' : selectedGame.value) as GameCode
-        combined.push(
+        filteredBySelectedTickets.push(
           createUnavailableItem(
             gameCode,
             `no_canonical_data_${gameCode.toLowerCase()}_t${count}`,
@@ -147,27 +197,65 @@ async function loadData(): Promise<void> {
             'unsupported_dimension',
             count,
             selectedHorizon.value,
+            'NO_CANONICAL_REPLAY_EVIDENCE',
+            `No canonical multi-ticket backtest evidence is recorded for ticket count ${count}.`,
           ),
         )
       }
     }
 
-    rawItems.value = combined
-    state.value = combined.length ? 'ready' : 'empty'
+    rawItems.value = filteredBySelectedTickets
+    state.value = filteredBySelectedTickets.length ? 'ready' : 'empty'
 
     // Set active inspection strategy
-    if (!activeInspectStrategyId.value || !combined.some((item) => item.strategyId === activeInspectStrategyId.value)) {
-      const topLeader = combined.find((item) => item.isAvailable && item.rank === 1) || combined.find((item) => item.isAvailable)
-      activeInspectStrategyId.value = topLeader ? topLeader.strategyId : combined[0]?.strategyId || null
+    if (!activeInspectStrategyId.value || !filteredBySelectedTickets.some((item) => item.strategyId === activeInspectStrategyId.value)) {
+      const topLeader = filteredBySelectedTickets.find((item) => item.isAvailable && item.rank === 1) || filteredBySelectedTickets.find((item) => item.isAvailable)
+      activeInspectStrategyId.value = topLeader ? topLeader.strategyId : filteredBySelectedTickets[0]?.strategyId || null
     }
   } catch (err: unknown) {
     if (generation !== fetchGeneration) return
     if (err instanceof DOMException && err.name === 'AbortError') return
     rawItems.value = []
+    allLoadedItems.value = []
     state.value = 'error'
     errorMessage.value = err instanceof Error ? err.message : 'Failed to load best replay records.'
   }
 }
+
+// 1–5 Overview items computation
+const oneToFiveOverviewItems = computed<Record<PrimaryTicketCount, BestReplayItem | null>>(() => {
+  const result: Record<PrimaryTicketCount, BestReplayItem | null> = {
+    1: null,
+    2: null,
+    3: null,
+    4: null,
+    5: null,
+  }
+  const game = (selectedGame.value === 'ALL' ? 'B649' : selectedGame.value) as GameCode
+
+  for (const count of PRIMARY_TICKET_COUNTS) {
+    const availableItems = allLoadedItems.value.filter(
+      (item) => item.game === game && item.ticketCount === count && item.isAvailable,
+    )
+    const rank1 = availableItems.find((item) => item.rank === 1) || availableItems[0]
+    if (rank1) {
+      result[count] = rank1
+    } else {
+      result[count] = createUnavailableItem(
+        game,
+        `no_canonical_data_${game.toLowerCase()}_t${count}`,
+        'v1.0',
+        'unsupported_dimension',
+        count,
+        selectedHorizon.value,
+        'NO_CANONICAL_REPLAY_EVIDENCE',
+        `No canonical multi-ticket backtest evidence is recorded for ticket count ${count}.`,
+      )
+    }
+  }
+
+  return result
+})
 
 // Filtered and Sorted Records
 const filteredItems = computed<BestReplayItem[]>(() => {
@@ -226,17 +314,20 @@ const totalPages = computed(() =>
   Math.max(1, Math.ceil(filteredItems.value.length / PAGE_SIZE)),
 )
 
-// Main Summary Computation
+// Main Summary Computation (Canonical Rank #1)
 const summary = computed<BestReplaySummary>(() => {
   const available = filteredItems.value.filter((item) => item.isAvailable)
   const best = available.find((item) => item.rank === 1) || available[0]
   const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === selectedHorizon.value)
+  const ticketCountDisplay = selectedTicketCounts.value.length === 1
+    ? `${selectedTicketCounts.value[0]} Tickets`
+    : selectedTicketCounts.value.map((c) => `${c}T`).join(', ') || 'None'
 
   if (!best) {
     return {
       bestStrategyId: null,
       bestStrategyLabel: 'Evidence Unavailable',
-      ticketCount: selectedTicketCounts.value.join(', ') || 'None',
+      ticketCount: ticketCountDisplay,
       horizon: horizonDef?.label || selectedHorizon.value,
       historicalHitRate: 'Unavailable',
       evaluatedTargets: 0,
@@ -250,7 +341,7 @@ const summary = computed<BestReplaySummary>(() => {
   return {
     bestStrategyId: best.strategyId,
     bestStrategyLabel: best.strategyId,
-    ticketCount: best.ticketCount,
+    ticketCount: `${best.ticketCount} Tickets`,
     horizon: best.horizonLabel,
     historicalHitRate: best.hitRateFormatted,
     evaluatedTargets: best.evaluatedTargets,
@@ -270,7 +361,7 @@ const inspectHorizonItems = computed<Partial<Record<string, BestReplayItem | nul
   const byHorizon: Partial<Record<string, BestReplayItem | null>> = {}
 
   for (const h of CANONICAL_HORIZONS) {
-    const match = rawItems.value.find(
+    const match = allLoadedItems.value.find(
       (item) =>
         item.strategyId === targetId &&
         item.ticketCount === targetCount &&
@@ -283,9 +374,8 @@ const inspectHorizonItems = computed<Partial<Record<string, BestReplayItem | nul
 
 // Matrix Rows Computation for 1..20 Grid
 const matrixRows = computed<BestReplayMatrixRow[]>(() => {
-  // Extract distinct strategy IDs from raw items
   const strategyMap = new Map<string, { strategyId: string; methodFamily: string; game: GameCode }>()
-  for (const item of rawItems.value) {
+  for (const item of allLoadedItems.value) {
     if (!strategyMap.has(item.strategyId)) {
       strategyMap.set(item.strategyId, {
         strategyId: item.strategyId,
@@ -301,7 +391,7 @@ const matrixRows = computed<BestReplayMatrixRow[]>(() => {
     const cells: Partial<Record<TicketCount, BestReplayItem | null>> = {}
 
     for (const count of ALL_TICKET_COUNTS) {
-      const match = rawItems.value.find(
+      const match = allLoadedItems.value.find(
         (item) =>
           item.strategyId === sId &&
           item.ticketCount === count &&
@@ -363,7 +453,7 @@ onBeforeUnmount(() => {
       id="best-replay-title"
       title="Best Replay"
       eyebrow="Multi-ticket horizon ranking"
-      description="Strategy ranking and ticket performance comparison across 1–20 tickets and short, medium, long, and full evaluation horizons."
+      description="Strategy ranking and ticket performance comparison across 1–5 tickets and short, medium, long, and full evaluation horizons."
     >
       <template #actions>
         <div class="view-mode-tabs" role="tablist" aria-label="View Mode Switcher">
@@ -398,6 +488,50 @@ onBeforeUnmount(() => {
       </template>
     </SectionHeader>
 
+    <!-- Game Switcher Bar (B649 / P638 / T539) -->
+    <div class="game-switcher-panel" role="region" aria-label="Lottery Game Selection">
+      <div class="game-switcher-label">
+        <span class="game-label-text">Active Game:</span>
+      </div>
+      <div class="game-buttons-group" role="group" aria-label="Game Selector">
+        <button
+          type="button"
+          class="game-nav-btn"
+          :class="{ 'game-nav-btn--active': selectedGame === 'B649' }"
+          :aria-pressed="selectedGame === 'B649'"
+          data-testid="game-btn-b649"
+          @click="selectGame('B649')"
+        >
+          <span class="game-code">B649</span>
+          <span class="game-title">Big Lotto 6/49</span>
+        </button>
+
+        <button
+          type="button"
+          class="game-nav-btn"
+          :class="{ 'game-nav-btn--active': selectedGame === 'P638' }"
+          :aria-pressed="selectedGame === 'P638'"
+          data-testid="game-btn-p638"
+          @click="selectGame('P638')"
+        >
+          <span class="game-code">P638</span>
+          <span class="game-title">Power Lotto 6/38</span>
+        </button>
+
+        <button
+          type="button"
+          class="game-nav-btn"
+          :class="{ 'game-nav-btn--active': selectedGame === 'T539' }"
+          :aria-pressed="selectedGame === 'T539'"
+          data-testid="game-btn-t539"
+          @click="selectGame('T539')"
+        >
+          <span class="game-code">T539</span>
+          <span class="game-title">Daily Cash 5/39</span>
+        </button>
+      </div>
+    </div>
+
     <!-- Main Summary Metrics Grid -->
     <div class="metrics-grid" data-testid="best-replay-metrics-grid">
       <MetricCard
@@ -408,7 +542,7 @@ onBeforeUnmount(() => {
       />
       <MetricCard
         label="Ticket Count"
-        :value="typeof summary.ticketCount === 'number' ? `${summary.ticketCount} Tickets` : summary.ticketCount"
+        :value="summary.ticketCount"
         :subvalue="isMultiSelectMode ? 'Multi-ticket selection active' : 'Single ticket dimension'"
       />
       <MetricCard
@@ -440,13 +574,22 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <!-- 1–5 Best Strategy Overview (Cards) -->
+    <BestReplayOneToFiveOverview
+      :game="(selectedGame === 'ALL' ? 'B649' : selectedGame) as GameCode"
+      :horizon="selectedHorizon"
+      :selected-ticket-count="selectedTicketCounts[0] || 1"
+      :items-by-ticket-count="oneToFiveOverviewItems"
+      @select-ticket="handleSelectTicketFromOverview"
+    />
+
     <!-- High-Density Control & Query Filter Bar -->
     <FilterBar title="Evaluation Dimensions & Filters" :count="filteredItems.length" count-label="strategies">
       <div class="controls-form">
-        <!-- Game Selector -->
+        <!-- Game Selector Dropdown (accessible fallback) -->
         <div class="control-group">
           <label for="game-select" class="control-label">Game</label>
-          <select id="game-select" v-model="selectedGame" class="select-input">
+          <select id="game-select" v-model="selectedGame" class="select-input" @change="selectGame(selectedGame)">
             <option value="B649">B649 (Big Lotto 6/49)</option>
             <option value="P638">P638 (Power Lotto 6/38)</option>
             <option value="T539">T539 (Daily Cash 5/39)</option>
@@ -487,14 +630,14 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <!-- Ticket Count 1..20 Controls and Quick Presets -->
+      <!-- Ticket Count 1..5 Controls and Quick Presets -->
       <div class="ticket-control-row">
         <div class="ticket-header">
-          <span class="control-label">Ticket Count (1–20)</span>
+          <span class="control-label">Ticket Count (1–5 Primary, 1–20 Grid)</span>
           <div class="preset-buttons" role="group" aria-label="Ticket Count Presets">
             <span class="preset-label">Quick Presets:</span>
             <button
-              v-for="p in (['1', '2', '3', '5', '10', '20', 'all'] as const)"
+              v-for="p in (['1', '2', '3', '4', '5', '10', '20', 'all'] as const)"
               :key="p"
               type="button"
               class="button button--sm"
@@ -505,6 +648,15 @@ onBeforeUnmount(() => {
               @click="applyPreset(p)"
             >
               {{ p === 'all' ? 'All Available' : `${p}T` }}
+            </button>
+            <button
+              type="button"
+              class="button button--sm button--quiet reset-rank-btn"
+              data-testid="reset-rank-btn"
+              title="Reset sorting to Official Rank order"
+              @click="resetToOfficialRank"
+            >
+              Reset to Official Rank
             </button>
           </div>
         </div>
@@ -519,8 +671,10 @@ onBeforeUnmount(() => {
               'ticket-chip--selected': selectedTicketCounts.includes(count),
               'ticket-chip--available': availableTicketCountsForGame.includes(count),
               'ticket-chip--unavailable': !availableTicketCountsForGame.includes(count),
+              'ticket-chip--primary': PRIMARY_TICKET_COUNTS.includes(count as PrimaryTicketCount),
             }"
             :aria-pressed="selectedTicketCounts.includes(count)"
+            :data-testid="`ticket-btn-${count}`"
             :title="
               availableTicketCountsForGame.includes(count)
                 ? `Ticket Count ${count} (Canonical evidence available)`
@@ -558,8 +712,8 @@ onBeforeUnmount(() => {
       title="No matching strategy records"
       description="No strategies matched your active filters or ticket count selection."
     >
-      <button type="button" class="button button--primary" @click="applyPreset('all')">
-        Reset to All Available
+      <button type="button" class="button button--primary" @click="resetToOfficialRank">
+        Reset Filters
       </button>
     </EmptyState>
 
@@ -567,6 +721,21 @@ onBeforeUnmount(() => {
     <template v-else>
       <!-- Mode 1: Ranking Table -->
       <div v-if="activeViewMode === 'table'" class="table-workspace">
+        <div class="table-actions-header">
+          <div class="table-title-meta">
+            <span class="meta-label">Active Ordering:</span>
+            <strong class="meta-val">{{ sortField === 'rank' ? 'Official Rank' : `${sortField} (${sortDirection})` }}</strong>
+          </div>
+          <button
+            v-if="sortField !== 'rank' || sortDirection !== 'asc'"
+            type="button"
+            class="button button--sm button--quiet"
+            @click="resetSort"
+          >
+            Reset to Official Rank
+          </button>
+        </div>
+
         <DataTable
           min-width="1100px"
           caption="Historical Strategy Performance and Horizon Ranking"
@@ -602,7 +771,10 @@ onBeforeUnmount(() => {
             v-for="item in paginatedItems"
             :key="item.id"
             class="data-row"
-            :class="{ 'data-row--active': activeInspectStrategyId === item.strategyId && activeInspectTicketCount === item.ticketCount }"
+            :class="{
+              'data-row--active': activeInspectStrategyId === item.strategyId && activeInspectTicketCount === item.ticketCount,
+              'data-row--unavailable': !item.isAvailable,
+            }"
             @click="selectStrategyForInspection(item)"
           >
             <td>
@@ -776,6 +948,73 @@ onBeforeUnmount(() => {
   border: 1px solid var(--border-color);
 }
 
+.game-switcher-panel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 18px;
+  margin-bottom: 18px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  flex-wrap: wrap;
+}
+
+.game-switcher-label {
+  font: 700 11px/1 var(--font-mono);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.game-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.game-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: rgba(30, 41, 59, 0.7);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.game-nav-btn:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.game-nav-btn--active {
+  border-color: var(--primary-color) !important;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.35) 0%, rgba(59, 130, 246, 0.25) 100%) !important;
+  color: #fff !important;
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.3);
+}
+
+.game-code {
+  font: 800 12px/1 var(--font-mono);
+  color: var(--text-accent);
+}
+
+.game-nav-btn--active .game-code {
+  color: #fff;
+}
+
+.game-title {
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .research-notice-banner {
   display: flex;
   align-items: flex-start;
@@ -874,6 +1113,10 @@ onBeforeUnmount(() => {
   margin-right: 4px;
 }
 
+.reset-rank-btn {
+  margin-left: 8px;
+}
+
 .ticket-buttons-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
@@ -913,6 +1156,10 @@ onBeforeUnmount(() => {
   border-style: dashed;
 }
 
+.ticket-chip--primary {
+  border-width: 1.5px;
+}
+
 .ticket-chip__number {
   font: 700 12px/1 var(--font-mono);
 }
@@ -930,6 +1177,30 @@ onBeforeUnmount(() => {
   margin-top: 2px;
 }
 
+.table-actions-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.table-title-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.meta-label {
+  color: var(--text-tertiary);
+}
+
+.meta-val {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
 .data-row {
   cursor: pointer;
   transition: background 0.15s ease;
@@ -942,6 +1213,10 @@ onBeforeUnmount(() => {
 .data-row--active {
   background: rgba(124, 58, 237, 0.12) !important;
   border-left: 3px solid var(--primary-color);
+}
+
+.data-row--unavailable {
+  opacity: 0.75;
 }
 
 .rank-tag {
@@ -1107,12 +1382,5 @@ onBeforeUnmount(() => {
 .chip-rate {
   font: 700 11px/1 var(--font-mono);
   color: var(--color-success);
-}
-
-.view-mode-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  max-width: 100%;
 }
 </style>

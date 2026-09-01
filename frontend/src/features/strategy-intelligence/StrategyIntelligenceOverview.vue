@@ -5,6 +5,8 @@ import DataTable from '../../components/DataTable.vue'
 import EmptyState from '../../components/EmptyState.vue'
 import FilterBar from '../../components/FilterBar.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import type { LotteryType } from '../../api/strategies'
 import type {
   EvidenceStatusFilter,
   ExecutableFilter,
@@ -14,14 +16,37 @@ import type {
   ViewMode,
 } from './types'
 
-const props = defineProps<{
-  items: StrategyCombinedItem[]
-  totalCount: number
-  executableCount: number
-  metadataOnlyCount: number
-  lifecycleCounts: Record<string, number>
-  unavailableReasons: string[]
-}>()
+const props = withDefaults(
+  defineProps<{
+    items: StrategyCombinedItem[]
+    totalCount: number
+    executableCount: number
+    metadataOnlyCount: number
+    lifecycleCounts: Record<string, number>
+    unavailableReasons: string[]
+    selectedLotteryType?: LotteryType
+    bestStrategyStatus?: string
+    bestStrategyReason?: string
+  }>(),
+  {
+    selectedLotteryType: 'BIG_LOTTO',
+    bestStrategyStatus: 'UNAVAILABLE',
+    bestStrategyReason: 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
+  },
+)
+
+const currentGameCode = computed(() => lotteryTypeDisplayLabel(props.selectedLotteryType))
+
+const currentGameFullName = computed(() => {
+  switch (props.selectedLotteryType) {
+    case 'BIG_LOTTO':
+      return 'Big Lotto 6/49'
+    case 'POWER_LOTTO':
+      return 'Power Lotto 6/38'
+    case 'DAILY_539':
+      return 'Daily Cash 5/39'
+  }
+})
 
 const searchQuery = ref('')
 const selectedGame = ref<GameFilter>('ALL')
@@ -186,11 +211,44 @@ function resetFilters(): void {
       </template>
     </FilterBar>
 
+    <!-- Best Strategy Overview Panel -->
+    <section class="panel best-strategy-panel" aria-labelledby="best-strategy-overview-title">
+      <div class="panel__heading">
+        <div>
+          <p class="step-label">Canonical Strategy Evidence · {{ currentGameCode }}</p>
+          <h3 id="best-strategy-overview-title">Best Strategy Overview</h3>
+        </div>
+        <div class="scope-card" aria-label="Best strategy evidence status">
+          <span>Best Strategy Scope · {{ currentGameCode }}</span>
+          <strong>{{ bestStrategyStatus }}</strong>
+          <small>Reason: {{ bestStrategyReason }}</small>
+        </div>
+      </div>
+
+      <div class="best-strategy-content">
+        <div class="best-strategy-alert" role="status">
+          <span class="alert-icon" aria-hidden="true">🛡️</span>
+          <div>
+            <strong class="alert-headline">BEST STRATEGY EVIDENCE UNAVAILABLE</strong>
+            <p class="alert-text">
+              GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE: No canonical ex-ante evaluation evidence is registered to designate a top-ranked strategy for {{ currentGameFullName }} ({{ currentGameCode }}).
+            </p>
+          </div>
+        </div>
+
+        <ul class="best-strategy-guards">
+          <li><strong>No Catalog Deduction:</strong> Strategies are not selected as "best" based on catalog registration order or metadata declaration.</li>
+          <li><strong>No Lifecycle Inference:</strong> Descriptors marked <code>ONLINE</code> or <code>OBSERVATION</code> are not assumed to have empirical superiority without registered evidence.</li>
+          <li><strong>No Replay Conflation:</strong> Descriptive historical replay rankings are not treated as canonical forward best-strategy evidence.</li>
+        </ul>
+      </div>
+    </section>
+
     <!-- Query Summary & Evidence Availability Banner -->
     <div class="overview-meta-grid">
       <section class="panel summary-box" aria-labelledby="query-summary-title">
         <div class="panel__heading">
-          <p class="step-label">Catalog Summary</p>
+          <p class="step-label">Catalog Summary · {{ currentGameCode }}</p>
           <h3 id="query-summary-title">Descriptor Breakdown</h3>
         </div>
         <dl class="summary-counts">
@@ -249,14 +307,14 @@ function resetFilters(): void {
     <EmptyState
       v-else-if="items.length === 0"
       title="Strategy Catalog is empty"
-      description="No strategies are registered in the canonical strategy catalog."
+      description="No strategies are registered in the canonical strategy catalog for this game."
     />
 
     <!-- Main Content: Table View -->
     <template v-else-if="viewMode === 'table'">
       <DataTable
         caption="Canonical Strategy Catalog & Evidence Status"
-        min-width="1100px"
+        min-width="1200px"
       >
         <template #head>
           <tr>
@@ -265,9 +323,11 @@ function resetFilters(): void {
             <th>Games</th>
             <th>Lifecycle</th>
             <th>Execution</th>
+            <th>Min History</th>
             <th>Empirical Eligibility</th>
             <th>Evidence Status</th>
             <th>Verification</th>
+            <th>Unavailable Reason</th>
             <th>Provenance</th>
           </tr>
         </template>
@@ -299,6 +359,9 @@ function resetFilters(): void {
               size="sm"
             />
           </td>
+          <td class="font-mono">
+            <span>{{ strategy.minimumHistory }} draws</span>
+          </td>
           <td>
             <StatusBadge
               :status="strategy.empiricalEligibility"
@@ -319,6 +382,12 @@ function resetFilters(): void {
               :variant="strategy.verificationStatus === 'EVIDENCE_VERIFIED' ? 'success' : 'neutral'"
               size="sm"
             />
+          </td>
+          <td>
+            <code v-if="strategy.unavailableReasonCode" class="reason-code-inline">
+              {{ strategy.unavailableReasonCode }}
+            </code>
+            <span v-else class="text-muted">—</span>
           </td>
           <td>
             <details v-if="strategy.provenance.length" class="provenance-details">
@@ -376,6 +445,14 @@ function resetFilters(): void {
             <div>
               <dt>Evidence</dt>
               <dd>{{ strategy.evidenceStatus }}</dd>
+            </div>
+            <div>
+              <dt>Verification</dt>
+              <dd>{{ strategy.verificationStatus }}</dd>
+            </div>
+            <div>
+              <dt>Unavailable Reason</dt>
+              <dd class="font-mono text-truncate">{{ strategy.unavailableReasonCode ?? 'None' }}</dd>
             </div>
           </dl>
 
@@ -710,5 +787,85 @@ function resetFilters(): void {
   .overview-meta-grid {
     grid-template-columns: 1fr;
   }
+}
+
+.best-strategy-panel {
+  padding: 20px;
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  background: linear-gradient(135deg, rgba(35, 26, 12, 0.7) 0%, rgba(13, 17, 28, 0.7) 100%);
+}
+
+.best-strategy-content {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.best-strategy-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+}
+
+.alert-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.alert-headline {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #fde047;
+  margin-bottom: 2px;
+  letter-spacing: 0.03em;
+}
+
+.alert-text {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.best-strategy-guards {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.best-strategy-guards strong {
+  color: var(--text-primary);
+}
+
+.best-strategy-guards code {
+  color: var(--text-accent);
+}
+
+.reason-code-inline {
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  display: inline-block;
+}
+
+.text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

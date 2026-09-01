@@ -512,4 +512,5 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "legacy_biglotto__frontend_ml_genetic__3a4324bc2aa9",
         "legacy_biglotto__frontend_collaborative_hybrid__97d79db161ba",
         "legacy_biglotto__frontend_auto_optimize_strategy__a121d28125c6",
+        "power_graph_synergy_seed42_2bet",
     ]

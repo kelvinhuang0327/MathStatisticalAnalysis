@@ -1,22 +1,41 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import DataTable from '../../components/DataTable.vue'
 import MetricCard from '../../components/MetricCard.vue'
 import SectionHeader from '../../components/SectionHeader.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import type { LotteryType } from '../../api/strategies'
 import type { D3MetricDefinitionInfo, StrategyCombinedItem } from './types'
 
 const props = withDefaults(
   defineProps<{
+    selectedLotteryType?: LotteryType
     d3Status?: string
     d3Value?: string
     strategies?: StrategyCombinedItem[]
   }>(),
   {
+    selectedLotteryType: 'BIG_LOTTO',
     d3Status: 'RESERVED_UNAVAILABLE',
     d3Value: 'NOT_AVAILABLE',
     strategies: () => [],
   },
 )
+
+const currentGameCode = computed(() => lotteryTypeDisplayLabel(props.selectedLotteryType))
+
+const currentGameFullName = computed(() => {
+  switch (props.selectedLotteryType) {
+    case 'BIG_LOTTO':
+      return 'Big Lotto 6/49'
+    case 'POWER_LOTTO':
+      return 'Power Lotto 6/38'
+    case 'DAILY_539':
+      return 'Daily Cash 5/39'
+  }
+})
 
 const d3Definition: D3MetricDefinitionInfo = {
   metricId: 'D3',
@@ -43,17 +62,17 @@ const d3Definition: D3MetricDefinitionInfo = {
       <div class="panel__heading">
         <div>
           <p class="step-label">Single Source of Truth · Metric Authority</p>
-          <h2 id="d3-ssot-title">D3 Strategy Status & SSOT Definition</h2>
+          <h2 id="d3-ssot-title">D3 Strategy Status & SSOT Definition · {{ currentGameCode }}</h2>
         </div>
         <div class="scope-card" aria-label="D3 SSOT status">
-          <span>D3 SSOT Status</span>
+          <span>D3 SSOT Scope · {{ currentGameCode }}</span>
           <strong>{{ d3Status }}</strong>
           <small>Value: {{ d3Value }} · Authority: {{ d3Definition.authorityPath }}</small>
         </div>
       </div>
 
       <p class="d3-intro">
-        D3 serves as the canonical primary ranking authority for the strategy discovery platform.
+        D3 serves as the canonical primary ranking authority for the strategy discovery platform across {{ currentGameFullName }} ({{ currentGameCode }}).
         Per the committed schema contract, its formula and evaluation values remain explicitly reserved until an Owner-approved definition is ratified.
       </p>
 
@@ -74,9 +93,9 @@ const d3Definition: D3MetricDefinitionInfo = {
           variant="default"
         />
         <MetricCard
-          label="Metric Authority"
-          :value="`${d3Definition.metricId} (${d3Definition.metricVersion})`"
-          :subvalue="d3Definition.schemaId"
+          label="Selected Game Scope"
+          :value="`${currentGameCode} (${currentGameFullName})`"
+          :subvalue="`${strategies.length} candidate strategies in scope`"
           variant="accent"
         />
         <MetricCard

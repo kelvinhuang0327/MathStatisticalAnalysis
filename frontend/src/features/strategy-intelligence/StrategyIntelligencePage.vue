@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
   queryStrategyOverview,
+  type LotteryType,
   type StrategyOverviewResponse,
 } from '../../api/strategies'
 import {
@@ -18,11 +19,16 @@ import SkeletonLoader from '../../components/SkeletonLoader.vue'
 import StrategyIntelligenceD3 from './StrategyIntelligenceD3.vue'
 import StrategyIntelligenceOverview from './StrategyIntelligenceOverview.vue'
 import StrategyIntelligencePortfolio from './StrategyIntelligencePortfolio.vue'
-import type { StrategyCombinedItem, StrategyIntelligenceTab } from './types'
+import {
+  GAME_OPTIONS,
+  type StrategyCombinedItem,
+  type StrategyIntelligenceTab,
+} from './types'
 
 type LoadState = 'loading' | 'ready' | 'error'
 
 const activeTab = ref<StrategyIntelligenceTab>('overview')
+const selectedLotteryType = ref<LotteryType>('BIG_LOTTO')
 const loadState = ref<LoadState>('loading')
 const errorMessage = ref('')
 
@@ -32,6 +38,8 @@ const evidenceData = ref<StrategyEvidenceResponse | null>(null)
 let requestController: AbortController | undefined
 let requestGeneration = 0
 let isMounted = false
+
+const currentGameCode = computed(() => lotteryTypeDisplayLabel(selectedLotteryType.value))
 
 const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
   if (!overviewData.value) return []
@@ -61,11 +69,23 @@ const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
       registrationStatus: regStatus,
       definitionStatus: matchedEvidence?.definition_status ?? 'DEFINITION_AVAILABLE',
       verificationStatus: verStatus,
-      empiricalEligibility: (isRegistered && isVerified) ? 'EMPIRICAL ELIGIBLE' : 'EMPIRICAL INELIGIBLE',
+      empiricalEligibility: isRegistered && isVerified ? 'EMPIRICAL ELIGIBLE' : 'EMPIRICAL INELIGIBLE',
       evidenceStatus: isRegistered ? 'CANONICAL EVIDENCE REGISTERED' : 'CANONICAL EVIDENCE MISSING',
       unavailableReasonCode: matchedEvidence?.unavailable_reason_code ?? 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
     }
   })
+})
+
+const evidenceReadyCount = computed(() => {
+  return combinedStrategies.value.filter(
+    (item) => item.registrationStatus === 'CANONICAL_EVIDENCE_REGISTERED',
+  ).length
+})
+
+const empiricalEligibleCount = computed(() => {
+  return combinedStrategies.value.filter(
+    (item) => item.empiricalEligibility === 'EMPIRICAL ELIGIBLE',
+  ).length
 })
 
 const summary = computed(() => {
@@ -82,6 +102,8 @@ const summary = computed(() => {
   const unavailableReasons = overviewData.value?.capabilities.unavailable_reason_codes ?? [
     'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE',
   ]
+  const bestStrategyStatus = evidenceData.value?.best_strategy.status ?? 'UNAVAILABLE'
+  const bestStrategyReason = evidenceData.value?.best_strategy.reason ?? 'NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE'
   const d3Status = evidenceData.value?.d3.status ?? 'RESERVED_UNAVAILABLE'
   const d3Value = evidenceData.value?.d3.value ?? 'NOT_AVAILABLE'
   const portfolioStatus = evidenceData.value?.strategy_combination_hit_rate.status ?? 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE'
@@ -94,6 +116,8 @@ const summary = computed(() => {
     metadataOnly,
     lifecycleCounts,
     unavailableReasons,
+    bestStrategyStatus,
+    bestStrategyReason,
     d3Status,
     d3Value,
     portfolioStatus,
@@ -110,10 +134,14 @@ async function loadData(): Promise<void> {
 
   loadState.value = 'loading'
   errorMessage.value = ''
+  overviewData.value = null
 
   try {
     const [overviewResponse, evidenceResponse] = await Promise.all([
-      queryStrategyOverview({}, controller.signal),
+      queryStrategyOverview(
+        { lottery_type: selectedLotteryType.value },
+        controller.signal,
+      ),
       queryStrategyEvidence(controller.signal),
     ])
 
@@ -128,6 +156,12 @@ async function loadData(): Promise<void> {
       error instanceof Error ? error.message : 'Unable to load Strategy Intelligence data.'
     loadState.value = 'error'
   }
+}
+
+function selectGame(lotteryType: LotteryType): void {
+  if (selectedLotteryType.value === lotteryType && loadState.value === 'ready') return
+  selectedLotteryType.value = lotteryType
+  void loadData()
 }
 
 onMounted(() => {
@@ -189,6 +223,46 @@ onBeforeUnmount(() => {
       </template>
     </SectionHeader>
 
+    <!-- Game Scope Selector -->
+    <div class="game-selector-container" role="region" aria-label="Game Scope Selection">
+      <div class="game-selector-bar">
+        <span class="game-selector-label">Game Scope:</span>
+        <div class="game-selector-group" role="radiogroup" aria-label="Lottery Game Scope">
+          <button
+            v-for="game in GAME_OPTIONS"
+            :key="game.code"
+            type="button"
+            class="button game-selector-btn"
+            :class="{
+              'button--primary': selectedLotteryType === game.lotteryType,
+              'button--quiet': selectedLotteryType !== game.lotteryType,
+            }"
+            :aria-checked="selectedLotteryType === game.lotteryType"
+            :data-testid="`game-selector-${game.code.toLowerCase()}`"
+            role="radio"
+            @click="selectGame(game.lotteryType)"
+          >
+            <span class="game-code">{{ game.code }}</span>
+            <span class="game-name">{{ game.name }}</span>
+          </button>
+        </div>
+        <div class="game-selector-dropdown">
+          <label for="game-scope-select" class="sr-only">Select Lottery Game</label>
+          <select
+            id="game-scope-select"
+            v-model="selectedLotteryType"
+            class="select-input select-input--sm"
+            data-testid="game-scope-select"
+            @change="selectGame(selectedLotteryType)"
+          >
+            <option v-for="game in GAME_OPTIONS" :key="game.code" :value="game.lotteryType">
+              {{ game.code }} ({{ game.fullName }})
+            </option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <!-- Top Unified MetricCards Summary Row -->
     <div class="metrics-grid" data-testid="strategy-intelligence-metrics-grid">
       <MetricCard
@@ -205,30 +279,40 @@ onBeforeUnmount(() => {
       />
       <MetricCard
         label="Evidence Ready"
-        value="0"
-        subvalue="No canonical evidence registered"
-        badge="EVIDENCE UNAVAILABLE"
-        badge-variant="default"
+        :value="loadState === 'ready' ? evidenceReadyCount : '—'"
+        :subvalue="loadState === 'ready' ? (evidenceReadyCount > 0 ? `${evidenceReadyCount} registered evidence artifacts` : 'No canonical evidence registered') : 'Loading…'"
+        :badge="evidenceReadyCount > 0 ? 'REGISTERED' : 'EVIDENCE UNAVAILABLE'"
+        :badge-variant="evidenceReadyCount > 0 ? 'success' : 'default'"
+        :variant="evidenceReadyCount > 0 ? 'success' : 'default'"
       />
       <MetricCard
         label="Empirical Eligible"
-        value="0"
-        subvalue="0 strategies pass canonical gate"
-        badge="EMPIRICAL INELIGIBLE"
-        badge-variant="danger"
+        :value="loadState === 'ready' ? empiricalEligibleCount : '—'"
+        :subvalue="loadState === 'ready' ? `${empiricalEligibleCount} strategies pass canonical gate` : 'Loading…'"
+        :badge="empiricalEligibleCount > 0 ? 'EMPIRICAL ELIGIBLE' : 'EMPIRICAL INELIGIBLE'"
+        :badge-variant="empiricalEligibleCount > 0 ? 'success' : 'danger'"
+        :variant="empiricalEligibleCount > 0 ? 'success' : 'default'"
       />
       <MetricCard
-        label="Portfolio Evidence"
-        value="UNAVAILABLE"
-        :subvalue="summary.portfolioStatus"
+        label="Best Strategy"
+        :value="loadState === 'ready' ? summary.bestStrategyStatus : '—'"
+        :subvalue="loadState === 'ready' ? `Status: ${summary.bestStrategyStatus} · Evidence missing` : 'Loading…'"
+        badge="UNAVAILABLE"
+        badge-variant="warning"
+        variant="warning"
+      />
+      <MetricCard
+        label="Portfolio Hit Rate"
+        :value="loadState === 'ready' ? summary.portfolioValue : '—'"
+        :subvalue="loadState === 'ready' ? `Status: ${summary.portfolioStatus}` : 'Loading…'"
         badge="EXCLUDED"
         badge-variant="warning"
         variant="warning"
       />
       <MetricCard
         label="D3 SSOT Status"
-        :value="summary.d3Status"
-        :subvalue="`Value: ${summary.d3Value}`"
+        :value="loadState === 'ready' ? summary.d3Status : '—'"
+        :subvalue="loadState === 'ready' ? `Value: ${summary.d3Value}` : 'Loading…'"
         badge="RESERVED"
         badge-variant="default"
       />
@@ -238,7 +322,7 @@ onBeforeUnmount(() => {
     <div class="research-protocol-banner" role="note">
       <span class="protocol-icon" aria-hidden="true">🛡️</span>
       <div class="protocol-content">
-        <strong>Strict Evidence Protocol:</strong>
+        <strong>Strict Evidence Protocol ({{ currentGameCode }}):</strong>
         Strategy Intelligence presents descriptive quantitative metadata, combination availability, and canonical D3 validation gates.
         Unavailable evidence is explicitly labeled as unavailable rather than zero. No prediction claims, ranking formulas, or heuristic bets are computed.
       </div>
@@ -266,17 +350,21 @@ onBeforeUnmount(() => {
       <div v-if="activeTab === 'overview'" role="tabpanel" aria-label="Strategy Overview">
         <StrategyIntelligenceOverview
           :items="combinedStrategies"
+          :selected-lottery-type="selectedLotteryType"
           :total-count="summary.total"
           :executable-count="summary.executable"
           :metadata-only-count="summary.metadataOnly"
           :lifecycle-counts="summary.lifecycleCounts"
           :unavailable-reasons="summary.unavailableReasons"
+          :best-strategy-status="summary.bestStrategyStatus"
+          :best-strategy-reason="summary.bestStrategyReason"
         />
       </div>
 
       <!-- Tab 2: Portfolio Hit Rate -->
       <div v-else-if="activeTab === 'portfolio'" role="tabpanel" aria-label="Portfolio Hit Rate">
         <StrategyIntelligencePortfolio
+          :selected-lottery-type="selectedLotteryType"
           :combination-status="summary.portfolioStatus"
           :combination-value="summary.portfolioValue"
           :combination-owner="summary.portfolioOwner"
@@ -285,8 +373,9 @@ onBeforeUnmount(() => {
       </div>
 
       <!-- Tab 3: D3 SSOT -->
-      <div v-else-if="activeTab === 'd3'" role="tabpanel" aria-label="D3 SSOT">
+      <div v-if="activeTab === 'd3'" role="tabpanel" aria-label="D3 SSOT">
         <StrategyIntelligenceD3
+          :selected-lottery-type="selectedLotteryType"
           :d3-status="summary.d3Status"
           :d3-value="summary.d3Value"
           :strategies="combinedStrategies"
@@ -299,6 +388,80 @@ onBeforeUnmount(() => {
 <style scoped>
 .workspace-page {
   padding-bottom: 48px;
+}
+
+.game-selector-container {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.game-selector-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+}
+
+.game-selector-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.game-selector-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.game-selector-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-md);
+}
+
+.game-code {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.game-name {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.game-selector-dropdown {
+  margin-left: auto;
+}
+
+.select-input--sm {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .research-protocol-banner {

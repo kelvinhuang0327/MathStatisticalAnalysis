@@ -541,7 +541,7 @@ def build_b649_k2_k3_projection_bytes(
             raise B649ProjectionBuildError(
                 f"{replay_input_path} has incomplete exact-native metric cells"
             )
-        input_metadata = {
+        input_metadata: dict[str, object] = {
             "authority_mode": authority_mode,
             "dataset_id": _string(exact_report.get("dataset_id"), "dataset_id"),
             "dataset_sha256": _sha256(cast(str, dataset_sha256), "dataset_sha256"),
@@ -619,7 +619,7 @@ def build_b649_k2_k3_projection_bytes(
         _canonical_json(source_inputs)
     ).hexdigest()
     producer_path = Path(__file__).resolve()
-    evaluator_path = Path(cast(str, exact_native_evaluator.__file__)).resolve()
+    evaluator_path = Path(exact_native_evaluator.__file__).resolve()
     producer_identity = {
         "builder_function": "build_b649_k2_k3_projection_bytes",
         "builder_module": "lottolab.infrastructure.biglotto_multi_ticket_projection_builder",

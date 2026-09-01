@@ -21,16 +21,29 @@ from lottolab.research.strategy_matrix_local_escape import (
 from lottolab.research.strategy_matrix_radius_two_comparison import (
     EVALUATED_K_VALUES,
     EXPECTED_SOURCE_PORTFOLIO_SHA256,
+    EXPECTED_SOURCE_PORTFOLIO_SHA256_BY_K,
     EXPECTED_SOURCE_Q,
+    EXPECTED_SOURCE_Q_BY_K,
     OUTPUT_PATH,
+    OUTPUT_RESULT_IDENTITY_SHA256,
+    OUTPUT_SHA256,
     SOURCE_AUTHORITY_SHA256,
     STUDY_ID,
+    SUPPORTED_K_EXECUTED_VALUES,
+    SUPPORTED_K_OUTPUT_PATH,
+    SUPPORTED_K_RESULT_IDENTITY_SHA256,
+    SUPPORTED_K_REUSED_VALUES,
+    SUPPORTED_K_STUDY_ID,
+    SUPPORTED_K_TASK_ID,
     SUPPORTED_K_VALUES,
     TASK_ID,
     canonical_json_bytes,
     load_radius_one_certificate,
+    load_reused_k20_row,
     portfolio_sha256,
     result_payload_sha256,
+    supported_k_result_payload_sha256,
+    validate_supported_k_output,
 )
 
 
@@ -174,6 +187,40 @@ def test_selected_radius_one_source_certificate_is_identity_pinned() -> None:
     assert certificate.exact_q == EXPECTED_SOURCE_Q
 
 
+@pytest.mark.parametrize("k", SUPPORTED_K_VALUES)
+def test_each_supported_radius_one_source_certificate_is_identity_pinned(k: int) -> None:
+    certificate = load_radius_one_certificate(k)
+
+    assert certificate.k == k
+    assert certificate.portfolio_sha256 == EXPECTED_SOURCE_PORTFOLIO_SHA256_BY_K[k]
+    assert portfolio_sha256(certificate.portfolio) == (
+        EXPECTED_SOURCE_PORTFOLIO_SHA256_BY_K[k]
+    )
+    assert certificate.exact_q == EXPECTED_SOURCE_Q_BY_K[k]
+
+
+def test_radius_one_source_rejects_unregistered_k() -> None:
+    with pytest.raises(ValueError, match="unsupported source radius-one k"):
+        load_radius_one_certificate(5)
+
+
+def test_k20_reuse_authority_is_exactly_pinned_without_execution() -> None:
+    raw = OUTPUT_PATH.read_bytes()
+    payload = _mapping(json.loads(raw))
+    row = load_reused_k20_row()
+
+    assert hashlib.sha256(raw).hexdigest() == OUTPUT_SHA256
+    assert _mapping(payload["result_identity"])["sha256"] == (
+        OUTPUT_RESULT_IDENTITY_SHA256
+    )
+    assert result_payload_sha256(payload) == OUTPUT_RESULT_IDENTITY_SHA256
+    assert row["k"] == 20
+    assert row["evidence_origin"] == "REUSED_CANONICAL_K20_RESULT"
+    assert _fraction(row["exact_delta"]) == Fraction(5, 20757)
+    assert row["radius2_move_count"] == 10
+    assert row["unique_radius2_endpoints_evaluated"] == 78_724_800
+
+
 def test_materialized_comparison_is_canonical_exact_and_identity_bound() -> None:
     assert OUTPUT_PATH.is_file(), "the required Matrix comparison result is not materialized"
     raw = OUTPUT_PATH.read_bytes()
@@ -246,6 +293,126 @@ def test_materialized_comparison_is_canonical_exact_and_identity_bound() -> None
     assert summary["radius2_strict_improvement_count"] == int(delta > 0)
     assert summary["radius2_no_improvement_count"] == int(delta <= 0)
     assert _fraction(summary["best_observed_delta"]) == delta
+
+
+def test_materialized_supported_k_comparison_is_exact_typed_and_identity_bound() -> None:
+    assert SUPPORTED_K_OUTPUT_PATH.is_file(), "supported-k result is not materialized"
+    raw = SUPPORTED_K_OUTPUT_PATH.read_bytes()
+    payload = validate_supported_k_output()
+
+    assert canonical_json_bytes(payload) == raw
+    assert payload["study_id"] == SUPPORTED_K_STUDY_ID
+    assert payload["task_id"] == SUPPORTED_K_TASK_ID
+    assert supported_k_result_payload_sha256(payload) == _mapping(
+        payload["result_identity"]
+    )["sha256"]
+    assert _mapping(payload["result_identity"])["sha256"] == (
+        SUPPORTED_K_RESULT_IDENTITY_SHA256
+    )
+
+    contract = _mapping(payload["comparison_contract"])
+    assert contract["supported_k_values"] == list(SUPPORTED_K_VALUES)
+    assert contract["combined_k_values"] == list(SUPPORTED_K_VALUES)
+    assert contract["executed_exact_k_values"] == list(SUPPORTED_K_EXECUTED_VALUES)
+    assert contract["reused_exact_k_values"] == list(SUPPORTED_K_REUSED_VALUES)
+    assert contract["source_method_id"] == RADIUS_ONE_EXACT_ONE_EXCHANGE_METHOD_ID
+    assert contract["candidate_method_id"] == RADIUS_TWO_EXACT_TWO_EXCHANGE_METHOD_ID
+
+    rows = _rows(payload["rows"])
+    assert [row["k"] for row in rows] == list(SUPPORTED_K_VALUES)
+    assert rows[-1] == load_reused_k20_row()
+    expected_rows = {
+        10: {
+            "certificate_sha256": (
+                "55397812ac0f6fa98222b5f2aa59f0d2af3c9f03e7978bdb27cf32079e2df4f8"
+            ),
+            "delta": Fraction(310, 2_760_681),
+            "endpoint_count": 3_470_400,
+            "iteration_count": 2,
+            "move_count": 1,
+            "row_sha256": (
+                "c8910359db896e3f70d9ad5c9d106f079aef15e550e745ea1a6d617b2dffbfda"
+            ),
+            "terminal_q": Fraction(90485, 250971),
+        },
+        15: {
+            "certificate_sha256": (
+                "81968eb01312219846eb4dc38965a436f0c8aa93e8f5f5439aaa91d36090fae0"
+            ),
+            "delta": Fraction(39, 920227),
+            "endpoint_count": 7_970_400,
+            "iteration_count": 2,
+            "move_count": 1,
+            "row_sha256": (
+                "1e66512978fbcf1ada122f41aef0040604fa93657c925661968beb141d933728"
+            ),
+            "terminal_q": Fraction(465491, 920227),
+        },
+        20: {
+            "certificate_sha256": (
+                "0328162a8da6d6a1b511a35837e753d2a75aceebe5a432375fa839d711fe367d"
+            ),
+            "delta": Fraction(5, 20757),
+            "endpoint_count": 78_724_800,
+            "iteration_count": 11,
+            "move_count": 10,
+            "row_sha256": (
+                "52c502a7bfb82f2d043199b71a2974da40c0d669cc8a005b9f98169984955492"
+            ),
+            "terminal_q": Fraction(579401, 920227),
+        },
+    }
+    for row in rows:
+        k = cast(int, row["k"])
+        expected = expected_rows[k]
+        certificate = _mapping(row["certificate"])
+        trace = _rows(certificate["trace"])
+        row_identity = _mapping(row["row_result_identity"])
+        row_body = dict(row)
+        row_body.pop("row_result_identity")
+
+        assert row_identity["sha256"] == hashlib.sha256(
+            canonical_json_bytes(row_body)
+        ).hexdigest()
+        assert row_identity["sha256"] == expected["row_sha256"]
+        assert _mapping(certificate["certificate_identity"])["sha256"] == expected[
+            "certificate_sha256"
+        ]
+        assert _fraction(row["best_exact_radius2_objective"]) == expected["terminal_q"]
+        assert _fraction(row["exact_delta"]) == expected["delta"]
+        assert trace[-1]["accepted_move"] is False
+        assert row["terminal_best_endpoint"] == {
+            "exact_q": trace[-1]["best_endpoint_exact_q"],
+            "portfolio": trace[-1]["best_endpoint_portfolio"],
+            "portfolio_sha256": trace[-1]["best_endpoint_portfolio_sha256"],
+        }
+        assert row["terminal_delta"] == trace[-1]["delta"]
+        assert row["radius2_iteration_count"] == len(trace) == expected["iteration_count"]
+        assert row["radius2_move_count"] == expected["move_count"] == sum(
+            iteration["accepted_move"] is True for iteration in trace
+        )
+        assert row["unique_radius2_endpoints_evaluated"] == expected[
+            "endpoint_count"
+        ] == sum(cast(int, iteration["unique_endpoint_count"]) for iteration in trace)
+        assert _fraction(row["input_exact_objective"]) == EXPECTED_SOURCE_Q_BY_K[k]
+        assert row["global_optimum_status"] == "UNKNOWN"
+
+    summary = _mapping(payload["summary"])
+    result_by_k = _mapping(summary["result_by_k"])
+    assert set(result_by_k) == {"10", "15", "20"}
+    assert summary["strict_improvement_k_count"] == 3
+    assert summary["no_improvement_k_count"] == 0
+    assert summary["resource_bound_k_count"] == 0
+    assert summary["family_cross_k_classification"] == "CROSS_K_STRONG"
+    assert _mapping(payload["gate"])["predictive_success_claims"] == "NONE"
+
+    metrics = _mapping(_mapping(payload["execution_metrics"])["by_k"])
+    for k in SUPPORTED_K_EXECUTED_VALUES:
+        row_metrics = _mapping(metrics[str(k)])
+        assert cast(float, row_metrics["runtime_seconds"]) > 0
+        assert cast(int, row_metrics["peak_memory_bytes"]) > 0
+    assert _mapping(metrics["20"])["runtime_seconds"] is None
+    assert _mapping(metrics["20"])["peak_memory_bytes"] is None
 
 
 def test_canonical_json_is_independent_of_mapping_insertion_order() -> None:

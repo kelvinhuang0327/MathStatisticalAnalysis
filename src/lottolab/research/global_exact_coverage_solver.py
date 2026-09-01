@@ -40,6 +40,9 @@ MAX_LEGAL_TICKET_COUNT = math.comb(SUPPORTED_N, SUPPORTED_D)
 MAX_LEGAL_DRAW_COUNT = MAX_LEGAL_TICKET_COUNT
 MAX_TICKET_DRAW_INCIDENCE_PAIRS = MAX_LEGAL_TICKET_COUNT * MAX_LEGAL_DRAW_COUNT
 
+HARD_DIV_PAIRWISE_OVERLAP_R1_METHOD_ID = "HARD_DIV_PAIRWISE_OVERLAP_R1"
+PAIRWISE_MAX_INTERSECTION = 1
+
 ORTOOLS_LOCKED_VERSION = "9.15.6755"
 SOLVER_RANDOM_SEED = 20260815
 SOLVER_NUM_SEARCH_WORKERS = 1
@@ -65,6 +68,7 @@ class GlobalExactResultStatus(StrEnum):
     """Certification state exposed by the research solver."""
 
     CERTIFIED_GLOBAL_OPTIMUM = "CERTIFIED_GLOBAL_OPTIMUM"
+    CONSTRAINED_INFEASIBLE = "CONSTRAINED_INFEASIBLE"
     UNKNOWN_NOT_CERTIFIED = "UNKNOWN_NOT_CERTIFIED"
 
 
@@ -112,12 +116,13 @@ class GlobalExactModelMetadata:
     coverage_incidence_count: int
     ticket_selection_variable_count: int
     covered_draw_variable_count: int
+    pairwise_incompatibility_constraint_count: int
     prebuild_guard_identity: str
 
 
 @dataclass(frozen=True)
 class GlobalExactCoverageResult:
-    """Certified optimum or a fail-closed unknown result."""
+    """Certified optimum, proven constrained infeasibility, or fail-closed unknown."""
 
     status: GlobalExactResultStatus
     optimal_portfolio: Portfolio | None
@@ -220,15 +225,88 @@ def solve_global_exact_coverage(
     callers use the fixed OR-Tools driver and existing exact evaluator.
     """
 
+    return _solve_global_exact_coverage(
+        n,
+        d,
+        minimum_matches,
+        k,
+        pairwise_max_intersection=None,
+        solve_driver=_solve_driver,
+        coverage_evaluator=_coverage_evaluator,
+    )
+
+
+def solve_hard_div_pairwise_overlap_r1(
+    n: int,
+    d: int,
+    minimum_matches: int,
+    k: int,
+    *,
+    _solve_driver: _SolveDriver | None = None,
+    _coverage_evaluator: _CoverageEvaluator = exact_portfolio_coverage,
+) -> GlobalExactCoverageResult:
+    """Solve the frozen V1 hard-diversification coverage method exactly.
+
+    The public method identity permanently binds every selected ticket pair
+    to an intersection of at most one. The coverage objective is unchanged.
+    """
+
+    return _solve_global_exact_coverage(
+        n,
+        d,
+        minimum_matches,
+        k,
+        pairwise_max_intersection=PAIRWISE_MAX_INTERSECTION,
+        solve_driver=_solve_driver,
+        coverage_evaluator=_coverage_evaluator,
+    )
+
+
+def _solve_global_exact_coverage(
+    n: int,
+    d: int,
+    minimum_matches: int,
+    k: int,
+    *,
+    pairwise_max_intersection: int | None,
+    solve_driver: _SolveDriver | None,
+    coverage_evaluator: _CoverageEvaluator,
+) -> GlobalExactCoverageResult:
     prebuild_size = guard_global_exact_domain(n, d, minimum_matches, k)
     _require_locked_ortools_version()
     domain = _materialize_domain(n, d, minimum_matches)
-    metadata = _model_metadata(n, d, minimum_matches, k, prebuild_size, domain)
-    built = _build_cp_sat_model(domain, k)
-    driver = _solve_driver if _solve_driver is not None else _OrToolsSolveDriver()
+    pairwise_incompatibilities = (
+        _pairwise_incompatibility_pairs(
+            domain.tickets,
+            max_intersection=pairwise_max_intersection,
+        )
+        if pairwise_max_intersection is not None
+        else ()
+    )
+    metadata = _model_metadata(
+        n,
+        d,
+        minimum_matches,
+        k,
+        prebuild_size,
+        domain,
+        pairwise_incompatibility_constraint_count=len(pairwise_incompatibilities),
+    )
+    built = _build_cp_sat_model(
+        domain,
+        k,
+        pairwise_incompatibilities=pairwise_incompatibilities,
+    )
+    driver = solve_driver if solve_driver is not None else _OrToolsSolveDriver()
 
     objective_observation = driver.solve(built.model, phase="objective")
     objective_diagnostic = f"OBJECTIVE:{objective_observation.status.value}"
+    if (
+        objective_observation.status is SolverStatus.INFEASIBLE
+        and not objective_observation.termination_was_limited
+        and pairwise_max_intersection is not None
+    ):
+        return _constrained_infeasible_result(metadata)
     if (
         objective_observation.status is not SolverStatus.OPTIMAL
         or objective_observation.termination_was_limited
@@ -290,9 +368,10 @@ def solve_global_exact_coverage(
             lex_probe_statuses=tuple(lex_statuses),
         )
 
+    selected_portfolio = tuple(domain.tickets[index] for index in selected_indices)
     try:
         canonical_portfolio = _canonicalize_portfolio(
-            tuple(domain.tickets[index] for index in selected_indices),
+            selected_portfolio,
             n=n,
             d=d,
             expected_ticket_count=k,
@@ -304,9 +383,28 @@ def solve_global_exact_coverage(
             "LEX:INVALID_CANONICAL_PORTFOLIO",
             lex_probe_statuses=tuple(lex_statuses),
         )
+    if canonical_portfolio != selected_portfolio:
+        return _unknown_result(
+            metadata,
+            objective_observation.status,
+            "LEX:INVALID_CANONICAL_PORTFOLIO",
+            lex_probe_statuses=tuple(lex_statuses),
+        )
+    if pairwise_max_intersection is not None and not (
+        _portfolio_satisfies_pairwise_max_intersection(
+            canonical_portfolio,
+            max_intersection=pairwise_max_intersection,
+        )
+    ):
+        return _unknown_result(
+            metadata,
+            objective_observation.status,
+            "HARD_CONSTRAINT_POSTCHECK_MISMATCH",
+            lex_probe_statuses=tuple(lex_statuses),
+        )
 
     try:
-        exact_coverage = _coverage_evaluator(n, d, minimum_matches, canonical_portfolio)
+        exact_coverage = coverage_evaluator(n, d, minimum_matches, canonical_portfolio)
     except Exception as error:
         return _unknown_result(
             metadata,
@@ -397,6 +495,19 @@ def _materialize_domain(n: int, d: int, minimum_matches: int) -> _MaterializedDo
     )
 
 
+def _pairwise_incompatibility_pairs(
+    tickets: tuple[Ticket, ...],
+    *,
+    max_intersection: int,
+) -> tuple[tuple[int, int], ...]:
+    return tuple(
+        (left_index, right_index)
+        for left_index, left_ticket in enumerate(tickets)
+        for right_index in range(left_index + 1, len(tickets))
+        if len(set(left_ticket).intersection(tickets[right_index])) > max_intersection
+    )
+
+
 def _model_metadata(
     n: int,
     d: int,
@@ -404,6 +515,8 @@ def _model_metadata(
     k: int,
     prebuild_size: PrebuildDomainSize,
     domain: _MaterializedDomain,
+    *,
+    pairwise_incompatibility_constraint_count: int,
 ) -> GlobalExactModelMetadata:
     if (
         len(domain.tickets) != prebuild_size.legal_ticket_count
@@ -420,11 +533,19 @@ def _model_metadata(
         coverage_incidence_count=domain.coverage_incidence_count,
         ticket_selection_variable_count=len(domain.tickets),
         covered_draw_variable_count=len(domain.draws),
+        pairwise_incompatibility_constraint_count=(
+            pairwise_incompatibility_constraint_count
+        ),
         prebuild_guard_identity=prebuild_size.guard_identity,
     )
 
 
-def _build_cp_sat_model(domain: _MaterializedDomain, k: int) -> _BuiltModel:
+def _build_cp_sat_model(
+    domain: _MaterializedDomain,
+    k: int,
+    *,
+    pairwise_incompatibilities: tuple[tuple[int, int], ...] = (),
+) -> _BuiltModel:
     model = cp_model.CpModel()
     ticket_selected = tuple(
         model.new_bool_var(f"ticket_selected_{index:02d}")
@@ -434,6 +555,8 @@ def _build_cp_sat_model(domain: _MaterializedDomain, k: int) -> _BuiltModel:
         model.new_bool_var(f"draw_covered_{index:02d}") for index in range(len(domain.draws))
     )
     model.add(sum(ticket_selected) == k)
+    for left_index, right_index in pairwise_incompatibilities:
+        model.add(ticket_selected[left_index] + ticket_selected[right_index] <= 1)
     for draw_index, covering_indices in enumerate(domain.covering_ticket_indices_by_draw):
         covering_selection = tuple(ticket_selected[index] for index in covering_indices)
         model.add_max_equality(draw_covered[draw_index], *covering_selection)
@@ -522,6 +645,36 @@ def _canonicalize_portfolio(
     if len(set(canonical_portfolio)) != expected_ticket_count:
         raise ValueError("portfolio tickets must be distinct")
     return canonical_portfolio
+
+
+def _portfolio_satisfies_pairwise_max_intersection(
+    portfolio: Portfolio,
+    *,
+    max_intersection: int,
+) -> bool:
+    return all(
+        len(set(left_ticket).intersection(right_ticket)) <= max_intersection
+        for left_ticket, right_ticket in itertools.combinations(portfolio, 2)
+    )
+
+
+def _constrained_infeasible_result(
+    metadata: GlobalExactModelMetadata,
+) -> GlobalExactCoverageResult:
+    return GlobalExactCoverageResult(
+        status=GlobalExactResultStatus.CONSTRAINED_INFEASIBLE,
+        optimal_portfolio=None,
+        covered_draw_count=None,
+        total_draw_count=metadata.legal_draw_count,
+        exact_coverage=None,
+        solver_objective_status=SolverStatus.INFEASIBLE,
+        certificate_basis=None,
+        lex_fixing_complete=False,
+        deterministic_configuration_identity=DETERMINISTIC_CONFIGURATION_IDENTITY,
+        model_metadata=metadata,
+        lex_probe_statuses=(),
+        diagnostic_solver_status="OBJECTIVE:INFEASIBLE:COMPLETE_CONSTRAINED_MODEL",
+    )
 
 
 def _unknown_result(

@@ -1,8 +1,10 @@
-"""Causal 5/10/15/20-ticket BIG_LOTTO portfolio evaluation.
+"""Causal BIG_LOTTO multi-ticket portfolio evaluation.
 
 The evaluator never generates tickets.  It consumes one already-materialized,
 ordered 20-ticket portfolio per successful strategy/draw execution and derives
-all ticket-count variants strictly as prefixes of that same portfolio.
+the established 5/10/15/20 variants strictly as prefixes of that same portfolio.
+The exact-native extension scores only the unmodified native 2- or 3-ticket
+portfolio already present in the same validated execution input.
 """
 
 from __future__ import annotations
@@ -38,6 +40,11 @@ from lottolab.domain.lottery_rules import (
 INPUT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_INPUT_V1"
 REPORT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_REPORT_V2"
 BACKTEST_POLICY_VERSION = "BIG_LOTTO_CAUSAL_ORDERED_20_PREFIX_5_10_15_20_V1"
+EXACT_NATIVE_BACKTEST_POLICY_VERSION = (
+    "BIG_LOTTO_CAUSAL_EXACT_NATIVE_2_3_OFFICIAL_ANY_PRIZE_V1"
+)
+EXACT_NATIVE_REPORT_SCHEMA_VERSION = "BIG_LOTTO_EXACT_NATIVE_OFFICIAL_REPORT_V1"
+EXACT_NATIVE_TICKET_COUNTS = (2, 3)
 PREFIX_COUNTS = (5, 10, 15, 20)
 WINDOWS = (
     ("FULL", None),
@@ -90,6 +97,18 @@ class _Execution:
     portfolio_derivation: str | None
     candidate_k: int | None
     combination_count: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class _ValidatedBacktestInput:
+    document: dict[str, Any]
+    dataset_id: str
+    dataset_version: str
+    dataset_sha256: str
+    source_provenance: dict[str, object] | None
+    catalog: FullStrategyCatalog
+    targets: tuple[_Target, ...]
+    executions: tuple[_Execution, ...]
 
 
 def _required_text(mapping: dict[str, Any], key: str, context: str) -> str:
@@ -556,13 +575,11 @@ def _window_targets(
     return targets[-requested_draws:]
 
 
-def evaluate_biglotto_multi_ticket_backtest(
+def _validate_backtest_input(
     raw_input: bytes,
     *,
-    catalog: FullStrategyCatalog | None = None,
-) -> dict[str, object]:
-    """Validate one artifact and return the complete-universe report payload."""
-
+    catalog: FullStrategyCatalog | None,
+) -> _ValidatedBacktestInput:
     try:
         parsed = json.loads(raw_input)
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -580,12 +597,21 @@ def evaluate_biglotto_multi_ticket_backtest(
     if len(dataset_sha256) != 64 or any(
         character not in "0123456789abcdef" for character in dataset_sha256
     ):
-        raise MultiTicketBacktestInputError("dataset_sha256 must be a lowercase SHA-256")
-    source_provenance = document.get("source_provenance")
-    if source_provenance is not None and not isinstance(source_provenance, dict):
+        raise MultiTicketBacktestInputError(
+            "dataset_sha256 must be a lowercase SHA-256"
+        )
+    source_provenance_value = document.get("source_provenance")
+    if source_provenance_value is not None and not isinstance(
+        source_provenance_value, dict
+    ):
         raise MultiTicketBacktestInputError(
             "source_provenance must be absent or an object"
         )
+    source_provenance = (
+        cast(dict[str, object], source_provenance_value)
+        if source_provenance_value is not None
+        else None
+    )
 
     active_catalog = catalog or load_full_strategy_catalog()
     targets = _parse_targets(document)
@@ -594,6 +620,34 @@ def evaluate_biglotto_multi_ticket_backtest(
         catalog=active_catalog,
         targets=targets,
     )
+    return _ValidatedBacktestInput(
+        document=document,
+        dataset_id=dataset_id,
+        dataset_version=dataset_version,
+        dataset_sha256=dataset_sha256,
+        source_provenance=source_provenance,
+        catalog=active_catalog,
+        targets=targets,
+        executions=executions,
+    )
+
+
+def evaluate_biglotto_multi_ticket_backtest(
+    raw_input: bytes,
+    *,
+    catalog: FullStrategyCatalog | None = None,
+) -> dict[str, object]:
+    """Validate one artifact and return the complete-universe report payload."""
+
+    validated = _validate_backtest_input(raw_input, catalog=catalog)
+    document = validated.document
+    dataset_id = validated.dataset_id
+    dataset_version = validated.dataset_version
+    dataset_sha256 = validated.dataset_sha256
+    source_provenance = validated.source_provenance
+    active_catalog = validated.catalog
+    targets = validated.targets
+    executions = validated.executions
     target_by_number = {target.draw_number: target for target in targets}
     successful_strategy_ids = {
         execution.strategy_id
@@ -1160,8 +1214,283 @@ def evaluate_biglotto_multi_ticket_backtest(
     return report
 
 
+def evaluate_biglotto_exact_native_official_metrics(
+    raw_input: bytes,
+    *,
+    catalog: FullStrategyCatalog | None = None,
+) -> dict[str, object]:
+    """Score exact native K2/K3 outputs under the canonical official metric.
+
+    Only an execution's validated ``native_tickets`` are scored.  Ordered-20
+    constructor output is deliberately ignored here, so a strategy is eligible
+    only when every successful execution in the input has one fixed native
+    cardinality of exactly two or three.  Variable-cardinality and non-K2/K3
+    strategies remain explicitly unavailable instead of being sampled,
+    truncated, expanded, or zero-filled.
+    """
+
+    validated = _validate_backtest_input(raw_input, catalog=catalog)
+    document = validated.document
+    active_catalog = validated.catalog
+    targets = validated.targets
+    executions = validated.executions
+    target_by_number = {target.draw_number: target for target in targets}
+    executions_by_strategy: dict[str, list[_Execution]] = {}
+    for execution in executions:
+        executions_by_strategy.setdefault(execution.strategy_id, []).append(execution)
+
+    target_payload = [
+        {
+            "draw_date": target.draw_date.isoformat(),
+            "draw_number": target.draw_number,
+            "winning_main_numbers": list(target.winning_main_numbers),
+            "winning_special_number": target.winning_special_number,
+        }
+        for target in targets
+    ]
+    target_sequence_sha256 = hashlib.sha256(
+        json.dumps(
+            target_payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    window_metadata: dict[str, dict[str, object]] = {}
+    for window_name, requested_draws in WINDOWS:
+        selected_targets = _window_targets(targets, requested_draws)
+        window_metadata[window_name] = {
+            "available_draws": len(selected_targets),
+            "complete": requested_draws is None or len(selected_targets) == requested_draws,
+            "first_draw_date": selected_targets[0].draw_date.isoformat(),
+            "first_draw_number": selected_targets[0].draw_number,
+            "last_draw_date": selected_targets[-1].draw_date.isoformat(),
+            "last_draw_number": selected_targets[-1].draw_number,
+            "requested_draws": requested_draws or len(selected_targets),
+        }
+
+    records: list[dict[str, object]] = []
+    for catalog_record in active_catalog.records:
+        strategy_executions = tuple(
+            executions_by_strategy.get(catalog_record.strategy_id, ())
+        )
+        if not strategy_executions:
+            continue
+        successful_all = tuple(
+            execution
+            for execution in strategy_executions
+            if execution.status is PortfolioExecutionStatus.OK
+        )
+        native_count_distribution = Counter(
+            len(execution.native_tickets) for execution in successful_all
+        )
+        fixed_native_count = (
+            next(iter(native_count_distribution))
+            if len(native_count_distribution) == 1
+            else None
+        )
+        if not successful_all:
+            native_classification = "NO_SUCCESSFUL_EXECUTIONS"
+        elif fixed_native_count is None:
+            native_classification = "VARIABLE_NATIVE_TICKET_COUNT"
+        elif fixed_native_count not in EXACT_NATIVE_TICKET_COUNTS:
+            native_classification = "NATIVE_TICKET_COUNT_NOT_SUPPORTED"
+        else:
+            native_classification = "FIXED_EXACT_NATIVE_TICKET_COUNT"
+
+        for ticket_count in EXACT_NATIVE_TICKET_COUNTS:
+            for window_name, requested_draws in WINDOWS:
+                selected_targets = _window_targets(targets, requested_draws)
+                selected_target_ids = {
+                    target.draw_number for target in selected_targets
+                }
+                selected_executions = tuple(
+                    execution
+                    for execution in strategy_executions
+                    if execution.target_draw_number in selected_target_ids
+                )
+                execution_status_counts = Counter(
+                    execution.status.value for execution in selected_executions
+                )
+                execution_status_counts["MISSING_EXECUTION_RECORD"] = (
+                    len(selected_targets) - len(selected_executions)
+                )
+                base: dict[str, object] = {
+                    "available_observation_count": None,
+                    "coverage": None,
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "execution_status_counts": dict(
+                        sorted(execution_status_counts.items())
+                    ),
+                    "metric_status": "UNAVAILABLE",
+                    "native_ticket_count_classification": native_classification,
+                    "native_ticket_count_distribution": {
+                        str(key): value
+                        for key, value in sorted(native_count_distribution.items())
+                    },
+                    "no_prize_count": None,
+                    "observed_distinct_ticket_count": None,
+                    "observed_duplicate_ticket_count": None,
+                    "official_any_prize_count": None,
+                    "official_any_prize_rate": None,
+                    "official_prize_tier_counts": None,
+                    "official_random_baseline_delta": None,
+                    "official_random_baseline_probability": None,
+                    "rankable": False,
+                    "strategy_id": catalog_record.strategy_id,
+                    "strategy_version": catalog_record.strategy_version,
+                    "successful_observation_count": None,
+                    "ticket_count": ticket_count,
+                    "ticket_position_count": None,
+                    "unavailable_reason": None,
+                    "window": window_name,
+                    "window_available_draws": len(selected_targets),
+                    "window_complete": (
+                        requested_draws is None
+                        or len(selected_targets) == requested_draws
+                    ),
+                    "window_requested_draws": requested_draws or len(selected_targets),
+                }
+
+                if native_classification != "FIXED_EXACT_NATIVE_TICKET_COUNT":
+                    base["unavailable_reason"] = native_classification
+                    records.append(base)
+                    continue
+                if fixed_native_count != ticket_count:
+                    base["unavailable_reason"] = "NATIVE_TICKET_COUNT_MISMATCH"
+                    records.append(base)
+                    continue
+
+                successful = tuple(
+                    execution
+                    for execution in selected_executions
+                    if execution.status is PortfolioExecutionStatus.OK
+                )
+                if not successful:
+                    base["unavailable_reason"] = (
+                        "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW"
+                    )
+                    records.append(base)
+                    continue
+
+                prize_counts = Counter(
+                    {tier.value: 0 for tier in BigLottoPrizeTierId}
+                )
+                prize_counts[NoPrizeResult.NO_PRIZE.value] = 0
+                distinct_positions = 0
+                duplicate_positions = 0
+                scored_by_execution: list[list[tuple[int, bool, str]]] = []
+                for execution in successful:
+                    if len(execution.native_tickets) != ticket_count:
+                        raise AssertionError(
+                            "fixed exact-native classification drifted within a window"
+                        )
+                    distinct = len(set(execution.native_tickets))
+                    distinct_positions += distinct
+                    duplicate_positions += ticket_count - distinct
+                    target = target_by_number[execution.target_draw_number]
+                    ticket_scores = [
+                        _score_ticket(ticket, target)
+                        for ticket in execution.native_tickets
+                    ]
+                    scored_by_execution.append(ticket_scores)
+                    prize_counts.update(score[2] for score in ticket_scores)
+
+                observation_count = len(successful)
+                official_any_prize_count = sum(
+                    any(
+                        prize != NoPrizeResult.NO_PRIZE.value
+                        for _main_hits, _special_hit, prize in ticket_scores
+                    )
+                    for ticket_scores in scored_by_execution
+                )
+                official_rate = Fraction(
+                    official_any_prize_count,
+                    observation_count,
+                )
+                official_baseline = official_any_prize_probability(
+                    ticket_count
+                ).as_fraction()
+                base.update(
+                    {
+                        "available_observation_count": observation_count,
+                        "coverage": _exact_fraction_payload(
+                            Fraction(observation_count, len(selected_targets))
+                        ),
+                        "metric_status": "AVAILABLE",
+                        "no_prize_count": prize_counts[
+                            NoPrizeResult.NO_PRIZE.value
+                        ],
+                        "observed_distinct_ticket_count": distinct_positions,
+                        "observed_duplicate_ticket_count": duplicate_positions,
+                        "official_any_prize_count": official_any_prize_count,
+                        "official_any_prize_rate": _exact_fraction_payload(
+                            official_rate
+                        ),
+                        "official_prize_tier_counts": {
+                            tier.value: prize_counts[tier.value]
+                            for tier in BigLottoPrizeTierId
+                        },
+                        "official_random_baseline_delta": _exact_fraction_payload(
+                            official_rate - official_baseline
+                        ),
+                        "official_random_baseline_probability": (
+                            _exact_fraction_payload(official_baseline)
+                        ),
+                        "rankable": True,
+                        "successful_observation_count": official_any_prize_count,
+                        "ticket_position_count": observation_count * ticket_count,
+                        "unavailable_reason": None,
+                    }
+                )
+                records.append(base)
+
+    canonical_input = json.dumps(
+        document,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    report: dict[str, object] = {
+        "backtest_policy_version": EXACT_NATIVE_BACKTEST_POLICY_VERSION,
+        "catalog_sha256": active_catalog.catalog_sha256,
+        "dataset_id": validated.dataset_id,
+        "dataset_sha256": validated.dataset_sha256,
+        "dataset_version": validated.dataset_version,
+        "input_canonical_sha256": hashlib.sha256(canonical_input).hexdigest(),
+        "input_raw_sha256": hashlib.sha256(raw_input).hexdigest(),
+        "lottery_type": "BIG_LOTTO",
+        "official_random_baselines": {
+            str(ticket_count): _exact_fraction_payload(
+                official_any_prize_probability(ticket_count).as_fraction()
+            )
+            for ticket_count in EXACT_NATIVE_TICKET_COUNTS
+        },
+        "records": records,
+        "report_schema_version": EXACT_NATIVE_REPORT_SCHEMA_VERSION,
+        "source_provenance": validated.source_provenance or {},
+        "strategy_count": len(executions_by_strategy),
+        "target_draw_count": len(targets),
+        "target_sequence_sha256": target_sequence_sha256,
+        "ticket_counts": list(EXACT_NATIVE_TICKET_COUNTS),
+        "windows": window_metadata,
+    }
+    report["report_sha256"] = hashlib.sha256(
+        json.dumps(
+            report,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            sort_keys=True,
+        ).encode("utf-8")
+    ).hexdigest()
+    return report
+
+
 __all__ = [
     "BACKTEST_POLICY_VERSION",
+    "EXACT_NATIVE_BACKTEST_POLICY_VERSION",
+    "EXACT_NATIVE_REPORT_SCHEMA_VERSION",
+    "EXACT_NATIVE_TICKET_COUNTS",
     "INPUT_SCHEMA_VERSION",
     "PREFIX_COUNTS",
     "REPORT_SCHEMA_VERSION",
@@ -1170,5 +1499,6 @@ __all__ = [
     "WINDOWS",
     "MultiTicketBacktestInputError",
     "PortfolioExecutionStatus",
+    "evaluate_biglotto_exact_native_official_metrics",
     "evaluate_biglotto_multi_ticket_backtest",
 ]

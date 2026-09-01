@@ -214,6 +214,7 @@ from lottolab.interfaces.cli.research_backtest_runner import (
     run_biglotto_research_backtest_command,
 )
 from lottolab.interfaces.cli.research_store import research_store_command
+from lottolab.interfaces.cli.storage_authorities import storage_authorities_app
 from lottolab.interfaces.cli.t539_p638_schedule_certificate import (
     t539_p638_schedule_certificate_command,
 )
@@ -225,7 +226,9 @@ from lottolab.strategies.catalog import production_catalog
 app = typer.Typer(no_args_is_help=True, help="LottoLab — 樂透統計分析系統 CLI")
 local_app = typer.Typer(no_args_is_help=True, help="Safely manage localhost-only services.")
 app.add_typer(local_app, name="local")
+app.add_typer(storage_authorities_app, name="storage-authorities")
 app.command("import-historical-results")(historical_import_command)
+
 app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("register-pre-outcome-target")(register_pre_outcome_target_command)

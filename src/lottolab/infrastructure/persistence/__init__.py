@@ -32,6 +32,12 @@ from lottolab.infrastructure.persistence.repositories import (
     SQLiteIngestionItemRepository,
     SQLiteIngestionRunRepository,
 )
+from lottolab.infrastructure.persistence.storage_authorities import (
+    StorageAuthority,
+    StorageAuthorityRegistry,
+    StorageAuthorityResolver,
+    StorageAuthorityVerification,
+)
 
 __all__ = [
     "BUSY_TIMEOUT_MS",
@@ -56,6 +62,10 @@ __all__ = [
     "SQLiteIngestionRunRepository",
     "SQLiteOfficialScheduleSyncRepository",
     "SchemaMigrationError",
+    "StorageAuthority",
+    "StorageAuthorityRegistry",
+    "StorageAuthorityResolver",
+    "StorageAuthorityVerification",
     "initialize_schema",
     "open_database",
     "resolve_local_data_paths",

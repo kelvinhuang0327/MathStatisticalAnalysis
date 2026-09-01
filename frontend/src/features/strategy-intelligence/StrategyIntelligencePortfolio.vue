@@ -5,22 +5,39 @@ import DataTable from '../../components/DataTable.vue'
 import MetricCard from '../../components/MetricCard.vue'
 import SectionHeader from '../../components/SectionHeader.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
+import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import type { LotteryType } from '../../api/strategies'
 import type { PortfolioGameEvidenceRow, StrategyCombinedItem } from './types'
 
 const props = withDefaults(
   defineProps<{
+    selectedLotteryType?: LotteryType
     combinationStatus?: string
     combinationValue?: string
     combinationOwner?: string
     strategies?: StrategyCombinedItem[]
   }>(),
   {
+    selectedLotteryType: 'BIG_LOTTO',
     combinationStatus: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
     combinationValue: 'NOT_AVAILABLE',
     combinationOwner: 'ACTIVE_MULTITICKET_AGENT',
     strategies: () => [],
   },
 )
+
+const currentGameCode = computed(() => lotteryTypeDisplayLabel(props.selectedLotteryType))
+
+const currentGameFullName = computed(() => {
+  switch (props.selectedLotteryType) {
+    case 'BIG_LOTTO':
+      return 'Big Lotto 6/49'
+    case 'POWER_LOTTO':
+      return 'Power Lotto 6/38'
+    case 'DAILY_539':
+      return 'Daily Cash 5/39'
+  }
+})
 
 const canonicalGames: PortfolioGameEvidenceRow[] = [
   {
@@ -80,14 +97,14 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
       <div class="governance-header">
         <div>
           <p class="step-label">Strategy Combination Hit Rate · Evidence Boundary</p>
-          <h2>Combination & Portfolio Evidence Status</h2>
+          <h2>Combination & Portfolio Evidence Status · {{ currentGameCode }}</h2>
           <p class="governance-desc">
             Multi-strategy combination evaluation answers: <em>"What is known about combining strategies?"</em>.
-            Currently, no canonical portfolio hit rate has been registered in the evidence registry.
+            Currently, no canonical portfolio hit rate has been registered in the evidence registry for {{ currentGameFullName }} ({{ currentGameCode }}).
           </p>
         </div>
         <div class="scope-card" aria-label="Portfolio evidence status">
-          <span>Combination status</span>
+          <span>Combination Scope · {{ currentGameCode }}</span>
           <strong>{{ combinationStatus }}</strong>
           <small>Value: {{ combinationValue }} · Owner: {{ combinationOwner }}</small>
         </div>
@@ -97,7 +114,7 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
         <MetricCard
           label="Portfolio Hit Rate"
           value="UNAVAILABLE"
-          subvalue="No registered combination metrics"
+          :subvalue="`Value: ${combinationValue} · No combination metrics`"
           variant="warning"
           badge="NOT_AVAILABLE"
           badge-variant="warning"
@@ -109,16 +126,16 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
           variant="default"
         />
         <MetricCard
-          label="Evaluated Portfolios"
-          value="0"
-          subvalue="0 registered combination artifacts"
-          variant="default"
+          label="Selected Game Scope"
+          :value="`${currentGameCode} (${currentGameFullName})`"
+          :subvalue="`${totalCandidateStrategies} individual candidate strategies`"
+          variant="accent"
         />
         <MetricCard
           label="Candidate Pool"
           :value="totalCandidateStrategies"
-          subvalue="Individual catalog strategies"
-          variant="accent"
+          :subvalue="`Supported in ${currentGameCode}`"
+          variant="default"
         />
       </div>
     </div>

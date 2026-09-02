@@ -1,0 +1,405 @@
+{
+  "schema_version": "B649_TRACK_D_FRONTIER_V2_MANIFEST_R1",
+  "task_id": "B649_TRACK_D_EXTERNAL21_FULL_COLLISION_AND_FRONTIER_V2_NORMALIZATION_R1",
+  "status": "PASS",
+  "mode": "LONG_RUNNING_READ_ONLY_RESEARCH_WITH_AUTHORIZED_OFF_REPO_ARTIFACTS",
+  "generated_at": "2026-08-13T08:12:20.951Z",
+  "intent": "INTENT: current authority contains a 21-row targeted audit encoding 105 comparisons and a 49-item unnormalized proposal; the task expects a strict 2,793-row full collision audit plus normalized 49-item planning artifacts; the opened packet says preserve IDs/history, validate all external claims as unverified, and write only the nine named outside-repository outputs.",
+  "repository_observation": {
+    "root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "branch": "codex/biglotto68-to-t539-p638-cross-lottery-closure-r1",
+    "head": "bc84ccc812408ebbf30018221eecc1c6fcf3f028",
+    "tree": "5f19524858747463f9551294e16cd2c8e5c20ed1",
+    "pre_write_status": "CLEAN",
+    "mutation_authorized": false,
+    "repository_files_modified": []
+  },
+  "pinned_historical_authority": {
+    "head": "2db4da27aee716805c393eb9c7dd41aff8e9527e",
+    "tree": "cb6b9c3685739c381d6a5f7a92fa7668ed93cc9c",
+    "canonical_population_authority": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_COLLISION_MATRIX_R1.csv",
+    "canonical_population_sha256": "44689faf7c06b59a7452090fd0952e94dd276609427a1b893fbd67825e52a1d5",
+    "enumeration_rule": "RFC4180 parse; 1330 rows; H01-H10; 133 groups of ten; invariant metadata; select H01 row; byte-sort strategy ID",
+    "identities": 133,
+    "raw_history_preserved": 128,
+    "raw_history_with_recovery_overlay": 5,
+    "raw_ticket_rows": 2590280,
+    "source_body_availability": "FROZEN_SOURCE_OBJECT_NOT_PRESENT_LOCALLY"
+  },
+  "input_authorities": [
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_RESEARCH_FRONTIER_R1.md",
+      "bytes": 18452,
+      "expected_sha256": "bbdaa28bce429c7fa4604525f7c3c9847dab2071ec986bec1a927ae0dfa5a98f",
+      "actual_sha256": "bbdaa28bce429c7fa4604525f7c3c9847dab2071ec986bec1a927ae0dfa5a98f",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_SOURCE_REGISTRY_R1.csv",
+      "bytes": 19815,
+      "expected_sha256": "7f9e6a11d084ff8f56aa73cf1dc6f210af47bff49b29707eaace28debd34cdac",
+      "actual_sha256": "7f9e6a11d084ff8f56aa73cf1dc6f210af47bff49b29707eaace28debd34cdac",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_HYPOTHESIS_INVENTORY_R1.csv",
+      "bytes": 18445,
+      "expected_sha256": "bef1220fd80e601325ed9eb9efcf53cd2dd9088c3ee3bc9924d8552f71126519",
+      "actual_sha256": "bef1220fd80e601325ed9eb9efcf53cd2dd9088c3ee3bc9924d8552f71126519",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_VS_EXISTING28_MATRIX_R1.csv",
+      "bytes": 24808,
+      "expected_sha256": "b7b830312bfd3fdf1aaab64128d084bcfa998abd455665ba3df6a3f4c8eeb5de",
+      "actual_sha256": "b7b830312bfd3fdf1aaab64128d084bcfa998abd455665ba3df6a3f4c8eeb5de",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_SURVIVOR_133_COLLISION_R1.csv",
+      "bytes": 23062,
+      "expected_sha256": "f75b67817291002d057d9eb09f57352c46871d2555a43e6486f8634da061d3e4",
+      "actual_sha256": "f75b67817291002d057d9eb09f57352c46871d2555a43e6486f8634da061d3e4",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_FAST_FALSIFICATION_SPECS_R1.md",
+      "bytes": 33916,
+      "expected_sha256": "79f1adbf006a0f3b24279d57010d0a6c45a5cad606c95798e983dd2133e9ad31",
+      "actual_sha256": "79f1adbf006a0f3b24279d57010d0a6c45a5cad606c95798e983dd2133e9ad31",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_PROPOSED_RESEARCH_FRONTIER_V2_R1.csv",
+      "bytes": 13117,
+      "expected_sha256": "8b349deab9e21cf22e73c233a6e5e90a12f2bf0709254604e9d2a86b622b6fe6",
+      "actual_sha256": "8b349deab9e21cf22e73c233a6e5e90a12f2bf0709254604e9d2a86b622b6fe6",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RESEARCH_SURFACE_R1.md",
+      "bytes": 44457,
+      "expected_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859",
+      "actual_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_R1.md",
+      "bytes": 72439,
+      "expected_sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b",
+      "actual_sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DEEP_AUDIT_R1.md",
+      "bytes": 55818,
+      "expected_sha256": "03f7b603ebd700beef05a035608dc61f40ba64db2f6daba345ec0cbe4099fe7e",
+      "actual_sha256": "03f7b603ebd700beef05a035608dc61f40ba64db2f6daba345ec0cbe4099fe7e",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_COLLISION_MATRIX_R1.csv",
+      "bytes": 1218921,
+      "expected_sha256": "44689faf7c06b59a7452090fd0952e94dd276609427a1b893fbd67825e52a1d5",
+      "actual_sha256": "44689faf7c06b59a7452090fd0952e94dd276609427a1b893fbd67825e52a1d5",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_COLLISION_MATRIX_R1.csv",
+      "bytes": 2901960,
+      "expected_sha256": "3b8b57f8db5301700b52822acc93d3c968c6b97ec6e0473ac7ee2ed2a0d0292f",
+      "actual_sha256": "3b8b57f8db5301700b52822acc93d3c968c6b97ec6e0473ac7ee2ed2a0d0292f",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_TRACK_B_EXPERIMENT_SPECS_R1.md",
+      "bytes": 41435,
+      "expected_sha256": "335c5921978fd167658dd14c3bdac539edfdf2b405609d9e275fcbe024e4959d",
+      "actual_sha256": "335c5921978fd167658dd14c3bdac539edfdf2b405609d9e275fcbe024e4959d",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_FAST_FALSIFICATION_SPECS_R1.md",
+      "bytes": 27206,
+      "expected_sha256": "44136e413386f312b36f55743a8eb45904d456365e6738117d4755e04803c9cc",
+      "actual_sha256": "44136e413386f312b36f55743a8eb45904d456365e6738117d4755e04803c9cc",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_PRIORITY_RANKING_R1.csv",
+      "bytes": 4830,
+      "expected_sha256": "81508e7f61ebbe22ef635c233c6162a993faa61fe6456e4ab8863868311d4c39",
+      "actual_sha256": "81508e7f61ebbe22ef635c233c6162a993faa61fe6456e4ab8863868311d4c39",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_COHORT_V2_FORWARD_READINESS_R1.md",
+      "bytes": 22122,
+      "expected_sha256": "58f142f7f04fe57be015416751bf80cafbb3f4fba21ce34d989792bc7842e2d3",
+      "actual_sha256": "58f142f7f04fe57be015416751bf80cafbb3f4fba21ce34d989792bc7842e2d3",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_28_HYPOTHESIS_FORWARD_MATRIX_R1.csv",
+      "bytes": 1091087,
+      "expected_sha256": "97493cb6230c6630a24ec4e962789e171743bb9b4f71685212ad78780513d784",
+      "actual_sha256": "97493cb6230c6630a24ec4e962789e171743bb9b4f71685212ad78780513d784",
+      "verified": true
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_SECOND_WAVE_PRIORITY_R1.csv",
+      "bytes": 9843,
+      "expected_sha256": "14ccf28477e2fd3756731ab1ca7c5bb6ff629df1a42789006d6ff06795ba7728",
+      "actual_sha256": "14ccf28477e2fd3756731ab1ca7c5bb6ff629df1a42789006d6ff06795ba7728",
+      "verified": true
+    }
+  ],
+  "collision_audit": {
+    "external_survivors": 21,
+    "historical_identities": 133,
+    "rows": 2793,
+    "unique_pairs": 2793,
+    "classification_totals": {
+      "NO_MEANINGFUL_OVERLAP": 1647,
+      "STRONG_COMPONENT_OVERLAP": 406,
+      "WEAK_COMPONENT_OVERLAP": 335,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 405,
+      "EXACT_HYPOTHESIS_MATCH": 0,
+      "UNKNOWN": 0
+    },
+    "exact_match_total": 0,
+    "exact_match_spot_check": "PASS_ZERO_ROW_SET_PLUS_FALSE_NEGATIVE_DEEP_REVIEW",
+    "external_survivors_still_open": 21
+  },
+  "targeted_reconciliation": {
+    "physical_rows": 21,
+    "logical_comparisons": 105,
+    "missed_exact_matches": 0,
+    "hypotheses_with_new_closest_outside_old_top5": 9,
+    "wrong_closest_strategy_count": 11,
+    "recommended_future_collision_scope": "FULL_MATRIX_FOR_FINAL_AUTHORITY"
+  },
+  "normalized_frontier": {
+    "internal_hypotheses": 28,
+    "external_survivors": 21,
+    "total": 49,
+    "origin_counts": {
+      "INTERNAL": 28,
+      "EXTERNAL_NEW": 12,
+      "EXTERNAL_EXTENSION": 4,
+      "EXTERNAL_COMBINATION": 5
+    },
+    "current_active_b_hypothesis": "H09 / canonical H21",
+    "current_active_b_status": "ACTIVE_UNRESOLVED"
+  },
+  "execution_history": {
+    "H01": "EXECUTED_NOT_ADVANCED",
+    "H04": "EXECUTED_NOT_ADVANCED",
+    "H19": "EXECUTED_NOT_ADVANCED",
+    "H21": "ACTIVE_UNRESOLVED",
+    "h09_interim_inspected": false
+  },
+  "discovery_waves": {
+    "WAVE_1": {
+      "label": "CHEAP_HIGH_INFORMATION",
+      "count": 14,
+      "ids": [
+        "H05",
+        "H06",
+        "H14",
+        "H15",
+        "H20",
+        "H27",
+        "H28",
+        "EH01",
+        "EH04",
+        "EH10",
+        "EH11",
+        "EH12",
+        "EH15",
+        "EH18"
+      ]
+    },
+    "WAVE_2": {
+      "label": "HIGH_ORTHOGONALITY",
+      "count": 8,
+      "ids": [
+        "H02",
+        "H13",
+        "H22",
+        "EH02",
+        "EH03",
+        "EH09",
+        "EH14",
+        "EH27"
+      ]
+    },
+    "WAVE_3": {
+      "label": "NEW_MODEL_OUTPUT",
+      "count": 14,
+      "ids": [
+        "H03",
+        "H07",
+        "H08",
+        "H09",
+        "H10",
+        "H11",
+        "H12",
+        "H17",
+        "H18",
+        "H25",
+        "EH05",
+        "EH13",
+        "EH16",
+        "EH17"
+      ]
+    },
+    "WAVE_4": {
+      "label": "HIGH_COST_LONG_SHOT",
+      "count": 9,
+      "ids": [
+        "H16",
+        "H23",
+        "H24",
+        "H26",
+        "EH08",
+        "EH06",
+        "EH25",
+        "EH26",
+        "EH07"
+      ]
+    }
+  },
+  "track_b_next_hypothesis_selected": false,
+  "spec_registry": {
+    "rows": 49,
+    "available": 49,
+    "top10_three_depth": 10,
+    "remaining_level1": 18,
+    "external_fast_falsification": 21,
+    "section_hashes": "NOT_AVAILABLE; CONTAINER_HASH_REPEATED"
+  },
+  "coverage": {
+    "primary_assignment_total": 49,
+    "density_by_region": {
+      "DRAW_SEQUENCE_ONLY": "DENSELY_EXPLORED",
+      "STRATEGY_PERFORMANCE": "DENSELY_EXPLORED",
+      "STRATEGY_CROSS_RESIDUAL": "SPARSELY_EXPLORED",
+      "NUMBER_LEVEL": "MODERATELY_EXPLORED",
+      "TICKET_LEVEL": "MODERATELY_EXPLORED",
+      "PAIR_TRIPLE_STRUCTURE": "MODERATELY_EXPLORED",
+      "GRAPH": "MODERATELY_EXPLORED",
+      "HYPERGRAPH": "SPARSELY_EXPLORED",
+      "INFORMATION_THEORETIC": "SPARSELY_EXPLORED",
+      "REGIME_STATE": "DENSELY_EXPLORED",
+      "CHANGE_DETECTION": "MODERATELY_EXPLORED",
+      "UNCERTAINTY": "SPARSELY_EXPLORED",
+      "META_SELECTION": "MODERATELY_EXPLORED",
+      "PORTFOLIO": "DENSELY_EXPLORED",
+      "SPECIAL_NUMBER": "SPARSELY_EXPLORED",
+      "NEURAL_REPRESENTATION": "SPARSELY_EXPLORED",
+      "STOCHASTIC_PROCESS": "SPARSELY_EXPLORED",
+      "OTHER": "UNKNOWN"
+    },
+    "sparsely_explored_frontier_areas": [
+      "STRATEGY_CROSS_RESIDUAL",
+      "HYPERGRAPH",
+      "INFORMATION_THEORETIC",
+      "UNCERTAINTY",
+      "SPECIAL_NUMBER",
+      "NEURAL_REPRESENTATION",
+      "STOCHASTIC_PROCESS"
+    ],
+    "saturation_assessment": "NOT_SATURATED"
+  },
+  "external_claims": {
+    "status": "EXTERNAL_UNVERIFIED_CLAIM",
+    "locally_validated": 0,
+    "experiments_run": 0,
+    "training_run": 0,
+    "external_code_executed": 0,
+    "packages_installed": 0
+  },
+  "safety": {
+    "repo_mutation": "NONE",
+    "db_mutation": "NONE",
+    "sealed_predecessor_mutation": "NONE",
+    "track_a_interference": "NONE",
+    "track_b_h09_interference": "NONE",
+    "cohort_v2_mutation": "NONE",
+    "cohort_v3_creation": "NONE",
+    "git_network_metadata_writes": [],
+    "git_worktree_metadata_writes": []
+  },
+  "attempt_ledger": [
+    {
+      "attempt": 1,
+      "scope": "goal registration",
+      "result": "NO_MUTATION",
+      "failure": "create_goal reported an already-active unfinished goal",
+      "correction": "continued under the existing active user goal",
+      "artifacts_written": []
+    }
+  ],
+  "filesystem_ledger": {
+    "task_created_files_retained": [
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL21_FULL_COLLISION_AUDIT_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL21_FULL_133_COLLISION_MATRIX_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL21_TARGETED_VS_FULL_RECONCILIATION_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_PROPOSED_RESEARCH_FRONTIER_V2_NORMALIZED_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_DISCOVERY_WAVES_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_SPEC_REGISTRY_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_COVERAGE_AND_SATURATION_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_MANIFEST_R1.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_SHA256SUMS_R1.txt"
+    ],
+    "task_created_files_deleted": [],
+    "predecessor_outputs_modified": [],
+    "repository_files_modified": [],
+    "toolchain_runtime_outputs_created": []
+  },
+  "artifacts_excluding_manifest_and_checksum": [
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL21_FULL_133_COLLISION_MATRIX_R1.csv",
+      "bytes": 3818785,
+      "sha256": "11b064907d640c3434600741c9e0e36685514a42fb75ecb43c4574084238026d"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL21_TARGETED_VS_FULL_RECONCILIATION_R1.csv",
+      "bytes": 14227,
+      "sha256": "b4563baba71c8ad1f2f7df0ea0dd6cc1044f9096bd825e7a69ba2ccdaffb4464"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_PROPOSED_RESEARCH_FRONTIER_V2_NORMALIZED_R1.csv",
+      "bytes": 27212,
+      "sha256": "6381f574410b93efc02c96f70aa017f40db53328c4b532b78efd9bb1fb2c2dcb"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_DISCOVERY_WAVES_R1.csv",
+      "bytes": 8909,
+      "sha256": "953bd940a72fdec42c08cdab4ca8ff7451287b45ce4e91f9bf506dfbd177823c"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_SPEC_REGISTRY_R1.csv",
+      "bytes": 15048,
+      "sha256": "fa8801edbeb91040d6e189dd7fcb2e8ec5cd8424dacd7f412ffe034f41d1ac43"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL21_FULL_COLLISION_AUDIT_R1.md",
+      "bytes": 20798,
+      "sha256": "9d013e21ceeab6512ee4d5c35eb5cfd353a930f7ddb18e9b5cd16df4b620710d"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_COVERAGE_AND_SATURATION_R1.md",
+      "bytes": 5988,
+      "sha256": "91ccdcb065951f7fd3d7bc23ccaddf50153d2a38b1c770a22b6799080ce05086"
+    }
+  ],
+  "checksum_policy": {
+    "covers": "all eight task artifacts other than the SHA256SUMS file itself, including this manifest",
+    "self_exclusion_reason": "A checksum file cannot contain a stable checksum of itself.",
+    "checksum_path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FRONTIER_V2_SHA256SUMS_R1.txt"
+  },
+  "blockers": [],
+  "next": "Wait for H09 / canonical H21 sealed result before a separate Track D single-hypothesis queue-selection decision."
+}

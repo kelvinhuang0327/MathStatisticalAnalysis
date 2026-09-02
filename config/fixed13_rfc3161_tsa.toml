@@ -1,0 +1,28 @@
+schema = "LOTTOLAB_FIXED13_RFC3161_PROVIDER_SET_V1"
+proof_type = "RFC3161_TSA_TOKEN_V1"
+message_imprint_algorithm = "SHA256"
+issuance_strategy = "ISSUE_TO_ALL"
+minimum_valid_receipts = 1
+
+# Root certificates are retrieved once from each provider's own official
+# publication channel and pinned here by exact DER SHA-256 fingerprint; the
+# loader never falls back to a system trust store, environment default CA
+# path, or network-fetched chain.  See fixed13_rfc3161_provider_config.py.
+
+[[providers]]
+provider_id = "freetsa"
+official_endpoint = "https://freetsa.org/tsr"
+enabled = true
+policy_status = "SUPPORTED"
+root_certificate_path = "config/fixed13_rfc3161_freetsa_root.pem"
+root_certificate_der_sha256 = "a6379e7cecc05faa3cbf076013d745e327bbbaa38c0b9af22469d4701d18aabc"
+root_certificate_source = "https://freetsa.org/files/cacert.pem"
+
+[[providers]]
+provider_id = "digicert"
+official_endpoint = "http://timestamp.digicert.com"
+enabled = true
+policy_status = "SUPPORTED"
+root_certificate_path = "config/fixed13_rfc3161_digicert_root.pem"
+root_certificate_der_sha256 = "3e9099b5015e8f486c00bcea9d111ee721faba355a89bcf1df69561e3dc6325c"
+root_certificate_source = "https://cacerts.digicert.com/DigiCertAssuredIDRootCA.crt.pem"

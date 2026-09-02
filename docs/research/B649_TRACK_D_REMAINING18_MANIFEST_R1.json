@@ -1,0 +1,280 @@
+{
+  "artifacts": [
+    {
+      "bytes": 4758,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/remaining_hypothesis_inventory.csv",
+      "sha256": "f2c72f731812e2f9c44e03301adc31203f94e678f42d68661836db3ec0719b59"
+    },
+    {
+      "bytes": 55818,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DEEP_AUDIT_R1.md",
+      "sha256": "03f7b603ebd700beef05a035608dc61f40ba64db2f6daba345ec0cbe4099fe7e"
+    },
+    {
+      "bytes": 2901960,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_COLLISION_MATRIX_R1.csv",
+      "sha256": "3b8b57f8db5301700b52822acc93d3c968c6b97ec6e0473ac7ee2ed2a0d0292f"
+    },
+    {
+      "bytes": 121554,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DATA_SUFFICIENCY_R1.csv",
+      "sha256": "809f738c851c678221722c99d5bedb8048d97e8a3c95d464c885da8dfb22eca7"
+    },
+    {
+      "bytes": 27206,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_FAST_FALSIFICATION_SPECS_R1.md",
+      "sha256": "44136e413386f312b36f55743a8eb45904d456365e6738117d4755e04803c9cc"
+    },
+    {
+      "bytes": 9843,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_SECOND_WAVE_PRIORITY_R1.csv",
+      "sha256": "14ccf28477e2fd3756731ab1ca7c5bb6ff629df1a42789006d6ff06795ba7728"
+    },
+    {
+      "bytes": 5956,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_WHAT_WE_HAVE_NOT_TRIED_R1.md",
+      "sha256": "73107eded714e3bb28bfec21b73494923c0f94735ff581d30112a73eb2acfc05"
+    }
+  ],
+  "attempt_ledger": [
+    {
+      "artifacts_written": [],
+      "attempt": 1,
+      "correction": "continued under the existing active goal",
+      "failure": "create_goal reported an already-active goal for this thread",
+      "result": "NO_MUTATION",
+      "scope": "goal registration"
+    },
+    {
+      "artifacts_written": [],
+      "attempt": 2,
+      "correction": "corrected fieldnames access and reran against unchanged matrix",
+      "failure": "read-only checker accessed fieldnames on file handle instead of csv.DictReader",
+      "result": "HARNESS_FAILURE_THEN_PASS",
+      "scope": "collision matrix validation"
+    }
+  ],
+  "checksum_policy": {
+    "covers": "all task artifacts other than the SHA256SUMS file itself, including this manifest",
+    "self_exclusion_reason": "A checksum file cannot contain a stable checksum of itself.",
+    "sha256sums_path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_SHA256SUMS_R1.txt"
+  },
+  "collision_audit": {
+    "classification_totals": {
+      "NO_MEANINGFUL_OVERLAP": 1769,
+      "SAME_METHOD_FAMILY_DIFFERENT_HYPOTHESIS": 203,
+      "STRONG_COMPONENT_OVERLAP": 220,
+      "WEAK_COMPONENT_OVERLAP": 202
+    },
+    "closed_as_true_duplicate_count": 0,
+    "exact_match_total": 0,
+    "rows": 2394,
+    "still_open_count": 18,
+    "unique_hypothesis_identity_pairs": 2394,
+    "unknown_total": 0
+  },
+  "data_sufficiency": {
+    "fields_per_hypothesis": 25,
+    "hypotheses": 18,
+    "packet_required_fields_missing": [],
+    "rows": 450,
+    "status": "PARTIAL"
+  },
+  "fast_falsification_specs": {
+    "count": 18,
+    "status": "DESIGN_ONLY_NOT_RUN"
+  },
+  "filesystem_ledger": {
+    "git_network_metadata_writes": [],
+    "git_worktree_metadata_writes": [],
+    "pre_existing_authorities_retained_unchanged": [
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RESEARCH_SURFACE_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_COLLISION_MATRIX_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_HYPOTHESIS_DATA_SUFFICIENCY_MATRIX_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_PRIORITY_RANKING_R1.csv"
+    ],
+    "repository_files_modified": [],
+    "task_created_files_deleted": [],
+    "task_created_files_retained": [
+      "/Users/kelvin/VibeCoding-WorkSpace/remaining_hypothesis_inventory.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DEEP_AUDIT_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_COLLISION_MATRIX_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DATA_SUFFICIENCY_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_FAST_FALSIFICATION_SPECS_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_SECOND_WAVE_PRIORITY_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_WHAT_WE_HAVE_NOT_TRIED_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_MANIFEST_R1.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_SHA256SUMS_R1.txt"
+    ],
+    "toolchain_runtime_outputs_created": []
+  },
+  "forward_readiness": {
+    "FORWARD_READY_NOW": [
+      "H28"
+    ],
+    "FORWARD_READY_WITH_EXISTING_51": [
+      "H05",
+      "H06",
+      "H20"
+    ],
+    "HISTORICAL_ONLY_FOR_NOW": [
+      "H22"
+    ],
+    "REQUIRES_NEW_MODEL_OUTPUT": [
+      "H03",
+      "H08",
+      "H09",
+      "H11",
+      "H16",
+      "H18",
+      "H23",
+      "H24",
+      "H25",
+      "H26"
+    ],
+    "REQUIRES_SMALL_ADAPTER_WORK": [
+      "H02",
+      "H13",
+      "H15"
+    ]
+  },
+  "generated_at": "2026-08-13T10:48:12.871439+08:00",
+  "input_authorities": [
+    {
+      "actual_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859",
+      "bytes": 44457,
+      "expected_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RESEARCH_SURFACE_R1.md",
+      "verified": true
+    },
+    {
+      "actual_sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b",
+      "bytes": 72439,
+      "expected_sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_R1.md",
+      "verified": true
+    },
+    {
+      "actual_sha256": "44689faf7c06b59a7452090fd0952e94dd276609427a1b893fbd67825e52a1d5",
+      "bytes": 1218921,
+      "expected_sha256": "44689faf7c06b59a7452090fd0952e94dd276609427a1b893fbd67825e52a1d5",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_COLLISION_MATRIX_R1.csv",
+      "verified": true
+    },
+    {
+      "actual_sha256": "9200b55d61b6fde69fa173c97bac419e8f9c10813fd415aef03f76662b1874ab",
+      "bytes": 63355,
+      "expected_sha256": "9200b55d61b6fde69fa173c97bac419e8f9c10813fd415aef03f76662b1874ab",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_HYPOTHESIS_DATA_SUFFICIENCY_MATRIX_R1.csv",
+      "verified": true
+    },
+    {
+      "actual_sha256": "b0953cf2548e1fe9a941197d26a5bee9456b75adfa99361a1195acbcf663b869",
+      "bytes": 8785,
+      "expected_sha256": "b0953cf2548e1fe9a941197d26a5bee9456b75adfa99361a1195acbcf663b869",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_PRIORITY_RANKING_R1.csv",
+      "verified": true
+    }
+  ],
+  "mode": "LONG_RUNNING_READ_ONLY_RESEARCH_WITH_AUTHORIZED_OFF_REPO_ARTIFACTS",
+  "mutations": {
+    "candidate_freeze": "NONE",
+    "cohort_v1": "NONE",
+    "cohort_v2": "NONE",
+    "database": "NONE",
+    "repository": "NONE",
+    "sealed_task_data": "NONE",
+    "track_b_h01": "NONE"
+  },
+  "not_run": [
+    "H01-H10 experiments",
+    "strategy implementation",
+    "database writes",
+    "network refresh",
+    "Cohort V2 creation",
+    "Cohort V1 modification",
+    "re-freeze",
+    "prospective observation"
+  ],
+  "owner_research_policy": "WIDE_IN_STRICT_OUT",
+  "population": {
+    "backtested_identities": 133,
+    "historical_identities": 133,
+    "open_hypotheses_prior_total": 28,
+    "raw_history_preserved": 128,
+    "raw_history_with_recovery_overlay": 5,
+    "remaining_hypotheses": 18,
+    "remaining_hypothesis_ids": [
+      "H02",
+      "H03",
+      "H05",
+      "H06",
+      "H08",
+      "H09",
+      "H11",
+      "H13",
+      "H15",
+      "H16",
+      "H18",
+      "H20",
+      "H22",
+      "H23",
+      "H24",
+      "H25",
+      "H26",
+      "H28"
+    ],
+    "top10_previously_audited": 10
+  },
+  "priority": {
+    "second_wave_top_5": [
+      "H20",
+      "H02",
+      "H11",
+      "H09",
+      "H08"
+    ],
+    "top_5_long_shots": [
+      "H16",
+      "H26",
+      "H24",
+      "H23",
+      "H18"
+    ]
+  },
+  "repository": {
+    "clean_at_preflight": true,
+    "live_branch_at_preflight": "codex/b649-horizon-minimax-target-native-migration-r1",
+    "live_head_at_preflight": "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3",
+    "live_tree_at_preflight": "64474415e7c4a34abd190b32d7a2e8a2a47d02f3",
+    "pinned_historical_head": "2db4da27aee716805c393eb9c7dd41aff8e9527e",
+    "pinned_historical_tree": "cb6b9c3685739c381d6a5f7a92fa7668ed93cc9c",
+    "root": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "track_d_repo_mutation": "NONE"
+  },
+  "research_frontier": {
+    "high_confidence_not_tried_count": 17,
+    "likely_not_tried_count": 1,
+    "uncertain_count": 0
+  },
+  "status": "PASS",
+  "task_id": "B649_TRACK_D_REMAINING_18_OPEN_HYPOTHESES_DEEP_AUDIT_R1",
+  "unknowns": [
+    "Historical source commit 49a25effa62fc24f40789c16be6f11bdfb41a4a9 is absent locally; source-body parity is not claimed.",
+    "Exact per-family membership within the population-level 51 current-executable identities was not recomputed.",
+    "Calendar time to enough post-freeze H28 HIGH events is unknown."
+  ],
+  "validation": {
+    "all_output_checksums_generated": "PASS",
+    "collision_rows_at_least_2394": "PASS",
+    "every_hypothesis_data_sufficiency": "PASS",
+    "every_hypothesis_level1_spec": "PASS",
+    "family_similarity_not_exact_duplicate": "PASS",
+    "historical_identities_133_of_133": "PASS",
+    "long_shots_exactly_5": "PASS",
+    "remaining_hypotheses_18_of_18": "PASS",
+    "second_wave_exactly_5": "PASS",
+    "what_we_have_not_tried_generated": "PASS"
+  }
+}

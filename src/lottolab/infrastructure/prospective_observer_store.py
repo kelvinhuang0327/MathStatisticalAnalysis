@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import secrets
 import stat
 from collections.abc import Callable, Mapping, Sequence
@@ -191,6 +192,106 @@ class FileSystemProspectiveObservationStore:
                 )
         return outcome
 
+    def get_rfc3161_commitment(self, *, commitment_sha256: str) -> bytes | None:
+        return self._read_raw_optional(
+            self._rfc3161_directory(commitment_sha256) / "commitment.json"
+        )
+
+    def create_rfc3161_commitment(
+        self, *, commitment_sha256: str, payload: bytes
+    ) -> CreateOnceOutcome:
+        _require_sha256_hex(commitment_sha256, "commitment_sha256")
+        if type(payload) is not bytes or not payload:
+            raise ValueError("payload must be non-empty bytes")
+        if hashlib.sha256(payload).hexdigest() != commitment_sha256:
+            raise ValueError("payload does not hash to commitment_sha256")
+        return self._create_once_raw(
+            self._rfc3161_directory(commitment_sha256) / "commitment.json", payload
+        )
+
+    def get_rfc3161_chain(self, *, commitment_sha256: str) -> bytes | None:
+        return self._read_raw_optional(self._rfc3161_directory(commitment_sha256) / "chain.pem")
+
+    def create_rfc3161_chain(self, *, commitment_sha256: str, payload: bytes) -> CreateOnceOutcome:
+        _require_sha256_hex(commitment_sha256, "commitment_sha256")
+        if type(payload) is not bytes or not payload:
+            raise ValueError("payload must be non-empty bytes")
+        return self._create_once_raw(
+            self._rfc3161_directory(commitment_sha256) / "chain.pem", payload
+        )
+
+    def get_rfc3161_token(
+        self, *, commitment_sha256: str, token_sha256: str
+    ) -> bytes | None:
+        _require_sha256_hex(token_sha256, "token_sha256")
+        return self._read_raw_optional(
+            self._rfc3161_directory(commitment_sha256) / f"{token_sha256}.tst"
+        )
+
+    def create_rfc3161_token(
+        self, *, commitment_sha256: str, token_sha256: str, payload: bytes
+    ) -> CreateOnceOutcome:
+        _require_sha256_hex(token_sha256, "token_sha256")
+        if type(payload) is not bytes or not payload:
+            raise ValueError("payload must be non-empty bytes")
+        if hashlib.sha256(payload).hexdigest() != token_sha256:
+            raise ValueError("payload does not hash to token_sha256")
+        return self._create_once_raw(
+            self._rfc3161_directory(commitment_sha256) / f"{token_sha256}.tst", payload
+        )
+
+    def get_pre_outcome_commitment_binding(
+        self, *, lottery_type: LotteryType, official_draw_identity: str
+    ) -> str | None:
+        path = self._pre_outcome_commitment_binding_path(lottery_type, official_draw_identity)
+        raw = self._read_raw_optional(path)
+        if raw is None:
+            return None
+        decoded = _decode_json_object(raw)
+        _expect_keys(
+            decoded,
+            {"commitment_sha256", "lottery_type", "official_draw_identity"},
+            "pre_outcome_commitment_binding",
+        )
+        _expect_exact(
+            decoded["lottery_type"],
+            lottery_type.value,
+            "pre_outcome_commitment_binding.lottery_type",
+        )
+        if (
+            _string(
+                decoded["official_draw_identity"],
+                "pre_outcome_commitment_binding.official_draw_identity",
+            )
+            != official_draw_identity
+        ):
+            raise ProspectiveObservationStoreCorruptionError(
+                "commitment binding official_draw_identity does not match its storage key"
+            )
+        commitment_sha256 = _string(
+            decoded["commitment_sha256"], "pre_outcome_commitment_binding.commitment_sha256"
+        )
+        _require_sha256_hex(commitment_sha256, "pre_outcome_commitment_binding.commitment_sha256")
+        return commitment_sha256
+
+    def create_pre_outcome_commitment_binding(
+        self,
+        *,
+        lottery_type: LotteryType,
+        official_draw_identity: str,
+        commitment_sha256: str,
+    ) -> CreateOnceOutcome:
+        _require_sha256_hex(commitment_sha256, "commitment_sha256")
+        path = self._pre_outcome_commitment_binding_path(lottery_type, official_draw_identity)
+        payload = _canonical_bytes(
+            {
+                "commitment_sha256": commitment_sha256,
+                "lottery_type": lottery_type.value,
+                "official_draw_identity": official_draw_identity,
+            }
+        )
+        return self._create_once_raw(path, payload)
+
     def _record_path(
         self,
         identity: ProspectiveObservationIdentity,
@@ -339,6 +440,88 @@ class FileSystemProspectiveObservationStore:
         return (
             CreateOnceOutcome.ALREADY_PRESENT
             if equal(existing, expected)
+            else CreateOnceOutcome.CONFLICT
+        )
+
+    def _rfc3161_directory(self, commitment_sha256: str) -> Path:
+        _require_sha256_hex(commitment_sha256, "commitment_sha256")
+        return self._root / "rfc3161" / commitment_sha256
+
+    def _pre_outcome_commitment_binding_path(
+        self, lottery_type: LotteryType, official_draw_identity: str
+    ) -> Path:
+        if type(lottery_type) is not LotteryType:
+            raise ValueError("lottery_type must be a LotteryType")
+        if type(official_draw_identity) is not str or not official_draw_identity:
+            raise ValueError("official_draw_identity must be a non-empty string")
+        draw_key = _digest_segment({"official_draw_identity": official_draw_identity})
+        return (
+            self._root
+            / "rfc3161-commitment-binding"
+            / lottery_type.value.lower()
+            / f"draw-{draw_key}.json"
+        )
+
+    def _read_raw_optional(self, path: Path) -> bytes | None:
+        try:
+            return _read_regular_file(path)
+        except FileNotFoundError:
+            return None
+
+    def _create_once_raw(self, path: Path, payload: bytes) -> CreateOnceOutcome:
+        _materialize_directory(path.parent)
+        temporary = path.parent / f".rfc3161-{secrets.token_hex(16)}.tmp"
+        descriptor = -1
+        installed = False
+        try:
+            descriptor = os.open(
+                temporary,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | _NOFOLLOW | _CLOEXEC,
+                0o600,
+            )
+            _write_all(descriptor, payload)
+            os.fsync(descriptor)
+            os.close(descriptor)
+            descriptor = -1
+            try:
+                os.link(temporary, path, follow_symlinks=False)
+                installed = True
+                _fsync_directory(path.parent)
+            except FileExistsError:
+                # The competing writer linked only fully written, fsynced bytes.
+                _fsync_directory(path.parent)
+        except OSError as exc:
+            raise ProspectiveObservationStoreCorruptionError(
+                f"cannot durably create rfc3161 blob at {path}: {exc}"
+            ) from exc
+        finally:
+            if descriptor >= 0:
+                os.close(descriptor)
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+            except OSError as exc:
+                raise ProspectiveObservationStoreCorruptionError(
+                    f"cannot remove completed temporary rfc3161 blob {temporary}: {exc}"
+                ) from exc
+            else:
+                _fsync_directory(path.parent)
+
+        existing = self._read_raw_optional(path)
+        if existing is None:
+            raise ProspectiveObservationStoreCorruptionError(
+                "rfc3161 blob disappeared after durable creation"
+            )
+        if installed:
+            if existing != payload:
+                raise ProspectiveObservationStoreCorruptionError(
+                    "newly created rfc3161 blob failed exact read-after-write"
+                )
+            return CreateOnceOutcome.INSERTED
+        return (
+            CreateOnceOutcome.ALREADY_PRESENT
+            if existing == payload
             else CreateOnceOutcome.CONFLICT
         )
 
@@ -1011,6 +1194,14 @@ def _string(value: object, label: str) -> str:
     if type(value) is not str:
         raise ValueError(f"{label} must be a string")
     return value
+
+
+_SHA256_HEX = re.compile(r"[0-9a-f]{64}")
+
+
+def _require_sha256_hex(value: object, label: str) -> None:
+    if type(value) is not str or _SHA256_HEX.fullmatch(value) is None:
+        raise ValueError(f"{label} must be a lowercase 64-character SHA-256 hex digest")
 
 
 def _integer(value: object, label: str) -> int:

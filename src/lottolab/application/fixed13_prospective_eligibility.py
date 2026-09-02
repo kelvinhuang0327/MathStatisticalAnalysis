@@ -19,6 +19,9 @@ from datetime import UTC, date, datetime
 from enum import StrEnum
 from typing import cast
 
+from lottolab.application.fixed13_pre_outcome_timing_receipt import (
+    PreOutcomeTimingReceiptVerdict,
+)
 from lottolab.application.fixed13_prospective_producer import (
     FIXED_13_COHORT_STRATEGY_IDS,
     RNG_DOMAIN_TAG,
@@ -647,6 +650,7 @@ def build_fixed13_prospective_eligibility(
     cohort_membership_strategy_ids_lcj1_sha256: str,
     eligibility_sealed_at: datetime,
     pre_outcome_timing_proof_ref: PreOutcomeTimingProofRef | None,
+    pre_outcome_timing_receipt_verdict: PreOutcomeTimingReceiptVerdict | None,
 ) -> Fixed13ProspectiveEligibilityRecord:
     """Derive one deterministic, outcome-free fixed-13 eligibility disposition."""
 
@@ -733,6 +737,12 @@ def build_fixed13_prospective_eligibility(
         _is_valid_timing_ref(pre_outcome_timing_proof_ref)
     ):
         reject("PRE_OUTCOME_TIMING_PROOF_INVALID")
+        valid_timing_ref = None
+    elif (
+        type(pre_outcome_timing_receipt_verdict) is not PreOutcomeTimingReceiptVerdict
+        or not pre_outcome_timing_receipt_verdict.verified
+    ):
+        reject("PRE_OUTCOME_TIMING_PROOF_UNVERIFIED")
         valid_timing_ref = None
     else:
         valid_timing_ref = pre_outcome_timing_proof_ref

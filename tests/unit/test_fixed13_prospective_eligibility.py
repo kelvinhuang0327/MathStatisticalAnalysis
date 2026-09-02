@@ -13,6 +13,10 @@ from typing import cast
 
 import pytest
 
+from lottolab.application.fixed13_pre_outcome_timing_receipt import (
+    PreOutcomeTimingReceiptReasonCode,
+    PreOutcomeTimingReceiptVerdict,
+)
 from lottolab.application.fixed13_prospective_eligibility import (
     PINNED_COHORT_MEMBERSHIP_STRATEGY_IDS_LCJ1_SHA256,
     PINNED_FREEZE_ARTIFACT_FILE_SHA256,
@@ -248,6 +252,28 @@ def _timing_ref() -> PreOutcomeTimingProofRef:
     )
 
 
+def _verified_receipt_verdict() -> PreOutcomeTimingReceiptVerdict:
+    return PreOutcomeTimingReceiptVerdict(
+        verified=True,
+        reason_code=PreOutcomeTimingReceiptReasonCode.OK,
+        commitment_sha256=None,
+        gen_time=None,
+    )
+
+
+def _unverified_receipt_verdict(
+    reason_code: PreOutcomeTimingReceiptReasonCode = (
+        PreOutcomeTimingReceiptReasonCode.SIGNATURE_OR_CHAIN_INVALID
+    ),
+) -> PreOutcomeTimingReceiptVerdict:
+    return PreOutcomeTimingReceiptVerdict(
+        verified=False,
+        reason_code=reason_code,
+        commitment_sha256=None,
+        gen_time=None,
+    )
+
+
 def _build(
     *,
     prediction: PredictionRecord | None = None,
@@ -257,6 +283,7 @@ def _build(
     membership_sha256: str = PINNED_COHORT_MEMBERSHIP_STRATEGY_IDS_LCJ1_SHA256,
     sealed_at: datetime = _ELIGIBILITY_SEALED_AT,
     timing_ref: PreOutcomeTimingProofRef | None = None,
+    receipt_verdict: PreOutcomeTimingReceiptVerdict | None = None,
 ) -> Fixed13ProspectiveEligibilityRecord:
     resolved_prediction = prediction or _prediction()
     return build_fixed13_prospective_eligibility(
@@ -267,6 +294,7 @@ def _build(
         cohort_membership_strategy_ids_lcj1_sha256=membership_sha256,
         eligibility_sealed_at=sealed_at,
         pre_outcome_timing_proof_ref=timing_ref or _timing_ref(),
+        pre_outcome_timing_receipt_verdict=receipt_verdict or _verified_receipt_verdict(),
     )
 
 
@@ -606,6 +634,7 @@ def test_missing_timing_proof_is_ineligible() -> None:
         ),
         eligibility_sealed_at=_ELIGIBILITY_SEALED_AT,
         pre_outcome_timing_proof_ref=None,
+        pre_outcome_timing_receipt_verdict=None,
     )
 
     _assert_ineligible(record)
@@ -624,10 +653,72 @@ def test_malformed_timing_proof_reference_is_ineligible() -> None:
         ),
         eligibility_sealed_at=_ELIGIBILITY_SEALED_AT,
         pre_outcome_timing_proof_ref=cast(PreOutcomeTimingProofRef, "malformed-ref"),
+        pre_outcome_timing_receipt_verdict=None,
     )
 
     _assert_ineligible(record)
     assert "PRE_OUTCOME_TIMING_PROOF_INVALID" in record.ineligibility_reasons
+
+
+def test_structurally_valid_but_unverified_timing_proof_is_ineligible() -> None:
+    record = _build(receipt_verdict=_unverified_receipt_verdict())
+
+    _assert_ineligible(record)
+    assert "PRE_OUTCOME_TIMING_PROOF_UNVERIFIED" in record.ineligibility_reasons
+    assert record.pre_outcome_timing_proof_ref is None
+
+
+def test_missing_receipt_verdict_for_a_structurally_valid_proof_is_ineligible() -> None:
+    prediction = _prediction()
+    record = build_fixed13_prospective_eligibility(
+        prediction=prediction,
+        target_registration=_registration(prediction),
+        producer_records=_producer_records(prediction),
+        freeze_artifact_file_sha256=PINNED_FREEZE_ARTIFACT_FILE_SHA256,
+        cohort_membership_strategy_ids_lcj1_sha256=(
+            PINNED_COHORT_MEMBERSHIP_STRATEGY_IDS_LCJ1_SHA256
+        ),
+        eligibility_sealed_at=_ELIGIBILITY_SEALED_AT,
+        pre_outcome_timing_proof_ref=_timing_ref(),
+        pre_outcome_timing_receipt_verdict=None,
+    )
+
+    _assert_ineligible(record)
+    assert "PRE_OUTCOME_TIMING_PROOF_UNVERIFIED" in record.ineligibility_reasons
+
+
+def test_fabricated_structural_reference_cannot_reach_eligible_without_a_verdict() -> None:
+    """A syntactically valid but never-semantically-verified ref must fail closed.
+
+    ``fabricated`` here means exactly what the CTO decision describes: a
+    ``PreOutcomeTimingProofRef`` with well-formed fields (non-empty
+    proof_type/reference, a valid-looking 64-hex reference_sha256) that was
+    never actually confirmed by RFC3161 semantic verification.
+    """
+
+    fabricated = PreOutcomeTimingProofRef(
+        proof_type="RFC3161_TSA_TOKEN_V1",
+        reference="rfc3161/" + ("a" * 64) + "/" + ("b" * 64) + ".tst",
+        reference_sha256="c" * 64,
+    )
+    prediction = _prediction()
+
+    record = build_fixed13_prospective_eligibility(
+        prediction=prediction,
+        target_registration=_registration(prediction),
+        producer_records=_producer_records(prediction),
+        freeze_artifact_file_sha256=PINNED_FREEZE_ARTIFACT_FILE_SHA256,
+        cohort_membership_strategy_ids_lcj1_sha256=(
+            PINNED_COHORT_MEMBERSHIP_STRATEGY_IDS_LCJ1_SHA256
+        ),
+        eligibility_sealed_at=_ELIGIBILITY_SEALED_AT,
+        pre_outcome_timing_proof_ref=fabricated,
+        pre_outcome_timing_receipt_verdict=None,
+    )
+
+    _assert_ineligible(record)
+    assert "PRE_OUTCOME_TIMING_PROOF_UNVERIFIED" in record.ineligibility_reasons
+    assert record.eligibility_status is not Fixed13EligibilityStatus.ELIGIBLE
 
 
 @pytest.mark.parametrize(
@@ -668,6 +759,7 @@ def test_public_builder_has_no_outcome_or_winning_number_input() -> None:
         "cohort_membership_strategy_ids_lcj1_sha256",
         "eligibility_sealed_at",
         "pre_outcome_timing_proof_ref",
+        "pre_outcome_timing_receipt_verdict",
     )
     forbidden_payload_fields = {
         "official_outcome",

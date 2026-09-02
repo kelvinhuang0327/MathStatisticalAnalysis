@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import multiprocessing
 import re
@@ -414,3 +415,203 @@ def test_create_eligibility_rejects_non_eligibility_record(tmp_path: Path) -> No
 
     with pytest.raises(ValueError, match="Fixed13ProspectiveEligibilityRecord"):
         store.create_eligibility(cast(Fixed13ProspectiveEligibilityRecord, object()))
+
+
+def test_rfc3161_commitment_token_and_chain_round_trip_exactly(tmp_path: Path) -> None:
+    store = FileSystemProspectiveObservationStore(tmp_path / "observer-store")
+    commitment_payload = b'{"official_draw_identity":"115000083"}'
+    commitment_sha256 = hashlib.sha256(commitment_payload).hexdigest()
+    token_payload = b"\x30\x82\x00\x01token-bytes-fixture"
+    token_sha256 = hashlib.sha256(token_payload).hexdigest()
+    chain_payload = b"-----BEGIN CERTIFICATE-----\nfixture\n-----END CERTIFICATE-----\n"
+
+    assert store.get_rfc3161_commitment(commitment_sha256=commitment_sha256) is None
+    assert (
+        store.create_rfc3161_commitment(
+            commitment_sha256=commitment_sha256, payload=commitment_payload
+        )
+        is CreateOnceOutcome.INSERTED
+    )
+    assert (
+        store.create_rfc3161_token(
+            commitment_sha256=commitment_sha256,
+            token_sha256=token_sha256,
+            payload=token_payload,
+        )
+        is CreateOnceOutcome.INSERTED
+    )
+    assert (
+        store.create_rfc3161_chain(commitment_sha256=commitment_sha256, payload=chain_payload)
+        is CreateOnceOutcome.INSERTED
+    )
+
+    assert store.get_rfc3161_commitment(commitment_sha256=commitment_sha256) == commitment_payload
+    assert (
+        store.get_rfc3161_token(commitment_sha256=commitment_sha256, token_sha256=token_sha256)
+        == token_payload
+    )
+    assert store.get_rfc3161_chain(commitment_sha256=commitment_sha256) == chain_payload
+
+
+def test_rfc3161_blob_replay_is_idempotent_and_conflict_never_overwrites(tmp_path: Path) -> None:
+    store = FileSystemProspectiveObservationStore(tmp_path / "observer-store")
+    payload = b"first-token-bytes"
+    commitment_sha256 = "1" * 64
+    token_sha256 = hashlib.sha256(payload).hexdigest()
+
+    assert (
+        store.create_rfc3161_token(
+            commitment_sha256=commitment_sha256, token_sha256=token_sha256, payload=payload
+        )
+        is CreateOnceOutcome.INSERTED
+    )
+    assert (
+        store.create_rfc3161_token(
+            commitment_sha256=commitment_sha256, token_sha256=token_sha256, payload=payload
+        )
+        is CreateOnceOutcome.ALREADY_PRESENT
+    )
+
+    other_payload = b"different-token-bytes-same-name"
+    with pytest.raises(ValueError, match="does not hash to token_sha256"):
+        store.create_rfc3161_token(
+            commitment_sha256=commitment_sha256,
+            token_sha256=token_sha256,
+            payload=other_payload,
+        )
+    assert (
+        store.get_rfc3161_token(commitment_sha256=commitment_sha256, token_sha256=token_sha256)
+        == payload
+    )
+
+
+def test_rfc3161_commitment_rejects_payload_not_matching_its_own_hash(tmp_path: Path) -> None:
+    store = FileSystemProspectiveObservationStore(tmp_path / "observer-store")
+
+    with pytest.raises(ValueError, match="does not hash to commitment_sha256"):
+        store.create_rfc3161_commitment(commitment_sha256="2" * 64, payload=b"wrong-bytes")
+
+
+@pytest.mark.parametrize(
+    "bogus_sha256",
+    [
+        "not-a-hash",
+        "0" * 63,
+        "0" * 65,
+        "A" * 64,
+        "../../../etc/passwd" + "0" * 45,
+    ],
+    ids=["not-hex", "too-short", "too-long", "uppercase", "traversal-shaped"],
+)
+def test_rfc3161_paths_reject_non_canonical_sha256_shapes(
+    tmp_path: Path, bogus_sha256: str
+) -> None:
+    root = tmp_path / "observer-store"
+    store = FileSystemProspectiveObservationStore(root)
+
+    with pytest.raises(ValueError, match="SHA-256"):
+        store.get_rfc3161_commitment(commitment_sha256=bogus_sha256)
+    with pytest.raises(ValueError, match="SHA-256"):
+        store.get_rfc3161_token(commitment_sha256="3" * 64, token_sha256=bogus_sha256)
+    assert not (tmp_path / "etc").exists()
+
+
+def test_rfc3161_commitment_rejects_symlinked_destination_without_touching_target(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "observer-store"
+    outside = tmp_path / "outside-authority.json"
+    outside.write_bytes(b"outside-authority\n")
+    store = FileSystemProspectiveObservationStore(root)
+    payload = b'{"fixture":true}'
+    commitment_sha256 = hashlib.sha256(payload).hexdigest()
+    destination_dir = root / "rfc3161" / commitment_sha256
+    destination_dir.mkdir(parents=True)
+    (destination_dir / "commitment.json").symlink_to(outside)
+
+    with pytest.raises(ProspectiveObservationStoreCorruptionError):
+        store.create_rfc3161_commitment(commitment_sha256=commitment_sha256, payload=payload)
+    assert outside.read_bytes() == b"outside-authority\n"
+    assert (destination_dir / "commitment.json").is_symlink()
+
+
+def test_pre_outcome_commitment_binding_is_create_once_per_draw(tmp_path: Path) -> None:
+    store = FileSystemProspectiveObservationStore(tmp_path / "observer-store")
+    first_commitment_sha256 = "4" * 64
+    second_commitment_sha256 = "5" * 64
+
+    assert (
+        store.get_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO, official_draw_identity="115000083"
+        )
+        is None
+    )
+    assert (
+        store.create_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO,
+            official_draw_identity="115000083",
+            commitment_sha256=first_commitment_sha256,
+        )
+        is CreateOnceOutcome.INSERTED
+    )
+    # Exact replay of the same commitment for the same draw is idempotent.
+    assert (
+        store.create_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO,
+            official_draw_identity="115000083",
+            commitment_sha256=first_commitment_sha256,
+        )
+        is CreateOnceOutcome.ALREADY_PRESENT
+    )
+    # A second, DIFFERENT commitment for the same draw must be refused — this
+    # is the anti-grinding property: a caller cannot mint multiple candidate
+    # commitments for one draw and later select whichever one got a receipt.
+    assert (
+        store.create_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO,
+            official_draw_identity="115000083",
+            commitment_sha256=second_commitment_sha256,
+        )
+        is CreateOnceOutcome.CONFLICT
+    )
+    assert (
+        store.get_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO, official_draw_identity="115000083"
+        )
+        == first_commitment_sha256
+    )
+    # A different draw is an independent binding slot.
+    assert (
+        store.create_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO,
+            official_draw_identity="115000084",
+            commitment_sha256=second_commitment_sha256,
+        )
+        is CreateOnceOutcome.INSERTED
+    )
+
+
+def test_pre_outcome_commitment_binding_draw_identity_cannot_traverse_the_root(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "observer-store"
+    store = FileSystemProspectiveObservationStore(root)
+
+    outcome = store.create_pre_outcome_commitment_binding(
+        lottery_type=LotteryType.BIG_LOTTO,
+        official_draw_identity="../../../escaped-draw",
+        commitment_sha256="6" * 64,
+    )
+
+    assert outcome is CreateOnceOutcome.INSERTED
+    assert not (tmp_path / "escaped-draw").exists()
+    matches = tuple(root.rglob("draw-*.json"))
+    assert len(matches) == 1
+    assert "escaped-draw" not in matches[0].relative_to(root).parts
+    assert (
+        store.get_pre_outcome_commitment_binding(
+            lottery_type=LotteryType.BIG_LOTTO,
+            official_draw_identity="../../../escaped-draw",
+        )
+        == "6" * 64
+    )

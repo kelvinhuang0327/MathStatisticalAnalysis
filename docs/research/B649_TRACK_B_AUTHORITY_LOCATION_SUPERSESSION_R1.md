@@ -26,13 +26,13 @@ The three exact SHA-256 values were reverified and remain strictly identical:
 
 1. **Sealed Preregistration Artifacts & Sealing Generators**:
    Sealed preregistration artifacts and sealing generators (`tools/hash_preregistration_eh01_eh10_b649.py`, `tools/hash_preregistration_eh02_b649.py`) are intentionally byte-untouched.
-   
+
 2. **Historical Path Strings**:
    Historical path strings participate in frozen preregistration canonical-byte hashes and remain untouched.
 
 3. **Additive Authority Metadata**:
    Old locator retirement is additive authority metadata only, not an in-place seal rewrite.
-   
+
 4. **Frozen Preregistration Hashes**:
    - EH01–EH10 B649 Preregistration Hash: `f12ef1314e4fd6cadcd28154b332f04afa46bb9593a23733708540ae3302c8f7`
    - EH02 B649 Preregistration Hash: `45a7ddd6a1409a1da65bc347beed6cbb34efa73291910f91b4a3e59b98446045`

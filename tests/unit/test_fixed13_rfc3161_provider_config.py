@@ -11,12 +11,12 @@ on disk) to prove the shipped config matches its own pinned fingerprints.
 from __future__ import annotations
 
 import hashlib
-import shutil
 import subprocess
 from pathlib import Path
 
 import pytest
 
+from lottolab.application.fixed13_crypto_runtime import resolve_openssl_binary
 from lottolab.application.fixed13_pre_outcome_timing_receipt import (
     RFC3161_PRE_OUTCOME_TIMING_PROOF_TYPE,
     PinnedTrustAnchorSet,
@@ -33,8 +33,9 @@ from lottolab.application.fixed13_rfc3161_provider_config import (
 )
 
 pytestmark = pytest.mark.skipif(
-    shutil.which("openssl") is None,
-    reason="fixed13 RFC3161 provider config requires the host openssl CLI",
+    not resolve_openssl_binary().capable,
+    reason="fixed13 RFC3161 provider config requires a capable fixed13 OpenSSL "
+    "runtime to be resolvable on this host (see config/fixed13_crypto_runtime.toml)",
 )
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]

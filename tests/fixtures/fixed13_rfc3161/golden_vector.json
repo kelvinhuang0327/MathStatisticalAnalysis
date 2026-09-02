@@ -1,0 +1,14 @@
+{
+  "schema": "LOTTOLAB_FIXED13_RFC3161_GOLDEN_VECTOR_V1",
+  "profile": "root_ca-intermediate_ca-tsa_leaf-esscertidv2_sha256-root_not_embedded",
+  "message_imprint_algorithm": "sha256",
+  "message_imprint_sha256_hex": "36f3c97ae740a010245de169cc0528e29bccddb6553be59fb0c386f6d1b8bfa7",
+  "root_certificate_file": "root_cert.pem",
+  "intermediate_certificate_file": "intermediate_cert.pem",
+  "tsa_leaf_certificate_file": "tsa_cert.pem",
+  "token_der_file": "token.tsr",
+  "token_root_embedded": false,
+  "token_intermediate_embedded": true,
+  "signing_certificate_attribute_oid": "1.2.840.113549.1.9.16.2.47",
+  "signing_certificate_attribute_name": "id-smime-aa-signingCertificateV2"
+}

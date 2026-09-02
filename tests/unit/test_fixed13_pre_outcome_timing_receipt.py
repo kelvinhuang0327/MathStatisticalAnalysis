@@ -10,7 +10,7 @@ network call is made and no key material is committed.
 from __future__ import annotations
 
 import hashlib
-import shutil
+import json
 import subprocess
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -18,6 +18,11 @@ from pathlib import Path
 
 import pytest
 
+from lottolab.application.fixed13_crypto_runtime import (
+    Fixed13CryptoRuntimeResolution,
+    Fixed13CryptoRuntimeUnavailableReason,
+    resolve_openssl_binary,
+)
 from lottolab.application.fixed13_pre_outcome_timing_receipt import (
     RFC3161_PRE_OUTCOME_TIMING_PROOF_TYPE,
     Fixed13PreOutcomeCommitment,
@@ -28,9 +33,13 @@ from lottolab.application.fixed13_pre_outcome_timing_receipt import (
 )
 from lottolab.domain.draws import LotteryType
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_GOLDEN_VECTOR_DIR = _REPO_ROOT / "tests" / "fixtures" / "fixed13_rfc3161"
+
 pytestmark = pytest.mark.skipif(
-    shutil.which("openssl") is None,
-    reason="the offline RFC3161 verifier backend requires the host openssl CLI",
+    not resolve_openssl_binary().capable,
+    reason="the offline RFC3161 verifier backend requires a capable fixed13 OpenSSL "
+    "runtime to be resolvable on this host (see config/fixed13_crypto_runtime.toml)",
 )
 
 _BASE_SCHEDULED_AT = datetime(2026, 9, 10, 20, 30, tzinfo=UTC)
@@ -626,8 +635,16 @@ def test_conservative_accuracy_crossing_cutoff_fails_closed(tmp_path: Path) -> N
     )
 
 
-def _no_openssl_on_path(_command: str) -> str | None:
-    return None
+def _unavailable_resolution(
+    *_args: object, **_kwargs: object
+) -> Fixed13CryptoRuntimeResolution:
+    return Fixed13CryptoRuntimeResolution(
+        capable=False,
+        binary_path=None,
+        openssl_version_text=None,
+        source_tier=None,
+        reason=Fixed13CryptoRuntimeUnavailableReason.NO_RUNTIME_CONFIGURED,
+    )
 
 
 def test_verifier_backend_unavailable_fails_closed(
@@ -639,8 +656,8 @@ def test_verifier_backend_unavailable_fails_closed(
     token_path = _write_token(tmp_path, "good.tst", token_bytes)
 
     monkeypatch.setattr(
-        "lottolab.application.fixed13_pre_outcome_timing_receipt.shutil.which",
-        _no_openssl_on_path,
+        "lottolab.application.fixed13_pre_outcome_timing_receipt.resolve_openssl_binary",
+        _unavailable_resolution,
     )
 
     verdict = verify_rfc3161_pre_outcome_receipt(
@@ -653,3 +670,54 @@ def test_verifier_backend_unavailable_fails_closed(
 
     assert verdict.verified is False
     assert verdict.reason_code is PreOutcomeTimingReceiptReasonCode.VERIFIER_BACKEND_UNAVAILABLE
+
+
+# --- production-profile regression: committed ESSCertIDv2 + 3-tier golden vector
+
+
+def _golden_vector_metadata() -> dict[str, object]:
+    return json.loads(
+        (_GOLDEN_VECTOR_DIR / "golden_vector.json").read_text(encoding="utf-8")
+    )
+
+
+def test_golden_vector_production_profile_receipt_verifies(tmp_path: Path) -> None:
+    """Unlike every other verifier test above, this one does not mint its own
+    token with whatever runtime happens to be ambient: it replays the
+    committed root -> intermediate -> TSA-leaf / ESSCertIDv2 / root-not-embedded
+    fixture from tests/fixtures/fixed13_rfc3161/ through the module's real,
+    default-resolved runtime, with the root supplied as the only pinned trust
+    anchor (the intermediate is supplied out-of-band via chain_path, exactly
+    as production does for an archived receipt chain)."""
+
+    metadata = _golden_vector_metadata()
+    digest_hex = metadata["message_imprint_sha256_hex"]
+    assert type(digest_hex) is str
+
+    commitment = Fixed13PreOutcomeCommitment.create(
+        official_draw_identity="115000083",
+        target_scheduled_at=datetime(2126, 1, 1, tzinfo=UTC),
+        target_registration_digest="a" * 64,
+        prediction_record_digest="b" * 64,
+        freeze_artifact_file_sha256="c" * 64,
+        cohort_membership_strategy_ids_lcj1_sha256="d" * 64,
+    )
+    assert commitment.commitment_sha256() == digest_hex
+
+    root_pem = (_GOLDEN_VECTOR_DIR / "root_cert.pem").read_text(encoding="ascii")
+    token_path = _GOLDEN_VECTOR_DIR / "token.tsr"
+    chain_path = _GOLDEN_VECTOR_DIR / "intermediate_cert.pem"
+    reference_sha256 = hashlib.sha256(token_path.read_bytes()).hexdigest()
+
+    verdict = verify_rfc3161_pre_outcome_receipt(
+        commitment=commitment,
+        proof_type=RFC3161_PRE_OUTCOME_TIMING_PROOF_TYPE,
+        reference_sha256=reference_sha256,
+        token_path=token_path,
+        trust_anchors=PinnedTrustAnchorSet((root_pem,)),
+        chain_path=chain_path,
+    )
+
+    assert verdict.verified is True
+    assert verdict.reason_code is PreOutcomeTimingReceiptReasonCode.OK
+    assert verdict.commitment_sha256 == digest_hex

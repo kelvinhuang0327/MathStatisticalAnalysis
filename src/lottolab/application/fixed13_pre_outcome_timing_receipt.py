@@ -11,8 +11,10 @@ digest already embeds ``pre_outcome_timing_proof_ref``, so binding the
 timestamp to it would make the receipt a precondition of the value it is
 supposed to timestamp.
 
-Signature and certificate-chain verification are delegated to the host's
-``openssl ts -verify``, which already implements the CMS
+Signature and certificate-chain verification are delegated to
+``openssl ts -verify`` on a binary resolved and capability-validated by
+:mod:`lottolab.application.fixed13_crypto_runtime` (never an ambient
+``PATH`` lookup), which already implements the CMS
 signed-attributes-vs-econtent signing convention (RFC 5652 section 5.4) and
 X.509 path validation correctly; this module does not reimplement either.
 This module's own DER reader only extracts the non-cryptographic TSTInfo
@@ -25,7 +27,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 import subprocess
 import tempfile
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 
+from lottolab.application.fixed13_crypto_runtime import resolve_openssl_binary
 from lottolab.domain.draws import LotteryType
 
 LOTTOLAB_FIXED13_PRE_OUTCOME_COMMITMENT_SCHEMA_VERSION = (
@@ -542,12 +544,13 @@ def verify_rfc3161_pre_outcome_receipt(
             gen_time=parsed.gen_time,
         )
 
-    openssl_path = openssl_binary or shutil.which("openssl")
-    if not openssl_path:
+    resolution = resolve_openssl_binary(openssl_binary)
+    if not resolution.capable or resolution.binary_path is None:
         return _fail(
             PreOutcomeTimingReceiptReasonCode.VERIFIER_BACKEND_UNAVAILABLE,
             gen_time=parsed.gen_time,
         )
+    openssl_path = resolution.binary_path
 
     with tempfile.TemporaryDirectory(prefix="lottolab-rfc3161-verify-") as raw_tmp_dir:
         tmp_dir = Path(raw_tmp_dir)

@@ -9,11 +9,13 @@ a missing/malformed/fingerprint-mismatched root PEM all abort loading rather
 than falling back to any system trust store, environment default CA path, or
 network-fetched chain.
 
-Certificate parsing is delegated to the host's ``openssl`` binary (the same
-convention ``fixed13_pre_outcome_timing_receipt`` uses for signature/chain
-verification) rather than a new third-party X.509 dependency; ``ssl`` stdlib
-is used only as a second, independent PEM-to-DER decoder to cross-check that
-openssl's parse agrees with a naive base64 unwrap of the same PEM bytes.
+Certificate parsing is delegated to an ``openssl`` binary resolved and
+capability-validated by ``fixed13_crypto_runtime`` (the same canonical
+runtime ``fixed13_pre_outcome_timing_receipt`` uses for signature/chain
+verification, never an ambient ``PATH`` lookup) rather than a new
+third-party X.509 dependency; ``ssl`` stdlib is used only as a second,
+independent PEM-to-DER decoder to cross-check that openssl's parse agrees
+with a naive base64 unwrap of the same PEM bytes.
 
 This module never sends a timestamp request, never transmits a digest, and
 never contacts a network timestamp authority; it only resolves and verifies
@@ -23,7 +25,6 @@ public certificate material already committed to ``config/``.
 from __future__ import annotations
 
 import hashlib
-import shutil
 import ssl
 import subprocess
 import tempfile
@@ -33,6 +34,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Final, cast
 
+from lottolab.application.fixed13_crypto_runtime import (
+    Fixed13CryptoRuntimeUnavailableError,
+    require_capable_openssl_binary,
+)
 from lottolab.application.fixed13_pre_outcome_timing_receipt import (
     RFC3161_PRE_OUTCOME_TIMING_PROOF_TYPE,
     PinnedTrustAnchorSet,
@@ -347,11 +352,12 @@ def _load_and_verify_pinned_root(
     repository_root: Path,
     openssl_binary: str | None,
 ) -> str:
-    resolved_openssl = openssl_binary or shutil.which("openssl")
-    if not resolved_openssl:
+    try:
+        resolved_openssl = require_capable_openssl_binary(openssl_binary)
+    except Fixed13CryptoRuntimeUnavailableError as exc:
         raise Fixed13Rfc3161ProviderConfigError(
-            "openssl is required to parse and pin fixed13 RFC3161 provider roots"
-        )
+            f"no capable openssl runtime to parse and pin fixed13 RFC3161 provider roots: {exc}"
+        ) from exc
     path = _resolve_root_certificate_path(repository_root, root_certificate_path)
     try:
         pem_text = path.read_text(encoding="ascii")
@@ -435,9 +441,12 @@ def compute_der_sha256(pem_certificate_text: str, *, openssl_binary: str | None 
     against a provider's pinned root via :func:`bind_archived_chain_root`.
     """
 
-    resolved_openssl = openssl_binary or shutil.which("openssl")
-    if not resolved_openssl:
-        raise Fixed13Rfc3161ProviderConfigError("openssl is required to fingerprint a certificate")
+    try:
+        resolved_openssl = require_capable_openssl_binary(openssl_binary)
+    except Fixed13CryptoRuntimeUnavailableError as exc:
+        raise Fixed13Rfc3161ProviderConfigError(
+            f"no capable openssl runtime to fingerprint a certificate: {exc}"
+        ) from exc
     if "BEGIN CERTIFICATE" not in pem_certificate_text:
         raise Fixed13Rfc3161ProviderConfigError("input is not a PEM-encoded certificate")
     with tempfile.TemporaryDirectory(prefix="lottolab-fixed13-rfc3161-fingerprint-") as raw_dir:

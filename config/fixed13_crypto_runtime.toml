@@ -1,0 +1,40 @@
+schema = "LOTTOLAB_FIXED13_CRYPTO_RUNTIME_V1"
+
+# This file owns ONLY which openssl binary fixed-13 RFC3161 verification and
+# certificate parsing are allowed to use. It never selects or changes
+# RFC3161 provider/trust semantics; see fixed13_rfc3161_tsa.toml for that.
+#
+# Resolution order (see fixed13_crypto_runtime.py:resolve_openssl_binary):
+#   1. an explicit `openssl_binary=` call argument, when supplied;
+#   2. the LOTTOLAB_FIXED13_OPENSSL_BINARY environment variable, when set;
+#   3. pinned_binary_path below, when set;
+#   4. candidate_paths below, tried in listed order.
+#
+# PATH is never searched at any tier. Every candidate that reaches tier 1-3
+# must independently pass BOTH checks below, or resolution fails closed
+# without trying anything else:
+#   A. `<binary> version` output identifies OpenSSL (never LibreSSL),
+#      major version >= 3;
+#   B. the committed production-profile golden-vector self-test in
+#      tests/fixtures/fixed13_rfc3161/ verifies successfully.
+# For tier 4 (candidate_paths), a listed path that does not exist on this
+# host, or exists but fails A/B, is skipped in favor of the next listed
+# path -- that is what lets one committed candidate list cover multiple
+# host layouts. Resolution fails closed only once every reachable tier is
+# exhausted.
+#
+# Path existence alone is never sufficient at any tier; a path that exists
+# but is LibreSSL (or reports OpenSSL major < 3, or fails the golden vector)
+# is never silently selected.
+
+pinned_binary_path = ""
+
+candidate_paths = [
+    "/opt/homebrew/bin/openssl",            # Apple Silicon Homebrew
+    "/usr/local/bin/openssl",               # Intel/x86 Homebrew
+    "/usr/local/opt/openssl@3/bin/openssl", # Homebrew openssl@3 keg symlink
+    "/usr/bin/openssl",                     # common Linux distro OpenSSL (real
+                                             # OpenSSL there; only macOS/BSD ship
+                                             # LibreSSL at this exact path)
+    "/usr/local/ssl/bin/openssl",           # common Linux from-source install
+]

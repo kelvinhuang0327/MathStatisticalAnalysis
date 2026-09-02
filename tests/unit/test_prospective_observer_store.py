@@ -9,9 +9,13 @@ from concurrent.futures import ProcessPoolExecutor
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 
+from lottolab.application.fixed13_prospective_eligibility import (
+    Fixed13ProspectiveEligibilityRecord,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.prize_evaluation import PrizeEvaluationResult
 from lottolab.domain.prospective_observer import (
@@ -403,3 +407,10 @@ def test_conflicting_concurrent_process_creates_preserve_one_canonical_value(
             }
         else:
             assert outcome == CreateOnceOutcome.CONFLICT.value
+
+
+def test_create_eligibility_rejects_non_eligibility_record(tmp_path: Path) -> None:
+    store = FileSystemProspectiveObservationStore(tmp_path / "observer-store")
+
+    with pytest.raises(ValueError, match="Fixed13ProspectiveEligibilityRecord"):
+        store.create_eligibility(cast(Fixed13ProspectiveEligibilityRecord, object()))

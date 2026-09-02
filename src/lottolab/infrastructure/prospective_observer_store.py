@@ -20,6 +20,9 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TypeVar, cast
 
+from lottolab.application.fixed13_prospective_eligibility import (
+    Fixed13ProspectiveEligibilityRecord,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.prize_evaluation import PrizeEvaluationResult
 from lottolab.domain.prospective_observer import (
@@ -102,6 +105,51 @@ class FileSystemProspectiveObservationStore:
                 and existing.canonical_material() == candidate.canonical_material()
             ),
         )
+
+    def get_eligibility(
+        self,
+        identity: ProspectiveObservationIdentity,
+    ) -> Fixed13ProspectiveEligibilityRecord | None:
+        _require_identity(identity)
+        path = self._record_path(identity, "eligibility")
+        eligibility = self._read_optional(
+            path,
+            identity=identity,
+            record_type="eligibility",
+            decoder=_decode_eligibility,
+        )
+        if eligibility is None:
+            return None
+        self._require_eligibility_prediction_link(eligibility)
+        return eligibility
+
+    def create_eligibility(
+        self,
+        record: Fixed13ProspectiveEligibilityRecord,
+    ) -> CreateOnceOutcome:
+        if type(record) is not Fixed13ProspectiveEligibilityRecord:
+            raise ValueError("record must be a Fixed13ProspectiveEligibilityRecord")
+        self._require_eligibility_prediction_link(record)
+        path = self._record_path(record.identity, "eligibility")
+        outcome = self._create_once(
+            path,
+            identity=record.identity,
+            record_type="eligibility",
+            payload=_encode_eligibility(record),
+            expected=record,
+            decoder=_decode_eligibility,
+            equal=lambda existing, candidate: (
+                existing.eligibility_record_digest == candidate.eligibility_record_digest
+                and existing.canonical_material() == candidate.canonical_material()
+            ),
+        )
+        if outcome is not CreateOnceOutcome.CONFLICT:
+            persisted = self.get_eligibility(record.identity)
+            if persisted is None:
+                raise ProspectiveObservationStoreCorruptionError(
+                    "accepted eligibility disappeared after durable creation"
+                )
+        return outcome
 
     def get_score(self, identity: ProspectiveObservationIdentity) -> ScoreRecord | None:
         _require_identity(identity)
@@ -334,6 +382,23 @@ class FileSystemProspectiveObservationStore:
                 )
         return prediction
 
+    def _require_eligibility_prediction_link(
+        self,
+        eligibility: Fixed13ProspectiveEligibilityRecord,
+    ) -> PredictionRecord:
+        prediction = self.get_prediction(eligibility.identity)
+        if prediction is None:
+            raise ProspectiveObservationStoreCorruptionError(
+                "eligibility requires an existing immutable prediction"
+            )
+        try:
+            eligibility.validate_against_prediction(prediction)
+        except ValueError as exc:
+            raise ProspectiveObservationStoreCorruptionError(
+                f"eligibility link does not match immutable prediction: {exc}"
+            ) from exc
+        return prediction
+
 
 def _materialize_directory(path: Path) -> None:
     missing: list[Path] = []
@@ -460,6 +525,10 @@ def _encode_prediction(record: PredictionRecord) -> bytes:
     )
 
 
+def _encode_eligibility(record: Fixed13ProspectiveEligibilityRecord) -> bytes:
+    return _envelope("eligibility", record.canonical_dict())
+
+
 def _encode_score(record: ScoreRecord) -> bytes:
     return _envelope(
         "score",
@@ -553,6 +622,12 @@ def _decode_prediction(value: Mapping[str, object]) -> PredictionRecord:
     if record.temporal_provenance is not expected_provenance:
         raise ValueError("prediction temporal provenance does not match its causal inputs")
     return record
+
+
+def _decode_eligibility(
+    value: Mapping[str, object],
+) -> Fixed13ProspectiveEligibilityRecord:
+    return Fixed13ProspectiveEligibilityRecord.from_canonical_dict(value)
 
 
 def _decode_score(value: Mapping[str, object]) -> ScoreRecord:

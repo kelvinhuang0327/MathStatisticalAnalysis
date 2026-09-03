@@ -72,7 +72,7 @@ def test_root_command_registers_all_required_manual_gates() -> None:
     command_help = runner.invoke(
         app,
         ["supplement-future-draw-identity", "--help"],
-        env={"COLUMNS": "200"},
+        env={"COLUMNS": "200", "LINES": "50", "TERM": "xterm-256color"},
     )
     help_text = unstyle(command_help.stdout)
 

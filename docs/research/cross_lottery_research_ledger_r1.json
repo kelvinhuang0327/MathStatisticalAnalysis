@@ -702,6 +702,577 @@
     }
   ],
   "generated_at": "2026-08-15",
+  "imported_optimizer_matrix": {
+    "authority_role": "CANONICAL_IMPORTED_METHOD_INTAKE_AND_EVIDENCE_LOCATORS",
+    "base_head": "acdda23772a86f59ebe11b17bf5257d0d064fd5a",
+    "base_tree": "fa28f9af9d75d9d82b99bb2010c6eb4b0fc17ef1",
+    "canonical_result_path": "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json",
+    "methods": [
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_cyclic_sidon_shift.py",
+            "sha256": "bba6bdb84f8a8007531eb54c2933e69a2ac8e9f0233c044bfd44fd2232d07996"
+          },
+          {
+            "path": "tests/unit/test_cyclic_sidon_shift_t539.py",
+            "sha256": "13eb39b4e5cc274291dbe51f7cede57b4b9803f56815f9b317e355392811e397"
+          },
+          {
+            "path": "tests/unit/test_cyclic_sidon_shift_p638.py",
+            "sha256": "0308cd3d6afe83e8c45e0ae021c68fc88193db4fa378c1e58fa544e1448464fb"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_CONSTRUCTION",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "CYCLIC_DIFFERENCE_SET_PAIRWISE_OVERLAP_AT_MOST_ONE",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "CONSTRUCTION_INVARIANTS_PROVEN_NO_GLOBAL_COVERAGE_OPTIMUM_PROOF",
+        "search_type": "CLOSED_FORM_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/cyclic_sidon_shift.py",
+            "sha256": "b4b9891c076bf403efd0b3072d52a2547f2d817580926ac97099d07eb27e281a"
+          },
+          {
+            "path": "src/lottolab/research/cyclic_sidon_shift_t539.py",
+            "sha256": "4e950e25618876b3ff4aed426e26ad1800ab6f22550a88061087010766a426dd"
+          },
+          {
+            "path": "src/lottolab/research/cyclic_sidon_shift_p638_zone1.py",
+            "sha256": "beddb0aabcf777ee7360184c8f2e7eb839beebe15b1c01016c0710e8a2d68a7d"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "CYCLIC_SIDON_DIVERSIFICATION",
+        "strategy_id": "CYCLIC_SIDON_SHIFT_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_greedy_min_overlap_constructor.py",
+            "sha256": "4a6e8f6fc5b36da17ab4755486c574a84ad6eb7cf3ab8def7643492a469ceff6"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_OVERLAP_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "LEXICOGRAPHIC_MINIMUM_MAX_PAIRWISE_OVERLAP_THEN_SOURCE_ORDER",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/greedy_min_overlap_constructor.py",
+            "sha256": "99c6dd2293be5d8196dd7917a0eab3fe54fd114d1dc57cb81213f1c00984fe92"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "GREEDY_FULL_SPACE_OVERLAP_CONSTRUCTION",
+        "strategy_id": "GREEDY_MIN_OVERLAP_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_greedy_minmax_then_sum_overlap_constructor.py",
+            "sha256": "d061295b39a7c948cc3eaacdfb38eb1bce4bc6ac7f18a3073b99b8c66309b982"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_OVERLAP_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "LEXICOGRAPHIC_MINIMUM_MAX_THEN_TOTAL_PAIRWISE_OVERLAP",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/greedy_minmax_then_sum_overlap_constructor.py",
+            "sha256": "26780ad1db8e9814a518a4d0d534d0925859a70f3ace580b8a4ebbc86b1d1c62"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "GREEDY_FULL_SPACE_OVERLAP_CONSTRUCTION",
+        "strategy_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_greedy_minmax_sum_then_reuse_dispersion_constructor.py",
+            "sha256": "2f1eb384180583d8805cad4fba9fe0519ac82cdad557375291f2c12816ce84bb"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_OVERLAP_AND_REUSE_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "LEXICOGRAPHIC_MINIMUM_OVERLAP_THEN_REUSE_DISPERSION",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/greedy_minmax_sum_then_reuse_dispersion_constructor.py",
+            "sha256": "6dc8fd2b7d0eda8530bc8d34aae8c1c39242c8d8e4d860499b7bfd9403a7ef01"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "GREEDY_FULL_SPACE_OVERLAP_CONSTRUCTION",
+        "strategy_id": "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
+            "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_SCORE_AND_OVERLAP_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "OPTIONAL_SCORE_PRIORITY_THEN_LOW_OVERLAP_GEOMETRY",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+            "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
+        "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_bounded_coverage_optimizer.py",
+            "sha256": "cf5f898db45e6680666166c1fdea7e58d4a144758d7a487f0d34f25408d0653d"
+          },
+          {
+            "path": "tests/unit/test_bounded_coverage_optimizer_fast.py",
+            "sha256": "7a44a624fc13bfbe3c4951d279846067168d2f7f5a1d68e824d98d2ff0cd40a1"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "DISTINCT_TICKETS_ONLY",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "HEURISTIC_SEARCH_WITH_EXACT_OBJECTIVE_EVALUATION",
+        "method_type": "PORTFOLIO_OPTIMIZER",
+        "neighborhood_radius": 1,
+        "objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "EXACT_OBJECTIVE_VALUES_HEURISTIC_SEARCH_NO_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "BOUNDED_MULTISTART_SAMPLED_WHOLE_TICKET_SWAP",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/bounded_coverage_optimizer.py",
+            "sha256": "c29d2202ddd53b9be52632d1f5a03918bccca2ac1075a5ac8b38b14ce29d5a6b"
+          },
+          {
+            "path": "src/lottolab/research/bounded_coverage_optimizer_fast.py",
+            "sha256": "4831914eafd10efdb6d3a16878975c91e716e3e0f252cd68f620278cff3ef609"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "BOUNDED_COVERAGE_SEARCH",
+        "strategy_id": "RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_reference_e_exact_one_exchange_refinement.py",
+            "sha256": "a11f83e93bb909519bb8360d846d90f9633eff071e9cf4ce00d3f5bb37a2e680"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "DISTINCT_TICKETS_ONLY",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "EXACT_NEIGHBORHOOD_EVALUATION",
+        "method_type": "PORTFOLIO_OPTIMIZER",
+        "neighborhood_radius": 1,
+        "objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "COMPLETE_RADIUS_1_EVALUATION_NO_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "COMPLETE_EXACT_ONE_NUMBER_EXCHANGE_NEIGHBORHOOD",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/reference_e_exact_one_exchange_refinement.py",
+            "sha256": "83a69b45e622aedaf5e3e98552fa10b1cda75e21d5ee40aac4938b893b82e63e"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+        "strategy_id": "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_reference_e_iterative_exact_one_exchange_ascent.py",
+            "sha256": "114d837ce0c7240bd6870c412bb37cbbe63f0432051d6a27cae157baa90a5de7"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "DISTINCT_TICKETS_ONLY",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_SEARCH",
+        "method_type": "PORTFOLIO_OPTIMIZER",
+        "neighborhood_radius": 1,
+        "objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "RADIUS_1_LOCAL_OPTIMUM_CERTIFICATE_NO_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "ITERATIVE_EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/reference_e_iterative_exact_one_exchange_ascent.py",
+            "sha256": "01e634924797355d4f19487a7abfaeed8910bc3b0c5ee8a6d95ebe617a368577"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+        "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "supports_synthetic_shape": true
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_biglotto_retained_family_producer_parity.py",
+            "sha256": "9667cd5ee4de0e818a815009cf00e38e00becff555a514a4f02a3ac2b8e7b853"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_OVERLAP_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "LEXICOGRAPHIC_MINIMUM_MAX_THEN_TOTAL_OVERLAP_THEN_INPUT_ORDER",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/biglotto_multi_ticket_constructors_r1.py",
+            "sha256": "970a9a1215b9c08cf5f2192073692761cc218b8bfea4051abb3aa5222e8cc2d2"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "FROZEN_B649_CANDIDATE_SET_DIVERSIFICATION",
+        "strategy_id": "B649_CANDIDATE_SET_LOW_OVERLAP_V1",
+        "supported_k": [
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO"
+        ],
+        "supports_synthetic_shape": false
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_biglotto_retained_family_producer_parity.py",
+            "sha256": "9667cd5ee4de0e818a815009cf00e38e00becff555a514a4f02a3ac2b8e7b853"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_EXPOSURE_BALANCE_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "LEXICOGRAPHIC_MINIMUM_EXPOSURE_VECTOR_THEN_INPUT_ORDER",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/biglotto_multi_ticket_constructors_r1.py",
+            "sha256": "970a9a1215b9c08cf5f2192073692761cc218b8bfea4051abb3aa5222e8cc2d2"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "FROZEN_B649_CANDIDATE_SET_DIVERSIFICATION",
+        "strategy_id": "B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1",
+        "supported_k": [
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO"
+        ],
+        "supports_synthetic_shape": false
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_biglotto_retained_family_producer_parity.py",
+            "sha256": "9667cd5ee4de0e818a815009cf00e38e00becff555a514a4f02a3ac2b8e7b853"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "SOFT_OVERLAP_AND_EXPOSURE_OBJECTIVE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+        "method_type": "PORTFOLIO_CONSTRUCTOR",
+        "neighborhood_radius": null,
+        "objective": "LEXICOGRAPHIC_MINIMUM_OVERLAP_THEN_EXPOSURE_THEN_INPUT_ORDER",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+        "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/biglotto_multi_ticket_constructors_r1.py",
+            "sha256": "970a9a1215b9c08cf5f2192073692761cc218b8bfea4051abb3aa5222e8cc2d2"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "FROZEN_B649_CANDIDATE_SET_DIVERSIFICATION",
+        "strategy_id": "B649_CANDIDATE_SET_HYBRID_DIVERSITY_V1",
+        "supported_k": [
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO"
+        ],
+        "supports_synthetic_shape": false
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_hard_div_pairwise_bounded_candidate_adapter.py",
+            "sha256": "db28416c2fc26821bb92e006302c040f9efdbcb219c2114f9a7e224f516b16d8"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_SEARCH",
+        "method_type": "PORTFOLIO_OPTIMIZER",
+        "neighborhood_radius": 1,
+        "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "LOCAL_OPTIMUM_CERTIFIED_EXACT_RADIUS_1_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+        "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_REFINEMENT",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/hard_div_pairwise_bounded_candidate_adapter.py",
+            "sha256": "ebdd04413abfe6aba6f6ef316733240a03a4e357e7328406d547ba192e26035a"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "HARD_CONSTRAINED_EXACT_ONE_NUMBER_EXCHANGE",
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO"
+        ],
+        "supports_synthetic_shape": false
+      }
+    ],
+    "native_evidence": {
+      "ascent_b649": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json",
+        "sha256": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c"
+      },
+      "ascent_cross": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
+        "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "frontier_b649": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json",
+        "sha256": "f2a48557dffb04a2ac13ed2b1286ef85bb5fffda97313728863680c67200ffec"
+      },
+      "method_f": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/method-f-reuse-dispersion-tiebreak-b649-v1-result.json",
+        "sha256": "f5560722af766f72611463b7db1995697798846995a72d2b7c3302bbd3a38f89"
+      },
+      "native_coverage_r1": {
+        "evidence_class": "NEW_NATIVE_MEASURED_EVIDENCE",
+        "path": "docs/research/matrix-native-results/strategy-matrix-native-evidence-coverage-r1-result.json",
+        "sha256": "c0788bfab10729887d812b9f8ffe7023cbd2f2320cc4430b13365879cf2a04c7"
+      },
+      "next_b649": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/constructor-frontier-next-generation-v1-result.json",
+        "sha256": "507759b06f24ef473ea66a342ad3ebfc2c28fee733aab7111cb2d18cae581e46"
+      },
+      "next_p638": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/constructor-frontier-next-generation-p638-zone1-v1-result.json",
+        "sha256": "77e6df9e8baa8202c886d6b30808b5c78993bfda13b4eab7710ae60f5ea139ed"
+      },
+      "next_t539": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/constructor-frontier-next-generation-t539-v1-result.json",
+        "sha256": "5e8a52d5e841b9c7e0f29711ded55e717421cc0334c272bd94ac2ee84ebe9474"
+      },
+      "one_exchange": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/reference-e-exact-one-exchange-b649-v1-result.json",
+        "sha256": "5c45204d227cc3750b9efe68ec9afeb3d83d6bd72104acbe319897fc94013e00"
+      }
+    },
+    "schema_version": "1.0.0",
+    "status_semantics": {
+      "MEASURED": "New outcome-free deterministic comparison executed by the canonical runner.",
+      "NOT_APPLICABLE": "The implementation contract does not support this lottery, k, or evaluator threshold.",
+      "NOT_RUN": "The implementation is supported but no semantically matching native exact evidence was reused or executed.",
+      "REUSED_VERIFIED": "Pinned existing native exact evidence was re-read and normalized without replaying it."
+    },
+    "supported_k": [
+      2,
+      3,
+      5,
+      10,
+      20
+    ]
+  },
   "ledger_id": "CROSS_LOTTERY_RESEARCH_LEDGER_R1",
   "priors": [
     {

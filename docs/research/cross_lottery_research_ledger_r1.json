@@ -1209,6 +1209,45 @@
           "BIG_LOTTO"
         ],
         "supports_synthetic_shape": false
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_hard_div_exact_radius_two.py",
+            "sha256": "bc6fbbdcfe406f8b773447d0f70da8904c2b9190f9208831d71319b13c10d1f0"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+        "method_type": "PORTFOLIO_OPTIMIZER",
+        "neighborhood_radius": 2,
+        "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+        "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/hard_div_exact_radius_two.py",
+            "sha256": "725743051f9d15b8d57540d04a0d1ac5399ac2fbc9ce736af0100443e1dd4cc2"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO"
+        ],
+        "supports_synthetic_shape": false
       }
     ],
     "native_evidence": {
@@ -1226,6 +1265,11 @@
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/diversification-constructor-frontier-b649-v1-result.json",
         "sha256": "f2a48557dffb04a2ac13ed2b1286ef85bb5fffda97313728863680c67200ffec"
+      },
+      "hard_div_exact_radius2": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+        "sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
       },
       "method_f": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",

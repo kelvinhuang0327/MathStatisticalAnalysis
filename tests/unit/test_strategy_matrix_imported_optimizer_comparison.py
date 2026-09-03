@@ -18,6 +18,9 @@ from lottolab.research.biglotto_multi_ticket_constructors_r1 import CONSTRUCTORS
 from lottolab.research.strategy_matrix_comparison import (
     BOUNDED,
     HARD_DIV,
+    HARD_DIV_R2,
+    HARD_DIV_RADIUS2_RECONCILIATION_PATH,
+    HARD_DIV_RADIUS2_RECONCILIATION_SHA256,
     K_SCOPE,
     LEDGER_PATH,
     NATIVE_MEASUREMENT_PATH,
@@ -69,6 +72,51 @@ HARD_DIV_FROZEN: dict[int, dict[str, str]] = {
     },
 }
 HARD_DIV_ROW_IDS = {k: f"NATIVE_BIG_LOTTO|{HARD_DIV}|default|k{k}|m3" for k in HARD_DIV_FROZEN}
+HARD_DIV_R2_FROZEN: dict[int, dict[str, str]] = {
+    2: {
+        "baseline_q": "21702/582659",
+        "exact_q": "21702/582659",
+        "delta": "0/1",
+        "native_sha256": "2588a64fddeef6b7a66c35cfa7407f7df185daff9678d8a7632a627de7c5b3cd",
+        "certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "classification": "NO_STRICT_IMPROVEMENT",
+    },
+    3: {
+        "baseline_q": "32528/582659",
+        "exact_q": "32528/582659",
+        "delta": "0/1",
+        "native_sha256": "f3f8026685d58c60ddba7eb4155edbb6c05e545ba5bf693f0d57b44ddd45dadf",
+        "certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "classification": "NO_STRICT_IMPROVEMENT",
+    },
+    5: {
+        "baseline_q": "54130/582659",
+        "exact_q": "54130/582659",
+        "delta": "0/1",
+        "native_sha256": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+        "certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "classification": "NO_STRICT_IMPROVEMENT",
+    },
+    10: {
+        "baseline_q": "364025/1997688",
+        "exact_q": "364025/1997688",
+        "delta": "0/1",
+        "native_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+        "certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "classification": "NO_STRICT_IMPROVEMENT",
+    },
+    20: {
+        "baseline_q": "4805093/13983816",
+        "exact_q": "1601841/4661272",
+        "delta": "215/6991908",
+        "native_sha256": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+        "certificate": "STRICT_IMPROVEMENT_BEST_HARD_FEASIBLE_RADIUS2_NEIGHBOR",
+        "classification": "STRICT_IMPROVEMENT",
+    },
+}
+HARD_DIV_R2_ROW_IDS = {
+    k: f"NATIVE_BIG_LOTTO|{HARD_DIV_R2}|default|k{k}|m3" for k in HARD_DIV_R2_FROZEN
+}
 REQUIRED_SURFACE = {
     "strategy_family",
     "strategy_id",
@@ -112,13 +160,18 @@ def _hard_div_rows(comparison: dict[str, Any]) -> dict[int, dict[str, Any]]:
     return {k: by_id[row_id] for k, row_id in HARD_DIV_ROW_IDS.items()}
 
 
-def test_intake_has_twelve_methods_seven_deduplicated_families_and_full_surface(
+def _hard_div_r2_rows(comparison: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    by_id = {row["row_id"]: row for row in comparison["rows"]}
+    return {k: by_id[row_id] for k, row_id in HARD_DIV_R2_ROW_IDS.items()}
+
+
+def test_intake_has_thirteen_methods_eight_deduplicated_families_and_full_surface(
     comparison: dict[str, Any],
 ) -> None:
     methods = comparison["methods"]
-    assert comparison["imported_method_count"] == len(methods) == 12
-    assert comparison["distinct_family_count"] == len(comparison["method_families"]) == 7
-    assert len({method["strategy_id"] for method in methods}) == 12
+    assert comparison["imported_method_count"] == len(methods) == 13
+    assert comparison["distinct_family_count"] == len(comparison["method_families"]) == 8
+    assert len({method["strategy_id"] for method in methods}) == 13
     assert all(method.keys() >= REQUIRED_SURFACE for method in methods)
 
     bounded = next(method for method in methods if method["strategy_id"] == BOUNDED)
@@ -248,13 +301,21 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
     direct_native_rows = [
         row
         for row in native_rows
-        if row["status"] == "MEASURED" and row["strategy_id"] == HARD_DIV
+        if row["status"] == "MEASURED" and row["strategy_id"] in {HARD_DIV, HARD_DIV_R2}
     ]
-    assert len(direct_native_rows) == 5
+    assert len(direct_native_rows) == 10
     assert all(
-        row["source_evidence"]["dispatch"] == "CANONICAL_ADAPTER_PUBLIC_API"
-        and row["measurement_evidence"]["dispatch"]
-        == "CANONICAL_HARD_DIV_PAIRWISE_BOUNDED_CANDIDATE_ADAPTER"
+        (
+            row["source_evidence"]["dispatch"] == "CANONICAL_ADAPTER_PUBLIC_API"
+            and row["measurement_evidence"]["dispatch"]
+            == "CANONICAL_HARD_DIV_PAIRWISE_BOUNDED_CANDIDATE_ADAPTER"
+        )
+        if row["strategy_id"] == HARD_DIV
+        else (
+            row["source_evidence"]["dispatch"] == "CANONICAL_RADIUS2_RECONCILIATION_RESULT"
+            and row["measurement_evidence"]["dispatch"]
+            == "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT"
+        )
         for row in direct_native_rows
     )
     assert all(
@@ -416,20 +477,25 @@ def test_native_hash_field_is_sparse_and_always_declares_its_canonicalization(
     comparison: dict[str, Any],
 ) -> None:
     carriers = [row for row in comparison["rows"] if "native_portfolio_sha256" in row]
-    # Only the direct-dispatch method carries a native identity today.
-    assert {row["strategy_id"] for row in carriers} == {HARD_DIV}
-    assert len(carriers) == 5
+    # Direct-dispatch methods (HARD_DIV and HARD_DIV_R2) carry a native identity today.
+    assert {row["strategy_id"] for row in carriers} == {HARD_DIV, HARD_DIV_R2}
+    assert len(carriers) == 10
     for row in carriers:
         assert "native_portfolio_sha256_canonicalization" in row
-        # Every adapter-provided hash declares its convention, including the seed
+        # Every adapter-provided hash declares its convention, including the baseline/seed
         # hash carried inside the native evidence block.
         evidence = row["search_evidence"]
-        assert evidence["seed_portfolio_sha256"] is not None
+        assert (
+            evidence.get("seed_portfolio_sha256") is not None
+            or evidence.get("baseline_portfolio_sha256") is not None
+        )
         assert (
             evidence["portfolio_hash_canonicalization"] == NATIVE_PORTFOLIO_HASH_CANONICALIZATION
         )
-    # Every pre-existing row is untouched by the new field.
-    others = [row for row in comparison["rows"] if row["strategy_id"] != HARD_DIV]
+    # Every pre-existing non-direct-dispatch row is untouched by the new field.
+    others = [
+        row for row in comparison["rows"] if row["strategy_id"] not in {HARD_DIV, HARD_DIV_R2}
+    ]
     assert others
     assert not any("native_portfolio_sha256" in row for row in others)
     assert not any("native_portfolio_sha256_canonicalization" in row for row in others)
@@ -528,7 +594,7 @@ def test_hard_div_registration_uses_no_history_db_or_future_outcome(
 
 
 def test_hard_div_is_excluded_from_the_native_coverage_checkpoint_population() -> None:
-    """HARD_DIV runs inline, so it must not widen the pinned checkpoint's cells."""
+    """HARD_DIV and HARD_DIV_R2 run inline, so they must not widen the pinned checkpoint's cells."""
 
     matrix = smc.load_matrix(ROOT)
     methods = {m["strategy_id"]: m for m in matrix["methods"]}
@@ -536,6 +602,113 @@ def test_hard_div_is_excluded_from_the_native_coverage_checkpoint_population() -
     artifact = json.loads((ROOT / NATIVE_MEASUREMENT_PATH).read_text())
     assert expected_open == artifact["supported_native_not_run_row_ids"]
     assert len(expected_open) == 79
-    assert not any(HARD_DIV in row_id for row_id in expected_open)
+    assert not any(HARD_DIV in row_id or HARD_DIV_R2 in row_id for row_id in expected_open)
     assert not smc._is_checkpoint_managed(HARD_DIV, "BIG_LOTTO", 2)
+    assert not smc._is_checkpoint_managed(HARD_DIV_R2, "BIG_LOTTO", 2)
     assert smc._is_checkpoint_managed(smc.ITERATIVE, "BIG_LOTTO", 2)
+
+
+def test_hard_div_r2_is_registered_once_with_its_frozen_contract(
+    comparison: dict[str, Any],
+) -> None:
+    methods = {m["strategy_id"]: m for m in comparison["methods"]}
+    assert HARD_DIV_R2 in methods
+    r2_method = methods[HARD_DIV_R2]
+    assert r2_method["neighborhood_radius"] == 2
+    assert r2_method["search_type"] == "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE"
+    assert r2_method["strategy_family"] == "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE"
+    assert r2_method["exact_or_heuristic"] == "EXACT_RADIUS_2_LOCAL_SEARCH"
+    assert r2_method["diversification_constraint"] == "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE"
+    assert r2_method["proof_status"] == "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF"
+    assert r2_method["deterministic"] is True
+    assert r2_method["source_status"] == "IMPLEMENTED"
+    assert r2_method["supported_k"] == [2, 3, 5, 10, 20]
+    assert r2_method["supported_lottery"] == ["BIG_LOTTO"]
+
+
+def test_hard_div_r2_has_exactly_five_measured_rows_matching_frozen_evidence(
+    comparison: dict[str, Any],
+) -> None:
+    rows = _hard_div_r2_rows(comparison)
+    assert set(rows.keys()) == {2, 3, 5, 10, 20}
+    for k, row in rows.items():
+        frozen = HARD_DIV_R2_FROZEN[k]
+        assert row["status"] == "MEASURED"
+        assert row["exact_q"]["exact"] == frozen["exact_q"]
+        assert row["reference"]["strategy_id"] == HARD_DIV
+        assert row["reference"]["exact_q"]["exact"] == frozen["baseline_q"]
+        assert row["delta_vs_reference"]["exact"] == frozen["delta"]
+        assert row["local_optimum_status"] == frozen["certificate"]
+        assert row["native_portfolio_sha256"] == frozen["native_sha256"]
+        assert row["global_optimum_status"] == "UNKNOWN"
+        assert row["search_evidence"]["classification"] == frozen["classification"]
+        assert row["source_evidence"]["path"] == HARD_DIV_RADIUS2_RECONCILIATION_PATH.as_posix()
+        assert row["source_evidence"]["sha256"] == HARD_DIV_RADIUS2_RECONCILIATION_SHA256
+
+
+def test_hard_div_r2_rows_respect_the_hard_pairwise_cap_and_proof_boundary(
+    comparison: dict[str, Any],
+) -> None:
+    for row in _hard_div_r2_rows(comparison).values():
+        assert row["geometry"]["max_pairwise_overlap"] <= PAIRWISE_MAX_INTERSECTION
+        assert row["proof_status"] == "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF"
+        assert row["global_optimum_status"] == "UNKNOWN"
+        evidence = row["search_evidence"]
+        assert evidence["hard_pairwise_intersection_cap"] == 1
+        assert evidence["neighborhood_radius"] == 2
+        assert evidence["neighborhood_unit"] == "TWO_LEGAL_ONE_NUMBER_EXCHANGES"
+        assert evidence["baseline_method_id"] == HARD_DIV
+
+
+def test_hard_div_r2_k20_is_only_strict_improvement_and_mixed_classification(
+    comparison: dict[str, Any],
+) -> None:
+    improvements = [
+        row
+        for row in comparison["rows"]
+        if row["strategy_id"] == HARD_DIV_R2
+        and row["delta_vs_reference"] is not None
+        and Fraction(row["delta_vs_reference"]["exact"]) > 0
+    ]
+    assert len(improvements) == 1
+    assert improvements[0]["k"] == 20
+    assert improvements[0]["delta_vs_reference"]["exact"] == "215/6991908"
+    assert (
+        improvements[0]["local_optimum_status"]
+        == "STRICT_IMPROVEMENT_BEST_HARD_FEASIBLE_RADIUS2_NEIGHBOR"
+    )
+
+
+def test_hard_div_r2_unsupported_cells_are_not_applicable(
+    comparison: dict[str, Any],
+) -> None:
+    r2_rows = [row for row in comparison["rows"] if row["strategy_id"] == HARD_DIV_R2]
+    unsupported = [row for row in r2_rows if row["lottery"] != "BIG_LOTTO"]
+    assert len(unsupported) == 10
+    assert {row["lottery"] for row in unsupported} == {"DAILY_539", "POWER_LOTTO_ZONE1"}
+    for row in unsupported:
+        assert row["status"] == "NOT_APPLICABLE"
+        assert row["status_reason"] == "UNSUPPORTED_LOTTERY_OR_K"
+        assert row["exact_q"] is None
+        assert row["portfolio"] is None
+        assert "native_portfolio_sha256" not in row
+    assert len(r2_rows) == 15
+
+
+def test_existing_matrix_rows_preserved_exactly(
+    comparison: dict[str, Any],
+) -> None:
+    """Verify all 342 existing rows are preserved with identical row_ids and payloads."""
+    assert len(comparison["rows"]) == 357
+    r2_row_ids = {row["row_id"] for row in comparison["rows"] if row["strategy_id"] == HARD_DIV_R2}
+    assert len(r2_row_ids) == 15
+    existing_rows = [row for row in comparison["rows"] if row["row_id"] not in r2_row_ids]
+    assert len(existing_rows) == 342
+    r1_rows = [row for row in existing_rows if row["strategy_id"] == HARD_DIV]
+    assert len(r1_rows) == 15
+    for row in r1_rows:
+        if row["status"] == "MEASURED":
+            k = row["k"]
+            assert row["exact_q"]["exact"] == HARD_DIV_FROZEN[k]["exact_q"]
+            assert row["local_optimum_status"] == "CERTIFIED_ONE_NUMBER_EXCHANGE"
+            assert row["global_optimum_status"] == "UNKNOWN"

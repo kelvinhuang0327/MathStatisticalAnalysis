@@ -86,6 +86,13 @@ CANDIDATE = "CANDIDATE_LOW_OVERLAP_V1"
 BOUNDED = "RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1"
 ONE_EXCHANGE = "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1"
 ITERATIVE = "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1"
+HARD_DIV_R2 = "HARD_DIV_PAIRWISE_OVERLAP_R2"
+HARD_DIV_RADIUS2_RECONCILIATION_PATH = Path(
+    "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json"
+)
+HARD_DIV_RADIUS2_RECONCILIATION_SHA256 = (
+    "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+)
 METHOD_IDS = (
     SIDON,
     ARM_B,
@@ -96,11 +103,12 @@ METHOD_IDS = (
     ONE_EXCHANGE,
     ITERATIVE,
     HARD_DIV,
+    HARD_DIV_R2,
     *CONSTRUCTORS,
 )
 # Methods whose supported cells are executed inline by their own canonical adapter.
 # They are therefore never "open" cells awaiting the native-coverage checkpoint.
-NATIVE_DIRECT_DISPATCH = frozenset({HARD_DIV})
+NATIVE_DIRECT_DISPATCH = frozenset({HARD_DIV, HARD_DIV_R2})
 # A portfolio hash is only comparable alongside the byte convention that produced it.
 # The Matrix's own portfolio_sha256 uses canonical_json_bytes; a native method may
 # carry a differently-canonicalized identity of the same portfolio, which is expected.
@@ -178,7 +186,7 @@ def load_matrix(root: Path) -> JsonObject:
     ids = [method["strategy_id"] for method in methods]
     if len(ids) != len(set(ids)) or set(ids) != set(METHOD_IDS):
         raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: duplicate or unknown method")
-    if len(methods) != 12 or len({method["strategy_family"] for method in methods}) != 7:
+    if len(methods) != 13 or len({method["strategy_family"] for method in methods}) != 8:
         raise ValueError("MATRIX_AUTHORITY_UNRESOLVED: method/family intake count")
     required = {
         "strategy_family",
@@ -1234,8 +1242,134 @@ def _hard_div_native_row(
     return row
 
 
+_frozen_canonical_rows_cache: dict[str, JsonObject] | None = None
+
+
+def _get_frozen_canonical_row(root: Path, row_id: str) -> JsonObject | None:
+    global _frozen_canonical_rows_cache
+    if _frozen_canonical_rows_cache is None:
+        result_path = root / RESULT_PATH
+        if not result_path.exists():
+            return None
+        try:
+            data = json.loads(result_path.read_text(encoding="utf-8"))
+            _frozen_canonical_rows_cache = {
+                entry["row_id"]: entry for entry in data.get("rows", []) if "row_id" in entry
+            }
+        except Exception:
+            _frozen_canonical_rows_cache = {}
+    return _frozen_canonical_rows_cache.get(row_id)
+
+
+def _hard_div_radius2_search_evidence(
+    k_res: JsonObject,
+    artifact: JsonObject,
+) -> JsonObject:
+    neighborhood = cast(JsonObject, k_res["neighborhood"])
+    return {
+        "neighborhood_unit": artifact["neighborhood_unit"],
+        "neighborhood_radius": 2,
+        "hard_pairwise_intersection_cap": artifact["hard_pairwise_max_intersection"],
+        "complete_endpoint_count": neighborhood["complete_endpoint_count"],
+        "hard_feasible_endpoint_count": neighborhood["hard_feasible_endpoint_count"],
+        "exact_evaluated_endpoint_count": neighborhood["exact_evaluated_endpoint_count"],
+        "accepted_move": neighborhood["accepted_move"],
+        "classification": k_res["classification"],
+        "terminal_certificate": k_res["radius2_terminal_certificate"],
+        "baseline_method_id": artifact["baseline_method_id"],
+        "baseline_portfolio_sha256": k_res["radius1_portfolio_sha256"],
+        "baseline_exact_q": k_res["radius1_q"],
+        "portfolio_hash_canonicalization": NATIVE_PORTFOLIO_HASH_CANONICALIZATION,
+        "total_draw_count": artifact["total_draw_count"],
+    }
+
+
+def _hard_div_radius2_native_row(
+    root: Path,
+    method: JsonObject,
+    lottery: str,
+    rules: LotteryRuleContract,
+    k: int,
+) -> JsonObject:
+    """Measure one HARD_DIV radius-2 cell through canonical reconciliation evidence."""
+
+    minimum_matches = NATIVE_MEASUREMENT_MINIMUM_MATCHES
+    row = _row(
+        method,
+        f"NATIVE_{lottery}",
+        lottery,
+        k,
+        scope="NATIVE_UNIFORM_WINNING_SPACE",
+        minimum_matches=minimum_matches,
+    )
+    if lottery != "BIG_LOTTO" or k not in K_SCOPE:
+        row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_LOTTERY_OR_K")
+        return row
+
+    artifact_path = root / HARD_DIV_RADIUS2_RECONCILIATION_PATH
+    if not artifact_path.exists():
+        row.update(
+            status="NOT_RUN",
+            status_reason="CANONICAL_RADIUS2_RECONCILIATION_ARTIFACT_MISSING",
+        )
+        return row
+
+    artifact_bytes = artifact_path.read_bytes()
+    artifact_sha = hashlib.sha256(artifact_bytes).hexdigest()
+    if artifact_sha != HARD_DIV_RADIUS2_RECONCILIATION_SHA256:
+        raise ValueError("RADIUS2_EVIDENCE_IDENTITY_MISMATCH: artifact sha256 mismatch")
+
+    artifact = json.loads(artifact_bytes.decode("utf-8"))
+    k_res = next((res for res in artifact["k_results"] if res["k"] == k), None)
+    if k_res is None:
+        raise ValueError(f"CANONICAL_METRIC_CONTRACT_CONFLICT: missing k={k} in radius2 artifact")
+
+    portfolio = tuple(tuple(int(num) for num in ticket) for ticket in k_res["radius2_portfolio"])
+    radius2_q = Fraction(k_res["radius2_q"]["numerator"], k_res["radius2_q"]["denominator"])
+    radius1_q = Fraction(k_res["radius1_q"]["numerator"], k_res["radius1_q"]["denominator"])
+    native_sha256 = k_res["radius2_portfolio_sha256"]
+
+    _attach_portfolio(row, rules, portfolio)
+    _attach_q(row, rules, radius2_q, radius1_q, HARD_DIV)
+    _attach_native_portfolio_hash(row, native_sha256)
+
+    if (
+        row["geometry"]["max_pairwise_overlap"] != k_res["max_pairwise_intersection"]
+        or k_res["max_pairwise_intersection"] > PAIRWISE_MAX_INTERSECTION
+    ):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: radius-2 pairwise overlap cap")
+
+    expected_delta = radius2_q - radius1_q
+    artifact_delta = Fraction(k_res["delta"]["numerator"], k_res["delta"]["denominator"])
+    if expected_delta != artifact_delta:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: radius-2 delta arithmetic")
+
+    row["local_optimum_status"] = k_res["radius2_terminal_certificate"]
+    row["proof_status"] = method["proof_status"]
+    row["global_optimum_status"] = "UNKNOWN"
+    row["search_evidence"] = _hard_div_radius2_search_evidence(k_res, artifact)
+    row["measurement_evidence"] = {
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": HARD_DIV_R2,
+        "minimum_matches": minimum_matches,
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "reconciliation_task_id": artifact["task_id"],
+    }
+    row["source_evidence"] = {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": HARD_DIV_RADIUS2_RECONCILIATION_PATH.as_posix(),
+        "sha256": HARD_DIV_RADIUS2_RECONCILIATION_SHA256,
+    }
+    return row
+
+
 def _native_rows(
-    root: Path, matrix: JsonObject, methods: Mapping[str, JsonObject]
+    root: Path,
+    matrix: JsonObject,
+    methods: Mapping[str, JsonObject],
+    *,
+    recompute_direct_dispatch: bool = False,
 ) -> list[JsonObject]:
     entries = cast(dict[str, JsonObject], matrix["native_evidence"])
     documents = _load_native_documents(root, matrix)
@@ -1256,14 +1390,20 @@ def _native_rows(
                     row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_LOTTERY_OR_K")
                     rows.append(row)
                     continue
-                if method_id in NATIVE_DIRECT_DISPATCH:
-                    # Measured inline by its own canonical adapter, so this cell is
-                    # never carried by the native-coverage checkpoint.
+                if method_id == HARD_DIV:
+                    if not recompute_direct_dispatch and (root / RESULT_PATH).exists():
+                        frozen_row = _get_frozen_canonical_row(root, row["row_id"])
+                        if frozen_row is not None:
+                            rows.append(frozen_row)
+                            continue
                     clear_cache()
                     try:
                         rows.append(_hard_div_native_row(method, lottery, rules, k))
                     finally:
                         clear_cache()
+                    continue
+                if method_id == HARD_DIV_R2:
+                    rows.append(_hard_div_radius2_native_row(root, method, lottery, rules, k))
                     continue
                 locator = _native_locator(method_id, lottery, k)
                 if locator is None:
@@ -1413,10 +1553,15 @@ def detect_gaps(rows: list[JsonObject], methods: Mapping[str, JsonObject]) -> li
         _gap(
             "SEARCH_GAPS",
             "TWO_EXCHANGE_AND_RADIUS_N",
-            "Complete radius-1 number-exchange scans and ascent.",
-            "2-exchange and explicitly defined radius-N neighborhoods.",
-            "Iterating radius 1 cannot certify or escape every radius-2 plateau; "
-            "whole-ticket sampled swaps use a different unit.",
+            (
+                "Complete radius-1 scans and exact radius-2 two-exchange local escape "
+                "for B649 (k=2, 3, 5, 10, 20)."
+            ),
+            "Arbitrary radius-N neighborhoods beyond radius 2 and cross-structure expansion.",
+            (
+                "Exact radius-2 escape is implemented for B649, but radius-N beyond 2 "
+                "remains an open search gap."
+            ),
             3,
             local,
         ),
@@ -1448,10 +1593,14 @@ def detect_gaps(rows: list[JsonObject], methods: Mapping[str, JsonObject]) -> li
     ]
 
 
-def build_comparison(root: Path) -> JsonObject:
+def build_comparison(root: Path, *, recompute_direct_dispatch: bool = False) -> JsonObject:
     matrix = load_matrix(root)
     methods = {method["strategy_id"]: method for method in matrix["methods"]}
-    rows = [*_toy_rows(methods), *_candidate_rows(methods), *_native_rows(root, matrix, methods)]
+    rows = [
+        *_toy_rows(methods),
+        *_candidate_rows(methods),
+        *_native_rows(root, matrix, methods, recompute_direct_dispatch=recompute_direct_dispatch),
+    ]
     rows.sort(key=lambda row: row["row_id"])
     if len({row["row_id"] for row in rows}) != len(rows):
         raise ValueError("duplicate canonical comparison row")

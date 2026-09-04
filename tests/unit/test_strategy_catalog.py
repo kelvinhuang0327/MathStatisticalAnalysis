@@ -18,6 +18,7 @@ from lottolab.strategies.adapters import (
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
 )
+from lottolab.strategies.adapters.biglotto_batch16 import BigLottoEvolutionEngineAdapter
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
     BigLottoHorizonMinimaxDisagreementAdapter,
 )
@@ -567,4 +568,43 @@ def test_p0_bet2_descriptor_and_adapter_identity_match_exactly() -> None:
         "evidence_status:HISTORICAL_RESEARCH_ONLY",
         "current_significance:NOT_ESTABLISHED",
         "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET2_ADAPTER_MIGRATION_R1",
+    )
+
+
+# ─── evolution engine: variable native-cardinality contract ────────────────
+
+
+def test_evolution_engine_descriptor_declares_variable_native_bounds() -> None:
+    descriptor = production_catalog().get(BigLottoEvolutionEngineAdapter.strategy_id)
+    assert descriptor.native_ticket_count == 10
+    assert descriptor.minimum_native_ticket_count == 1
+    assert descriptor.maximum_native_ticket_count == 10
+    assert descriptor.native_ticket_count_bounds == (1, 10)
+
+
+def test_evolution_engine_excluded_from_exact_native_k5_k10_k20_universe() -> None:
+    """Exact-native eligibility is the existing bounds-equality criterion."""
+
+    portfolio_descriptors = tuple(
+        descriptor
+        for descriptor in production_catalog().list(lottery_type=LotteryType.BIG_LOTTO)
+        if descriptor.response_shape is ResponseShape.PORTFOLIO
+    )
+    exact_native_ids = {
+        exact_count: {
+            descriptor.strategy_id
+            for descriptor in portfolio_descriptors
+            if descriptor.native_ticket_count_bounds == (exact_count, exact_count)
+        }
+        for exact_count in (5, 10, 20)
+    }
+
+    assert {count: len(ids) for count, ids in exact_native_ids.items()} == {
+        5: 5,
+        10: 2,
+        20: 0,
+    }
+    assert all(
+        BigLottoEvolutionEngineAdapter.strategy_id not in ids
+        for ids in exact_native_ids.values()
     )

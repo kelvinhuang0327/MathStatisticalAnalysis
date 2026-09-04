@@ -1751,6 +1751,8 @@ class BigLottoEvolutionEngineAdapter(PortfolioBetAdapter):
     min_history = _EVOLUTION_MIN_HISTORY
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
     native_ticket_count = _EVOLUTION_MAX_NATIVE_TICKET_COUNT
+    minimum_native_ticket_count = 1
+    maximum_native_ticket_count = _EVOLUTION_MAX_NATIVE_TICKET_COUNT
 
     def _predict_all(
         self,

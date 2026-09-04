@@ -31,7 +31,10 @@ from lottolab.strategies.adapters.base import (
     InsufficientHistory,
     UnsupportedLotteryType,
 )
-from lottolab.strategies.adapters.biglotto_batch16 import BigLottoTs3Markov4betAdapter
+from lottolab.strategies.adapters.biglotto_batch16 import (
+    BigLottoEvolutionEngineAdapter,
+    BigLottoTs3Markov4betAdapter,
+)
 from lottolab.strategies.catalog import production_catalog
 
 STRATEGY_ID = "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
@@ -264,3 +267,43 @@ def test_generate_portfolio_returns_complete_native_ticket_set() -> None:
     )
     assert result.status is GeneratePortfolioStatus.OK
     assert result.numbers == TS3_MARKOV4_GOLDENS[200]
+
+
+# ─── evolution engine: variable native-cardinality contract ────────────────
+
+
+def test_evolution_engine_declares_variable_native_bounds() -> None:
+    assert BigLottoEvolutionEngineAdapter.native_ticket_count_bounds() == (1, 10)
+
+
+def test_evolution_engine_accepts_exactly_five_valid_native_tickets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Exercise the base cardinality boundary without running Evolution Engine."""
+
+    controlled_portfolio = (
+        (1, 2, 3, 4, 5, 6),
+        (7, 8, 9, 10, 11, 12),
+        (13, 14, 15, 16, 17, 18),
+        (19, 20, 21, 22, 23, 24),
+        (25, 26, 27, 28, 29, 30),
+    )
+    assert len(controlled_portfolio) == 5
+
+    def _controlled_predict_all(
+        self: BigLottoEvolutionEngineAdapter,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        return controlled_portfolio
+
+    monkeypatch.setattr(
+        BigLottoEvolutionEngineAdapter,
+        "_predict_all",
+        _controlled_predict_all,
+    )
+    history = _batch16_history(BigLottoEvolutionEngineAdapter.min_history)
+    tickets = BigLottoEvolutionEngineAdapter().get_bets(history, LotteryType.BIG_LOTTO)
+
+    assert len(tickets) == 5
+    assert tickets == controlled_portfolio

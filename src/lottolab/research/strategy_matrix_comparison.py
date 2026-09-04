@@ -35,6 +35,10 @@ from lottolab.research.exact_coverage_fast_evaluator import (
     clear_cache,
     fast_exact_portfolio_coverage,
 )
+from lottolab.research.expected_max_main_matches import (
+    CoverageEvaluator,
+    expected_max_main_matches,
+)
 from lottolab.research.global_exact_coverage_solver import PAIRWISE_MAX_INTERSECTION
 from lottolab.research.greedy_min_overlap_constructor import greedy_min_overlap_portfolio
 from lottolab.research.greedy_minmax_sum_then_reuse_dispersion_constructor import (
@@ -70,6 +74,14 @@ LEDGER_PATH = Path("docs/research/cross_lottery_research_ledger_r1.json")
 RESULT_PATH = Path(
     "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json"
 )
+EXPECTED_MAX_MAIN_MATCHES_V1 = "EXPECTED_MAX_MAIN_MATCHES_V1"
+EXPECTED_MAX_EXACTNESS = "EXACT_COMBINATORIAL_EXPECTATION"
+EXPECTED_MAX_CORE_PATH = Path("src/lottolab/research/expected_max_main_matches.py")
+EXPECTED_MAX_RESULT_PATH = Path(
+    "docs/research/matrix-native-results/expected-max-main-matches-v1-result.json"
+)
+EXPECTED_MAX_CORE_HEAD = "28fe4cf978e64c526f1311be1b497fa6f325464d"
+EXPECTED_MAX_CORE_TREE = "8b95a2142506ddaec20b998fca366debd3f93b3c"
 NATIVE_MEASUREMENT_KEY = "native_coverage_r1"
 NATIVE_MEASUREMENT_PATH = Path(
     "docs/research/matrix-native-results/strategy-matrix-native-evidence-coverage-r1-result.json"
@@ -698,6 +710,77 @@ def _portfolio_from_json(value: Any) -> Portfolio:
         raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: measured portfolio is not a list")
     tickets = cast(list[list[int]], value)
     return tuple(tuple(ticket) for ticket in tickets)
+
+
+def _expected_max_coverage_evaluator(
+    pool_size: int,
+    draw_size: int,
+    minimum_matches: int,
+    portfolio: Portfolio,
+) -> Fraction:
+    """Use existing exact evaluators without expanding the threshold-1 space."""
+
+    total_draws = math.comb(pool_size, draw_size)
+    if minimum_matches == 1:
+        if not portfolio:
+            return Fraction(0)
+        covered_numbers: set[int] = set()
+        for ticket in portfolio:
+            covered_numbers.update(ticket)
+        return Fraction(
+            total_draws - math.comb(pool_size - len(covered_numbers), draw_size),
+            total_draws,
+        )
+    if minimum_matches == 2:
+        return exact_portfolio_coverage(pool_size, draw_size, minimum_matches, portfolio)
+    return fast_exact_portfolio_coverage(pool_size, draw_size, minimum_matches, portfolio)
+
+
+def _rules_for_expected_max_row(row: JsonObject) -> LotteryRuleContract:
+    lottery = row.get("lottery")
+    if isinstance(lottery, str) and lottery in RULES:
+        return RULES[lottery]
+    if lottery != "SYNTHETIC":
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: unsupported row lottery")
+    pool_size = row.get("pool_size")
+    draw_size = row.get("draw_size")
+    if type(pool_size) is not int or type(draw_size) is not int:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: synthetic row shape")
+    return replace(TOY_RULES, main_number_max=pool_size, main_number_count=draw_size)
+
+
+def _validated_portfolio_for_expected_max(
+    row: JsonObject, rules: LotteryRuleContract
+) -> Portfolio:
+    raw_portfolio = row.get("portfolio")
+    if raw_portfolio is None:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical portfolio is missing")
+    portfolio = _portfolio_from_json(raw_portfolio)
+
+    # Reuse the Matrix's single canonical legality contract before any evaluator
+    # call. The temporary row also recomputes the Matrix-owned portfolio identity.
+    validated: JsonObject = {"k": row["k"]}
+    _attach_portfolio(validated, rules, portfolio)
+    if row.get("portfolio_sha256") != validated["portfolio_sha256"]:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: portfolio hash mismatch")
+    return portfolio
+
+
+def evaluate_expected_max_main_matches(
+    row: JsonObject,
+    *,
+    evaluator: CoverageEvaluator | None = None,
+) -> Fraction:
+    """Evaluate one stored Matrix row after enforcing canonical portfolio legality."""
+
+    rules = _rules_for_expected_max_row(row)
+    portfolio = _validated_portfolio_for_expected_max(row, rules)
+    return expected_max_main_matches(
+        rules.main_number_max,
+        rules.main_number_count,
+        portfolio,
+        evaluator=evaluator or _expected_max_coverage_evaluator,
+    )
 
 
 def _measure_native_row(
@@ -1583,14 +1666,368 @@ def detect_gaps(rows: list[JsonObject], methods: Mapping[str, JsonObject]) -> li
         _gap(
             "OBJECTIVE_GAPS",
             "EXPECTED_HIT_UTILITY_CONTRACT",
-            "Uniform at-least-one-ticket coverage and frozen lexicographic geometry objectives.",
-            "A formally defined expected-hit utility objective and verified optimizer for it.",
-            "Coverage is a union probability; it is not a utility or payout expectation. "
-            "Define the contract before implementation.",
+            "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated for stored "
+            "canonical portfolios.",
+            "A dedicated optimizer that directly maximizes EXPECTED_MAX_MAIN_MATCHES_V1 "
+            "is not implemented.",
+            "The evaluation metric is applied after canonical portfolio construction and "
+            "does not replace native objectives or register a strategy.",
             None,
             [],
         ),
     ]
+
+
+def _relation(left: Fraction, right: Fraction) -> str:
+    if left > right:
+        return "A"
+    if left < right:
+        return "B"
+    return "TIE"
+
+
+def _expected_max_cell(row: JsonObject, value: Fraction) -> JsonObject:
+    return {
+        "row_id": row["row_id"],
+        "case_id": row["case_id"],
+        "lottery": row["lottery"],
+        "k": row["k"],
+        "strategy_id": row["strategy_id"],
+        "status": row["status"],
+        "minimum_matches": row["minimum_matches"],
+        "portfolio_sha256": row["portfolio_sha256"],
+        "native_method_objective": row["objective"],
+        "native_evaluation_objective": row["evaluation_objective"],
+        "native_exact_q": row["exact_q"],
+        "evaluation_metric_id": EXPECTED_MAX_MAIN_MATCHES_V1,
+        "exactness": EXPECTED_MAX_EXACTNESS,
+        "expected_max_main_matches_v1": rational(value),
+    }
+
+
+def _expected_max_discrimination(cells: list[JsonObject]) -> JsonObject:
+    grouped: dict[tuple[str, int], dict[str, JsonObject]] = {}
+    for cell in cells:
+        group_key = (cast(str, cell["lottery"]), cast(int, cell["k"]))
+        portfolio_sha256 = cast(str, cell["portfolio_sha256"])
+        portfolios = grouped.setdefault(group_key, {})
+        entry = portfolios.setdefault(
+            portfolio_sha256,
+            {
+                "expected_max": parse_rational(
+                    cast(JsonObject, cell["expected_max_main_matches_v1"])
+                ),
+                "row_ids": [],
+                "strategy_ids": [],
+                "coverage_by_minimum_matches": {},
+            },
+        )
+        expected_max = parse_rational(
+            cast(JsonObject, cell["expected_max_main_matches_v1"])
+        )
+        if entry["expected_max"] != expected_max:
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: reused expected-max value")
+        cast(list[str], entry["row_ids"]).append(cast(str, cell["row_id"]))
+        cast(list[str], entry["strategy_ids"]).append(cast(str, cell["strategy_id"]))
+        minimum_matches = cell["minimum_matches"]
+        exact_q = cell["native_exact_q"]
+        if type(minimum_matches) is int and isinstance(exact_q, dict):
+            coverage = cast(dict[int, Fraction], entry["coverage_by_minimum_matches"])
+            q = parse_rational(cast(JsonObject, exact_q))
+            previous = coverage.get(minimum_matches)
+            if previous is not None and previous != q:
+                raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: reused exact_q value")
+            coverage[minimum_matches] = q
+
+    pairs: list[JsonObject] = []
+    multiple_portfolio_groups = 0
+    comparable_groups = 0
+    metric_varies_pair_count = 0
+    comparable_pair_count = 0
+    different_relation_pair_count = 0
+    coverage_observation_counts = {"AGREE": 0, "DIFFERENT": 0}
+    separated_coverage_tie_count = 0
+    coverage_preference_with_expected_tie_count = 0
+    coverage_preference_reversed_count = 0
+    for (lottery, k), portfolios in sorted(grouped.items()):
+        ordered = sorted(portfolios.items())
+        if len(ordered) < 2:
+            continue
+        multiple_portfolio_groups += 1
+        group_has_comparable_pair = False
+        for index, (sha_a, a) in enumerate(ordered):
+            for sha_b, b in ordered[index + 1 :]:
+                expected_a = cast(Fraction, a["expected_max"])
+                expected_b = cast(Fraction, b["expected_max"])
+                expected_relation = _relation(expected_a, expected_b)
+                if expected_relation != "TIE":
+                    metric_varies_pair_count += 1
+                coverage_a = cast(dict[int, Fraction], a["coverage_by_minimum_matches"])
+                coverage_b = cast(dict[int, Fraction], b["coverage_by_minimum_matches"])
+                observations: list[JsonObject] = []
+                for minimum_matches in sorted(set(coverage_a) & set(coverage_b)):
+                    q_a = coverage_a[minimum_matches]
+                    q_b = coverage_b[minimum_matches]
+                    coverage_relation = _relation(q_a, q_b)
+                    relation_status = (
+                        "AGREE" if expected_relation == coverage_relation else "DIFFERENT"
+                    )
+                    observations.append(
+                        {
+                            "minimum_matches": minimum_matches,
+                            "coverage_a": rational(q_a),
+                            "coverage_b": rational(q_b),
+                            "coverage_relation": coverage_relation,
+                            "relation_status": relation_status,
+                        }
+                    )
+                    coverage_observation_counts[relation_status] += 1
+                    if coverage_relation == "TIE" and expected_relation != "TIE":
+                        separated_coverage_tie_count += 1
+                    if coverage_relation != "TIE" and expected_relation == "TIE":
+                        coverage_preference_with_expected_tie_count += 1
+                    if (
+                        coverage_relation != "TIE"
+                        and expected_relation != "TIE"
+                        and coverage_relation != expected_relation
+                    ):
+                        coverage_preference_reversed_count += 1
+                if observations:
+                    comparable_pair_count += 1
+                    group_has_comparable_pair = True
+                    if any(
+                        observation["relation_status"] == "DIFFERENT"
+                        for observation in observations
+                    ):
+                        different_relation_pair_count += 1
+                pairs.append(
+                    {
+                        "lottery": lottery,
+                        "k": k,
+                        "portfolio_a_sha256": sha_a,
+                        "portfolio_b_sha256": sha_b,
+                        "portfolio_a_representative_row_id": min(a["row_ids"]),
+                        "portfolio_b_representative_row_id": min(b["row_ids"]),
+                        "expected_max_a": rational(expected_a),
+                        "expected_max_b": rational(expected_b),
+                        "expected_max_relation": expected_relation,
+                        "coverage_comparison_status": (
+                            "COMPARABLE" if observations else "UNAVAILABLE"
+                        ),
+                        "coverage_observations": observations,
+                    }
+                )
+        if group_has_comparable_pair:
+            comparable_groups += 1
+
+    if comparable_pair_count == 0:
+        classification = "INSUFFICIENT_CANONICAL_PORTFOLIOS"
+    elif different_relation_pair_count:
+        classification = "DISTINCT_OBJECTIVE_SIGNAL"
+    elif metric_varies_pair_count:
+        classification = "ORDER_EQUIVALENT_ON_CURRENT_EVIDENCE"
+    else:
+        classification = "NO_DISCRIMINATION_ON_CURRENT_EVIDENCE"
+    return {
+        "overall_classification": classification,
+        "same_lottery_same_k_only": True,
+        "cross_lottery_normalization": "NOT_PERFORMED",
+        "pairwise_portfolio_pair_count": len(pairs),
+        "multiple_portfolio_group_count": multiple_portfolio_groups,
+        "comparable_group_count": comparable_groups,
+        "comparable_pair_count": comparable_pair_count,
+        "metric_varies_pair_count": metric_varies_pair_count,
+        "different_relation_pair_count": different_relation_pair_count,
+        "coverage_observation_relation_counts": coverage_observation_counts,
+        "separated_coverage_tie_count": separated_coverage_tie_count,
+        "coverage_preference_with_expected_tie_count": (
+            coverage_preference_with_expected_tie_count
+        ),
+        "coverage_preference_reversed_count": coverage_preference_reversed_count,
+        "pairwise_evidence": pairs,
+    }
+
+
+def _expected_max_gap_semantics(
+    classification: str, evidence_row_ids: list[str]
+) -> JsonObject:
+    if classification == "DISTINCT_OBJECTIVE_SIGNAL":
+        return {
+            "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
+            "contract_evaluator": "RESOLVED",
+            "remaining_prospective_gap": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER",
+            "dedicated_optimizer_implemented": False,
+            "evidence_row_ids": evidence_row_ids,
+        }
+    return {
+        "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
+        "contract_evaluator": "RESOLVED",
+        "remaining_prospective_gap": None,
+        "dedicated_optimizer_implemented": False,
+        "optimizer_work_opened": False,
+        "finding": classification,
+        "evidence_row_ids": evidence_row_ids,
+    }
+
+
+def build_expected_max_main_matches_result(root: Path) -> JsonObject:
+    """Build the focused exact metric surface from the frozen Matrix artifact.
+
+    This intentionally reads ``RESULT_PATH`` rather than calling
+    ``build_comparison``: the expected-max metric consumes complete portfolios
+    already present in canonical Matrix evidence and never reconstructs them.
+    """
+
+    matrix = load_matrix(root)
+    result_path = root / RESULT_PATH
+    if not result_path.exists():
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result is missing")
+    result_bytes = result_path.read_bytes()
+    canonical_result = cast(JsonObject, json.loads(result_bytes.decode("utf-8")))
+    if canonical_json_bytes(canonical_result) != result_bytes:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result serialization")
+    raw_rows = canonical_result.get("rows")
+    if not isinstance(raw_rows, list):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result rows")
+    rows: list[JsonObject] = []
+    for raw_row in cast(list[object], raw_rows):
+        if not isinstance(raw_row, dict):
+            raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical result row")
+        rows.append(cast(JsonObject, raw_row))
+    row_ids = [row.get("row_id") for row in rows]
+    if not all(isinstance(row_id, str) for row_id in row_ids) or len(row_ids) != len(set(row_ids)):
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: canonical row identity")
+
+    value_cache: dict[tuple[str, int, int, int, str], Fraction] = {}
+    portfolio_row_ids: dict[tuple[str, int, int, int, str], list[str]] = {}
+    evaluated_cells: list[JsonObject] = []
+    unavailable_cells: list[JsonObject] = []
+    for row in sorted(rows, key=lambda item: cast(str, item["row_id"])):
+        if row.get("portfolio") is None:
+            reason = "NO_CANONICAL_PORTFOLIO_STORED"
+            status_reason = row.get("status_reason")
+            if isinstance(status_reason, str) and status_reason:
+                reason += f":{status_reason}"
+            unavailable_cells.append(
+                {
+                    "row_id": row["row_id"],
+                    "case_id": row["case_id"],
+                    "lottery": row["lottery"],
+                    "k": row["k"],
+                    "strategy_id": row["strategy_id"],
+                    "status": row["status"],
+                    "reason": reason,
+                }
+            )
+            continue
+
+        rules = _rules_for_expected_max_row(row)
+        portfolio = _validated_portfolio_for_expected_max(row, rules)
+        portfolio_sha256 = cast(str, row["portfolio_sha256"])
+        key = (
+            cast(str, row["lottery"]),
+            cast(int, row["k"]),
+            rules.main_number_max,
+            rules.main_number_count,
+            portfolio_sha256,
+        )
+        if key not in value_cache:
+            clear_cache()
+            try:
+                value_cache[key] = expected_max_main_matches(
+                    rules.main_number_max,
+                    rules.main_number_count,
+                    portfolio,
+                    evaluator=_expected_max_coverage_evaluator,
+                )
+            finally:
+                clear_cache()
+        portfolio_row_ids.setdefault(key, []).append(cast(str, row["row_id"]))
+        evaluated_cells.append(_expected_max_cell(row, value_cache[key]))
+
+    evaluated_cells.sort(key=lambda cell: cast(str, cell["row_id"]))
+    unavailable_cells.sort(key=lambda cell: cast(str, cell["row_id"]))
+    portfolio_evaluations = [
+        {
+            "lottery": lottery,
+            "k": k,
+            "pool_size": pool_size,
+            "draw_size": draw_size,
+            "portfolio_sha256": portfolio_sha256,
+            "row_ids": sorted(portfolio_row_ids[key]),
+            "reused_row_count": len(portfolio_row_ids[key]),
+            "computed_once": True,
+            "expected_max_main_matches_v1": rational(value_cache[key]),
+        }
+        for key in sorted(value_cache)
+        for lottery, k, pool_size, draw_size, portfolio_sha256 in [key]
+    ]
+    discrimination = _expected_max_discrimination(evaluated_cells)
+    evidence_row_ids = [
+        row_id
+        for pair in discrimination["pairwise_evidence"]
+        if any(
+            observation["relation_status"] == "DIFFERENT"
+            for observation in pair["coverage_observations"]
+        )
+        for row_id in (
+            pair["portfolio_a_representative_row_id"],
+            pair["portfolio_b_representative_row_id"],
+        )
+    ]
+    discrimination["evidence_row_ids"] = sorted(set(evidence_row_ids))
+    return {
+        "task_id": "EXPECTED_HIT_UTILITY_MATRIX_INTEGRATION_R1",
+        "schema_version": "1.0.0",
+        "core_head": EXPECTED_MAX_CORE_HEAD,
+        "core_tree": EXPECTED_MAX_CORE_TREE,
+        "core": {
+            "path": EXPECTED_MAX_CORE_PATH.as_posix(),
+            "head": EXPECTED_MAX_CORE_HEAD,
+            "tree": EXPECTED_MAX_CORE_TREE,
+            "sha256": _sha256(root / EXPECTED_MAX_CORE_PATH),
+        },
+        "matrix_source": {
+            "path": Path("src/lottolab/research/strategy_matrix_comparison.py").as_posix(),
+            "sha256": _sha256(root / "src/lottolab/research/strategy_matrix_comparison.py"),
+        },
+        "input_canonical_result": {
+            "path": RESULT_PATH.as_posix(),
+            "sha256": hashlib.sha256(result_bytes).hexdigest(),
+            "task_id": canonical_result.get("task_id"),
+            "schema_version": canonical_result.get("schema_version"),
+            "base_head": canonical_result.get("base_head"),
+            "base_tree": canonical_result.get("base_tree"),
+        },
+        "matrix_intake_sha256": hashlib.sha256(canonical_json_bytes(matrix)).hexdigest(),
+        "objective": {
+            "evaluation_metric_id": EXPECTED_MAX_MAIN_MATCHES_V1,
+            "exactness": EXPECTED_MAX_EXACTNESS,
+            "definition": "E[max_t |t intersection D|]",
+            "tail_sum_identity": "sum_{m=1..draw_size} Coverage(P; m)",
+            "draw_distribution": "LEGAL_UNIFORM_MAIN_DRAW",
+            "native_method_objective_preserved": True,
+        },
+        "supported_k": list(K_SCOPE),
+        "evaluated_cell_count": len(evaluated_cells),
+        "unavailable_cell_count": len(unavailable_cells),
+        "evaluated_cells": evaluated_cells,
+        "unavailable_cells": unavailable_cells,
+        "portfolio_evaluations": portfolio_evaluations,
+        "objective_discrimination": discrimination,
+        "gap_semantics": _expected_max_gap_semantics(
+            discrimination["overall_classification"], discrimination["evidence_row_ids"]
+        ),
+        "claim_boundary": {
+            "historical_outcomes_used": "NO",
+            "historical_replay": "NOT_RUN",
+            "strategy_id_added": "NO",
+            "dedicated_optimizer_implemented": "NO",
+            "global_leaderboard": "NOT_PRODUCED",
+            "cross_lottery_normalization": "NOT_PERFORMED",
+            "production_mutation": "NONE",
+        },
+    }
 
 
 def build_comparison(root: Path, *, recompute_direct_dispatch: bool = False) -> JsonObject:

@@ -34,7 +34,6 @@ from lottolab.domain.strategies import ResponseShape
 from lottolab.strategies.adapters.base import (
     CausalDrawRow,
     InsufficientHistory,
-    InvalidOutput,
     PortfolioBetAdapter,
     UnsupportedLotteryType,
 )
@@ -367,14 +366,24 @@ def test_evolution_engine_direct_small_override_ignores_future_draws() -> None:
 def test_evolution_engine_adapter_real_defaults_at_min_history() -> None:
     """The real, shipped adapter (full defaults: 10 generations, pop 80,
     n_test 1500) at exactly ``min_history=501`` closes below 10 -- confirmed
-    deterministic (identical closure on repeat) during this task. This is
-    the single expensive (~75-80s) full-adapter run in this suite; see the
-    section note above."""
+    deterministic (identical closure on repeat) during this task. The
+    adapter declares variable ``(1, 10)`` native cardinality, so that short
+    close is legal output, not a strict-10 ``InvalidOutput`` rejection. This
+    is the single expensive (~75-80s) full-adapter run in this suite; see
+    the section note above."""
 
     history = _history(501)
     adapter = BigLottoEvolutionEngineAdapter()
-    with pytest.raises(InvalidOutput, match="expected 10 native tickets, got 5"):
-        adapter.get_bets(history, LotteryType.BIG_LOTTO)
+    minimum_count, maximum_count = adapter.native_ticket_count_bounds()
+    assert (minimum_count, maximum_count) == (1, 10)
+
+    bets = adapter.get_bets(history, LotteryType.BIG_LOTTO)
+
+    # The same deterministic closure this test has always pinned (5), now
+    # asserted as admitted output rather than via the rejection message.
+    assert len(bets) == 5
+    assert minimum_count <= len(bets) <= maximum_count
+    _assert_legal_portfolio(bets)
 
 
 def test_evolution_engine_min_history_boundary_is_exact() -> None:

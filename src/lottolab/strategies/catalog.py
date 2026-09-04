@@ -1846,6 +1846,8 @@ _PRODUCTION_DESCRIPTORS = (
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=10,
+        minimum_native_ticket_count=1,
+        maximum_native_ticket_count=10,
     ),
     StrategyDescriptor(
         strategy_id="legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",

@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from lottolab.application.use_cases.replay_exact_native_targets import (
     ReplayTargetRangeRequest,
     catalog_freeze,
@@ -52,6 +54,12 @@ def _draw_data_path() -> Path:
     return resolve_local_data_paths().database
 
 
+draw_authority_present = pytest.mark.skipif(
+    not _draw_data_path().is_file(),
+    reason="the real LottoLab draw-authority database is not present on this machine",
+)
+
+
 def _fixture_rows() -> list[dict[str, object]]:
     with FIXTURE_PATH.open("r", encoding="utf-8") as handle:
         return [json.loads(line) for line in handle if line.strip()]
@@ -75,6 +83,7 @@ def test_committed_fixture_is_140_rows_of_20_targets_by_7_bindings() -> None:
     assert all(row["schema_version"] == "B649_EXACT_NATIVE_TARGET_EVIDENCE_V1" for row in rows)
 
 
+@draw_authority_present
 def test_canonical_engine_reproduces_committed_fixture_rows_byte_identically() -> None:
     """Replays the fixture's own 20 targets (10 earliest + 10 latest of the
     full visible history) and checks every produced row against the
@@ -112,6 +121,7 @@ def test_canonical_engine_reproduces_committed_fixture_rows_byte_identically() -
         )
 
 
+@draw_authority_present
 def test_db_before_and_after_sha256_invariant_across_a_range_call(tmp_path: Path) -> None:
     db_path = _draw_data_path()
     sha_before_real = sha256_file(db_path)
@@ -131,6 +141,7 @@ def test_db_before_and_after_sha256_invariant_across_a_range_call(tmp_path: Path
     assert sha_after_real == sha_before_real
 
 
+@draw_authority_present
 def test_canonical_engine_reproduces_full_donor_evidence_byte_identically(tmp_path: Path) -> None:
     """The one required full donor parity execution: 2165 targets x 7 bindings
     = 15155 cells, byte-identical to the pinned POST-PR231 donor. Several

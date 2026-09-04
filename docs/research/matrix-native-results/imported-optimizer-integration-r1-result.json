@@ -11,7 +11,7 @@
     "predictive_advantage": "NOT_TESTED",
     "production_runtime_mutation": "NONE"
   },
-  "distinct_family_count": 7,
+  "distinct_family_count": 8,
   "exact_optimum_row_ids": [
     "TOY_14_4|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k10|m2",
     "TOY_14_4|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k20|m2",
@@ -220,11 +220,11 @@
         "TOY_14_4|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k3|m3",
         "TOY_14_4|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k5|m3"
       ],
-      "existing_capability": "Complete radius-1 number-exchange scans and ascent.",
+      "existing_capability": "Complete radius-1 scans and exact radius-2 two-exchange local escape for B649 (k=2, 3, 5, 10, 20).",
       "gap_id": "TWO_EXCHANGE_AND_RADIUS_N",
       "handoff_branch": 3,
-      "missing_capability": "2-exchange and explicitly defined radius-N neighborhoods.",
-      "why_not_duplicate": "Iterating radius 1 cannot certify or escape every radius-2 plateau; whole-ticket sampled swaps use a different unit."
+      "missing_capability": "Arbitrary radius-N neighborhoods beyond radius 2 and cross-structure expansion.",
+      "why_not_duplicate": "Exact radius-2 escape is implemented for B649, but radius-N beyond 2 remains an open search gap."
     },
     {
       "category": "OBJECTIVE_GAPS",
@@ -312,8 +312,8 @@
       "ui_implemented": false
     }
   },
-  "imported_method_count": 12,
-  "matrix_intake_sha256": "98a7163591e18747d6cb07ec0bba3d5afd9461d8623517bf0899ca269b0fca4a",
+  "imported_method_count": 13,
+  "matrix_intake_sha256": "98ac0a48499afa50259ce5d8c6a22cce8817c4afec71e471fa846dd706faa321",
   "method_families": [
     "BOUNDED_COVERAGE_SEARCH",
     "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
@@ -321,7 +321,8 @@
     "EXACT_ONE_NUMBER_EXCHANGE",
     "FROZEN_B649_CANDIDATE_SET_DIVERSIFICATION",
     "GREEDY_FULL_SPACE_OVERLAP_CONSTRUCTION",
-    "HARD_CONSTRAINED_EXACT_ONE_NUMBER_EXCHANGE"
+    "HARD_CONSTRAINED_EXACT_ONE_NUMBER_EXCHANGE",
+    "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE"
   ],
   "methods": [
     {
@@ -825,6 +826,45 @@
         "BIG_LOTTO"
       ],
       "supports_synthetic_shape": false
+    },
+    {
+      "core_correctness_test": "PASS",
+      "correctness_evidence": [
+        {
+          "path": "tests/unit/test_hard_div_exact_radius_two.py",
+          "sha256": "bc6fbbdcfe406f8b773447d0f70da8904c2b9190f9208831d71319b13c10d1f0"
+        }
+      ],
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_files": [
+        {
+          "path": "src/lottolab/research/hard_div_exact_radius_two.py",
+          "sha256": "725743051f9d15b8d57540d04a0d1ac5399ac2fbc9ce736af0100443e1dd4cc2"
+        }
+      ],
+      "source_status": "IMPLEMENTED",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "supported_k": [
+        2,
+        3,
+        5,
+        10,
+        20
+      ],
+      "supported_lottery": [
+        "BIG_LOTTO"
+      ],
+      "supports_synthetic_shape": false
     }
   ],
   "new_deterministic_comparison_row_ids": [
@@ -933,6 +973,11 @@
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k2|m3",
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k3|m3",
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k5|m3",
+    "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k10|m3",
+    "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3",
+    "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k2|m3",
+    "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k3|m3",
+    "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k2|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k3|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k5|m3",
@@ -18406,6 +18451,868 @@
     {
       "case_id": "NATIVE_BIG_LOTTO",
       "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": {
+        "denominator": 1997688,
+        "exact": "364025/1997688",
+        "numerator": 364025
+      },
+      "geometry": {
+        "coverage_concentration": 0.41724588367879334,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 1,
+        "mean_pairwise_overlap": 0.24444444444444444,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 45,
+          "exact": "11/45",
+          "numerator": 11
+        },
+        "overlap_profile": {
+          "0": 34,
+          "1": 11
+        },
+        "union_size": 49
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+        "minimum_matches": 3,
+        "reconciliation_task_id": "BIG_LOTTO_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_R1"
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          6,
+          10,
+          15,
+          23,
+          42
+        ],
+        [
+          4,
+          5,
+          7,
+          11,
+          16,
+          24
+        ],
+        [
+          5,
+          8,
+          12,
+          17,
+          18,
+          25
+        ],
+        [
+          7,
+          13,
+          18,
+          26,
+          29,
+          41
+        ],
+        [
+          9,
+          11,
+          20,
+          28,
+          40,
+          44
+        ],
+        [
+          12,
+          16,
+          21,
+          29,
+          32,
+          36
+        ],
+        [
+          14,
+          22,
+          31,
+          37,
+          45,
+          47
+        ],
+        [
+          19,
+          27,
+          33,
+          34,
+          35,
+          43
+        ],
+        [
+          30,
+          38,
+          39,
+          46,
+          48,
+          49
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "363a087f9b3f1294291c98f4353115be1031606946d25f6c56774b14261b5f49",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": {
+        "denominator": 18925227210815123131416370444785812104697344617405087907644,
+        "exact": "3245609755099340710811707686284489657738894441607314745205/18925227210815123131416370444785812104697344617405087907644",
+        "numerator": 3245609755099340710811707686284489657738894441607314745205
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 1997688,
+          "exact": "364025/1997688",
+          "numerator": 364025
+        },
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k10|m3",
+      "search_evidence": {
+        "accepted_move": false,
+        "baseline_exact_q": {
+          "denominator": 1997688,
+          "exact": "364025/1997688",
+          "numerator": 364025
+        },
+        "baseline_method_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+        "baseline_portfolio_sha256": "363a087f9b3f1294291c98f4353115be1031606946d25f6c56774b14261b5f49",
+        "classification": "NO_STRICT_IMPROVEMENT",
+        "complete_endpoint_count": 3133410,
+        "exact_evaluated_endpoint_count": 2141860,
+        "hard_feasible_endpoint_count": 2141860,
+        "hard_pairwise_intersection_cap": 1,
+        "neighborhood_radius": 2,
+        "neighborhood_unit": "TWO_LEGAL_ONE_NUMBER_EXCHANGES",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "total_draw_count": 13983816
+      },
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+        "sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 6991908,
+        "exact": "215/6991908",
+        "numerator": 215
+      },
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": {
+        "denominator": 4661272,
+        "exact": "1601841/4661272",
+        "numerator": 1601841
+      },
+      "geometry": {
+        "coverage_concentration": 0.4973901064062833,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 1,
+        "mean_pairwise_overlap": 0.48947368421052634,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 190,
+          "exact": "93/190",
+          "numerator": 93
+        },
+        "overlap_profile": {
+          "0": 97,
+          "1": 93
+        },
+        "union_size": 49
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "STRICT_IMPROVEMENT_BEST_HARD_FEASIBLE_RADIUS2_NEIGHBOR",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+        "minimum_matches": 3,
+        "reconciliation_task_id": "BIG_LOTTO_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_R1"
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          6,
+          10,
+          15,
+          23
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          3,
+          13,
+          14,
+          20,
+          36,
+          44
+        ],
+        [
+          4,
+          7,
+          11,
+          16,
+          24,
+          47
+        ],
+        [
+          4,
+          8,
+          26,
+          31,
+          37,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          27,
+          36,
+          41
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          28
+        ],
+        [
+          11,
+          12,
+          14,
+          18,
+          23,
+          31
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          32
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          17,
+          21,
+          34,
+          40,
+          44,
+          49
+        ],
+        [
+          18,
+          20,
+          24,
+          29,
+          37,
+          46
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          27,
+          35,
+          45,
+          47,
+          49
+        ],
+        [
+          27,
+          32,
+          38,
+          40,
+          42,
+          43
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "9a0c60964d3d3813ec63f021a623f15bd7129e39760b5bdb8d81ea1a89ef116e",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": {
+        "denominator": 435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388,
+        "exact": "136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745/435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388",
+        "numerator": 136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 13983816,
+          "exact": "4805093/13983816",
+          "numerator": 4805093
+        },
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3",
+      "search_evidence": {
+        "accepted_move": true,
+        "baseline_exact_q": {
+          "denominator": 13983816,
+          "exact": "4805093/13983816",
+          "numerator": 4805093
+        },
+        "baseline_method_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+        "baseline_portfolio_sha256": "36d1cd6e226b9e8b982d881854b8cf1c4c3aa90dfce22fe75ba5d8f161385ac0",
+        "classification": "STRICT_IMPROVEMENT",
+        "complete_endpoint_count": 12923220,
+        "exact_evaluated_endpoint_count": 3004689,
+        "hard_feasible_endpoint_count": 3004689,
+        "hard_pairwise_intersection_cap": 1,
+        "neighborhood_radius": 2,
+        "neighborhood_unit": "TWO_LEGAL_ONE_NUMBER_EXCHANGES",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "terminal_certificate": "STRICT_IMPROVEMENT_BEST_HARD_FEASIBLE_RADIUS2_NEIGHBOR",
+        "total_draw_count": 13983816
+      },
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+        "sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": {
+        "denominator": 582659,
+        "exact": "21702/582659",
+        "numerator": 21702
+      },
+      "geometry": {
+        "coverage_concentration": 0.4300266837899077,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 1
+        },
+        "union_size": 12
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+        "minimum_matches": 3,
+        "reconciliation_task_id": "BIG_LOTTO_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_R1"
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "2588a64fddeef6b7a66c35cfa7407f7df185daff9678d8a7632a627de7c5b3cd",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          6,
+          9,
+          14,
+          22
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "74f912d40045be7fde0bdac0e921883716123f46d2fb62d33c308d48abd7e3ae",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": {
+        "denominator": 27069088585,
+        "exact": "999600082/27069088585",
+        "numerator": 999600082
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 582659,
+          "exact": "21702/582659",
+          "numerator": 21702
+        },
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k2|m3",
+      "search_evidence": {
+        "accepted_move": false,
+        "baseline_exact_q": {
+          "denominator": 582659,
+          "exact": "21702/582659",
+          "numerator": 21702
+        },
+        "baseline_method_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+        "baseline_portfolio_sha256": "74f912d40045be7fde0bdac0e921883716123f46d2fb62d33c308d48abd7e3ae",
+        "classification": "NO_STRICT_IMPROVEMENT",
+        "complete_endpoint_count": 94170,
+        "exact_evaluated_endpoint_count": 92820,
+        "hard_feasible_endpoint_count": 92820,
+        "hard_pairwise_intersection_cap": 1,
+        "neighborhood_radius": 2,
+        "neighborhood_unit": "TWO_LEGAL_ONE_NUMBER_EXCHANGES",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "total_draw_count": 13983816
+      },
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+        "sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": {
+        "denominator": 582659,
+        "exact": "32528/582659",
+        "numerator": 32528
+      },
+      "geometry": {
+        "coverage_concentration": 0.482082114735417,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 3
+        },
+        "union_size": 18
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+        "minimum_matches": 3,
+        "reconciliation_task_id": "BIG_LOTTO_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_R1"
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "f3f8026685d58c60ddba7eb4155edbb6c05e545ba5bf693f0d57b44ddd45dadf",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          12,
+          14,
+          22
+        ],
+        [
+          6,
+          7,
+          10,
+          11,
+          15,
+          23
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "0244c201efd0b2645a0413be2cbd03ef79e68f44cef34439cda160f37e791b02",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": {
+        "denominator": 2911762307093563,
+        "exact": "159788892251374/2911762307093563",
+        "numerator": 159788892251374
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 582659,
+          "exact": "32528/582659",
+          "numerator": 32528
+        },
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k3|m3",
+      "search_evidence": {
+        "accepted_move": false,
+        "baseline_exact_q": {
+          "denominator": 582659,
+          "exact": "32528/582659",
+          "numerator": 32528
+        },
+        "baseline_method_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+        "baseline_portfolio_sha256": "0244c201efd0b2645a0413be2cbd03ef79e68f44cef34439cda160f37e791b02",
+        "classification": "NO_STRICT_IMPROVEMENT",
+        "complete_endpoint_count": 241101,
+        "exact_evaluated_endpoint_count": 237051,
+        "hard_feasible_endpoint_count": 237051,
+        "hard_pairwise_intersection_cap": 1,
+        "neighborhood_radius": 2,
+        "neighborhood_unit": "TWO_LEGAL_ONE_NUMBER_EXCHANGES",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "total_draw_count": 13983816
+      },
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+        "sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": {
+        "denominator": 582659,
+        "exact": "54130/582659",
+        "numerator": 54130
+      },
+      "geometry": {
+        "coverage_concentration": 0.48723821984952337,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 10
+        },
+        "union_size": 30
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+        "minimum_matches": 3,
+        "reconciliation_task_id": "BIG_LOTTO_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_R1"
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          14,
+          22,
+          30
+        ],
+        [
+          6,
+          10,
+          15,
+          23,
+          28,
+          29
+        ],
+        [
+          7,
+          11,
+          16,
+          19,
+          20,
+          24
+        ],
+        [
+          12,
+          17,
+          18,
+          25,
+          26,
+          27
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "cbd4c4721a4b83b05127806eafdfe0325a4f3692033686c5e1a6639da122d3e4",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": {
+        "denominator": 15816289414131626798664925023,
+        "exact": "1419959489150088733927686730/15816289414131626798664925023",
+        "numerator": 1419959489150088733927686730
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 582659,
+          "exact": "54130/582659",
+          "numerator": 54130
+        },
+        "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
+      "search_evidence": {
+        "accepted_move": false,
+        "baseline_exact_q": {
+          "denominator": 582659,
+          "exact": "54130/582659",
+          "numerator": 54130
+        },
+        "baseline_method_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+        "baseline_portfolio_sha256": "cbd4c4721a4b83b05127806eafdfe0325a4f3692033686c5e1a6639da122d3e4",
+        "classification": "NO_STRICT_IMPROVEMENT",
+        "complete_endpoint_count": 734655,
+        "exact_evaluated_endpoint_count": 721155,
+        "hard_feasible_endpoint_count": 721155,
+        "hard_pairwise_intersection_cap": 1,
+        "neighborhood_radius": 2,
+        "neighborhood_unit": "TWO_LEGAL_ONE_NUMBER_EXCHANGES",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+        "total_draw_count": 13983816
+      },
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": {
+        "dispatch": "CANONICAL_RADIUS2_RECONCILIATION_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+        "sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
         "denominator": 1747977,
         "exact": "40/1747977",
         "numerator": 40
@@ -24096,6 +25003,186 @@
       "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
       "strategy_family": "HARD_CONSTRAINED_EXACT_ONE_NUMBER_EXCHANGE",
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k10|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k2|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k3|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
       "variant": "default",
       "zone": null
     },
@@ -30272,6 +31359,186 @@
       "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
       "strategy_family": "HARD_CONSTRAINED_EXACT_ONE_NUMBER_EXCHANGE",
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k10|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k2|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k3|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "HARD_PAIRWISE_OVERLAP_AT_MOST_ONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_2_LOCAL_SEARCH",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 2,
+      "objective": "EXACT_UNIFORM_M3_PLUS_COVERAGE",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_TWO_NUMBER_EXCHANGE_LOCAL_ESCAPE",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
+      "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
       "variant": "default",
       "zone": "zone1"
     },
@@ -47633,8 +48900,8 @@
   ],
   "schema_version": "1.0.0",
   "status_counts": {
-    "MEASURED": 229,
-    "NOT_APPLICABLE": 63,
+    "MEASURED": 234,
+    "NOT_APPLICABLE": 73,
     "NOT_RUN": 0,
     "REUSED_VERIFIED": 50
   },
@@ -47728,6 +48995,16 @@
       "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
       "reference": "CYCLIC_SIDON_SHIFT_V1",
       "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k5|m3"
+    },
+    {
+      "delta": {
+        "denominator": 6991908,
+        "exact": "215/6991908",
+        "numerator": 215
+      },
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "reference": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+      "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3"
     },
     {
       "delta": {

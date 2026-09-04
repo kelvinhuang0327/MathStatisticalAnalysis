@@ -18,6 +18,7 @@ from lottolab.strategies.adapters import (
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
 )
+from lottolab.strategies.adapters.biglotto_batch16 import BigLottoEvolutionEngineAdapter
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
     BigLottoHorizonMinimaxDisagreementAdapter,
 )
@@ -568,3 +569,36 @@ def test_p0_bet2_descriptor_and_adapter_identity_match_exactly() -> None:
         "current_significance:NOT_ESTABLISHED",
         "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET2_ADAPTER_MIGRATION_R1",
     )
+
+
+# ─── evolution engine: variable native-cardinality contract ────────────────
+
+
+def test_evolution_engine_descriptor_declares_variable_native_bounds() -> None:
+    descriptor = production_catalog().get(BigLottoEvolutionEngineAdapter.strategy_id)
+    assert descriptor.native_ticket_count == 10
+    assert descriptor.minimum_native_ticket_count == 1
+    assert descriptor.maximum_native_ticket_count == 10
+    assert descriptor.native_ticket_count_bounds == (1, 10)
+
+
+def test_evolution_engine_excluded_from_exact_native_k5_k10_k20_universe() -> None:
+    """The existing exact-native eligibility rule is bounds equality: a
+    strategy is exact-native at N only when native_ticket_count_bounds ==
+    (N, N) (see StrategyDescriptor.native_ticket_count_bounds). Evolution
+    Engine's declared (1, 10) bounds must exclude it from each of the
+    K5/K10/K20 exact-native universes -- this would fail if either
+    declaration were reverted to a strict (10, 10)."""
+
+    portfolio_descriptors = tuple(
+        descriptor
+        for descriptor in production_catalog().list(lottery_type=LotteryType.BIG_LOTTO)
+        if descriptor.response_shape is ResponseShape.PORTFOLIO
+    )
+    for exact_count in (5, 10, 20):
+        exact_ids = {
+            descriptor.strategy_id
+            for descriptor in portfolio_descriptors
+            if descriptor.native_ticket_count_bounds == (exact_count, exact_count)
+        }
+        assert BigLottoEvolutionEngineAdapter.strategy_id not in exact_ids

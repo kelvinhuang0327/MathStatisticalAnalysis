@@ -123,3 +123,84 @@ def test_ticket_order_within_portfolio_is_irrelevant() -> None:
     assert expected_max_main_matches(pool_size, draw_size, a) == expected_max_main_matches(
         pool_size, draw_size, b
     )
+
+
+def test_draw_size_one() -> None:
+    pool_size, draw_size = 9, 1
+    portfolio = ((1,), (5,))
+    assert expected_max_main_matches(pool_size, draw_size, portfolio) == _brute_force_expected_max(
+        pool_size, draw_size, portfolio
+    )
+
+
+def test_pool_size_equals_draw_size() -> None:
+    # Only one legal draw exists (the whole pool), so every ticket matches
+    # it with certainty: E[max] must equal draw_size exactly.
+    pool_size = draw_size = 5
+    portfolio = ((1, 2, 3, 4, 5),)
+    assert expected_max_main_matches(pool_size, draw_size, portfolio) == Fraction(draw_size)
+    assert expected_max_main_matches(pool_size, draw_size, portfolio) == _brute_force_expected_max(
+        pool_size, draw_size, portfolio
+    )
+
+
+def test_per_threshold_coverage_is_non_increasing_in_minimum_matches() -> None:
+    # Each term of the tail sum is P(M >= m); requiring more matches can
+    # only shrink (never grow) the qualifying draw set as m increases.
+    pool_size, draw_size = 15, 5
+    portfolio = ((1, 2, 3, 4, 5), (6, 7, 8, 9, 10))
+    coverages = [
+        fast_exact_portfolio_coverage(pool_size, draw_size, m, portfolio)
+        for m in range(1, draw_size + 1)
+    ]
+    assert all(earlier >= later for earlier, later in itertools.pairwise(coverages))
+
+
+def test_out_of_range_ticket_number_does_not_raise_but_is_out_of_contract() -> None:
+    # Neither reused coverage evaluator validates ticket contents (see
+    # `bounded_coverage_optimizer.exact_portfolio_coverage` and
+    # `exact_coverage_fast_evaluator.fast_exact_portfolio_coverage`), so
+    # `expected_max_main_matches` adds none either -- it never raises for a
+    # malformed ticket. But this is *not* the same as being correct for one:
+    # the frozen contract's domain is "P = exactly-k canonical portfolio",
+    # i.e. every number already lies in `1..pool_size`, and a number outside
+    # that range is genuinely out of contract for the default evaluator --
+    # `fast_exact_portfolio_coverage` treats the ticket as its own candidate
+    # pool member when building qualifying draws, so it disagrees with both
+    # the literal `|t ∩ D|` definition and with `exact_portfolio_coverage`
+    # (which stays correct here since its bitmask approach only ever tests
+    # bits a real draw could set). This is a pre-existing characteristic of
+    # the reused evaluator, not something this composition layer introduces
+    # or is scoped to fix -- callers must only ever pass validated tickets.
+    pool_size, draw_size = 10, 3
+    portfolio = ((1, 2, 999),)
+    default_result = expected_max_main_matches(pool_size, draw_size, portfolio)
+    literal_definition = _brute_force_expected_max(pool_size, draw_size, portfolio)
+    correct_evaluator_result = expected_max_main_matches(
+        pool_size, draw_size, portfolio, evaluator=exact_portfolio_coverage
+    )
+    assert correct_evaluator_result == literal_definition
+    assert default_result != literal_definition
+
+
+def test_wrong_size_ticket_matches_literal_set_intersection_definition() -> None:
+    # A ticket with fewer distinct numbers than draw_size is not rejected
+    # either; it is scored the same as the literal definition would score
+    # it (it can never contribute more matches than it has numbers).
+    pool_size, draw_size = 10, 4
+    portfolio = ((1, 2),)
+    assert expected_max_main_matches(pool_size, draw_size, portfolio) == _brute_force_expected_max(
+        pool_size, draw_size, portfolio
+    )
+
+
+def test_duplicate_ticket_in_portfolio_is_redundant() -> None:
+    pool_size, draw_size = 12, 4
+    single = ((1, 2, 3, 4),)
+    duplicated = ((1, 2, 3, 4), (1, 2, 3, 4))
+    assert expected_max_main_matches(pool_size, draw_size, duplicated) == expected_max_main_matches(
+        pool_size, draw_size, single
+    )
+    assert expected_max_main_matches(pool_size, draw_size, duplicated) == _brute_force_expected_max(
+        pool_size, draw_size, duplicated
+    )

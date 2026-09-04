@@ -49,6 +49,17 @@ def expected_max_main_matches(
     callers evaluating many distinct portfolios should pick and manage
     caching for whichever evaluator suits their scale, the same way
     existing callers of these evaluators already do.
+
+    Neither evaluator validates `portfolio`, so this function does not
+    either -- `portfolio` must already be an exactly-`draw_size`, in-range
+    (`1..pool_size`), canonical portfolio. The default
+    (`fast_exact_portfolio_coverage`) evaluator is verified parity-equal to
+    `exact_portfolio_coverage` only on such well-formed input; given an
+    out-of-range ticket number it silently disagrees with both
+    `exact_portfolio_coverage` and the literal `|t ∩ D|` definition (see
+    `test_out_of_range_ticket_number_does_not_raise_but_is_out_of_contract`
+    in the test suite), because it treats every ticket number as if it were
+    a legal pool member when generating candidate qualifying draws.
     """
 
     total = Fraction(0)

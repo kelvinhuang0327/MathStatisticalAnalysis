@@ -16,6 +16,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    B649ExactNativeRecordReaderFactory,
     B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
@@ -39,6 +40,7 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
 )
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    PackagedB649ExactNativeRecordReader,
     PackagedB649MultiTicketRecordReader,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
@@ -119,6 +121,9 @@ def create_app(
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
+    b649_exact_native_record_reader_factory: (
+        B649ExactNativeRecordReaderFactory | None
+    ) = None,
     t539_historical_query_repository_factory: (
         T539HistoricalQueryRepositoryFactory | None
     ) = None,
@@ -151,6 +156,11 @@ def create_app(
         b649_multi_ticket_record_reader_factory
         if b649_multi_ticket_record_reader_factory is not None
         else PackagedB649MultiTicketRecordReader
+    )
+    resolved_b649_exact_native_reader_factory = (
+        b649_exact_native_record_reader_factory
+        if b649_exact_native_record_reader_factory is not None
+        else PackagedB649ExactNativeRecordReader
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -187,6 +197,7 @@ def create_app(
         create_b649_multi_ticket_records_router(
             load_full_strategy_catalog(),
             resolved_b649_reader_factory,
+            exact_native_reader_factory=resolved_b649_exact_native_reader_factory,
         )
     )
     app.include_router(

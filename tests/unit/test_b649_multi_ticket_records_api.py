@@ -1,6 +1,6 @@
 """Contract tests for the checksum-pinned B649 read-only API."""
 
-# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false
+# pyright: reportUnknownVariableType=false, reportUnknownMemberType=false, reportUnknownArgumentType=false
 # (starlette TestClient is partially untyped under the httpx v1 compatibility shim)
 
 from __future__ import annotations
@@ -271,3 +271,124 @@ def test_openapi_exposes_read_only_get_operations_and_closed_enums() -> None:
     assert parameters["prefix_count"]["required"] is True
     assert parameters["window"]["required"] is True
     assert parameters["criterion"]["required"] is True
+
+
+EXACT_NATIVE_PATH = "/api/v1/b649-exact-native-records"
+
+
+def test_exact_native_records_api_live_k2_k3() -> None:
+    client = TestClient(create_app())
+
+    # K2 query under RECENT_300
+    res_k2 = client.get(
+        EXACT_NATIVE_PATH,
+        params={"ticket_count": 2, "window": "RECENT_300", "limit": 100},
+    )
+    assert res_k2.status_code == 200
+    payload_k2 = res_k2.json()
+    assert payload_k2["total"] == 221
+    assert payload_k2["ticket_count"] == 2
+    assert payload_k2["window"] == "RECENT_300"
+    assert payload_k2["criterion"] == "OFFICIAL_ANY_PRIZE"
+    assert payload_k2["research_disclaimer"] == DISCLAIMER
+    assert len(payload_k2["items"]) == 100
+
+    # Check that ALL items have official_rank is None (strictly forbid rank fabrication)
+    for item in payload_k2["items"]:
+        assert item.get("official_rank") is None
+
+    # Find an AVAILABLE K2 record
+    avail_k2 = next(i for i in payload_k2["items"] if i["metric_status"] == "AVAILABLE")
+    assert avail_k2["rankable"] is True
+    assert avail_k2["unavailable_reason"] is None
+    assert avail_k2["unranked_reason"] == "RANKED_BACKTEST_EVIDENCE_AVAILABLE"
+    assert avail_k2["official_any_prize_rate"] is not None
+    assert len(avail_k2["official_any_prize_rate"].split(".")[1]) == 18
+    assert avail_k2["official_random_baseline_delta"] is not None
+    assert avail_k2["coverage"] is not None
+
+    # Find an UNAVAILABLE K2 record
+    unavail_k2 = next(i for i in payload_k2["items"] if i["metric_status"] == "UNAVAILABLE")
+    assert unavail_k2["rankable"] is False
+    assert unavail_k2["unavailable_reason"] is not None
+    assert unavail_k2["official_any_prize_rate"] is None
+    assert unavail_k2["official_random_baseline_delta"] is None
+
+    # K3 query under FULL
+    res_k3 = client.get(
+        EXACT_NATIVE_PATH,
+        params={"ticket_count": 3, "window": "FULL", "limit": 100},
+    )
+    assert res_k3.status_code == 200
+    payload_k3 = res_k3.json()
+    assert payload_k3["total"] == 221
+    assert payload_k3["ticket_count"] == 3
+    assert payload_k3["window"] == "FULL"
+    for item in payload_k3["items"]:
+        assert item.get("official_rank") is None
+
+
+def test_exact_native_records_validation_errors() -> None:
+    client = TestClient(create_app())
+
+    # Disallowed ticket_count (5 is legacy prefix count, not exact native 2 or 3)
+    res_5 = client.get(
+        EXACT_NATIVE_PATH,
+        params={"ticket_count": 5, "window": "RECENT_300"},
+    )
+    assert res_5.status_code == 422
+
+    # Disallowed ticket_count (1)
+    res_1 = client.get(
+        EXACT_NATIVE_PATH,
+        params={"ticket_count": 1, "window": "RECENT_300"},
+    )
+    assert res_1.status_code == 422
+
+    # Disallowed window
+    res_win = client.get(
+        EXACT_NATIVE_PATH,
+        params={"ticket_count": 2, "window": "INVALID_WINDOW"},
+    )
+    assert res_win.status_code == 422
+
+    # Missing parameters
+    res_missing = client.get(EXACT_NATIVE_PATH)
+    assert res_missing.status_code == 422
+
+
+def test_exact_native_records_unavailable_fails_closed() -> None:
+    app = FastAPI()
+    app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(),
+            None,
+            exact_native_reader_factory=None,
+        )
+    )
+    client = TestClient(app)
+    res = client.get(
+        EXACT_NATIVE_PATH,
+        params={"ticket_count": 2, "window": "RECENT_300"},
+    )
+    assert res.status_code == 503
+    assert res.json() == {
+        "error_code": "B649_EXACT_NATIVE_RECORDS_UNAVAILABLE",
+        "message": (
+            "The checksum-pinned B649 exact-native record projection is unavailable."
+        ),
+    }
+
+
+def test_exact_native_openapi_specification() -> None:
+    openapi = create_app().openapi()
+    assert set(openapi["paths"][EXACT_NATIVE_PATH]) == {"get"}
+    assert openapi["paths"][EXACT_NATIVE_PATH]["get"]["operationId"] == (
+        "listB649ExactNativeRecords"
+    )
+    parameters = {
+        parameter["name"]: parameter
+        for parameter in openapi["paths"][EXACT_NATIVE_PATH]["get"]["parameters"]
+    }
+    assert parameters["ticket_count"]["required"] is True
+    assert parameters["window"]["required"] is True

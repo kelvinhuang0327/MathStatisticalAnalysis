@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from lottolab.application.biglotto_multi_ticket_records import (
+    B649ExactNativeRecordDataset,
     B649MultiTicketRecordDataset,
 )
 from lottolab.application.draw_automation import (
@@ -224,6 +225,18 @@ class B649MultiTicketRecordReader(Protocol):
 
 
 type B649MultiTicketRecordReaderFactory = Callable[[], B649MultiTicketRecordReader]
+
+
+@runtime_checkable
+class B649ExactNativeRecordReader(Protocol):
+    """Load the one checksum-pinned exact-native K2/K3 projection without side effects."""
+
+    def read(self) -> B649ExactNativeRecordDataset:
+        """Return the complete validated exact-native projection."""
+        ...
+
+
+type B649ExactNativeRecordReaderFactory = Callable[[], B649ExactNativeRecordReader]
 
 
 @runtime_checkable

@@ -578,6 +578,19 @@ onBeforeUnmount(() => {
     <div v-else class="results-content-wrap">
       <!-- Table View -->
       <section v-if="activeViewMode === 'table'" class="table-section">
+        <div
+          v-if="selectedLottery === 'BIG_LOTTO' && (selectedTicketCount === 2 || selectedTicketCount === 3) && rawRows.length > 0"
+          class="canonical-exact-native-banner"
+          data-testid="canonical-exact-native-banner"
+        >
+          <div class="banner-icon">ℹ</div>
+          <div class="banner-body">
+            <strong>正規 {{ selectedTicketCount }} 注指標可用；官方正式排名尚未發布</strong>
+            <p>
+              本頁面顯示之 {{ selectedTicketCount }} 注指標直接讀取自官方已鎖定之正規回測記錄（無重算），保留精確小數率、基準差異與覆蓋率。由於官方正式排名尚未發布，策略不指派官方名次（以「—」表示），不可將表格排序視為官方排名。
+            </p>
+          </div>
+        </div>
         <RankingTable
           :rows="filteredRows"
           :selected-strategy-id="selectedStrategyId"
@@ -841,6 +854,37 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-4, 16px);
+}
+
+.canonical-exact-native-banner {
+  display: flex;
+  gap: 14px;
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-md, 10px);
+  padding: 14px 18px;
+  align-items: flex-start;
+  margin-bottom: var(--space-3, 12px);
+}
+
+.banner-icon {
+  font-size: 1.3rem;
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.banner-body strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text-primary, #f8fafc);
+  font-size: 0.9rem;
+}
+
+.banner-body p {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-secondary, #94a3b8);
+  line-height: 1.45;
 }
 
 .unavailable-notice-card {

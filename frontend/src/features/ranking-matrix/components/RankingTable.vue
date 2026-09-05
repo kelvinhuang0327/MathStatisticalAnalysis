@@ -25,6 +25,10 @@ const emit = defineEmits<{
   (e: 'resetSort'): void
 }>()
 
+const isFormalRankUnavailable = computed(() => {
+  return props.rows.length > 0 && props.rows.every((r) => r.officialRank === null)
+})
+
 const sortedRows = computed(() => {
   const list = [...props.rows]
   const field = props.sortField
@@ -37,6 +41,9 @@ const sortedRows = computed(() => {
         const rankA = a.officialRank ?? 999999
         const rankB = b.officialRank ?? 999999
         comparison = rankA - rankB
+        if (comparison === 0) {
+          comparison = a.strategyId.localeCompare(b.strategyId)
+        }
         break
       }
       case 'officialAnyPrizeRate': {
@@ -126,7 +133,14 @@ function getComparabilityBadgeType(status: string): 'success' | 'warning' | 'inf
     <div class="sort-status-bar" data-testid="sort-status-bar">
       <div class="sort-status-bar__info">
         <span class="sort-status-bar__label">排序模式：</span>
-        <span v-if="!isUserSorted" class="sort-status-bar__badge sort-status-bar__badge--official">
+        <span
+          v-if="!isUserSorted && isFormalRankUnavailable"
+          class="sort-status-bar__badge sort-status-bar__badge--unranked"
+          data-testid="badge-formal-rank-unavailable"
+        >
+          ℹ 正規指標可用；官方正式排名尚未發布 (Canonical metrics available; formal rank unavailable)
+        </span>
+        <span v-else-if="!isUserSorted" class="sort-status-bar__badge sort-status-bar__badge--official">
           ★ 官方正式排名 (Official Rank)
         </span>
         <span v-else class="sort-status-bar__badge sort-status-bar__badge--custom">
@@ -140,7 +154,7 @@ function getComparabilityBadgeType(status: string): 'success' | 'warning' | 'inf
         data-testid="reset-official-rank-btn"
         @click="emit('resetSort')"
       >
-        ↺ 恢復官方排名 (Reset to Official Rank)
+        {{ isFormalRankUnavailable ? '↺ 恢復預設排序' : '↺ 恢復官方排名 (Reset to Official Rank)' }}
       </button>
     </div>
 
@@ -160,7 +174,8 @@ function getComparabilityBadgeType(status: string): 'success' | 'warning' | 'inf
             data-testid="th-official-rank"
             @click="handleSort('officialRank')"
           >
-            <span>Rank {{ getSortIndicator('officialRank') }}</span>
+            <span v-if="isFormalRankUnavailable">Rank (未發布) {{ getSortIndicator('officialRank') }}</span>
+            <span v-else>Rank {{ getSortIndicator('officialRank') }}</span>
           </th>
           <th
             scope="col"
@@ -367,6 +382,12 @@ function getComparabilityBadgeType(status: string): 'success' | 'warning' | 'inf
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.sort-status-bar__badge--unranked {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .sort-reset-btn {

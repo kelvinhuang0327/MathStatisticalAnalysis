@@ -319,6 +319,145 @@
         }
       }
     },
+    "/api/v1/b649-exact-native-records": {
+      "get": {
+        "tags": [
+          "b649-multi-ticket-records"
+        ],
+        "summary": "Exact Native Records",
+        "operationId": "listB649ExactNativeRecords",
+        "parameters": [
+          {
+            "name": "ticket_count",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649ExactNativeTicketCount"
+            }
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/B649HistoryWindow"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "name": "method_family",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Family"
+            }
+          },
+          {
+            "name": "reproduction_status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "BACKTESTED",
+                    "CLOSED_UNEXECUTABLE",
+                    "DUPLICATE_ALIAS"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reproduction Status"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "default": 50,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ExactNativeRecordPageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649ExactNativeApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/strategy-evidence": {
       "get": {
         "tags": [
@@ -5749,6 +5888,394 @@
           "message"
         ],
         "title": "ApiValidationErrorResponse"
+      },
+      "B649ExactNativeApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649ExactNativeApiErrorResponse"
+      },
+      "B649ExactNativeRecordPageResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/B649ExactNativeRecordView"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit"
+          },
+          "offset": {
+            "type": "integer",
+            "title": "Offset"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "type": "string",
+            "const": "OFFICIAL_ANY_PRIZE",
+            "title": "Criterion"
+          },
+          "research_disclaimer": {
+            "type": "string",
+            "title": "Research Disclaimer"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "ticket_count",
+          "window",
+          "criterion",
+          "research_disclaimer"
+        ],
+        "title": "B649ExactNativeRecordPageResponse"
+      },
+      "B649ExactNativeRecordView": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "legacy_method_id": {
+            "type": "string",
+            "title": "Legacy Method Id"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "method_family": {
+            "type": "string",
+            "title": "Method Family"
+          },
+          "reproduction_status": {
+            "type": "string",
+            "enum": [
+              "BACKTESTED",
+              "CLOSED_UNEXECUTABLE",
+              "DUPLICATE_ALIAS"
+            ],
+            "title": "Reproduction Status"
+          },
+          "duplicate_alias_target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Alias Target"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "type": "string",
+            "const": "OFFICIAL_ANY_PRIZE",
+            "title": "Criterion"
+          },
+          "metric_status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ],
+            "title": "Metric Status"
+          },
+          "rankable": {
+            "type": "boolean",
+            "title": "Rankable"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "metrics_unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Metrics Unavailable Reason"
+          },
+          "unranked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unranked Reason"
+          },
+          "official_any_prize_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Count"
+          },
+          "official_any_prize_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Rate"
+          },
+          "official_random_baseline_probability": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Random Baseline Probability"
+          },
+          "official_random_baseline_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Random Baseline Delta"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "official_prize_counts": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/B649OfficialPrizeCountsView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "no_prize_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "No Prize Count"
+          },
+          "available_observation_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Available Observation Count"
+          },
+          "effective_backtest_draw_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective Backtest Draw Count"
+          },
+          "successful_observation_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Successful Observation Count"
+          },
+          "window_available_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Available Draws"
+          },
+          "window_requested_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Requested Draws"
+          },
+          "window_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Window Complete"
+          },
+          "native_ticket_count_classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Native Ticket Count Classification"
+          },
+          "authority_mode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Authority Mode"
+          },
+          "catalog_sha256": {
+            "type": "string",
+            "title": "Catalog Sha256"
+          },
+          "official_rank": {
+            "type": "null",
+            "title": "Official Rank"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "legacy_method_id",
+          "source_path",
+          "method_family",
+          "reproduction_status",
+          "duplicate_alias_target",
+          "ticket_count",
+          "window",
+          "criterion",
+          "metric_status",
+          "rankable",
+          "unavailable_reason",
+          "metrics_unavailable_reason",
+          "unranked_reason",
+          "official_any_prize_count",
+          "official_any_prize_rate",
+          "official_random_baseline_probability",
+          "official_random_baseline_delta",
+          "coverage",
+          "official_prize_counts",
+          "no_prize_count",
+          "available_observation_count",
+          "effective_backtest_draw_count",
+          "successful_observation_count",
+          "window_available_draws",
+          "window_requested_draws",
+          "window_complete",
+          "native_ticket_count_classification",
+          "authority_mode",
+          "catalog_sha256"
+        ],
+        "title": "B649ExactNativeRecordView"
+      },
+      "B649ExactNativeTicketCount": {
+        "type": "integer",
+        "enum": [
+          2,
+          3
+        ],
+        "title": "B649ExactNativeTicketCount"
       },
       "B649HistoryWindow": {
         "type": "string",

@@ -168,6 +168,45 @@ def test_target_windows_and_window_names_for_target() -> None:
     assert names_first == ["FULL"]
 
 
+def test_target_windows_cutoff_forward_regression_evicts_lower_bound() -> None:
+    """Advancing the cutoff by one draw must evict exactly the old lower-bound
+    member and add the new draw, for every fixed-size RECENT window, while
+    FULL only grows. This is the @115000083 -> @115000084 rolling-window
+    contract the K10 exact-native replay family depends on."""
+
+    draws = tuple(
+        Draw(str(i), date(2020, 1, 1) + timedelta(days=i), (1, 2, 3, 4, 5, 6), 7)
+        for i in range(10)
+    )
+    window_order = ("FULL", "RECENT_4", "RECENT_2")
+    window_sizes = {"FULL": None, "RECENT_4": 4, "RECENT_2": 2}
+
+    windows_before = compute_target_windows(
+        draws[:-1], window_order=window_order, window_sizes=window_sizes
+    )
+    windows_after = compute_target_windows(
+        draws, window_order=window_order, window_sizes=window_sizes
+    )
+
+    new_draw = draws[-1].draw_number
+    for name, size in (("RECENT_2", 2), ("RECENT_4", 4)):
+        members_before = set(windows_before[name]["draw_numbers"])
+        members_after = set(windows_after[name]["draw_numbers"])
+        assert len(members_before) == size
+        assert len(members_after) == size
+        evicted = members_before - members_after
+        added = members_after - members_before
+        assert added == {new_draw}
+        assert len(evicted) == 1
+        assert (members_before - evicted) | added == members_after
+
+    full_before = set(windows_before["FULL"]["draw_numbers"])
+    full_after = set(windows_after["FULL"]["draw_numbers"])
+    assert full_after - full_before == {new_draw}
+    assert full_before - full_after == set()
+    assert len(full_after) == len(full_before) + 1
+
+
 # --- deterministic serialization --------------------------------------------
 
 

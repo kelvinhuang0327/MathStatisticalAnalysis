@@ -5,7 +5,6 @@ import {
   R2_BASELINE_SNAPSHOT,
   R2_CORE_OBSERVATIONS,
   R2_OWNER_MATRIX,
-  R2_PORTFOLIO_SNAPSHOT,
   R2_REGIME_CANDIDATES,
   R2_SHORT_TERM_HIGH_COVERAGE_LEADERS,
   fetchB649OwnerRankingData,
@@ -149,27 +148,25 @@ async function load(): Promise<void> {
 }
 
 function findRecord(strategyToken: string, window: B649HistoryWindow): B649OwnerRecord | null {
-  if (strategyToken === 'portfolio_optimizer') {
-    const snapshot = R2_PORTFOLIO_SNAPSHOT[ticketCount.value]?.[window]
-    if (snapshot) {
-      return {
-        strategy_id: 'legacy_biglotto__portfolio_optimizer__1a6efc7959b6',
-        method_family: 'statistical',
-        prefix_count: ticketCount.value,
-        window,
-        official_rank: snapshot.rank,
-        official_any_prize_rate: snapshot.rate,
-        official_random_baseline_probability: null,
-        official_random_baseline_delta: snapshot.delta,
-        successful_execution_count: snapshot.observations,
-        coverage: snapshot.coverage,
-      }
-    }
-  }
   return (
     currentRecords.value.find(
       (record) => record.window === window && record.strategy_id.includes(strategyToken),
     ) ?? null
+  )
+}
+
+function strategyMethodFamily(item: {
+  full: B649OwnerRecord | null
+  recent750: B649OwnerRecord | null
+  recent300: B649OwnerRecord | null
+  recent50: B649OwnerRecord | null
+}): string {
+  return (
+    item.full?.method_family ??
+    item.recent750?.method_family ??
+    item.recent300?.method_family ??
+    item.recent50?.method_family ??
+    'R2 research annotation; canonical record unavailable.'
   )
 }
 
@@ -244,15 +241,15 @@ onBeforeUnmount(() => {
   <section class="b649-owner" aria-labelledby="b649-owner-title">
     <header class="b649-owner__heading">
       <div>
-        <p class="eyebrow">B649 · R2 Owner Ranking</p>
+        <p class="eyebrow">B649 · Canonical Records & R2 Annotations</p>
         <h1 id="b649-owner-title">B649 Owner Ranking</h1>
         <p class="b649-owner__intro">
-          Review official rank, coverage, observations, random baseline, and recent movement separately across 4 ticket counts for FULL, 750, 300, and 50 windows. This is a read-only descriptive research interface, not a new ranking system.
+          Review official rank, coverage, observations, random baseline, and recent movement separately across 4 ticket counts for FULL, 750, 300, and 50 windows. Official metrics derive strictly from canonical records; R2 annotations provide descriptive research context only.
         </p>
       </div>
       <div class="b649-owner__badges" aria-label="B649 page status">
         <span class="readonly-badge">READ ONLY</span>
-        <span class="source-badge">R2 AUTHORITY</span>
+        <span class="source-badge">CANONICAL RECORDS · R2 RESEARCH ANNOTATIONS</span>
       </div>
     </header>
 
@@ -356,12 +353,23 @@ onBeforeUnmount(() => {
               </div>
               <small>{{ highCoverageDefinition.note }}</small>
             </div>
+            <div v-else class="leader-block leader-block--comparison">
+              <span class="metric-label">high-coverage comparison</span>
+              <strong>{{ highCoverageDefinition.label }}</strong>
+              <div class="metric-line">
+                <span>—</span>
+                <span>—</span>
+                <span>— Obs.</span>
+                <span>— cov</span>
+              </div>
+              <small>{{ highCoverageDefinition.note }} · R2 research annotation; canonical record unavailable.</small>
+            </div>
           </article>
 
           <article class="owner-panel">
             <div class="owner-panel__heading">
               <div>
-                <p class="eyebrow">R2 source-derived set</p>
+                <p class="eyebrow">R2 research annotations</p>
                 <h3>Core Strategies</h3>
               </div>
             </div>
@@ -370,9 +378,10 @@ onBeforeUnmount(() => {
                 <div>
                   <strong>{{ item.metadata.label }}</strong>
                   <small>{{ item.metadata.recentDirection }}</small>
+                  <small v-if="!item.record" class="annotation-note">R2 research annotation; canonical record unavailable.</small>
                 </div>
                 <span class="compact-metric">
-                  {{ formatRank(item.record) }} · {{ formatRate(item.record?.official_any_prize_rate ?? null) }}
+                  {{ item.record ? `${formatRank(item.record)} · ${formatRate(item.record.official_any_prize_rate)}` : '—' }}
                 </span>
               </li>
             </ul>
@@ -460,14 +469,14 @@ onBeforeUnmount(() => {
       <section class="owner-section" aria-labelledby="baseline-title">
         <div class="owner-section__heading">
           <div>
-            <p class="eyebrow">Random baseline snapshot</p>
+            <p class="eyebrow">Historical R2 comparison · Non-canonical</p>
             <h2 id="baseline-title">Top 20 Strategies Outperforming Random Baseline</h2>
           </div>
-          <span class="section-note">Descriptive comparison, not future win rate</span>
+          <span class="section-note">Historical R2 research snapshot; not live canonical evidence</span>
         </div>
         <div class="owner-table-scroll" role="region" aria-label="Random baseline snapshot table" tabindex="0">
           <table class="owner-table baseline-table">
-            <caption>R2 source-derived baseline comparison displayed by ticket count.</caption>
+            <caption>Historical R2 research snapshot comparison displayed by ticket count; non-canonical reference.</caption>
             <thead>
               <tr><th scope="col">Ticket</th><th scope="col">FULL</th><th scope="col">750</th><th scope="col">300</th><th scope="col">50</th></tr>
             </thead>
@@ -507,7 +516,7 @@ onBeforeUnmount(() => {
               <tr v-for="item in matrixRows" :key="`${item.definition.prefixCount}-${item.definition.strategyToken}`">
                 <th scope="row">
                   <strong>{{ item.definition.label }}</strong>
-                  <small>{{ item.full?.method_family ?? '—' }}</small>
+                  <small>{{ strategyMethodFamily(item) }}</small>
                 </th>
                 <td>{{ formatRank(item.recent750) }}</td><td>{{ formatRank(item.recent300) }}</td><td>{{ formatRank(item.recent50) }}</td>
                 <td>{{ formatRate(item.recent750?.official_any_prize_rate ?? null) }}</td>

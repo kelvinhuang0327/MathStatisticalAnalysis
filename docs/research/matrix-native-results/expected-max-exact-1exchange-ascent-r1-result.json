@@ -1,0 +1,1251 @@
+{
+  "artifact_schema_version": "1.0.0",
+  "draw_size": 6,
+  "exposure_ladder": [
+    2,
+    3,
+    5,
+    10
+  ],
+  "four_k_classification": "CROSS_K_MIXED",
+  "frozen_semantics": {
+    "authority": "exact Fraction",
+    "lottery": "BIG_LOTTO_ONLY",
+    "method": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+    "move_acceptance": "strict best improvement only",
+    "neighborhood": "complete exact one-number exchange",
+    "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+    "radius": 1,
+    "seed": "canonical Method E",
+    "tie_break": "lexicographically smallest canonical portfolio"
+  },
+  "k_results": {
+    "10": {
+      "cache_clear_boundary": "per-slot-per-threshold base union cleared immediately after being built; per-candidate clear_cache() after every coverage_with_base call (m=2..draw_size); m=1 uses the closed-form identity and never touches the cache",
+      "delta_seed_to_terminal": {
+        "denominator": 1747977,
+        "exact": "3560/1747977",
+        "numerator": 3560
+      },
+      "draw_size": 6,
+      "elapsed_seconds": 9537.518,
+      "interrupted_and_resumed": true,
+      "iteration_count": 2,
+      "iterations": [
+        {
+          "accepted_move": true,
+          "best_neighbor_expected_max": {
+            "denominator": 3495954,
+            "exact": "7381249/3495954",
+            "numerator": 7381249
+          },
+          "best_neighbor_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              1,
+              7,
+              13,
+              19,
+              25,
+              49
+            ],
+            [
+              2,
+              8,
+              14,
+              20,
+              26,
+              49
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48
+            ]
+          ],
+          "best_neighbor_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+          "delta": {
+            "denominator": 1747977,
+            "exact": "3560/1747977",
+            "numerator": 3560
+          },
+          "input_expected_max": {
+            "denominator": 166474,
+            "exact": "351149/166474",
+            "numerator": 351149
+          },
+          "input_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48
+            ],
+            [
+              1,
+              7,
+              13,
+              19,
+              25,
+              49
+            ],
+            [
+              2,
+              8,
+              14,
+              20,
+              26,
+              31
+            ]
+          ],
+          "input_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+          "iteration_elapsed_seconds": 4107.836,
+          "iteration_index": 0,
+          "peak_rss_mb_after_iteration": 4305.5,
+          "unique_legal_neighbor_count": 2580
+        },
+        {
+          "accepted_move": false,
+          "best_neighbor_expected_max": {
+            "denominator": 3495954,
+            "exact": "7381249/3495954",
+            "numerator": 7381249
+          },
+          "best_neighbor_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              1,
+              7,
+              13,
+              19,
+              25,
+              49
+            ],
+            [
+              2,
+              8,
+              14,
+              20,
+              27,
+              49
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48
+            ]
+          ],
+          "best_neighbor_portfolio_sha256": "8e781b2ec5d8a074362ad21879d8c54aaaf6bf83fc6424a7947d1b017df4bff3",
+          "delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "input_expected_max": {
+            "denominator": 3495954,
+            "exact": "7381249/3495954",
+            "numerator": 7381249
+          },
+          "input_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              1,
+              7,
+              13,
+              19,
+              25,
+              49
+            ],
+            [
+              2,
+              8,
+              14,
+              20,
+              26,
+              49
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ],
+            [
+              31,
+              32,
+              33,
+              34,
+              35,
+              36
+            ],
+            [
+              37,
+              38,
+              39,
+              40,
+              41,
+              42
+            ],
+            [
+              43,
+              44,
+              45,
+              46,
+              47,
+              48
+            ]
+          ],
+          "input_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+          "iteration_elapsed_seconds": 5429.673,
+          "iteration_index": 1,
+          "peak_rss_mb_after_iteration": 4328.5,
+          "unique_legal_neighbor_count": 2580
+        }
+      ],
+      "k": 10,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "move_count": 1,
+      "peak_rss_mb": 4328.5,
+      "pool_size": 49,
+      "resume_provenance": {
+        "checkpoint_source": "_scratch_run/partial_k10.json",
+        "original_process_elapsed_seconds": 4107.837,
+        "original_process_iterations_completed": 1,
+        "original_process_peak_rss_mb": 4305.5,
+        "resumed_process_elapsed_seconds": 5429.681,
+        "resumed_process_peak_rss_mb": 4328.5
+      },
+      "seed_expected_max": {
+        "denominator": 166474,
+        "exact": "351149/166474",
+        "numerator": 351149
+      },
+      "seed_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          31
+        ]
+      ],
+      "seed_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+      "status": "COMPLETE",
+      "terminal_expected_max": {
+        "denominator": 3495954,
+        "exact": "7381249/3495954",
+        "numerator": 7381249
+      },
+      "terminal_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          49
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "terminal_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "terminal_unique_neighbor_count": 2580,
+      "total_neighbor_evaluations": 5160
+    },
+    "2": {
+      "cache_clear_boundary": "per-slot-per-threshold base union cleared immediately after being built; per-candidate clear_cache() after every coverage_with_base call (m=2..draw_size); m=1 uses the closed-form identity and never touches the cache",
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "draw_size": 6,
+      "elapsed_seconds": 428.755,
+      "iteration_count": 1,
+      "iterations": [
+        {
+          "accepted_move": false,
+          "best_neighbor_expected_max": {
+            "denominator": 582659,
+            "exact": "677444/582659",
+            "numerator": 677444
+          },
+          "best_neighbor_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              13
+            ]
+          ],
+          "best_neighbor_portfolio_sha256": "b6c059dff49955aec5bc2ee02d5e601176423055c39d84ca2e8eadfd4fe634d5",
+          "delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "input_expected_max": {
+            "denominator": 582659,
+            "exact": "677444/582659",
+            "numerator": 677444
+          },
+          "input_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "input_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+          "iteration_elapsed_seconds": 428.753,
+          "iteration_index": 0,
+          "peak_rss_mb_after_iteration": 1137.5,
+          "unique_legal_neighbor_count": 516
+        }
+      ],
+      "k": 2,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "move_count": 0,
+      "peak_rss_mb": 1137.5,
+      "pool_size": 49,
+      "seed_expected_max": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      },
+      "seed_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      ],
+      "seed_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+      "status": "COMPLETE",
+      "terminal_expected_max": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      },
+      "terminal_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      ],
+      "terminal_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+      "terminal_unique_neighbor_count": 516,
+      "total_neighbor_evaluations": 516
+    },
+    "3": {
+      "cache_clear_boundary": "per-slot-per-threshold base union cleared immediately after being built; per-candidate clear_cache() after every coverage_with_base call (m=2..draw_size); m=1 uses the closed-form identity and never touches the cache",
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "draw_size": 6,
+      "elapsed_seconds": 652.596,
+      "iteration_count": 1,
+      "iterations": [
+        {
+          "accepted_move": false,
+          "best_neighbor_expected_max": {
+            "denominator": 1165318,
+            "exact": "1657533/1165318",
+            "numerator": 1657533
+          },
+          "best_neighbor_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              19
+            ]
+          ],
+          "best_neighbor_portfolio_sha256": "7dc3db1ea84c485193364386f18d3041f577c7d9aa56d601d36788925c98570a",
+          "delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "input_expected_max": {
+            "denominator": 1165318,
+            "exact": "1657533/1165318",
+            "numerator": 1657533
+          },
+          "input_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ]
+          ],
+          "input_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+          "iteration_elapsed_seconds": 652.594,
+          "iteration_index": 0,
+          "peak_rss_mb_after_iteration": 2011.2,
+          "unique_legal_neighbor_count": 774
+        }
+      ],
+      "k": 3,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "move_count": 0,
+      "peak_rss_mb": 2011.2,
+      "pool_size": 49,
+      "seed_expected_max": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      },
+      "seed_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ]
+      ],
+      "seed_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+      "status": "COMPLETE",
+      "terminal_expected_max": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      },
+      "terminal_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ]
+      ],
+      "terminal_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+      "terminal_unique_neighbor_count": 774,
+      "total_neighbor_evaluations": 774
+    },
+    "5": {
+      "cache_clear_boundary": "per-slot-per-threshold base union cleared immediately after being built; per-candidate clear_cache() after every coverage_with_base call (m=2..draw_size); m=1 uses the closed-form identity and never touches the cache",
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "draw_size": 6,
+      "elapsed_seconds": 1255.08,
+      "iteration_count": 1,
+      "iterations": [
+        {
+          "accepted_move": false,
+          "best_neighbor_expected_max": {
+            "denominator": 25333,
+            "exact": "43822/25333",
+            "numerator": 43822
+          },
+          "best_neighbor_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              31
+            ]
+          ],
+          "best_neighbor_portfolio_sha256": "a124b083df644bcc0d3af58d6fac86a5347fbbaf3743f209dc75417d3ba90b50",
+          "delta": {
+            "denominator": 1,
+            "exact": "0/1",
+            "numerator": 0
+          },
+          "input_expected_max": {
+            "denominator": 25333,
+            "exact": "43822/25333",
+            "numerator": 43822
+          },
+          "input_portfolio": [
+            [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6
+            ],
+            [
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ],
+            [
+              13,
+              14,
+              15,
+              16,
+              17,
+              18
+            ],
+            [
+              19,
+              20,
+              21,
+              22,
+              23,
+              24
+            ],
+            [
+              25,
+              26,
+              27,
+              28,
+              29,
+              30
+            ]
+          ],
+          "input_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+          "iteration_elapsed_seconds": 1255.075,
+          "iteration_index": 0,
+          "peak_rss_mb_after_iteration": 2544.5,
+          "unique_legal_neighbor_count": 1290
+        }
+      ],
+      "k": 5,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "move_count": 0,
+      "peak_rss_mb": 2544.5,
+      "pool_size": 49,
+      "seed_expected_max": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      },
+      "seed_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ]
+      ],
+      "seed_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "status": "COMPLETE",
+      "terminal_expected_max": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      },
+      "terminal_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ]
+      ],
+      "terminal_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "terminal_unique_neighbor_count": 1290,
+      "total_neighbor_evaluations": 1290
+    }
+  },
+  "lottery": "BIG_LOTTO",
+  "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+  "objective_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+  "pool_size": 49,
+  "source_identities": {
+    "implementation_commit": "bc2d1154d26ae33f99c578f3c3db092405f3121a",
+    "implementation_tree": "6fa2ae6f06b6b31a34f00484dbfe0eda4758de66",
+    "optimizer_module_path": "src/lottolab/research/expected_max_main_matches_exact_1exchange_ascent.py",
+    "optimizer_module_sha256": "86ea737f3ff720cab0f30f35d375369ba2f6997464df7c7f7c9a9cef996ccfcc",
+    "test_module_path": "tests/unit/test_expected_max_main_matches_exact_1exchange_ascent.py",
+    "test_module_sha256": "2402a28553ad17dee9bd095c1f8da0e15a6f101aaec59030d296a7ac8d638aa7"
+  },
+  "summary": {
+    "10": {
+      "delta_seed_to_terminal": {
+        "denominator": 1747977,
+        "exact": "3560/1747977",
+        "numerator": 3560
+      },
+      "elapsed_seconds": 9537.518,
+      "iteration_count": 2,
+      "k": 10,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 1,
+      "peak_rss_mb": 4328.5,
+      "seed_expected_max": {
+        "denominator": 166474,
+        "exact": "351149/166474",
+        "numerator": 351149
+      },
+      "seed_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+      "terminal_expected_max": {
+        "denominator": 3495954,
+        "exact": "7381249/3495954",
+        "numerator": 7381249
+      },
+      "terminal_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "terminal_unique_neighbor_count": 2580,
+      "total_neighbor_evaluations": 5160
+    },
+    "2": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "elapsed_seconds": 428.755,
+      "iteration_count": 1,
+      "k": 2,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 0,
+      "peak_rss_mb": 1137.5,
+      "seed_expected_max": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      },
+      "seed_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+      "terminal_expected_max": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      },
+      "terminal_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+      "terminal_unique_neighbor_count": 516,
+      "total_neighbor_evaluations": 516
+    },
+    "3": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "elapsed_seconds": 652.596,
+      "iteration_count": 1,
+      "k": 3,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 0,
+      "peak_rss_mb": 2011.2,
+      "seed_expected_max": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      },
+      "seed_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+      "terminal_expected_max": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      },
+      "terminal_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+      "terminal_unique_neighbor_count": 774,
+      "total_neighbor_evaluations": 774
+    },
+    "5": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "elapsed_seconds": 1255.08,
+      "iteration_count": 1,
+      "k": 5,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 0,
+      "peak_rss_mb": 2544.5,
+      "seed_expected_max": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      },
+      "seed_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "terminal_expected_max": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      },
+      "terminal_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "terminal_unique_neighbor_count": 1290,
+      "total_neighbor_evaluations": 1290
+    }
+  }
+}

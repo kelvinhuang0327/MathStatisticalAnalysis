@@ -71,6 +71,35 @@ def _stub_problem(candidate_count: int) -> _Problem:
     )
 
 
+def _domain_with_one_dominated_candidate_and_no_mandatory() -> tuple[_Problem, tuple[bool, ...]]:
+    """4 rows, 5 candidates: P, Q, X, Y are pairwise incomparable (none dominated,
+    every row has 2 non-dominated coverers so nothing is mandatory), and Z is a
+    genuine subset of P (dominated). Because mandatory is empty, the SROM loop
+    genuinely runs and row 0 is a real stochastic draw where Z is eligible-by-
+    coverage (excluded only by the dominance check).
+
+    P={0,1}=0b0011  Q={0,2}=0b0101  X={1,3}=0b1010  Y={2,3}=0b1100  Z={0}=0b0001
+    """
+
+    candidates = ((0, 1), (0, 2), (1, 3), (2, 3), (0,))
+    coverage_masks = (0b0011, 0b0101, 0b1010, 0b1100, 0b0001)
+    problem = _Problem(
+        v=4,
+        k=2,
+        t=1,
+        candidates=candidates,
+        targets=tuple((row,) for row in range(4)),
+        candidate_count=5,
+        target_count=4,
+        coverage_masks=coverage_masks,
+        all_rows_mask=0b1111,
+        guard_identity="stub",
+    )
+    dominated = _compute_dominance(coverage_masks)
+    assert dominated == (False, False, False, False, True)  # sanity: Z is the only one
+    return problem, dominated
+
+
 # ---------------------------------------------------------------------------
 # 1. Config parameter validation
 # ---------------------------------------------------------------------------
@@ -350,7 +379,9 @@ def test_uncovered_row_draw_is_seed_reproducible() -> None:
     assert a == b
 
 
-def test_eligible_candidates_exclude_dominated_and_visited() -> None:
+def test_mandatory_preload_alone_never_contains_a_dominated_candidate() -> None:
+    # V3K2T0's mandatory preload alone already covers its single row, so this
+    # only exercises the preload path, not the SROM stochastic loop below.
     problem = _build_problem(*V3K2T0)
     dominated = _compute_dominance(problem.coverage_masks)  # (True, True, False)
     mandatory = _compute_mandatory(problem.coverage_masks, dominated, problem.target_count)
@@ -358,22 +389,36 @@ def test_eligible_candidates_exclude_dominated_and_visited() -> None:
     constructed = _construct_ant(
         problem, dominated, pheromone, mandatory, 1.0, 5.0, random.Random(1)
     )
-    # Only the sole non-dominated candidate (index 2) may ever be selected.
     assert set(constructed) == {2}
+    assert not dominated[2]
+
+
+def test_eligible_candidates_in_the_srom_loop_exclude_dominated_candidates() -> None:
+    # Unlike V3K2T0, this domain has an empty mandatory set, so every row is a
+    # genuine stochastic draw and the dominated candidate Z (index 4) is
+    # eligible-by-coverage for row 0 unless the dominance check excludes it.
+    problem, dominated = _domain_with_one_dominated_candidate_and_no_mandatory()
+    pheromone = tuple(1.0 for _ in range(problem.candidate_count))
+    for seed in range(50):
+        constructed = _construct_ant(
+            problem, dominated, pheromone, (), 1.0, 5.0, random.Random(seed)
+        )
+        assert 4 not in constructed
+        assert _covers_all_rows(problem, constructed)
 
 
 def test_mutation_dominated_candidate_never_enters_construction_despite_high_pheromone() -> None:
-    problem = _build_problem(*V3K2T0)
-    dominated = _compute_dominance(problem.coverage_masks)
-    mandatory = _compute_mandatory(problem.coverage_masks, dominated, problem.target_count)
-    # Skew pheromone so a buggy "dominated candidates are eligible" implementation
-    # would almost certainly select a dominated candidate; ours never may.
-    pheromone = (1000.0, 1000.0, 0.01)
-    for seed in range(10):
+    problem, dominated = _domain_with_one_dominated_candidate_and_no_mandatory()
+    # Skew pheromone a millionfold so a buggy "dominated candidates are
+    # eligible" implementation would select Z in roughly half of these 300
+    # seeds (empirically confirmed: 156/300 under that exact mutation); ours
+    # must select it in zero.
+    pheromone = (0.01, 0.01, 0.01, 0.01, 1_000_000.0)
+    for seed in range(300):
         constructed = _construct_ant(
-            problem, dominated, pheromone, mandatory, 1.0, 5.0, random.Random(seed)
+            problem, dominated, pheromone, (), 1.0, 5.0, random.Random(seed)
         )
-        assert set(constructed) == {2}
+        assert 4 not in constructed
 
 
 # ---------------------------------------------------------------------------
@@ -403,6 +448,54 @@ def test_eta_uses_total_row_count_not_current_uncovered_row_count() -> None:
     current_uncovered_count = bin(uncovered_mask).count("1")
     mutant_eta = (coverage_mask & uncovered_mask).bit_count() / current_uncovered_count
     assert eta != mutant_eta  # 1/4 != 1/1
+
+
+def test_construct_ant_calls_selection_weight_with_alpha_then_beta_in_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # test_selection_weight_exact_alpha_beta_equation only checks the helper in
+    # isolation with hand-picked literals; this observes what _construct_ant's
+    # one real call site actually passes, catching an argument-order swap
+    # (e.g. `_selection_weight(eta, pheromone[i], beta, alpha)`) at the call
+    # site itself, not just inside the helper.
+    problem = _build_problem(*V5K3T2)
+    dominated = _compute_dominance(problem.coverage_masks)
+    pheromone = tuple(1.0 for _ in range(problem.candidate_count))
+    captured: list[tuple[float, float]] = []
+    real_selection_weight = aco_module._selection_weight
+
+    def _recording_selection_weight(
+        eta: float, pheromone_value: float, alpha: float, beta: float
+    ) -> float:
+        captured.append((alpha, beta))
+        return real_selection_weight(eta, pheromone_value, alpha, beta)
+
+    monkeypatch.setattr(aco_module, "_selection_weight", _recording_selection_weight)
+    _construct_ant(problem, dominated, pheromone, (), 2.0, 7.0, random.Random(1))
+    assert captured  # sanity: the loop actually ran and called it at least once
+    assert all(pair == (2.0, 7.0) for pair in captured)
+
+
+def test_uncovered_row_population_is_canonical_ascending_before_every_draw(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Reproducibility tests only prove self-consistency (same seed twice); a
+    # consistently-reversed population would still pass those. This directly
+    # inspects the sequence handed to rng.choice on every stochastic row draw.
+    problem = _build_problem(*V5K3T2)
+    dominated = _compute_dominance(problem.coverage_masks)
+    pheromone = tuple(1.0 for _ in range(problem.candidate_count))
+    captured: list[tuple[int, ...]] = []
+    real_choice = random.Random.choice
+
+    def _recording_choice(self: random.Random, seq: list[int]) -> int:
+        captured.append(tuple(seq))
+        return real_choice(self, seq)
+
+    monkeypatch.setattr(random.Random, "choice", _recording_choice)
+    _construct_ant(problem, dominated, pheromone, (), 1.0, 5.0, random.Random(1))
+    assert captured  # sanity: at least one row draw happened
+    assert all(population == tuple(sorted(population)) for population in captured)
 
 
 # ---------------------------------------------------------------------------
@@ -529,6 +622,30 @@ def test_local_search_reaches_a_fixpoint_in_one_pass() -> None:
         second_pass = _local_search(problem, first_pass.kept)
         assert second_pass.removed == ()
         assert second_pass.kept == first_pass.kept
+
+
+def test_local_search_is_invoked_exactly_once_per_ant(monkeypatch: pytest.MonkeyPatch) -> None:
+    # The fixpoint test above shows a second pass would be a no-op on this
+    # suite's inputs; this directly proves _local_search is only ever called
+    # once per ant, so a chained-second-pass mutation cannot hide behind that
+    # coincidence.
+    problem = _build_problem(*V5K3T2)
+    dominated = _compute_dominance(problem.coverage_masks)
+    config = CoveringDesignACOConfig(seed=1, ant_count=3, colony_count=1, iteration_count=2)
+    call_count = 0
+    real_local_search = aco_module._local_search
+
+    def _counting_local_search(
+        problem_arg: _Problem, constructed: tuple[int, ...]
+    ) -> aco_module._AntOutcome:
+        nonlocal call_count
+        call_count += 1
+        return real_local_search(problem_arg, constructed)
+
+    monkeypatch.setattr(aco_module, "_local_search", _counting_local_search)
+    colony = _Colony(problem, dominated, (), config, random.Random(1))
+    colony.run_iteration()
+    assert call_count == config.ant_count
 
 
 def test_local_search_never_increases_cardinality() -> None:

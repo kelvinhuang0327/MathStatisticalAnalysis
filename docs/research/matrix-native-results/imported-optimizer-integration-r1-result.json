@@ -31,6 +31,7 @@
       "evidence_row_ids": [
         "EXISTING_TWO_MOVE_FIXTURE_8_4|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k2|m3",
         "EXISTING_TWO_MOVE_FIXTURE_8_4|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k2|m3",
+        "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k20|m3",
         "NATIVE_BIG_LOTTO|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k10|m3",
@@ -270,11 +271,11 @@
     {
       "category": "OBJECTIVE_GAPS",
       "evidence_row_ids": [],
-      "existing_capability": "Uniform at-least-one-ticket coverage and frozen lexicographic geometry objectives.",
+      "existing_capability": "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated and a dedicated exact radius-1 ascent optimizer (ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1) is implemented for B649 (k=2, 3, 5, 10).",
       "gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
       "handoff_branch": null,
-      "missing_capability": "A formally defined expected-hit utility objective and verified optimizer for it.",
-      "why_not_duplicate": "Coverage is a union probability; it is not a utility or payout expectation. Define the contract before implementation."
+      "missing_capability": "Cross-structure replication (Daily 539, Power Lotto Zone-1) and k=20 expansion for the dedicated expected-max optimizer.",
+      "why_not_duplicate": "Exact radius-1 local ascent is certified for Big Lotto k<=10; cross-game generality and scalable k=20 ascent remain open."
     }
   ],
   "handoffs": {
@@ -312,8 +313,8 @@
       "ui_implemented": false
     }
   },
-  "imported_method_count": 13,
-  "matrix_intake_sha256": "98ac0a48499afa50259ce5d8c6a22cce8817c4afec71e471fa846dd706faa321",
+  "imported_method_count": 14,
+  "matrix_intake_sha256": "aecec639f08d2173c67b71e1000bbcdfa7797da2cf91da27abe9fff7b7686c93",
   "method_families": [
     "BOUNDED_COVERAGE_SEARCH",
     "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
@@ -865,6 +866,44 @@
         "BIG_LOTTO"
       ],
       "supports_synthetic_shape": false
+    },
+    {
+      "core_correctness_test": "PASS",
+      "correctness_evidence": [
+        {
+          "path": "tests/unit/test_expected_max_main_matches_exact_1exchange_ascent.py",
+          "sha256": "2402a28553ad17dee9bd095c1f8da0e15a6f101aaec59030d296a7ac8d638aa7"
+        }
+      ],
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_files": [
+        {
+          "path": "src/lottolab/research/expected_max_main_matches_exact_1exchange_ascent.py",
+          "sha256": "86ea737f3ff720cab0f30f35d375369ba2f6997464df7c7f7c9a9cef996ccfcc"
+        }
+      ],
+      "source_status": "IMPLEMENTED",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "supported_k": [
+        2,
+        3,
+        5,
+        10
+      ],
+      "supported_lottery": [
+        "BIG_LOTTO"
+      ],
+      "supports_synthetic_shape": false
     }
   ],
   "new_deterministic_comparison_row_ids": [
@@ -978,6 +1017,10 @@
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k2|m3",
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k3|m3",
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
+    "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+    "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+    "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+    "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k2|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k3|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k5|m3",
@@ -19318,6 +19361,675 @@
         "numerator": 40
       },
       "deterministic": true,
+      "diversification_constraint": "NONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": {
+        "denominator": 499422,
+        "exact": "90995/499422",
+        "numerator": 90995
+      },
+      "geometry": {
+        "coverage_concentration": 0.41724588367879334,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 1,
+        "mean_pairwise_overlap": 0.24444444444444444,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 45,
+          "exact": "11/45",
+          "numerator": 11
+        },
+        "overlap_profile": {
+          "0": 34,
+          "1": 11
+        },
+        "union_size": 49
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+        "minimum_matches": 3
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          25,
+          49
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          26,
+          49
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": {
+        "denominator": 18925227210815123131416370444785812104697344617405087907644,
+        "exact": "3245609755099340710811707686284489657738894441607314745205/18925227210815123131416370444785812104697344617405087907644",
+        "numerator": 3245609755099340710811707686284489657738894441607314745205
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 1165318,
+          "exact": "212295/1165318",
+          "numerator": 212295
+        },
+        "strategy_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+      "search_evidence": {
+        "delta_seed_to_terminal": {
+          "denominator": 1747977,
+          "exact": "3560/1747977",
+          "numerator": 3560
+        },
+        "iteration_count": 2,
+        "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "move_acceptance": "strict best improvement only",
+        "move_count": 1,
+        "neighborhood_radius": 1,
+        "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "seed_expected_max": {
+          "denominator": 166474,
+          "exact": "351149/166474",
+          "numerator": 351149
+        },
+        "seed_policy": "canonical Method E",
+        "seed_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+        "terminal_expected_max": {
+          "denominator": 3495954,
+          "exact": "7381249/3495954",
+          "numerator": 7381249
+        },
+        "terminal_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+        "terminal_unique_neighbor_count": 2580,
+        "tie_break": "lexicographically smallest canonical portfolio",
+        "total_draw_count": 13983816,
+        "total_neighbor_evaluations": 5160
+      },
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "BIG_LOTTO",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": {
+        "denominator": 582659,
+        "exact": "21702/582659",
+        "numerator": 21702
+      },
+      "geometry": {
+        "coverage_concentration": 0.4300266837899077,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 1
+        },
+        "union_size": 12
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+        "minimum_matches": 3
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "274e9122ddfb87897fbba37cb7706eb6a5bffa7c5a46e30d553c416965ab4530",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": {
+        "denominator": 27069088585,
+        "exact": "999600082/27069088585",
+        "numerator": 999600082
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 582659,
+          "exact": "21702/582659",
+          "numerator": 21702
+        },
+        "strategy_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "search_evidence": {
+        "delta_seed_to_terminal": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "iteration_count": 1,
+        "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "move_acceptance": "strict best improvement only",
+        "move_count": 0,
+        "neighborhood_radius": 1,
+        "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "seed_expected_max": {
+          "denominator": 582659,
+          "exact": "677444/582659",
+          "numerator": 677444
+        },
+        "seed_policy": "canonical Method E",
+        "seed_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+        "terminal_expected_max": {
+          "denominator": 582659,
+          "exact": "677444/582659",
+          "numerator": 677444
+        },
+        "terminal_portfolio_sha256": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+        "terminal_unique_neighbor_count": 516,
+        "tie_break": "lexicographically smallest canonical portfolio",
+        "total_draw_count": 13983816,
+        "total_neighbor_evaluations": 516
+      },
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": {
+        "denominator": 582659,
+        "exact": "32528/582659",
+        "numerator": 32528
+      },
+      "geometry": {
+        "coverage_concentration": 0.482082114735417,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 3
+        },
+        "union_size": 18
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+        "minimum_matches": 3
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "1d4ab0ec2f297fb8ab3e4bcdff4d5f46b748b73c36fb90f4b8b9cabd87b53b9f",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": {
+        "denominator": 2911762307093563,
+        "exact": "159788892251374/2911762307093563",
+        "numerator": 159788892251374
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 582659,
+          "exact": "32528/582659",
+          "numerator": 32528
+        },
+        "strategy_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+      "search_evidence": {
+        "delta_seed_to_terminal": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "iteration_count": 1,
+        "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "move_acceptance": "strict best improvement only",
+        "move_count": 0,
+        "neighborhood_radius": 1,
+        "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "seed_expected_max": {
+          "denominator": 1165318,
+          "exact": "1657533/1165318",
+          "numerator": 1657533
+        },
+        "seed_policy": "canonical Method E",
+        "seed_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+        "terminal_expected_max": {
+          "denominator": 1165318,
+          "exact": "1657533/1165318",
+          "numerator": 1657533
+        },
+        "terminal_portfolio_sha256": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+        "terminal_unique_neighbor_count": 774,
+        "tie_break": "lexicographically smallest canonical portfolio",
+        "total_draw_count": 13983816,
+        "total_neighbor_evaluations": 774
+      },
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "draw_size": 6,
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": {
+        "denominator": 582659,
+        "exact": "54130/582659",
+        "numerator": 54130
+      },
+      "geometry": {
+        "coverage_concentration": 0.48723821984952337,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 10
+        },
+        "union_size": 30
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+        "minimum_matches": 3
+      },
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "native_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "aeec5eb5ba17c857189cd8f7d2eee28fb042b9e4170e2beb6884b6bc96e15b76",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": {
+        "denominator": 15816289414131626798664925023,
+        "exact": "1419959489150088733927686730/15816289414131626798664925023",
+        "numerator": 1419959489150088733927686730
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 582659,
+          "exact": "54130/582659",
+          "numerator": 54130
+        },
+        "strategy_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
+      },
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
+      "search_evidence": {
+        "delta_seed_to_terminal": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "iteration_count": 1,
+        "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "move_acceptance": "strict best improvement only",
+        "move_count": 0,
+        "neighborhood_radius": 1,
+        "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "seed_expected_max": {
+          "denominator": 25333,
+          "exact": "43822/25333",
+          "numerator": 43822
+        },
+        "seed_policy": "canonical Method E",
+        "seed_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+        "terminal_expected_max": {
+          "denominator": 25333,
+          "exact": "43822/25333",
+          "numerator": 43822
+        },
+        "terminal_portfolio_sha256": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+        "terminal_unique_neighbor_count": 1290,
+        "tie_break": "lexicographically smallest canonical portfolio",
+        "total_draw_count": 13983816,
+        "total_neighbor_evaluations": 1290
+      },
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "delta_vs_reference": {
+        "denominator": 1747977,
+        "exact": "40/1747977",
+        "numerator": 40
+      },
+      "deterministic": true,
       "diversification_constraint": "DISTINCT_TICKETS_ONLY",
       "draw_size": 6,
       "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
@@ -25183,6 +25895,186 @@
       "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
       "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": null
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "DAILY_539",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
       "variant": "default",
       "zone": null
     },
@@ -31539,6 +32431,186 @@
       "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
       "strategy_family": "HARD_CONSTRAINED_EXACT_TWO_NUMBER_EXCHANGE",
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+      "variant": "default",
+      "zone": "zone1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "NONE",
+      "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+      "exact_q": null,
+      "geometry": null,
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "POWER_LOTTO_ZONE1",
+      "method_type": "PORTFOLIO_OPTIMIZER",
+      "minimum_matches": 3,
+      "neighborhood_radius": 1,
+      "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio": null,
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "q_random_expected": null,
+      "reference": null,
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
+      "search_evidence": null,
+      "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+      "source_evidence": null,
+      "source_status": "IMPLEMENTED",
+      "status": "NOT_APPLICABLE",
+      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
       "variant": "default",
       "zone": "zone1"
     },
@@ -48900,8 +49972,8 @@
   ],
   "schema_version": "1.0.0",
   "status_counts": {
-    "MEASURED": 234,
-    "NOT_APPLICABLE": 73,
+    "MEASURED": 238,
+    "NOT_APPLICABLE": 84,
     "NOT_RUN": 0,
     "REUSED_VERIFIED": 50
   },
@@ -49005,6 +50077,16 @@
       "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
       "reference": "HARD_DIV_PAIRWISE_OVERLAP_R1",
       "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3"
+    },
+    {
+      "delta": {
+        "denominator": 1747977,
+        "exact": "40/1747977",
+        "numerator": 40
+      },
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "reference": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3"
     },
     {
       "delta": {

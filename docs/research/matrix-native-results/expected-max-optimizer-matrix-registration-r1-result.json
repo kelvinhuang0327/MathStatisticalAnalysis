@@ -1,0 +1,194 @@
+{
+  "claim_boundary": {
+    "cross_lottery_normalization": "NOT_PERFORMED",
+    "db_access": "NO",
+    "db_write": "NO",
+    "global_leaderboard": "NOT_PRODUCED",
+    "global_optimum_claimed": "NEVER_CLAIMED",
+    "historical_outcomes_used": "NO",
+    "historical_replay": "NOT_RUN",
+    "optimizer_rerun": "NO",
+    "production_mutation": "NONE",
+    "ranking": "NOT_RUN"
+  },
+  "deferred_k": [
+    20
+  ],
+  "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+  "expected_max_surface_result": {
+    "locator": "docs/research/matrix-native-results/expected-max-main-matches-v1-result.json",
+    "sha256": "a0f212fc3e2b3dd74e957245e2e2aadd726b41eee3b8bad4ef7eea17dea7caee"
+  },
+  "gap_resolution": {
+    "evaluator_status": "RESOLVED",
+    "implemented_strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+    "optimizer_gap": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER",
+    "optimizer_status": "RESOLVED",
+    "previous_gap": "EXPECTED_HIT_UTILITY_CONTRACT",
+    "remaining_prospective_gap": "CROSS_STRUCTURE_AND_K20_EXPECTED_MAX_OPTIMIZATION"
+  },
+  "matrix_comparison_result": {
+    "locator": "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json",
+    "sha256": "4358e55fb655f29e1a9b9f46a42899b859d42f6e8db3069106aeba8735d2c8a2"
+  },
+  "move_acceptance": "strict best improvement",
+  "neighborhood": "complete exact one-number exchange",
+  "neighborhood_radius": 1,
+  "objective_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+  "optimality_claim": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+  "per_k_ascent_metrics": {
+    "10": {
+      "delta_seed_to_terminal": {
+        "denominator": 1747977,
+        "exact": "3560/1747977",
+        "numerator": 3560
+      },
+      "iteration_count": 2,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 1,
+      "terminal_unique_neighbor_count": 2580,
+      "total_neighbor_evaluations": 5160
+    },
+    "2": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "iteration_count": 1,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 0,
+      "terminal_unique_neighbor_count": 516,
+      "total_neighbor_evaluations": 516
+    },
+    "3": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "iteration_count": 1,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 0,
+      "terminal_unique_neighbor_count": 774,
+      "total_neighbor_evaluations": 774
+    },
+    "5": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "iteration_count": 1,
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+      "move_count": 0,
+      "terminal_unique_neighbor_count": 1290,
+      "total_neighbor_evaluations": 1290
+    }
+  },
+  "per_k_delta_vs_reference": {
+    "10": {
+      "denominator": 1747977,
+      "exact": "40/1747977",
+      "numerator": 40
+    },
+    "2": {
+      "denominator": 1,
+      "exact": "0/1",
+      "numerator": 0
+    },
+    "3": {
+      "denominator": 1,
+      "exact": "0/1",
+      "numerator": 0
+    },
+    "5": {
+      "denominator": 1,
+      "exact": "0/1",
+      "numerator": 0
+    }
+  },
+  "per_k_exact_q": {
+    "10": {
+      "denominator": 499422,
+      "exact": "90995/499422",
+      "numerator": 90995
+    },
+    "2": {
+      "denominator": 582659,
+      "exact": "21702/582659",
+      "numerator": 21702
+    },
+    "3": {
+      "denominator": 582659,
+      "exact": "32528/582659",
+      "numerator": 32528
+    },
+    "5": {
+      "denominator": 582659,
+      "exact": "54130/582659",
+      "numerator": 54130
+    }
+  },
+  "per_k_expected_max": {
+    "10": {
+      "denominator": 3495954,
+      "exact": "7381249/3495954",
+      "numerator": 7381249
+    },
+    "2": {
+      "denominator": 582659,
+      "exact": "677444/582659",
+      "numerator": 677444
+    },
+    "3": {
+      "denominator": 1165318,
+      "exact": "1657533/1165318",
+      "numerator": 1657533
+    },
+    "5": {
+      "denominator": 25333,
+      "exact": "43822/25333",
+      "numerator": 43822
+    }
+  },
+  "per_k_portfolio_sha256": {
+    "10": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+    "2": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+    "3": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+    "5": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87"
+  },
+  "portfolio_relation_to_method_e": {
+    "10": "DISTINCT_TERMINAL_PORTFOLIO_AFTER_1_ACCEPTED_MOVE",
+    "2": "IDENTICAL_TO_METHOD_E_SEED",
+    "3": "IDENTICAL_TO_METHOD_E_SEED",
+    "5": "IDENTICAL_TO_METHOD_E_SEED"
+  },
+  "registration_status": "REGISTERED",
+  "schema_version": "1.0.0",
+  "search_class": "EXACT_LOCAL_EXPECTED_MAX_ASCENT",
+  "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+  "seed_policy": "canonical Method E",
+  "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+  "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+  "supported_k": [
+    2,
+    3,
+    5,
+    10
+  ],
+  "supported_lotteries": [
+    "BIG_LOTTO"
+  ],
+  "task_id": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER_MATRIX_REGISTRATION_R1",
+  "tie_break": "lexicographically smallest canonical portfolio",
+  "unsupported_lotteries": [
+    "DAILY_539",
+    "POWER_LOTTO_ZONE1"
+  ],
+  "upstream_authority": {
+    "classification": "CROSS_K_MIXED",
+    "locator": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+    "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+  }
+}

@@ -165,13 +165,13 @@ def _hard_div_r2_rows(comparison: dict[str, Any]) -> dict[int, dict[str, Any]]:
     return {k: by_id[row_id] for k, row_id in HARD_DIV_R2_ROW_IDS.items()}
 
 
-def test_intake_has_thirteen_methods_eight_deduplicated_families_and_full_surface(
+def test_intake_has_fourteen_methods_eight_deduplicated_families_and_full_surface(
     comparison: dict[str, Any],
 ) -> None:
     methods = comparison["methods"]
-    assert comparison["imported_method_count"] == len(methods) == 13
+    assert comparison["imported_method_count"] == len(methods) == 14
     assert comparison["distinct_family_count"] == len(comparison["method_families"]) == 8
-    assert len({method["strategy_id"] for method in methods}) == 13
+    assert len({method["strategy_id"] for method in methods}) == 14
     assert all(method.keys() >= REQUIRED_SURFACE for method in methods)
 
     bounded = next(method for method in methods if method["strategy_id"] == BOUNDED)
@@ -282,8 +282,7 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
     measured = [row for row in artifact["rows"] if row["status"] == "MEASURED"]
     not_run = [row for row in artifact["rows"] if row["status"] == "NOT_RUN"]
     assert all(
-        row["measurement_evidence"]["execution_classification"]
-        == "EXECUTED_EXISTING_NATIVE_METHOD"
+        row["measurement_evidence"]["execution_classification"] == "EXECUTED_EXISTING_NATIVE_METHOD"
         for row in measured
     )
     assert not not_run
@@ -301,9 +300,10 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
     direct_native_rows = [
         row
         for row in native_rows
-        if row["status"] == "MEASURED" and row["strategy_id"] in {HARD_DIV, HARD_DIV_R2}
+        if row["status"] == "MEASURED"
+        and row["strategy_id"] in {HARD_DIV, HARD_DIV_R2, smc.EXPECTED_MAX_EXACT_1EXCHANGE}
     ]
-    assert len(direct_native_rows) == 10
+    assert len(direct_native_rows) == 14
     assert all(
         (
             row["source_evidence"]["dispatch"] == "CANONICAL_ADAPTER_PUBLIC_API"
@@ -312,9 +312,18 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
         )
         if row["strategy_id"] == HARD_DIV
         else (
-            row["source_evidence"]["dispatch"] == "CANONICAL_RADIUS2_RECONCILIATION_RESULT"
-            and row["measurement_evidence"]["dispatch"]
-            == "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT"
+            (
+                row["source_evidence"]["dispatch"] == "CANONICAL_RADIUS2_RECONCILIATION_RESULT"
+                and row["measurement_evidence"]["dispatch"]
+                == "CANONICAL_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_ARTIFACT"
+            )
+            if row["strategy_id"] == HARD_DIV_R2
+            else (
+                row["source_evidence"]["dispatch"]
+                == "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT"
+                and row["measurement_evidence"]["dispatch"]
+                == "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT"
+            )
         )
         for row in direct_native_rows
     )
@@ -455,15 +464,18 @@ def test_matrix_and_native_portfolio_hashes_are_independent_identities(
     for k, row in _hard_div_rows(comparison).items():
         portfolio = row["portfolio"]
         # portfolio_sha256 is Matrix-owned: recomputed from the stored portfolio.
-        assert row["portfolio_sha256"] == hashlib.sha256(
-            canonical_json_bytes(portfolio)
-        ).hexdigest()
+        assert (
+            row["portfolio_sha256"] == hashlib.sha256(canonical_json_bytes(portfolio)).hexdigest()
+        )
         # native_portfolio_sha256 is carried verbatim from the adapter, under a
         # different declared byte convention, and equals the frozen value.
         assert row["native_portfolio_sha256"] == HARD_DIV_FROZEN[k]["native_sha256"]
-        assert row["native_portfolio_sha256"] == hashlib.sha256(
-            json.dumps(portfolio, separators=(",", ":")).encode("utf-8")
-        ).hexdigest()
+        assert (
+            row["native_portfolio_sha256"]
+            == hashlib.sha256(
+                json.dumps(portfolio, separators=(",", ":")).encode("utf-8")
+            ).hexdigest()
+        )
         assert (
             row["native_portfolio_sha256_canonicalization"]
             == NATIVE_PORTFOLIO_HASH_CANONICALIZATION
@@ -477,9 +489,14 @@ def test_native_hash_field_is_sparse_and_always_declares_its_canonicalization(
     comparison: dict[str, Any],
 ) -> None:
     carriers = [row for row in comparison["rows"] if "native_portfolio_sha256" in row]
-    # Direct-dispatch methods (HARD_DIV and HARD_DIV_R2) carry a native identity today.
-    assert {row["strategy_id"] for row in carriers} == {HARD_DIV, HARD_DIV_R2}
-    assert len(carriers) == 10
+    # Direct-dispatch methods (HARD_DIV, HARD_DIV_R2, and EXPECTED_MAX_EXACT_1EXCHANGE)
+    # carry a native identity today.
+    assert {row["strategy_id"] for row in carriers} == {
+        HARD_DIV,
+        HARD_DIV_R2,
+        smc.EXPECTED_MAX_EXACT_1EXCHANGE,
+    }
+    assert len(carriers) == 14
     for row in carriers:
         assert "native_portfolio_sha256_canonicalization" in row
         # Every adapter-provided hash declares its convention, including the baseline/seed
@@ -489,12 +506,12 @@ def test_native_hash_field_is_sparse_and_always_declares_its_canonicalization(
             evidence.get("seed_portfolio_sha256") is not None
             or evidence.get("baseline_portfolio_sha256") is not None
         )
-        assert (
-            evidence["portfolio_hash_canonicalization"] == NATIVE_PORTFOLIO_HASH_CANONICALIZATION
-        )
+        assert evidence["portfolio_hash_canonicalization"] == NATIVE_PORTFOLIO_HASH_CANONICALIZATION
     # Every pre-existing non-direct-dispatch row is untouched by the new field.
     others = [
-        row for row in comparison["rows"] if row["strategy_id"] not in {HARD_DIV, HARD_DIV_R2}
+        row
+        for row in comparison["rows"]
+        if row["strategy_id"] not in {HARD_DIV, HARD_DIV_R2, smc.EXPECTED_MAX_EXACT_1EXCHANGE}
     ]
     assert others
     assert not any("native_portfolio_sha256" in row for row in others)
@@ -508,9 +525,10 @@ def test_every_matrix_portfolio_hash_is_self_consistent(comparison: dict[str, An
     for row in comparison["rows"]:
         if row.get("portfolio") is None:
             continue
-        assert row["portfolio_sha256"] == hashlib.sha256(
-            canonical_json_bytes(row["portfolio"])
-        ).hexdigest()
+        assert (
+            row["portfolio_sha256"]
+            == hashlib.sha256(canonical_json_bytes(row["portfolio"])).hexdigest()
+        )
         checked += 1
     assert checked >= 224
 
@@ -698,11 +716,21 @@ def test_hard_div_r2_unsupported_cells_are_not_applicable(
 def test_existing_matrix_rows_preserved_exactly(
     comparison: dict[str, Any],
 ) -> None:
-    """Verify all 342 existing rows are preserved with identical row_ids and payloads."""
-    assert len(comparison["rows"]) == 357
+    """Verify all 357 existing rows are preserved with identical row_ids and payloads."""
+    assert len(comparison["rows"]) == 372
+    exp_max_row_ids = {
+        row["row_id"]
+        for row in comparison["rows"]
+        if row["strategy_id"] == smc.EXPECTED_MAX_EXACT_1EXCHANGE
+    }
+    assert len(exp_max_row_ids) == 15
     r2_row_ids = {row["row_id"] for row in comparison["rows"] if row["strategy_id"] == HARD_DIV_R2}
     assert len(r2_row_ids) == 15
-    existing_rows = [row for row in comparison["rows"] if row["row_id"] not in r2_row_ids]
+    existing_rows = [
+        row
+        for row in comparison["rows"]
+        if row["row_id"] not in r2_row_ids and row["row_id"] not in exp_max_row_ids
+    ]
     assert len(existing_rows) == 342
     r1_rows = [row for row in existing_rows if row["strategy_id"] == HARD_DIV]
     assert len(r1_rows) == 15

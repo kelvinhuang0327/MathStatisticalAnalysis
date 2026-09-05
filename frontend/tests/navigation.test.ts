@@ -301,6 +301,7 @@ describe('App navigation', () => {
       'Data Operations',
       'History',
       'Best Replay',
+      'Replay Overview',
       'Strategy Intelligence',
       'B649 Replay',
       'P638 Replay',
@@ -308,6 +309,16 @@ describe('App navigation', () => {
       'Future Modules',
     ])
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
+
+    window.location.hash = '#/replay-overview'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#replay-overview-title').exists()).toBe(true)
+    expect(
+      navigation
+        .find('a[href="#/replay-overview"]')
+        .attributes('aria-current'),
+    ).toBe('page')
 
     window.location.hash = '#/historical-success-windows'
     window.dispatchEvent(new HashChangeEvent('hashchange'))

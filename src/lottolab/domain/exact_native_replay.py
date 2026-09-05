@@ -20,7 +20,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date
-from typing import cast
+from typing import Protocol, cast
 
 from lottolab.domain.strategies import ResponseShape, StrategyDescriptor
 
@@ -71,7 +71,20 @@ class RuntimeBinding:
     binding_error: str | None
 
 
-def assert_causal_history(target: Draw, history: Sequence[Draw]) -> None:
+class CausalOrderable(Protocol):
+    """Structural protocol for any draw object exposing a sort_key and draw_number."""
+
+    @property
+    def sort_key(self) -> tuple[date, int]: ...
+
+    @property
+    def draw_number(self) -> str: ...
+
+
+def assert_causal_history(
+    target: CausalOrderable,
+    history: Sequence[CausalOrderable],
+) -> None:
     """Reject any history row at or after the target draw's ordering key."""
 
     if any(draw.sort_key >= target.sort_key for draw in history):
@@ -202,6 +215,7 @@ __all__ = [
     "DEFAULT_NATIVE_TICKET_COUNTS",
     "DEFAULT_WINDOW_ORDER",
     "DEFAULT_WINDOW_SIZES",
+    "CausalOrderable",
     "Draw",
     "ExactNativeReplayError",
     "RuntimeBinding",

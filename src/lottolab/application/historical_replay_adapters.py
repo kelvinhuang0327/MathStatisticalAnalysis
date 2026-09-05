@@ -22,6 +22,7 @@ from lottolab.domain.historical_replay import (
     ReplayStrategy,
     ReplayTicket,
 )
+from lottolab.domain.exact_native_replay import assert_causal_history
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
 from lottolab.strategies.adapters.base import BetAdapterExecution, CausalDrawRow
 from lottolab.strategies.adapters.daily539_portfolio_f4cold import Daily539F4ColdAdapter
@@ -254,6 +255,7 @@ class BigLottoReplayAdapter(_PrizeEvaluatingAdapter):
     ) -> int:
         """Return a source-native target count when a binding supplies one."""
 
+        assert_causal_history(target, history)
         implementation = self._binding(strategy).implementation
         resolver = cast(
             Callable[[ReplayStrategy, tuple[ReplayDraw, ...], ReplayDraw], int] | None,
@@ -269,6 +271,7 @@ class BigLottoReplayAdapter(_PrizeEvaluatingAdapter):
         history: tuple[ReplayDraw, ...],
         target: ReplayDraw,
     ) -> tuple[ReplayTicket, ...]:
+        assert_causal_history(target, history)
         binding = self._binding(strategy)
         implementation = binding.implementation
 

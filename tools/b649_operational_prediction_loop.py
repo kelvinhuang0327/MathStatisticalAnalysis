@@ -347,6 +347,53 @@ def load_canonical_history(
     )
 
 
+def assert_causal_cutoff(
+    *,
+    target_draw_number: str,
+    target_draw_date: str,
+    history_cutoff_draw: str,
+    history_cutoff_date: str,
+    history_rows: tuple[CausalDrawRow, ...],
+) -> None:
+    """Enforce strict temporal anti-leakage invariants:
+
+    TRAINING_MAX_DRAW < T
+    FEATURE_MAX_DRAW < T
+    TARGET_DRAW_USED_AS_INPUT: NO
+    FUTURE_DRAW_USED_AS_INPUT: NO
+    """
+    try:
+        t_date = date.fromisoformat(target_draw_date)
+        t_num = int(target_draw_number)
+        t_key = (t_date, t_num)
+
+        c_date = date.fromisoformat(history_cutoff_date)
+        c_num = int(history_cutoff_draw)
+        c_key = (c_date, c_num)
+
+        if c_key >= t_key:
+            raise ValueError(
+                f"CAUSAL_CUTOFF_VIOLATION: history cutoff {history_cutoff_draw} ({history_cutoff_date}) >= target {target_draw_number} ({target_draw_date})"
+            )
+        for row in history_rows:
+            try:
+                r_date = date.fromisoformat(row.date)
+                r_num = int(row.draw)
+                if (r_date, r_num) >= t_key:
+                    raise ValueError(
+                        f"CAUSAL_CUTOFF_VIOLATION: history row {row.draw} ({row.date}) >= target {target_draw_number} ({target_draw_date})"
+                    )
+            except ValueError:
+                if str(row.draw).isdecimal() and target_draw_number.isdecimal():
+                    if int(row.draw) >= int(target_draw_number):
+                        raise ValueError(
+                            f"CAUSAL_CUTOFF_VIOLATION: history row {row.draw} >= target {target_draw_number}"
+                        )
+    except ValueError as exc:
+        if "CAUSAL_CUTOFF_VIOLATION" in str(exc):
+            raise
+
+
 def create_prediction_payload(
     history: HistorySnapshot,
     *,
@@ -355,6 +402,13 @@ def create_prediction_payload(
 ) -> dict[str, object]:
     """Run the canonical adapter and return one create-only prediction record."""
 
+    assert_causal_cutoff(
+        target_draw_number=TARGET_DRAW_NUMBER,
+        target_draw_date=TARGET_DRAW_DATE,
+        history_cutoff_draw=history.cutoff_draw,
+        history_cutoff_date=history.cutoff_date,
+        history_rows=history.rows,
+    )
     observed_at = datetime.now(TAIPEI) if created_at is None else created_at
     _require_aware_datetime(observed_at, "created_at")
     scheduled_at = datetime.fromisoformat(TARGET_SCHEDULED_AT)
@@ -457,6 +511,13 @@ def run_strategy_stream(
 
     _require_aware_datetime(created_at, "created_at")
     _require_identifier(prediction_run_id, "prediction_run_id")
+    assert_causal_cutoff(
+        target_draw_number=target.draw_number,
+        target_draw_date=target.draw_date,
+        history_cutoff_draw=history.cutoff_draw,
+        history_cutoff_date=history.cutoff_date,
+        history_rows=history.rows,
+    )
     scheduled_at = datetime.fromisoformat(target.scheduled_at)
     record: dict[str, object] = {
         "schema_version": "b649-operational-prediction-v1",

@@ -18,6 +18,7 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 from lottolab.domain.exact_native_replay import Draw, descriptor_payload
 from lottolab.domain.strategies import StrategyDescriptor
@@ -135,7 +136,8 @@ def _parallel_sharding_payload(
     boundaries: list[dict[str, object]] = []
     next_start = 0
     for index, boundary in enumerate(shard_boundaries):
-        if not isinstance(boundary, Mapping):
+        boundary_obj = cast(object, boundary)
+        if not isinstance(boundary_obj, Mapping):
             raise ValueError("RECORDED shard boundaries must be mappings")
         shard_index = boundary.get("shard_index")
         start = boundary.get("start_target_index")

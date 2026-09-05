@@ -104,6 +104,65 @@ def build_catalog_universe_payload(
     return payload
 
 
+def _parallel_sharding_payload(
+    *,
+    provenance_status: str,
+    shard_count: int | None,
+    shard_boundaries: Sequence[Mapping[str, object]] | None,
+    visible_draw_count: int,
+) -> dict[str, object]:
+    """Describe physical execution provenance without reconstructing missing history."""
+
+    if provenance_status == "NOT_RECORDED":
+        if shard_count is not None or shard_boundaries is not None:
+            raise ValueError("NOT_RECORDED requires null shard_count and shard_boundaries")
+        return {
+            "provenance_status": "NOT_RECORDED",
+            "shard_count": None,
+            "shard_boundaries": None,
+        }
+    if provenance_status != "RECORDED":
+        raise ValueError("provenance_status must be RECORDED or NOT_RECORDED")
+    if type(shard_count) is not int or shard_count < 1:
+        raise ValueError("RECORDED requires integer shard_count >= 1")
+    if (
+        not isinstance(shard_boundaries, Sequence)
+        or isinstance(shard_boundaries, (str, bytes))
+        or len(shard_boundaries) != shard_count
+    ):
+        raise ValueError("RECORDED requires one boundary per shard")
+
+    boundaries: list[dict[str, object]] = []
+    next_start = 0
+    for index, boundary in enumerate(shard_boundaries):
+        if not isinstance(boundary, Mapping):
+            raise ValueError("RECORDED shard boundaries must be mappings")
+        shard_index = boundary.get("shard_index")
+        start = boundary.get("start_target_index")
+        end = boundary.get("end_target_index")
+        if (
+            type(shard_index) is not int
+            or shard_index != index
+            or type(start) is not int
+            or start != next_start
+            or type(end) is not int
+            or end < start
+        ):
+            raise ValueError("RECORDED shard boundaries must be ordered contiguous integer ranges")
+        boundaries.append(dict(boundary))
+        next_start = end
+    if next_start != visible_draw_count:
+        raise ValueError("RECORDED shard boundaries must cover all visible draws")
+
+    return {
+        "provenance_status": "RECORDED",
+        "shard_count": shard_count,
+        "sharding_dimension": "OUTER_TARGET_INDEX_RANGE",
+        "inner_binding_order_preserved": True,
+        "shard_boundaries": boundaries,
+    }
+
+
 def build_sealed_manifest(
     *,
     run_id: str,
@@ -114,15 +173,29 @@ def build_sealed_manifest(
     later_draws_present_in_authority: bool,
     visible_draw_count: int,
     target_windows: Mapping[str, object],
-    shard_count: int,
-    shard_boundaries: Sequence[Mapping[str, object]],
+    shard_count: int | None,
+    shard_boundaries: Sequence[Mapping[str, object]] | None,
     evidence_sha256: str,
     evidence_byte_size: int,
     evidence_record_count: int,
     evidence_status_counts: Mapping[str, int],
     universe: Mapping[str, object],
+    provenance_status: str = "RECORDED",
 ) -> dict[str, object]:
-    """Assemble the sealed manifest for one exact-native replay run."""
+    """Assemble the sealed manifest for one exact-native replay run.
+
+    Existing replay callers supply recorded physical topology by default.
+    Historical packaging must explicitly use ``NOT_RECORDED`` with both
+    topology values null when that execution provenance was not recorded.
+    Contradictory or partial topology is rejected, never inferred or repaired.
+    """
+
+    parallel_sharding = _parallel_sharding_payload(
+        provenance_status=provenance_status,
+        shard_count=shard_count,
+        shard_boundaries=shard_boundaries,
+        visible_draw_count=visible_draw_count,
+    )
 
     return {
         "schema_version": MANIFEST_SCHEMA,
@@ -151,12 +224,7 @@ def build_sealed_manifest(
                 "STRATEGY_ID_ASC",
             ],
             "deterministic_replay": "native adapter-owned seed/state rules recorded per target row",
-            "parallel_sharding": {
-                "shard_count": shard_count,
-                "sharding_dimension": "OUTER_TARGET_INDEX_RANGE",
-                "inner_binding_order_preserved": True,
-                "shard_boundaries": [dict(boundary) for boundary in shard_boundaries],
-            },
+            "parallel_sharding": parallel_sharding,
         },
         "evidence": {
             "file": EVIDENCE_FILENAME,

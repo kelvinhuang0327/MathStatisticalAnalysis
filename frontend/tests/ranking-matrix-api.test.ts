@@ -63,6 +63,7 @@ describe('rankingMatrix API and utilities', () => {
       expect(deriveComparabilityStatus(true, 'CLOSED_UNEXECUTABLE', null, 300, 'RECENT_300').status).toBe('NOT_HISTORICALLY_COMPARABLE')
       expect(deriveComparabilityStatus(true, 'DUPLICATE_ALIAS', null, 300, 'RECENT_300').status).toBe('NOT_HISTORICALLY_COMPARABLE')
       expect(deriveComparabilityStatus(true, 'BACKTESTED', 'Unranked reason', 300, 'RECENT_300').status).toBe('NOT_HISTORICALLY_COMPARABLE')
+      expect(deriveComparabilityStatus(true, 'BACKTESTED', 'RANKED_BACKTEST_EVIDENCE_AVAILABLE', 300, 'RECENT_300').status).toBe('COMPARABLE')
       expect(deriveComparabilityStatus(true, 'BACKTESTED', null, 25, 'RECENT_300').status).toBe('LOW_SAMPLE_SIZE')
       expect(deriveComparabilityStatus(true, 'BACKTESTED', null, 300, 'RECENT_300').status).toBe('COMPARABLE')
     })
@@ -210,6 +211,94 @@ describe('rankingMatrix API and utilities', () => {
             }),
           } as Response)
         }
+        if (url.includes('/api/v1/b649-exact-native-records')) {
+          const urlObj = new URL(url, 'http://localhost')
+          const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
+          const win = urlObj.searchParams.get('window') || 'RECENT_300'
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({
+              total: 2,
+              limit: 100,
+              offset: 0,
+              ticket_count: tc,
+              window: win,
+              criterion: 'OFFICIAL_ANY_PRIZE',
+              research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。',
+              items: [
+                {
+                  strategy_id: 'strat_1',
+                  strategy_version: 'v1.0',
+                  legacy_method_id: 'strat_1',
+                  source_path: 'strategies/strat_1.py',
+                  method_family: 'coldpool',
+                  reproduction_status: 'BACKTESTED',
+                  duplicate_alias_target: null,
+                  ticket_count: tc,
+                  window: win,
+                  criterion: 'OFFICIAL_ANY_PRIZE',
+                  metric_status: 'AVAILABLE',
+                  rankable: true,
+                  unavailable_reason: null,
+                  metrics_unavailable_reason: null,
+                  unranked_reason: 'RANKED_BACKTEST_EVIDENCE_AVAILABLE',
+                  official_any_prize_count: 18,
+                  official_any_prize_rate: '0.060000000000000000',
+                  official_random_baseline_probability: '0.060000000000000000',
+                  official_random_baseline_delta: '0.000000000000000000',
+                  coverage: '1.000000000000000000',
+                  official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 0, sixth: 0, seventh: 5, general: 13 },
+                  no_prize_count: 282,
+                  available_observation_count: 300,
+                  effective_backtest_draw_count: 300,
+                  successful_observation_count: 18,
+                  window_available_draws: 300,
+                  window_requested_draws: 300,
+                  window_complete: true,
+                  native_ticket_count_classification: 'FIXED_EXACT_NATIVE_TICKET_COUNT',
+                  authority_mode: 'FRESH_CURRENT_CATALOG_REPRODUCTION_V1',
+                  catalog_sha256: 'a'.repeat(64),
+                  official_rank: null,
+                },
+                {
+                  strategy_id: 'strat_unavail',
+                  strategy_version: 'v1.0',
+                  legacy_method_id: 'strat_unavail',
+                  source_path: 'strategies/strat_unavail.py',
+                  method_family: 'statistical',
+                  reproduction_status: 'BACKTESTED',
+                  duplicate_alias_target: null,
+                  ticket_count: tc,
+                  window: win,
+                  criterion: 'OFFICIAL_ANY_PRIZE',
+                  metric_status: 'UNAVAILABLE',
+                  rankable: false,
+                  unavailable_reason: 'NATIVE_TICKET_COUNT_NOT_SUPPORTED',
+                  metrics_unavailable_reason: null,
+                  unranked_reason: 'RANKED_BACKTEST_EVIDENCE_AVAILABLE',
+                  official_any_prize_count: null,
+                  official_any_prize_rate: null,
+                  official_random_baseline_probability: null,
+                  official_random_baseline_delta: null,
+                  coverage: null,
+                  official_prize_counts: null,
+                  no_prize_count: null,
+                  available_observation_count: null,
+                  effective_backtest_draw_count: null,
+                  successful_observation_count: null,
+                  window_available_draws: 300,
+                  window_requested_draws: 300,
+                  window_complete: true,
+                  native_ticket_count_classification: 'NATIVE_TICKET_COUNT_NOT_SUPPORTED',
+                  authority_mode: 'FRESH_CURRENT_CATALOG_REPRODUCTION_V1',
+                  catalog_sha256: 'a'.repeat(64),
+                  official_rank: null,
+                },
+              ],
+            }),
+          } as Response)
+        }
         return Promise.resolve({
           ok: true,
           status: 200,
@@ -234,17 +323,41 @@ describe('rankingMatrix API and utilities', () => {
       expect(rows[0]?.bestOfficialPrize).toBe('頭獎 (1)')
     })
 
-    it('returns empty array cleanly for unsupported ticket count (2 tickets) without claiming 0%', async () => {
-      const rows = await fetchRankingData('BIG_LOTTO', 2, 'RECENT_300')
-      expect(rows.length).toBe(0)
+    it('loads B649 ranking rows for 2 and 3 exact-native tickets with formal rank remaining null', async () => {
+      const rows2 = await fetchRankingData('BIG_LOTTO', 2, 'RECENT_300')
+      expect(rows2.length).toBe(2)
+
+      // Available strategy
+      const availRow = rows2.find((r) => r.strategyId === 'strat_1')
+      expect(availRow).toBeDefined()
+      expect(availRow?.officialRank).toBeNull()
+      expect(availRow?.isAvailable).toBe(true)
+      expect(availRow?.officialAnyPrizeRateFormatted).toBe('6.00%')
+      expect(availRow?.baselineDeltaFormatted).toBe('0.00%')
+      expect(availRow?.comparabilityStatus).toBe('COMPARABLE')
+
+      // Unavailable strategy
+      const unavailRow = rows2.find((r) => r.strategyId === 'strat_unavail')
+      expect(unavailRow).toBeDefined()
+      expect(unavailRow?.officialRank).toBeNull()
+      expect(unavailRow?.isAvailable).toBe(false)
+      expect(unavailRow?.comparabilityStatus).toBe('UNAVAILABLE')
+
+      // Check K3 loads identically
+      const rows3 = await fetchRankingData('BIG_LOTTO', 3, 'RECENT_300')
+      expect(rows3.length).toBe(2)
+      expect(rows3[0]?.officialRank).toBeNull()
     })
 
     it('builds multi-ticket matrix with 2, 3, 5, 10, 20 cells', async () => {
       const matrix = await fetchMultiTicketMatrix('BIG_LOTTO', 'RECENT_300')
-      expect(matrix.length).toBe(1)
-      const row = matrix[0]!
-      expect(row.cells[2].isAvailable).toBe(false)
-      expect(row.cells[2].officialAnyPrizeRateFormatted).toBe('Unavailable')
+      expect(matrix.length).toBe(2)
+      const row = matrix.find((r) => r.strategyId === 'strat_1')!
+      expect(row.cells[2].isAvailable).toBe(true)
+      expect(row.cells[2].officialRank).toBeNull()
+      expect(row.cells[2].officialAnyPrizeRateFormatted).toBe('6.00%')
+      expect(row.cells[3].isAvailable).toBe(true)
+      expect(row.cells[3].officialRank).toBeNull()
       expect(row.cells[5].isAvailable).toBe(true)
       expect(row.cells[5].officialRank).toBe(1)
     })

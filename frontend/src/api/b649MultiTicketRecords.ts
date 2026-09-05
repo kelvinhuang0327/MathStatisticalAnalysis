@@ -5,7 +5,11 @@ export type B649MultiTicketSummary =
 export type B649MultiTicketRecordPage =
   paths['/api/v1/b649-multi-ticket-records']['get']['responses'][200]['content']['application/json']
 export type B649MultiTicketRecord = B649MultiTicketRecordPage['items'][number]
+export type B649ExactNativeRecordPage =
+  paths['/api/v1/b649-exact-native-records']['get']['responses'][200]['content']['application/json']
+export type B649ExactNativeRecord = B649ExactNativeRecordPage['items'][number]
 export type B649PrefixCount = components['schemas']['B649PrefixCount']
+export type B649ExactNativeTicketCount = components['schemas']['B649ExactNativeTicketCount']
 export type B649HistoryWindow = components['schemas']['B649HistoryWindow']
 export type B649SuccessCriterion = components['schemas']['B649SuccessCriterion']
 export type B649PrimaryRankingCriterion = 'OFFICIAL_ANY_PRIZE'
@@ -15,6 +19,7 @@ export type B649ReproductionStatus =
   | 'DUPLICATE_ALIAS'
 
 export const B649_PREFIX_COUNTS = [5, 10, 15, 20] as const satisfies readonly B649PrefixCount[]
+export const B649_EXACT_NATIVE_TICKET_COUNTS = [2, 3] as const satisfies readonly B649ExactNativeTicketCount[]
 export const B649_HISTORY_WINDOWS = [
   'FULL',
   'RECENT_750',
@@ -43,6 +48,7 @@ export const B649_RESEARCH_DISCLAIMER =
 
 const SUMMARY_ENDPOINT = '/api/v1/b649-multi-ticket-records/summary'
 const RECORDS_ENDPOINT = '/api/v1/b649-multi-ticket-records'
+const EXACT_NATIVE_RECORDS_ENDPOINT = '/api/v1/b649-exact-native-records'
 const SHA256_PATTERN = /^[0-9a-f]{64}$/
 
 export interface B649MultiTicketRecordQuery {
@@ -54,6 +60,16 @@ export interface B649MultiTicketRecordQuery {
   reproductionStatus?: B649ReproductionStatus
   limit: number
   offset: number
+}
+
+export interface B649ExactNativeRecordQuery {
+  ticketCount: B649ExactNativeTicketCount
+  window: B649HistoryWindow
+  q?: string
+  methodFamily?: string
+  reproductionStatus?: B649ReproductionStatus
+  limit?: number
+  offset?: number
 }
 
 export type B649RecordsErrorKind =
@@ -104,6 +120,24 @@ export async function fetchB649MultiTicketRecords(
     parameters.set('reproduction_status', query.reproductionStatus)
   }
   return requestJson(`${RECORDS_ENDPOINT}?${parameters}`, isRecordPage, signal)
+}
+
+export async function fetchB649ExactNativeRecords(
+  query: B649ExactNativeRecordQuery,
+  signal?: AbortSignal,
+): Promise<B649ExactNativeRecordPage> {
+  const parameters = new URLSearchParams({
+    ticket_count: String(query.ticketCount),
+    window: query.window,
+  })
+  if (query.limit !== undefined) parameters.set('limit', String(query.limit))
+  if (query.offset !== undefined) parameters.set('offset', String(query.offset))
+  if (query.q) parameters.set('q', query.q)
+  if (query.methodFamily) parameters.set('method_family', query.methodFamily)
+  if (query.reproductionStatus) {
+    parameters.set('reproduction_status', query.reproductionStatus)
+  }
+  return requestJson(`${EXACT_NATIVE_RECORDS_ENDPOINT}?${parameters}`, isExactNativeRecordPage, signal)
 }
 
 async function requestJson<T>(
@@ -237,6 +271,65 @@ function isMultiTicketRecord(value: unknown): value is B649MultiTicketRecord {
     (value.report_sha256 === null || isSha256(value.report_sha256)) &&
     (value.report_file_sha256 === null || isSha256(value.report_file_sha256)) &&
     isSha256(value.catalog_sha256)
+  )
+}
+
+function isExactNativeRecordPage(value: unknown): value is B649ExactNativeRecordPage {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.items) &&
+    value.items.every(isExactNativeRecord) &&
+    isInteger(value.total) &&
+    isInteger(value.limit) &&
+    isInteger(value.offset) &&
+    B649_EXACT_NATIVE_TICKET_COUNTS.includes(value.ticket_count as B649ExactNativeTicketCount) &&
+    B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
+    isString(value.criterion) &&
+    value.research_disclaimer === B649_RESEARCH_DISCLAIMER
+  )
+}
+
+function isExactNativeRecord(value: unknown): value is B649ExactNativeRecord {
+  if (!isRecord(value)) return false
+  const nullableInteger = (item: unknown) => item === null || isInteger(item)
+  const nullableString = (item: unknown) => item === null || typeof item === 'string'
+  const nullableBoolean = (item: unknown) => item === null || typeof item === 'boolean'
+  return (
+    isString(value.strategy_id) &&
+    isString(value.strategy_version) &&
+    isString(value.legacy_method_id) &&
+    isString(value.source_path) &&
+    isString(value.method_family) &&
+    B649_REPRODUCTION_STATUSES.includes(
+      value.reproduction_status as B649ReproductionStatus,
+    ) &&
+    nullableString(value.duplicate_alias_target) &&
+    B649_EXACT_NATIVE_TICKET_COUNTS.includes(value.ticket_count as B649ExactNativeTicketCount) &&
+    B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
+    isString(value.criterion) &&
+    (value.metric_status === 'AVAILABLE' || value.metric_status === 'UNAVAILABLE') &&
+    typeof value.rankable === 'boolean' &&
+    nullableString(value.unavailable_reason) &&
+    nullableString(value.metrics_unavailable_reason) &&
+    nullableString(value.unranked_reason) &&
+    nullableInteger(value.official_any_prize_count) &&
+    nullableString(value.official_any_prize_rate) &&
+    nullableString(value.official_random_baseline_probability) &&
+    nullableString(value.official_random_baseline_delta) &&
+    nullableString(value.coverage) &&
+    (value.official_prize_counts === null ||
+      isOfficialPrizeCounts(value.official_prize_counts)) &&
+    nullableInteger(value.no_prize_count) &&
+    nullableInteger(value.available_observation_count) &&
+    nullableInteger(value.effective_backtest_draw_count) &&
+    nullableInteger(value.successful_observation_count) &&
+    nullableInteger(value.window_available_draws) &&
+    nullableInteger(value.window_requested_draws) &&
+    nullableBoolean(value.window_complete) &&
+    nullableString(value.native_ticket_count_classification) &&
+    nullableString(value.authority_mode) &&
+    isSha256(value.catalog_sha256) &&
+    (value.official_rank === undefined || value.official_rank === null)
   )
 }
 

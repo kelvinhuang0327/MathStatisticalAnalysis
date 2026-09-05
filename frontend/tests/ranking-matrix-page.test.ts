@@ -254,6 +254,120 @@ const mockB649Records20_50 = {
   ],
 }
 
+const mockB649ExactNativeRecords2_300 = {
+  total: 3,
+  limit: 100,
+  offset: 0,
+  ticket_count: 2,
+  window: 'RECENT_300',
+  criterion: 'OFFICIAL_ANY_PRIZE',
+  research_disclaimer: B649_RESEARCH_DISCLAIMER,
+  items: [
+    {
+      strategy_id: 'backtest_biglotto_coldpool_15',
+      strategy_version: 'v1.0',
+      legacy_method_id: 'coldpool_15',
+      source_path: 'strategies/coldpool_15.py',
+      method_family: 'coldpool',
+      reproduction_status: 'BACKTESTED',
+      duplicate_alias_target: null,
+      ticket_count: 2,
+      window: 'RECENT_300',
+      criterion: 'OFFICIAL_ANY_PRIZE',
+      metric_status: 'AVAILABLE',
+      rankable: true,
+      unavailable_reason: null,
+      metrics_unavailable_reason: null,
+      unranked_reason: 'RANKED_BACKTEST_EVIDENCE_AVAILABLE',
+      official_any_prize_count: 18,
+      official_any_prize_rate: '0.060000000000000000',
+      official_random_baseline_probability: '0.060945547814818275',
+      official_random_baseline_delta: '-0.000945547814818275',
+      coverage: '1.000000000000000000',
+      official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 0, sixth: 0, seventh: 5, general: 13 },
+      no_prize_count: 282,
+      available_observation_count: 300,
+      effective_backtest_draw_count: 300,
+      successful_observation_count: 18,
+      window_available_draws: 300,
+      window_requested_draws: 300,
+      window_complete: true,
+      native_ticket_count_classification: 'FIXED_EXACT_NATIVE_TICKET_COUNT',
+      authority_mode: 'FRESH_CURRENT_CATALOG_REPRODUCTION_V1',
+      catalog_sha256: 'a'.repeat(64),
+      official_rank: null,
+    },
+    {
+      strategy_id: 'backtest_biglotto_6bet_ewma',
+      strategy_version: 'v1.0',
+      legacy_method_id: '6bet_ewma',
+      source_path: 'strategies/6bet_ewma.py',
+      method_family: 'ewma',
+      reproduction_status: 'BACKTESTED',
+      duplicate_alias_target: null,
+      ticket_count: 2,
+      window: 'RECENT_300',
+      criterion: 'OFFICIAL_ANY_PRIZE',
+      metric_status: 'AVAILABLE',
+      rankable: true,
+      unavailable_reason: null,
+      metrics_unavailable_reason: null,
+      unranked_reason: 'RANKED_BACKTEST_EVIDENCE_AVAILABLE',
+      official_any_prize_count: 21,
+      official_any_prize_rate: '0.070000000000000000',
+      official_random_baseline_probability: '0.060945547814818275',
+      official_random_baseline_delta: '0.009054452185181725',
+      coverage: '1.000000000000000000',
+      official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 1, sixth: 2, seventh: 6, general: 12 },
+      no_prize_count: 279,
+      available_observation_count: 300,
+      effective_backtest_draw_count: 300,
+      successful_observation_count: 21,
+      window_available_draws: 300,
+      window_requested_draws: 300,
+      window_complete: true,
+      native_ticket_count_classification: 'FIXED_EXACT_NATIVE_TICKET_COUNT',
+      authority_mode: 'FRESH_CURRENT_CATALOG_REPRODUCTION_V1',
+      catalog_sha256: 'a'.repeat(64),
+      official_rank: null,
+    },
+    {
+      strategy_id: 'quick_ml_predict',
+      strategy_version: 'v1.0',
+      legacy_method_id: 'quick_ml_predict',
+      source_path: 'strategies/quick_ml.py',
+      method_family: 'ml',
+      reproduction_status: 'BACKTESTED',
+      duplicate_alias_target: null,
+      ticket_count: 2,
+      window: 'RECENT_300',
+      criterion: 'OFFICIAL_ANY_PRIZE',
+      metric_status: 'UNAVAILABLE',
+      rankable: false,
+      unavailable_reason: 'NATIVE_TICKET_COUNT_NOT_SUPPORTED',
+      metrics_unavailable_reason: null,
+      unranked_reason: 'RANKED_BACKTEST_EVIDENCE_AVAILABLE',
+      official_any_prize_count: null,
+      official_any_prize_rate: null,
+      official_random_baseline_probability: null,
+      official_random_baseline_delta: null,
+      coverage: null,
+      official_prize_counts: null,
+      no_prize_count: null,
+      available_observation_count: null,
+      effective_backtest_draw_count: null,
+      successful_observation_count: null,
+      window_available_draws: 300,
+      window_requested_draws: 300,
+      window_complete: true,
+      native_ticket_count_classification: 'NATIVE_TICKET_COUNT_NOT_SUPPORTED',
+      authority_mode: 'FRESH_CURRENT_CATALOG_REPRODUCTION_V1',
+      catalog_sha256: 'a'.repeat(64),
+      official_rank: null,
+    },
+  ],
+}
+
 const mockCatalog = [
   {
     strategy_id: 'backtest_biglotto_coldpool_15',
@@ -296,6 +410,22 @@ beforeEach(() => {
     if (url.includes('/api/v1/strategies')) {
       return Promise.resolve(apiResponse(mockCatalog))
     }
+    if (url.includes('/api/v1/b649-exact-native-records')) {
+      const urlObj = new URL(url, 'http://localhost')
+      const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
+      const win = urlObj.searchParams.get('window') || 'RECENT_300'
+      const items = mockB649ExactNativeRecords2_300.items.map((it) => ({
+        ...it,
+        ticket_count: tc,
+        window: win,
+      }))
+      return Promise.resolve(apiResponse({
+        ...mockB649ExactNativeRecords2_300,
+        ticket_count: tc,
+        window: win,
+        items,
+      }))
+    }
     if (url.includes('/api/v1/b649-multi-ticket-records')) {
       if (url.includes('prefix_count=20') && url.includes('window=RECENT_50')) {
         return Promise.resolve(apiResponse(mockB649Records20_50))
@@ -330,14 +460,23 @@ describe('RankingMatrixPage component', () => {
     expect(wrapper.text()).toContain('+3.00%')
 
     // Step 2: Switch 2 -> 20 tickets
-    // First switch to 2 tickets (unavailable notice should appear without 0% success)
+    // First switch to 2 tickets (canonical exact-native records loaded, banner displayed, formal rank unavailable)
     await wrapper.find('[data-testid="ticket-btn-2"]').trigger('click')
     await flushPromises()
-    expect(wrapper.find('[data-testid="unavailable-ticket-notice"]').exists()).toBe(true)
-    expect(wrapper.text()).not.toContain('0.00%')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="canonical-exact-native-banner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="badge-formal-rank-unavailable"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('正規 2 注指標可用；官方正式排名尚未發布')
+    expect(wrapper.findAll('.ranking-row').length).toBe(3)
+    expect(wrapper.text()).toContain('6.00%')
+    const unavailRow = wrapper.find('[data-testid="ranking-row-quick_ml_predict"]')
+    expect(unavailRow.exists()).toBe(true)
+    expect(unavailRow.find('.td-rate').text()).toContain('Unavailable')
+    expect(unavailRow.find('.td-rate').text()).not.toContain('0%')
 
     // Switch to 20 tickets
     await wrapper.find('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises()
     await flushPromises()
 
     // Step 3: Switch 300 -> 50 window
@@ -407,11 +546,17 @@ describe('RankingMatrixPage component', () => {
     expect(wrapper.find('[data-testid="th-ticket-2"]').exists()).toBe(true)
     expect(wrapper.find('[data-testid="th-ticket-20"]').exists()).toBe(true)
 
-    // Verify 2-ticket cell shows explicit unavailable state, NOT 0%
-    const cell2 = wrapper.find('[data-testid="matrix-cell-backtest_biglotto_coldpool_15-2"]')
-    expect(cell2.exists()).toBe(true)
-    expect(cell2.text()).toContain('不可比較 / 無資料')
-    expect(cell2.text()).not.toContain('0%')
+    // Verify 2-ticket cell for coldpool 15 shows canonical rate 6.00% and unranked '—', NOT 0%
+    const cell2Coldpool = wrapper.find('[data-testid="matrix-cell-backtest_biglotto_coldpool_15-2"]')
+    expect(cell2Coldpool.exists()).toBe(true)
+    expect(cell2Coldpool.text()).toContain('6.00%')
+    expect(cell2Coldpool.text()).not.toContain('0.00%')
+
+    // Verify 2-ticket cell for quick_ml_predict shows explicit unavailable state, NOT 0%
+    const cell2QuickMl = wrapper.find('[data-testid="matrix-cell-quick_ml_predict-2"]')
+    expect(cell2QuickMl.exists()).toBe(true)
+    expect(cell2QuickMl.text()).toContain('不可比較 / 無資料')
+    expect(cell2QuickMl.text()).not.toContain('0%')
 
     // Step 8: Select strategy and see Cross-Window Chart updated
     const matrixRow = wrapper.get('[data-testid="matrix-row-backtest_biglotto_coldpool_15"]')

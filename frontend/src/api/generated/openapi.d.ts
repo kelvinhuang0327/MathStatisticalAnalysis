@@ -95,6 +95,38 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/b649-exact-native-records": {
+      get: {
+          parameters: {
+            "query": {
+              "ticket_count": components['schemas']["B649ExactNativeTicketCount"]
+              "window": components['schemas']["B649HistoryWindow"]
+              "q"?: string | null
+              "method_family"?: string | null
+              "reproduction_status"?: "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS" | null
+              "limit"?: number
+              "offset"?: number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649ExactNativeRecordPageResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649ExactNativeApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/strategy-evidence": {
       get: {
           parameters: Record<string, never>
@@ -2117,6 +2149,55 @@ export interface components {
           "preview"?: components['schemas']["DrawImportPreviewResponse"] | null
           "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
         }
+    "B649ExactNativeApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649ExactNativeRecordPageResponse": {
+          "items": Array<components['schemas']["B649ExactNativeRecordView"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "ticket_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": string
+          "research_disclaimer": string
+        }
+    "B649ExactNativeRecordView": {
+          "strategy_id": string
+          "strategy_version": string
+          "legacy_method_id": string
+          "source_path": string
+          "method_family": string
+          "reproduction_status": "BACKTESTED" | "CLOSED_UNEXECUTABLE" | "DUPLICATE_ALIAS"
+          "duplicate_alias_target": string | null
+          "ticket_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": string
+          "metric_status": "AVAILABLE" | "UNAVAILABLE"
+          "rankable": boolean
+          "unavailable_reason": string | null
+          "metrics_unavailable_reason": string | null
+          "unranked_reason": string | null
+          "official_any_prize_count": number | null
+          "official_any_prize_rate": string | null
+          "official_random_baseline_probability": string | null
+          "official_random_baseline_delta": string | null
+          "coverage": string | null
+          "official_prize_counts": components['schemas']["B649OfficialPrizeCountsView"] | null
+          "no_prize_count": number | null
+          "available_observation_count": number | null
+          "effective_backtest_draw_count": number | null
+          "successful_observation_count": number | null
+          "window_available_draws": number | null
+          "window_requested_draws": number | null
+          "window_complete": boolean | null
+          "native_ticket_count_classification": string | null
+          "authority_mode": string | null
+          "catalog_sha256": string
+          "official_rank"?: null
+        }
+    "B649ExactNativeTicketCount": 2 | 3
     "B649HistoryWindow": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
     "B649MultiTicketApiErrorResponse": {
           "error_code": string

@@ -1,7 +1,10 @@
 import type { components } from './generated/openapi'
 import {
+  fetchB649ExactNativeRecords,
   fetchB649MultiTicketRecords,
   fetchB649MultiTicketSummary,
+  type B649ExactNativeRecord,
+  type B649ExactNativeTicketCount,
   type B649HistoryWindow,
   type B649MultiTicketRecord,
   type B649PrefixCount,
@@ -177,7 +180,7 @@ export function deriveComparabilityStatus(
   if (reproductionStatus === 'CLOSED_UNEXECUTABLE' || reproductionStatus === 'DUPLICATE_ALIAS') {
     return { status: 'NOT_HISTORICALLY_COMPARABLE', label: '歷史不可直接比較 (Not Comparable)' }
   }
-  if (unrankedReason) {
+  if (unrankedReason && unrankedReason !== 'RANKED_BACKTEST_EVIDENCE_AVAILABLE') {
     return { status: 'NOT_HISTORICALLY_COMPARABLE', label: '未正式納入排名 (Unranked)' }
   }
   if (observations !== null && observations !== undefined && observations > 0 && observations < 50) {
@@ -210,7 +213,7 @@ export function deriveWarningCodes(
   if (reproductionStatus === 'DUPLICATE_ALIAS') {
     warnings.push('DUPLICATE_ALIAS')
   }
-  if (unrankedReason) {
+  if (unrankedReason && unrankedReason !== 'RANKED_BACKTEST_EVIDENCE_AVAILABLE') {
     warnings.push('NOT_HISTORICALLY_COMPARABLE')
   }
   if (rank !== null && rank <= 3 && coverage !== null && coverage < 0.10) {
@@ -312,8 +315,43 @@ async function loadB649RankingRows(
     return []
   }
 
+  // Fetch strategy metadata catalog to enrich display names if possible
+  let catalogMap = new Map<string, StrategyView>()
+  try {
+    const catalog = await listStrategies(signal)
+    catalogMap = new Map((catalog as StrategyView[]).map((s: StrategyView) => [s.strategy_id, s]))
+  } catch {
+    // Ignore catalog lookup error, fallback to record names
+  }
+
+  // Exact-native ticket counts (2, 3) from canonical V3 projection
+  if (ticketCount === 2 || ticketCount === 3) {
+    const exactNativeCount = ticketCount as B649ExactNativeTicketCount
+    const windowKey = window as B649HistoryWindow
+    let offset = 0
+    const limit = 100
+    let hasMore = true
+    const records: B649ExactNativeRecord[] = []
+
+    while (hasMore) {
+      const page = await fetchB649ExactNativeRecords(
+        {
+          ticketCount: exactNativeCount,
+          window: windowKey,
+          limit,
+          offset,
+        },
+        signal,
+      )
+      records.push(...page.items)
+      offset += limit
+      hasMore = records.length < page.total
+    }
+
+    return records.map((rec) => transformB649ExactNativeToRankingRow(rec, ticketCount, window, catalogMap))
+  }
+
   // Canonical B649 multi-ticket dataset supports prefix counts 5, 10, 15, 20.
-  // When ticket count is 2 or 3, it is not present in canonical multi-ticket dataset.
   const isAvailablePrefix = (ticketCount === 5 || ticketCount === 10 || ticketCount === 20)
   if (!isAvailablePrefix) {
     // Return empty array (the UI will show clean unavailable state for this ticket count)
@@ -343,16 +381,79 @@ async function loadB649RankingRows(
     hasMore = records.length < page.total
   }
 
-  // Fetch strategy metadata catalog to enrich display names if possible
-  let catalogMap = new Map<string, StrategyView>()
-  try {
-    const catalog = await listStrategies(signal)
-    catalogMap = new Map((catalog as StrategyView[]).map((s: StrategyView) => [s.strategy_id, s]))
-  } catch {
-    // Ignore catalog lookup error, fallback to record names
-  }
-
   return records.map((rec) => transformB649ToRankingRow(rec, ticketCount, window, catalogMap))
+}
+
+function transformB649ExactNativeToRankingRow(
+  record: B649ExactNativeRecord,
+  ticketCount: TicketCount,
+  window: RankingWindow,
+  catalogMap: Map<string, StrategyView>,
+): RankingRow {
+  const rateNum = parseNumberString(record.official_any_prize_rate)
+  const baselineRateNum = parseNumberString(record.official_random_baseline_probability)
+  const deltaNum = parseNumberString(record.official_random_baseline_delta)
+  const coverageNum = parseNumberString(record.coverage)
+  const observations =
+    record.window_available_draws ??
+    record.effective_backtest_draw_count ??
+    record.available_observation_count ??
+    null
+  const successes = record.official_any_prize_count ?? null
+
+  const catalogMeta = catalogMap.get(record.strategy_id)
+  const displayName = catalogMeta?.display_name || record.legacy_method_id || record.strategy_id
+  const lifecycleStatus = catalogMeta?.lifecycle_status || record.reproduction_status
+
+  const isAvailable = record.metric_status === 'AVAILABLE' && rateNum !== null
+  const comp = deriveComparabilityStatus(
+    isAvailable,
+    record.reproduction_status,
+    record.unranked_reason,
+    observations,
+    window,
+  )
+
+  const warnings = deriveWarningCodes(
+    null,
+    coverageNum,
+    observations,
+    successes,
+    window,
+    record.reproduction_status,
+    record.unranked_reason,
+    record.unavailable_reason ?? record.metrics_unavailable_reason,
+  )
+
+  const bestPrize = extractBestPrizeFromCounts(record.official_prize_counts)
+
+  return {
+    lotteryType: 'BIG_LOTTO',
+    ticketCount,
+    window,
+    officialRank: null, // STRICT: formal rank is unreleased/unavailable
+    strategyId: record.strategy_id,
+    displayName,
+    strategyVersion: record.strategy_version,
+    methodFamily: record.method_family,
+    lifecycleStatus,
+    successes,
+    observations,
+    officialAnyPrizeRate: rateNum,
+    officialAnyPrizeRateFormatted: formatRatePercentage(rateNum),
+    coverage: coverageNum,
+    coverageFormatted: formatCoveragePercentage(coverageNum),
+    baselineRate: baselineRateNum,
+    baselineRateFormatted: formatRatePercentage(baselineRateNum),
+    baselineDelta: deltaNum,
+    baselineDeltaFormatted: formatDeltaPercentage(deltaNum),
+    bestOfficialPrize: bestPrize,
+    comparabilityStatus: comp.status,
+    comparabilityLabel: comp.label,
+    warningCodes: warnings,
+    isAvailable,
+    unrankedReason: record.unranked_reason ?? record.unavailable_reason,
+  }
 }
 
 function transformB649ToRankingRow(

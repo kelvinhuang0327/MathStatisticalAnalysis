@@ -18,15 +18,18 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
+from typing import cast
 
 from lottolab.domain.exact_native_replay import Draw, descriptor_payload
 from lottolab.domain.strategies import StrategyDescriptor
 
 EVIDENCE_SCHEMA = "B649_EXACT_NATIVE_TARGET_EVIDENCE_V1"
 MANIFEST_SCHEMA = "B649_EXACT_NATIVE_REFRESH_SEALED_MANIFEST_V1"
+AUTHORITY_SCHEMA = "B649_EXACT_NATIVE_REPLAY_AUTHORITY_V1"
 EVIDENCE_FILENAME = "target_evidence.jsonl"
 MANIFEST_FILENAME = "sealed_manifest.json"
 METADATA_FILENAME = "metadata.json"
+AUTHORITY_FILENAME = "replay_authority.json"
 
 _CHUNK_SIZE = 1024 * 1024
 
@@ -104,6 +107,87 @@ def build_catalog_universe_payload(
     return payload
 
 
+def build_replay_authority(
+    *,
+    source: Mapping[str, object],
+    ordered_binding_identities: Sequence[Mapping[str, object]],
+    binding_count: int,
+    run_config: Mapping[str, object],
+    draw_authority_identity: Mapping[str, object],
+) -> dict[str, object]:
+    """Freeze the load-bearing authority a replay root's evidence was produced under.
+
+    Covers exactly the minimum fields a safe resume must re-verify: source
+    identity, the ordered strategy-binding universe (identity *and* count, so
+    a same-count swap is distinguishable from an unchanged universe), the
+    game/ticket/window/cutoff/target-range configuration, the draw-authority
+    content identity, and the schema this artifact and its evidence rows obey.
+    """
+
+    return {
+        "schema_version": AUTHORITY_SCHEMA,
+        "evidence_schema_version": EVIDENCE_SCHEMA,
+        "source": dict(source),
+        "binding_identity": {
+            "binding_count": binding_count,
+            "ordered_binding_identities": [dict(item) for item in ordered_binding_identities],
+        },
+        "run_config": dict(run_config),
+        "draw_authority_identity": dict(draw_authority_identity),
+    }
+
+
+_MISSING = "__REPLAY_AUTHORITY_FIELD_MISSING__"
+
+
+def diff_replay_authority(
+    frozen: Mapping[str, object], current: Mapping[str, object]
+) -> dict[str, dict[str, object]]:
+    """Field-level differences between a frozen and a currently-resolved authority.
+
+    Empty when the two are identical. Every differing leaf is reported under
+    its dotted path as ``{"frozen": ..., "current": ...}``; a key present on
+    only one side reports the absent side as :data:`_MISSING`. Callers must
+    normalize both arguments through a canonical JSON round-trip first (e.g.
+    ``json.loads(canonical_json_bytes(value))``) so tuples and dicts compare
+    the same way plain-JSON-loaded data would.
+    """
+
+    differences: dict[str, dict[str, object]] = {}
+    _diff_into(frozen, current, "", differences)
+    return differences
+
+
+def _diff_into(
+    frozen: object, current: object, path: str, out: dict[str, dict[str, object]]
+) -> None:
+    if isinstance(frozen, Mapping) and isinstance(current, Mapping):
+        frozen_map = cast(Mapping[str, object], frozen)
+        current_map = cast(Mapping[str, object], current)
+        for key in sorted(set(frozen_map) | set(current_map)):
+            child_path = f"{path}.{key}" if path else key
+            if key not in frozen_map:
+                out[child_path] = {"frozen": _MISSING, "current": current_map[key]}
+            elif key not in current_map:
+                out[child_path] = {"frozen": frozen_map[key], "current": _MISSING}
+            else:
+                _diff_into(frozen_map[key], current_map[key], child_path, out)
+        return
+    if isinstance(frozen, list) and isinstance(current, list):
+        frozen_list = cast(list[object], frozen)
+        current_list = cast(list[object], current)
+        if len(frozen_list) != len(current_list):
+            out[path or "$"] = {"frozen": frozen_list, "current": current_list}
+            return
+        for index, (frozen_item, current_item) in enumerate(
+            zip(frozen_list, current_list, strict=True)
+        ):
+            _diff_into(frozen_item, current_item, f"{path}[{index}]", out)
+        return
+    if frozen != current:
+        out[path or "$"] = {"frozen": frozen, "current": current}
+
+
 def build_sealed_manifest(
     *,
     run_id: str,
@@ -177,14 +261,18 @@ def build_sealed_manifest(
 
 
 __all__ = [
+    "AUTHORITY_FILENAME",
+    "AUTHORITY_SCHEMA",
     "EVIDENCE_FILENAME",
     "EVIDENCE_SCHEMA",
     "MANIFEST_FILENAME",
     "MANIFEST_SCHEMA",
     "METADATA_FILENAME",
     "build_catalog_universe_payload",
+    "build_replay_authority",
     "build_sealed_manifest",
     "canonical_json_bytes",
+    "diff_replay_authority",
     "history_fingerprint",
     "sha256_bytes",
     "sha256_file",

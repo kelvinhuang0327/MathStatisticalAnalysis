@@ -48,6 +48,7 @@ from lottolab.domain.exact_native_replay import (
     ExactNativeReplayError,
     RuntimeBinding,
     assert_causal_history,
+    descriptor_payload,
     exact_native_descriptors,
     freeze_visible_draws,
     window_names_for_target,
@@ -57,11 +58,15 @@ from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.prize_evaluation import evaluate_lottery_prize
 from lottolab.domain.strategies import StrategyDescriptor
 from lottolab.evidence.exact_native_replay_manifest import (
+    AUTHORITY_FILENAME,
     EVIDENCE_SCHEMA,
     build_catalog_universe_payload,
+    build_replay_authority,
     canonical_json_bytes,
+    diff_replay_authority,
     sha256_bytes,
     sha256_file,
+    write_json_file,
 )
 from lottolab.evidence.exact_native_replay_manifest import history_fingerprint as _fingerprint
 from lottolab.strategies.adapters.base import (
@@ -91,6 +96,21 @@ _PRIZE_ORDER = {
 
 class ExactNativeReplayRuntimeError(ExactNativeReplayError):
     """A runtime (adapter loading, draw-authority, or source-identity) failure."""
+
+
+class ReplayAuthorityDriftError(ExactNativeReplayRuntimeError):
+    """A replay root's resolved current authority no longer matches its frozen authority.
+
+    Raised strictly before any inspection of existing progress and before any
+    mutation of the evidence or authority artifact -- see
+    :func:`replay_exact_native_target_range`'s resume ordering.
+    """
+
+    def __init__(self, differences: Mapping[str, Mapping[str, object]]) -> None:
+        self.differences = dict(differences)
+        super().__init__(
+            "REPLAY_AUTHORITY_DRIFT: " + json.dumps(self.differences, sort_keys=True, default=str)
+        )
 
 
 class _PortfolioRuntime(Protocol):
@@ -324,6 +344,43 @@ def runtime_bindings(descriptors: Sequence[StrategyDescriptor]) -> tuple[Runtime
                 )
             )
     return tuple(bindings)
+
+
+def ordered_binding_identities(
+    bindings: Sequence[RuntimeBinding],
+) -> tuple[dict[str, object], ...]:
+    """Ordered, stable identity projection of one binding sequence.
+
+    Pairs each binding's descriptor identity (:func:`descriptor_payload`) with
+    its resolved ``adapter_class_name`` -- but never ``binding_error`` text,
+    which is diagnostic and may vary run-to-run without the underlying
+    universe having changed. List order is preserved (never sorted): this is
+    the "ordered" half of the frozen binding-identity contract.
+    """
+
+    return tuple(
+        {**descriptor_payload(binding.descriptor), "adapter_class_name": binding.adapter_class_name}
+        for binding in bindings
+    )
+
+
+def run_config_identity(request: ReplayTargetRangeRequest) -> dict[str, object]:
+    """Stable projection of one request's game/ticket/window/cutoff/range configuration."""
+
+    return {
+        "native_ticket_counts": list(request.native_ticket_counts),
+        "max_visible_draw": request.max_visible_draw,
+        "expected_main_numbers": (
+            list(request.expected_main_numbers)
+            if request.expected_main_numbers is not None
+            else None
+        ),
+        "expected_special_number": request.expected_special_number,
+        "window_order": list(request.window_order),
+        "window_sizes": dict(request.window_sizes),
+        "start_index": request.start_index,
+        "end_index": request.end_index,
+    }
 
 
 # --- Seed-metadata provenance (ported verbatim from the donor engine) ------
@@ -774,14 +831,44 @@ def replay_exact_native_target_range(
 
     request.output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # --- Frozen-authority guard -------------------------------------------
+    #
+    # Resume ordering is load-bearing: (1) resolve current authority, (2)
+    # load frozen authority, (3) exact compare, and only after MATCH may (4)
+    # existing progress be inspected, (5) completed-target boundaries be
+    # derived, or (6) evidence be appended. A fresh root (no evidence bytes
+    # yet) instead writes its authority before any target evidence exists.
+    # On any drift this raises before touching either the evidence file or
+    # the authority artifact -- no truncate, append, overwrite, reinterpret,
+    # or silent new-root creation.
+    authority_path = request.output_path.parent / AUTHORITY_FILENAME
+    current_authority = build_replay_authority(
+        source=source,
+        ordered_binding_identities=ordered_binding_identities(bindings),
+        binding_count=binding_count,
+        run_config=run_config_identity(request),
+        draw_authority_identity=draw_authority,
+    )
+    evidence_exists = request.output_path.exists() and request.output_path.stat().st_size > 0
+
+    if not evidence_exists:
+        write_json_file(authority_path, current_authority)
+    else:
+        if not authority_path.is_file():
+            raise ExactNativeReplayRuntimeError(
+                "REPLAY_AUTHORITY_MISSING: existing evidence has no frozen authority artifact "
+                f"at {authority_path}"
+            )
+        frozen_authority = json.loads(authority_path.read_text(encoding="utf-8"))
+        current_authority_normalized = json.loads(canonical_json_bytes(current_authority))
+        differences = diff_replay_authority(frozen_authority, current_authority_normalized)
+        if differences:
+            raise ReplayAuthorityDriftError(differences)
+
     actual_rows = 0
     status_counts: Counter[str] = Counter()
     resume_index = start_i
-    if (
-        request.output_path.exists()
-        and request.output_path.stat().st_size > 0
-        and binding_count > 0
-    ):
+    if evidence_exists and binding_count > 0:
         existing_lines = [
             line
             for line in request.output_path.read_text(encoding="utf-8").strip().split("\n")
@@ -851,13 +938,16 @@ __all__ = [
     "DEFAULT_EXPECTED_SPECIAL_NUMBER",
     "DEFAULT_MAX_VISIBLE_DRAW",
     "ExactNativeReplayRuntimeError",
+    "ReplayAuthorityDriftError",
     "ReplayTargetRangeRequest",
     "ReplayTargetRangeResult",
     "catalog_freeze",
     "causal_row",
     "load_authoritative_draws",
+    "ordered_binding_identities",
     "replay_cell",
     "replay_exact_native_target_range",
+    "run_config_identity",
     "runtime_bindings",
     "seed_metadata",
     "source_freeze",

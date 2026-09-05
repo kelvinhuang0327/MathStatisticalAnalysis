@@ -1824,7 +1824,7 @@ def _same_schedule_material(
     left: TargetAnnouncement,
     right: TargetAnnouncement,
 ) -> bool:
-    """Compare immutable schedule authority while allowing a later observation time."""
+    """Compare immutable schedule authority while allowing distinct observation/provenance."""
 
     return (
         left.target == right.target
@@ -1833,7 +1833,6 @@ def _same_schedule_material(
         and left.source.source_id == right.source.source_id
         and left.source.source_version == right.source.source_version
         and left.source.source_locator == right.source.source_locator
-        and left.source.source_sha256 == right.source.source_sha256
     )
 
 

@@ -132,28 +132,32 @@ def test_checked_in_surface_is_canonical_and_binds_the_frozen_inputs() -> None:
     assert artifact["core_head"] == EXPECTED_MAX_CORE_HEAD
     assert artifact["core_tree"] == EXPECTED_MAX_CORE_TREE
     assert artifact["core"]["path"] == EXPECTED_MAX_CORE_PATH.as_posix()
-    assert artifact["core"]["sha256"] == hashlib.sha256(
-        (ROOT / EXPECTED_MAX_CORE_PATH).read_bytes()
-    ).hexdigest()
-    assert artifact["matrix_source"]["sha256"] == hashlib.sha256(
-        (ROOT / "src/lottolab/research/strategy_matrix_comparison.py").read_bytes()
-    ).hexdigest()
+    assert (
+        artifact["core"]["sha256"]
+        == hashlib.sha256((ROOT / EXPECTED_MAX_CORE_PATH).read_bytes()).hexdigest()
+    )
+    assert (
+        artifact["matrix_source"]["sha256"]
+        == hashlib.sha256(
+            (ROOT / "src/lottolab/research/strategy_matrix_comparison.py").read_bytes()
+        ).hexdigest()
+    )
     input_path = ROOT / RESULT_PATH
-    assert artifact["input_canonical_result"]["sha256"] == hashlib.sha256(
-        input_path.read_bytes()
-    ).hexdigest()
+    assert (
+        artifact["input_canonical_result"]["sha256"]
+        == hashlib.sha256(input_path.read_bytes()).hexdigest()
+    )
 
 
 def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explicitly() -> None:
     input_rows = {
-        row["row_id"]: row
-        for row in json.loads((ROOT / RESULT_PATH).read_text())["rows"]
+        row["row_id"]: row for row in json.loads((ROOT / RESULT_PATH).read_text())["rows"]
     }
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     evaluated = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
     unavailable = {cell["row_id"]: cell for cell in artifact["unavailable_cells"]}
-    assert len(evaluated) == 242
-    assert len(unavailable) == 115
+    assert len(evaluated) == 246
+    assert len(unavailable) == 126
     assert set(evaluated) | set(unavailable) == set(input_rows)
     assert not set(evaluated) & set(unavailable)
 
@@ -177,8 +181,11 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
     gap = artifact["gap_semantics"]
     assert gap["previous_gap_id"] == "EXPECTED_HIT_UTILITY_CONTRACT"
     assert gap["contract_evaluator"] == "RESOLVED"
-    assert gap["remaining_prospective_gap"] == "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER"
-    assert gap["dedicated_optimizer_implemented"] is False
+    assert gap["optimizer_gap_id"] == "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER"
+    assert gap["optimizer_status"] == "RESOLVED"
+    assert gap["dedicated_optimizer_implemented"] is True
+    assert gap["dedicated_optimizer_id"] == "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    assert gap["remaining_prospective_gap"] == "CROSS_STRUCTURE_AND_K20_EXPECTED_MAX_OPTIMIZATION"
 
 
 def test_surface_reuses_each_exact_value_for_every_duplicate_portfolio_identity() -> None:
@@ -189,9 +196,7 @@ def test_surface_reuses_each_exact_value_for_every_duplicate_portfolio_identity(
         row_ids = evaluation["row_ids"]
         assert evaluation["computed_once"] is True
         assert evaluation["reused_row_count"] == len(row_ids)
-        values = {
-            cells[row_id]["expected_max_main_matches_v1"]["exact"] for row_id in row_ids
-        }
+        values = {cells[row_id]["expected_max_main_matches_v1"]["exact"] for row_id in row_ids}
         assert values == {evaluation["expected_max_main_matches_v1"]["exact"]}
 
 
@@ -199,13 +204,9 @@ def test_surface_covers_every_existing_portfolio_supported_k_and_lottery_group()
     input_rows = json.loads((ROOT / RESULT_PATH).read_text())["rows"]
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     expected_groups = {
-        (row["lottery"], row["k"])
-        for row in input_rows
-        if row["portfolio"] is not None
+        (row["lottery"], row["k"]) for row in input_rows if row["portfolio"] is not None
     }
-    actual_groups = {
-        (cell["lottery"], cell["k"]) for cell in artifact["evaluated_cells"]
-    }
+    actual_groups = {(cell["lottery"], cell["k"]) for cell in artifact["evaluated_cells"]}
     assert actual_groups == expected_groups
     assert {k for _, k in actual_groups} == {2, 3, 5, 10, 20}
 
@@ -217,4 +218,8 @@ def test_surface_has_a_distinct_objective_signal_without_a_leaderboard() -> None
     assert discrimination["different_relation_pair_count"] > 0
     assert discrimination["separated_coverage_tie_count"] > 0
     assert artifact["claim_boundary"]["global_leaderboard"] == "NOT_PRODUCED"
-    assert artifact["claim_boundary"]["strategy_id_added"] == "NO"
+    assert (
+        artifact["claim_boundary"]["strategy_id_added"]
+        == "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    )
+    assert artifact["claim_boundary"]["dedicated_optimizer_implemented"] == "YES"

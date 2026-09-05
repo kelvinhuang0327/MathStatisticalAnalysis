@@ -1248,6 +1248,44 @@
           "BIG_LOTTO"
         ],
         "supports_synthetic_shape": false
+      },
+      {
+        "core_correctness_test": "PASS",
+        "correctness_evidence": [
+          {
+            "path": "tests/unit/test_expected_max_main_matches_exact_1exchange_ascent.py",
+            "sha256": "2402a28553ad17dee9bd095c1f8da0e15a6f101aaec59030d296a7ac8d638aa7"
+          }
+        ],
+        "deterministic": true,
+        "diversification_constraint": "NONE",
+        "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+        "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
+        "method_type": "PORTFOLIO_OPTIMIZER",
+        "neighborhood_radius": 1,
+        "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+        "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+        "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
+        "source_files": [
+          {
+            "path": "src/lottolab/research/expected_max_main_matches_exact_1exchange_ascent.py",
+            "sha256": "86ea737f3ff720cab0f30f35d375369ba2f6997464df7c7f7c9a9cef996ccfcc"
+          }
+        ],
+        "source_status": "IMPLEMENTED",
+        "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
+        "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+        "supported_k": [
+          2,
+          3,
+          5,
+          10
+        ],
+        "supported_lottery": [
+          "BIG_LOTTO"
+        ],
+        "supports_synthetic_shape": false
       }
     ],
     "native_evidence": {
@@ -1260,6 +1298,11 @@
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-result.json",
         "sha256": "c7904f716a61fb6b43df2091664ef55a1972b9212cac3490133d0accd4ae7290"
+      },
+      "expected_max_exact_1exchange_ascent": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
       },
       "frontier_b649": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",

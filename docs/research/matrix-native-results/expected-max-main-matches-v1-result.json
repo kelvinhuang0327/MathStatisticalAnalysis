@@ -1,12 +1,12 @@
 {
   "claim_boundary": {
     "cross_lottery_normalization": "NOT_PERFORMED",
-    "dedicated_optimizer_implemented": "NO",
+    "dedicated_optimizer_implemented": "YES",
     "global_leaderboard": "NOT_PRODUCED",
     "historical_outcomes_used": "NO",
     "historical_replay": "NOT_RUN",
     "production_mutation": "NONE",
-    "strategy_id_added": "NO"
+    "strategy_id_added": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
   },
   "core": {
     "head": "28fe4cf978e64c526f1311be1b497fa6f325464d",
@@ -16,7 +16,7 @@
   },
   "core_head": "28fe4cf978e64c526f1311be1b497fa6f325464d",
   "core_tree": "8b95a2142506ddaec20b998fca366debd3f93b3c",
-  "evaluated_cell_count": 242,
+  "evaluated_cell_count": 246,
   "evaluated_cells": [
     {
       "case_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon",
@@ -2345,6 +2345,102 @@
       "row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
       "status": "MEASURED",
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2"
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "evaluation_metric_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "exactness": "EXACT_COMBINATORIAL_EXPECTATION",
+      "expected_max_main_matches_v1": {
+        "denominator": 3495954,
+        "exact": "7381249/3495954",
+        "numerator": 7381249
+      },
+      "k": 10,
+      "lottery": "BIG_LOTTO",
+      "minimum_matches": 3,
+      "native_evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "native_exact_q": {
+        "denominator": 499422,
+        "exact": "90995/499422",
+        "numerator": 90995
+      },
+      "native_method_objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+      "status": "MEASURED",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "evaluation_metric_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "exactness": "EXACT_COMBINATORIAL_EXPECTATION",
+      "expected_max_main_matches_v1": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      },
+      "k": 2,
+      "lottery": "BIG_LOTTO",
+      "minimum_matches": 3,
+      "native_evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "native_exact_q": {
+        "denominator": 582659,
+        "exact": "21702/582659",
+        "numerator": 21702
+      },
+      "native_method_objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio_sha256": "274e9122ddfb87897fbba37cb7706eb6a5bffa7c5a46e30d553c416965ab4530",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "status": "MEASURED",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "evaluation_metric_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "exactness": "EXACT_COMBINATORIAL_EXPECTATION",
+      "expected_max_main_matches_v1": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      },
+      "k": 3,
+      "lottery": "BIG_LOTTO",
+      "minimum_matches": 3,
+      "native_evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "native_exact_q": {
+        "denominator": 582659,
+        "exact": "32528/582659",
+        "numerator": 32528
+      },
+      "native_method_objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio_sha256": "1d4ab0ec2f297fb8ab3e4bcdff4d5f46b748b73c36fb90f4b8b9cabd87b53b9f",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+      "status": "MEASURED",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "evaluation_metric_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "exactness": "EXACT_COMBINATORIAL_EXPECTATION",
+      "expected_max_main_matches_v1": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      },
+      "k": 5,
+      "lottery": "BIG_LOTTO",
+      "minimum_matches": 3,
+      "native_evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "native_exact_q": {
+        "denominator": 582659,
+        "exact": "54130/582659",
+        "numerator": 54130
+      },
+      "native_method_objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio_sha256": "aeec5eb5ba17c857189cd8f7d2eee28fb042b9e4170e2beb6884b6bc96e15b76",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
+      "status": "MEASURED",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {
       "case_id": "NATIVE_BIG_LOTTO",
@@ -5517,12 +5613,13 @@
   ],
   "gap_semantics": {
     "contract_evaluator": "RESOLVED",
-    "dedicated_optimizer_implemented": false,
+    "dedicated_optimizer_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+    "dedicated_optimizer_implemented": true,
     "evidence_row_ids": [
       "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k10|m3",
       "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k20|m3",
       "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3",
-      "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+      "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
       "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k20|m3",
       "NATIVE_DAILY_539|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k10|m3",
       "NATIVE_DAILY_539|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k20|m3",
@@ -5555,21 +5652,23 @@
       "TOY_14_4|RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1|first_restart|k5|m2",
       "TOY_14_4|RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1|first_restart|k5|m3"
     ],
+    "optimizer_gap_id": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER",
+    "optimizer_status": "RESOLVED",
     "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
-    "remaining_prospective_gap": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER"
+    "remaining_prospective_gap": "CROSS_STRUCTURE_AND_K20_EXPECTED_MAX_OPTIMIZATION"
   },
   "input_canonical_result": {
     "base_head": "acdda23772a86f59ebe11b17bf5257d0d064fd5a",
     "base_tree": "fa28f9af9d75d9d82b99bb2010c6eb4b0fc17ef1",
     "path": "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json",
     "schema_version": "1.0.0",
-    "sha256": "cfa8c1b8fb5f67a445561806c1bb69df80f2f11f4d436308fb09e93790bb26d7",
+    "sha256": "4358e55fb655f29e1a9b9f46a42899b859d42f6e8db3069106aeba8735d2c8a2",
     "task_id": "STRATEGY_MATRIX_IMPORTED_OPTIMIZER_INTEGRATION_AND_GAP_R1"
   },
-  "matrix_intake_sha256": "98ac0a48499afa50259ce5d8c6a22cce8817c4afec71e471fa846dd706faa321",
+  "matrix_intake_sha256": "aecec639f08d2173c67b71e1000bbcdfa7797da2cf91da27abe9fff7b7686c93",
   "matrix_source": {
     "path": "src/lottolab/research/strategy_matrix_comparison.py",
-    "sha256": "b56d46a7ad927743dd0f6c4d7c6296f0f8d80f65ea9bc86aec07e5c8ce56201c"
+    "sha256": "9bda85dd51d47e0253dc0370701946c4e4b6d91e8ff84fe3743859cc8fa8a8bd"
   },
   "objective": {
     "definition": "E[max_t |t intersection D|]",
@@ -5594,7 +5693,7 @@
       "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k10|m3",
       "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k20|m3",
       "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k20|m3",
-      "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+      "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
       "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k20|m3",
       "NATIVE_DAILY_539|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k10|m3",
       "NATIVE_DAILY_539|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k20|m3",
@@ -7272,7 +7371,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|B649_CANDIDATE_SET_HYBRID_DIVERSITY_V1|default|k10|mNone",
         "portfolio_a_sha256": "03aebd4a87869e61a8c9eea22d5b7b8f0907412c3cb84183d9b861202d7cb692",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -7419,7 +7518,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_uniform_seeded|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k10|mNone",
         "portfolio_a_sha256": "0b40f699128e23a6cfaf6887ca198ad27b9e3ac4c8a197a362778214444915ee",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -7545,7 +7644,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_uniform_seeded|CANDIDATE_LOW_OVERLAP_V1|score_priority|k10|mNone",
         "portfolio_a_sha256": "32f0a435f17e0fcbb6751845f3bba957950177d562fe49740f135e0e74ca32dc",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -7714,7 +7813,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R1|default|k10|m3",
         "portfolio_a_sha256": "363a087f9b3f1294291c98f4353115be1031606946d25f6c56774b14261b5f49",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -7798,7 +7897,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_uniform_seeded|B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1|default|k10|mNone",
         "portfolio_a_sha256": "4207ae330b70bece761e4e0dc7c5d6b1b569e432670e05cab75e38c534bb34f0",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -7909,7 +8008,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k10|mNone",
         "portfolio_a_sha256": "544ceec105bcae09ebaa99046dc024759cc4cc69f8e4a43f3d000b51d37da73f",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -7983,7 +8082,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1|default|k10|mNone",
         "portfolio_a_sha256": "58fca923a49b2616fc04185a3cf6db7f7bf1b80331d22a6c3fd3274b7ceb2d13",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -8020,7 +8119,7 @@
         "lottery": "BIG_LOTTO",
         "portfolio_a_representative_row_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|B649_CANDIDATE_SET_LOW_OVERLAP_V1|default|k10|mNone",
         "portfolio_a_sha256": "def38d4f197b4329e06fb0defa820682e40fe2ac2582a732b81bc449b9b2e8f7",
-        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
+        "portfolio_b_representative_row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "portfolio_b_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b"
       },
       {
@@ -17803,11 +17902,12 @@
       "lottery": "BIG_LOTTO",
       "pool_size": 49,
       "portfolio_sha256": "274e9122ddfb87897fbba37cb7706eb6a5bffa7c5a46e30d553c416965ab4530",
-      "reused_row_count": 5,
+      "reused_row_count": 6,
       "row_ids": [
         "NATIVE_BIG_LOTTO|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k2|m3",
         "NATIVE_BIG_LOTTO|GREEDY_MINMAX_THEN_SUM_OVERLAP_V1|default|k2|m3",
         "NATIVE_BIG_LOTTO|GREEDY_MIN_OVERLAP_V1|default|k2|m3",
+        "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k2|m3",
         "NATIVE_BIG_LOTTO|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k2|m3"
       ]
@@ -17913,9 +18013,10 @@
       "lottery": "BIG_LOTTO",
       "pool_size": 49,
       "portfolio_sha256": "1d4ab0ec2f297fb8ab3e4bcdff4d5f46b748b73c36fb90f4b8b9cabd87b53b9f",
-      "reused_row_count": 3,
+      "reused_row_count": 4,
       "row_ids": [
         "NATIVE_BIG_LOTTO|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k3|m3",
+        "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k3|m3",
         "NATIVE_BIG_LOTTO|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k3|m3"
       ]
@@ -18026,9 +18127,10 @@
       "lottery": "BIG_LOTTO",
       "pool_size": 49,
       "portfolio_sha256": "aeec5eb5ba17c857189cd8f7d2eee28fb042b9e4170e2beb6884b6bc96e15b76",
-      "reused_row_count": 3,
+      "reused_row_count": 4,
       "row_ids": [
         "NATIVE_BIG_LOTTO|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k5|m3",
+        "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k5|m3",
         "NATIVE_BIG_LOTTO|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k5|m3"
       ]
@@ -18260,8 +18362,9 @@
       "lottery": "BIG_LOTTO",
       "pool_size": 49,
       "portfolio_sha256": "e0d9e626ba0aafdcdbb8d237b2f8781860288d467c324e7ba5d4629f3a44591b",
-      "reused_row_count": 2,
+      "reused_row_count": 3,
       "row_ids": [
+        "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
         "NATIVE_BIG_LOTTO|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k10|m3"
       ]
@@ -20185,7 +20288,7 @@
     20
   ],
   "task_id": "EXPECTED_HIT_UTILITY_MATRIX_INTEGRATION_R1",
-  "unavailable_cell_count": 115,
+  "unavailable_cell_count": 126,
   "unavailable_cells": [
     {
       "case_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon",
@@ -20474,6 +20577,15 @@
       "row_id": "NATIVE_BIG_LOTTO|GREEDY_MIN_OVERLAP_V1|default|k5|m3",
       "status": "REUSED_VERIFIED",
       "strategy_id": "GREEDY_MIN_OVERLAP_V1"
+    },
+    {
+      "case_id": "NATIVE_BIG_LOTTO",
+      "k": 20,
+      "lottery": "BIG_LOTTO",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {
       "case_id": "NATIVE_BIG_LOTTO",
@@ -20845,6 +20957,51 @@
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2"
     },
     {
+      "case_id": "NATIVE_DAILY_539",
+      "k": 10,
+      "lottery": "DAILY_539",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "k": 20,
+      "lottery": "DAILY_539",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "k": 2,
+      "lottery": "DAILY_539",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "k": 3,
+      "lottery": "DAILY_539",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "k": 5,
+      "lottery": "DAILY_539",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
       "case_id": "NATIVE_POWER_LOTTO_ZONE1",
       "k": 10,
       "lottery": "POWER_LOTTO_ZONE1",
@@ -21176,6 +21333,51 @@
       "row_id": "NATIVE_POWER_LOTTO_ZONE1|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
       "status": "NOT_APPLICABLE",
       "strategy_id": "HARD_DIV_PAIRWISE_OVERLAP_R2"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "k": 10,
+      "lottery": "POWER_LOTTO_ZONE1",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "k": 20,
+      "lottery": "POWER_LOTTO_ZONE1",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "k": 2,
+      "lottery": "POWER_LOTTO_ZONE1",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "k": 3,
+      "lottery": "POWER_LOTTO_ZONE1",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_POWER_LOTTO_ZONE1",
+      "k": 5,
+      "lottery": "POWER_LOTTO_ZONE1",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "row_id": "NATIVE_POWER_LOTTO_ZONE1|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
+      "status": "NOT_APPLICABLE",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {
       "case_id": "TOY_14_4",

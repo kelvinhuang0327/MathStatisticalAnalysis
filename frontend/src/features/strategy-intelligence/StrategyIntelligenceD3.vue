@@ -14,6 +14,7 @@ const props = withDefaults(
     selectedLotteryType?: LotteryType
     d3Status?: string
     d3Value?: string
+    d3Definition?: D3MetricDefinitionInfo
     strategies?: StrategyCombinedItem[]
   }>(),
   {
@@ -36,23 +37,6 @@ const currentGameFullName = computed(() => {
       return 'Daily Cash 5/39'
   }
 })
-
-const d3Definition: D3MetricDefinitionInfo = {
-  metricId: 'D3',
-  metricVersion: 'v1',
-  schemaId: 'lottolab.evidence.metric_definition',
-  schemaVersion: '1.0.0',
-  formulaStatus: 'RESERVED_UNAVAILABLE',
-  direction: 'DESCRIPTIVE_ONLY',
-  aggregation: 'NONE',
-  sampleUnit: 'DRAWS',
-  decimalScale: 4,
-  roundingMode: 'ROUND_HALF_EVEN',
-  unit: 'UNITLESS',
-  definitionProse:
-    'D3 is reserved for a future Owner-approved primary ranking metric. No formula, threshold, or ranking direction is committed by this task. Any result declaring VALUE_PRESENT against this definition is a METRIC_DEFINITION_FAILURE.',
-  authorityPath: 'contracts/evidence/metric_definitions/d3.json',
-}
 </script>
 
 <template>
@@ -67,7 +51,7 @@ const d3Definition: D3MetricDefinitionInfo = {
         <div class="scope-card" aria-label="D3 SSOT status">
           <span>D3 SSOT Scope · {{ currentGameCode }}</span>
           <strong>{{ d3Status }}</strong>
-          <small>Value: {{ d3Value }} · Authority: {{ d3Definition.authorityPath }}</small>
+          <small>Value: {{ d3Value }} · Authority: {{ d3Definition?.authorityPath }}</small>
         </div>
       </div>
 
@@ -100,8 +84,8 @@ const d3Definition: D3MetricDefinitionInfo = {
         />
         <MetricCard
           label="Direction & Aggregation"
-          :value="d3Definition.direction"
-          :subvalue="`Aggregation: ${d3Definition.aggregation} · Unit: ${d3Definition.unit}`"
+          :value="d3Definition?.direction ?? ''"
+          :subvalue="`Aggregation: ${d3Definition?.aggregation} · Unit: ${d3Definition?.unit}`"
           variant="default"
         />
       </div>
@@ -113,11 +97,11 @@ const d3Definition: D3MetricDefinitionInfo = {
         <span class="prose-icon" aria-hidden="true">📜</span>
         <div>
           <h3 id="d3-prose-title" class="prose-title">Committed Definition Prose</h3>
-          <code class="prose-source">{{ d3Definition.authorityPath }}</code>
+          <code class="prose-source">{{ d3Definition?.authorityPath }}</code>
         </div>
       </div>
       <blockquote class="prose-quote">
-        "{{ d3Definition.definitionProse }}"
+        "{{ d3Definition?.definitionProse }}"
       </blockquote>
     </div>
 
@@ -176,7 +160,7 @@ const d3Definition: D3MetricDefinitionInfo = {
           <StatusBadge :status="strategy.empiricalEligibility" size="sm" />
         </td>
         <td>
-          <code class="source-path">{{ d3Definition.authorityPath }}</code>
+          <code class="source-path">{{ d3Definition?.authorityPath }}</code>
         </td>
         <td>
           <span class="reason-text">

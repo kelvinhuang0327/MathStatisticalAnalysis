@@ -7439,12 +7439,16 @@
               }
             ],
             "title": "Value"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/D3DefinitionView"
           }
         },
         "type": "object",
         "required": [
           "status",
-          "value"
+          "value",
+          "definition"
         ],
         "title": "D3AvailabilityBlock"
       },
@@ -7460,6 +7464,80 @@
           "INCOMPATIBLE"
         ],
         "title": "D3AvailabilityStatus"
+      },
+      "D3DefinitionView": {
+        "properties": {
+          "metric_id": {
+            "type": "string",
+            "title": "Metric Id"
+          },
+          "metric_version": {
+            "type": "string",
+            "title": "Metric Version"
+          },
+          "schema_id": {
+            "type": "string",
+            "title": "Schema Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "formula_status": {
+            "type": "string",
+            "title": "Formula Status"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "aggregation": {
+            "type": "string",
+            "title": "Aggregation"
+          },
+          "sample_unit": {
+            "type": "string",
+            "title": "Sample Unit"
+          },
+          "decimal_scale": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Decimal Scale"
+          },
+          "rounding_mode": {
+            "type": "string",
+            "title": "Rounding Mode"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "definition_prose": {
+            "type": "string",
+            "title": "Definition Prose"
+          },
+          "authority_path": {
+            "type": "string",
+            "title": "Authority Path"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metric_id",
+          "metric_version",
+          "schema_id",
+          "schema_version",
+          "formula_status",
+          "direction",
+          "aggregation",
+          "sample_unit",
+          "decimal_scale",
+          "rounding_mode",
+          "unit",
+          "definition_prose",
+          "authority_path"
+        ],
+        "title": "D3DefinitionView"
       },
       "DefinitionAvailabilityStatus": {
         "type": "string",

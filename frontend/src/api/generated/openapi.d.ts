@@ -2369,8 +2369,24 @@ export interface components {
     "D3AvailabilityBlock": {
           "status": components['schemas']["D3AvailabilityStatus"]
           "value": string | string
+          "definition": components['schemas']["D3DefinitionView"]
         }
     "D3AvailabilityStatus": "RESERVED_UNAVAILABLE" | "DEFINITION_MISSING" | "EVIDENCE_MISSING" | "VALUE_UNVERIFIED" | "VALUE_PRESENT" | "STALE" | "INCOMPATIBLE"
+    "D3DefinitionView": {
+          "metric_id": string
+          "metric_version": string
+          "schema_id": string
+          "schema_version": string
+          "formula_status": string
+          "direction": string
+          "aggregation": string
+          "sample_unit": string
+          "decimal_scale": number
+          "rounding_mode": string
+          "unit": string
+          "definition_prose": string
+          "authority_path": string
+        }
     "DefinitionAvailabilityStatus": "DEFINITION_AVAILABLE" | "DEFINITION_UNAVAILABLE"
     "DrawHistoryResponse": {
           "records": Array<components['schemas']["DrawRecordView"]>

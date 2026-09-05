@@ -100,7 +100,25 @@ const evidence = {
     value: 'NOT_AVAILABLE',
     owner: 'ACTIVE_MULTITICKET_AGENT',
   },
-  d3: { status: 'RESERVED_UNAVAILABLE', value: 'NOT_AVAILABLE' },
+  d3: {
+    status: 'RESERVED_UNAVAILABLE',
+    value: 'NOT_AVAILABLE',
+    definition: {
+      metric_id: 'D3',
+      metric_version: 'v1',
+      schema_id: 'lottolab.evidence.metric_definition',
+      schema_version: '1.0.0',
+      formula_status: 'RESERVED_UNAVAILABLE',
+      direction: 'DESCRIPTIVE_ONLY',
+      aggregation: 'NONE',
+      sample_unit: 'DRAWS',
+      decimal_scale: 4,
+      rounding_mode: 'ROUND_HALF_EVEN',
+      unit: 'UNITLESS',
+      definition_prose: 'fixture prose',
+      authority_path: 'contracts/evidence/metric_definitions/d3.json',
+    },
+  },
 }
 
 beforeEach(() => {

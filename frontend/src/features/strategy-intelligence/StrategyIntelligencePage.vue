@@ -21,6 +21,7 @@ import StrategyIntelligenceOverview from './StrategyIntelligenceOverview.vue'
 import StrategyIntelligencePortfolio from './StrategyIntelligencePortfolio.vue'
 import {
   GAME_OPTIONS,
+  type D3MetricDefinitionInfo,
   type StrategyCombinedItem,
   type StrategyIntelligenceTab,
 } from './types'
@@ -123,6 +124,26 @@ const summary = computed(() => {
     portfolioStatus,
     portfolioValue,
     portfolioOwner,
+  }
+})
+
+const d3Definition = computed<D3MetricDefinitionInfo | undefined>(() => {
+  const definition = evidenceData.value?.d3.definition
+  if (!definition) return undefined
+  return {
+    metricId: definition.metric_id,
+    metricVersion: definition.metric_version,
+    schemaId: definition.schema_id,
+    schemaVersion: definition.schema_version,
+    formulaStatus: definition.formula_status,
+    direction: definition.direction,
+    aggregation: definition.aggregation,
+    sampleUnit: definition.sample_unit,
+    decimalScale: definition.decimal_scale,
+    roundingMode: definition.rounding_mode,
+    unit: definition.unit,
+    definitionProse: definition.definition_prose,
+    authorityPath: definition.authority_path,
   }
 })
 
@@ -378,6 +399,7 @@ onBeforeUnmount(() => {
           :selected-lottery-type="selectedLotteryType"
           :d3-status="summary.d3Status"
           :d3-value="summary.d3Value"
+          :d3-definition="d3Definition"
           :strategies="combinedStrategies"
         />
       </div>

@@ -93,8 +93,25 @@ function makeOverviewForGame(
   }
 }
 
+const CANONICAL_D3_DEFINITION = {
+  metric_id: 'D3',
+  metric_version: 'v1',
+  schema_id: 'lottolab.evidence.metric_definition',
+  schema_version: '1.0.0',
+  formula_status: 'RESERVED_UNAVAILABLE',
+  direction: 'DESCRIPTIVE_ONLY',
+  aggregation: 'NONE',
+  sample_unit: 'DRAWS',
+  decimal_scale: 4,
+  rounding_mode: 'ROUND_HALF_EVEN',
+  unit: 'UNITLESS',
+  definition_prose: 'D3 is reserved for a future Owner-approved primary ranking metric.',
+  authority_path: 'contracts/evidence/metric_definitions/d3.json',
+} satisfies StrategyEvidenceResponse['d3']['definition']
+
 function makeEvidence(
   customOverrides?: Record<string, { registration_status?: string; verification_status?: string }>,
+  d3DefinitionOverrides?: Partial<StrategyEvidenceResponse['d3']['definition']>,
 ): StrategyEvidenceResponse {
   return {
     items: ALL_STRATEGIES.map((item) => {
@@ -133,6 +150,7 @@ function makeEvidence(
     d3: {
       status: 'RESERVED_UNAVAILABLE',
       value: 'NOT_AVAILABLE',
+      definition: { ...CANONICAL_D3_DEFINITION, ...d3DefinitionOverrides },
     },
   }
 }
@@ -529,6 +547,46 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     expect(wrapper.text()).toContain('RESERVED_UNAVAILABLE')
     expect(wrapper.text()).toContain('NOT_AVAILABLE')
     expect(wrapper.text()).toContain('contracts/evidence/metric_definitions/d3.json')
+
+    wrapper.unmount()
+  })
+
+  it('15b. D3 definition renders from the API response, not a pinned frontend constant', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/strategy-overview')) {
+        return Promise.resolve(apiResponse(makeOverviewForGame('BIG_LOTTO')))
+      }
+      if (url.includes('/api/v1/strategy-evidence')) {
+        return Promise.resolve(
+          apiResponse(
+            makeEvidence(undefined, {
+              direction: 'MOCKED_DIRECTION_CUSTOM',
+              aggregation: 'MOCKED_AGGREGATION_CUSTOM',
+              unit: 'MOCKED_UNIT_CUSTOM',
+              definition_prose: 'Mocked prose unique to this test case.',
+              authority_path: 'mocked/authority/path/d3.json',
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    await wrapper.findAll('button[role="tab"]')[2].trigger('click')
+    await flushPromises()
+
+    const text = wrapper.text()
+    expect(text).toContain('MOCKED_DIRECTION_CUSTOM')
+    expect(text).toContain('MOCKED_AGGREGATION_CUSTOM')
+    expect(text).toContain('MOCKED_UNIT_CUSTOM')
+    expect(text).toContain('Mocked prose unique to this test case.')
+    expect(text).toContain('mocked/authority/path/d3.json')
+    expect(text).not.toContain('DESCRIPTIVE_ONLY')
+    expect(text).not.toContain('contracts/evidence/metric_definitions/d3.json')
 
     wrapper.unmount()
   })

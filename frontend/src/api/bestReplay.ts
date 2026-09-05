@@ -300,6 +300,65 @@ export async function loadP638BestReplayData(
   signal?: AbortSignal,
 ): Promise<BestReplayItem[]> {
   if (!ticketCounts.includes(1)) return []
+
+  const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
+  const horizonLabel = horizonDef?.label ?? horizon
+
+  if (horizon !== 'FULL') {
+    const unavailableNote = `P638 canonical evidence does not publish an exact ${horizon} ranking window. Descriptive historical evidence only; does not infer future performance.`
+    try {
+      const runsPage = await listP638Runs({ limit: 5, offset: 0 }, signal)
+      if (runsPage.items.length > 0) {
+        const latestRun = runsPage.items[0]
+        if (latestRun) {
+          const rankingPage = await getP638Rankings(latestRun.run_id, signal)
+          if (rankingPage.items.length > 0) {
+            return rankingPage.items.map((r: P638Ranking): BestReplayItem => ({
+              id: `P638-${r.strategy_id}-1-${horizon}`,
+              rank: null,
+              strategyId: r.strategy_id,
+              strategyVersion: 'v1.0',
+              methodFamily: 'p638_native',
+              game: 'P638',
+              ticketCount: 1,
+              horizon,
+              horizonLabel,
+              evaluatedTargets: 0,
+              winningTargets: null,
+              hitRate: null,
+              hitRateFormatted: 'Unavailable',
+              baselineProbability: null,
+              baselineDelta: null,
+              baselineDeltaFormatted: 'Unavailable',
+              coverage: null,
+              bestHit: 'Unavailable',
+              prizeCounts: null,
+              evidenceStatus: 'EVIDENCE UNAVAILABLE',
+              notes: unavailableNote,
+              isAvailable: false,
+              unavailableReasonCode: 'NO_CANONICAL_WINDOW_EVIDENCE',
+            }))
+          }
+        }
+      }
+    } catch {
+      // return fallback item below
+    }
+
+    return [
+      createUnavailableItem(
+        'P638',
+        'no_canonical_data_p638_t1',
+        'v1.0',
+        'p638_native',
+        1,
+        horizon,
+        'NO_CANONICAL_WINDOW_EVIDENCE',
+        unavailableNote,
+      ),
+    ]
+  }
+
   try {
     const runsPage = await listP638Runs({ limit: 5, offset: 0 }, signal)
     if (!runsPage.items.length) return []
@@ -307,8 +366,6 @@ export async function loadP638BestReplayData(
     if (!latestRun) return []
 
     const rankingPage = await getP638Rankings(latestRun.run_id, signal)
-    const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
-    const horizonLabel = horizonDef?.label ?? horizon
 
     return rankingPage.items.map((r: P638Ranking): BestReplayItem => {
       const evaluatedTargets = latestRun.complete_target_count || 1000

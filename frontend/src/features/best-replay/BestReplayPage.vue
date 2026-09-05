@@ -241,16 +241,21 @@ const oneToFiveOverviewItems = computed<Record<PrimaryTicketCount, BestReplayIte
     if (rank1) {
       result[count] = rank1
     } else {
-      result[count] = createUnavailableItem(
-        game,
-        `no_canonical_data_${game.toLowerCase()}_t${count}`,
-        'v1.0',
-        'unsupported_dimension',
-        count,
-        selectedHorizon.value,
-        'NO_CANONICAL_REPLAY_EVIDENCE',
-        `No canonical multi-ticket backtest evidence is recorded for ticket count ${count}.`,
+      const anyItem = allLoadedItems.value.find(
+        (item) => item.game === game && item.ticketCount === count,
       )
+      result[count] =
+        anyItem ||
+        createUnavailableItem(
+          game,
+          `no_canonical_data_${game.toLowerCase()}_t${count}`,
+          'v1.0',
+          'unsupported_dimension',
+          count,
+          selectedHorizon.value,
+          'NO_CANONICAL_REPLAY_EVIDENCE',
+          `No canonical multi-ticket backtest evidence is recorded for ticket count ${count}.`,
+        )
     }
   }
 
@@ -367,7 +372,22 @@ const inspectHorizonItems = computed<Partial<Record<string, BestReplayItem | nul
         item.ticketCount === targetCount &&
         item.horizon === h.key,
     )
-    byHorizon[h.key] = match || null
+    if (match) {
+      byHorizon[h.key] = match
+    } else if (selectedGame.value === 'P638' && targetCount === 1 && h.key !== 'FULL') {
+      byHorizon[h.key] = createUnavailableItem(
+        'P638',
+        targetId,
+        'v1.0',
+        'p638_native',
+        1,
+        h.key,
+        'NO_CANONICAL_WINDOW_EVIDENCE',
+        `P638 canonical evidence does not publish an exact ${h.key} ranking window. Descriptive historical evidence only; does not infer future performance.`,
+      )
+    } else {
+      byHorizon[h.key] = null
+    }
   }
   return byHorizon
 })

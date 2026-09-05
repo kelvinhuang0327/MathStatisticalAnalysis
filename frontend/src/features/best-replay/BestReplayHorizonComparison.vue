@@ -127,7 +127,7 @@ const maxHitRate = computed(() => {
           <span class="unavailable-icon" aria-hidden="true">🔒</span>
           <p class="unavailable-title">Evidence Unavailable</p>
           <p class="unavailable-desc">
-            No canonical backtest evidence is recorded for ticket count {{ ticketCount }} at horizon {{ h.label }}.
+            {{ itemsByHorizon[h.key]?.notes || `No canonical backtest evidence is recorded for ticket count ${ticketCount} at horizon ${h.label}.` }}
           </p>
         </div>
       </div>

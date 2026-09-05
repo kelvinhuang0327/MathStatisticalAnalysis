@@ -24,7 +24,7 @@ import {
   B649_RESEARCH_DISCLAIMER,
   B649_SUCCESS_CRITERIA,
 } from '../src/api/b649MultiTicketRecords'
-import { loadP638BestReplayData } from '../src/api/bestReplay'
+import { loadP638BestReplayData, loadT539BestReplayData } from '../src/api/bestReplay'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
@@ -967,6 +967,166 @@ describe('P638 Best Replay Horizon Authority Validation (Correction R1)', () => 
     expect(longHorizonCard.classes()).not.toContain('horizon-card--available')
     expect(longHorizonCard.text()).toContain('Evidence Unavailable')
     expect(longHorizonCard.text()).toContain('P638 canonical evidence does not publish an exact RECENT_750 ranking window')
+
+    wrapper.unmount()
+  })
+})
+
+describe('T539 Best Replay Horizon Authority Validation (Correction R1)', () => {
+  it('loadT539BestReplayData returns available items only for FULL horizon', async () => {
+    const fullItems = await loadT539BestReplayData([1], 'FULL')
+    expect(fullItems.length).toBe(2)
+
+    const leader = fullItems[0]
+    expect(leader?.isAvailable).toBe(true)
+    expect(leader?.strategyId).toBe('t539_wave1_cyclic_leader')
+    expect(leader?.rank).toBe(1)
+    expect(leader?.hitRate).toBe(0.215)
+    expect(leader?.hitRateFormatted).toBe('21.50%')
+    expect(leader?.evaluatedTargets).toBe(1000)
+    expect(leader?.winningTargets).toBe(215)
+    expect(leader?.evidenceStatus).toBe('DESCRIPTIVE LEADER')
+    expect(leader?.notes).toContain('Descriptive historical evidence only; does not infer future performance')
+  })
+
+  it('loadT539BestReplayData fails closed for RECENT_50, RECENT_300, and RECENT_750 with explicit reason', async () => {
+    for (const unsupportedHorizon of ['RECENT_50', 'RECENT_300', 'RECENT_750'] as const) {
+      const items = await loadT539BestReplayData([1], unsupportedHorizon)
+      expect(items.length).toBeGreaterThan(0)
+
+      for (const item of items) {
+        expect(item.isAvailable).toBe(false)
+        expect(item.evidenceStatus).toBe('EVIDENCE UNAVAILABLE')
+        expect(item.rank).toBeNull()
+        expect(item.hitRate).toBeNull()
+        expect(item.hitRateFormatted).toBe('Unavailable')
+        expect(item.winningTargets).toBeNull()
+        expect(item.evaluatedTargets).toBe(0)
+        expect(item.unavailableReasonCode).toBe('NO_CANONICAL_WINDOW_EVIDENCE')
+        expect(item.notes).toContain(
+          `T539 canonical evidence does not publish an exact ${unsupportedHorizon} ranking window.`,
+        )
+        expect(item.notes).toContain('Descriptive historical evidence only; does not infer future performance')
+      }
+    }
+  })
+
+  it('loadT539BestReplayData rejects ticket counts 2, 3, 4, and 5', async () => {
+    const multiTicketItems = await loadT539BestReplayData([2, 3, 4, 5], 'FULL')
+    expect(multiTicketItems).toEqual([])
+
+    const multiTicketRecentItems = await loadT539BestReplayData([2, 3, 4, 5], 'RECENT_50')
+    expect(multiTicketRecentItems).toEqual([])
+  })
+
+  it('proves no T539 horizon reuses identical latest ranking results under relabeled RECENT windows', async () => {
+    const fullItems = await loadT539BestReplayData([1], 'FULL')
+    const recent50Items = await loadT539BestReplayData([1], 'RECENT_50')
+    const recent300Items = await loadT539BestReplayData([1], 'RECENT_300')
+    const recent750Items = await loadT539BestReplayData([1], 'RECENT_750')
+
+    const fullLeader = fullItems[0]
+    expect(fullLeader?.isAvailable).toBe(true)
+    expect(fullLeader?.rank).toBe(1)
+    expect(fullLeader?.hitRate).toBe(0.215)
+
+    // All RECENT horizons must NOT have rank 1 or 21.5% hit rate
+    for (const recentSet of [recent50Items, recent300Items, recent750Items]) {
+      const recentLeader = recentSet[0]
+      expect(recentLeader?.isAvailable).toBe(false)
+      expect(recentLeader?.rank).toBeNull()
+      expect(recentLeader?.hitRate).toBeNull()
+      expect(recentLeader?.hitRateFormatted).toBe('Unavailable')
+    }
+  })
+
+  it('renders T539 at RECENT_50 as explicit EVIDENCE UNAVAILABLE in UI without 0% or fake hit rate', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Switch to T539
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await flushPromises()
+
+    // Switch to RECENT_50
+    await wrapper.find('#horizon-select').setValue('RECENT_50')
+    await flushPromises()
+
+    // Summary Card must be unavailable
+    const metricsGrid = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metricsGrid.text()).toContain('Evidence Unavailable')
+    expect(metricsGrid.text()).toContain('Unavailable')
+    expect(metricsGrid.text()).toContain('EVIDENCE UNAVAILABLE')
+
+    // 1–5 Overview Card 1 must be unavailable with NO_CANONICAL_WINDOW_EVIDENCE
+    const card1 = wrapper.find('[data-testid="overview-card-1"]')
+    expect(card1.classes()).toContain('overview-card--unavailable')
+    expect(card1.text()).toContain('NO_CANONICAL_WINDOW_EVIDENCE')
+    expect(card1.text()).toContain('T539 canonical evidence does not publish an exact RECENT_50 ranking window')
+
+    // Overview cards 2..5 must be unavailable with NO_CANONICAL_REPLAY_EVIDENCE
+    for (const count of [2, 3, 4, 5]) {
+      const card = wrapper.find(`[data-testid="overview-card-${count}"]`)
+      expect(card.classes()).toContain('overview-card--unavailable')
+      expect(card.text()).toContain('NO_CANONICAL_REPLAY_EVIDENCE')
+    }
+
+    // Table rows must show Rank — and Hit Rate Unavailable
+    const rows = wrapper.findAll('tbody tr')
+    expect(rows.length).toBeGreaterThan(0)
+    for (const row of rows) {
+      expect(row.text()).toContain('Unavailable')
+      expect(row.text()).toContain('EVIDENCE UNAVAILABLE')
+      expect(row.text()).toContain('T539 canonical evidence does not publish an exact RECENT_50 ranking window')
+    }
+
+    // Verify 0.00% fake hit rate does not appear
+    const visibleTexts = wrapper.findAll('.font-mono').map((c) => c.text())
+    expect(visibleTexts.some((t) => t === '0.00%')).toBe(false)
+    expect(visibleTexts.some((t) => t === '21.50%')).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders T539 at FULL with canonical Rank #1 while horizon comparison shows RECENT windows unavailable', async () => {
+    const wrapper = mount(BestReplayPage)
+    await flushPromises()
+
+    // Switch to T539 with FULL horizon default
+    await wrapper.find('[data-testid="game-btn-t539"]').trigger('click')
+    await wrapper.find('#horizon-select').setValue('FULL')
+    await flushPromises()
+
+    // Summary Card shows canonical leader
+    const metricsGrid = wrapper.find('[data-testid="best-replay-metrics-grid"]')
+    expect(metricsGrid.text()).toContain('t539_wave1_cyclic_leader')
+    expect(metricsGrid.text()).toContain('21.50%')
+    expect(metricsGrid.text()).toContain('DESCRIPTIVE LEADER')
+
+    // 1–5 Overview Card 1 is available
+    const card1 = wrapper.find('[data-testid="overview-card-1"]')
+    expect(card1.classes()).toContain('overview-card--available')
+    expect(card1.text()).toContain('21.50%')
+
+    // Horizon comparison breakdown
+    const fullHorizonCard = wrapper.find('[data-testid="horizon-card-full"]')
+    expect(fullHorizonCard.classes()).toContain('horizon-card--available')
+    expect(fullHorizonCard.text()).toContain('21.50%')
+
+    const shortHorizonCard = wrapper.find('[data-testid="horizon-card-recent-50"]')
+    expect(shortHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(shortHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(shortHorizonCard.text()).toContain('T539 canonical evidence does not publish an exact RECENT_50 ranking window')
+
+    const mediumHorizonCard = wrapper.find('[data-testid="horizon-card-recent-300"]')
+    expect(mediumHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(mediumHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(mediumHorizonCard.text()).toContain('T539 canonical evidence does not publish an exact RECENT_300 ranking window')
+
+    const longHorizonCard = wrapper.find('[data-testid="horizon-card-recent-750"]')
+    expect(longHorizonCard.classes()).not.toContain('horizon-card--available')
+    expect(longHorizonCard.text()).toContain('Evidence Unavailable')
+    expect(longHorizonCard.text()).toContain('T539 canonical evidence does not publish an exact RECENT_750 ranking window')
 
     wrapper.unmount()
   })

@@ -385,6 +385,17 @@ const inspectHorizonItems = computed<Partial<Record<string, BestReplayItem | nul
         'NO_CANONICAL_WINDOW_EVIDENCE',
         `P638 canonical evidence does not publish an exact ${h.key} ranking window. Descriptive historical evidence only; does not infer future performance.`,
       )
+    } else if (selectedGame.value === 'T539' && targetCount === 1 && h.key !== 'FULL') {
+      byHorizon[h.key] = createUnavailableItem(
+        'T539',
+        targetId,
+        'v1.0',
+        't539_native',
+        1,
+        h.key,
+        'NO_CANONICAL_WINDOW_EVIDENCE',
+        `T539 canonical evidence does not publish an exact ${h.key} ranking window. Descriptive historical evidence only; does not infer future performance.`,
+      )
     } else {
       byHorizon[h.key] = null
     }

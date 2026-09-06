@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import cast
 from zoneinfo import ZoneInfo
@@ -129,7 +129,7 @@ def _history() -> HistorySnapshot:
     rows = tuple(
         CausalDrawRow(
             draw=str(index + 1),
-            date=f"history-{index + 1}",
+            date=(date(2020, 1, 1) + timedelta(days=index)).isoformat(),
             numbers=tuple(
                 sorted((((index + 7 * offset) % 49) + 1) for offset in range(6))
             ),

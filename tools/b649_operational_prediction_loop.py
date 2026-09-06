@@ -347,6 +347,41 @@ def load_canonical_history(
     )
 
 
+def _assert_causal_cutoff(
+    *,
+    target_draw_number: str,
+    target_draw_date: str,
+    history_cutoff_draw: str,
+    history_cutoff_date: str,
+    history_rows: tuple[CausalDrawRow, ...],
+) -> None:
+    """Reject any history cutoff or row at or after the target draw.
+
+    Defense-in-depth: ``load_canonical_history`` already restricts ``rows`` to
+    strictly-prior draws via its own SQL predicate, but ``HistorySnapshot`` is
+    a plain public dataclass any caller can construct directly, so prediction
+    generation re-verifies the invariant itself rather than trusting how its
+    ``history`` argument happened to be built.
+    """
+
+    target_key = (date.fromisoformat(target_draw_date), int(target_draw_number))
+
+    cutoff_key = (date.fromisoformat(history_cutoff_date), int(history_cutoff_draw))
+    if cutoff_key >= target_key:
+        raise ValueError(
+            "CAUSAL_CUTOFF_VIOLATION: history cutoff "
+            f"{history_cutoff_draw} ({history_cutoff_date}) >= target "
+            f"{target_draw_number} ({target_draw_date})"
+        )
+    for row in history_rows:
+        row_key = (date.fromisoformat(row.date), int(row.draw))
+        if row_key >= target_key:
+            raise ValueError(
+                f"CAUSAL_CUTOFF_VIOLATION: history row {row.draw} ({row.date}) "
+                f">= target {target_draw_number} ({target_draw_date})"
+            )
+
+
 def create_prediction_payload(
     history: HistorySnapshot,
     *,
@@ -360,6 +395,13 @@ def create_prediction_payload(
     scheduled_at = datetime.fromisoformat(TARGET_SCHEDULED_AT)
     run_id = _new_prediction_run_id(observed_at) if prediction_run_id is None else prediction_run_id
     _require_identifier(run_id, "prediction_run_id")
+    _assert_causal_cutoff(
+        target_draw_number=TARGET_DRAW_NUMBER,
+        target_draw_date=TARGET_DRAW_DATE,
+        history_cutoff_draw=history.cutoff_draw,
+        history_cutoff_date=history.cutoff_date,
+        history_rows=history.rows,
+    )
 
     adapter = BigLottoHorizonMinimaxDisagreementAdapter()
     if (
@@ -457,6 +499,13 @@ def run_strategy_stream(
 
     _require_aware_datetime(created_at, "created_at")
     _require_identifier(prediction_run_id, "prediction_run_id")
+    _assert_causal_cutoff(
+        target_draw_number=target.draw_number,
+        target_draw_date=target.draw_date,
+        history_cutoff_draw=history.cutoff_draw,
+        history_cutoff_date=history.cutoff_date,
+        history_rows=history.rows,
+    )
     scheduled_at = datetime.fromisoformat(target.scheduled_at)
     record: dict[str, object] = {
         "schema_version": "b649-operational-prediction-v1",

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { StrategyOverviewItem, StrategyOverviewResponse } from '../src/api/strategies'
 import type { StrategyEvidenceResponse } from '../src/api/strategyEvidence'
 import StrategyIntelligencePage from '../src/features/strategy-intelligence/StrategyIntelligencePage.vue'
+import StrategyIntelligencePortfolio from '../src/features/strategy-intelligence/StrategyIntelligencePortfolio.vue'
 
 const b649Strategy: StrategyOverviewItem = {
   strategy_id: 'b649_social_wisdom_anti_popularity',
@@ -112,6 +113,7 @@ const CANONICAL_D3_DEFINITION = {
 function makeEvidence(
   customOverrides?: Record<string, { registration_status?: string; verification_status?: string }>,
   d3DefinitionOverrides?: Partial<StrategyEvidenceResponse['d3']['definition']>,
+  combinationOverrides?: Partial<StrategyEvidenceResponse['strategy_combination_hit_rate']>,
 ): StrategyEvidenceResponse {
   return {
     items: ALL_STRATEGIES.map((item) => {
@@ -146,6 +148,7 @@ function makeEvidence(
       status: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
       value: 'NOT_AVAILABLE',
       owner: 'ACTIVE_MULTITICKET_AGENT',
+      ...combinationOverrides,
     },
     d3: {
       status: 'RESERVED_UNAVAILABLE',
@@ -506,7 +509,7 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     wrapper.unmount()
   })
 
-  it('13. Portfolio unavailable correctly displayed', async () => {
+  it('13. Portfolio unavailable correctly displayed in registry-wide boundary', async () => {
     const wrapper = mount(StrategyIntelligencePage)
     await flushPromises()
 
@@ -514,10 +517,12 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     await portfolioTab.trigger('click')
     await flushPromises()
 
-    expect(wrapper.text()).toContain('Combination & Portfolio Evidence Status')
+    expect(wrapper.text()).toContain('Registry-wide Combination Evidence Boundary')
     expect(wrapper.text()).toContain('EXCLUDED_ACTIVE_MULTITICKET_SCOPE')
     expect(wrapper.text()).toContain('NOT_AVAILABLE')
-    expect(wrapper.text()).toContain('EVIDENCE UNAVAILABLE')
+    expect(wrapper.text()).toContain('Selected Catalog Context')
+    expect(wrapper.text()).toContain('B649 (Big Lotto 6/49)')
+    expect(wrapper.text()).not.toContain('Canonical Game Evidence Status')
 
     wrapper.unmount()
   })
@@ -531,6 +536,120 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('ACTIVE_MULTITICKET_AGENT')
+
+    wrapper.unmount()
+  })
+
+  it('14b. Portfolio combination props dynamically drive rendered values and are not pinned', async () => {
+    const wrapper = mount(StrategyIntelligencePortfolio, {
+      props: {
+        selectedLotteryType: 'BIG_LOTTO',
+        combinationStatus: 'ACTIVE_EXPERIMENTAL_MULTITICKET',
+        combinationValue: '0.4285_SAMPLE',
+        combinationOwner: 'CUSTOM_AGENT_CELL',
+        strategies: [b649Strategy as any],
+      },
+    })
+
+    const text = wrapper.text()
+    expect(text).toContain('Registry-wide Combination Evidence Boundary')
+    expect(text).toContain('ACTIVE_EXPERIMENTAL_MULTITICKET')
+    expect(text).toContain('0.4285_SAMPLE')
+    expect(text).toContain('CUSTOM_AGENT_CELL')
+    expect(text).toContain('B649 (Big Lotto 6/49)')
+    expect(text).toContain('1 individual candidate strategies')
+    expect(text).not.toContain('EXCLUDED_ACTIVE_MULTITICKET_SCOPE')
+    expect(text).not.toContain('ACTIVE_MULTITICKET_AGENT')
+
+    wrapper.unmount()
+  })
+
+  it('14c. Absence of synthetic per-game portfolio rows and tables in StrategyIntelligencePortfolio', async () => {
+    const wrapper = mount(StrategyIntelligencePortfolio, {
+      props: {
+        selectedLotteryType: 'BIG_LOTTO',
+        combinationStatus: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
+        combinationValue: 'NOT_AVAILABLE',
+        combinationOwner: 'ACTIVE_MULTITICKET_AGENT',
+        strategies: [b649Strategy as any],
+      },
+    })
+
+    expect(wrapper.find('table').exists()).toBe(false)
+    const text = wrapper.text()
+    expect(text).not.toContain('Canonical Game Evidence Status')
+    expect(text).not.toContain('Portfolio ID')
+    expect(text).not.toContain('portfolioId')
+    expect(text).not.toContain('Included Strategies')
+    expect(text).not.toContain('Union Hit Rate')
+    expect(text).not.toContain('unionHitRate')
+    expect(text).not.toContain('Best Comparator')
+    expect(text).not.toContain('Marginal Contribution')
+    expect(text).not.toContain('Diversity Metric')
+    expect(text).not.toContain('currently contains zero registered multi-strategy artifacts')
+
+    wrapper.unmount()
+  })
+
+  it('14d. Switching games changes catalog context without creating portfolio evidence', async () => {
+    const wrapper = mount(StrategyIntelligencePortfolio, {
+      props: {
+        selectedLotteryType: 'POWER_LOTTO',
+        combinationStatus: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
+        combinationValue: 'NOT_AVAILABLE',
+        combinationOwner: 'ACTIVE_MULTITICKET_AGENT',
+        strategies: [p638Strategy as any],
+      },
+    })
+
+    const text = wrapper.text()
+    expect(text).toContain('P638 (Power Lotto 6/38)')
+    expect(text).toContain('Catalog context only (1 candidate strategies)')
+    expect(text).toContain('Registry Combination Scope')
+    expect(text).toContain('EXCLUDED_ACTIVE_MULTITICKET_SCOPE')
+    expect(text).not.toContain('P638 portfolio evidence')
+    expect(text).not.toContain('Canonical Game Evidence Status')
+
+    wrapper.unmount()
+  })
+
+  it('14e. Missing portfolio numbers render unavailable without zero or 0.00%', async () => {
+    const wrapper = mount(StrategyIntelligencePortfolio, {
+      props: {
+        selectedLotteryType: 'BIG_LOTTO',
+        combinationStatus: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
+        combinationValue: 'NOT_AVAILABLE',
+        combinationOwner: 'ACTIVE_MULTITICKET_AGENT',
+        strategies: [],
+      },
+    })
+
+    const text = wrapper.text()
+    expect(text).not.toContain('0.00%')
+    expect(text).toContain('NOT_AVAILABLE')
+    expect(text).toContain('UNAVAILABLE')
+
+    wrapper.unmount()
+  })
+
+  it('14f. Page integration: strategy_combination_hit_rate from API propagates to summary cards and portfolio tab', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    const summaryCardText = wrapper.get('[data-testid="strategy-intelligence-metrics-grid"]').text()
+    expect(summaryCardText).toContain('NOT_AVAILABLE')
+    expect(summaryCardText).toContain('EXCLUDED_ACTIVE_MULTITICKET_SCOPE')
+
+    const portfolioTab = wrapper.findAll('button[role="tab"]')[1]
+    await portfolioTab.trigger('click')
+    await flushPromises()
+
+    const portfolioText = wrapper.text()
+    expect(portfolioText).toContain('Registry-wide Combination Evidence Boundary')
+    expect(portfolioText).toContain('EXCLUDED_ACTIVE_MULTITICKET_SCOPE')
+    expect(portfolioText).toContain('NOT_AVAILABLE')
+    expect(portfolioText).toContain('ACTIVE_MULTITICKET_AGENT')
+    expect(portfolioText).toContain('B649 (Big Lotto 6/49)')
 
     wrapper.unmount()
   })
@@ -621,7 +740,9 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     const tabs = wrapper.findAll('button[role="tab"]')
     await tabs[1].trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('Combination & Portfolio Evidence Status · P638')
+    expect(wrapper.text()).toContain('Registry-wide Combination Evidence Boundary')
+    expect(wrapper.text()).toContain('Selected Catalog Context')
+    expect(wrapper.text()).toContain('P638 (Power Lotto 6/38)')
 
     // Switch to D3 tab
     await tabs[2].trigger('click')
@@ -681,8 +802,9 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
       await flushPromises()
       await wrapper.findAll('button[role="tab"]')[1].trigger('click')
       await flushPromises()
-      expect(wrapper.text()).toContain('Combination & Portfolio Evidence Status · B649')
+      expect(wrapper.text()).toContain('Registry-wide Combination Evidence Boundary')
       expect(wrapper.text()).toContain('EXCLUDED_ACTIVE_MULTITICKET_SCOPE')
+      expect(wrapper.text()).toContain('B649 (Big Lotto 6/49)')
       wrapper.unmount()
     })
 
@@ -713,7 +835,8 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
       await flushPromises()
       await wrapper.findAll('button[role="tab"]')[1].trigger('click')
       await flushPromises()
-      expect(wrapper.text()).toContain('Combination & Portfolio Evidence Status · P638')
+      expect(wrapper.text()).toContain('Registry-wide Combination Evidence Boundary')
+      expect(wrapper.text()).toContain('P638 (Power Lotto 6/38)')
       wrapper.unmount()
     })
 
@@ -745,7 +868,8 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
       await flushPromises()
       await wrapper.findAll('button[role="tab"]')[1].trigger('click')
       await flushPromises()
-      expect(wrapper.text()).toContain('Combination & Portfolio Evidence Status · T539')
+      expect(wrapper.text()).toContain('Registry-wide Combination Evidence Boundary')
+      expect(wrapper.text()).toContain('T539 (Daily Cash 5/39)')
       wrapper.unmount()
     })
 

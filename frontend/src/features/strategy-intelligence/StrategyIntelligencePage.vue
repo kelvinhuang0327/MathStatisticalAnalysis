@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
         label="Portfolio Hit Rate"
         :value="loadState === 'ready' ? summary.portfolioValue : '—'"
         :subvalue="loadState === 'ready' ? `Status: ${summary.portfolioStatus}` : 'Loading…'"
-        badge="EXCLUDED"
+        :badge="loadState === 'ready' ? summary.portfolioStatus : undefined"
         badge-variant="warning"
         variant="warning"
       />

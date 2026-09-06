@@ -28,7 +28,9 @@ from lottolab.domain.draws import LotteryType
 from lottolab.domain.exact_native_replay import (
     Draw,
     ExactNativeReplayError,
+    WindowReaggregationEligibility,
     assert_causal_history,
+    evaluate_window_reaggregation_eligibility,
     exact_native_descriptors,
     freeze_visible_draws,
     window_names_for_target,
@@ -166,6 +168,214 @@ def test_target_windows_and_window_names_for_target() -> None:
     assert set(names_last) == {"FULL", "RECENT_2"}
     names_first = window_names_for_target(draws[0], windows)
     assert names_first == ["FULL"]
+
+
+def test_target_windows_cutoff_forward_regression_evicts_lower_bound() -> None:
+    """Advancing the cutoff by one draw must evict exactly the old lower-bound
+    member and add the new draw, for every fixed-size RECENT window, while
+    FULL only grows. This is the @115000083 -> @115000084 rolling-window
+    contract the K10 exact-native replay family depends on."""
+
+    draws = tuple(
+        Draw(str(i), date(2020, 1, 1) + timedelta(days=i), (1, 2, 3, 4, 5, 6), 7)
+        for i in range(10)
+    )
+    window_order = ("FULL", "RECENT_4", "RECENT_2")
+    window_sizes = {"FULL": None, "RECENT_4": 4, "RECENT_2": 2}
+
+    windows_before = compute_target_windows(
+        draws[:-1], window_order=window_order, window_sizes=window_sizes
+    )
+    windows_after = compute_target_windows(
+        draws, window_order=window_order, window_sizes=window_sizes
+    )
+
+    new_draw = draws[-1].draw_number
+    for name, size in (("RECENT_2", 2), ("RECENT_4", 4)):
+        members_before = set(cast(list[str], windows_before[name]["draw_numbers"]))
+        members_after = set(cast(list[str], windows_after[name]["draw_numbers"]))
+        assert len(members_before) == size
+        assert len(members_after) == size
+        evicted = members_before - members_after
+        added = members_after - members_before
+        assert added == {new_draw}
+        assert len(evicted) == 1
+        assert (members_before - evicted) | added == members_after
+
+        # Rolling-window invariant: actual_members == expected current-cutoff members
+        expected_current = {draw.draw_number for draw in draws[-size:]}
+        assert members_after == expected_current
+
+    full_before = set(cast(list[str], windows_before["FULL"]["draw_numbers"]))
+    full_after = set(cast(list[str], windows_after["FULL"]["draw_numbers"]))
+    assert full_after - full_before == {new_draw}
+    assert full_before - full_after == set()
+    assert len(full_after) == len(full_before) + 1
+
+
+def test_target_windows_rolling_invariants_and_stale_window_names() -> None:
+    """Fixed RECENT_N membership is derived from the CURRENT cutoff:
+    - len(new_members) == N
+    - actual_members == expected current-cutoff members
+    - coverage <= 1
+    - unavailable_or_failure_count >= 0
+    - stale persisted window_names on evidence rows are not current membership authority.
+    """
+    draws = tuple(
+        Draw(str(i), date(2020, 1, 1) + timedelta(days=i), (1, 2, 3, 4, 5, 6), 7)
+        for i in range(10)
+    )
+    window_sizes = {"FULL": None, "RECENT_4": 4, "RECENT_2": 2}
+    windows_c = compute_target_windows(
+        draws[:-1], window_order=("FULL", "RECENT_4", "RECENT_2"), window_sizes=window_sizes
+    )
+    windows_c_plus_1 = compute_target_windows(
+        draws, window_order=("FULL", "RECENT_4", "RECENT_2"), window_sizes=window_sizes
+    )
+
+    recent_2_c = cast(list[str], windows_c["RECENT_2"]["draw_numbers"])
+    recent_2_c_plus_1 = cast(list[str], windows_c_plus_1["RECENT_2"]["draw_numbers"])
+    # In cutoff C, draw 7 was in RECENT_2:
+    assert "7" in recent_2_c
+    # In cutoff C+1, draw 7 was evicted from RECENT_2:
+    assert "7" not in recent_2_c_plus_1
+    assert recent_2_c_plus_1 == ["8", "9"]
+
+    # Suppose a row was generated under cutoff C with stale window_names: ["RECENT_2", "FULL"]
+    stale_row = {
+        "target_draw_number": "7",
+        "replay_status": "EXECUTION_FAILURE",
+        "reason": "Old failure",
+        "window_names": ["FULL", "RECENT_2"],  # stale!
+    }
+    current_rows = [
+        stale_row,
+        {"target_draw_number": "8", "replay_status": "COMPLETE"},
+        {"target_draw_number": "9", "replay_status": "COMPLETE"},
+    ]
+
+    recent_2_draws = cast(list[str], windows_c_plus_1["RECENT_2"]["draw_numbers"])
+    eligibility = evaluate_window_reaggregation_eligibility(
+        window_name="RECENT_2",
+        window_draw_numbers=recent_2_draws,
+        evidence_rows=current_rows,
+    )
+    # Stale window_names did NOT cause draw 7 to be included in RECENT_2
+    assert isinstance(eligibility, WindowReaggregationEligibility)
+    assert eligibility.metric_status == "AVAILABLE"
+    assert eligibility.rankable is True
+    assert eligibility.failure_count == 0
+    assert eligibility.available_observation_count == 2
+    assert eligibility.requested_draw_count == 2
+    assert eligibility.coverage <= 1.0
+    assert eligibility.failure_count >= 0
+
+
+def test_window_reaggregation_execution_failure_inside_window_invalidates() -> None:
+    """EXECUTION_FAILURE inside window => metric_status = UNAVAILABLE, rankable = False."""
+    rows = [
+        {"target_draw_number": "8", "replay_status": "COMPLETE"},
+        {
+            "target_draw_number": "9",
+            "replay_status": "EXECUTION_FAILURE",
+            "reason": "InvalidOutput: fewer than six legal candidates",
+        },
+    ]
+    eligibility = evaluate_window_reaggregation_eligibility(
+        window_name="RECENT_2",
+        window_draw_numbers=["8", "9"],
+        evidence_rows=rows,
+    )
+    assert eligibility.metric_status == "UNAVAILABLE"
+    assert eligibility.rankable is False
+    assert eligibility.unavailable_reason == "InvalidOutput: fewer than six legal candidates"
+    assert eligibility.failure_count == 1
+    assert eligibility.available_observation_count == 1
+    assert eligibility.coverage <= 1.0
+
+
+def test_window_reaggregation_failure_outside_window_leaves_unaffected_window_available() -> None:
+    """FULL-only historical EXECUTION_FAILURE does not invalidate an unaffected RECENT window."""
+    rows = [
+        {
+            "target_draw_number": "2",
+            "replay_status": "EXECUTION_FAILURE",
+            "reason": "Historical donor crash",
+        },
+        {"target_draw_number": "8", "replay_status": "COMPLETE"},
+        {"target_draw_number": "9", "replay_status": "COMPLETE"},
+    ]
+    full_eligibility = evaluate_window_reaggregation_eligibility(
+        window_name="FULL",
+        window_draw_numbers=[str(i) for i in range(10)],
+        evidence_rows=rows,
+    )
+    recent_eligibility = evaluate_window_reaggregation_eligibility(
+        window_name="RECENT_2",
+        window_draw_numbers=["8", "9"],
+        evidence_rows=rows,
+    )
+
+    # FULL contains target 2 -> UNAVAILABLE
+    assert full_eligibility.metric_status == "UNAVAILABLE"
+    assert full_eligibility.rankable is False
+    assert full_eligibility.failure_count == 1
+
+    # RECENT_2 contains only targets 8 and 9 -> AVAILABLE
+    assert recent_eligibility.metric_status == "AVAILABLE"
+    assert recent_eligibility.rankable is True
+    assert recent_eligibility.failure_count == 0
+    assert recent_eligibility.unavailable_reason is None
+    assert recent_eligibility.available_observation_count == 2
+    assert recent_eligibility.coverage == 1.0
+
+
+def test_window_reaggregation_incomplete_observations_benign_exclusion() -> None:
+    """WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS excludes observations from denominator
+    without marking the window UNAVAILABLE."""
+    rows = [
+        {
+            "target_draw_number": "8",
+            "replay_status": "WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS",
+            "reason": "InsufficientHistory: required 10, got 8",
+        },
+        {"target_draw_number": "9", "replay_status": "COMPLETE"},
+    ]
+    eligibility = evaluate_window_reaggregation_eligibility(
+        window_name="RECENT_2",
+        window_draw_numbers=["8", "9"],
+        evidence_rows=rows,
+    )
+    assert eligibility.metric_status == "AVAILABLE"
+    assert eligibility.rankable is True
+    assert eligibility.failure_count == 0
+    assert eligibility.excluded_observation_count == 1
+    assert eligibility.available_observation_count == 1
+    assert eligibility.requested_draw_count == 2
+    # denominator = 2 - 1 = 1, available = 1, coverage = 1.0 <= 1.0
+    assert eligibility.coverage == 1.0
+
+
+def test_window_reaggregation_not_globally_cached_per_strategy() -> None:
+    """Availability is evaluated per strategy x window and never cached globally."""
+    rows = [
+        {"target_draw_number": "1", "replay_status": "EXECUTION_FAILURE", "reason": "Err"},
+        {"target_draw_number": "2", "replay_status": "COMPLETE"},
+    ]
+    res1 = evaluate_window_reaggregation_eligibility(
+        window_name="W1",
+        window_draw_numbers=["1", "2"],
+        evidence_rows=rows,
+    )
+    assert res1.metric_status == "UNAVAILABLE"
+
+    res2 = evaluate_window_reaggregation_eligibility(
+        window_name="W2",
+        window_draw_numbers=["2"],
+        evidence_rows=rows,
+    )
+    assert res2.metric_status == "AVAILABLE"
+    assert res2.rankable is True
 
 
 # --- deterministic serialization --------------------------------------------

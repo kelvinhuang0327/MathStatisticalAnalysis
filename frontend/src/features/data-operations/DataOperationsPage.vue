@@ -122,6 +122,9 @@ const totalAcceptedRows = computed(() =>
 const totalDuplicateRows = computed(() =>
   files.value.reduce((acc, f) => acc + entryDuplicateRows(f), 0),
 )
+const totalConflictRows = computed(() =>
+  files.value.reduce((acc, f) => acc + entryConflictRows(f), 0),
+)
 const totalFailedRows = computed(() =>
   files.value.reduce((acc, f) => acc + entryFailedRows(f), 0),
 )
@@ -576,10 +579,11 @@ onBeforeUnmount(() => {
         :subvalue="`${totalAcceptedRows} accepted`"
       />
       <MetricCard
+        data-testid="metric-duplicates-conflicts"
         label="Duplicates / Conflicts"
-        :value="totalDuplicateRows"
-        :subvalue="`${totalDuplicateRows} duplicate · 0 conflict`"
-        :variant="totalDuplicateRows > 0 ? 'warning' : 'default'"
+        :value="totalDuplicateRows + totalConflictRows"
+        :subvalue="`${totalDuplicateRows} duplicate · ${totalConflictRows} conflict`"
+        :variant="totalConflictRows > 0 ? 'danger' : totalDuplicateRows > 0 ? 'warning' : 'default'"
       />
       <MetricCard
         label="Failed / Invalid"

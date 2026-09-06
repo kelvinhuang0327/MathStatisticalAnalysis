@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { StrategyOverviewItem, StrategyOverviewResponse } from '../src/api/strategies'
 import type { StrategyEvidenceResponse } from '../src/api/strategyEvidence'
+import StrategyIntelligenceOverview from '../src/features/strategy-intelligence/StrategyIntelligenceOverview.vue'
 import StrategyIntelligencePage from '../src/features/strategy-intelligence/StrategyIntelligencePage.vue'
 import StrategyIntelligencePortfolio from '../src/features/strategy-intelligence/StrategyIntelligencePortfolio.vue'
 
@@ -493,18 +494,164 @@ describe('StrategyIntelligencePage Cross-Game Unified UI', () => {
     wrapper.unmount()
   })
 
-  it('12. Best Strategy unavailable correctly displayed', async () => {
+  it('12. Best Strategy boundary correctly displayed in registry-wide scope without game-scoped claims', async () => {
     const wrapper = mount(StrategyIntelligencePage)
     await flushPromises()
 
     const metricsText = wrapper.get('[data-testid="strategy-intelligence-metrics-grid"]').text()
     expect(metricsText).toContain('Best Strategy')
     expect(metricsText).toContain('UNAVAILABLE')
+    expect(metricsText).toContain('Status: UNAVAILABLE · Reason: NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE')
 
-    expect(wrapper.text()).toContain('Best Strategy Overview')
-    expect(wrapper.text()).toContain('BEST STRATEGY EVIDENCE UNAVAILABLE')
-    expect(wrapper.text()).toContain('GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE')
+    // Registry-wide boundary semantics
+    expect(wrapper.text()).toContain('Registry-wide Best Strategy Evidence Boundary')
+    expect(wrapper.text()).toContain('Registry-wide Best Strategy Scope')
+    expect(wrapper.text()).toContain('Best Strategy Evidence: UNAVAILABLE')
     expect(wrapper.text()).toContain('NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE')
+    expect(wrapper.text()).toContain('Selected Catalog Context')
+    expect(wrapper.text()).toContain('B649')
+
+    // Strict authority-honesty: no game-specific best-strategy claims
+    expect(wrapper.text()).not.toContain('GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE')
+    expect(wrapper.text()).not.toContain('Best Strategy Scope · B649')
+    expect(wrapper.text()).not.toContain('Canonical Strategy Evidence · B649')
+
+    wrapper.unmount()
+  })
+
+  it('12b. Best Strategy props dynamically drive rendered status and reason in StrategyIntelligenceOverview', async () => {
+    const combinedItem = {
+      strategyId: b649Strategy.strategy_id,
+      displayName: b649Strategy.display_name,
+      version: b649Strategy.version,
+      supportedLotteryTypes: b649Strategy.supported_lottery_types,
+      gameLabels: ['B649'],
+      minimumHistory: b649Strategy.minimum_history,
+      lifecycleStatus: b649Strategy.lifecycle_status,
+      executable: b649Strategy.executable,
+      provenance: b649Strategy.provenance,
+      adapterAvailable: true,
+      registrationStatus: 'CANONICAL_EVIDENCE_REGISTERED',
+      definitionStatus: 'DEFINITION_AVAILABLE',
+      verificationStatus: 'EVIDENCE_VERIFIED',
+      empiricalEligibility: 'EMPIRICAL ELIGIBLE' as const,
+      evidenceStatus: 'CANONICAL EVIDENCE REGISTERED' as const,
+      unavailableReasonCode: null,
+    }
+
+    const wrapper = mount(StrategyIntelligenceOverview, {
+      props: {
+        items: [combinedItem],
+        totalCount: 1,
+        executableCount: 0,
+        metadataOnlyCount: 1,
+        lifecycleCounts: { OBSERVATION: 1 },
+        unavailableReasons: ['CUSTOM_UNAVAILABLE_REASON'],
+        selectedLotteryType: 'BIG_LOTTO',
+        bestStrategyStatus: 'EXPERIMENTAL_STANDBY',
+        bestStrategyReason: 'CUSTOM_API_EVALUATION_REASON',
+      },
+    })
+
+    const text = wrapper.text()
+    expect(text).toContain('Registry-wide Best Strategy Evidence Boundary')
+    expect(text).toContain('Registry-wide Best Strategy Scope')
+    expect(text).toContain('EXPERIMENTAL_STANDBY')
+    expect(text).toContain('CUSTOM_API_EVALUATION_REASON')
+    expect(text).toContain('Selected Catalog Context')
+    expect(text).toContain('B649')
+
+    // Confirm defaults / literal UNAVAILABLE are not pinned
+    expect(text).not.toContain('Reason: NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE')
+    expect(text).not.toContain('GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE')
+    expect(text).not.toContain('Best Strategy Scope · B649')
+
+    wrapper.unmount()
+  })
+
+  it('12c. Page-level Best Strategy derives status, badge, and reason from API response', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    const metricsGrid = wrapper.get('[data-testid="strategy-intelligence-metrics-grid"]')
+    const metricCards = metricsGrid.findAll('.metric-card')
+    const bestStrategyCard = metricCards.find((card) => card.text().includes('Best Strategy'))
+    expect(bestStrategyCard).toBeDefined()
+    expect(bestStrategyCard!.text()).toContain('UNAVAILABLE')
+    expect(bestStrategyCard!.text()).toContain('Status: UNAVAILABLE · Reason: NO_CANONICAL_STRATEGY_EVALUATION_EVIDENCE')
+    expect(bestStrategyCard!.find('.metric-card__badge').text()).toBe('UNAVAILABLE')
+
+    wrapper.unmount()
+  })
+
+  it('12d. Switching games changes catalog context only without creating distinct best-strategy records', async () => {
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    // Initially B649
+    expect(wrapper.text()).toContain('Selected Catalog Context')
+    expect(wrapper.text()).toContain('B649')
+    expect(wrapper.text()).not.toContain('Best Strategy Scope · B649')
+    expect(wrapper.text()).not.toContain('GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE')
+
+    // Switch to P638
+    await wrapper.get('[data-testid="game-selector-p638"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Selected Catalog Context')
+    expect(wrapper.text()).toContain('P638')
+    expect(wrapper.text()).toContain('Registry-wide Best Strategy Scope')
+    expect(wrapper.text()).toContain('Registry-wide Best Strategy Evidence Boundary')
+    expect(wrapper.text()).not.toContain('Best Strategy Scope · P638')
+    expect(wrapper.text()).not.toContain('P638 Best Strategy')
+    expect(wrapper.text()).not.toContain('GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE')
+
+    // Switch to T539
+    await wrapper.get('[data-testid="game-selector-t539"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Selected Catalog Context')
+    expect(wrapper.text()).toContain('T539')
+    expect(wrapper.text()).toContain('Registry-wide Best Strategy Scope')
+    expect(wrapper.text()).toContain('Registry-wide Best Strategy Evidence Boundary')
+    expect(wrapper.text()).not.toContain('Best Strategy Scope · T539')
+    expect(wrapper.text()).not.toContain('T539 Best Strategy')
+    expect(wrapper.text()).not.toContain('GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE')
+
+    wrapper.unmount()
+  })
+
+  it('12e. No strategy ID, rank, score, or Best Replay promotion into best_strategy', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/strategy-overview')) {
+        return Promise.resolve(apiResponse(makeOverviewForGame('BIG_LOTTO')))
+      }
+      if (url.includes('/api/v1/strategy-evidence')) {
+        return Promise.resolve(
+          apiResponse(
+            makeEvidence({
+              [b649Strategy.strategy_id]: {
+                registration_status: 'CANONICAL_EVIDENCE_REGISTERED',
+                verification_status: 'EVIDENCE_VERIFIED',
+              },
+            }),
+          ),
+        )
+      }
+      return Promise.resolve(apiResponse({}))
+    })
+
+    const wrapper = mount(StrategyIntelligencePage)
+    await flushPromises()
+
+    const bestStrategyPanel = wrapper.get('.best-strategy-panel')
+    expect(bestStrategyPanel.text()).not.toContain(b649Strategy.strategy_id)
+    expect(bestStrategyPanel.text()).not.toContain(b649Strategy.display_name)
+    expect(bestStrategyPanel.text()).not.toContain('Rank #1')
+    expect(bestStrategyPanel.text()).not.toContain('Rank 1')
+    expect(bestStrategyPanel.text()).not.toContain('Score')
+    expect(bestStrategyPanel.text()).not.toContain('Top Strategy')
 
     wrapper.unmount()
   })

@@ -215,11 +215,11 @@ function resetFilters(): void {
     <section class="panel best-strategy-panel" aria-labelledby="best-strategy-overview-title">
       <div class="panel__heading">
         <div>
-          <p class="step-label">Canonical Strategy Evidence · {{ currentGameCode }}</p>
-          <h3 id="best-strategy-overview-title">Best Strategy Overview</h3>
+          <p class="step-label">Strategy Evidence · Boundary</p>
+          <h3 id="best-strategy-overview-title">Registry-wide Best Strategy Evidence Boundary</h3>
         </div>
         <div class="scope-card" aria-label="Best strategy evidence status">
-          <span>Best Strategy Scope · {{ currentGameCode }}</span>
+          <span>Registry-wide Best Strategy Scope</span>
           <strong>{{ bestStrategyStatus }}</strong>
           <small>Reason: {{ bestStrategyReason }}</small>
         </div>
@@ -229,14 +229,24 @@ function resetFilters(): void {
         <div class="best-strategy-alert" role="status">
           <span class="alert-icon" aria-hidden="true">🛡️</span>
           <div>
-            <strong class="alert-headline">BEST STRATEGY EVIDENCE UNAVAILABLE</strong>
+            <strong class="alert-headline">Best Strategy Evidence: {{ bestStrategyStatus }}</strong>
             <p class="alert-text">
-              GAME-SPECIFIC BEST STRATEGY EVIDENCE UNAVAILABLE: No canonical ex-ante evaluation evidence is registered to designate a top-ranked strategy for {{ currentGameFullName }} ({{ currentGameCode }}).
+              Registry-wide Best Strategy Evidence Boundary: Status {{ bestStrategyStatus }} (Reason: {{ bestStrategyReason }}). The upstream evidence registry publishes a single registry-wide boundary without game-specific or individual best-strategy records.
             </p>
           </div>
         </div>
 
+        <div class="best-strategy-context">
+          <span class="context-label">Selected Catalog Context:</span>
+          <span class="game-tag">{{ currentGameCode }}</span>
+          <span class="game-full-name">{{ currentGameFullName }}</span>
+          <span class="context-desc">
+            Catalog context only ({{ filteredItems.length }} candidate strategies). Best strategy evidence is registry-wide and not evaluated per game.
+          </span>
+        </div>
+
         <ul class="best-strategy-guards">
+          <li><strong>Registry-wide Authority:</strong> Upstream best_strategy evidence is registry-wide; game selection provides catalog filtering context only and does not establish game-specific ranking evidence.</li>
           <li><strong>No Catalog Deduction:</strong> Strategies are not selected as "best" based on catalog registration order or metadata declaration.</li>
           <li><strong>No Lifecycle Inference:</strong> Descriptors marked <code>ONLINE</code> or <code>OBSERVATION</code> are not assumed to have empirical superiority without registered evidence.</li>
           <li><strong>No Replay Conflation:</strong> Descriptive historical replay rankings are not treated as canonical forward best-strategy evidence.</li>
@@ -867,5 +877,34 @@ function resetFilters(): void {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.best-strategy-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: rgba(12, 17, 28, 0.5);
+  border: 1px solid var(--border-color);
+  font-size: 11.5px;
+  flex-wrap: wrap;
+}
+
+.context-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+}
+
+.context-desc {
+  color: var(--text-tertiary);
+  font-size: 11px;
+}
+
+.game-full-name {
+  color: var(--text-secondary);
+  font-size: 11px;
 }
 </style>

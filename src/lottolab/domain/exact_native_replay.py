@@ -198,6 +198,99 @@ def _draw_numbers(window: Mapping[str, object]) -> Sequence[str]:
     return cast(Sequence[str], value)
 
 
+@dataclass(frozen=True, slots=True)
+class WindowReaggregationEligibility:
+    """Evaluation result for one (strategy, window) ranking eligibility check."""
+
+    window_name: str
+    metric_status: str  # "AVAILABLE" | "UNAVAILABLE"
+    rankable: bool
+    unavailable_reason: str | None
+    requested_draw_count: int
+    available_observation_count: int
+    excluded_observation_count: int
+    failure_count: int
+    coverage: float
+
+
+def evaluate_window_reaggregation_eligibility(
+    *,
+    window_name: str,
+    window_draw_numbers: Sequence[str],
+    evidence_rows: Sequence[Mapping[str, object]],
+) -> WindowReaggregationEligibility:
+    """Evaluate ranking availability and observation counts for one window.
+
+    Determines ranking availability per strategy x window independently:
+    - An ``EXECUTION_FAILURE`` inside ``window_draw_numbers`` marks the window
+      ``UNAVAILABLE``.
+    - An ``EXECUTION_FAILURE`` outside ``window_draw_numbers`` has no effect
+      on this window.
+    - ``WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS`` is excluded from the evaluated
+      denominator without marking the window ``UNAVAILABLE``.
+    - Membership is derived strictly from ``window_draw_numbers``; persisted
+      ``window_names`` on evidence rows are ignored as stale.
+    - Availability is never cached globally across windows.
+    """
+    target_set = set(window_draw_numbers)
+    requested = len(window_draw_numbers)
+
+    matching_rows = [
+        row
+        for row in evidence_rows
+        if str(row.get("target_draw_number", "")) in target_set
+    ]
+
+    available_count = 0
+    excluded_count = 0
+    failure_count = 0
+    first_failure_reason: str | None = None
+
+    for row in matching_rows:
+        status = row.get("replay_status")
+        if status == "COMPLETE":
+            available_count += 1
+        elif status == "WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS":
+            excluded_count += 1
+        elif status in ("EXECUTION_FAILURE", "NATIVE_TICKET_COUNT_VIOLATION"):
+            failure_count += 1
+            if first_failure_reason is None:
+                first_failure_reason = cast(str | None, row.get("reason")) or str(status)
+        else:
+            failure_count += 1
+            if first_failure_reason is None:
+                first_failure_reason = cast(str | None, row.get("reason")) or str(status)
+
+    denominator = requested - excluded_count
+    coverage = (available_count / denominator) if denominator > 0 else 0.0
+    coverage = min(1.0, max(0.0, coverage))
+
+    if failure_count > 0:
+        metric_status = "UNAVAILABLE"
+        rankable = False
+        unavailable_reason = first_failure_reason or "EXECUTION_FAILURE"
+    elif available_count == 0:
+        metric_status = "UNAVAILABLE"
+        rankable = False
+        unavailable_reason = "NO_AVAILABLE_OBSERVATIONS"
+    else:
+        metric_status = "AVAILABLE"
+        rankable = True
+        unavailable_reason = None
+
+    return WindowReaggregationEligibility(
+        window_name=window_name,
+        metric_status=metric_status,
+        rankable=rankable,
+        unavailable_reason=unavailable_reason,
+        requested_draw_count=requested,
+        available_observation_count=available_count,
+        excluded_observation_count=excluded_count,
+        failure_count=failure_count,
+        coverage=coverage,
+    )
+
+
 __all__ = [
     "DEFAULT_NATIVE_TICKET_COUNTS",
     "DEFAULT_WINDOW_ORDER",
@@ -205,8 +298,10 @@ __all__ = [
     "Draw",
     "ExactNativeReplayError",
     "RuntimeBinding",
+    "WindowReaggregationEligibility",
     "assert_causal_history",
     "descriptor_payload",
+    "evaluate_window_reaggregation_eligibility",
     "exact_native_descriptors",
     "freeze_visible_draws",
     "target_windows",

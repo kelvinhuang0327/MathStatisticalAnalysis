@@ -21,7 +21,7 @@ from tools.b649_operational_prediction_loop import (
     TARGET_DRAW_NUMBER,
     HistorySnapshot,
     PredictionTarget,
-    _assert_causal_cutoff,
+    _assert_causal_cutoff,  # pyright: ignore[reportPrivateUsage]
     create_prediction_payload,
     load_canonical_history,
     run_strategy_stream,
@@ -362,7 +362,7 @@ def test_b649_walk_forward_characterization_uses_pre_target_history_only() -> No
         cutoff_draw = history[-1]
 
         # Step 2: materialize the prediction (target's own numbers untouched so far).
-        record = controller._generate_cell(binding.strategy, target, history)
+        record = controller._generate_cell(binding.strategy, target, history)  # pyright: ignore[reportPrivateUsage]
         assert record.status is ReplayCellStatus.COMPLETE
         predicted_tickets = tuple(ticket.main_numbers for ticket in record.tickets)
 
@@ -415,7 +415,7 @@ def test_frontend_auto_optimize_selection_never_sees_target_or_future_draws() ->
 
     causal_rows = _causal_rows(history)
     adapter = BigLottoFrontendAutoOptimizeAdapter()
-    selection = adapter._select(causal_rows)
+    selection = adapter._select(causal_rows)  # pyright: ignore[reportPrivateUsage]
 
     assert selection.test_size == 8  # min(10, floor(40 * 0.2))
     assert selection.winner in adapter.candidate_strategies

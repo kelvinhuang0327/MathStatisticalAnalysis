@@ -40,9 +40,7 @@ from lottolab.domain.lottery_rules import (
 INPUT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_INPUT_V1"
 REPORT_SCHEMA_VERSION = "BIG_LOTTO_MULTI_TICKET_BACKTEST_REPORT_V2"
 BACKTEST_POLICY_VERSION = "BIG_LOTTO_CAUSAL_ORDERED_20_PREFIX_5_10_15_20_V1"
-EXACT_NATIVE_BACKTEST_POLICY_VERSION = (
-    "BIG_LOTTO_CAUSAL_EXACT_NATIVE_2_3_OFFICIAL_ANY_PRIZE_V1"
-)
+EXACT_NATIVE_BACKTEST_POLICY_VERSION = "BIG_LOTTO_CAUSAL_EXACT_NATIVE_2_3_OFFICIAL_ANY_PRIZE_V1"
 EXACT_NATIVE_REPORT_SCHEMA_VERSION = "BIG_LOTTO_EXACT_NATIVE_OFFICIAL_REPORT_V1"
 EXACT_NATIVE_TICKET_COUNTS = (2, 3)
 PREFIX_COUNTS = (5, 10, 15, 20)
@@ -69,6 +67,19 @@ class PortfolioExecutionStatus(StrEnum):
     CLOSED_REJECTED = "CLOSED_REJECTED"
     CLOSED_INVALID_OUTPUT = "CLOSED_INVALID_OUTPUT"
     CLOSED_EXECUTION_ERROR = "CLOSED_EXECUTION_ERROR"
+    EXECUTION_FAILURE = "EXECUTION_FAILURE"
+    WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS = "WINDOW_INELIGIBLE_INCOMPLETE_OBSERVATIONS"
+    NATIVE_TICKET_COUNT_VIOLATION = "NATIVE_TICKET_COUNT_VIOLATION"
+
+
+_EXECUTION_FAILURE_STATUSES: frozenset[PortfolioExecutionStatus] = frozenset(
+    {
+        PortfolioExecutionStatus.EXECUTION_FAILURE,
+        PortfolioExecutionStatus.CLOSED_EXECUTION_ERROR,
+        PortfolioExecutionStatus.CLOSED_INVALID_OUTPUT,
+        PortfolioExecutionStatus.NATIVE_TICKET_COUNT_VIOLATION,
+    }
+)
 
 
 Ticket = tuple[int, int, int, int, int, int]
@@ -97,6 +108,16 @@ class _Execution:
     portfolio_derivation: str | None
     candidate_k: int | None
     combination_count: int | None
+
+
+def _is_execution_failure(execution: _Execution) -> bool:
+    if execution.status in _EXECUTION_FAILURE_STATUSES:
+        return True
+    if execution.reason_code is not None:
+        normalized = execution.reason_code.strip().upper()
+        if normalized == "EXECUTION_FAILURE" or normalized.startswith("EXECUTION_FAILURE:"):
+            return True
+    return False
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,9 +171,7 @@ def _parse_ticket(value: object, context: str) -> Ticket:
         raise MultiTicketBacktestInputError(f"{context}: ticket must be an array")
     numbers = cast(list[object], value)
     if len(numbers) != 6 or any(type(number) is not int for number in numbers):
-        raise MultiTicketBacktestInputError(
-            f"{context}: ticket must contain six exact integers"
-        )
+        raise MultiTicketBacktestInputError(f"{context}: ticket must contain six exact integers")
     typed = cast(list[int], numbers)
     ticket = tuple(typed)
     if (
@@ -183,8 +202,7 @@ def _parse_ticket_list(
     if non_empty and not rows:
         raise MultiTicketBacktestInputError(f"{context}: tickets must not be empty")
     return tuple(
-        _parse_ticket(candidate, f"{context}[{index}]")
-        for index, candidate in enumerate(rows)
+        _parse_ticket(candidate, f"{context}[{index}]") for index, candidate in enumerate(rows)
     )
 
 
@@ -215,12 +233,8 @@ def _parse_native_generation(
         _required_text(cast(dict[str, Any], payload), key, context)
     for key in ("source_sha256", "seed_digest"):
         digest = cast(str, payload[key])
-        if len(digest) != 64 or any(
-            character not in "0123456789abcdef" for character in digest
-        ):
-            raise MultiTicketBacktestInputError(
-                f"{context}: {key} must be a lowercase SHA-256"
-            )
+        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+            raise MultiTicketBacktestInputError(f"{context}: {key} must be a lowercase SHA-256")
     if payload["target_draw_number"] != target_draw_number:
         raise MultiTicketBacktestInputError(
             f"{context}: native_generation target contradicts execution"
@@ -231,9 +245,7 @@ def _parse_native_generation(
         )
     replicate_id = payload.get("replicate_id")
     if type(replicate_id) is not int or replicate_id < 0:
-        raise MultiTicketBacktestInputError(
-            f"{context}: native_generation replicate_id is invalid"
-        )
+        raise MultiTicketBacktestInputError(f"{context}: native_generation replicate_id is invalid")
     if payload.get("candidate_k") is not None:
         raise MultiTicketBacktestInputError(
             f"{context}: candidate_k must retain separate execution semantics"
@@ -286,13 +298,9 @@ def _parse_targets(document: dict[str, Any]) -> tuple[_Target, ...]:
         winning_main = _parse_ticket(row.get("winning_main_numbers"), context)
         special = row.get("winning_special_number")
         if type(special) is not int or not 1 <= special <= 49 or special in winning_main:
-            raise MultiTicketBacktestInputError(
-                f"{context}: winning_special_number is invalid"
-            )
+            raise MultiTicketBacktestInputError(f"{context}: winning_special_number is invalid")
         if draw_number in seen_numbers or draw_date in seen_dates:
-            raise MultiTicketBacktestInputError(
-                "target draw numbers and dates must both be unique"
-            )
+            raise MultiTicketBacktestInputError("target draw numbers and dates must both be unique")
         seen_numbers.add(draw_number)
         seen_dates.add(draw_date)
         targets.append(_Target(draw_number, draw_date, winning_main, special))
@@ -354,23 +362,26 @@ def _parse_executions(
             )
         target = target_by_number.get(target_draw_number)
         if target is None:
-            raise MultiTicketBacktestInputError(
-                f"{context}: target is outside the dataset"
-            )
+            raise MultiTicketBacktestInputError(f"{context}: target is outside the dataset")
         identity = (strategy_id, target_draw_number)
         if identity in seen:
-            raise MultiTicketBacktestInputError(
-                f"{context}: duplicate strategy/target execution"
-            )
+            raise MultiTicketBacktestInputError(f"{context}: duplicate strategy/target execution")
         seen.add(identity)
+        raw_status = row.get("status")
+        if raw_status is None:
+            raw_status = row.get("replay_status")
+        if type(raw_status) is not str or not raw_status:
+            raise MultiTicketBacktestInputError(f"{context}: status must be a non-empty string")
         try:
-            status = PortfolioExecutionStatus(_required_text(row, "status", context))
+            status = PortfolioExecutionStatus(raw_status)
         except ValueError as exc:
             raise MultiTicketBacktestInputError(
                 f"{context}: status is outside the closed set"
             ) from exc
 
         reason_raw = row.get("reason_code")
+        if reason_raw is None:
+            reason_raw = row.get("reason")
         if reason_raw is not None and (type(reason_raw) is not str or not reason_raw):
             raise MultiTicketBacktestInputError(
                 f"{context}: reason_code must be absent or non-empty"
@@ -535,9 +546,7 @@ def _render_fraction_decimal_18(value: Fraction) -> str:
     scale = 10**18
     rounded, remainder = divmod(absolute.numerator * scale, absolute.denominator)
     doubled = remainder * 2
-    if doubled > absolute.denominator or (
-        doubled == absolute.denominator and rounded % 2 == 1
-    ):
+    if doubled > absolute.denominator or (doubled == absolute.denominator and rounded % 2 == 1):
         rounded += 1
     integer_part, fractional_part = divmod(rounded, scale)
     if rounded == 0:
@@ -597,16 +606,10 @@ def _validate_backtest_input(
     if len(dataset_sha256) != 64 or any(
         character not in "0123456789abcdef" for character in dataset_sha256
     ):
-        raise MultiTicketBacktestInputError(
-            "dataset_sha256 must be a lowercase SHA-256"
-        )
+        raise MultiTicketBacktestInputError("dataset_sha256 must be a lowercase SHA-256")
     source_provenance_value = document.get("source_provenance")
-    if source_provenance_value is not None and not isinstance(
-        source_provenance_value, dict
-    ):
-        raise MultiTicketBacktestInputError(
-            "source_provenance must be absent or an object"
-        )
+    if source_provenance_value is not None and not isinstance(source_provenance_value, dict):
+        raise MultiTicketBacktestInputError("source_provenance must be absent or an object")
     source_provenance = (
         cast(dict[str, object], source_provenance_value)
         if source_provenance_value is not None
@@ -662,9 +665,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                 if execution.history_cutoff_draw_date is not None
                 else ""
             ),
-            "history_cutoff_draw_number": (
-                execution.history_cutoff_draw_number or ""
-            ),
+            "history_cutoff_draw_number": (execution.history_cutoff_draw_number or ""),
             "reason_code": execution.reason_code or "",
             "status": execution.status.value,
             "strategy_id": execution.strategy_id,
@@ -673,16 +674,13 @@ def evaluate_biglotto_multi_ticket_backtest(
         }
         if execution.status is PortfolioExecutionStatus.OK:
             native_payload = [list(ticket) for ticket in execution.native_tickets]
-            portfolio_payload = [
-                list(ticket) for ticket in execution.ordered_portfolio
-            ]
+            portfolio_payload = [list(ticket) for ticket in execution.ordered_portfolio]
             audit_row.update(
                 {
                     "candidate_k": execution.candidate_k or "",
                     "combination_count": execution.combination_count or "",
                     "native_duplicate_ticket_count": (
-                        len(execution.native_tickets)
-                        - len(set(execution.native_tickets))
+                        len(execution.native_tickets) - len(set(execution.native_tickets))
                     ),
                     "native_ticket_count": len(execution.native_tickets),
                     "native_generation": execution.native_generation or {},
@@ -704,8 +702,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                     ).hexdigest(),
                     "portfolio_derivation": execution.portfolio_derivation or "",
                     "portfolio_duplicate_ticket_count": (
-                        len(execution.ordered_portfolio)
-                        - len(set(execution.ordered_portfolio))
+                        len(execution.ordered_portfolio) - len(set(execution.ordered_portfolio))
                     ),
                     "portfolio_ticket_count": len(execution.ordered_portfolio),
                 }
@@ -716,14 +713,10 @@ def evaluate_biglotto_multi_ticket_backtest(
     official_metrics: list[dict[str, object]] = []
     prizes: list[dict[str, object]] = []
     metric_by_identity: dict[tuple[str, int, str, str], dict[str, object]] = {}
-    official_metric_by_identity: dict[
-        tuple[str, int, str], dict[str, object]
-    ] = {}
+    official_metric_by_identity: dict[tuple[str, int, str], dict[str, object]] = {}
     for record in active_catalog.records:
         strategy_executions = tuple(
-            execution
-            for execution in executions
-            if execution.strategy_id == record.strategy_id
+            execution for execution in executions if execution.strategy_id == record.strategy_id
         )
         if not strategy_executions:
             continue
@@ -744,8 +737,8 @@ def evaluate_biglotto_multi_ticket_backtest(
             execution_status_counts = Counter(
                 execution.status.value for execution in selected_executions
             )
-            execution_status_counts["MISSING_EXECUTION_RECORD"] = (
-                window_target_count - len(selected_executions)
+            execution_status_counts["MISSING_EXECUTION_RECORD"] = window_target_count - len(
+                selected_executions
             )
             for prefix_count in PREFIX_COUNTS:
                 prize_counts = Counter({tier.value: 0 for tier in BigLottoPrizeTierId})
@@ -761,9 +754,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                     duplicate_positions += prefix_count - distinct
                     observations_with_duplicates += int(distinct != prefix_count)
                     target = target_by_number[execution.target_draw_number]
-                    ticket_scores = [
-                        _score_ticket(ticket, target) for ticket in selected_tickets
-                    ]
+                    ticket_scores = [_score_ticket(ticket, target) for ticket in selected_tickets]
                     scored_by_execution.append(ticket_scores)
                     prize_counts.update(score[2] for score in ticket_scores)
 
@@ -771,14 +762,11 @@ def evaluate_biglotto_multi_ticket_backtest(
                     {
                         "execution_count": len(successful),
                         "no_prize_count": prize_counts[NoPrizeResult.NO_PRIZE.value],
-                        "observation_count_with_duplicate_tickets": (
-                            observations_with_duplicates
-                        ),
+                        "observation_count_with_duplicate_tickets": (observations_with_duplicates),
                         "observed_distinct_ticket_count": distinct_positions,
                         "observed_duplicate_ticket_count": duplicate_positions,
                         "official_prize_tier_counts": {
-                            tier.value: prize_counts[tier.value]
-                            for tier in BigLottoPrizeTierId
+                            tier.value: prize_counts[tier.value] for tier in BigLottoPrizeTierId
                         },
                         "prefix_count": prefix_count,
                         "strategy_id": record.strategy_id,
@@ -804,20 +792,14 @@ def evaluate_biglotto_multi_ticket_backtest(
                 )
                 official_baseline = official_any_prize_probability(prefix_count)
                 official_baseline_fraction = official_baseline.as_fraction()
-                official_rate_delta = (
-                    official_any_prize_rate - official_baseline_fraction
-                )
+                official_rate_delta = official_any_prize_rate - official_baseline_fraction
                 official_fields: dict[str, object] = {
                     "official_any_prize_count": official_any_prize_count,
-                    "official_any_prize_rate": _exact_fraction_payload(
-                        official_any_prize_rate
-                    ),
+                    "official_any_prize_rate": _exact_fraction_payload(official_any_prize_rate),
                     "official_random_baseline_probability": (
                         _exact_fraction_payload(official_baseline_fraction)
                     ),
-                    "official_random_baseline_delta": _exact_fraction_payload(
-                        official_rate_delta
-                    ),
+                    "official_random_baseline_delta": _exact_fraction_payload(official_rate_delta),
                 }
                 official_metric_payload: dict[str, object] = {
                     **official_fields,
@@ -825,9 +807,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                         Fraction(observation_count, window_target_count)
                     ),
                     "criterion": "OFFICIAL_ANY_PRIZE",
-                    "execution_status_counts": dict(
-                        sorted(execution_status_counts.items())
-                    ),
+                    "execution_status_counts": dict(sorted(execution_status_counts.items())),
                     "prefix_count": prefix_count,
                     "rankable": observation_count > 0,
                     "strategy_id": record.strategy_id,
@@ -836,15 +816,14 @@ def evaluate_biglotto_multi_ticket_backtest(
                     "window": window_name,
                     "window_available_draws": window_target_count,
                     "window_complete": (
-                        requested_draws is None
-                        or window_target_count == requested_draws
+                        requested_draws is None or window_target_count == requested_draws
                     ),
                     "window_requested_draws": requested_draws or window_target_count,
                 }
                 official_metrics.append(official_metric_payload)
-                official_metric_by_identity[
-                    (record.strategy_id, prefix_count, window_name)
-                ] = official_metric_payload
+                official_metric_by_identity[(record.strategy_id, prefix_count, window_name)] = (
+                    official_metric_payload
+                )
 
                 for criterion in SUCCESS_CRITERIA:
                     success_count = sum(
@@ -875,15 +854,11 @@ def evaluate_biglotto_multi_ticket_backtest(
                         "exact_random_baseline_probability": (
                             _exact_fraction_payload(baseline_fraction)
                         ),
-                        "execution_status_counts": dict(
-                            sorted(execution_status_counts.items())
-                        ),
+                        "execution_status_counts": dict(sorted(execution_status_counts.items())),
                         "observed_success_count": success_count,
                         "observed_success_rate": _exact_fraction_payload(observed_rate),
                         "prefix_count": prefix_count,
-                        "random_baseline_rate_difference": (
-                            _exact_fraction_payload(rate_delta)
-                        ),
+                        "random_baseline_rate_difference": (_exact_fraction_payload(rate_delta)),
                         "rankable": observation_count > 0,
                         "strategy_id": record.strategy_id,
                         "strategy_version": record.strategy_version,
@@ -891,8 +866,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                         "window": window_name,
                         "window_available_draws": window_target_count,
                         "window_complete": (
-                            requested_draws is None
-                            or window_target_count == requested_draws
+                            requested_draws is None or window_target_count == requested_draws
                         ),
                         "window_requested_draws": requested_draws or window_target_count,
                     }
@@ -933,21 +907,15 @@ def evaluate_biglotto_multi_ticket_backtest(
     official_rank_by_identity: dict[tuple[str, int, str], int] = {}
     for prefix_count in PREFIX_COUNTS:
         for window_name, _requested_draws in WINDOWS:
-            rankable: list[
-                tuple[Fraction, Fraction, Fraction, str, dict[str, object]]
-            ] = []
+            rankable: list[tuple[Fraction, Fraction, Fraction, str, dict[str, object]]] = []
             for record in active_catalog.records:
                 cell_metric = official_metric_by_identity.get(
                     (record.strategy_id, prefix_count, window_name)
                 )
                 if cell_metric is None or cell_metric["rankable"] is not True:
                     continue
-                observed = cast(
-                    dict[str, object], cell_metric["official_any_prize_rate"]
-                )
-                delta = cast(
-                    dict[str, object], cell_metric["official_random_baseline_delta"]
-                )
+                observed = cast(dict[str, object], cell_metric["official_any_prize_rate"])
+                delta = cast(dict[str, object], cell_metric["official_random_baseline_delta"])
                 coverage = cast(dict[str, object], cell_metric["coverage"])
                 rankable.append(
                     (
@@ -967,21 +935,17 @@ def evaluate_biglotto_multi_ticket_backtest(
                         cell_metric,
                     )
                 )
-            rankable.sort(
-                key=lambda item: (-item[0], -item[1], -item[2], item[3])
-            )
-            rank_by_id = {
-                item[3]: index for index, item in enumerate(rankable, start=1)
-            }
+            rankable.sort(key=lambda item: (-item[0], -item[1], -item[2], item[3]))
+            rank_by_id = {item[3]: index for index, item in enumerate(rankable, start=1)}
             for record in active_catalog.records:
                 cell_metric = official_metric_by_identity.get(
                     (record.strategy_id, prefix_count, window_name)
                 )
                 rank = rank_by_id.get(record.strategy_id)
                 if rank is not None:
-                    official_rank_by_identity[
-                        (record.strategy_id, prefix_count, window_name)
-                    ] = rank
+                    official_rank_by_identity[(record.strategy_id, prefix_count, window_name)] = (
+                        rank
+                    )
                 if cell_metric is None:
                     reason = (
                         "NO_EXECUTIONS_IN_THIS_REPORT_INPUT"
@@ -1004,12 +968,8 @@ def evaluate_biglotto_multi_ticket_backtest(
                     row.update(
                         {
                             "coverage": cell_metric["coverage"],
-                            "official_any_prize_count": cell_metric[
-                                "official_any_prize_count"
-                            ],
-                            "official_any_prize_rate": cell_metric[
-                                "official_any_prize_rate"
-                            ],
+                            "official_any_prize_count": cell_metric["official_any_prize_count"],
+                            "official_any_prize_rate": cell_metric["official_any_prize_rate"],
                             "official_random_baseline_probability": cell_metric[
                                 "official_random_baseline_probability"
                             ],
@@ -1074,9 +1034,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                         item[3],
                     )
                 )
-                rank_by_id = {
-                    item[3]: index for index, item in enumerate(rankable, start=1)
-                }
+                rank_by_id = {item[3]: index for index, item in enumerate(rankable, start=1)}
                 cell_rows: list[dict[str, object]] = []
                 for record in active_catalog.records:
                     cell_metric = metric_by_identity.get(
@@ -1091,8 +1049,7 @@ def evaluate_biglotto_multi_ticket_backtest(
                     if cell_metric is None:
                         reason = (
                             "NO_EXECUTIONS_IN_THIS_REPORT_INPUT"
-                            if record.reproduction_status
-                            is ReproductionStatus.BACKTESTED
+                            if record.reproduction_status is ReproductionStatus.BACKTESTED
                             else record.unranked_reason
                         )
                     elif cell_metric["rankable"] is not True:
@@ -1111,31 +1068,23 @@ def evaluate_biglotto_multi_ticket_backtest(
                         "window": window_name,
                     }
                     if cell_metric is not None:
-                        row["official_any_prize_count"] = cell_metric[
-                            "official_any_prize_count"
+                        row["official_any_prize_count"] = cell_metric["official_any_prize_count"]
+                        row["official_any_prize_rate"] = cell_metric["official_any_prize_rate"]
+                        row["official_random_baseline_probability"] = cell_metric[
+                            "official_random_baseline_probability"
                         ]
-                        row["official_any_prize_rate"] = cell_metric[
-                            "official_any_prize_rate"
-                        ]
-                        row["official_random_baseline_probability"] = (
-                            cell_metric["official_random_baseline_probability"]
-                        )
                         row["official_random_baseline_delta"] = cell_metric[
                             "official_random_baseline_delta"
                         ]
                         row["coverage"] = cell_metric["coverage"]
-                        row["observed_success_rate"] = cell_metric[
-                            "observed_success_rate"
-                        ]
+                        row["observed_success_rate"] = cell_metric["observed_success_rate"]
                         row["random_baseline_rate_difference"] = cell_metric[
                             "random_baseline_rate_difference"
                         ]
                     cell_rows.append(row)
                     rankings.append(row)
                 top_ten.extend(
-                    row
-                    for row in cell_rows
-                    if type(row["rank"]) is int and row["rank"] <= 10
+                    row for row in cell_rows if type(row["rank"]) is int and row["rank"] <= 10
                 )
 
     backtested_strategy_ids = successful_strategy_ids | {
@@ -1271,9 +1220,7 @@ def evaluate_biglotto_exact_native_official_metrics(
 
     records: list[dict[str, object]] = []
     for catalog_record in active_catalog.records:
-        strategy_executions = tuple(
-            executions_by_strategy.get(catalog_record.strategy_id, ())
-        )
+        strategy_executions = tuple(executions_by_strategy.get(catalog_record.strategy_id, ()))
         if not strategy_executions:
             continue
         successful_all = tuple(
@@ -1285,9 +1232,7 @@ def evaluate_biglotto_exact_native_official_metrics(
             len(execution.native_tickets) for execution in successful_all
         )
         fixed_native_count = (
-            next(iter(native_count_distribution))
-            if len(native_count_distribution) == 1
-            else None
+            next(iter(native_count_distribution)) if len(native_count_distribution) == 1 else None
         )
         if not successful_all:
             native_classification = "NO_SUCCESSFUL_EXECUTIONS"
@@ -1301,9 +1246,7 @@ def evaluate_biglotto_exact_native_official_metrics(
         for ticket_count in EXACT_NATIVE_TICKET_COUNTS:
             for window_name, requested_draws in WINDOWS:
                 selected_targets = _window_targets(targets, requested_draws)
-                selected_target_ids = {
-                    target.draw_number for target in selected_targets
-                }
+                selected_target_ids = {target.draw_number for target in selected_targets}
                 selected_executions = tuple(
                     execution
                     for execution in strategy_executions
@@ -1312,21 +1255,18 @@ def evaluate_biglotto_exact_native_official_metrics(
                 execution_status_counts = Counter(
                     execution.status.value for execution in selected_executions
                 )
-                execution_status_counts["MISSING_EXECUTION_RECORD"] = (
-                    len(selected_targets) - len(selected_executions)
+                execution_status_counts["MISSING_EXECUTION_RECORD"] = len(selected_targets) - len(
+                    selected_executions
                 )
                 base: dict[str, object] = {
                     "available_observation_count": None,
                     "coverage": None,
                     "criterion": "OFFICIAL_ANY_PRIZE",
-                    "execution_status_counts": dict(
-                        sorted(execution_status_counts.items())
-                    ),
+                    "execution_status_counts": dict(sorted(execution_status_counts.items())),
                     "metric_status": "UNAVAILABLE",
                     "native_ticket_count_classification": native_classification,
                     "native_ticket_count_distribution": {
-                        str(key): value
-                        for key, value in sorted(native_count_distribution.items())
+                        str(key): value for key, value in sorted(native_count_distribution.items())
                     },
                     "no_prize_count": None,
                     "observed_distinct_ticket_count": None,
@@ -1346,8 +1286,7 @@ def evaluate_biglotto_exact_native_official_metrics(
                     "window": window_name,
                     "window_available_draws": len(selected_targets),
                     "window_complete": (
-                        requested_draws is None
-                        or len(selected_targets) == requested_draws
+                        requested_draws is None or len(selected_targets) == requested_draws
                     ),
                     "window_requested_draws": requested_draws or len(selected_targets),
                 }
@@ -1361,21 +1300,25 @@ def evaluate_biglotto_exact_native_official_metrics(
                     records.append(base)
                     continue
 
+                has_execution_failure = any(
+                    _is_execution_failure(execution) for execution in selected_executions
+                )
+                if has_execution_failure:
+                    base["unavailable_reason"] = "EXECUTION_FAILURE"
+                    records.append(base)
+                    continue
+
                 successful = tuple(
                     execution
                     for execution in selected_executions
                     if execution.status is PortfolioExecutionStatus.OK
                 )
                 if not successful:
-                    base["unavailable_reason"] = (
-                        "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW"
-                    )
+                    base["unavailable_reason"] = "NO_SUCCESSFUL_EXECUTIONS_IN_WINDOW"
                     records.append(base)
                     continue
 
-                prize_counts = Counter(
-                    {tier.value: 0 for tier in BigLottoPrizeTierId}
-                )
+                prize_counts = Counter({tier.value: 0 for tier in BigLottoPrizeTierId})
                 prize_counts[NoPrizeResult.NO_PRIZE.value] = 0
                 distinct_positions = 0
                 duplicate_positions = 0
@@ -1390,8 +1333,7 @@ def evaluate_biglotto_exact_native_official_metrics(
                     duplicate_positions += ticket_count - distinct
                     target = target_by_number[execution.target_draw_number]
                     ticket_scores = [
-                        _score_ticket(ticket, target)
-                        for ticket in execution.native_tickets
+                        _score_ticket(ticket, target) for ticket in execution.native_tickets
                     ]
                     scored_by_execution.append(ticket_scores)
                     prize_counts.update(score[2] for score in ticket_scores)
@@ -1408,9 +1350,7 @@ def evaluate_biglotto_exact_native_official_metrics(
                     official_any_prize_count,
                     observation_count,
                 )
-                official_baseline = official_any_prize_probability(
-                    ticket_count
-                ).as_fraction()
+                official_baseline = official_any_prize_probability(ticket_count).as_fraction()
                 base.update(
                     {
                         "available_observation_count": observation_count,
@@ -1418,18 +1358,13 @@ def evaluate_biglotto_exact_native_official_metrics(
                             Fraction(observation_count, len(selected_targets))
                         ),
                         "metric_status": "AVAILABLE",
-                        "no_prize_count": prize_counts[
-                            NoPrizeResult.NO_PRIZE.value
-                        ],
+                        "no_prize_count": prize_counts[NoPrizeResult.NO_PRIZE.value],
                         "observed_distinct_ticket_count": distinct_positions,
                         "observed_duplicate_ticket_count": duplicate_positions,
                         "official_any_prize_count": official_any_prize_count,
-                        "official_any_prize_rate": _exact_fraction_payload(
-                            official_rate
-                        ),
+                        "official_any_prize_rate": _exact_fraction_payload(official_rate),
                         "official_prize_tier_counts": {
-                            tier.value: prize_counts[tier.value]
-                            for tier in BigLottoPrizeTierId
+                            tier.value: prize_counts[tier.value] for tier in BigLottoPrizeTierId
                         },
                         "official_random_baseline_delta": _exact_fraction_payload(
                             official_rate - official_baseline

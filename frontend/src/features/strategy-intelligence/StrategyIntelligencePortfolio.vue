@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import DataTable from '../../components/DataTable.vue'
 import MetricCard from '../../components/MetricCard.vue'
 import SectionHeader from '../../components/SectionHeader.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
 import type { LotteryType } from '../../api/strategies'
-import type { PortfolioGameEvidenceRow, StrategyCombinedItem } from './types'
+import type { StrategyCombinedItem } from './types'
 
 const props = withDefaults(
   defineProps<{
@@ -39,54 +38,6 @@ const currentGameFullName = computed(() => {
   }
 })
 
-const canonicalGames: PortfolioGameEvidenceRow[] = [
-  {
-    game: 'B649',
-    gameName: 'Big Lotto 6/49',
-    portfolioId: null,
-    includedStrategies: [],
-    portfolioSize: null,
-    evaluatedTargets: null,
-    unionHitRate: null,
-    bestComparator: null,
-    marginalContribution: null,
-    diversityMetric: null,
-    horizon: null,
-    evidenceStatus: 'EVIDENCE UNAVAILABLE',
-    reasonCode: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
-  },
-  {
-    game: 'P638',
-    gameName: 'Power Lotto 6/38',
-    portfolioId: null,
-    includedStrategies: [],
-    portfolioSize: null,
-    evaluatedTargets: null,
-    unionHitRate: null,
-    bestComparator: null,
-    marginalContribution: null,
-    diversityMetric: null,
-    horizon: null,
-    evidenceStatus: 'EVIDENCE UNAVAILABLE',
-    reasonCode: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
-  },
-  {
-    game: 'T539',
-    gameName: 'Daily Cash 5/39',
-    portfolioId: null,
-    includedStrategies: [],
-    portfolioSize: null,
-    evaluatedTargets: null,
-    unionHitRate: null,
-    bestComparator: null,
-    marginalContribution: null,
-    diversityMetric: null,
-    horizon: null,
-    evidenceStatus: 'EVIDENCE UNAVAILABLE',
-    reasonCode: 'EXCLUDED_ACTIVE_MULTITICKET_SCOPE',
-  },
-]
-
 const totalCandidateStrategies = computed(() => props.strategies.length)
 </script>
 
@@ -97,14 +48,15 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
       <div class="governance-header">
         <div>
           <p class="step-label">Strategy Combination Hit Rate · Evidence Boundary</p>
-          <h2>Combination & Portfolio Evidence Status · {{ currentGameCode }}</h2>
+          <h2>Registry-wide Combination Evidence Boundary</h2>
           <p class="governance-desc">
             Multi-strategy combination evaluation answers: <em>"What is known about combining strategies?"</em>.
-            Currently, no canonical portfolio hit rate has been registered in the evidence registry for {{ currentGameFullName }} ({{ currentGameCode }}).
+            No canonical combination metric is exposed by the current strategy-evidence contract.
+            The active evidence contract defines a registry-wide boundary without game-specific portfolio records.
           </p>
         </div>
         <div class="scope-card" aria-label="Portfolio evidence status">
-          <span>Combination Scope · {{ currentGameCode }}</span>
+          <span>Registry Combination Scope</span>
           <strong>{{ combinationStatus }}</strong>
           <small>Value: {{ combinationValue }} · Owner: {{ combinationOwner }}</small>
         </div>
@@ -113,20 +65,20 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
       <div class="metrics-grid">
         <MetricCard
           label="Portfolio Hit Rate"
-          value="UNAVAILABLE"
-          :subvalue="`Value: ${combinationValue} · No combination metrics`"
+          :value="combinationValue"
+          :subvalue="`Status: ${combinationStatus}`"
           variant="warning"
-          badge="NOT_AVAILABLE"
+          :badge="combinationStatus"
           badge-variant="warning"
         />
         <MetricCard
           label="Active Governance"
           :value="combinationOwner"
-          subvalue="Active multi-ticket research scope"
+          subvalue="Registry combination authority"
           variant="default"
         />
         <MetricCard
-          label="Selected Game Scope"
+          label="Selected Catalog Context"
           :value="`${currentGameCode} (${currentGameFullName})`"
           :subvalue="`${totalCandidateStrategies} individual candidate strategies`"
           variant="accent"
@@ -151,73 +103,48 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
       </div>
     </div>
 
-    <!-- Game-by-Game Canonical Evidence Grid -->
+    <!-- Registry-wide Combination Evidence Boundary -->
     <SectionHeader
-      title="Canonical Game Evidence Status"
-      eyebrow="Game-Specific Breakdown"
-      description="Portfolio hit rate and combination evidence availability across canonical supported lottery games."
+      title="Registry-wide Combination Evidence Boundary"
+      eyebrow="Evidence Authority Boundary"
+      description="Evaluated combination evidence exposed by the canonical strategy-evidence contract."
     />
 
-    <DataTable
-      caption="Portfolio Evidence Availability by Game"
-      min-width="1000px"
-    >
-      <template #head>
-        <tr>
-          <th>Game</th>
-          <th>Portfolio ID</th>
-          <th>Included Strategies</th>
-          <th>Size</th>
-          <th>Evaluated Targets</th>
-          <th>Union Hit Rate</th>
-          <th>Best Comparator</th>
-          <th>Marginal Contribution</th>
-          <th>Diversity Metric</th>
-          <th>Evidence Status</th>
-        </tr>
-      </template>
+    <div class="boundary-panel" data-testid="portfolio-evidence-boundary">
+      <div class="boundary-grid">
+        <div class="boundary-card">
+          <span class="boundary-label">Combination Status</span>
+          <div class="boundary-status-wrapper">
+            <StatusBadge :status="combinationStatus" variant="warning" size="sm" />
+            <code class="boundary-code">{{ combinationStatus }}</code>
+          </div>
+          <small class="boundary-hint">Registry-wide scope status from canonical contract.</small>
+        </div>
 
-      <tr v-for="row in canonicalGames" :key="row.game" class="data-row">
-        <td>
-          <div class="game-cell">
-            <span class="game-tag">{{ row.game }}</span>
-            <small class="game-full-name">{{ row.gameName }}</small>
+        <div class="boundary-card">
+          <span class="boundary-label">Combination Value</span>
+          <strong class="boundary-value font-mono">{{ combinationValue }}</strong>
+          <small class="boundary-hint">No multi-strategy hit rate is computed or assumed.</small>
+        </div>
+
+        <div class="boundary-card">
+          <span class="boundary-label">Combination Authority / Owner</span>
+          <span class="boundary-owner font-mono">{{ combinationOwner }}</span>
+          <small class="boundary-hint">Assigned quantitative governance domain.</small>
+        </div>
+
+        <div class="boundary-card boundary-card--context">
+          <span class="boundary-label">Selected Catalog Context</span>
+          <div class="context-indicator">
+            <span class="game-tag">{{ currentGameCode }}</span>
+            <span class="game-full-name">{{ currentGameFullName }}</span>
           </div>
-        </td>
-        <td>
-          <span class="text-muted">{{ row.portfolioId ?? 'None' }}</span>
-        </td>
-        <td>
-          <span class="text-muted">
-            {{ row.includedStrategies.length ? row.includedStrategies.join(', ') : 'None registered' }}
-          </span>
-        </td>
-        <td class="font-mono">
-          <span class="text-muted">{{ row.portfolioSize ?? '—' }}</span>
-        </td>
-        <td class="font-mono">
-          <span class="text-muted">{{ row.evaluatedTargets ?? '—' }}</span>
-        </td>
-        <td class="font-mono">
-          <strong class="text-muted">{{ row.unionHitRate ?? 'UNAVAILABLE' }}</strong>
-        </td>
-        <td class="font-mono">
-          <span class="text-muted">{{ row.bestComparator ?? 'UNAVAILABLE' }}</span>
-        </td>
-        <td class="font-mono">
-          <span class="text-muted">{{ row.marginalContribution ?? 'UNAVAILABLE' }}</span>
-        </td>
-        <td class="font-mono">
-          <span class="text-muted">{{ row.diversityMetric ?? 'UNAVAILABLE' }}</span>
-        </td>
-        <td>
-          <div class="status-cell">
-            <StatusBadge :status="row.evidenceStatus" variant="warning" size="sm" />
-            <code class="status-reason">{{ row.reasonCode }}</code>
-          </div>
-        </td>
-      </tr>
-    </DataTable>
+          <small class="boundary-hint">
+            Catalog context only ({{ totalCandidateStrategies }} candidate strategies). The combination evidence boundary is registry-wide and not evaluated per game.
+          </small>
+        </div>
+      </div>
+    </div>
 
     <!-- Detailed Evidence Registry Explanatory Section -->
     <article class="panel registry-details-panel">
@@ -227,10 +154,9 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
       </div>
       <div class="registry-reasons">
         <div class="reason-card">
-          <h4>01 · Canonical Evidence Registry is Empty</h4>
+          <h4>01 · Contract Boundary Scope</h4>
           <p>
-            The committed evidence registry (<code>contracts/evidence/canonical_evidence_registry.json</code>)
-            currently contains zero registered multi-strategy combination artifacts.
+            No canonical combination metric is exposed by the current strategy-evidence contract.
           </p>
         </div>
         <div class="reason-card">
@@ -320,10 +246,77 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
   color: var(--text-accent);
 }
 
-.game-cell {
+.boundary-panel {
+  padding: 20px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+}
+
+.boundary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.boundary-card {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: rgba(12, 17, 28, 0.6);
+}
+
+.boundary-card--context {
+  border-left: 3px solid rgba(56, 189, 248, 0.6);
+}
+
+.boundary-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.boundary-status-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.boundary-code {
+  font-size: 10px;
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.boundary-value {
+  font-size: 18px;
+  color: var(--text-primary);
+}
+
+.boundary-owner {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.boundary-hint {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  line-height: 1.4;
+  margin-top: auto;
+}
+
+.context-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .game-tag {
@@ -340,18 +333,6 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
 .game-full-name {
   color: var(--text-secondary);
   font-size: 11px;
-}
-
-.status-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.status-reason {
-  font-size: 9.5px;
-  color: var(--text-tertiary);
-  font-family: var(--font-mono);
 }
 
 .registry-details-panel {
@@ -389,7 +370,4 @@ const totalCandidateStrategies = computed(() => props.strategies.length)
   color: var(--text-accent);
 }
 
-.text-muted {
-  color: var(--text-tertiary);
-}
 </style>

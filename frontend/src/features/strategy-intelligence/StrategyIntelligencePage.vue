@@ -317,8 +317,8 @@ onBeforeUnmount(() => {
       <MetricCard
         label="Best Strategy"
         :value="loadState === 'ready' ? summary.bestStrategyStatus : '—'"
-        :subvalue="loadState === 'ready' ? `Status: ${summary.bestStrategyStatus} · Evidence missing` : 'Loading…'"
-        badge="UNAVAILABLE"
+        :subvalue="loadState === 'ready' ? `Status: ${summary.bestStrategyStatus} · Reason: ${summary.bestStrategyReason}` : 'Loading…'"
+        :badge="loadState === 'ready' ? summary.bestStrategyStatus : undefined"
         badge-variant="warning"
         variant="warning"
       />

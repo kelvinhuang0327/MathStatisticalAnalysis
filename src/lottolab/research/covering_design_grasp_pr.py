@@ -481,10 +481,24 @@ def _relink_forward(
 
     Orientation is structural rather than cost-derived: the initiating
     solution is always the iteration's local optimum and the guide is always
-    the elite chosen by ``_select_guide``, whatever their costs. The frozen
-    equal-cost endpoint tie rule (lexicographically smaller canonical key
-    initiates) therefore never fires here, because no cost comparison ever
-    selects an orientation to begin with.
+    the elite chosen by ``_select_guide``, whatever their costs.
+
+    OPEN, pending Planner/Owner adjudication: the frozen equal-cost endpoint
+    tie rule (lexicographically smaller canonical key initiates) is never
+    consulted here, because no cost comparison ever selects an orientation.
+    That is not the same as the rule being inert -- equal-cost endpoints are
+    the dominant case rather than a corner, and applying the tie rule would
+    reverse a large share of these calls. So this is a DISCLOSED DEVIATION,
+    not a resolved one. The frozen rule set is itself incomplete on this
+    axis: the per-iteration sequence already assigns the roles (relink
+    forward from L towards the chosen guide) while the tie rule would let an
+    elite initiate against L, and no rule is stated for the non-tie case. Do
+    not record this as resolved without a ruling.
+
+    Note on naming: ``_select_guide`` has no cost condition, so the guide is
+    sometimes costlier than the initiating solution. ``forward_only`` in the
+    configuration identity describes traversal direction (L towards guide),
+    not the Resende-Ribeiro forward/backward taxonomy.
     """
 
     current = initiating
@@ -538,7 +552,10 @@ def _configuration_identity(problem: _Problem, config: CoveringDesignGraspPRConf
         "elite_diversity_threshold": config.elite_diversity_threshold,
         "max_path_length": config.max_path_length,
         "canonical_ordering": "itertools.combinations_lexicographic_index",
-        "rcl": "ratio=1/gain;cutoff=c_min+alpha*(c_max-c_min);inclusive<=;positive_gain_only",
+        "rcl": (
+            "ratio=1/gain;cutoff=clamp((1-alpha)*c_min+alpha*c_max,c_min,c_max);"
+            "inclusive<=;positive_gain_only"
+        ),
         "local_improvement": "strict_redundant_block_elimination_to_fixpoint;no_swap",
         "path_relinking": "forward_only;single_block_toggles;feasible_only;min_block_delta",
     }

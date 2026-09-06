@@ -948,9 +948,11 @@ def test_path_result_strictly_beats_both_endpoints_on_block_count() -> None:
 
 
 def test_relinking_result_is_never_worse_than_the_better_endpoint() -> None:
-    # The donor seeds its running cost with the BETTER endpoint, which lets a
-    # path solution displace it. Recomputing from the actual current solution
-    # over the closed path makes that impossible.
+    # A property check over the closed path, not a discriminator for the
+    # donor seeding (see test_donor_running_cost_defect_is_structurally_
+    # impossible: that seeding is an equivalent mutant here). What this does
+    # pin is that the retained state is recomputed from the actual current
+    # solution, so it can never be worse than the better endpoint.
     problem = _build_problem(*V6K3T2)
     selections = _random_feasible_selections(problem, 24)
     checked = 0
@@ -1258,6 +1260,182 @@ def test_path_result_never_has_a_larger_key_than_its_initiating_solution() -> No
     assert checked >= 10
 
 
+def test_incumbent_is_updated_from_the_path_result_not_only_from_the_local_optimum() -> None:
+    # Step 7 of the frozen sequence. R' is frequently strictly better than the
+    # L it came from, and step 7 is the only place that improvement reaches
+    # the public best. On this fixture dropping it does not merely reshape the
+    # history, it costs a whole block in the final answer -- the last two
+    # assertions pin exactly that, so the step cannot be silently removed.
+    config = _config(seed=2, alpha=0.0, iteration_count=15)
+    events: list[tuple[str, Selection]] = []
+    real_eliminate = grasp_module._eliminate_redundant_blocks
+    real_select = grasp_module._select_guide
+    real_relink = grasp_module._relink_forward
+
+    def _recording_eliminate(
+        problem: grasp_module._Problem, selection: Selection, budget: _EvaluationBudget
+    ) -> Selection:
+        produced = real_eliminate(problem, selection, budget)
+        events.append(("eliminate", produced))
+        return produced
+
+    def _recording_select(
+        problem: grasp_module._Problem, pool: _ElitePool, current: Selection
+    ) -> Selection | None:
+        events.append(("select", tuple(current)))
+        return real_select(problem, pool, current)
+
+    def _recording_relink(
+        problem: grasp_module._Problem,
+        initiating: Selection,
+        guide: Selection,
+        budget: _EvaluationBudget,
+    ) -> Selection:
+        events.append(("relink", tuple(initiating)))
+        return real_relink(problem, initiating, guide, budget)
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(grasp_module, "_eliminate_redundant_blocks", _recording_eliminate)
+        patch.setattr(grasp_module, "_select_guide", _recording_select)
+        patch.setattr(grasp_module, "_relink_forward", _recording_relink)
+        result = run_covering_design_grasp_pr(*V6K3T2, config=config)
+
+    # Each iteration emits eliminate(L), select(L), and -- only when relinking
+    # actually ran -- relink then eliminate(R'), so the stream is unambiguous.
+    iterations: list[tuple[Selection, Selection | None]] = []
+    cursor = 0
+    while cursor < len(events):
+        assert events[cursor][0] == "eliminate"
+        local_optimum = events[cursor][1]
+        cursor += 1
+        assert events[cursor][0] == "select"
+        cursor += 1
+        path_result: Selection | None = None
+        if cursor < len(events) and events[cursor][0] == "relink":
+            cursor += 1
+            assert events[cursor][0] == "eliminate"
+            path_result = events[cursor][1]
+            cursor += 1
+        iterations.append((local_optimum, path_result))
+
+    assert len(iterations) == config.iteration_count
+    problem = _build_problem(*V6K3T2)
+    with_step_seven: list[int] = []
+    without_step_seven: list[int] = []
+    every: Selection | None = None
+    local_only: Selection | None = None
+    for local_optimum, path_result in iterations:
+        for candidate in (local_optimum, path_result):
+            if candidate is not None and (
+                every is None or _solution_key(problem, candidate) < _solution_key(problem, every)
+            ):
+                every = candidate
+        if local_only is None or _solution_key(problem, local_optimum) < _solution_key(
+            problem, local_only
+        ):
+            local_only = local_optimum
+        assert every is not None
+        assert local_only is not None
+        with_step_seven.append(len(every))
+        without_step_seven.append(len(local_only))
+
+    assert result.best_objective_history == tuple(with_step_seven)
+    assert result.best_block_count == with_step_seven[-1]
+    assert with_step_seven != without_step_seven
+    assert with_step_seven[-1] < without_step_seven[-1]
+
+
+def test_independent_cover_verification_rejects_an_incomplete_cover() -> None:
+    # The end-of-run safety net. Every other test either monkeypatches it or
+    # calls it on an already-valid cover, so pin both directions directly.
+    verify = grasp_module._independently_verify_cover
+    complete = ((0, 1, 2), (0, 3, 4), (1, 3, 4), (2, 3, 4))
+    assert verify(5, 2, complete) is True
+    assert verify(5, 2, complete[:3]) is False
+    assert verify(5, 2, ((0, 1, 2),)) is False
+    assert verify(5, 2, ()) is False
+
+
+def test_redundant_elimination_probes_removals_in_canonical_ascending_order() -> None:
+    # The fixpoint is order-independent, so only the probe sequence pins the
+    # documented "walk ascending, remove the first removable" rule.
+    problem = _build_problem(*V5K3T2)
+    selection: Selection = tuple(range(10))
+    probed: list[Selection] = []
+    real_covers = grasp_module._covers_all_targets
+
+    def _recording_covers(inner: grasp_module._Problem, candidate: Selection) -> bool:
+        probed.append(tuple(candidate))
+        return real_covers(inner, candidate)
+
+    def _walk(ascending: bool) -> list[Selection]:
+        sequence: list[Selection] = []
+        current = tuple(sorted(selection))
+        while True:
+            order = current if ascending else tuple(reversed(current))
+            for index in order:
+                trial = tuple(other for other in current if other != index)
+                sequence.append(trial)
+                if real_covers(problem, trial):
+                    current = trial
+                    break
+            else:
+                return sequence
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(grasp_module, "_covers_all_targets", _recording_covers)
+        _eliminate_redundant_blocks(problem, selection, _budget())
+
+    assert probed == _walk(ascending=True)
+    assert probed != _walk(ascending=False)
+
+
+def test_construction_charges_the_evaluation_budget_once_per_solution() -> None:
+    problem = _build_problem(*V6K3T2)
+    config = _config()
+    budget = _EvaluationBudget(1)
+    rng = random.Random(config.seed)
+    _construct_solution(problem, config, rng, budget)
+    assert budget.count == 1
+    with pytest.raises(CoveringDesignGraspPRInvariantError, match="budget exceeded"):
+        _construct_solution(problem, config, rng, budget)
+
+
+def test_configuration_identity_records_the_guard_identity() -> None:
+    problem = _build_problem(*V6K3T2)
+    identity = run_covering_design_grasp_pr(
+        *V6K3T2, config=_config()
+    ).deterministic_configuration_identity
+    assert problem.guard_identity
+    assert '"guard":' in identity
+    assert problem.guard_identity in identity
+
+
+def test_derived_bound_scales_with_the_configured_path_length() -> None:
+    problem = _build_problem(*V6K3T2)
+    short = grasp_module._derived_total_evaluation_bound(
+        problem.candidate_count, _config(max_path_length=1)
+    )
+    generous = grasp_module._derived_total_evaluation_bound(
+        problem.candidate_count, _config(max_path_length=64)
+    )
+    assert generous > short
+    assert generous - short == _config().iteration_count * 63
+
+
+def test_elite_pool_members_stay_in_canonical_solution_key_order() -> None:
+    problem = _build_problem(*V5K3T2)
+    pool = _pool(max_size=6)
+    for selection in [(5, 6, 7, 8), (0, 1, 2), (3, 4), (0, 1, 3), (2, 9), (1, 4, 7)]:
+        assert pool.admit(selection) is True
+        keys = [_solution_key(problem, member) for member in pool.members]
+        assert keys == sorted(keys)
+    assert len(pool.members) == 6
+    # Non-vacuous: the resort actually reorders, it does not just preserve
+    # the admission order it was handed.
+    assert pool.members != [(5, 6, 7, 8), (0, 1, 2), (3, 4), (0, 1, 3), (2, 9), (1, 4, 7)]
+
+
 def test_alpha_default_absence_is_recorded_in_the_configuration_identity() -> None:
     a = run_covering_design_grasp_pr(*V5K3T2, config=_config(alpha=0.0))
     b = run_covering_design_grasp_pr(*V5K3T2, config=_config(alpha=1.0))
@@ -1394,11 +1572,15 @@ def test_mutation_first_feasible_move_differs_from_minimum_delta_move() -> None:
     assert len(returned) < len(initiating)
 
 
-def test_mutation_donor_running_cost_defect_is_not_reproduced() -> None:
-    # The donor seeds its running best with min(cost_init, cost_guide). Here
-    # the initiating endpoint is strictly worse than the guide, so the donor
-    # accounting would let a path solution no better than the guide be
-    # reported; recomputing from the actual solution cannot.
+def test_donor_running_cost_defect_is_structurally_impossible() -> None:
+    # NOT a discriminating mutation test, and deliberately not named as one:
+    # seeding the running best with min(cost_init, cost_guide) is an
+    # EQUIVALENT mutant here, because the path always terminates at the guide
+    # and the guide is therefore always compared into the retained best, so
+    # both accountings coincide. That is stronger than "the defect was not
+    # ported" -- it cannot be expressed. This records the structural property
+    # that makes it so: the reported count is read straight off the returned
+    # blocks, with no running-cost accumulator that could desynchronize.
     problem = _build_problem(*V5K3T2)
     initiating: Selection = (0, 1, 2, 3, 9)
     guide: Selection = (1, 4, 7, 9)

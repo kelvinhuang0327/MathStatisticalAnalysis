@@ -15,6 +15,17 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import pytest
+from tools.b649_operational_prediction_loop import (
+    STRATEGY_STREAMS,
+    TARGET_DRAW_DATE,
+    TARGET_DRAW_NUMBER,
+    HistorySnapshot,
+    PredictionTarget,
+    _assert_causal_cutoff,
+    create_prediction_payload,
+    load_canonical_history,
+    run_strategy_stream,
+)
 
 from lottolab.application.historical_replay_adapters import (
     BigLottoReplayAdapter,
@@ -39,17 +50,6 @@ from lottolab.strategies.adapters.biglotto_frontend_auto_optimize import (
 )
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
     BigLottoHorizonMinimaxDisagreementAdapter,
-)
-from tools.b649_operational_prediction_loop import (
-    STRATEGY_STREAMS,
-    TARGET_DRAW_DATE,
-    TARGET_DRAW_NUMBER,
-    HistorySnapshot,
-    PredictionTarget,
-    _assert_causal_cutoff,
-    create_prediction_payload,
-    load_canonical_history,
-    run_strategy_stream,
 )
 
 # ==============================================================================

@@ -435,6 +435,13 @@ def _k5_paths() -> tuple[Path, Path, Path]:
     )
 
 
+def _require_k5_paths() -> tuple[Path, Path, Path]:
+    paths = _k5_paths()
+    if not all(path.is_file() for path in paths):
+        pytest.skip("explicit offline K5 authorities are not installed")
+    return paths
+
+
 def _k5_document() -> dict[str, object]:
     return json.loads(
         (Path("src/lottolab/strategies/data") / K5_PROJECTION_RESOURCE_NAME).read_bytes()
@@ -442,9 +449,7 @@ def _k5_document() -> dict[str, object]:
 
 
 def test_k5_materializes_twice_without_evaluation_and_copies_all_source_fields() -> None:
-    paths = _k5_paths()
-    if not paths[0].exists():
-        pytest.skip("explicit offline K5 authorities are not installed")
+    paths = _require_k5_paths()
     before = [hashlib.sha256(p.read_bytes()).hexdigest() for p in paths]
     calls: list[str] = []
 
@@ -500,7 +505,7 @@ def test_k5_materializes_twice_without_evaluation_and_copies_all_source_fields()
 
 @pytest.mark.parametrize("source_index", [0, 1, 2])
 def test_k5_refuses_wrong_source_bytes(monkeypatch: pytest.MonkeyPatch, source_index: int) -> None:
-    paths = _k5_paths()
+    paths = _require_k5_paths()
     read = Path.read_bytes
     def corrupted_read(path: Path) -> bytes:
         return b"corrupt" if path == paths[source_index] else read(path)
@@ -528,7 +533,7 @@ def test_k5_checks_source_semantics_even_with_matching_hash(
     field: str,
     value: object,
 ) -> None:
-    paths = _k5_paths()
+    paths = _require_k5_paths()
     path = paths[0 if source == "manifest" else 2]
     document = json.loads(path.read_bytes())
     document[field] = value

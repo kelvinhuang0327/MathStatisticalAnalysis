@@ -894,6 +894,14 @@
           {
             "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
             "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+          },
+          {
+            "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+            "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+          },
+          {
+            "path": "tests/unit/test_covering_design_tabu7.py",
+            "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
           }
         ],
         "deterministic": true,
@@ -910,6 +918,14 @@
           {
             "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
             "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+          },
+          {
+            "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+            "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+          },
+          {
+            "path": "src/lottolab/research/covering_design_tabu7.py",
+            "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
           }
         ],
         "source_status": "IMPLEMENTED",

@@ -19,6 +19,7 @@ from lottolab.research.strategy_matrix_comparison import (
     EXPECTED_MAX_MAIN_MATCHES_V1,
     EXPECTED_MAX_RESULT_PATH,
     RESULT_PATH,
+    TABU7_CANDIDATE_CASE_ID,
     _expected_max_discrimination,
     canonical_json_bytes,
     evaluate_expected_max_main_matches,
@@ -156,7 +157,7 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     evaluated = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
     unavailable = {cell["row_id"]: cell for cell in artifact["unavailable_cells"]}
-    assert len(evaluated) == 246
+    assert len(evaluated) == 251
     assert len(unavailable) == 126
     assert set(evaluated) | set(unavailable) == set(input_rows)
     assert not set(evaluated) & set(unavailable)
@@ -191,7 +192,7 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
 def test_surface_reuses_each_exact_value_for_every_duplicate_portfolio_identity() -> None:
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     cells = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
-    assert len(artifact["portfolio_evaluations"]) == 136
+    assert len(artifact["portfolio_evaluations"]) == 141
     for evaluation in artifact["portfolio_evaluations"]:
         row_ids = evaluation["row_ids"]
         assert evaluation["computed_once"] is True
@@ -223,3 +224,42 @@ def test_surface_has_a_distinct_objective_signal_without_a_leaderboard() -> None
         == "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     )
     assert artifact["claim_boundary"]["dedicated_optimizer_implemented"] == "YES"
+
+
+def test_tabu7_candidate_rows_are_all_evaluated_and_bound_to_the_primary_artifact() -> None:
+    """The five new Tabu7 candidate-source rows are exact-evaluated cells whose
+    identity is bound to the primary Matrix artifact, never a leaderboard entry."""
+
+    input_rows = {
+        row["row_id"]: row for row in json.loads((ROOT / RESULT_PATH).read_text())["rows"]
+    }
+    artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
+    evaluated = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
+
+    tabu7_row_ids = {
+        row_id for row_id, row in input_rows.items() if row["case_id"] == TABU7_CANDIDATE_CASE_ID
+    }
+    assert len(tabu7_row_ids) == 5
+    assert tabu7_row_ids <= set(evaluated)
+
+    for row_id in tabu7_row_ids:
+        source = input_rows[row_id]
+        cell = evaluated[row_id]
+        assert source["portfolio"] is not None
+        assert cell["strategy_id"] == "CANDIDATE_LOW_OVERLAP_V1"
+        assert cell["portfolio_sha256"] == source["portfolio_sha256"]
+        assert cell["native_method_objective"] == source["objective"]
+        assert cell["native_evaluation_objective"] == "GEOMETRY" == source["evaluation_objective"]
+        assert source["exact_q"] is None
+        assert cell["native_exact_q"] is None
+        assert cell["evaluation_metric_id"] == EXPECTED_MAX_MAIN_MATCHES_V1
+        assert cell["exactness"] == EXPECTED_MAX_EXACTNESS
+
+        # The exact expected-max value matches direct invocation of the existing
+        # exact evaluator on the row's own stored portfolio -- never reconstructed.
+        direct_value = evaluate_expected_max_main_matches(source)
+        assert parse_rational(cell["expected_max_main_matches_v1"]) == direct_value
+        assert direct_value >= 0
+
+    assert artifact["claim_boundary"]["global_leaderboard"] == "NOT_PRODUCED"
+    assert artifact["claim_boundary"]["cross_lottery_normalization"] == "NOT_PERFORMED"

@@ -5,18 +5,28 @@
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
+import math
 import os
+from dataclasses import asdict
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, cast
 
 import pytest
 
+from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.research import strategy_matrix_comparison as smc
 from lottolab.research.biglotto_multi_ticket_constructors_r1 import CONSTRUCTORS
+from lottolab.research.covering_design_fixed_k_bridge import (
+    build_big_lotto_fixed_k_portfolio_from_tabu7_cover,
+)
+from lottolab.research.covering_design_tabu7 import run_covering_design_tabu7
+from lottolab.research.low_overlap_portfolio_constructor import compute_portfolio_geometry_metrics
 from lottolab.research.strategy_matrix_comparison import (
     BOUNDED,
+    CANDIDATE,
     HARD_DIV,
     HARD_DIV_R2,
     HARD_DIV_RADIUS2_RECONCILIATION_PATH,
@@ -29,8 +39,12 @@ from lottolab.research.strategy_matrix_comparison import (
     RESULT_PATH,
     RULES,
     SIDON,
+    TABU7_CANDIDATE_CASE_ID,
+    TABU7_CANDIDATE_CONFIG,
+    TABU7_CANDIDATE_DESIGN,
     _attach_native_portfolio_hash,
     _hard_div_native_row,
+    _tabu7_bridge_candidate_rows,
     build_comparison,
     canonical_json_bytes,
 )
@@ -717,7 +731,7 @@ def test_existing_matrix_rows_preserved_exactly(
     comparison: dict[str, Any],
 ) -> None:
     """Verify all 357 existing rows are preserved with identical row_ids and payloads."""
-    assert len(comparison["rows"]) == 372
+    assert len(comparison["rows"]) == 377
     exp_max_row_ids = {
         row["row_id"]
         for row in comparison["rows"]
@@ -726,10 +740,16 @@ def test_existing_matrix_rows_preserved_exactly(
     assert len(exp_max_row_ids) == 15
     r2_row_ids = {row["row_id"] for row in comparison["rows"] if row["strategy_id"] == HARD_DIV_R2}
     assert len(r2_row_ids) == 15
+    tabu7_row_ids = {
+        row["row_id"] for row in comparison["rows"] if row["case_id"] == TABU7_CANDIDATE_CASE_ID
+    }
+    assert len(tabu7_row_ids) == 5
     existing_rows = [
         row
         for row in comparison["rows"]
-        if row["row_id"] not in r2_row_ids and row["row_id"] not in exp_max_row_ids
+        if row["row_id"] not in r2_row_ids
+        and row["row_id"] not in exp_max_row_ids
+        and row["row_id"] not in tabu7_row_ids
     ]
     assert len(existing_rows) == 342
     r1_rows = [row for row in existing_rows if row["strategy_id"] == HARD_DIV]
@@ -740,3 +760,177 @@ def test_existing_matrix_rows_preserved_exactly(
             assert row["exact_q"]["exact"] == HARD_DIV_FROZEN[k]["exact_q"]
             assert row["local_optimum_status"] == "CERTIFIED_ONE_NUMBER_EXCHANGE"
             assert row["global_optimum_status"] == "UNKNOWN"
+
+
+def _independent_tabu7_candidate_pool() -> tuple[tuple[int, ...], ...]:
+    """Re-derive the candidate pool identity independently of the Matrix's own
+    ``_tabu7_candidate_pool_identity`` helper, mirroring only the bridge's
+    zero-based -> one-based mapping, sorting, and deduplication."""
+
+    result = run_covering_design_tabu7(v=49, k=6, t=2, config=TABU7_CANDIDATE_CONFIG)
+    unique = {
+        tuple(sorted(number + 1 for number in block)) for block in result.best_complete_blocks
+    }
+    return tuple(sorted(unique))
+
+
+def _tabu7_rows(comparison: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    rows = {
+        row["k"]: row for row in comparison["rows"] if row["case_id"] == TABU7_CANDIDATE_CASE_ID
+    }
+    assert set(rows) == {2, 3, 5, 10, 20}
+    return rows
+
+
+def test_tabu7_bridge_registered_as_one_candidate_low_overlap_variant_case(
+    comparison: dict[str, Any],
+) -> None:
+    """The merged Tabu7 fixed-K bridge is registered as exactly one new
+    versioned CANDIDATE_LOW_OVERLAP_V1 geometry-only candidate-source case --
+    never a new method or family, and never a claim that the selected fixed-K
+    portfolio itself (as opposed to the upstream candidate pool) is a complete
+    covering design."""
+
+    # (1)-(2), (18): method/family counts and METHOD_IDS are unchanged.
+    assert comparison["imported_method_count"] == len(smc.METHOD_IDS) == 14
+    assert comparison["distinct_family_count"] == 8
+    assert {m["strategy_id"] for m in comparison["methods"]} == set(smc.METHOD_IDS)
+
+    # (3)-(5): exactly five new rows, each matching the frozen row-id pattern.
+    tabu7_rows = _tabu7_rows(comparison)
+    for k, row in tabu7_rows.items():
+        assert row["row_id"] == f"{TABU7_CANDIDATE_CASE_ID}|{CANDIDATE}|geometry_only|k{k}|mNone"
+        assert row["strategy_id"] == CANDIDATE
+        assert row["case_id"] == TABU7_CANDIDATE_CASE_ID
+
+    # (6)-(7): status/variant/scope and the exact supported-K set.
+    assert set(tabu7_rows) == {2, 3, 5, 10, 20} == set(K_SCOPE)
+    for row in tabu7_rows.values():
+        assert row["status"] == "MEASURED"
+        assert row["variant"] == "geometry_only"
+        assert row["evidence_scope"] == "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY"
+        assert row["lottery"] == "BIG_LOTTO"
+
+    # (8)-(9): candidate-pool identity, independently re-derived (not via the
+    # Matrix's own helper), matching every row's stored count/hash exactly.
+    independent_pool = _independent_tabu7_candidate_pool()
+    assert len(independent_pool) == 183
+    expected_pool_sha256 = hashlib.sha256(canonical_json_bytes(independent_pool)).hexdigest()
+    assert {row["candidate_pool_sha256"] for row in tabu7_rows.values()} == {expected_pool_sha256}
+    assert {row["candidate_count"] for row in tabu7_rows.values()} == {183}
+
+    # (10)-(11): frozen provenance config/design and candidate pair-cover proof.
+    required_pairs = set(itertools.combinations(range(1, 50), 2))
+    covered_pairs = {
+        pair for ticket in independent_pool for pair in itertools.combinations(ticket, 2)
+    }
+    assert len(required_pairs) == 1176
+    assert not required_pairs - covered_pairs
+    for row in tabu7_rows.values():
+        evidence = row["source_evidence"]
+        assert evidence["case_id"] == TABU7_CANDIDATE_CASE_ID
+        assert evidence["config"] == {
+            "constructor_seed": 29,
+            "search_seed": 31,
+            "max_iterations": 1,
+        }
+        assert evidence["design"] == TABU7_CANDIDATE_DESIGN == {"v": 49, "block_size": 6, "t": 2}
+        assert evidence["variant"] == "geometry_only"
+        assert evidence["candidate_count"] == 183
+        assert evidence["candidate_pool_sha256"] == expected_pool_sha256
+        assert evidence["candidate_pool_pair_cover"] == {
+            "required_pairs": 1176,
+            "missing_pairs": 0,
+            "complete": True,
+        }
+        pins = {
+            "bridge": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+            "producer": "src/lottolab/research/covering_design_tabu7.py",
+            "selector": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+            "bridge_correctness_evidence": "tests/unit/test_covering_design_fixed_k_bridge.py",
+            "producer_correctness_evidence": "tests/unit/test_covering_design_tabu7.py",
+            "selector_correctness_evidence": (
+                "tests/unit/test_low_overlap_portfolio_constructor.py"
+            ),
+        }
+        for key, path in pins.items():
+            assert evidence[key]["path"] == path
+            assert evidence[key]["sha256"] == hashlib.sha256((ROOT / path).read_bytes()).hexdigest()
+
+    # (12)-(13): stored portfolio size/hash/order match the REAL, unmocked
+    # public bridge exactly -- never a direct call to the selector.
+    for k, row in tabu7_rows.items():
+        assert len(row["portfolio"]) == k == row["k"]
+        assert (
+            row["portfolio_sha256"]
+            == hashlib.sha256(canonical_json_bytes(row["portfolio"])).hexdigest()
+        )
+        direct = build_big_lotto_fixed_k_portfolio_from_tabu7_cover(
+            k, config=TABU7_CANDIDATE_CONFIG
+        )
+        assert canonical_json_bytes(row["portfolio"]) == canonical_json_bytes(direct)
+
+    # (14)-(15): INPUT_ORDER_PREFIX reference convention and the exact_q/coverage boundary.
+    for k, row in tabu7_rows.items():
+        assert row["reference"]["strategy_id"] == "INPUT_ORDER_PREFIX"
+        expected_geometry = asdict(
+            compute_portfolio_geometry_metrics(independent_pool[:k], BIG_LOTTO_RULE_CONTRACT)
+        )
+        assert canonical_json_bytes(row["reference"]["geometry"]) == canonical_json_bytes(
+            expected_geometry
+        )
+        assert row["coverage_status"] == "NOT_RUN"
+        assert row["exact_q"] is None
+        assert row["minimum_matches"] is None
+        assert row["evaluation_objective"] == "GEOMETRY"
+        assert row["local_optimum_status"] == "NOT_CERTIFIED"
+        assert row["global_optimum_status"] == "UNKNOWN"
+
+    # (16): the selected fixed-K portfolio is mathematically incapable of being
+    # a complete pair-cover (only the upstream candidate pool is one), and is
+    # never labelled as such.
+    for k, row in tabu7_rows.items():
+        portfolio_pairs = {
+            pair
+            for ticket in row["portfolio"]
+            for pair in itertools.combinations(sorted(ticket), 2)
+        }
+        assert len(portfolio_pairs) <= k * math.comb(6, 2) < 1176
+
+    # (17): the pre-existing synthetic candidate cases are untouched.
+    case_ids = {row["case_id"] for row in comparison["rows"]}
+    assert {
+        "CANDIDATES_BIG_LOTTO_clustered_plus_sidon",
+        "CANDIDATES_BIG_LOTTO_uniform_seeded",
+    } <= case_ids
+
+    # (19): candidate-source rows are never native-checkpoint cells, so the
+    # pinned native-measurement identity set is unaffected by this registration.
+    methods = {m["strategy_id"]: m for m in comparison["methods"]}
+    assert len(smc._native_supported_not_run_row_ids(methods)) == 79
+
+
+def test_tabu7_candidate_rows_producer_exercises_the_real_unmocked_bridge() -> None:
+    """Regenerate the five rows in-process with no mocks and cross-check them
+    against both the checked-in canonical artifact and a direct, independent
+    call to the real public bridge -- registration is not satisfied by mocks
+    alone."""
+
+    matrix = smc.load_matrix(ROOT)
+    methods = {m["strategy_id"]: m for m in matrix["methods"]}
+    rows = _tabu7_bridge_candidate_rows(methods)
+    assert len(rows) == 5
+
+    canonical_by_row_id = {
+        row["row_id"]: row
+        for row in json.loads((ROOT / RESULT_PATH).read_text())["rows"]
+        if row["case_id"] == TABU7_CANDIDATE_CASE_ID
+    }
+    assert set(canonical_by_row_id) == {row["row_id"] for row in rows}
+
+    for row in rows:
+        assert canonical_json_bytes(row) == canonical_json_bytes(canonical_by_row_id[row["row_id"]])
+        direct = build_big_lotto_fixed_k_portfolio_from_tabu7_cover(
+            row["k"], config=TABU7_CANDIDATE_CONFIG
+        )
+        assert canonical_json_bytes(row["portfolio"]) == canonical_json_bytes(direct)

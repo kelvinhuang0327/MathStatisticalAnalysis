@@ -27,6 +27,13 @@ from lottolab.domain.lottery_rules import (
 from lottolab.research.biglotto_multi_ticket_constructors_r1 import CONSTRUCTORS
 from lottolab.research.bounded_coverage_optimizer import exact_portfolio_coverage
 from lottolab.research.bounded_coverage_optimizer_fast import restart_greedy_swap_search_fast
+from lottolab.research.covering_design_fixed_k_bridge import (
+    build_big_lotto_fixed_k_portfolio_from_tabu7_cover,
+)
+from lottolab.research.covering_design_tabu7 import (
+    TabuSearch7RunConfig,
+    run_covering_design_tabu7,
+)
 from lottolab.research.cyclic_sidon_shift import sidon_shift_portfolio as sidon_b649
 from lottolab.research.cyclic_sidon_shift_p638_zone1 import sidon_shift_portfolio as sidon_p638
 from lottolab.research.cyclic_sidon_shift_t539 import sidon_shift_portfolio as sidon_t539
@@ -95,6 +102,13 @@ ARM_B = "GREEDY_MIN_OVERLAP_V1"
 ARM_E = "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
 ARM_F = "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1"
 CANDIDATE = "CANDIDATE_LOW_OVERLAP_V1"
+# R1 descriptive reference case for the merged Tabu7 fixed-K bridge, registered as
+# one CANDIDATE_LOW_OVERLAP_V1 geometry-only candidate-source case -- not a new
+# method/family, not an optimal-seed claim, and not a convergence result. A
+# configuration change requires a new case identity; this one is never overwritten.
+TABU7_CANDIDATE_CASE_ID = "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1"
+TABU7_CANDIDATE_CONFIG = TabuSearch7RunConfig(constructor_seed=29, search_seed=31, max_iterations=1)
+TABU7_CANDIDATE_DESIGN = {"v": 49, "block_size": 6, "t": 2}
 BOUNDED = "RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1"
 ONE_EXCHANGE = "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1"
 ITERATIVE = "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1"
@@ -614,6 +628,107 @@ def _candidate_rows(methods: Mapping[str, JsonObject]) -> list[JsonObject]:
                         "Geometry comparison only; no native winning-space run."
                     )
                     rows.append(row)
+    return rows
+
+
+def _tabu7_candidate_pool_identity() -> tuple[Portfolio, str, JsonObject]:
+    """Independently materialize and verify the Tabu7 candidate pool's identity.
+
+    Mirrors only ``covering_design_fixed_k_bridge``'s zero-based -> one-based
+    mapping, ticket sorting, and deduplication -- the minimal normalization
+    needed to prove candidate-source provenance and reference geometry. This
+    never reimplements the selector (``build_low_overlap_portfolio``) or the
+    Tabu7 search itself; the actual portfolios are always produced through the
+    public bridge function.
+    """
+
+    rules = BIG_LOTTO_RULE_CONTRACT
+    result = run_covering_design_tabu7(v=49, k=6, t=2, config=TABU7_CANDIDATE_CONFIG)
+    unique: set[tuple[int, ...]] = {
+        tuple(sorted(number + 1 for number in block)) for block in result.best_complete_blocks
+    }
+    candidates = tuple(sorted(unique))
+    required_pairs = set(
+        itertools.combinations(range(rules.main_number_min, rules.main_number_max + 1), 2)
+    )
+    covered_pairs = {pair for ticket in candidates for pair in itertools.combinations(ticket, 2)}
+    missing_pairs = required_pairs - covered_pairs
+    pool_sha256 = hashlib.sha256(canonical_json_bytes(candidates)).hexdigest()
+    pair_cover = {
+        "required_pairs": len(required_pairs),
+        "missing_pairs": len(missing_pairs),
+        "complete": not missing_pairs,
+    }
+    return candidates, pool_sha256, pair_cover
+
+
+def _tabu7_bridge_candidate_rows(methods: Mapping[str, JsonObject]) -> list[JsonObject]:
+    """Register the merged Tabu7 fixed-K bridge as one versioned candidate-source
+    case of the existing CANDIDATE_LOW_OVERLAP_V1 method (geometry_only variant).
+
+    CANDIDATE_POOL_COMPLETE_PAIR_COVER: YES (independently reverified here).
+    SELECTED_FIXED_K_PORTFOLIO_COMPLETE_PAIR_COVER: NOT_CLAIMED. No selector
+    superiority, global optimum, predictive, or profitability claim is made.
+    """
+
+    method = methods[CANDIDATE]
+    rules = BIG_LOTTO_RULE_CONTRACT
+    candidates, pool_sha256, pair_cover = _tabu7_candidate_pool_identity()
+    if len(candidates) != 183 or not pair_cover["complete"]:
+        raise ValueError("CANONICAL_METRIC_CONTRACT_CONFLICT: tabu7 candidate pool identity")
+
+    source_files = {entry["path"]: entry for entry in method["source_files"]}
+    correctness_evidence = {entry["path"]: entry for entry in method["correctness_evidence"]}
+    provenance = {
+        "case_id": TABU7_CANDIDATE_CASE_ID,
+        "config": {
+            "constructor_seed": TABU7_CANDIDATE_CONFIG.constructor_seed,
+            "search_seed": TABU7_CANDIDATE_CONFIG.search_seed,
+            "max_iterations": TABU7_CANDIDATE_CONFIG.max_iterations,
+        },
+        "design": dict(TABU7_CANDIDATE_DESIGN),
+        "variant": "geometry_only",
+        "bridge": source_files["src/lottolab/research/covering_design_fixed_k_bridge.py"],
+        "producer": source_files["src/lottolab/research/covering_design_tabu7.py"],
+        "selector": source_files["src/lottolab/research/low_overlap_portfolio_constructor.py"],
+        "bridge_correctness_evidence": (
+            correctness_evidence["tests/unit/test_covering_design_fixed_k_bridge.py"]
+        ),
+        "producer_correctness_evidence": (
+            correctness_evidence["tests/unit/test_covering_design_tabu7.py"]
+        ),
+        "selector_correctness_evidence": (
+            correctness_evidence["tests/unit/test_low_overlap_portfolio_constructor.py"]
+        ),
+        "candidate_count": len(candidates),
+        "candidate_pool_sha256": pool_sha256,
+        "candidate_pool_pair_cover": pair_cover,
+    }
+
+    rows: list[JsonObject] = []
+    for k in K_SCOPE:
+        row = _row(
+            method,
+            TABU7_CANDIDATE_CASE_ID,
+            "BIG_LOTTO",
+            k,
+            scope="NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+            variant="geometry_only",
+        )
+        row["candidate_pool_sha256"] = pool_sha256
+        row["candidate_count"] = len(candidates)
+        portfolio = build_big_lotto_fixed_k_portfolio_from_tabu7_cover(
+            k, config=TABU7_CANDIDATE_CONFIG
+        )
+        _attach_portfolio(row, rules, portfolio)
+        row["reference"] = {
+            "strategy_id": "INPUT_ORDER_PREFIX",
+            "geometry": asdict(compute_portfolio_geometry_metrics(candidates[:k], rules)),
+        }
+        row["coverage_status"] = "NOT_RUN"
+        row["coverage_status_reason"] = "Geometry comparison only; no native winning-space run."
+        row["source_evidence"] = dict(provenance)
+        rows.append(row)
     return rows
 
 
@@ -2176,6 +2291,7 @@ def build_comparison(root: Path, *, recompute_direct_dispatch: bool = False) -> 
     rows = [
         *_toy_rows(methods),
         *_candidate_rows(methods),
+        *_tabu7_bridge_candidate_rows(methods),
         *_native_rows(root, matrix, methods, recompute_direct_dispatch=recompute_direct_dispatch),
     ]
     rows.sort(key=lambda row: row["row_id"])

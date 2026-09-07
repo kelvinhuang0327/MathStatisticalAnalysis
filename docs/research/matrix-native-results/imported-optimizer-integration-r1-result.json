@@ -314,7 +314,7 @@
     }
   },
   "imported_method_count": 14,
-  "matrix_intake_sha256": "aecec639f08d2173c67b71e1000bbcdfa7797da2cf91da27abe9fff7b7686c93",
+  "matrix_intake_sha256": "24e33767df9b89fffcbe8c9fa7a9d89caa738f80aa0c38bf9de6a73a52dbcd49",
   "method_families": [
     "BOUNDED_COVERAGE_SEARCH",
     "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
@@ -512,6 +512,14 @@
         {
           "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
           "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+        },
+        {
+          "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+          "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+        },
+        {
+          "path": "tests/unit/test_covering_design_tabu7.py",
+          "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
         }
       ],
       "deterministic": true,
@@ -528,6 +536,14 @@
         {
           "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
           "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+        },
+        {
+          "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+          "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+        },
+        {
+          "path": "src/lottolab/research/covering_design_tabu7.py",
+          "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
         }
       ],
       "source_status": "IMPLEMENTED",
@@ -926,6 +942,11 @@
     "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|CANDIDATE_LOW_OVERLAP_V1|score_priority|k2|mNone",
     "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|CANDIDATE_LOW_OVERLAP_V1|score_priority|k3|mNone",
     "CANDIDATES_BIG_LOTTO_clustered_plus_sidon|CANDIDATE_LOW_OVERLAP_V1|score_priority|k5|mNone",
+    "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k10|mNone",
+    "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k20|mNone",
+    "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k2|mNone",
+    "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k3|mNone",
+    "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k5|mNone",
     "CANDIDATES_BIG_LOTTO_uniform_seeded|B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1|default|k10|mNone",
     "CANDIDATES_BIG_LOTTO_uniform_seeded|B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1|default|k20|mNone",
     "CANDIDATES_BIG_LOTTO_uniform_seeded|B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1|default|k5|mNone",
@@ -4338,6 +4359,926 @@
       "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
       "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
       "variant": "score_priority",
+      "zone": null
+    },
+    {
+      "candidate_count": 183,
+      "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+      "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+      "coverage_status": "NOT_RUN",
+      "coverage_status_reason": "Geometry comparison only; no native winning-space run.",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "SOFT_SCORE_AND_OVERLAP_OBJECTIVE",
+      "draw_size": 6,
+      "evaluation_objective": "GEOMETRY",
+      "evidence_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+      "exact_q": null,
+      "geometry": {
+        "coverage_concentration": 0.5445577169031156,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 1,
+        "mean_pairwise_overlap": 0.3111111111111111,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 45,
+          "exact": "14/45",
+          "numerator": 14
+        },
+        "overlap_profile": {
+          "0": 31,
+          "1": 14
+        },
+        "union_size": 47
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "BIG_LOTTO",
+      "method_type": "PORTFOLIO_CONSTRUCTOR",
+      "minimum_matches": null,
+      "neighborhood_radius": null,
+      "objective": "OPTIONAL_SCORE_PRIORITY_THEN_LOW_OVERLAP_GEOMETRY",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        [
+          8,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          9,
+          25,
+          26,
+          27,
+          28,
+          29
+        ],
+        [
+          10,
+          34,
+          35,
+          36,
+          37,
+          38
+        ],
+        [
+          11,
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        [
+          1,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        [
+          2,
+          36,
+          43,
+          44,
+          45,
+          46
+        ],
+        [
+          5,
+          23,
+          42,
+          47,
+          48,
+          49
+        ],
+        [
+          9,
+          30,
+          31,
+          32,
+          33,
+          34
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "59451ab291d6c8f179eeb907b8889cb5d730310e7cb8334292b48bc5cad8fe41",
+      "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+      "q_random_expected": null,
+      "reference": {
+        "geometry": {
+          "coverage_concentration": 1.2819835734317886,
+          "duplicate_pair_exposure": 2,
+          "duplicate_tickets": 0,
+          "duplicate_triple_exposure": 0,
+          "max_pairwise_overlap": 2,
+          "mean_pairwise_overlap": 1.0444444444444445,
+          "overlap_profile": {
+            "1": 43,
+            "2": 2
+          },
+          "union_size": 49
+        },
+        "strategy_id": "INPUT_ORDER_PREFIX"
+      },
+      "row_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k10|mNone",
+      "search_evidence": null,
+      "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+      "source_evidence": {
+        "bridge": {
+          "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+          "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+        },
+        "bridge_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+          "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+        },
+        "candidate_count": 183,
+        "candidate_pool_pair_cover": {
+          "complete": true,
+          "missing_pairs": 0,
+          "required_pairs": 1176
+        },
+        "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+        "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+        "config": {
+          "constructor_seed": 29,
+          "max_iterations": 1,
+          "search_seed": 31
+        },
+        "design": {
+          "block_size": 6,
+          "t": 2,
+          "v": 49
+        },
+        "producer": {
+          "path": "src/lottolab/research/covering_design_tabu7.py",
+          "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
+        },
+        "producer_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_tabu7.py",
+          "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
+        },
+        "selector": {
+          "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+          "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+        },
+        "selector_correctness_evidence": {
+          "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
+          "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+        },
+        "variant": "geometry_only"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
+      "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
+      "variant": "geometry_only",
+      "zone": null
+    },
+    {
+      "candidate_count": 183,
+      "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+      "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+      "coverage_status": "NOT_RUN",
+      "coverage_status_reason": "Geometry comparison only; no native winning-space run.",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "SOFT_SCORE_AND_OVERLAP_OBJECTIVE",
+      "draw_size": 6,
+      "evaluation_objective": "GEOMETRY",
+      "evidence_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+      "exact_q": null,
+      "geometry": {
+        "coverage_concentration": 1.1439499148768586,
+        "duplicate_pair_exposure": 24,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 2,
+        "mean_pairwise_overlap": 0.6263157894736842,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 190,
+          "exact": "119/190",
+          "numerator": 119
+        },
+        "overlap_profile": {
+          "0": 104,
+          "1": 53,
+          "2": 33
+        },
+        "union_size": 49
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "BIG_LOTTO",
+      "method_type": "PORTFOLIO_CONSTRUCTOR",
+      "minimum_matches": null,
+      "neighborhood_radius": null,
+      "objective": "OPTIONAL_SCORE_PRIORITY_THEN_LOW_OVERLAP_GEOMETRY",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        [
+          8,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          9,
+          25,
+          26,
+          27,
+          28,
+          29
+        ],
+        [
+          10,
+          34,
+          35,
+          36,
+          37,
+          38
+        ],
+        [
+          11,
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        [
+          1,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        [
+          2,
+          36,
+          43,
+          44,
+          45,
+          46
+        ],
+        [
+          5,
+          23,
+          42,
+          47,
+          48,
+          49
+        ],
+        [
+          9,
+          30,
+          31,
+          32,
+          33,
+          34
+        ],
+        [
+          1,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          8,
+          9,
+          13,
+          14,
+          48,
+          49
+        ],
+        [
+          9,
+          10,
+          13,
+          45,
+          46,
+          47
+        ],
+        [
+          12,
+          13,
+          18,
+          19,
+          43,
+          44
+        ],
+        [
+          24,
+          25,
+          30,
+          31,
+          48,
+          49
+        ],
+        [
+          27,
+          28,
+          33,
+          34,
+          35,
+          47
+        ],
+        [
+          31,
+          32,
+          37,
+          42,
+          43,
+          44
+        ],
+        [
+          32,
+          33,
+          38,
+          46,
+          48,
+          49
+        ],
+        [
+          33,
+          34,
+          39,
+          40,
+          44,
+          45
+        ],
+        [
+          37,
+          38,
+          39,
+          44,
+          47,
+          49
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "787ea7884017446f549004b06fc4954e24ffe55de6e4f3ce932818fb0c335e81",
+      "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+      "q_random_expected": null,
+      "reference": {
+        "geometry": {
+          "coverage_concentration": 1.629588961443031,
+          "duplicate_pair_exposure": 63,
+          "duplicate_tickets": 0,
+          "duplicate_triple_exposure": 42,
+          "max_pairwise_overlap": 5,
+          "mean_pairwise_overlap": 0.8,
+          "overlap_profile": {
+            "0": 77,
+            "1": 97,
+            "2": 5,
+            "4": 10,
+            "5": 1
+          },
+          "union_size": 49
+        },
+        "strategy_id": "INPUT_ORDER_PREFIX"
+      },
+      "row_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k20|mNone",
+      "search_evidence": null,
+      "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+      "source_evidence": {
+        "bridge": {
+          "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+          "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+        },
+        "bridge_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+          "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+        },
+        "candidate_count": 183,
+        "candidate_pool_pair_cover": {
+          "complete": true,
+          "missing_pairs": 0,
+          "required_pairs": 1176
+        },
+        "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+        "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+        "config": {
+          "constructor_seed": 29,
+          "max_iterations": 1,
+          "search_seed": 31
+        },
+        "design": {
+          "block_size": 6,
+          "t": 2,
+          "v": 49
+        },
+        "producer": {
+          "path": "src/lottolab/research/covering_design_tabu7.py",
+          "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
+        },
+        "producer_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_tabu7.py",
+          "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
+        },
+        "selector": {
+          "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+          "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+        },
+        "selector_correctness_evidence": {
+          "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
+          "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+        },
+        "variant": "geometry_only"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
+      "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
+      "variant": "geometry_only",
+      "zone": null
+    },
+    {
+      "candidate_count": 183,
+      "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+      "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+      "coverage_status": "NOT_RUN",
+      "coverage_status_reason": "Geometry comparison only; no native winning-space run.",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "SOFT_SCORE_AND_OVERLAP_OBJECTIVE",
+      "draw_size": 6,
+      "evaluation_objective": "GEOMETRY",
+      "evidence_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+      "exact_q": null,
+      "geometry": {
+        "coverage_concentration": 0.4300266837899077,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 1
+        },
+        "union_size": 12
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "BIG_LOTTO",
+      "method_type": "PORTFOLIO_CONSTRUCTOR",
+      "minimum_matches": null,
+      "neighborhood_radius": null,
+      "objective": "OPTIONAL_SCORE_PRIORITY_THEN_LOW_OVERLAP_GEOMETRY",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          13,
+          14,
+          15,
+          16,
+          17
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "c3b635bd6f09cd9ecf422576ebd5710efc3a300ec44bd5a73d9dbab787050477",
+      "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+      "q_random_expected": null,
+      "reference": {
+        "geometry": {
+          "coverage_concentration": 0.5162902302315722,
+          "duplicate_pair_exposure": 1,
+          "duplicate_tickets": 0,
+          "duplicate_triple_exposure": 0,
+          "max_pairwise_overlap": 2,
+          "mean_pairwise_overlap": 2.0,
+          "overlap_profile": {
+            "2": 1
+          },
+          "union_size": 10
+        },
+        "strategy_id": "INPUT_ORDER_PREFIX"
+      },
+      "row_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k2|mNone",
+      "search_evidence": null,
+      "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+      "source_evidence": {
+        "bridge": {
+          "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+          "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+        },
+        "bridge_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+          "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+        },
+        "candidate_count": 183,
+        "candidate_pool_pair_cover": {
+          "complete": true,
+          "missing_pairs": 0,
+          "required_pairs": 1176
+        },
+        "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+        "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+        "config": {
+          "constructor_seed": 29,
+          "max_iterations": 1,
+          "search_seed": 31
+        },
+        "design": {
+          "block_size": 6,
+          "t": 2,
+          "v": 49
+        },
+        "producer": {
+          "path": "src/lottolab/research/covering_design_tabu7.py",
+          "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
+        },
+        "producer_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_tabu7.py",
+          "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
+        },
+        "selector": {
+          "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+          "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+        },
+        "selector_correctness_evidence": {
+          "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
+          "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+        },
+        "variant": "geometry_only"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
+      "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
+      "variant": "geometry_only",
+      "zone": null
+    },
+    {
+      "candidate_count": 183,
+      "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+      "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+      "coverage_status": "NOT_RUN",
+      "coverage_status_reason": "Geometry comparison only; no native winning-space run.",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "SOFT_SCORE_AND_OVERLAP_OBJECTIVE",
+      "draw_size": 6,
+      "evaluation_objective": "GEOMETRY",
+      "evidence_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+      "exact_q": null,
+      "geometry": {
+        "coverage_concentration": 0.482082114735417,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 3
+        },
+        "union_size": 18
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "BIG_LOTTO",
+      "method_type": "PORTFOLIO_CONSTRUCTOR",
+      "minimum_matches": null,
+      "neighborhood_radius": null,
+      "objective": "OPTIONAL_SCORE_PRIORITY_THEN_LOW_OVERLAP_GEOMETRY",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        [
+          8,
+          18,
+          19,
+          20,
+          21,
+          22
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "e03b89d6644acf98d30f9c0010e9a694c9f1f633ee162acc69c0644b9976f6d4",
+      "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+      "q_random_expected": null,
+      "reference": {
+        "geometry": {
+          "coverage_concentration": 0.6606699614791284,
+          "duplicate_pair_exposure": 2,
+          "duplicate_tickets": 0,
+          "duplicate_triple_exposure": 0,
+          "max_pairwise_overlap": 2,
+          "mean_pairwise_overlap": 1.6666666666666667,
+          "overlap_profile": {
+            "1": 1,
+            "2": 2
+          },
+          "union_size": 14
+        },
+        "strategy_id": "INPUT_ORDER_PREFIX"
+      },
+      "row_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k3|mNone",
+      "search_evidence": null,
+      "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+      "source_evidence": {
+        "bridge": {
+          "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+          "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+        },
+        "bridge_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+          "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+        },
+        "candidate_count": 183,
+        "candidate_pool_pair_cover": {
+          "complete": true,
+          "missing_pairs": 0,
+          "required_pairs": 1176
+        },
+        "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+        "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+        "config": {
+          "constructor_seed": 29,
+          "max_iterations": 1,
+          "search_seed": 31
+        },
+        "design": {
+          "block_size": 6,
+          "t": 2,
+          "v": 49
+        },
+        "producer": {
+          "path": "src/lottolab/research/covering_design_tabu7.py",
+          "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
+        },
+        "producer_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_tabu7.py",
+          "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
+        },
+        "selector": {
+          "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+          "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+        },
+        "selector_correctness_evidence": {
+          "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
+          "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+        },
+        "variant": "geometry_only"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
+      "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
+      "variant": "geometry_only",
+      "zone": null
+    },
+    {
+      "candidate_count": 183,
+      "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+      "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+      "coverage_status": "NOT_RUN",
+      "coverage_status_reason": "Geometry comparison only; no native winning-space run.",
+      "delta_vs_reference": null,
+      "deterministic": true,
+      "diversification_constraint": "SOFT_SCORE_AND_OVERLAP_OBJECTIVE",
+      "draw_size": 6,
+      "evaluation_objective": "GEOMETRY",
+      "evidence_scope": "NATIVE_RULE_SYNTHETIC_CANDIDATE_GEOMETRY",
+      "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
+      "exact_or_heuristic": "DETERMINISTIC_GREEDY_HEURISTIC",
+      "exact_q": null,
+      "geometry": {
+        "coverage_concentration": 0.48723821984952337,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 0,
+        "mean_pairwise_overlap": 0.0,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 1,
+          "exact": "0/1",
+          "numerator": 0
+        },
+        "overlap_profile": {
+          "0": 10
+        },
+        "union_size": 30
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "local_optimum_status": "NOT_CERTIFIED",
+      "lottery": "BIG_LOTTO",
+      "method_type": "PORTFOLIO_CONSTRUCTOR",
+      "minimum_matches": null,
+      "neighborhood_radius": null,
+      "objective": "OPTIONAL_SCORE_PRIORITY_THEN_LOW_OVERLAP_GEOMETRY",
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6
+        ],
+        [
+          7,
+          13,
+          14,
+          15,
+          16,
+          17
+        ],
+        [
+          8,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          9,
+          25,
+          26,
+          27,
+          28,
+          29
+        ],
+        [
+          10,
+          34,
+          35,
+          36,
+          37,
+          38
+        ]
+      ],
+      "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "dca3f6b9a9e80083252a4f9706581f893510ec78845d25ae2d7982c4bf2eb68e",
+      "proof_status": "DETERMINISTIC_CONSTRUCTION_NO_LOCAL_OR_GLOBAL_OPTIMUM_PROOF",
+      "q_random_expected": null,
+      "reference": {
+        "geometry": {
+          "coverage_concentration": 0.8527584659500481,
+          "duplicate_pair_exposure": 2,
+          "duplicate_tickets": 0,
+          "duplicate_triple_exposure": 0,
+          "max_pairwise_overlap": 2,
+          "mean_pairwise_overlap": 1.2,
+          "overlap_profile": {
+            "1": 8,
+            "2": 2
+          },
+          "union_size": 24
+        },
+        "strategy_id": "INPUT_ORDER_PREFIX"
+      },
+      "row_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1|CANDIDATE_LOW_OVERLAP_V1|geometry_only|k5|mNone",
+      "search_evidence": null,
+      "search_type": "GREEDY_CANDIDATE_SET_CONSTRUCTOR",
+      "source_evidence": {
+        "bridge": {
+          "path": "src/lottolab/research/covering_design_fixed_k_bridge.py",
+          "sha256": "9dabe916ad6148a8f58f5c85e2f1627e993b276abc674e918786864d23f06471"
+        },
+        "bridge_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_fixed_k_bridge.py",
+          "sha256": "d40ed8eb072adb3fdf8649ff4e41957b02e4d21bcc0e768527a14e1753e157de"
+        },
+        "candidate_count": 183,
+        "candidate_pool_pair_cover": {
+          "complete": true,
+          "missing_pairs": 0,
+          "required_pairs": 1176
+        },
+        "candidate_pool_sha256": "e33c63dba2e996de3638f0f0e0a744bfdd66ec9550309dfcc0883ed573753028",
+        "case_id": "CANDIDATES_BIG_LOTTO_tabu7_complete_pair_cover_c29_s31_i1_r1",
+        "config": {
+          "constructor_seed": 29,
+          "max_iterations": 1,
+          "search_seed": 31
+        },
+        "design": {
+          "block_size": 6,
+          "t": 2,
+          "v": 49
+        },
+        "producer": {
+          "path": "src/lottolab/research/covering_design_tabu7.py",
+          "sha256": "feeeeb8d9a503df0f1285f51cc861088c9adc1ecccf63fb3fb73c26532eac0b8"
+        },
+        "producer_correctness_evidence": {
+          "path": "tests/unit/test_covering_design_tabu7.py",
+          "sha256": "38a2336c679e4a135aa38392dbd5047c1c7b71cac1786749a1e9049f069d425e"
+        },
+        "selector": {
+          "path": "src/lottolab/research/low_overlap_portfolio_constructor.py",
+          "sha256": "3d4d211c28ca2ef9865e3fb54fa23359485b84b046db36c80a3144c569d8ce1c"
+        },
+        "selector_correctness_evidence": {
+          "path": "tests/unit/test_low_overlap_portfolio_constructor.py",
+          "sha256": "0e40997ae96e3324730e5127c028142f5b04f8f0c8e3c4fdecc07d79e6efa081"
+        },
+        "variant": "geometry_only"
+      },
+      "source_status": "IMPLEMENTED",
+      "status": "MEASURED",
+      "status_reason": null,
+      "strategy_family": "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
+      "strategy_id": "CANDIDATE_LOW_OVERLAP_V1",
+      "variant": "geometry_only",
       "zone": null
     },
     {
@@ -49972,7 +50913,7 @@
   ],
   "schema_version": "1.0.0",
   "status_counts": {
-    "MEASURED": 238,
+    "MEASURED": 243,
     "NOT_APPLICABLE": 84,
     "NOT_RUN": 0,
     "REUSED_VERIFIED": 50

@@ -129,6 +129,21 @@ const totalFailedRows = computed(() =>
   files.value.reduce((acc, f) => acc + entryFailedRows(f), 0),
 )
 
+// A batch total is authoritative only when every selected file has results.
+const metricUnavailable = computed(() => {
+  const missing = files.value.filter((entry) => entry.fileResults.length === 0)
+  if (missing.some((entry) => entry.previewStatus === 'ERROR' || entry.commitStatus === 'FAILED')) {
+    return { value: 'Unavailable', subvalue: 'Preview or file processing failed', variant: 'danger' } as const
+  }
+  if (missing.some((entry) => ['READING', 'PREVIEWING'].includes(entry.previewStatus))) {
+    return { value: 'Loading…', subvalue: 'Awaiting preview results', variant: 'info' } as const
+  }
+  if (files.value.length === 0 || missing.length > 0) {
+    return { value: 'Not previewed', subvalue: 'Preview results required', variant: 'default' } as const
+  }
+  return null
+})
+
 const filteredIngestionRuns = computed(() => {
   let list = ingestionRuns.value
   if (ingestionSearchQuery.value.trim()) {
@@ -575,21 +590,22 @@ onBeforeUnmount(() => {
       />
       <MetricCard
         label="Discovered Rows"
-        :value="totalDiscoveredRows"
-        :subvalue="`${totalAcceptedRows} accepted`"
+        :value="metricUnavailable?.value ?? totalDiscoveredRows"
+        :subvalue="metricUnavailable?.subvalue ?? `${totalAcceptedRows} accepted`"
+        :variant="metricUnavailable?.variant"
       />
       <MetricCard
         data-testid="metric-duplicates-conflicts"
         label="Duplicates / Conflicts"
-        :value="totalDuplicateRows + totalConflictRows"
-        :subvalue="`${totalDuplicateRows} duplicate · ${totalConflictRows} conflict`"
-        :variant="totalConflictRows > 0 ? 'danger' : totalDuplicateRows > 0 ? 'warning' : 'default'"
+        :value="metricUnavailable?.value ?? totalDuplicateRows + totalConflictRows"
+        :subvalue="metricUnavailable?.subvalue ?? `${totalDuplicateRows} duplicate · ${totalConflictRows} conflict`"
+        :variant="totalConflictRows > 0 ? 'danger' : metricUnavailable?.variant ?? (totalDuplicateRows > 0 ? 'warning' : 'default')"
       />
       <MetricCard
         label="Failed / Invalid"
-        :value="totalFailedRows"
-        :subvalue="totalFailedRows ? 'Review issue details below' : 'None'"
-        :variant="totalFailedRows > 0 ? 'danger' : 'success'"
+        :value="metricUnavailable?.value ?? totalFailedRows"
+        :subvalue="metricUnavailable?.subvalue ?? (totalFailedRows ? 'Review issue details below' : 'None')"
+        :variant="totalFailedRows > 0 ? 'danger' : metricUnavailable?.variant ?? 'success'"
       />
     </div>
 

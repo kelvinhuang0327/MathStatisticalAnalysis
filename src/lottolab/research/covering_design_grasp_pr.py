@@ -483,17 +483,22 @@ def _relink_forward(
     solution is always the iteration's local optimum and the guide is always
     the elite chosen by ``_select_guide``, whatever their costs.
 
-    OPEN, pending Planner/Owner adjudication: the frozen equal-cost endpoint
-    tie rule (lexicographically smaller canonical key initiates) is never
-    consulted here, because no cost comparison ever selects an orientation.
-    That is not the same as the rule being inert -- equal-cost endpoints are
-    the dominant case rather than a corner, and applying the tie rule would
-    reverse a large share of these calls. So this is a DISCLOSED DEVIATION,
-    not a resolved one. The frozen rule set is itself incomplete on this
-    axis: the per-iteration sequence already assigns the roles (relink
-    forward from L towards the chosen guide) while the tie rule would let an
-    elite initiate against L, and no rule is stated for the non-tie case. Do
-    not record this as resolved without a ruling.
+    RULED (CTO ruling, 2026-09-06): EQUAL_COST_ENDPOINT_ORIENTATION is
+    structural. The frozen equal-cost tie rule (lexicographically smaller
+    canonical key initiates) is abolished for endpoint orientation
+    specifically -- lexical tie-breaks remain in force for guide, move and
+    best-solution selection elsewhere in this module. Orientation is always
+    initiating=local optimum -> guiding=the elite ``_select_guide`` chose
+    (read before this iteration's admissions), at equal cost and unequal
+    cost alike; the per-iteration sequence assigns these roles before any
+    cost comparison could apply, so the tie rule is never reachable here.
+    This was not a corner case: equal-cost endpoints make up 355/521 (68%)
+    of relinking calls, of which 231/521 (44%) have an orientation the tie
+    rule would reverse, changing the retained solution in 48/74 flip-
+    eligible pairs and the full result record in 4 of 9 (domain, seed)
+    configs -- kept here for provenance. That the choice matters is not
+    evidence a cost-oriented rule would be better, and is not grounds to
+    reopen this.
 
     Note on naming: ``_select_guide`` has no cost condition, so the guide is
     sometimes costlier than the initiating solution. ``forward_only`` in the

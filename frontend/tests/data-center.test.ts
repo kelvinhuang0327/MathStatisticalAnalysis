@@ -13,6 +13,7 @@ import type {
   IngestionRunPage,
 } from '../src/api/drawData'
 import DataCenterPage from '../src/features/data-center/DataCenterPage.vue'
+import MetricCard from '../src/components/MetricCard.vue'
 
 const csvText =
   'lottery_type,draw_number,draw_date,main_numbers,special_numbers\n' +
@@ -831,6 +832,111 @@ describe('DataCenterPage batch ingestion', () => {
   })
 })
 
+describe('summary metric availability', () => {
+  function rowMetrics(wrapper: VueWrapper) {
+    return wrapper.findAllComponents(MetricCard).filter((card) => card.props('label') !== 'Files Selected')
+  }
+
+  function expectUnavailable(wrapper: VueWrapper, value: string, variant: string) {
+    const cards = rowMetrics(wrapper)
+    expect(cards).toHaveLength(3)
+    for (const card of cards) {
+      expect(card.props('value')).toBe(value)
+      expect(card.get('.metric-card__value').text()).toBe(value)
+      expect(card.get('.metric-card__subvalue').text()).not.toMatch(/\b0\b|^None$/)
+      expect(card.classes()).toContain(`metric-card--${variant}`)
+      expect(card.classes()).not.toContain('metric-card--success')
+    }
+  }
+
+  it('distinguishes no selection, file reading, and not-previewed files from zero', async () => {
+    const reading = deferred<string>()
+    fetchMock.mockResolvedValueOnce(apiResponse(emptyRuns))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    expectUnavailable(wrapper, 'Not previewed', 'default')
+    expect(wrapper.findComponent(MetricCard).props('value')).toBe(0)
+    await selectFiles(wrapper, [file('valid.csv', reading.promise)])
+    expectUnavailable(wrapper, 'Loading…', 'info')
+    reading.resolve(csvText)
+    await flushPromises()
+    expectUnavailable(wrapper, 'Not previewed', 'default')
+    wrapper.unmount()
+  })
+
+  it('does not replace prior counts with zero during re-preview or request failure', async () => {
+    const pending = deferred<Response>()
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+      .mockImplementationOnce(() => pending.promise)
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await previewOne(wrapper)
+    expect(rowMetrics(wrapper).map((card) => card.props('value'))).toEqual([1, 0, 0])
+
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="batch-file-1"]').text()).toContain('PREVIEWING')
+    expectUnavailable(wrapper, 'Loading…', 'info')
+    pending.resolve(apiResponse({ message: 'Preview unavailable' }, 503))
+    await flushPromises()
+    expect(wrapper.get('[data-testid="batch-file-1"]').text()).toContain('ERROR')
+    expectUnavailable(wrapper, 'Unavailable', 'danger')
+    wrapper.unmount()
+  })
+
+  it('keeps network request failure unavailable', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await previewOne(wrapper)
+    expectUnavailable(wrapper, 'Unavailable', 'danger')
+    wrapper.unmount()
+  })
+
+  it.each([false, true])('does not confirm totals when a response omits file results (partial=%s)', async (partial) => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse({ ...validPreview, files: partial ? [validFile] : [] }))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await selectFiles(wrapper, partial ? [file('valid.csv'), file('missing.csv')] : [file('valid.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+    expectUnavailable(wrapper, 'Unavailable', 'danger')
+    wrapper.unmount()
+  })
+
+  it('preserves numeric zero from authoritative empty-file results', async () => {
+    const zeroPreview = {
+      ...validPreview,
+      files: [{ ...validFile, status: 'EXCLUDED', discovered_rows: 0, accepted_rows: 0 }],
+      summary: { ...validPreview.summary, accepted_files: 0, excluded_files: 1, parsed_rows: 0, accepted_rows: 0 },
+    } satisfies BatchImportPreview
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(zeroPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+    await previewOne(wrapper)
+
+    for (const card of rowMetrics(wrapper)) {
+      expect(card.props('value')).toBe(0)
+      expect(card.get('.metric-card__value').text()).toBe('0')
+    }
+    expect(rowMetrics(wrapper)[0]?.props('subvalue')).toBe('0 accepted')
+    expect(rowMetrics(wrapper)[1]?.props('subvalue')).toBe('0 duplicate · 0 conflict')
+    expect(rowMetrics(wrapper)[2]?.classes()).toContain('metric-card--success')
+    await wrapper.get('[data-testid="cancel-batch"]').trigger('click')
+    expectUnavailable(wrapper, 'Not previewed', 'default')
+    wrapper.unmount()
+  })
+})
+
 describe('Duplicates / Conflicts metric card truthfulness', () => {
   it('CASE 1: duplicates=0, conflicts>0 displays exact non-zero conflict count and non-default danger status without claiming 0 conflict', async () => {
     fetchMock
@@ -899,8 +1005,8 @@ describe('Duplicates / Conflicts metric card truthfulness', () => {
     await flushPromises()
 
     const initialCard = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
-    expect(initialCard.find('.metric-card__value').text()).toBe('0')
-    expect(initialCard.find('.metric-card__subvalue').text()).toBe('0 duplicate · 0 conflict')
+    expect(initialCard.find('.metric-card__value').text()).toBe('Not previewed')
+    expect(initialCard.find('.metric-card__subvalue').text()).toBe('Preview results required')
     expect(initialCard.classes()).toContain('metric-card--default')
     expect(initialCard.classes()).not.toContain('metric-card--warning')
     expect(initialCard.classes()).not.toContain('metric-card--danger')

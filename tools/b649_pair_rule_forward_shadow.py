@@ -16,7 +16,7 @@ import json
 import os
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -30,6 +30,9 @@ from lottolab.application.strategy_preserving_20_ticket import (
 from lottolab.application.use_cases.generate_bet import instantiate_portfolio_adapter
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.prize_evaluation import evaluate_big_lotto_ticket
+from lottolab.infrastructure.pre_outcome_target_operational import (
+    OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION,
+)
 from lottolab.strategies.adapters.base import PortfolioBetAdapter
 from lottolab.strategies.catalog import production_catalog
 from lottolab.strategies.executable_registry import ExecutableRegistry
@@ -1144,6 +1147,66 @@ def _prediction_record(
     }
 
 
+def _issuance_history(
+    payload: Mapping[str, object], target: PredictionTarget, history: HistorySnapshot
+) -> HistorySnapshot:
+    cutoff = payload.get("history_cutoff_draw_number")
+    if cutoff == history.cutoff_draw:
+        # An unchanged snapshot still uses the caller's independent history identity.
+        return history
+    if (
+        type(cutoff) is not str
+        or not history.rows
+        or len(history.normalized_record_hashes) != len(history.rows)
+        or history.draw_count != len(history.rows)
+        or history.rows[-1].draw != history.cutoff_draw
+        or history.rows[-1].date != history.cutoff_date
+    ):
+        raise ShadowRecordConflictError("existing prediction issuance history proof is unavailable")
+    matches = [index for index, row in enumerate(history.rows) if row.draw == cutoff]
+    if len(matches) != 1:
+        raise ShadowRecordConflictError("existing prediction issuance cutoff is not canonical")
+    count = matches[0] + 1
+
+    def identity(draw_count: int) -> str:
+        # Match SQLitePreOutcomeCausalHistoryAuthority's target-bound hash material,
+        # including normalized record digests and its no-trailing-newline encoding.
+        material = {
+            "draws": [
+                {
+                    "draw_date": row.date,
+                    "draw_number": row.draw,
+                    "normalized_record_hash": digest,
+                }
+                for row, digest in zip(
+                    history.rows[:draw_count],
+                    history.normalized_record_hashes[:draw_count],
+                    strict=True,
+                )
+            ],
+            "lottery_type": target.lottery_type,
+            "schema_version": OPERATIONAL_CAUSAL_HISTORY_SCHEMA_VERSION,
+            "target": {
+                "draw_date": target.draw_date,
+                "draw_number": target.draw_number,
+                "lottery_type": target.lottery_type,
+            },
+        }
+        return _sha256_bytes(_canonical_bytes(material)[:-1])
+
+    if identity(history.draw_count) != history.history_sha256:
+        raise ShadowRecordConflictError("canonical history provenance differs from its identity")
+    return replace(
+        history,
+        rows=history.rows[:count],
+        cutoff_draw=cutoff,
+        cutoff_date=history.rows[count - 1].date,
+        draw_count=count,
+        history_sha256=identity(count),
+        normalized_record_hashes=history.normalized_record_hashes[:count],
+    )
+
+
 def _verify_existing_prediction(
     payload: Mapping[str, object],
     authority: ShadowAuthority,
@@ -1151,6 +1214,7 @@ def _verify_existing_prediction(
     target: PredictionTarget,
     history: HistorySnapshot,
 ) -> str:
+    history = _issuance_history(payload, target, history)
     expected_key = _idempotence_key(authority, candidate, target, history)
     checks = (
         ("schema_version", PREDICTION_SCHEMA_VERSION),
@@ -1162,6 +1226,8 @@ def _verify_existing_prediction(
         ("selection_fingerprint", candidate.selection_fingerprint),
         ("rule_id", candidate.rule_id),
         ("budget", candidate.budget),
+        ("lottery_type", LotteryType.BIG_LOTTO.value),
+        ("target_lottery_type", target.lottery_type),
         ("target_draw_number", target.draw_number),
         ("target_draw_date", target.draw_date),
         ("scheduled_at", _canonical_scheduled_at(target)),

@@ -96,6 +96,7 @@ class HistorySnapshot:
     draw_count: int
     history_sha256: str
     history_caveat: str = "YES"
+    normalized_record_hashes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,7 +308,7 @@ def load_canonical_history(
     with open_database(paths, read_only=True) as connection:
         raw_rows = connection.execute(
             """
-            SELECT draw_number, draw_date, main_numbers_json
+            SELECT draw_number, draw_date, main_numbers_json, normalized_record_hash
             FROM draws
             WHERE lottery_type = ?
               AND (
@@ -344,6 +345,7 @@ def load_canonical_history(
         cutoff_date=cutoff_date.isoformat(),
         draw_count=history_ref.draw_count,
         history_sha256=history_ref.history_sha256,
+        normalized_record_hashes=tuple(str(raw[3]) for raw in raw_rows),
     )
 
 

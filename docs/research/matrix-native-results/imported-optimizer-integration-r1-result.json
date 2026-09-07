@@ -32,6 +32,7 @@
         "EXISTING_TWO_MOVE_FIXTURE_8_4|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k2|m3",
         "EXISTING_TWO_MOVE_FIXTURE_8_4|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k2|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+        "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k10|m3",
         "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k20|m3",
         "NATIVE_BIG_LOTTO|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k10|m3",
@@ -271,11 +272,11 @@
     {
       "category": "OBJECTIVE_GAPS",
       "evidence_row_ids": [],
-      "existing_capability": "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated and a dedicated exact radius-1 ascent optimizer (ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1) is implemented for B649 (k=2, 3, 5, 10).",
+      "existing_capability": "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated and a dedicated exact radius-1 ascent optimizer (ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1) is implemented for B649 (k=2, 3, 5, 10, 20).",
       "gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
       "handoff_branch": null,
-      "missing_capability": "Cross-structure replication (Daily 539, Power Lotto Zone-1) and k=20 expansion for the dedicated expected-max optimizer.",
-      "why_not_duplicate": "Exact radius-1 local ascent is certified for Big Lotto k<=10; cross-game generality and scalable k=20 ascent remain open."
+      "missing_capability": "Cross-structure replication (Daily 539, Power Lotto Zone-1) for the dedicated expected-max optimizer.",
+      "why_not_duplicate": "Exact radius-1 local ascent is certified for Big Lotto k<=20; cross-game generality remains open."
     }
   ],
   "handoffs": {
@@ -314,7 +315,7 @@
     }
   },
   "imported_method_count": 14,
-  "matrix_intake_sha256": "24e33767df9b89fffcbe8c9fa7a9d89caa738f80aa0c38bf9de6a73a52dbcd49",
+  "matrix_intake_sha256": "fa24f16871f732c5049cdd6e8a709316d659f24165bb8371b950de6a9d1d9b1a",
   "method_families": [
     "BOUNDED_COVERAGE_SEARCH",
     "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
@@ -914,7 +915,8 @@
         2,
         3,
         5,
-        10
+        10,
+        20
       ],
       "supported_lottery": [
         "BIG_LOTTO"
@@ -1039,6 +1041,7 @@
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k3|m3",
     "NATIVE_BIG_LOTTO|HARD_DIV_PAIRWISE_OVERLAP_R2|default|k5|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
+    "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
     "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
@@ -20483,7 +20486,7 @@
         "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
-        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+        "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
       },
       "source_status": "IMPLEMENTED",
       "status": "MEASURED",
@@ -20495,35 +20498,278 @@
     },
     {
       "case_id": "NATIVE_BIG_LOTTO",
-      "delta_vs_reference": null,
+      "delta_vs_reference": {
+        "denominator": 635628,
+        "exact": "127/635628",
+        "numerator": 127
+      },
       "deterministic": true,
       "diversification_constraint": "NONE",
+      "draw_size": 6,
       "evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
       "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
       "evidence_source": "PINNED_REPOSITORY_SOURCE_AND_CORE_TESTS",
       "exact_or_heuristic": "EXACT_RADIUS_1_LOCAL_ASCENT",
-      "exact_q": null,
-      "geometry": null,
+      "exact_q": {
+        "denominator": 6991908,
+        "exact": "2399699/6991908",
+        "numerator": 2399699
+      },
+      "geometry": {
+        "coverage_concentration": 0.4973901064062833,
+        "duplicate_pair_exposure": 0,
+        "duplicate_tickets": 0,
+        "duplicate_triple_exposure": 0,
+        "max_pairwise_overlap": 1,
+        "mean_pairwise_overlap": 0.48947368421052634,
+        "mean_pairwise_overlap_exact": {
+          "denominator": 190,
+          "exact": "93/190",
+          "numerator": 93
+        },
+        "overlap_profile": {
+          "0": 97,
+          "1": 93
+        },
+        "union_size": 49
+      },
       "global_optimum_status": "UNKNOWN",
       "k": 20,
-      "local_optimum_status": "NOT_CERTIFIED",
+      "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
       "lottery": "BIG_LOTTO",
+      "measurement_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "execution_classification": "EXECUTED_EXISTING_NATIVE_METHOD",
+        "method_invocation": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+        "minimum_matches": 3
+      },
       "method_type": "PORTFOLIO_OPTIMIZER",
       "minimum_matches": 3,
+      "native_portfolio_sha256": "a5ce1a828295e50486c999b72fe4073a9172b8e45f9c93c74fed60448c2552f3",
+      "native_portfolio_sha256_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
       "neighborhood_radius": 1,
       "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
-      "portfolio": null,
+      "pool_size": 49,
+      "portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5,
+          12
+        ],
+        [
+          1,
+          7,
+          13,
+          19,
+          31,
+          49
+        ],
+        [
+          1,
+          8,
+          15,
+          22,
+          38,
+          44
+        ],
+        [
+          2,
+          8,
+          14,
+          20,
+          24,
+          26
+        ],
+        [
+          2,
+          9,
+          36,
+          37,
+          43,
+          49
+        ],
+        [
+          3,
+          9,
+          15,
+          24,
+          27,
+          32
+        ],
+        [
+          3,
+          17,
+          19,
+          20,
+          21,
+          28
+        ],
+        [
+          4,
+          10,
+          16,
+          23,
+          33,
+          49
+        ],
+        [
+          4,
+          11,
+          13,
+          20,
+          40,
+          46
+        ],
+        [
+          5,
+          10,
+          18,
+          19,
+          41,
+          47
+        ],
+        [
+          5,
+          11,
+          17,
+          23,
+          29,
+          34
+        ],
+        [
+          6,
+          7,
+          14,
+          22,
+          39,
+          45
+        ],
+        [
+          6,
+          16,
+          21,
+          25,
+          42,
+          48
+        ],
+        [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ],
+        [
+          12,
+          18,
+          23,
+          24,
+          30,
+          35
+        ],
+        [
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          43,
+          44,
+          45,
+          46,
+          47,
+          48
+        ]
+      ],
       "portfolio_or_ticket_level": "PORTFOLIO_LEVEL",
+      "portfolio_sha256": "86ccf20ecc149a78771295fa68685220b5726f43baa87dbef745655db972d686",
       "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
-      "q_random_expected": null,
-      "reference": null,
+      "q_random_expected": {
+        "denominator": 435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388,
+        "exact": "136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745/435181005946643158001043454324458968052260403234855038192511642491193996017476596387224730277641783401254902388",
+        "numerator": 136464931196442477556786924908590695592336254501634564575023749354655653145167291853998053419693416916091773745
+      },
+      "reference": {
+        "exact_q": {
+          "denominator": 50666,
+          "exact": "17379/50666",
+          "numerator": 17379
+        },
+        "strategy_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1"
+      },
       "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
-      "search_evidence": null,
+      "search_evidence": {
+        "delta_seed_to_terminal": {
+          "denominator": 4661272,
+          "exact": "5407/4661272",
+          "numerator": 5407
+        },
+        "iteration_count": 15,
+        "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "move_acceptance": "strict best improvement only",
+        "move_count": 14,
+        "neighborhood_radius": 1,
+        "neighborhood_unit": "REMOVE_ONE_ADD_ONE_NUMBER_IN_ONE_TICKET",
+        "portfolio_hash_canonicalization": "COMPACT_JSON_NO_TRAILING_NEWLINE",
+        "seed_expected_max": {
+          "denominator": 13983816,
+          "exact": "32980175/13983816",
+          "numerator": 32980175
+        },
+        "seed_policy": "canonical Method E",
+        "seed_portfolio_sha256": "48d81822634d52f2d46cffed2a910a72159c09c1eb666e5750ce747b71ba667a",
+        "terminal_expected_max": {
+          "denominator": 3495954,
+          "exact": "8249099/3495954",
+          "numerator": 8249099
+        },
+        "terminal_portfolio_sha256": "a5ce1a828295e50486c999b72fe4073a9172b8e45f9c93c74fed60448c2552f3",
+        "terminal_unique_neighbor_count": 5160,
+        "tie_break": "lexicographically smallest canonical portfolio",
+        "total_draw_count": 13983816,
+        "total_neighbor_evaluations": 77400
+      },
       "search_type": "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT",
-      "source_evidence": null,
+      "source_evidence": {
+        "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+        "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
+      },
       "source_status": "IMPLEMENTED",
-      "status": "NOT_APPLICABLE",
-      "status_reason": "UNSUPPORTED_LOTTERY_OR_K",
+      "status": "MEASURED",
+      "status_reason": null,
       "strategy_family": "EXACT_ONE_NUMBER_EXCHANGE",
       "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
       "variant": "default",
@@ -20653,7 +20899,7 @@
         "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
-        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+        "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
       },
       "source_status": "IMPLEMENTED",
       "status": "MEASURED",
@@ -20795,7 +21041,7 @@
         "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
-        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+        "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
       },
       "source_status": "IMPLEMENTED",
       "status": "MEASURED",
@@ -20953,7 +21199,7 @@
         "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
-        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+        "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
       },
       "source_status": "IMPLEMENTED",
       "status": "MEASURED",
@@ -50913,8 +51159,8 @@
   ],
   "schema_version": "1.0.0",
   "status_counts": {
-    "MEASURED": 243,
-    "NOT_APPLICABLE": 84,
+    "MEASURED": 244,
+    "NOT_APPLICABLE": 83,
     "NOT_RUN": 0,
     "REUSED_VERIFIED": 50
   },
@@ -51028,6 +51274,16 @@
       "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
       "reference": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
       "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3"
+    },
+    {
+      "delta": {
+        "denominator": 635628,
+        "exact": "127/635628",
+        "numerator": 127
+      },
+      "evidence_scope": "NATIVE_UNIFORM_WINNING_SPACE",
+      "reference": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+      "row_id": "NATIVE_BIG_LOTTO|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3"
     },
     {
       "delta": {

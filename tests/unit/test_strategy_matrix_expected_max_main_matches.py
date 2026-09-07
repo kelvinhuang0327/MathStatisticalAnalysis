@@ -157,8 +157,8 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     evaluated = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
     unavailable = {cell["row_id"]: cell for cell in artifact["unavailable_cells"]}
-    assert len(evaluated) == 251
-    assert len(unavailable) == 126
+    assert len(evaluated) == 252
+    assert len(unavailable) == 125
     assert set(evaluated) | set(unavailable) == set(input_rows)
     assert not set(evaluated) & set(unavailable)
 
@@ -186,13 +186,13 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
     assert gap["optimizer_status"] == "RESOLVED"
     assert gap["dedicated_optimizer_implemented"] is True
     assert gap["dedicated_optimizer_id"] == "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
-    assert gap["remaining_prospective_gap"] == "CROSS_STRUCTURE_AND_K20_EXPECTED_MAX_OPTIMIZATION"
+    assert gap["remaining_prospective_gap"] == "CROSS_STRUCTURE_EXPECTED_MAX_OPTIMIZATION"
 
 
 def test_surface_reuses_each_exact_value_for_every_duplicate_portfolio_identity() -> None:
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     cells = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
-    assert len(artifact["portfolio_evaluations"]) == 141
+    assert len(artifact["portfolio_evaluations"]) == 142
     for evaluation in artifact["portfolio_evaluations"]:
         row_ids = evaluation["row_ids"]
         assert evaluation["computed_once"] is True

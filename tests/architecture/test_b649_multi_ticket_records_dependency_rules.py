@@ -6,13 +6,8 @@ from pathlib import Path
 from lottolab.interfaces.api.app import create_app
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-API_MODULE = (
-    REPO_ROOT / "src/lottolab/interfaces/api/b649_multi_ticket_records.py"
-)
-READER_MODULE = (
-    REPO_ROOT
-    / "src/lottolab/infrastructure/biglotto_multi_ticket_record_reader.py"
-)
+API_MODULE = REPO_ROOT / "src/lottolab/interfaces/api/b649_multi_ticket_records.py"
+READER_MODULE = REPO_ROOT / "src/lottolab/infrastructure/biglotto_multi_ticket_record_reader.py"
 PATH = "/api/v1/b649-multi-ticket-records"
 SUMMARY_PATH = f"{PATH}/summary"
 
@@ -62,3 +57,21 @@ def test_openapi_surface_is_get_only_and_has_no_execution_variant() -> None:
         and any(token in candidate for token in ("execute", "generate", "backtest"))
         for candidate in paths
     )
+
+
+def test_k10_runtime_has_no_materialization_or_external_authority_read_path() -> None:
+    imports = _imports(READER_MODULE) | _imports(API_MODULE)
+    assert not any("projection_builder" in name or "backtest" in name for name in imports)
+    source = READER_MODULE.read_text()
+    tree = ast.parse(source)
+    assert not any(
+        isinstance(n, ast.Call) and isinstance(n.func, ast.Name) and n.func.id in {"open", "Path"}
+        for n in ast.walk(tree)
+    )
+    paths = create_app().openapi()["paths"]
+    endpoint = "/api/v1/b649-exact-native-records"
+    assert set(paths[endpoint]) == {"get"}
+    assert [p for p in paths if "exact-native-records" in p] == [endpoint]
+    assert create_app().openapi()["components"]["schemas"]["B649ExactNativeTicketCount"][
+        "enum"
+    ] == [2, 3, 10]

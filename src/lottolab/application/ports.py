@@ -9,6 +9,8 @@ from typing import Protocol, runtime_checkable
 
 from lottolab.application.biglotto_multi_ticket_records import (
     B649ExactNativeRecordDataset,
+    B649HistoryWindow,
+    B649K10RecordDataset,
     B649MultiTicketRecordDataset,
 )
 from lottolab.application.draw_automation import (
@@ -237,6 +239,13 @@ class B649ExactNativeRecordReader(Protocol):
 
 
 type B649ExactNativeRecordReaderFactory = Callable[[], B649ExactNativeRecordReader]
+
+
+class B649K10RecordReader(Protocol):
+    def read(self, window: B649HistoryWindow | None = None) -> B649K10RecordDataset: ...
+
+
+type B649K10RecordReaderFactory = Callable[[], B649K10RecordReader]
 
 
 @runtime_checkable

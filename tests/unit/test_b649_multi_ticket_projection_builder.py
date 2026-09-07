@@ -2,10 +2,15 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
+from dataclasses import asdict
 from pathlib import Path
+from types import FrameType
+from typing import cast
 
 import pytest
 
+from lottolab.application.biglotto_multi_ticket_records import B649HistoryWindow
 from lottolab.domain.biglotto_full_strategy_catalog import (
     ReproductionStatus,
     load_full_strategy_catalog,
@@ -13,11 +18,17 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
 from lottolab.infrastructure.biglotto_multi_ticket_projection_builder import (
     METRICS_UNAVAILABLE_STRATEGY_IDS,
     B649ProjectionBuildError,
+    build_b649_k10_projection_bytes,
     build_b649_projection_bytes,
     expected_report_manifest,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K10_AUTHORITY,
+    K10_PROJECTION_RESOURCE_NAME,
+    B649ExactNativeRecordProjectionError,
+    PackagedB649K10RecordReader,
     PackagedB649MultiTicketRecordReader,
+    parse_b649_k10_projection,
 )
 
 
@@ -230,3 +241,181 @@ def test_packaged_k2_k3_successor_keeps_two_prior_unavailable_identities_null() 
     }
     assert all(row["official_any_prize_count"] is None for row in unavailable)
     assert all(row["official_any_prize_rate"] is None for row in unavailable)
+
+
+# K10 uses published evidence only. These tests never regenerate historical metrics.
+
+
+def test_k10_materialization_twice_preserves_every_source_byte_and_published_field() -> None:
+    manifest = Path(str(K10_AUTHORITY["manifest_locator"]))
+    ranking = Path(str(K10_AUTHORITY["source_ranking_locator"]))
+    evidence = manifest.parent / "target_evidence.jsonl"
+    if not manifest.exists():
+        pytest.skip("offline materialization requires the explicitly pinned producer authority")
+    paths = (manifest, evidence, ranking)
+    before = tuple(p.read_bytes() for p in paths)
+    calls: list[str] = []
+
+    def profile(frame: FrameType, event: str, _arg: object) -> None:
+        if event == "call":
+            module = str(frame.f_globals.get("__name__", ""))
+            if any(token in module for token in ("backtest", "replay", "baseline", "ranking")):
+                calls.append(f"{module}.{frame.f_code.co_name}")
+
+    sys.setprofile(profile)
+    try:
+        first = build_b649_k10_projection_bytes(*paths)
+        second = build_b649_k10_projection_bytes(*paths)
+    finally:
+        sys.setprofile(None)
+    assert calls == [], calls
+    assert (
+        first
+        == second
+        == (Path("src/lottolab/strategies/data") / K10_PROJECTION_RESOURCE_NAME).read_bytes()
+    )
+    assert tuple(p.read_bytes() for p in paths) == before
+    producer = json.loads(before[2])["leaderboards"]["K10"]
+    dataset = parse_b649_k10_projection(first)
+    assert len(dataset.records) == 8
+    for window, board in producer.items():
+        rows = [asdict(row) for row in dataset.records if row.window.value == window]
+        assert len(rows) == 2
+        for order, (row, published) in enumerate(zip(rows, board["rankings"], strict=True), 1):
+            assert {key: row[key] for key in published} == published
+            assert row["source_order"] == order
+            assert row["official_rank"] == published["rank"]
+            assert row["position"] is None
+            assert row["strategy_version"] == "v0.1"
+            assert row["catalog_strategy_version"] != row["strategy_version"]
+
+
+@pytest.mark.parametrize("source_index", [0, 1, 2])
+def test_k10_materialization_rejects_each_bad_source_hash(
+    monkeypatch: pytest.MonkeyPatch,
+    source_index: int,
+) -> None:
+    manifest = Path(str(K10_AUTHORITY["manifest_locator"]))
+    paths = (
+        manifest,
+        manifest.parent / "target_evidence.jsonl",
+        Path(str(K10_AUTHORITY["source_ranking_locator"])),
+    )
+    if not manifest.exists():
+        pytest.skip("offline materialization requires the explicitly pinned producer authority")
+    read = Path.read_bytes
+    def corrupted_read(path: Path) -> bytes:
+        return b"corrupted" if path == paths[source_index] else read(path)
+
+    monkeypatch.setattr(Path, "read_bytes", corrupted_read)
+    with pytest.raises(B649ProjectionBuildError, match="checksum"):
+        build_b649_k10_projection_bytes(*paths)
+
+
+def _k10_document() -> dict[str, object]:
+    return json.loads(
+        (Path("src/lottolab/strategies/data") / K10_PROJECTION_RESOURCE_NAME).read_bytes()
+    )
+
+
+def _k10_encode(document: dict[str, object]) -> bytes:
+    payload = {k: v for k, v in document.items() if k != "projection_sha256"}
+    canonical = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode()
+    document["projection_sha256"] = hashlib.sha256(canonical).hexdigest()
+    return json.dumps(document).encode()
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "checksum",
+        "schema",
+        "universe",
+        "duplicate",
+        "missing",
+        "extra",
+        "authority",
+        "source_order",
+        "position",
+        "version",
+        "decimal",
+    ],
+)
+def test_k10_projection_rejects_corrupted_closed_contract(defect: str) -> None:
+    document = _k10_document()
+    rows = cast(list[dict[str, object]], document["records"])
+    if defect == "checksum":
+        document["projection_sha256"] = "0" * 64
+    elif defect == "schema":
+        document["projection_schema_version"] = "wrong"
+    elif defect == "universe":
+        rows[0]["strategy_id"] = "wrong"
+    elif defect == "duplicate":
+        rows[1] = rows[0].copy()
+    elif defect == "missing":
+        rows.pop()
+    elif defect == "extra":
+        rows[0]["unexpected"] = 0
+    elif defect == "authority":
+        cast(dict[str, object], rows[0]["provenance"])["authority_head"] = "0" * 40
+    elif defect == "source_order":
+        rows[0]["source_order"] = 2
+    elif defect == "position":
+        rows[0]["position"] = 1
+    elif defect == "version":
+        rows[0]["strategy_version"] = "legacy"
+    elif defect == "decimal":
+        rows[0]["official_any_prize_rate"] = 0.2
+    raw = json.dumps(document).encode() if defect == "checksum" else _k10_encode(document)
+    with pytest.raises(B649ExactNativeRecordProjectionError):
+        parse_b649_k10_projection(raw)
+
+
+def test_k10_selected_window_metric_failure_does_not_poison_other_windows() -> None:
+    document = _k10_document()
+    rows = cast(list[dict[str, object]], document["records"])
+    rows[0]["official_any_prize_rate"] = "corrupt"
+    raw = _k10_encode(document)
+    with pytest.raises(B649ExactNativeRecordProjectionError):
+        parse_b649_k10_projection(raw, B649HistoryWindow.FULL)
+    assert len(parse_b649_k10_projection(raw, B649HistoryWindow.RECENT_50).records) == 2
+
+
+def test_k10_available_full_exclusions_and_authoritative_zero_unranked_unavailable() -> None:
+    dataset = PackagedB649K10RecordReader().read(B649HistoryWindow.FULL)
+    assert [r.typed_replay_failures_count for r in dataset.records] == [1, 300]
+    assert all(r.metric_status == "AVAILABLE" for r in dataset.records)
+    document = _k10_document()
+    rows = cast(list[dict[str, object]], document["records"])
+    rows[0].update(
+        rank=None,
+        official_rank=None,
+        unranked_reason="PRODUCER_UNRANKED",
+        official_any_prize_rate="0.000000000000000000",
+        official_any_prize_numerator=0,
+    )
+    rows[1].update(
+        rank=None,
+        official_rank=None,
+        metric_status="UNAVAILABLE",
+        unranked_reason="PRODUCER_UNAVAILABLE",
+        unavailable_reason="METRIC_UNAVAILABLE",
+    )
+    for key in (
+        "official_any_prize_rate",
+        "official_random_baseline",
+        "baseline_delta",
+        "coverage",
+        "official_any_prize_numerator",
+        "official_any_prize_denominator",
+        "best_prize_counts",
+    ):
+        rows[1][key] = None
+    parsed = parse_b649_k10_projection(_k10_encode(document), B649HistoryWindow.FULL).records
+    assert parsed[0].official_any_prize_numerator == 0
+    assert parsed[0].official_any_prize_rate == "0.000000000000000000"
+    assert parsed[0].official_rank is None and parsed[0].source_order == 1
+    assert parsed[1].official_any_prize_rate is None
+    assert parsed[1].unavailable_reason == "METRIC_UNAVAILABLE"

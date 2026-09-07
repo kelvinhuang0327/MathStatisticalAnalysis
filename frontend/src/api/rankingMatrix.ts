@@ -4,6 +4,7 @@ import {
   fetchB649MultiTicketRecords,
   fetchB649MultiTicketSummary,
   type B649ExactNativeRecord,
+  type B649K10Record,
   type B649ExactNativeTicketCount,
   type B649HistoryWindow,
   type B649MultiTicketRecord,
@@ -61,6 +62,10 @@ export interface RankingRow {
   ticketCount: TicketCount
   window: RankingWindow
   officialRank: number | null
+  sourceOrder?: number
+  rawRank?: number | null
+  position?: null
+  requestedDraws?: number
   strategyId: string
   displayName: string
   strategyVersion: string
@@ -310,6 +315,22 @@ async function loadB649RankingRows(
   window: RankingWindow,
   signal?: AbortSignal,
 ): Promise<RankingRow[]> {
+  if (ticketCount === 10) {
+    const records: B649K10Record[] = []
+    let offset = 0
+    while (true) {
+      const page = await fetchB649ExactNativeRecords({ ticketCount: 10, window, limit: 100, offset }, signal)
+      for (const row of page.items) {
+        if (!('source_order' in row) || row.ticket_count !== 10) throw new Error('Invalid K10 authority response')
+        records.push(row)
+      }
+      offset += page.items.length
+      if (offset >= page.total) break
+      if (!page.items.length) throw new Error('Incomplete K10 authority page')
+    }
+    return records.map(transformB649K10ToRankingRow)
+  }
+
   const summary = await fetchB649MultiTicketSummary(signal)
   if (!summary.records_available) {
     return []
@@ -343,7 +364,10 @@ async function loadB649RankingRows(
         },
         signal,
       )
-      records.push(...page.items)
+      for (const row of page.items) {
+        if ('source_order' in row) throw new Error('Unexpected K10 record for K2/K3')
+        records.push(row)
+      }
       offset += limit
       hasMore = records.length < page.total
     }
@@ -352,7 +376,7 @@ async function loadB649RankingRows(
   }
 
   // Canonical B649 multi-ticket dataset supports prefix counts 5, 10, 15, 20.
-  const isAvailablePrefix = (ticketCount === 5 || ticketCount === 10 || ticketCount === 20)
+  const isAvailablePrefix = (ticketCount === 5 || ticketCount === 20)
   if (!isAvailablePrefix) {
     // Return empty array (the UI will show clean unavailable state for this ticket count)
     return []
@@ -382,6 +406,34 @@ async function loadB649RankingRows(
   }
 
   return records.map((rec) => transformB649ToRankingRow(rec, ticketCount, window, catalogMap))
+}
+
+export function transformB649K10ToRankingRow(record: B649K10Record): RankingRow {
+  const rate = parseNumberString(record.official_any_prize_rate)
+  const baseline = parseNumberString(record.official_random_baseline)
+  const delta = parseNumberString(record.baseline_delta)
+  const coverage = parseNumberString(record.coverage)
+  const isAvailable = record.metric_status === 'AVAILABLE'
+  const reason = record.unranked_reason ?? record.unavailable_reason
+  const comp = deriveComparabilityStatus(isAvailable, record.reproduction_status, reason, record.evaluated_draws, record.window)
+  const prizes: [string, string][] = [['FIRST', '頭獎'], ['SECOND', '貳獎'], ['THIRD', '參獎'], ['FOURTH', '肆獎'], ['FIFTH', '伍獎'], ['SIXTH', '陸獎'], ['SEVENTH', '柒獎'], ['GENERAL', '普獎']]
+  const best = prizes.find(([key]) => (record.best_prize_counts?.[key] ?? 0) > 0)
+  return {
+    lotteryType: 'BIG_LOTTO', ticketCount: 10, window: record.window,
+    officialRank: record.official_rank, rawRank: record.rank, position: record.position,
+    sourceOrder: record.source_order, requestedDraws: record.requested_draws,
+    strategyId: record.strategy_id, displayName: record.display_name,
+    strategyVersion: record.strategy_version, methodFamily: record.method_family,
+    lifecycleStatus: record.reproduction_status,
+    successes: record.official_any_prize_numerator, observations: record.evaluated_draws,
+    officialAnyPrizeRate: rate, officialAnyPrizeRateFormatted: formatRatePercentage(rate),
+    baselineRate: baseline, baselineRateFormatted: formatRatePercentage(baseline),
+    baselineDelta: delta, baselineDeltaFormatted: formatDeltaPercentage(delta),
+    coverage, coverageFormatted: formatCoveragePercentage(coverage),
+    bestOfficialPrize: record.best_prize_counts === null ? 'Unavailable' : best ? `${best[1]} (${record.best_prize_counts[best[0]]})` : '無中獎',
+    comparabilityStatus: comp.status, comparabilityLabel: comp.label,
+    warningCodes: reason ? [reason] : [], isAvailable, unrankedReason: reason,
+  }
 }
 
 function transformB649ExactNativeToRankingRow(

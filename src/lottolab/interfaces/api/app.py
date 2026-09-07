@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
     B649ExactNativeRecordReaderFactory,
+    B649K10RecordReaderFactory,
     B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
@@ -41,6 +42,7 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PackagedB649ExactNativeRecordReader,
+    PackagedB649K10RecordReader,
     PackagedB649MultiTicketRecordReader,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
@@ -121,12 +123,9 @@ def create_app(
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
-    b649_exact_native_record_reader_factory: (
-        B649ExactNativeRecordReaderFactory | None
-    ) = None,
-    t539_historical_query_repository_factory: (
-        T539HistoricalQueryRepositoryFactory | None
-    ) = None,
+    b649_exact_native_record_reader_factory: (B649ExactNativeRecordReaderFactory | None) = None,
+    b649_k10_record_reader_factory: B649K10RecordReaderFactory | None = None,
+    t539_historical_query_repository_factory: (T539HistoricalQueryRepositoryFactory | None) = None,
     t539_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
     ) = None,
@@ -198,6 +197,7 @@ def create_app(
             load_full_strategy_catalog(),
             resolved_b649_reader_factory,
             exact_native_reader_factory=resolved_b649_exact_native_reader_factory,
+            k10_reader_factory=b649_k10_record_reader_factory or PackagedB649K10RecordReader,
         )
     )
     app.include_router(

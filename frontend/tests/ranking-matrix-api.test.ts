@@ -1,3 +1,11 @@
+import { readFileSync } from 'node:fs'
+import type { B649K10Record } from '../src/api/b649MultiTicketRecords'
+
+const k10Packaged = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k10_115000084_records_v1.json', 'utf8')).records as B649K10Record[]
+function k10Page(window: string, records = k10Packaged) {
+  const items = records.filter((r) => r.window === window)
+  return { items, total: items.length, limit: 100, offset: 0, ticket_count: 10, window, criterion: 'OFFICIAL_ANY_PRIZE', research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。' }
+}
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 import {
@@ -14,6 +22,7 @@ import {
   formatRatePercentage,
   getWarningMeta,
   parseNumberString,
+  transformB649K10ToRankingRow,
 } from '../src/api/rankingMatrix'
 
 describe('rankingMatrix API and utilities', () => {
@@ -215,6 +224,7 @@ describe('rankingMatrix API and utilities', () => {
           const urlObj = new URL(url, 'http://localhost')
           const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
           const win = urlObj.searchParams.get('window') || 'RECENT_300'
+          if (tc === 10) return Promise.resolve(new Response(JSON.stringify(k10Page(win))))
           return Promise.resolve({
             ok: true,
             status: 200,
@@ -351,7 +361,7 @@ describe('rankingMatrix API and utilities', () => {
 
     it('builds multi-ticket matrix with 2, 3, 5, 10, 20 cells', async () => {
       const matrix = await fetchMultiTicketMatrix('BIG_LOTTO', 'RECENT_300')
-      expect(matrix.length).toBe(2)
+      expect(matrix.length).toBe(4)
       const row = matrix.find((r) => r.strategyId === 'strat_1')!
       expect(row.cells[2].isAvailable).toBe(true)
       expect(row.cells[2].officialRank).toBeNull()
@@ -360,6 +370,13 @@ describe('rankingMatrix API and utilities', () => {
       expect(row.cells[3].officialRank).toBeNull()
       expect(row.cells[5].isAvailable).toBe(true)
       expect(row.cells[5].officialRank).toBe(1)
+      for (const record of k10Packaged.filter((r) => r.window === 'RECENT_300')) {
+        const cell = matrix.find((r) => r.strategyId === record.strategy_id)!.cells[10]
+        const mapped = transformB649K10ToRankingRow(record)
+        expect(cell.officialRank).toBe(mapped.officialRank)
+        expect(cell.officialAnyPrizeRate).toBe(mapped.officialAnyPrizeRate)
+        expect(cell.baselineDelta).toBe(mapped.baselineDelta)
+      }
     })
 
     it('fetches cross-window points across FULL, 750, 300, 50', async () => {
@@ -367,5 +384,50 @@ describe('rankingMatrix API and utilities', () => {
       expect(crossData.points.length).toBe(4)
       expect(crossData.points.map((p) => p.window)).toEqual(['FULL', 'RECENT_750', 'RECENT_300', 'RECENT_50'])
     })
+  })
+})
+
+
+describe('sealed K10 authority', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it.each(CANONICAL_WINDOWS)('loads %s directly despite legacy summary failure', async (window) => {
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = String(input); calls.push(url)
+      if (url.includes('b649-exact-native-records') && url.includes('ticket_count=10')) return new Response(JSON.stringify(k10Page(window)))
+      return new Response('{}', { status: 503 })
+    }))
+    const rows = await fetchRankingData('BIG_LOTTO', 10, window)
+    const expected = k10Packaged.filter((r) => r.window === window)
+    expect(rows).toHaveLength(2)
+    expect(rows.map((r) => r.strategyId)).toEqual(expected.map((r) => r.strategy_id))
+    expect(rows.map((r) => r.officialRank)).toEqual([1, 2])
+    expect(rows.map((r) => r.sourceOrder)).toEqual([1, 2])
+    expect(rows.every((r) => r.strategyVersion === 'v0.1' && r.isAvailable)).toBe(true)
+    expect(rows.map((r) => r.observations)).toEqual(expected.map((r) => r.evaluated_draws))
+    expect(rows.map((r) => r.requestedDraws)).toEqual(expected.map((r) => r.requested_draws))
+    expect(calls.every((url) => url.includes('b649-exact-native-records'))).toBe(true)
+  })
+  it('keeps null rank, unavailable metrics and authoritative zero', () => {
+    const source = k10Packaged[0]!
+    const zero = transformB649K10ToRankingRow({ ...source, rank: null, official_rank: null, unranked_reason: 'PRODUCER_UNRANKED', official_any_prize_rate: '0.000000000000000000', official_any_prize_numerator: 0 })
+    expect(zero.officialRank).toBeNull()
+    expect(zero.sourceOrder).toBe(1)
+    expect(zero.officialAnyPrizeRateFormatted).toBe('0.00%')
+    expect(zero.successes).toBe(0)
+    expect(zero.unrankedReason).toBe('PRODUCER_UNRANKED')
+    const unavailable = transformB649K10ToRankingRow({ ...source, rank: null, official_rank: null, metric_status: 'UNAVAILABLE', unavailable_reason: 'PRODUCER_FAILURE', official_any_prize_rate: null, baseline_delta: null, official_random_baseline: null, coverage: null, best_prize_counts: null })
+    expect(unavailable.isAvailable).toBe(false)
+    expect(unavailable.officialAnyPrizeRate).toBeNull()
+    expect(unavailable.baselineDelta).toBeNull()
+    expect(unavailable.bestOfficialPrize).toBe('Unavailable')
+    expect(unavailable.unrankedReason).toBe('PRODUCER_FAILURE')
+  })
+  it('does not fall back to prefix data when exact K10 fails', async () => {
+    const mock = vi.fn<typeof fetch>().mockResolvedValue(new Response('{}', { status: 503 }))
+    vi.stubGlobal('fetch', mock)
+    await expect(fetchRankingData('BIG_LOTTO', 10, 'FULL')).rejects.toThrow()
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(String(mock.mock.calls[0]?.[0])).toContain('ticket_count=10')
   })
 })

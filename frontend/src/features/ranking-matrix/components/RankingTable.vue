@@ -31,6 +31,8 @@ const isFormalRankUnavailable = computed(() => {
 
 const sortedRows = computed(() => {
   const list = [...props.rows]
+  // K10 publication order is independent of rank and is restored after user sorting.
+  if (!props.isUserSorted && list.every((r) => r.sourceOrder !== undefined)) return list
   const field = props.sortField
   const direction = props.sortDirection
 
@@ -278,6 +280,7 @@ function getComparabilityBadgeType(status: string): 'success' | 'warning' | 'inf
               {{ row.successes !== null ? row.successes : '—' }} / {{ row.observations !== null ? row.observations : '—' }}
             </span>
             <small class="counts-label">中獎期數 / 觀察期數</small>
+            <small v-if="row.requestedDraws !== undefined" data-testid="evaluated-requested-draws">評估 / 要求期數：{{ row.observations ?? '—' }} / {{ row.requestedDraws }}</small>
           </div>
           <span v-else class="text-unavailable">Unavailable</span>
         </td>
@@ -301,6 +304,7 @@ function getComparabilityBadgeType(status: string): 'success' | 'warning' | 'inf
           <span :class="['delta-badge', getDeltaClass(row.baselineDelta)]">
             {{ row.baselineDeltaFormatted }}
           </span>
+          <small v-if="row.sourceOrder !== undefined">隨機基準：{{ row.baselineRateFormatted }}</small>
         </td>
 
         <!-- Best Official Prize -->

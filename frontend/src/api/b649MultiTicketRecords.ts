@@ -7,7 +7,8 @@ export type B649MultiTicketRecordPage =
 export type B649MultiTicketRecord = B649MultiTicketRecordPage['items'][number]
 export type B649ExactNativeRecordPage =
   paths['/api/v1/b649-exact-native-records']['get']['responses'][200]['content']['application/json']
-export type B649ExactNativeRecord = B649ExactNativeRecordPage['items'][number]
+export type B649ExactNativeRecord = components['schemas']['B649ExactNativeRecordView']
+export type B649K10Record = components['schemas']['B649K10Record']
 export type B649PrefixCount = components['schemas']['B649PrefixCount']
 export type B649ExactNativeTicketCount = components['schemas']['B649ExactNativeTicketCount']
 export type B649HistoryWindow = components['schemas']['B649HistoryWindow']
@@ -19,7 +20,7 @@ export type B649ReproductionStatus =
   | 'DUPLICATE_ALIAS'
 
 export const B649_PREFIX_COUNTS = [5, 10, 15, 20] as const satisfies readonly B649PrefixCount[]
-export const B649_EXACT_NATIVE_TICKET_COUNTS = [2, 3] as const satisfies readonly B649ExactNativeTicketCount[]
+export const B649_EXACT_NATIVE_TICKET_COUNTS = [2, 3, 10] as const satisfies readonly B649ExactNativeTicketCount[]
 export const B649_HISTORY_WINDOWS = [
   'FULL',
   'RECENT_750',
@@ -289,8 +290,9 @@ function isExactNativeRecordPage(value: unknown): value is B649ExactNativeRecord
   )
 }
 
-function isExactNativeRecord(value: unknown): value is B649ExactNativeRecord {
+function isExactNativeRecord(value: unknown): value is B649ExactNativeRecord | B649K10Record {
   if (!isRecord(value)) return false
+  if (value.ticket_count === 10) return isK10Record(value)
   const nullableInteger = (item: unknown) => item === null || isInteger(item)
   const nullableString = (item: unknown) => item === null || typeof item === 'string'
   const nullableBoolean = (item: unknown) => item === null || typeof item === 'boolean'
@@ -331,6 +333,27 @@ function isExactNativeRecord(value: unknown): value is B649ExactNativeRecord {
     isSha256(value.catalog_sha256) &&
     (value.official_rank === undefined || value.official_rank === null)
   )
+}
+
+function isK10Record(value: Record<string, unknown>): value is B649K10Record {
+  const nullableInteger = (v: unknown) => v === null || isInteger(v)
+  const nullableDecimal = (v: unknown) => v === null || (typeof v === 'string' && /^-?\d+\.\d{18}$/.test(v))
+  const nullableString = (v: unknown) => v === null || typeof v === 'string'
+  return value.native_ticket_count === 10 && value.criterion === 'OFFICIAL_ANY_PRIZE' &&
+    B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
+    isString(value.strategy_id) && isString(value.display_name) && isString(value.strategy_version) &&
+    isString(value.method_family) && isString(value.reproduction_status) &&
+    isInteger(value.source_order) && value.source_order > 0 && value.position === null &&
+    nullableInteger(value.rank) && value.official_rank === value.rank &&
+    (value.metric_status === 'AVAILABLE' || value.metric_status === 'UNAVAILABLE') &&
+    nullableString(value.unranked_reason) && nullableString(value.unavailable_reason) &&
+    nullableDecimal(value.official_any_prize_rate) && nullableDecimal(value.official_random_baseline) &&
+    nullableDecimal(value.baseline_delta) && nullableDecimal(value.coverage) &&
+    nullableInteger(value.official_any_prize_numerator) && nullableInteger(value.official_any_prize_denominator) &&
+    nullableInteger(value.evaluated_draws) && isInteger(value.requested_draws) &&
+    (value.best_prize_counts === null || (isRecord(value.best_prize_counts) && Object.values(value.best_prize_counts).every(isInteger))) &&
+    isRecord(value.provenance) && isSha256(value.provenance.source_ranking_sha256) &&
+    value.provenance.cutoff === '115000084' && value.provenance.k === 10
 }
 
 function isOfficialPrizeCounts(value: unknown): boolean {

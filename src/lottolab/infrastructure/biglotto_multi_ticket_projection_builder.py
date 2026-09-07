@@ -38,7 +38,11 @@ from lottolab.infrastructure.b649_dataset_authority import (
     validate_b649_dataset_sha256,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K10_AUTHORITY,
+    K10_PROJECTION_SCHEMA_VERSION,
+    K10_WINDOW_BOUNDARIES,
     PROJECTION_SCHEMA_VERSION,
+    parse_b649_k10_projection,
 )
 
 
@@ -1409,3 +1413,96 @@ __all__ = [
     "build_b649_projection_bytes",
     "expected_report_manifest",
 ]
+
+def build_b649_k10_projection_bytes(
+    manifest_path: Path,
+    evidence_path: Path,
+    ranking_path: Path,
+) -> bytes:
+    """Copy the three sealed authorities; no evaluator or replay entrypoint is called."""
+    raw_sources: dict[str, bytes] = {}
+    for label, path, pin in (
+        ("manifest", manifest_path, "sealed_manifest_sha256"),
+        ("evidence", evidence_path, "target_evidence_sha256"),
+        ("ranking", ranking_path, "source_ranking_sha256"),
+    ):
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != K10_AUTHORITY[pin]:
+            raise B649ProjectionBuildError(f"K10 {label} checksum mismatch")
+        raw_sources[label] = raw
+    manifest = cast(dict[str, object], json.loads(raw_sources["manifest"]))
+    ranking = cast(dict[str, object], json.loads(raw_sources["ranking"]))
+    source = cast(dict[str, object], manifest["source"])
+    catalog_manifest = cast(dict[str, object], manifest["catalog"])
+    contract = cast(dict[str, object], manifest["execution_contract"])
+    evidence = cast(dict[str, object], manifest["evidence"])
+    windows = cast(dict[str, dict[str, object]], manifest["target_windows"])
+    universe = cast(list[str], K10_AUTHORITY["strategy_universe"])
+    if not (
+        source["head"] == K10_AUTHORITY["authority_head"]
+        and source["tree"] == K10_AUTHORITY["authority_tree"]
+        and manifest["run_id"] == ranking["run_id"] == K10_AUTHORITY["run_id"]
+        and contract["lottery_type"] == K10_AUTHORITY["lottery"]
+        and manifest["max_visible_draw"] == ranking["cutoff"] == K10_AUTHORITY["cutoff"]
+        and ranking["k10_strategy_universe"] == universe
+        and catalog_manifest["k10_count"] == 2
+        and catalog_manifest["k10_universe_fingerprint"]
+        == K10_AUTHORITY["producer_universe_fingerprint"]
+        and catalog_manifest["catalog_fingerprint"] == K10_AUTHORITY["producer_catalog_fingerprint"]
+        and evidence["record_count"] == len(raw_sources["evidence"].splitlines()) == 4332
+        and set(windows) == set(K10_WINDOW_BOUNDARIES)
+    ):
+        raise B649ProjectionBuildError("K10 sealed authority mismatch")
+    for name, boundary in K10_WINDOW_BOUNDARIES.items():
+        if {k: v for k, v in windows[name].items() if k != "draw_numbers"} != boundary:
+            raise B649ProjectionBuildError("K10 window boundary mismatch")
+    catalog = load_full_strategy_catalog()
+    if catalog.catalog_sha256 != K10_AUTHORITY["consumer_catalog_sha256"]:
+        raise B649ProjectionBuildError("K10 consumer catalog checksum mismatch")
+    catalog_by_id = {r.strategy_id: r for r in catalog.records}
+    boards = cast(dict[str, dict[str, dict[str, object]]], ranking["leaderboards"])
+    if set(boards) != {"K10"} or set(boards["K10"]) != set(K10_WINDOW_BOUNDARIES):
+        raise B649ProjectionBuildError("K10 leaderboard universe mismatch")
+    records: list[dict[str, object]] = []
+    for window, board in boards["K10"].items():
+        for source_order, producer in enumerate(
+            cast(list[dict[str, object]], board["rankings"]), 1
+        ):
+            sid = str(producer["strategy_id"])
+            if sid not in universe or producer["native_ticket_count"] != 10:
+                raise B649ProjectionBuildError("K10 producer strategy mismatch")
+            meta = catalog_by_id[sid]
+            records.append(
+                {
+                    **producer,
+                    "official_rank": producer["rank"],
+                    "position": None,
+                    "source_order": source_order,
+                    "unranked_reason": producer.get("unranked_reason"),
+                    "unavailable_reason": producer.get("unavailable_reason"),
+                    "ticket_count": 10,
+                    "window": window,
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "catalog_strategy_version": meta.strategy_version,
+                    "legacy_method_id": meta.legacy_method_id,
+                    "source_path": meta.source_path,
+                    "method_family": meta.method_family,
+                    "reproduction_status": meta.reproduction_status.value,
+                    "duplicate_alias_target": meta.duplicate_alias_target,
+                    "provenance": K10_AUTHORITY,
+                    "window_boundary": K10_WINDOW_BOUNDARIES[window],
+                }
+            )
+    payload: dict[str, object] = {
+        "projection_schema_version": K10_PROJECTION_SCHEMA_VERSION,
+        "records": records,
+    }
+    canonical = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode()
+    payload["projection_sha256"] = hashlib.sha256(canonical).hexdigest()
+    output = (
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    parse_b649_k10_projection(output)
+    return output

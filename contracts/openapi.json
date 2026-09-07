@@ -5912,7 +5912,14 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/B649ExactNativeRecordView"
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/B649ExactNativeRecordView"
+                },
+                {
+                  "$ref": "#/components/schemas/B649K10Record"
+                }
+              ]
             },
             "type": "array",
             "title": "Items"
@@ -6273,7 +6280,8 @@
         "type": "integer",
         "enum": [
           2,
-          3
+          3,
+          10
         ],
         "title": "B649ExactNativeTicketCount"
       },
@@ -6286,6 +6294,440 @@
           "RECENT_50"
         ],
         "title": "B649HistoryWindow"
+      },
+      "B649K10Provenance": {
+        "properties": {
+          "authority_head": {
+            "type": "string",
+            "title": "Authority Head"
+          },
+          "authority_tree": {
+            "type": "string",
+            "title": "Authority Tree"
+          },
+          "manifest_locator": {
+            "type": "string",
+            "title": "Manifest Locator"
+          },
+          "sealed_manifest_sha256": {
+            "type": "string",
+            "title": "Sealed Manifest Sha256"
+          },
+          "target_evidence_sha256": {
+            "type": "string",
+            "title": "Target Evidence Sha256"
+          },
+          "source_ranking_locator": {
+            "type": "string",
+            "title": "Source Ranking Locator"
+          },
+          "source_ranking_sha256": {
+            "type": "string",
+            "title": "Source Ranking Sha256"
+          },
+          "run_id": {
+            "type": "string",
+            "title": "Run Id"
+          },
+          "lottery": {
+            "type": "string",
+            "const": "BIG_LOTTO",
+            "title": "Lottery"
+          },
+          "k": {
+            "type": "integer",
+            "const": 10,
+            "title": "K"
+          },
+          "cutoff": {
+            "type": "string",
+            "title": "Cutoff"
+          },
+          "cutoff_label": {
+            "type": "string",
+            "title": "Cutoff Label"
+          },
+          "evidence_record_count": {
+            "type": "integer",
+            "title": "Evidence Record Count"
+          },
+          "consumer_record_count": {
+            "type": "integer",
+            "title": "Consumer Record Count"
+          },
+          "strategy_universe": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Strategy Universe"
+          },
+          "producer_universe_fingerprint": {
+            "type": "string",
+            "title": "Producer Universe Fingerprint"
+          },
+          "producer_catalog_fingerprint": {
+            "type": "string",
+            "title": "Producer Catalog Fingerprint"
+          },
+          "consumer_catalog_sha256": {
+            "type": "string",
+            "title": "Consumer Catalog Sha256"
+          }
+        },
+        "type": "object",
+        "required": [
+          "authority_head",
+          "authority_tree",
+          "manifest_locator",
+          "sealed_manifest_sha256",
+          "target_evidence_sha256",
+          "source_ranking_locator",
+          "source_ranking_sha256",
+          "run_id",
+          "lottery",
+          "k",
+          "cutoff",
+          "cutoff_label",
+          "evidence_record_count",
+          "consumer_record_count",
+          "strategy_universe",
+          "producer_universe_fingerprint",
+          "producer_catalog_fingerprint",
+          "consumer_catalog_sha256"
+        ],
+        "title": "B649K10Provenance"
+      },
+      "B649K10Record": {
+        "properties": {
+          "strategy_id": {
+            "type": "string",
+            "title": "Strategy Id"
+          },
+          "strategy_version": {
+            "type": "string",
+            "title": "Strategy Version"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "native_ticket_count": {
+            "type": "integer",
+            "const": 10,
+            "title": "Native Ticket Count"
+          },
+          "metric_status": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "UNAVAILABLE"
+            ],
+            "title": "Metric Status"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "official_rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Rank"
+          },
+          "position": {
+            "type": "null",
+            "title": "Position"
+          },
+          "source_order": {
+            "type": "integer",
+            "title": "Source Order"
+          },
+          "official_any_prize_rate": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Rate"
+          },
+          "official_any_prize_numerator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Numerator"
+          },
+          "official_any_prize_denominator": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Any Prize Denominator"
+          },
+          "official_random_baseline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Random Baseline"
+          },
+          "baseline_delta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Delta"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coverage"
+          },
+          "evaluated_draws": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated Draws"
+          },
+          "requested_draws": {
+            "type": "integer",
+            "title": "Requested Draws"
+          },
+          "first_evaluated_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Evaluated Draw"
+          },
+          "last_evaluated_draw": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Evaluated Draw"
+          },
+          "best_prize_counts": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "integer"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Best Prize Counts"
+          },
+          "replay_status_counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Replay Status Counts"
+          },
+          "typed_replay_failures_count": {
+            "type": "integer",
+            "title": "Typed Replay Failures Count"
+          },
+          "unranked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unranked Reason"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "const": 10,
+            "title": "Ticket Count"
+          },
+          "window": {
+            "$ref": "#/components/schemas/B649HistoryWindow"
+          },
+          "criterion": {
+            "type": "string",
+            "const": "OFFICIAL_ANY_PRIZE",
+            "title": "Criterion"
+          },
+          "catalog_strategy_version": {
+            "type": "string",
+            "title": "Catalog Strategy Version"
+          },
+          "legacy_method_id": {
+            "type": "string",
+            "title": "Legacy Method Id"
+          },
+          "source_path": {
+            "type": "string",
+            "title": "Source Path"
+          },
+          "method_family": {
+            "type": "string",
+            "title": "Method Family"
+          },
+          "reproduction_status": {
+            "$ref": "#/components/schemas/ReproductionStatus"
+          },
+          "duplicate_alias_target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duplicate Alias Target"
+          },
+          "provenance": {
+            "$ref": "#/components/schemas/B649K10Provenance"
+          },
+          "window_boundary": {
+            "$ref": "#/components/schemas/B649K10WindowBoundary"
+          }
+        },
+        "type": "object",
+        "required": [
+          "strategy_id",
+          "strategy_version",
+          "display_name",
+          "native_ticket_count",
+          "metric_status",
+          "rank",
+          "official_rank",
+          "position",
+          "source_order",
+          "official_any_prize_rate",
+          "official_any_prize_numerator",
+          "official_any_prize_denominator",
+          "official_random_baseline",
+          "baseline_delta",
+          "coverage",
+          "evaluated_draws",
+          "requested_draws",
+          "first_evaluated_draw",
+          "last_evaluated_draw",
+          "best_prize_counts",
+          "replay_status_counts",
+          "typed_replay_failures_count",
+          "unranked_reason",
+          "unavailable_reason",
+          "ticket_count",
+          "window",
+          "criterion",
+          "catalog_strategy_version",
+          "legacy_method_id",
+          "source_path",
+          "method_family",
+          "reproduction_status",
+          "duplicate_alias_target",
+          "provenance",
+          "window_boundary"
+        ],
+        "title": "B649K10Record",
+        "description": "Published producer values; catalog identity is deliberately separate."
+      },
+      "B649K10WindowBoundary": {
+        "properties": {
+          "first_target": {
+            "type": "string",
+            "title": "First Target"
+          },
+          "first_target_date": {
+            "type": "string",
+            "title": "First Target Date"
+          },
+          "last_target": {
+            "type": "string",
+            "title": "Last Target"
+          },
+          "last_target_date": {
+            "type": "string",
+            "title": "Last Target Date"
+          },
+          "observations_required": {
+            "type": "integer",
+            "title": "Observations Required"
+          }
+        },
+        "type": "object",
+        "required": [
+          "first_target",
+          "first_target_date",
+          "last_target",
+          "last_target_date",
+          "observations_required"
+        ],
+        "title": "B649K10WindowBoundary"
       },
       "B649MultiTicketApiErrorResponse": {
         "properties": {
@@ -15197,6 +15639,16 @@
           "aggregate_sha256"
         ],
         "title": "ReplayStrategyAggregateView"
+      },
+      "ReproductionStatus": {
+        "type": "string",
+        "enum": [
+          "BACKTESTED",
+          "CLOSED_UNEXECUTABLE",
+          "DUPLICATE_ALIAS",
+          "OWNER_DECISION_REQUIRED"
+        ],
+        "title": "ReproductionStatus"
       },
       "RequestValidationIssueView": {
         "properties": {

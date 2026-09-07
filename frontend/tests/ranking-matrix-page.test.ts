@@ -1,4 +1,12 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs'
+import type { B649K10Record } from '../src/api/b649MultiTicketRecords'
+
+const k10Packaged = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k10_115000084_records_v1.json', 'utf8')).records as B649K10Record[]
+function k10Page(window: string, records = k10Packaged) {
+  const items = records.filter((r) => r.window === window)
+  return { items, total: items.length, limit: 100, offset: 0, ticket_count: 10, window, criterion: 'OFFICIAL_ANY_PRIZE', research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。' }
+}
 
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -414,6 +422,7 @@ beforeEach(() => {
       const urlObj = new URL(url, 'http://localhost')
       const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
       const win = urlObj.searchParams.get('window') || 'RECENT_300'
+      if (tc === 10) return Promise.resolve(apiResponse(k10Page(win)))
       const items = mockB649ExactNativeRecords2_300.items.map((it) => ({
         ...it,
         ticket_count: tc,
@@ -587,6 +596,56 @@ describe('RankingMatrixPage component', () => {
     await flushPromises()
 
     expect(wrapper.find('[data-testid="ranking-matrix-page"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+})
+
+
+describe('K10 canonical Ranking Matrix consumer', () => {
+  it('shows both producer strategies in all windows when legacy requests fail', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('b649-exact-native-records') && url.searchParams.get('ticket_count') === '10') return apiResponse(k10Page(url.searchParams.get('window')!))
+      return apiResponse({}, 503)
+    })
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-10"]').trigger('click')
+    for (const [label, window] of [['FULL', 'FULL'], ['750', 'RECENT_750'], ['300', 'RECENT_300'], ['50', 'RECENT_50']]) {
+      await wrapper.get(`[data-testid="window-btn-${label}"]`).trigger('click')
+      await flushPromises(); await flushPromises()
+      const rows = wrapper.findAll('.ranking-row')
+      const expected = k10Packaged.filter((r) => r.window === window)
+      expect(rows).toHaveLength(2)
+      expect(rows.map((r) => r.attributes('data-testid'))).toEqual(expected.map((r) => `ranking-row-${r.strategy_id}`))
+      expect(rows[0]!.text()).toContain('#1')
+      expect(rows[0]!.text()).toContain(expected[0]!.display_name)
+      expect(rows[0]!.text()).toContain('26.98%')
+      expect(rows[0]!.find('[data-testid="evaluated-requested-draws"]').text()).toContain(`${expected[0]!.evaluated_draws} / ${expected[0]!.requested_draws}`)
+    }
+    wrapper.unmount()
+  })
+  it('restores publication order after user sort even when producer ranks are null', async () => {
+    const records = k10Packaged.map((r) => ({ ...r, rank: null, official_rank: null, unranked_reason: 'PRODUCER_UNRANKED' }))
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('b649-exact-native-records') && url.searchParams.get('ticket_count') === '10') return apiResponse(k10Page(url.searchParams.get('window')!, records))
+      return apiResponse({}, 503)
+    })
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-10"]').trigger('click')
+    await flushPromises(); await flushPromises()
+    const order = () => wrapper.findAll('.ranking-row').map((r) => r.attributes('data-testid'))
+    const published = records.filter((r) => r.window === 'RECENT_300').map((r) => `ranking-row-${r.strategy_id}`)
+    expect(order()).toEqual(published)
+    await wrapper.get('[data-testid="th-baseline-delta"]').trigger('click')
+    await wrapper.get('[data-testid="th-baseline-delta"]').trigger('click')
+    expect(wrapper.get('[data-testid="sort-status-bar"]').text()).toContain('User Sort')
+    expect(order()).toEqual([...published].reverse())
+    await wrapper.get('[data-testid="reset-official-rank-btn"]').trigger('click')
+    expect(order()).toEqual(published)
+    expect(wrapper.findAll('.rank-badge--unranked')).toHaveLength(2)
     wrapper.unmount()
   })
 })

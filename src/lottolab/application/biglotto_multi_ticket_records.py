@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Literal
 
 from lottolab.domain.biglotto_full_strategy_catalog import ReproductionStatus
 
@@ -221,6 +222,84 @@ class B649ExactNativeRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class B649K10Provenance:
+    authority_head: str
+    authority_tree: str
+    manifest_locator: str
+    sealed_manifest_sha256: str
+    target_evidence_sha256: str
+    source_ranking_locator: str
+    source_ranking_sha256: str
+    run_id: str
+    lottery: Literal["BIG_LOTTO"]
+    k: Literal[10]
+    cutoff: str
+    cutoff_label: str
+    evidence_record_count: int
+    consumer_record_count: int
+    strategy_universe: tuple[str, ...]
+    producer_universe_fingerprint: str
+    producer_catalog_fingerprint: str
+    consumer_catalog_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
+class B649K10WindowBoundary:
+    first_target: str
+    first_target_date: str
+    last_target: str
+    last_target_date: str
+    observations_required: int
+
+
+@dataclass(frozen=True, slots=True)
+class B649K10Record:
+    """Published producer values; catalog identity is deliberately separate."""
+
+    strategy_id: str
+    strategy_version: str
+    display_name: str
+    native_ticket_count: Literal[10]
+    metric_status: Literal["AVAILABLE", "UNAVAILABLE"]
+    rank: int | None
+    official_rank: int | None
+    position: None
+    source_order: int
+    official_any_prize_rate: str | None
+    official_any_prize_numerator: int | None
+    official_any_prize_denominator: int | None
+    official_random_baseline: str | None
+    baseline_delta: str | None
+    coverage: str | None
+    evaluated_draws: int | None
+    requested_draws: int
+    first_evaluated_draw: str | None
+    last_evaluated_draw: str | None
+    best_prize_counts: dict[str, int] | None
+    replay_status_counts: dict[str, int]
+    typed_replay_failures_count: int
+    unranked_reason: str | None
+    unavailable_reason: str | None
+    ticket_count: Literal[10]
+    window: B649HistoryWindow
+    criterion: Literal["OFFICIAL_ANY_PRIZE"]
+    catalog_strategy_version: str
+    legacy_method_id: str
+    source_path: str
+    method_family: str
+    reproduction_status: ReproductionStatus
+    duplicate_alias_target: str | None
+    provenance: B649K10Provenance
+    window_boundary: B649K10WindowBoundary
+
+
+@dataclass(frozen=True, slots=True)
+class B649K10RecordDataset:
+    records: tuple[B649K10Record, ...]
+    projection_sha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class B649ExactNativeRecordDataset:
     records: tuple[B649ExactNativeRecord, ...]
     catalog_sha256: str
@@ -241,20 +320,20 @@ class B649ExactNativeRecordQuery:
 
 @dataclass(frozen=True, slots=True)
 class B649ExactNativeRecordPage:
-    items: tuple[B649ExactNativeRecord, ...]
+    items: tuple[B649ExactNativeRecord | B649K10Record, ...]
     total: int
     limit: int
     offset: int
 
 
 def query_b649_exact_native_records(
-    dataset: B649ExactNativeRecordDataset,
+    dataset: B649ExactNativeRecordDataset | B649K10RecordDataset,
     query: B649ExactNativeRecordQuery,
 ) -> B649ExactNativeRecordPage:
-    """Filter exact-native projection without ranking it; order by strategy_id ASC."""
+    """Filter without ranking: K2/K3 by strategy ID, K10 in publication order."""
 
-    if query.ticket_count not in B649_EXACT_NATIVE_TICKET_COUNTS:
-        raise ValueError("ticket_count is outside the exact-native closed set (2, 3)")
+    if query.ticket_count not in (*B649_EXACT_NATIVE_TICKET_COUNTS, 10):
+        raise ValueError("ticket_count is outside the exact-native closed set (2, 3, 10)")
 
     search = query.q.casefold() if query.q is not None else None
     selected = [
@@ -274,7 +353,8 @@ def query_b649_exact_native_records(
             or row.reproduction_status is query.reproduction_status
         )
     ]
-    selected.sort(key=lambda row: row.strategy_id)
+    if query.ticket_count != 10:
+        selected.sort(key=lambda row: row.strategy_id)
     return B649ExactNativeRecordPage(
         items=tuple(selected[query.offset : query.offset + query.limit]),
         total=len(selected),

@@ -169,6 +169,101 @@ const twoFilePreview = {
   },
 } satisfies BatchImportPreview
 
+const conflictOnlyFile = {
+  ...validFile,
+  source_filename: 'conflict.csv',
+  source_locator: 'conflict.csv',
+  status: 'CONFLICTED',
+  discovered_rows: 3,
+  accepted_rows: 0,
+  excluded_rows: 0,
+  duplicate_rows: 0,
+  conflict_rows: 3,
+  failed_rows: 0,
+  imported_rows: 0,
+  issues: [
+    {
+      code: 'DRAW_CONFLICT',
+      message: 'Draw number 0001 already exists with conflicting winning numbers.',
+      row_number: 2,
+      member_name: null,
+    },
+  ],
+} satisfies BatchImportPreview['files'][number]
+
+const conflictOnlyPreview = {
+  ...validPreview,
+  files: [conflictOnlyFile],
+  summary: {
+    ...validPreview.summary,
+    parsed_rows: 3,
+    accepted_rows: 0,
+    duplicate_rows: 0,
+    conflict_rows: 3,
+  },
+} satisfies BatchImportPreview
+
+const duplicateOnlyFile = {
+  ...validFile,
+  source_filename: 'duplicate.csv',
+  source_locator: 'duplicate.csv',
+  status: 'DUPLICATE',
+  discovered_rows: 2,
+  accepted_rows: 0,
+  excluded_rows: 0,
+  duplicate_rows: 2,
+  conflict_rows: 0,
+  failed_rows: 0,
+  imported_rows: 0,
+  issues: [],
+} satisfies BatchImportPreview['files'][number]
+
+const duplicateOnlyPreview = {
+  ...validPreview,
+  files: [duplicateOnlyFile],
+  summary: {
+    ...validPreview.summary,
+    parsed_rows: 2,
+    accepted_rows: 0,
+    duplicate_rows: 2,
+    conflict_rows: 0,
+  },
+} satisfies BatchImportPreview
+
+const mixedConflictDuplicateFile = {
+  ...validFile,
+  source_filename: 'mixed.csv',
+  source_locator: 'mixed.csv',
+  status: 'CONFLICTED',
+  discovered_rows: 7,
+  accepted_rows: 0,
+  excluded_rows: 0,
+  duplicate_rows: 4,
+  conflict_rows: 3,
+  failed_rows: 0,
+  imported_rows: 0,
+  issues: [
+    {
+      code: 'DRAW_CONFLICT',
+      message: 'Draw number 0002 has conflicting numbers.',
+      row_number: 3,
+      member_name: null,
+    },
+  ],
+} satisfies BatchImportPreview['files'][number]
+
+const mixedConflictDuplicatePreview = {
+  ...validPreview,
+  files: [mixedConflictDuplicateFile],
+  summary: {
+    ...validPreview.summary,
+    parsed_rows: 7,
+    accepted_rows: 0,
+    duplicate_rows: 4,
+    conflict_rows: 3,
+  },
+} satisfies BatchImportPreview
+
 const batchCommitSuccess = {
   run_id: '7de87eeb-ecc7-4c03-830a-c0fdb71254e8',
   status: 'SUCCESS',
@@ -732,6 +827,125 @@ describe('DataCenterPage batch ingestion', () => {
       date_from: '2026-07-29',
       date_to: '2026-07-29',
     })
+    wrapper.unmount()
+  })
+})
+
+describe('Duplicates / Conflicts metric card truthfulness', () => {
+  it('CASE 1: duplicates=0, conflicts>0 displays exact non-zero conflict count and non-default danger status without claiming 0 conflict', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(conflictOnlyPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('conflict.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
+    expect(card.find('.metric-card__value').text()).toBe('3')
+    expect(card.find('.metric-card__subvalue').text()).toBe('0 duplicate · 3 conflict')
+    expect(card.text()).not.toContain('0 conflict')
+    expect(card.classes()).toContain('metric-card--danger')
+    expect(card.classes()).not.toContain('metric-card--default')
+    wrapper.unmount()
+  })
+
+  it('CASE 2: duplicates>0, conflicts=0 preserves truthful duplicate count and warning status with 0 conflict', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(duplicateOnlyPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('duplicate.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
+    expect(card.find('.metric-card__value').text()).toBe('2')
+    expect(card.find('.metric-card__subvalue').text()).toBe('2 duplicate · 0 conflict')
+    expect(card.classes()).toContain('metric-card--warning')
+    expect(card.classes()).not.toContain('metric-card--default')
+    expect(card.classes()).not.toContain('metric-card--danger')
+    wrapper.unmount()
+  })
+
+  it('CASE 3: duplicates>0, conflicts>0 displays both counts correctly and sums them into the combined card value with danger status', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(mixedConflictDuplicatePreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('mixed.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
+    expect(card.find('.metric-card__value').text()).toBe('7')
+    expect(card.find('.metric-card__subvalue').text()).toBe('4 duplicate · 3 conflict')
+    expect(card.classes()).toContain('metric-card--danger')
+    expect(card.classes()).not.toContain('metric-card--default')
+    wrapper.unmount()
+  })
+
+  it('CASE 4: duplicates=0, conflicts=0 displays truthful zero state with default non-warning status', async () => {
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(validPreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    const initialCard = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
+    expect(initialCard.find('.metric-card__value').text()).toBe('0')
+    expect(initialCard.find('.metric-card__subvalue').text()).toBe('0 duplicate · 0 conflict')
+    expect(initialCard.classes()).toContain('metric-card--default')
+    expect(initialCard.classes()).not.toContain('metric-card--warning')
+    expect(initialCard.classes()).not.toContain('metric-card--danger')
+
+    await selectFiles(wrapper, [file('valid.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
+    expect(card.find('.metric-card__value').text()).toBe('0')
+    expect(card.find('.metric-card__subvalue').text()).toBe('0 duplicate · 0 conflict')
+    expect(card.classes()).toContain('metric-card--default')
+    expect(card.classes()).not.toContain('metric-card--warning')
+    expect(card.classes()).not.toContain('metric-card--danger')
+    wrapper.unmount()
+  })
+
+  it('aggregates duplicates and conflicts across multiple files', async () => {
+    const multiFileConflictDuplicatePreview = {
+      ...validPreview,
+      files: [duplicateOnlyFile, conflictOnlyFile],
+      summary: {
+        ...validPreview.summary,
+        discovered_files: 2,
+        parsed_rows: 5,
+        accepted_rows: 0,
+        duplicate_rows: 2,
+        conflict_rows: 3,
+      },
+    } satisfies BatchImportPreview
+
+    fetchMock
+      .mockResolvedValueOnce(apiResponse(emptyRuns))
+      .mockResolvedValueOnce(apiResponse(multiFileConflictDuplicatePreview))
+    const wrapper = mount(DataCenterPage)
+    await flushPromises()
+
+    await selectFiles(wrapper, [file('duplicate.csv'), file('conflict.csv')])
+    await wrapper.get('[data-testid="preview-all"]').trigger('click')
+    await flushPromises()
+
+    const card = wrapper.get('[data-testid="metric-duplicates-conflicts"]')
+    expect(card.find('.metric-card__value').text()).toBe('5')
+    expect(card.find('.metric-card__subvalue').text()).toBe('2 duplicate · 3 conflict')
+    expect(card.classes()).toContain('metric-card--danger')
     wrapper.unmount()
   })
 })

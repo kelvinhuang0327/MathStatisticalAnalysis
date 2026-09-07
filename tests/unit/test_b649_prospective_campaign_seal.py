@@ -9,12 +9,18 @@ from pathlib import Path
 from typing import Final, cast
 
 import pytest
+from tools.b649_prospective_campaign_seal import (
+    main,
+    run_b649_prospective_campaign_seal,
+)
 
 from lottolab.application.b649_prospective_campaign_seal import (
     EXPECTED_BASELINE_ADAPTER_IDENTITY,
+    EXPECTED_BASELINE_ADAPTER_SOURCE_SHA256,
     EXPECTED_BASELINE_METHOD,
     EXPECTED_BASELINE_STRATEGY_ID,
     EXPECTED_CAMPAIGN_ID,
+    EXPECTED_CAMPAIGN_SPEC_SHA256,
     EXPECTED_CANDIDATE_ID,
     EXPECTED_CANDIDATE_SHIFT,
     EXPECTED_FROZEN_RESEARCH_SOURCE_HEAD,
@@ -28,7 +34,6 @@ from lottolab.application.b649_prospective_campaign_seal import (
     CampaignSpecShaMismatchError,
     CampaignTargetMismatchError,
     load_and_validate_campaign_spec,
-    run_b649_prospective_campaign_seal,
     verify_baseline_adapter_frozen_semantics,
 )
 from lottolab.application.future_draw_identity import normalized_announcement_sha256
@@ -67,6 +72,19 @@ from lottolab.infrastructure.taiwan_lottery_draw_provider import (
 _FIXED_CLOCK: Final = datetime(2026, 9, 10, 8, 0, 0, tzinfo=UTC)
 _SCHEDULED_AT: Final = datetime(2026, 9, 11, 12, 30, 0, tzinfo=UTC)
 _TARGET_DATE: Final = date(2026, 9, 11)
+
+_STATIC_CANDIDATE_PORTFOLIO: Final = [
+    [1, 2, 3, 4, 5, 6],
+    [7, 13, 14, 15, 16, 17],
+    [8, 18, 19, 20, 21, 22],
+    [9, 25, 26, 27, 28, 29],
+    [10, 34, 35, 36, 37, 38],
+    [11, 39, 40, 41, 42, 43],
+    [1, 7, 8, 9, 10, 11],
+    [2, 36, 43, 44, 45, 46],
+    [5, 23, 42, 47, 48, 49],
+    [9, 30, 31, 32, 33, 34],
+]
 
 
 def _sha256(text: str) -> str:
@@ -261,43 +279,82 @@ def _setup_synthetic_db(db_dir: Path) -> LocalDataPaths:
 
 
 @pytest.fixture
-def campaign_env(tmp_path: Path) -> dict[str, Path]:
+def campaign_env(tmp_path: Path) -> dict[str, object]:
+    """Hermetic synthetic test fixture isolated to tmp_path without .task-data."""
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
 
     # Source code mirror for frozen adapter check
     src_dir = repo_root / "src/lottolab/strategies/adapters"
     src_dir.mkdir(parents=True)
-    real_adapter = Path("src/lottolab/strategies/adapters/biglotto_wave6.py").resolve()
+    real_adapter = (
+        Path(__file__).resolve().parents[2]
+        / "src/lottolab/strategies/adapters/biglotto_wave6.py"
+    )
     (src_dir / "biglotto_wave6.py").write_bytes(real_adapter.read_bytes())
 
-    # Task data directory
-    campaign_dir = (
-        repo_root
-        / ".task-data/BRANCH2_TABU7_FIXED_K10_VS_10BET_PROSPECTIVE_104DRAW_CAMPAIGN_R1"
-    )
-    campaign_dir.mkdir(parents=True)
-    real_spec = Path(
-        ".task-data/BRANCH2_TABU7_FIXED_K10_VS_10BET_PROSPECTIVE_104DRAW_CAMPAIGN_R1/campaign_spec.json"
-    ).resolve()
-    spec_path = campaign_dir / "campaign_spec.json"
-    spec_path.write_bytes(real_spec.read_bytes())
-
-    # Ordinal 1 seal
-    ord1_dir = (
-        repo_root
-        / ".task-data/BRANCH2_TABU7_FIXED_K10_VS_10BET_DRAW086_PROSPECTIVE_SEAL_R1"
-    )
-    ord1_dir.mkdir(parents=True)
-    real_ord1 = Path(
-        ".task-data/BRANCH2_TABU7_FIXED_K10_VS_10BET_DRAW086_PROSPECTIVE_SEAL_R1/prediction_seal.json"
-    ).resolve()
-    ord1_path = ord1_dir / "prediction_seal.json"
-    ord1_path.write_bytes(real_ord1.read_bytes())
-
     # Draw seals directory
-    draw_seals_dir = campaign_dir / "draw_seals"
+    draw_seals_dir = tmp_path / "draw_seals"
     draw_seals_dir.mkdir()
+
+    # Synthetic ordinal 1 seal
+    ord1_dir = tmp_path / "ordinal_1"
+    ord1_dir.mkdir()
+    ord1_path = ord1_dir / "prediction_seal.json"
+    ord1_dict = {
+        "campaign_ordinal": 1,
+        "target_draw": "115000086",
+        "history_cutoff_draw": "115000085",
+        "candidate_id": EXPECTED_CANDIDATE_ID,
+        "candidate_portfolio": _STATIC_CANDIDATE_PORTFOLIO,
+        "baseline_method": EXPECTED_BASELINE_METHOD,
+        "baseline_strategy_id": EXPECTED_BASELINE_STRATEGY_ID,
+        "baseline_adapter_identity": EXPECTED_BASELINE_ADAPTER_IDENTITY,
+        "target_outcome_read": False,
+        "database_writes": "none",
+    }
+    ord1_bytes = json.dumps(ord1_dict, indent=2, sort_keys=True).encode("utf-8")
+    ord1_path.write_bytes(ord1_bytes)
+    ord1_sha256 = hashlib.sha256(ord1_bytes).hexdigest()
+
+    # Synthetic canonical campaign spec
+    spec_dir = tmp_path / "campaign"
+    spec_dir.mkdir()
+    spec_path = spec_dir / "campaign_spec.json"
+    spec_dict = {
+        "campaign_id": EXPECTED_CAMPAIGN_ID,
+        "frozen_source_head": EXPECTED_FROZEN_RESEARCH_SOURCE_HEAD,
+        "start_target_draw": "115000086",
+        "target_draw_count": 104,
+        "candidate": {
+            "candidate_id": EXPECTED_CANDIDATE_ID,
+            "shift": EXPECTED_CANDIDATE_SHIFT,
+            "portfolio": _STATIC_CANDIDATE_PORTFOLIO,
+        },
+        "baseline": {
+            "method": EXPECTED_BASELINE_METHOD,
+            "strategy_id": EXPECTED_BASELINE_STRATEGY_ID,
+            "adapter_identity": EXPECTED_BASELINE_ADAPTER_IDENTITY,
+            "source_authority": EXPECTED_FROZEN_RESEARCH_SOURCE_HEAD,
+            "k_ticket": 10,
+        },
+        "primary_endpoint": {
+            "metric": EXPECTED_PRIMARY_METRIC,
+        },
+        "ordinal_1": {
+            "target_draw": "115000086",
+            "history_cutoff_draw": "115000085",
+            "seal_locator": str(ord1_path),
+            "seal_sha256": ord1_sha256,
+        },
+        "path_conventions": {
+            "draw_seals_directory": str(draw_seals_dir),
+        },
+        "created_at": "2026-09-07T15:47:45+08:00",
+    }
+    spec_bytes = json.dumps(spec_dict, indent=2, sort_keys=True).encode("utf-8")
+    spec_path.write_bytes(spec_bytes)
+    spec_sha256 = hashlib.sha256(spec_bytes).hexdigest()
 
     # DB directory
     db_dir = tmp_path / "db"
@@ -308,14 +365,51 @@ def campaign_env(tmp_path: Path) -> dict[str, Path]:
     return {
         "repo_root": repo_root,
         "spec_path": spec_path,
+        "spec_sha256": spec_sha256,
         "ord1_path": ord1_path,
+        "ord1_sha256": ord1_sha256,
         "draw_seals_dir": draw_seals_dir,
         "db_dir": db_dir,
     }
 
 
-def test_campaign_spec_loading_and_constants(campaign_env: dict[str, Path]) -> None:
-    spec = load_and_validate_campaign_spec(campaign_env["spec_path"])
+def test_production_campaign_authority_pinned(campaign_env: dict[str, object]) -> None:
+    """Verify production authority constants remain strictly pinned and fail-closed."""
+    assert (
+        EXPECTED_CAMPAIGN_SPEC_SHA256
+        == "6d85c93ba7171628a21d28a96a63a6ceedb79287864f507e8ff65670b9bd0a68"
+    )
+    assert (
+        EXPECTED_FROZEN_RESEARCH_SOURCE_HEAD
+        == "0c60866e4d70f07126dba4eea30a7489934496b9"
+    )
+    assert (
+        EXPECTED_ORDINAL_1_SEAL_SHA256
+        == "8edc33ac0a95c5df101e1e206b0786f3e041912a672e64fa6a5197c29ee36247"
+    )
+    assert EXPECTED_CANDIDATE_ID == "TABU7_FIXED_K10_BRIDGE_R1"
+    assert EXPECTED_CANDIDATE_SHIFT == "SHIFT_0"
+    assert (
+        EXPECTED_BASELINE_STRATEGY_ID
+        == "legacy_biglotto__backtest_10bet_biglotto__054e85b088be"
+    )
+    assert (
+        EXPECTED_BASELINE_ADAPTER_SOURCE_SHA256
+        == "ef805d78d480758bd6104f5bab7219c38b8d85b11257e79c45cbbd16fe4007db"
+    )
+
+    # Calling with production default expected_sha256 on synthetic spec fails closed
+    spec_path = cast(Path, campaign_env["spec_path"])
+    with pytest.raises(CampaignSpecShaMismatchError):
+        load_and_validate_campaign_spec(spec_path)
+
+
+def test_campaign_spec_loading_and_constants(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    ord1_sha256 = cast(str, campaign_env["ord1_sha256"])
+
+    spec = load_and_validate_campaign_spec(spec_path, expected_sha256=spec_sha256)
     assert spec.campaign_id == EXPECTED_CAMPAIGN_ID
     assert spec.frozen_source_head == EXPECTED_FROZEN_RESEARCH_SOURCE_HEAD
     assert spec.start_target_draw == "115000086"
@@ -327,11 +421,16 @@ def test_campaign_spec_loading_and_constants(campaign_env: dict[str, Path]) -> N
     assert spec.baseline_strategy_id == EXPECTED_BASELINE_STRATEGY_ID
     assert spec.baseline_adapter_identity == EXPECTED_BASELINE_ADAPTER_IDENTITY
     assert spec.primary_metric == EXPECTED_PRIMARY_METRIC
-    assert spec.ordinal_1_seal_sha256 == EXPECTED_ORDINAL_1_SEAL_SHA256
+    assert spec.ordinal_1_seal_sha256 == ord1_sha256
 
 
-def test_campaign_spec_sha_mismatch_fails(campaign_env: dict[str, Path]) -> None:
-    spec_path = campaign_env["spec_path"]
+def test_campaign_spec_sha_mismatch_fails(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     spec_path.write_text(spec_path.read_text() + " ", encoding="utf-8")
     with pytest.raises(CampaignSpecShaMismatchError):
         run_b649_prospective_campaign_seal(
@@ -339,93 +438,135 @@ def test_campaign_spec_sha_mismatch_fails(campaign_env: dict[str, Path]) -> None
             campaign_ordinal=2,
             target_draw="115000087",
             campaign_spec_path=spec_path,
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_campaign_id_mismatch_fails(campaign_env: dict[str, Path]) -> None:
+def test_campaign_id_mismatch_fails(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     with pytest.raises(CampaignIdMismatchError):
         run_b649_prospective_campaign_seal(
             campaign_id="WRONG_CAMPAIGN_ID",
             campaign_ordinal=2,
             target_draw="115000087",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_ordinal_1_cannot_be_rewritten(campaign_env: dict[str, Path]) -> None:
+def test_ordinal_1_cannot_be_rewritten(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     with pytest.raises(CampaignOrdinalRangeError, match="ordinal 1 is sealed externally"):
         run_b649_prospective_campaign_seal(
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=1,
             target_draw="115000086",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
 @pytest.mark.parametrize("invalid_ordinal", [0, -1, 105, 999])
 def test_ordinal_out_of_range_fails(
-    campaign_env: dict[str, Path], invalid_ordinal: int
+    campaign_env: dict[str, object], invalid_ordinal: int
 ) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     with pytest.raises(CampaignOrdinalRangeError):
         run_b649_prospective_campaign_seal(
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=invalid_ordinal,
             target_draw="115000087",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_target_mismatch_fails(campaign_env: dict[str, Path]) -> None:
+def test_target_mismatch_fails(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     with pytest.raises(CampaignTargetMismatchError):
         run_b649_prospective_campaign_seal(
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=2,
             target_draw="115000099",  # Not in schedule authority
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_late_execution_fails_before_producer(campaign_env: dict[str, Path]) -> None:
+def test_late_execution_fails_before_producer(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     late_clock = datetime(2026, 9, 11, 13, 0, 0, tzinfo=UTC)  # After scheduled_at 12:30
     with pytest.raises(PredictionSealCausalityError, match="not strictly before scheduled_at"):
         run_b649_prospective_campaign_seal(
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=2,
             target_draw="115000087",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: late_clock,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
 def test_outcome_already_available_fails_before_producer(
-    campaign_env: dict[str, Path],
+    campaign_env: dict[str, object],
 ) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     # Insert outcome for 115000087 into draws table
     paths = resolve_local_data_paths(
-        environ={"LOTTOLAB_DATA_DIR": str(campaign_env["db_dir"])}
+        environ={"LOTTOLAB_DATA_DIR": str(db_dir)}
     )
     with open_database(paths, read_only=False) as conn:
         conn.execute("BEGIN IMMEDIATE")
@@ -457,15 +598,22 @@ def test_outcome_already_available_fails_before_producer(
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=2,
             target_draw="115000087",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_unsealed_preceding_ordinal_fails(campaign_env: dict[str, Path]) -> None:
+def test_unsealed_preceding_ordinal_fails(campaign_env: dict[str, object]) -> None:
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+
     # Attempt ordinal 3 when ordinal 2 has not been sealed
     with pytest.raises(
         CampaignSequenceError, match="preceding campaign ordinal 2 has not been sealed"
@@ -474,42 +622,51 @@ def test_unsealed_preceding_ordinal_fails(campaign_env: dict[str, Path]) -> None
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=3,
             target_draw="115000087",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_baseline_adapter_drift_fails(campaign_env: dict[str, Path]) -> None:
+def test_baseline_adapter_drift_fails(campaign_env: dict[str, object]) -> None:
+    repo_root = cast(Path, campaign_env["repo_root"])
     adapter_path = (
-        campaign_env["repo_root"]
+        repo_root
         / "src/lottolab/strategies/adapters/biglotto_wave6.py"
     )
     adapter_path.write_text(adapter_path.read_text() + "\n# drift\n", encoding="utf-8")
     with pytest.raises(CampaignBaselineDriftError, match="adapter source file drifted"):
-        verify_baseline_adapter_frozen_semantics(campaign_env["repo_root"])
+        verify_baseline_adapter_frozen_semantics(repo_root)
 
 
 def test_valid_seal_creation_idempotency_and_no_db_write(
-    campaign_env: dict[str, Path],
+    campaign_env: dict[str, object],
 ) -> None:
-    db_file = campaign_env["db_dir"] / "lottolab.db"
-    ord1_file = campaign_env["ord1_path"]
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
+    ord1_path = cast(Path, campaign_env["ord1_path"])
+
+    db_file = db_dir / "lottolab.db"
     db_sha_before = _sha256_file(db_file)
-    ord1_sha_before = _sha256_file(ord1_file)
+    ord1_sha_before = _sha256_file(ord1_path)
 
     # 1. Execute ordinal 2 sealing
     res: B649CampaignSealResult = run_b649_prospective_campaign_seal(
         campaign_id=EXPECTED_CAMPAIGN_ID,
         campaign_ordinal=2,
         target_draw="115000087",
-        campaign_spec_path=campaign_env["spec_path"],
-        draw_seals_dir=campaign_env["draw_seals_dir"],
-        data_directory=campaign_env["db_dir"],
-        repo_root=campaign_env["repo_root"],
+        campaign_spec_path=spec_path,
+        draw_seals_dir=draw_seals_dir,
+        data_directory=db_dir,
+        repo_root=repo_root,
         clock=lambda: _FIXED_CLOCK,
+        expected_campaign_spec_sha256=spec_sha256,
     )
 
     assert res.status == RunnablePredictionSealStatus.CREATED
@@ -571,7 +728,7 @@ def test_valid_seal_creation_idempotency_and_no_db_write(
     assert db_sha_before == db_sha_after, "database was modified during sealing!"
 
     # Verify ordinal 1 seal was NOT modified
-    ord1_sha_after = _sha256_file(ord1_file)
+    ord1_sha_after = _sha256_file(ord1_path)
     assert ord1_sha_before == ord1_sha_after, "ordinal 1 seal was modified!"
 
     # 2. Idempotent rerun
@@ -579,11 +736,12 @@ def test_valid_seal_creation_idempotency_and_no_db_write(
         campaign_id=EXPECTED_CAMPAIGN_ID,
         campaign_ordinal=2,
         target_draw="115000087",
-        campaign_spec_path=campaign_env["spec_path"],
-        draw_seals_dir=campaign_env["draw_seals_dir"],
-        data_directory=campaign_env["db_dir"],
-        repo_root=campaign_env["repo_root"],
+        campaign_spec_path=spec_path,
+        draw_seals_dir=draw_seals_dir,
+        data_directory=db_dir,
+        repo_root=repo_root,
         clock=lambda: _FIXED_CLOCK,
+        expected_campaign_spec_sha256=spec_sha256,
     )
     assert res2.status == RunnablePredictionSealStatus.EXACT_IDEMPOTENT_NO_OP
     assert res2.seal_sha256 == res.seal_sha256
@@ -598,18 +756,25 @@ def test_valid_seal_creation_idempotency_and_no_db_write(
             campaign_id=EXPECTED_CAMPAIGN_ID,
             campaign_ordinal=2,
             target_draw="115000087",
-            campaign_spec_path=campaign_env["spec_path"],
-            draw_seals_dir=campaign_env["draw_seals_dir"],
-            data_directory=campaign_env["db_dir"],
-            repo_root=campaign_env["repo_root"],
+            campaign_spec_path=spec_path,
+            draw_seals_dir=draw_seals_dir,
+            data_directory=db_dir,
+            repo_root=repo_root,
             clock=lambda: _FIXED_CLOCK,
+            expected_campaign_spec_sha256=spec_sha256,
         )
 
 
-def test_cli_main_execution(campaign_env: dict[str, Path], monkeypatch: pytest.MonkeyPatch) -> None:
+def test_cli_main_execution(
+    campaign_env: dict[str, object], monkeypatch: pytest.MonkeyPatch
+) -> None:
     import sys
 
-    from tools.b649_prospective_campaign_seal import main
+    spec_path = cast(Path, campaign_env["spec_path"])
+    spec_sha256 = cast(str, campaign_env["spec_sha256"])
+    draw_seals_dir = cast(Path, campaign_env["draw_seals_dir"])
+    db_dir = cast(Path, campaign_env["db_dir"])
+    repo_root = cast(Path, campaign_env["repo_root"])
 
     monkeypatch.setattr(
         sys,
@@ -623,14 +788,17 @@ def test_cli_main_execution(campaign_env: dict[str, Path], monkeypatch: pytest.M
             "--target-draw",
             "115000087",
             "--campaign-spec",
-            str(campaign_env["spec_path"]),
+            str(spec_path),
             "--draw-seals-dir",
-            str(campaign_env["draw_seals_dir"]),
+            str(draw_seals_dir),
             "--data-directory",
-            str(campaign_env["db_dir"]),
+            str(db_dir),
             "--repo-root",
-            str(campaign_env["repo_root"]),
+            str(repo_root),
         ],
     )
-    exit_code = main(clock=lambda: _FIXED_CLOCK)
+    exit_code = main(
+        clock=lambda: _FIXED_CLOCK,
+        expected_campaign_spec_sha256=spec_sha256,
+    )
     assert exit_code == 0

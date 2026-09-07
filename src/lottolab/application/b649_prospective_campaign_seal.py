@@ -17,7 +17,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Final, cast
+from typing import Final, Protocol, cast, runtime_checkable
 from zoneinfo import ZoneInfo
 
 from lottolab.application.future_draw_identity import ScheduledDrawOutcomeState
@@ -30,6 +30,7 @@ from lottolab.application.pre_outcome_target_operational import (
 from lottolab.application.prospective_observer import (
     PredictionConflictError,
     PredictionProducer,
+    ProspectiveObservationStore,
     big_lotto_game_contract,
 )
 from lottolab.application.prospective_prediction_seal import (
@@ -49,18 +50,6 @@ from lottolab.domain.prospective_observer import (
     ProducerFingerprint,
     ProspectiveSelection,
     TemporalProvenance,
-)
-from lottolab.infrastructure.persistence.draw_schema import (
-    DATA_DIRECTORY_ENV,
-    LocalDataPaths,
-    open_database,
-    verify_schema_read_only,
-)
-from lottolab.infrastructure.pre_outcome_target_operational import (
-    compose_pre_outcome_target_operational_service,
-)
-from lottolab.infrastructure.prospective_observer_store import (
-    FileSystemProspectiveObservationStore,
 )
 from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.adapters.biglotto_wave6 import BigLottoTenBetBacktestAdapter
@@ -132,6 +121,36 @@ class CampaignBaselineDriftError(CampaignSealRunnerError):
 
 class CampaignPreOutcomeGateError(CampaignSealRunnerError):
     """Target fails pre-outcome checks (e.g. outcome already available or late)."""
+
+
+@runtime_checkable
+class B649PersistencePort(Protocol):
+    """Port interface decoupling campaign seal application logic from persistence infrastructure."""
+
+    @property
+    def history_authority_locator(self) -> str:
+        """Return the locator string for the causal history database/store."""
+        ...
+
+    def is_outcome_present(
+        self,
+        lottery_type: LotteryType,
+        draw_number: str,
+    ) -> bool:
+        """Return True if draw outcome is already present in persistent storage."""
+        ...
+
+    def query_causal_history_rows(
+        self,
+        lottery_type: LotteryType,
+        history_cutoff_draw: str,
+    ) -> tuple[CausalDrawRow, ...]:
+        """Query causal draw rows up to history_cutoff_draw without database writes."""
+        ...
+
+    def verify_read_only_integrity(self) -> bool:
+        """Verify that the database/schema remains in a read-only valid state."""
+        ...
 
 
 def _sha256_bytes(data: bytes) -> str:
@@ -352,7 +371,12 @@ def load_and_validate_campaign_spec(
     if (
         ord1_target != "115000086"
         or ord1_history_cutoff != "115000085"
-        or ord1_sha != EXPECTED_ORDINAL_1_SEAL_SHA256
+        or _SHA256_RE.fullmatch(ord1_sha) is None
+    ):
+        raise CampaignSpecAuthorityError("ordinal_1 configuration is invalid or tampered")
+    if (
+        expected_sha256 == EXPECTED_CAMPAIGN_SPEC_SHA256
+        and ord1_sha != EXPECTED_ORDINAL_1_SEAL_SHA256
     ):
         raise CampaignSpecAuthorityError("ordinal_1 configuration is invalid or tampered")
 
@@ -554,50 +578,6 @@ def _find_seal_for_ordinal(
     )
 
 
-def _query_causal_history_rows(
-    paths: LocalDataPaths,
-    lottery_type: LotteryType,
-    history_cutoff_draw: str,
-) -> tuple[CausalDrawRow, ...]:
-    """Query causal draws from SQLite up to history_cutoff_draw without database write."""
-    with open_database(paths, read_only=True) as connection:
-        cutoff_row = connection.execute(
-            "SELECT draw_date, draw_number FROM draws WHERE lottery_type = ? AND draw_number = ?",
-            (lottery_type.value, history_cutoff_draw),
-        ).fetchone()
-        if cutoff_row is None:
-            raise CampaignSequenceError(
-                f"history cutoff draw {history_cutoff_draw} is not present in official draws"
-            )
-        cutoff_date, cutoff_num = str(cutoff_row[0]), int(cutoff_row[1])
-
-        cursor = connection.execute(
-            """
-            SELECT draw_number, draw_date, main_numbers_json
-            FROM draws
-            WHERE lottery_type = ?
-              AND (
-                  draw_date < ?
-                  OR (draw_date = ? AND CAST(draw_number AS INTEGER) <= ?)
-              )
-            ORDER BY draw_date ASC, CAST(draw_number AS INTEGER) ASC, draw_number ASC
-            """,
-            (lottery_type.value, cutoff_date, cutoff_date, cutoff_num),
-        )
-        rows: list[CausalDrawRow] = []
-        for draw_num_obj, draw_date_obj, main_json in cursor.fetchall():
-            main_list = cast(list[object], json.loads(str(main_json)))
-            numbers = tuple(int(cast(int, x)) for x in main_list)
-            rows.append(
-                CausalDrawRow(
-                    draw=str(draw_num_obj),
-                    date=str(draw_date_obj),
-                    numbers=numbers,
-                )
-            )
-        return tuple(rows)
-
-
 def _atomic_write_wrapper_seal(target_path: Path, content: str) -> None:
     target_path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp_path_str = tempfile.mkstemp(
@@ -618,16 +598,19 @@ def _atomic_write_wrapper_seal(target_path: Path, content: str) -> None:
         raise
 
 
-def run_b649_prospective_campaign_seal(
+def execute_b649_prospective_campaign_seal(
     *,
     campaign_id: str,
     campaign_ordinal: int,
     target_draw: str,
     campaign_spec_path: Path,
-    draw_seals_dir: Path | None = None,
-    data_directory: Path | None = None,
-    repo_root: Path | None = None,
+    draw_seals_dir: Path,
+    repo_root: Path,
+    registration_service: PreOutcomeTargetOperationalService,
+    observation_store: ProspectiveObservationStore,
+    persistence_port: B649PersistencePort,
     clock: Callable[[], datetime] | None = None,
+    expected_campaign_spec_sha256: str = EXPECTED_CAMPAIGN_SPEC_SHA256,
 ) -> B649CampaignSealResult:
     """Execute one prospective prediction seal for campaign ordinals 2..104.
 
@@ -648,7 +631,10 @@ def run_b649_prospective_campaign_seal(
         raise PredictionSealCausalityError("clock must return a timezone-aware UTC datetime")
 
     # 1. Load and validate campaign spec
-    spec = load_and_validate_campaign_spec(campaign_spec_path)
+    spec = load_and_validate_campaign_spec(
+        campaign_spec_path,
+        expected_sha256=expected_campaign_spec_sha256,
+    )
     if campaign_id != spec.campaign_id:
         raise CampaignIdMismatchError(
             f"supplied campaign_id {campaign_id!r} does not match spec {spec.campaign_id!r}"
@@ -668,17 +654,8 @@ def run_b649_prospective_campaign_seal(
             f"got {campaign_ordinal}"
         )
 
-    # Resolve repo root and base directories
-    resolved_repo_root = (
-        repo_root.resolve()
-        if repo_root is not None
-        else campaign_spec_path.resolve().parents[2]
-    )
-    resolved_draw_seals_dir = (
-        draw_seals_dir.resolve()
-        if draw_seals_dir is not None
-        else (resolved_repo_root / spec.draw_seals_directory).resolve()
-    )
+    resolved_repo_root = repo_root.resolve()
+    resolved_draw_seals_dir = draw_seals_dir.resolve()
 
     # 3. Verify baseline adapter frozen semantics
     verify_baseline_adapter_frozen_semantics(resolved_repo_root)
@@ -693,20 +670,8 @@ def run_b649_prospective_campaign_seal(
     )
     expected_prev_target = str(prev_seal["target_draw"])
 
-    # 5. Compose operational target authority
-    environ_map: dict[str, str] = {}
-    if data_directory is not None:
-        environ_map[DATA_DIRECTORY_ENV] = str(data_directory.resolve())
-
-    operational_comp = compose_pre_outcome_target_operational_service(
-        environ=environ_map if environ_map else None,
-        clock=selected_clock,
-    )
-    paths = operational_comp.paths
-    reader = operational_comp.service.future_draw_identity_reader
-    causal_history_authority = operational_comp.service.causal_history_authority
-
-    # 6. Verify target in schedule authority
+    # 5. Check target in schedule authority
+    reader = registration_service.future_draw_identity_reader
     scheduled_record = reader.get_scheduled_draw(LotteryType.BIG_LOTTO, target_draw)
     if scheduled_record is None:
         raise CampaignTargetMismatchError(
@@ -725,18 +690,14 @@ def run_b649_prospective_campaign_seal(
             f"which is not strictly before scheduled_at {announcement.scheduled_at.isoformat()}"
         )
 
-    # 7. Check outcome presence in database
-    with open_database(paths.local_data, read_only=True) as conn:
-        outcome_in_db = conn.execute(
-            "SELECT 1 FROM draws WHERE lottery_type = ? AND draw_number = ?",
-            (LotteryType.BIG_LOTTO.value, target_draw),
-        ).fetchone()
-        if outcome_in_db is not None:
-            raise OutcomeAlreadyAvailableError(
-                f"target draw {target_draw} outcome is already present in draws table"
-            )
+    # 6. Check outcome presence in persistence
+    if persistence_port.is_outcome_present(LotteryType.BIG_LOTTO, target_draw):
+        raise OutcomeAlreadyAvailableError(
+            f"target draw {target_draw} outcome is already present in draws table"
+        )
 
-    # 8. Resolve causal history and verify predecessor continuity
+    # 7. Resolve causal history and verify predecessor continuity
+    causal_history_authority = registration_service.causal_history_authority
     causal_history = causal_history_authority.resolve(announcement.target)
     causal_history.validate_against(announcement.target)
 
@@ -751,15 +712,14 @@ def run_b649_prospective_campaign_seal(
             f"{campaign_ordinal} requires preceding draw {expected_prev_target}"
         )
 
-    # 9. Query causal draw rows and generate baseline tickets
-    history_rows = _query_causal_history_rows(
-        paths.local_data,
+    # 8. Query causal draw rows and generate baseline tickets
+    history_rows = persistence_port.query_causal_history_rows(
         LotteryType.BIG_LOTTO,
         causal_history.last_draw_number,
     )
     if len(history_rows) != causal_history.draw_count:
         raise CampaignSequenceError(
-            f"history row count mismatch: database has {len(history_rows)}, "
+            f"history row count mismatch: persistence has {len(history_rows)}, "
             f"causal_history declares {causal_history.draw_count}"
         )
 
@@ -775,15 +735,12 @@ def run_b649_prospective_campaign_seal(
         _canonical_json_dumps([list(t) for t in baseline_tickets]).encode("utf-8")
     ).hexdigest()
 
-    # 10. Prepare candidate selections (static SHIFT_0 from spec)
+    # 9. Prepare candidate selections (static SHIFT_0 from spec)
     candidate_selections = tuple(
         ProspectiveSelection(ticket) for ticket in spec.candidate_portfolio
     )
 
-    # 11. Compose and invoke generic prospective seal service
-    observation_store = FileSystemProspectiveObservationStore(
-        resolved_draw_seals_dir / "observation_store"
-    )
+    # 10. Compose and invoke generic prospective seal service
     cohort = FrozenCohortRef(
         lottery_type=LotteryType.BIG_LOTTO,
         cohort_id=spec.campaign_id,
@@ -828,7 +785,7 @@ def run_b649_prospective_campaign_seal(
         return producer
 
     registration_adapter = _B649RegistrationAdapter(
-        operational_comp.service,
+        registration_service,
         scheduled_record.normalized_announcement_hash,
     )
     seal_service = RunnablePredictionSealService(
@@ -855,7 +812,7 @@ def run_b649_prospective_campaign_seal(
             f"does not match requested target draw {target_draw}"
         )
 
-    # 12. Build and persist campaign per-draw seal wrapper
+    # 11. Build and persist campaign per-draw seal wrapper
     wrapper_dict: dict[str, object] = {
         "baseline_adapter_identity": spec.baseline_adapter_identity,
         "baseline_method": spec.baseline_method,
@@ -872,7 +829,7 @@ def run_b649_prospective_campaign_seal(
             f"last_draw:{causal_history.last_draw_number};"
             f"count:{causal_history.draw_count}"
         ),
-        "history_authority_locator": str(paths.local_data.database),
+        "history_authority_locator": persistence_port.history_authority_locator,
         "history_cutoff_draw": causal_history.last_draw_number,
         "seal_created_at_asia_taipei": _format_asia_taipei(cycle_started_at),
         "target_draw": target_draw,
@@ -930,8 +887,8 @@ def run_b649_prospective_campaign_seal(
         final_sha256 = _sha256_bytes(content_str.encode("utf-8"))
         final_payload = wrapper_dict
 
-    # 13. Verify read-only data integrity
-    if not verify_schema_read_only(paths.local_data):
+    # 12. Verify read-only data integrity
+    if not persistence_port.verify_read_only_integrity():
         raise CampaignSealRunnerError("database schema is not in read-only valid state")
 
     return B649CampaignSealResult(
@@ -964,6 +921,7 @@ __all__ = [
     "MAX_CAMPAIGN_ORDINAL",
     "MIN_CAMPAIGN_ORDINAL",
     "B649CampaignSealResult",
+    "B649PersistencePort",
     "CampaignBaselineDriftError",
     "CampaignIdMismatchError",
     "CampaignOrdinalRangeError",
@@ -974,7 +932,7 @@ __all__ = [
     "CampaignSpecAuthorityError",
     "CampaignSpecShaMismatchError",
     "CampaignTargetMismatchError",
+    "execute_b649_prospective_campaign_seal",
     "load_and_validate_campaign_spec",
-    "run_b649_prospective_campaign_seal",
     "verify_baseline_adapter_frozen_semantics",
 ]

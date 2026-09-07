@@ -163,7 +163,9 @@ const summaryMetrics = computed(() => {
   let bestStrategy: string | null = null
   let bestDelta: number | null = null
 
-  for (const r of available) {
+  const isK10 = selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 10
+  const candidates = isK10 ? available.filter((r) => r.officialRank === 1).slice(0, 1) : available
+  for (const r of candidates) {
     if (r.officialAnyPrizeRate !== null && (bestRate === null || r.officialAnyPrizeRate > bestRate)) {
       bestRate = r.officialAnyPrizeRate
       bestStrategy = r.displayName
@@ -194,15 +196,21 @@ async function loadData(): Promise<void> {
   errorMessage.value = ''
 
   try {
+    const independentK10 = selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 10
+    const matrixRequest = fetchMultiTicketMatrix(selectedLottery.value, selectedWindow.value, fetchController.signal)
+    if (independentK10) {
+      matrixRows.value = []
+      void matrixRequest.then((rows) => { if (gen === fetchGeneration) matrixRows.value = rows }).catch(() => {})
+    }
     const [rankingResult, matrixResult] = await Promise.all([
       fetchRankingData(selectedLottery.value, selectedTicketCount.value, selectedWindow.value, fetchController.signal),
-      fetchMultiTicketMatrix(selectedLottery.value, selectedWindow.value, fetchController.signal),
+      independentK10 ? Promise.resolve([]) : matrixRequest,
     ])
 
     if (gen !== fetchGeneration) return
 
     rawRows.value = rankingResult
-    matrixRows.value = matrixResult
+    if (!independentK10) matrixRows.value = matrixResult
 
     // If a strategy was selected previously, update cross-window chart; otherwise select top ranked
     const topRow = rankingResult.find((r) => r.isAvailable && r.officialRank !== null) || rankingResult[0]
@@ -264,7 +272,7 @@ function handleSort(field: SortField): void {
     sortField.value = field
     sortDirection.value = field === 'officialRank' ? 'asc' : 'desc'
   }
-  isUserSorted.value = field !== 'officialRank' || sortDirection.value !== 'asc'
+  isUserSorted.value = (selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 10) || field !== 'officialRank' || sortDirection.value !== 'asc'
 }
 
 function resetSort(): void {

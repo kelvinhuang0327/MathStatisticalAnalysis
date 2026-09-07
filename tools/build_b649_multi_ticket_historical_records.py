@@ -9,6 +9,7 @@ from pathlib import Path
 from lottolab.infrastructure.biglotto_multi_ticket_projection_builder import (
     B649ProjectionBuildError,
     build_b649_k2_k3_projection_bytes,
+    build_b649_k10_projection_bytes,
     build_b649_projection_bytes,
 )
 
@@ -50,6 +51,9 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="New output path. Existing files are never overwritten.",
     )
+    parser.add_argument("--k10-manifest", type=Path)
+    parser.add_argument("--k10-evidence", type=Path)
+    parser.add_argument("--k10-ranking", type=Path)
     arguments = parser.parse_args(argv)
     try:
         successor_requested = any(
@@ -59,11 +63,20 @@ def main(argv: list[str] | None = None) -> int:
                 arguments.dataset_source is not None,
             )
         )
-        if successor_requested:
+        k10_requested = any((arguments.k10_manifest, arguments.k10_evidence, arguments.k10_ranking))
+        if k10_requested:
+            if successor_requested or arguments.report:
+                parser.error("K10 materialization cannot be combined with other build modes")
+            if not all((arguments.k10_manifest, arguments.k10_evidence, arguments.k10_ranking)):
+                parser.error("K10 requires --k10-manifest, --k10-evidence and --k10-ranking")
+            payload = build_b649_k10_projection_bytes(
+                arguments.k10_manifest,
+                arguments.k10_evidence,
+                arguments.k10_ranking,
+            )
+        elif successor_requested:
             if arguments.report:
-                parser.error(
-                    "--report cannot be combined with exact-native successor inputs"
-                )
+                parser.error("--report cannot be combined with exact-native successor inputs")
             if (
                 arguments.source_projection is None
                 or not arguments.replay_input

@@ -20,6 +20,7 @@ from lottolab.application.biglotto_multi_ticket_records import (
     B649ExactNativeRecord,
     B649ExactNativeRecordQuery,
     B649HistoryWindow,
+    B649K10Record,
     B649MultiTicketRecord,
     B649MultiTicketRecordQuery,
     B649SuccessCriterion,
@@ -28,6 +29,7 @@ from lottolab.application.biglotto_multi_ticket_records import (
 )
 from lottolab.application.ports import (
     B649ExactNativeRecordReaderFactory,
+    B649K10RecordReaderFactory,
     B649MultiTicketRecordReaderFactory,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import (
@@ -48,6 +50,7 @@ class B649PrefixCount(IntEnum):
 class B649ExactNativeTicketCount(IntEnum):
     TWO = 2
     THREE = 3
+    TEN = 10
 
 
 B649ReproductionStatusFilter = Literal[
@@ -213,7 +216,7 @@ class B649ExactNativeRecordView(BaseModel):
 class B649ExactNativeRecordPageResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    items: list[B649ExactNativeRecordView]
+    items: list[B649ExactNativeRecordView | B649K10Record]
     total: int
     limit: int
     offset: int
@@ -246,6 +249,7 @@ def create_b649_multi_ticket_records_router(
     catalog: FullStrategyCatalog,
     reader_factory: B649MultiTicketRecordReaderFactory | None,
     exact_native_reader_factory: B649ExactNativeRecordReaderFactory | None = None,
+    k10_reader_factory: B649K10RecordReaderFactory | None = None,
 ) -> APIRouter:
     """Expose summary and exact-selection queries without eager artifact reads."""
 
@@ -271,12 +275,8 @@ def create_b649_multi_ticket_records_router(
                 records_available = True
                 projection_sha256 = dataset.projection_sha256
                 source_report_count = dataset.source_report_count
-                metrics_available_strategy_count = (
-                    dataset.metrics_available_strategy_count
-                )
-                metrics_unavailable_strategy_count = (
-                    dataset.metrics_unavailable_strategy_count
-                )
+                metrics_available_strategy_count = dataset.metrics_available_strategy_count
+                metrics_unavailable_strategy_count = dataset.metrics_unavailable_strategy_count
         progress = catalog.progress
         return B649MultiTicketSummaryResponse(
             progress=B649ResearchProgressView(**progress.canonical_dict()),
@@ -284,9 +284,7 @@ def create_b649_multi_ticket_records_router(
             windows=list(B649_HISTORY_WINDOWS),
             success_criteria=list(B649_SUCCESS_CRITERIA),
             method_families=sorted({row.method_family for row in catalog.records}),
-            reproduction_statuses=[
-                status.value for status in B649_REPRODUCTION_STATUSES
-            ],
+            reproduction_statuses=[status.value for status in B649_REPRODUCTION_STATUSES],
             catalog_sha256=catalog.catalog_sha256,
             records_available=records_available,
             projection_sha256=projection_sha256,
@@ -353,10 +351,15 @@ def create_b649_multi_ticket_records_router(
     def exact_native_records(
         query: Annotated[B649ExactNativeRecordQueryView, Query()],
     ) -> B649ExactNativeRecordPageResponse | JSONResponse:
-        if exact_native_reader_factory is None:
-            return _exact_native_unavailable_response()
         try:
-            dataset = exact_native_reader_factory().read()
+            if query.ticket_count is B649ExactNativeTicketCount.TEN:
+                if k10_reader_factory is None:
+                    return _exact_native_unavailable_response()
+                dataset = k10_reader_factory().read(query.window)
+            else:
+                if exact_native_reader_factory is None:
+                    return _exact_native_unavailable_response()
+                dataset = exact_native_reader_factory().read()
         except Exception:
             return _exact_native_unavailable_response()
         application_query = B649ExactNativeRecordQuery(
@@ -392,8 +395,10 @@ def _record_view(record: B649MultiTicketRecord) -> B649MultiTicketRecordView:
 
 
 def _exact_native_record_view(
-    record: B649ExactNativeRecord,
-) -> B649ExactNativeRecordView:
+    record: B649ExactNativeRecord | B649K10Record,
+) -> B649ExactNativeRecordView | B649K10Record:
+    if isinstance(record, B649K10Record):
+        return record
     return B649ExactNativeRecordView.model_validate(record, from_attributes=True)
 
 

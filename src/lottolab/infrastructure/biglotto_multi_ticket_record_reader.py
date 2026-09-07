@@ -5,9 +5,12 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from dataclasses import fields
 from functools import lru_cache
 from importlib.resources import files
 from typing import cast
+
+from pydantic import TypeAdapter, ValidationError
 
 from lottolab.application.biglotto_multi_ticket_records import (
     B649_AUTHORITY_MODE_FRESH_REPRODUCTION as AUTHORITY_MODE_FRESH_REPRODUCTION,
@@ -23,6 +26,10 @@ from lottolab.application.biglotto_multi_ticket_records import (
     B649ExactNativeRecord,
     B649ExactNativeRecordDataset,
     B649HistoryWindow,
+    B649K10Provenance,
+    B649K10Record,
+    B649K10RecordDataset,
+    B649K10WindowBoundary,
     B649MultiTicketRecord,
     B649MultiTicketRecordDataset,
     B649OfficialPrizeCounts,
@@ -1081,3 +1088,215 @@ __all__ = [
     "PackagedB649ExactNativeRecordReader",
     "PackagedB649MultiTicketRecordReader",
 ]
+
+K10_PROJECTION_RESOURCE_NAME = "biglotto_exact_native_k10_115000084_records_v1.json"
+K10_PROJECTION_SCHEMA_VERSION = "B649_EXACT_NATIVE_K10_RECORDS_V1"
+K10_AUTHORITY: dict[str, object] = {
+    "authority_head": "2c861c91490df9fae0a1484b0cca1e0dd93d4a22",
+    "authority_tree": "693205beb9fb19f2a56847893d00e7dc9607b4f7",
+    "manifest_locator": (
+        '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1'
+        '15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/sealed_manifest.json'
+    ),
+    "sealed_manifest_sha256": "32dc65b424cf805b481160a8b0d88d5a838daa30ffdb31d877d2a990f4d7c47d",
+    "target_evidence_sha256": "e3e56e1e0bacc6bbb03edd3610ae2339f864f82285da00bb6723fc344f4f16c6",
+    "source_ranking_locator": (
+        '/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BIGLOTTO_1'
+        '15000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1/ranking.json'
+    ),
+    "source_ranking_sha256": "075aa7d9667e62f87612d0e5fe15958e3ab93dc6d4e023ff5a503b5a2453ea25",
+    "run_id": "BIGLOTTO_115000084_K10_EXACT_NATIVE_CANONICAL_REFRESH_R1",
+    "lottery": "BIG_LOTTO",
+    "k": 10,
+    "cutoff": "115000084",
+    "cutoff_label": "084",
+    "evidence_record_count": 4332,
+    "consumer_record_count": 8,
+    "strategy_universe": [
+        "legacy_biglotto__backtest_10bet_biglotto__054e85b088be",
+        "legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5",
+    ],
+    "producer_universe_fingerprint": (
+        '3d3afa99db61965f4db80a24beb41ad56afa790c59409661e22454acf075ae93'
+    ),
+    "producer_catalog_fingerprint": (
+        'c618e9d14692cfd23f6b08b3b103a6de64e4b3d5e47025263d3babb9fce47dba'
+    ),
+    "consumer_catalog_sha256": "9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3",
+}
+K10_WINDOW_BOUNDARIES: dict[str, dict[str, object]] = {
+    "FULL": {
+        "first_target": "96000001",
+        "first_target_date": "2007-01-02",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 2166,
+    },
+    "RECENT_300": {
+        "first_target": "113000021",
+        "first_target_date": "2024-02-16",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 300,
+    },
+    "RECENT_50": {
+        "first_target": "115000035",
+        "first_target_date": "2026-03-13",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 50,
+    },
+    "RECENT_750": {
+        "first_target": "109000027",
+        "first_target_date": "2020-03-06",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 750,
+    },
+}
+
+
+class PackagedB649K10RecordReader:
+    """Load only the tracked K10 resource, independently of the V3 resource."""
+
+    def read(self, window: B649HistoryWindow | None = None) -> B649K10RecordDataset:
+        return _read_packaged_k10_projection(window)
+
+
+@lru_cache(maxsize=5)
+def _read_packaged_k10_projection(
+    window: B649HistoryWindow | None = None,
+) -> B649K10RecordDataset:
+    try:
+        raw = files("lottolab.strategies.data").joinpath(K10_PROJECTION_RESOURCE_NAME).read_bytes()
+    except OSError as exc:
+        raise B649ExactNativeRecordProjectionError(
+            "the pinned K10 projection is unavailable"
+        ) from exc
+    return parse_b649_k10_projection(raw, window)
+
+
+def _k10_require(condition: bool, label: str) -> None:
+    if not condition:
+        raise B649ExactNativeRecordProjectionError(f"invalid K10 {label}")
+
+
+def parse_b649_k10_projection(
+    raw: bytes,
+    window: B649HistoryWindow | None = None,
+) -> B649K10RecordDataset:
+    """Validate the envelope globally and metric payloads only in the selected window."""
+    try:
+        document = _exact_native_mapping(json.loads(raw), "K10 projection")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise B649ExactNativeRecordProjectionError("invalid K10 JSON") from exc
+    _k10_require(
+        set(document) == {"projection_schema_version", "projection_sha256", "records"},
+        "projection fields",
+    )
+    _k10_require(document["projection_schema_version"] == K10_PROJECTION_SCHEMA_VERSION, "schema")
+    canonical = json.dumps(
+        {k: v for k, v in document.items() if k != "projection_sha256"},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    checksum = hashlib.sha256(canonical).hexdigest()
+    _k10_require(document["projection_sha256"] == checksum, "checksum")
+    values = document["records"]
+    _k10_require(isinstance(values, list) and len(cast(list[object], values)) == 8, "record count")
+    records = [_exact_native_mapping(v, "K10 record") for v in cast(list[object], values)]
+    universe = cast(list[str], K10_AUTHORITY["strategy_universe"])
+    expected = {(sid, w.value) for sid in universe for w in B649_HISTORY_WINDOWS}
+    identities = [(v.get("strategy_id"), v.get("window")) for v in records]
+    _k10_require(all(isinstance(s, str) and isinstance(w, str) for s, w in identities), "identity")
+    _k10_require(
+        set(identities) == expected and len(identities) == len(set(identities)), "universe"
+    )
+    catalog = load_full_strategy_catalog()
+    _k10_require(catalog.catalog_sha256 == K10_AUTHORITY["consumer_catalog_sha256"], "catalog")
+    catalog_by_id = {r.strategy_id: r for r in catalog.records}
+    positions: dict[str, int] = {}
+    result: list[B649K10Record] = []
+    adapter = TypeAdapter(B649K10Record)
+    for value in records:
+        w = str(value["window"])
+        positions[w] = positions.get(w, 0) + 1
+        _k10_require(
+            type(value.get("source_order")) is int and value["source_order"] == positions[w],
+            "source order",
+        )
+        _k10_require(value.get("provenance") == K10_AUTHORITY, "authority")
+        _k10_require(value.get("window_boundary") == K10_WINDOW_BOUNDARIES[w], "window boundary")
+        if window is not None and w != window.value:
+            continue
+        _k10_require(set(value) == {f.name for f in fields(B649K10Record)}, "record fields")
+        _k10_require(
+            set(_exact_native_mapping(value["provenance"], "provenance"))
+            == {f.name for f in fields(B649K10Provenance)},
+            "provenance fields",
+        )
+        _k10_require(
+            set(_exact_native_mapping(value["window_boundary"], "boundary"))
+            == {f.name for f in fields(B649K10WindowBoundary)},
+            "boundary fields",
+        )
+        try:
+            row = adapter.validate_json(json.dumps(value), strict=True)
+        except ValidationError as exc:
+            raise B649ExactNativeRecordProjectionError("invalid K10 record schema") from exc
+        _k10_require(row.strategy_version == "v0.1", "producer version")
+        _k10_require(row.rank == row.official_rank and (row.rank is None or row.rank > 0), "rank")
+        _k10_require(row.rank is not None or bool(row.unranked_reason), "unranked reason")
+        _k10_require(
+            row.requested_draws == row.window_boundary.observations_required, "requested draws"
+        )
+        meta = catalog_by_id[row.strategy_id]
+        for key in (
+            "legacy_method_id",
+            "source_path",
+            "method_family",
+            "reproduction_status",
+            "duplicate_alias_target",
+        ):
+            _k10_require(getattr(row, key) == getattr(meta, key), f"catalog {key}")
+        _k10_require(row.catalog_strategy_version == meta.strategy_version, "catalog version")
+        metrics = (
+            row.official_any_prize_rate,
+            row.official_random_baseline,
+            row.baseline_delta,
+            row.coverage,
+        )
+        for metric in metrics:
+            _k10_require(metric is None or _DECIMAL_18.fullmatch(metric) is not None, "decimal")
+        for count in (
+            row.evaluated_draws,
+            row.official_any_prize_numerator,
+            row.official_any_prize_denominator,
+            row.typed_replay_failures_count,
+        ):
+            _k10_require(count is None or count >= 0, "count")
+        for counts in (row.best_prize_counts, row.replay_status_counts):
+            _k10_require(counts is None or all(n >= 0 for n in counts.values()), "sparse counts")
+        if row.best_prize_counts is not None:
+            _k10_require(set(row.best_prize_counts) <= {p.upper() for p in _PRIZE_FIELDS}, "prizes")
+        if row.metric_status == "UNAVAILABLE":
+            _k10_require(
+                bool(row.unavailable_reason) and row.rank is None, "unavailable reason/rank"
+            )
+            _k10_require(
+                all(v is None for v in metrics)
+                and row.official_any_prize_numerator is None
+                and row.official_any_prize_denominator is None
+                and row.best_prize_counts is None,
+                "unavailable metrics",
+            )
+        else:
+            _k10_require(
+                all(v is not None for v in metrics)
+                and row.official_any_prize_numerator is not None
+                and row.official_any_prize_denominator is not None,
+                "available metrics",
+            )
+        result.append(row)
+    return B649K10RecordDataset(tuple(result), checksum)

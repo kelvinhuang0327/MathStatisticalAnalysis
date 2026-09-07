@@ -5,11 +5,18 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import replace
+from importlib.resources import files
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from lottolab.application.biglotto_multi_ticket_records import (
+    B649_EXACT_NATIVE_TICKET_COUNTS,
     B649HistoryWindow,
+    B649K10RecordDataset,
     B649MultiTicketRecord,
     B649MultiTicketRecordDataset,
     B649OfficialPrizeCounts,
@@ -18,6 +25,11 @@ from lottolab.application.biglotto_multi_ticket_records import (
 from lottolab.domain.biglotto_full_strategy_catalog import (
     ReproductionStatus,
     load_full_strategy_catalog,
+)
+from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K10_PROJECTION_RESOURCE_NAME,
+    B649ExactNativeRecordProjectionError,
+    PackagedB649K10RecordReader,
 )
 from lottolab.interfaces.api.app import create_app
 from lottolab.interfaces.api.b649_multi_ticket_records import (
@@ -392,3 +404,162 @@ def test_exact_native_openapi_specification() -> None:
     }
     assert parameters["ticket_count"]["required"] is True
     assert parameters["window"]["required"] is True
+
+
+@pytest.mark.parametrize("window", list(B649HistoryWindow))
+def test_k10_formal_app_preserves_every_packaged_field_and_source_order(
+    window: B649HistoryWindow,
+) -> None:
+    client = TestClient(create_app())
+    response = client.get(EXACT_NATIVE_PATH, params={"ticket_count": 10, "window": window.value})
+    assert response.status_code == 200
+    payload = response.json()
+    raw = json.loads(
+        files("lottolab.strategies.data").joinpath(K10_PROJECTION_RESOURCE_NAME).read_bytes()
+    )
+    assert payload["items"] == [r for r in raw["records"] if r["window"] == window.value]
+    assert payload["total"] == 2
+    assert set(payload) == {
+        "items",
+        "total",
+        "limit",
+        "offset",
+        "ticket_count",
+        "window",
+        "criterion",
+        "research_disclaimer",
+    }
+    assert [r["official_rank"] for r in payload["items"]] == [1, 2]
+    assert [r["source_order"] for r in payload["items"]] == [1, 2]
+    leader = payload["items"][0]["strategy_id"]
+    assert ("10bet_biglotto" in leader) == (window is B649HistoryWindow.FULL)
+    params = {"ticket_count": 10, "window": window.value, "limit": 1, "offset": 1}
+    assert client.get(EXACT_NATIVE_PATH, params=params).json()["items"] == payload["items"][1:]
+    params.update(offset=0, q=payload["items"][0]["strategy_id"])
+    assert client.get(EXACT_NATIVE_PATH, params=params).json()["items"] == payload["items"][:1]
+    params.update(q="no-such-strategy")
+    empty = client.get(EXACT_NATIVE_PATH, params=params)
+    assert empty.status_code == 200 and empty.json()["total"] == 0 and empty.json()["items"] == []
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"ticket_count": 20},
+        {"window": "bad"},
+        {"sort": "rate"},
+        {"cutoff": "115000084"},
+        {"replay": True},
+        {"limit": 0},
+        {"offset": -1},
+    ],
+)
+def test_k10_invalid_queries_are_422(params: dict[str, object]) -> None:
+    response = TestClient(create_app()).get(
+        EXACT_NATIVE_PATH, params={"ticket_count": 10, "window": "FULL", **params}
+    )
+    assert response.status_code == 422
+
+
+def test_k10_null_zero_and_unavailable_are_200_without_synthetic_rank() -> None:
+    dataset = PackagedB649K10RecordReader().read(B649HistoryWindow.FULL)
+    zero = replace(
+        dataset.records[0],
+        rank=None,
+        official_rank=None,
+        unranked_reason="PRODUCER_UNRANKED",
+        official_any_prize_numerator=0,
+        official_any_prize_rate="0.000000000000000000",
+    )
+    unavailable = replace(
+        dataset.records[1],
+        rank=None,
+        official_rank=None,
+        metric_status="UNAVAILABLE",
+        unranked_reason="PRODUCER_UNAVAILABLE",
+        unavailable_reason="FAILED_METRIC",
+        official_any_prize_rate=None,
+        official_random_baseline=None,
+        baseline_delta=None,
+        coverage=None,
+        official_any_prize_numerator=None,
+        official_any_prize_denominator=None,
+        best_prize_counts=None,
+    )
+
+    class Reader:
+        def read(self, window: B649HistoryWindow | None = None) -> B649K10RecordDataset:
+            return replace(dataset, records=(zero, unavailable))
+
+    response = TestClient(create_app(b649_k10_record_reader_factory=Reader)).get(
+        EXACT_NATIVE_PATH, params={"ticket_count": 10, "window": "FULL"}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert items[0]["official_any_prize_numerator"] == 0
+    assert items[0]["official_any_prize_rate"] == "0.000000000000000000"
+    assert items[0]["official_rank"] is None and items[0]["source_order"] == 1
+    assert items[1]["official_any_prize_rate"] is None
+    assert items[1]["unavailable_reason"] == "FAILED_METRIC"
+
+
+def test_k10_and_k2_k3_availability_are_independent() -> None:
+    def broken_factory() -> PackagedB649K10RecordReader:
+        raise B649ExactNativeRecordProjectionError("selected projection invalid")
+
+    client = TestClient(create_app(b649_k10_record_reader_factory=broken_factory))
+    assert (
+        client.get(EXACT_NATIVE_PATH, params={"ticket_count": 10, "window": "FULL"}).status_code
+        == 503
+    )
+    assert (
+        client.get(EXACT_NATIVE_PATH, params={"ticket_count": 2, "window": "FULL"}).status_code
+        == 200
+    )
+
+    app = FastAPI()
+    app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(),
+            None,
+            exact_native_reader_factory=None,
+            k10_reader_factory=PackagedB649K10RecordReader,
+        )
+    )
+    independent = TestClient(app)
+    assert (
+        independent.get(EXACT_NATIVE_PATH, params={"ticket_count": 2, "window": "FULL"}).status_code
+        == 503
+    )
+    assert (
+        independent.get(
+            EXACT_NATIVE_PATH, params={"ticket_count": 10, "window": "FULL"}
+        ).status_code
+        == 200
+    )
+    assert independent.post(EXACT_NATIVE_PATH).status_code == 405
+
+
+@pytest.mark.parametrize("ticket_count", [2, 3])
+@pytest.mark.parametrize("window", list(B649HistoryWindow))
+def test_v3_universe_all_windows_order_pagination_and_null_rank(
+    ticket_count: int, window: B649HistoryWindow
+) -> None:
+    assert B649_EXACT_NATIVE_TICKET_COUNTS == (2, 3)
+    client = TestClient(create_app())
+    items: list[dict[str, object]] = []
+    for offset in (0, 100, 200):
+        page = client.get(
+            EXACT_NATIVE_PATH,
+            params={
+                "ticket_count": ticket_count,
+                "window": window.value,
+                "limit": 100,
+                "offset": offset,
+            },
+        ).json()
+        assert page["total"] == 221
+        items.extend(page["items"])
+    assert len(items) == 221
+    assert [r["strategy_id"] for r in items] == sorted(str(r["strategy_id"]) for r in items)
+    assert all(r["official_rank"] is None and "source_order" not in r for r in items)

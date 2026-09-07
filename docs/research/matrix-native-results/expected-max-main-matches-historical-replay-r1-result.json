@@ -1,0 +1,1016 @@
+{
+  "baseline": {
+    "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+    "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+    "source_locator": {
+      "repo_relative_path": "src/lottolab/application/historical_success_random_baseline.py",
+      "symbol": "official_any_prize_probability"
+    }
+  },
+  "conclusion_boundary": {
+    "effect_detection_criterion": "DESCRIPTIVE_ONLY: no pre-existing significance or promotion criterion for this comparison was located; no such criterion is asserted here.",
+    "no_promotion_claim": "This result does not authorize promotion, ranking change, or any claim about future win rates or causal effect.",
+    "structural_vs_historical": "EXPECTED_MAX_MAIN_MATCHES_V1 is a theoretical expectation over all C(49,6) draws; the rates in `results` are historical replay frequencies under a real, finite, overlapping draw sample. Neither substitutes for the other.",
+    "window_overlap": "FULL/RECENT_750/RECENT_300/RECENT_50 are nested, overlapping windows over the same draw sample, not four independent trials."
+  },
+  "draw_authority": {
+    "draw_count_total_big_lotto": 2166,
+    "expected_main_numbers": [
+      9,
+      20,
+      23,
+      26,
+      36,
+      44
+    ],
+    "expected_special_number": 4,
+    "first_draw": {
+      "draw_date": "2007-01-02",
+      "draw_number": "96000001"
+    },
+    "last_draw": {
+      "draw_date": "2026-09-01",
+      "draw_number": "115000084"
+    },
+    "later_draws_present_in_authority": true,
+    "max_visible_draw": "115000083",
+    "resolved_path": "/Users/kelvin/Library/Application Support/LottoLab/lottolab.db",
+    "sha256_after": "e96d5acb3fd1c6862377b7294c78a0596f0d163abb1e1fe7013b50c65e3b38d4",
+    "sha256_before": "e96d5acb3fd1c6862377b7294c78a0596f0d163abb1e1fe7013b50c65e3b38d4"
+  },
+  "generated_at_utc": "2026-09-07T02:41:00.518893+00:00",
+  "input_artifact": {
+    "pinned_commit": "635a7848c54fde66360b3defb131a00933ff4658",
+    "pinned_tree": "0ddd812db3d100801fa9b8e4cff37c699623bcbc",
+    "repo_relative_path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
+    "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+  },
+  "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+  "portfolio_identity_verification": {
+    "10": {
+      "hash_reproduced": true,
+      "recomputed_via": "expected_max_main_matches_exact_1exchange_ascent.portfolio_sha256",
+      "seed_equals_terminal": false,
+      "seed_portfolio_sha256_recorded": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+      "terminal_portfolio_sha256_recorded": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5"
+    },
+    "2": {
+      "hash_reproduced": true,
+      "recomputed_via": "expected_max_main_matches_exact_1exchange_ascent.portfolio_sha256",
+      "seed_equals_terminal": true,
+      "seed_portfolio_sha256_recorded": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83",
+      "terminal_portfolio_sha256_recorded": "e0e10f5293e03f95e34a89ac7c39ad4fa4cd1d7140b283294c022d1669e9ef83"
+    },
+    "3": {
+      "hash_reproduced": true,
+      "recomputed_via": "expected_max_main_matches_exact_1exchange_ascent.portfolio_sha256",
+      "seed_equals_terminal": true,
+      "seed_portfolio_sha256_recorded": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22",
+      "terminal_portfolio_sha256_recorded": "a454b5611aa0dbc16b95b148d4b1b0256ea2d96329e88a7b22b81384df4fcb22"
+    },
+    "5": {
+      "hash_reproduced": true,
+      "recomputed_via": "expected_max_main_matches_exact_1exchange_ascent.portfolio_sha256",
+      "seed_equals_terminal": true,
+      "seed_portfolio_sha256_recorded": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87",
+      "terminal_portfolio_sha256_recorded": "ec858fe04075ee40931366c05617ad7d04d934c5f72ac35c9b74c26ba91f8d87"
+    }
+  },
+  "results": {
+    "10": {
+      "FULL": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 2.9989316611414907,
+          "success_probability_exact": {
+            "denominator": 942707014196364476825313287344196984929937907499901601,
+            "numerator": 254323249892600130540827993276285375887974960843234977
+          },
+          "success_probability_float": 0.269779736506368,
+          "terminal_minus_baseline_pp": 2.8603635318112364
+        },
+        "denominator": 2165,
+        "k": 10,
+        "pairwise_same_draw_counts": {
+          "both_success": 623,
+          "neither_success": 1493,
+          "only_seed_success": 26,
+          "only_terminal_success": 23
+        },
+        "seed": {
+          "denominator": 2165,
+          "numerator": 649,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 649
+          },
+          "rate_float": 0.2997690531177829
+        },
+        "terminal": {
+          "denominator": 2165,
+          "numerator": 646,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 646
+          },
+          "rate_float": 0.2983833718244804
+        },
+        "terminal_minus_seed": {
+          "percentage_points": -0.13856812933025403,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": -3
+          },
+          "rate_float": -0.0013856812933025404
+        },
+        "window_name": "FULL"
+      },
+      "RECENT_300": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 2.355359682696533,
+          "success_probability_exact": {
+            "denominator": 942707014196364476825313287344196984929937907499901601,
+            "numerator": 254323249892600130540827993276285375887974960843234977
+          },
+          "success_probability_float": 0.269779736506368,
+          "terminal_minus_baseline_pp": 3.3553596826965326
+        },
+        "denominator": 300,
+        "k": 10,
+        "pairwise_same_draw_counts": {
+          "both_success": 85,
+          "neither_success": 206,
+          "only_seed_success": 3,
+          "only_terminal_success": 6
+        },
+        "seed": {
+          "denominator": 300,
+          "numerator": 88,
+          "rate_exact": {
+            "denominator": 75,
+            "numerator": 22
+          },
+          "rate_float": 0.29333333333333333
+        },
+        "terminal": {
+          "denominator": 300,
+          "numerator": 91,
+          "rate_exact": {
+            "denominator": 300,
+            "numerator": 91
+          },
+          "rate_float": 0.30333333333333334
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 1.0,
+          "rate_exact": {
+            "denominator": 100,
+            "numerator": 1
+          },
+          "rate_float": 0.01
+        },
+        "window_name": "RECENT_300"
+      },
+      "RECENT_50": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 9.022026349363198,
+          "success_probability_exact": {
+            "denominator": 942707014196364476825313287344196984929937907499901601,
+            "numerator": 254323249892600130540827993276285375887974960843234977
+          },
+          "success_probability_float": 0.269779736506368,
+          "terminal_minus_baseline_pp": 9.022026349363198
+        },
+        "denominator": 50,
+        "k": 10,
+        "pairwise_same_draw_counts": {
+          "both_success": 18,
+          "neither_success": 32,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 50,
+          "numerator": 18,
+          "rate_exact": {
+            "denominator": 25,
+            "numerator": 9
+          },
+          "rate_float": 0.36
+        },
+        "terminal": {
+          "denominator": 50,
+          "numerator": 18,
+          "rate_exact": {
+            "denominator": 25,
+            "numerator": 9
+          },
+          "rate_float": 0.36
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_50"
+      },
+      "RECENT_750": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 3.688693016029866,
+          "success_probability_exact": {
+            "denominator": 942707014196364476825313287344196984929937907499901601,
+            "numerator": 254323249892600130540827993276285375887974960843234977
+          },
+          "success_probability_float": 0.269779736506368,
+          "terminal_minus_baseline_pp": 4.355359682696533
+        },
+        "denominator": 750,
+        "k": 10,
+        "pairwise_same_draw_counts": {
+          "both_success": 222,
+          "neither_success": 507,
+          "only_seed_success": 8,
+          "only_terminal_success": 13
+        },
+        "seed": {
+          "denominator": 750,
+          "numerator": 230,
+          "rate_exact": {
+            "denominator": 75,
+            "numerator": 23
+          },
+          "rate_float": 0.30666666666666664
+        },
+        "terminal": {
+          "denominator": 750,
+          "numerator": 235,
+          "rate_exact": {
+            "denominator": 150,
+            "numerator": 47
+          },
+          "rate_float": 0.31333333333333335
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.6666666666666667,
+          "rate_exact": {
+            "denominator": 150,
+            "numerator": 1
+          },
+          "rate_float": 0.006666666666666667
+        },
+        "window_name": "RECENT_750"
+      }
+    },
+    "2": {
+      "FULL": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": -0.0437464673940677,
+          "success_probability_exact": {
+            "denominator": 62355583521,
+            "numerator": 3800295197
+          },
+          "success_probability_float": 0.06094554781481828,
+          "terminal_minus_baseline_pp": -0.0437464673940677
+        },
+        "denominator": 2165,
+        "k": 2,
+        "pairwise_same_draw_counts": {
+          "both_success": 131,
+          "neither_success": 2034,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 2165,
+          "numerator": 131,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 131
+          },
+          "rate_float": 0.0605080831408776
+        },
+        "terminal": {
+          "denominator": 2165,
+          "numerator": 131,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 131
+          },
+          "rate_float": 0.0605080831408776
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "FULL"
+      },
+      "RECENT_300": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 0.9054452185181725,
+          "success_probability_exact": {
+            "denominator": 62355583521,
+            "numerator": 3800295197
+          },
+          "success_probability_float": 0.06094554781481828,
+          "terminal_minus_baseline_pp": 0.9054452185181725
+        },
+        "denominator": 300,
+        "k": 2,
+        "pairwise_same_draw_counts": {
+          "both_success": 21,
+          "neither_success": 279,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 300,
+          "numerator": 21,
+          "rate_exact": {
+            "denominator": 100,
+            "numerator": 7
+          },
+          "rate_float": 0.07
+        },
+        "terminal": {
+          "denominator": 300,
+          "numerator": 21,
+          "rate_exact": {
+            "denominator": 100,
+            "numerator": 7
+          },
+          "rate_float": 0.07
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_300"
+      },
+      "RECENT_50": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 1.9054452185181723,
+          "success_probability_exact": {
+            "denominator": 62355583521,
+            "numerator": 3800295197
+          },
+          "success_probability_float": 0.06094554781481828,
+          "terminal_minus_baseline_pp": 1.9054452185181723
+        },
+        "denominator": 50,
+        "k": 2,
+        "pairwise_same_draw_counts": {
+          "both_success": 4,
+          "neither_success": 46,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 50,
+          "numerator": 4,
+          "rate_exact": {
+            "denominator": 25,
+            "numerator": 2
+          },
+          "rate_float": 0.08
+        },
+        "terminal": {
+          "denominator": 50,
+          "numerator": 4,
+          "rate_exact": {
+            "denominator": 25,
+            "numerator": 2
+          },
+          "rate_float": 0.08
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_50"
+      },
+      "RECENT_750": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": -0.22788811481516086,
+          "success_probability_exact": {
+            "denominator": 62355583521,
+            "numerator": 3800295197
+          },
+          "success_probability_float": 0.06094554781481828,
+          "terminal_minus_baseline_pp": -0.22788811481516086
+        },
+        "denominator": 750,
+        "k": 2,
+        "pairwise_same_draw_counts": {
+          "both_success": 44,
+          "neither_success": 706,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 750,
+          "numerator": 44,
+          "rate_exact": {
+            "denominator": 375,
+            "numerator": 22
+          },
+          "rate_float": 0.058666666666666666
+        },
+        "terminal": {
+          "denominator": 750,
+          "numerator": 44,
+          "rate_exact": {
+            "denominator": 375,
+            "numerator": 22
+          },
+          "rate_float": 0.058666666666666666
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_750"
+      }
+    },
+    "3": {
+      "FULL": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": -0.17892458622017315,
+          "success_probability_exact": {
+            "denominator": 15570875116612431,
+            "numerator": 1401549337394263
+          },
+          "success_probability_float": 0.09001095486913013,
+          "terminal_minus_baseline_pp": -0.17892458622017315
+        },
+        "denominator": 2165,
+        "k": 3,
+        "pairwise_same_draw_counts": {
+          "both_success": 191,
+          "neither_success": 1974,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 2165,
+          "numerator": 191,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 191
+          },
+          "rate_float": 0.08822170900692841
+        },
+        "terminal": {
+          "denominator": 2165,
+          "numerator": 191,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 191
+          },
+          "rate_float": 0.08822170900692841
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "FULL"
+      },
+      "RECENT_300": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 1.3322378464203195,
+          "success_probability_exact": {
+            "denominator": 15570875116612431,
+            "numerator": 1401549337394263
+          },
+          "success_probability_float": 0.09001095486913013,
+          "terminal_minus_baseline_pp": 1.3322378464203195
+        },
+        "denominator": 300,
+        "k": 3,
+        "pairwise_same_draw_counts": {
+          "both_success": 31,
+          "neither_success": 269,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 300,
+          "numerator": 31,
+          "rate_exact": {
+            "denominator": 300,
+            "numerator": 31
+          },
+          "rate_float": 0.10333333333333333
+        },
+        "terminal": {
+          "denominator": 300,
+          "numerator": 31,
+          "rate_exact": {
+            "denominator": 300,
+            "numerator": 31
+          },
+          "rate_float": 0.10333333333333333
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_300"
+      },
+      "RECENT_50": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 2.9989045130869862,
+          "success_probability_exact": {
+            "denominator": 15570875116612431,
+            "numerator": 1401549337394263
+          },
+          "success_probability_float": 0.09001095486913013,
+          "terminal_minus_baseline_pp": 2.9989045130869862
+        },
+        "denominator": 50,
+        "k": 3,
+        "pairwise_same_draw_counts": {
+          "both_success": 6,
+          "neither_success": 44,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 50,
+          "numerator": 6,
+          "rate_exact": {
+            "denominator": 25,
+            "numerator": 3
+          },
+          "rate_float": 0.12
+        },
+        "terminal": {
+          "denominator": 50,
+          "numerator": 6,
+          "rate_exact": {
+            "denominator": 25,
+            "numerator": 3
+          },
+          "rate_float": 0.12
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_50"
+      },
+      "RECENT_750": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 0.33223784642031956,
+          "success_probability_exact": {
+            "denominator": 15570875116612431,
+            "numerator": 1401549337394263
+          },
+          "success_probability_float": 0.09001095486913013,
+          "terminal_minus_baseline_pp": 0.33223784642031956
+        },
+        "denominator": 750,
+        "k": 3,
+        "pairwise_same_draw_counts": {
+          "both_success": 70,
+          "neither_success": 680,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 750,
+          "numerator": 70,
+          "rate_exact": {
+            "denominator": 75,
+            "numerator": 7
+          },
+          "rate_float": 0.09333333333333334
+        },
+        "terminal": {
+          "denominator": 750,
+          "numerator": 70,
+          "rate_exact": {
+            "denominator": 75,
+            "numerator": 7
+          },
+          "rate_float": 0.09333333333333334
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_750"
+      }
+    },
+    "5": {
+      "FULL": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 0.27971626532574323,
+          "success_probability_exact": {
+            "denominator": 970931003828987055807349551,
+            "numerator": 141242047470181261268279119
+          },
+          "success_probability_float": 0.1454707357301144,
+          "terminal_minus_baseline_pp": 0.27971626532574323
+        },
+        "denominator": 2165,
+        "k": 5,
+        "pairwise_same_draw_counts": {
+          "both_success": 321,
+          "neither_success": 1844,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 2165,
+          "numerator": 321,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 321
+          },
+          "rate_float": 0.14826789838337182
+        },
+        "terminal": {
+          "denominator": 2165,
+          "numerator": 321,
+          "rate_exact": {
+            "denominator": 2165,
+            "numerator": 321
+          },
+          "rate_float": 0.14826789838337182
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "FULL"
+      },
+      "RECENT_300": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 2.786259760321894,
+          "success_probability_exact": {
+            "denominator": 970931003828987055807349551,
+            "numerator": 141242047470181261268279119
+          },
+          "success_probability_float": 0.1454707357301144,
+          "terminal_minus_baseline_pp": 2.786259760321894
+        },
+        "denominator": 300,
+        "k": 5,
+        "pairwise_same_draw_counts": {
+          "both_success": 52,
+          "neither_success": 248,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 300,
+          "numerator": 52,
+          "rate_exact": {
+            "denominator": 75,
+            "numerator": 13
+          },
+          "rate_float": 0.17333333333333334
+        },
+        "terminal": {
+          "denominator": 300,
+          "numerator": 52,
+          "rate_exact": {
+            "denominator": 75,
+            "numerator": 13
+          },
+          "rate_float": 0.17333333333333334
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_300"
+      },
+      "RECENT_50": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 7.452926426988562,
+          "success_probability_exact": {
+            "denominator": 970931003828987055807349551,
+            "numerator": 141242047470181261268279119
+          },
+          "success_probability_float": 0.1454707357301144,
+          "terminal_minus_baseline_pp": 7.452926426988562
+        },
+        "denominator": 50,
+        "k": 5,
+        "pairwise_same_draw_counts": {
+          "both_success": 11,
+          "neither_success": 39,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 50,
+          "numerator": 11,
+          "rate_exact": {
+            "denominator": 50,
+            "numerator": 11
+          },
+          "rate_float": 0.22
+        },
+        "terminal": {
+          "denominator": 50,
+          "numerator": 11,
+          "rate_exact": {
+            "denominator": 50,
+            "numerator": 11
+          },
+          "rate_float": 0.22
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_50"
+      },
+      "RECENT_750": {
+        "baseline": {
+          "applicable": true,
+          "event_id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+          "kind": "EXACT_UNIFORM_IID_LEGAL_TICKET_WITH_REPLACEMENT",
+          "policy_version": "BIG_LOTTO_OFFICIAL_ANY_PRIZE_RANDOM_BASELINE_R1",
+          "seed_minus_baseline_pp": 1.186259760321894,
+          "success_probability_exact": {
+            "denominator": 970931003828987055807349551,
+            "numerator": 141242047470181261268279119
+          },
+          "success_probability_float": 0.1454707357301144,
+          "terminal_minus_baseline_pp": 1.186259760321894
+        },
+        "denominator": 750,
+        "k": 5,
+        "pairwise_same_draw_counts": {
+          "both_success": 118,
+          "neither_success": 632,
+          "only_seed_success": 0,
+          "only_terminal_success": 0
+        },
+        "seed": {
+          "denominator": 750,
+          "numerator": 118,
+          "rate_exact": {
+            "denominator": 375,
+            "numerator": 59
+          },
+          "rate_float": 0.15733333333333333
+        },
+        "terminal": {
+          "denominator": 750,
+          "numerator": 118,
+          "rate_exact": {
+            "denominator": 375,
+            "numerator": 59
+          },
+          "rate_float": 0.15733333333333333
+        },
+        "terminal_minus_seed": {
+          "percentage_points": 0.0,
+          "rate_exact": {
+            "denominator": 1,
+            "numerator": 0
+          },
+          "rate_float": 0.0
+        },
+        "window_name": "RECENT_750"
+      }
+    }
+  },
+  "schema_version": "1.0.0",
+  "structural_score_reference": {
+    "10": {
+      "delta_seed_to_terminal": {
+        "denominator": 1747977,
+        "exact": "3560/1747977",
+        "numerator": 3560
+      },
+      "note": "cited verbatim from the pinned artifact; not recomputed by this replay",
+      "seed_equals_terminal": false,
+      "seed_expected_max": {
+        "denominator": 166474,
+        "exact": "351149/166474",
+        "numerator": 351149
+      },
+      "terminal_expected_max": {
+        "denominator": 3495954,
+        "exact": "7381249/3495954",
+        "numerator": 7381249
+      }
+    },
+    "2": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "note": "cited verbatim from the pinned artifact; not recomputed by this replay",
+      "seed_equals_terminal": true,
+      "seed_expected_max": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      },
+      "terminal_expected_max": {
+        "denominator": 582659,
+        "exact": "677444/582659",
+        "numerator": 677444
+      }
+    },
+    "3": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "note": "cited verbatim from the pinned artifact; not recomputed by this replay",
+      "seed_equals_terminal": true,
+      "seed_expected_max": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      },
+      "terminal_expected_max": {
+        "denominator": 1165318,
+        "exact": "1657533/1165318",
+        "numerator": 1657533
+      }
+    },
+    "5": {
+      "delta_seed_to_terminal": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "note": "cited verbatim from the pinned artifact; not recomputed by this replay",
+      "seed_equals_terminal": true,
+      "seed_expected_max": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      },
+      "terminal_expected_max": {
+        "denominator": 25333,
+        "exact": "43822/25333",
+        "numerator": 43822
+      }
+    }
+  },
+  "success_event": {
+    "definition": "any ticket in the fixed k-ticket portfolio wins an official BIG_LOTTO prize tier against the actual historical draw",
+    "evaluator_locator": {
+      "repo_relative_path": "src/lottolab/domain/prize_evaluation.py",
+      "symbol": "evaluate_lottery_prize"
+    },
+    "id": "BIG_LOTTO_OFFICIAL_ANY_PRIZE",
+    "reused_from": "lottolab.application.use_cases.replay_exact_native_targets._complete_row official_any_prize field (same BIG_LOTTO exact-native k5/k10/k20 replay lineage)"
+  },
+  "task_id": "EXPECTED_MAX_MAIN_MATCHES_HISTORICAL_REPLAY_R1",
+  "windows": {
+    "FULL": {
+      "draw_numbers_sha256": "620fe484658d6d0e4b2df61dd63514b2430a6365e7dfde7b9d05f921138ea57b",
+      "first_target": "96000001",
+      "first_target_date": "2007-01-02",
+      "last_target": "115000083",
+      "last_target_date": "2026-08-28",
+      "observations_required": 2165,
+      "requested_size": null
+    },
+    "RECENT_300": {
+      "draw_numbers_sha256": "042a0eaaf0f80fa1828a36d124ce9e53b5215f5a6b5fc08590a47d3e495834cd",
+      "first_target": "113000020",
+      "first_target_date": "2024-02-15",
+      "last_target": "115000083",
+      "last_target_date": "2026-08-28",
+      "observations_required": 300,
+      "requested_size": 300
+    },
+    "RECENT_50": {
+      "draw_numbers_sha256": "2cec3bd53bcbf6ecabda2aef1166d8db214aa1ba82da3b109b68b50c0bf6adf1",
+      "first_target": "115000034",
+      "first_target_date": "2026-03-10",
+      "last_target": "115000083",
+      "last_target_date": "2026-08-28",
+      "observations_required": 50,
+      "requested_size": 50
+    },
+    "RECENT_750": {
+      "draw_numbers_sha256": "44e6de5d4fa92431c66324541e74ff89597afadc0da8a01660b5c37f460f76b8",
+      "first_target": "109000026",
+      "first_target_date": "2020-03-03",
+      "last_target": "115000083",
+      "last_target_date": "2026-08-28",
+      "observations_required": 750,
+      "requested_size": 750
+    }
+  }
+}

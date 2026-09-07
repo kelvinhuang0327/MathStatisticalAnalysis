@@ -1,6 +1,19 @@
 import { readFileSync } from 'node:fs'
-import type { B649K10Record } from '../src/api/b649MultiTicketRecords'
+import type { B649K5Record, B649K5RecordPage, B649K10Record } from '../src/api/b649MultiTicketRecords'
 
+const k5Projection = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k5_115000084_records_v1.json', 'utf8'))
+const k5Packaged = k5Projection.records as B649K5Record[]
+function k5Page(window: string, records = k5Packaged): B649K5RecordPage {
+  const items = records.filter((r) => r.window === window)
+  return {
+    items, total: items.length, limit: 100, offset: 0, ticket_count: 5,
+    window: window as B649K5RecordPage['window'], criterion: 'OFFICIAL_ANY_PRIZE',
+    research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。',
+    projection_sha256: k5Projection.projection_sha256, provenance: k5Projection.provenance,
+    window_boundary: k5Packaged.find((r) => r.window === window)!.window_boundary,
+    ties: k5Projection.ties_by_window[window],
+  }
+}
 const k10Packaged = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k10_115000084_records_v1.json', 'utf8')).records as B649K10Record[]
 function k10Page(window: string, records = k10Packaged) {
   const items = records.filter((r) => r.window === window)
@@ -22,6 +35,7 @@ import {
   formatRatePercentage,
   getWarningMeta,
   parseNumberString,
+  transformB649K5ToRankingRow,
   transformB649K10ToRankingRow,
 } from '../src/api/rankingMatrix'
 
@@ -224,6 +238,7 @@ describe('rankingMatrix API and utilities', () => {
           const urlObj = new URL(url, 'http://localhost')
           const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
           const win = urlObj.searchParams.get('window') || 'RECENT_300'
+          if (tc === 5) return Promise.resolve(new Response(JSON.stringify(k5Page(win))))
           if (tc === 10) return Promise.resolve(new Response(JSON.stringify(k10Page(win))))
           return Promise.resolve({
             ok: true,
@@ -322,15 +337,14 @@ describe('rankingMatrix API and utilities', () => {
       vi.unstubAllGlobals()
     })
 
-    it('loads B649 ranking rows for 5 tickets without recalculating rank or rates', async () => {
+    it('loads all five published K5 strategies including the uncatalogued composite', async () => {
       const rows = await fetchRankingData('BIG_LOTTO', 5, 'RECENT_300')
-      expect(rows.length).toBe(1)
-      expect(rows[0]?.strategyId).toBe('strat_1')
-      expect(rows[0]?.displayName).toBe('Strategy One')
-      expect(rows[0]?.officialRank).toBe(1)
-      expect(rows[0]?.officialAnyPrizeRateFormatted).toBe('30.00%')
-      expect(rows[0]?.baselineDeltaFormatted).toBe('+8.00%')
-      expect(rows[0]?.bestOfficialPrize).toBe('頭獎 (1)')
+      const published = k5Packaged.filter((r) => r.window === 'RECENT_300')
+      expect(rows.map((r) => r.k5Record)).toEqual(published)
+      expect(rows).toHaveLength(5)
+      expect(rows.find((r) => r.strategyId.startsWith('legacy_composite__'))?.isAvailable).toBe(true)
+      expect(rows[0]?.officialAnyPrizeRateFormatted).toBe('15.67%')
+      expect(fetchMock.mock.calls.every(([url]) => String(url).includes('b649-exact-native-records'))).toBe(true)
     })
 
     it('loads B649 ranking rows for 2 and 3 exact-native tickets with formal rank remaining null', async () => {
@@ -361,15 +375,18 @@ describe('rankingMatrix API and utilities', () => {
 
     it('builds multi-ticket matrix with 2, 3, 5, 10, 20 cells', async () => {
       const matrix = await fetchMultiTicketMatrix('BIG_LOTTO', 'RECENT_300')
-      expect(matrix.length).toBe(4)
+      expect(matrix.length).toBe(9)
       const row = matrix.find((r) => r.strategyId === 'strat_1')!
       expect(row.cells[2].isAvailable).toBe(true)
       expect(row.cells[2].officialRank).toBeNull()
       expect(row.cells[2].officialAnyPrizeRateFormatted).toBe('6.00%')
       expect(row.cells[3].isAvailable).toBe(true)
       expect(row.cells[3].officialRank).toBeNull()
-      expect(row.cells[5].isAvailable).toBe(true)
-      expect(row.cells[5].officialRank).toBe(1)
+      expect(row.cells[5].isAvailable).toBe(false)
+      expect(row.cells[5].officialRank).toBeNull()
+      for (const record of k5Packaged.filter((r) => r.window === 'RECENT_300')) {
+        expect(matrix.find((r) => r.strategyId === record.strategy_id)!.cells[5].k5Record).toEqual(record)
+      }
       for (const record of k10Packaged.filter((r) => r.window === 'RECENT_300')) {
         const cell = matrix.find((r) => r.strategyId === record.strategy_id)!.cells[10]
         const mapped = transformB649K10ToRankingRow(record)
@@ -429,5 +446,78 @@ describe('sealed K10 authority', () => {
     await expect(fetchRankingData('BIG_LOTTO', 10, 'FULL')).rejects.toThrow()
     expect(mock).toHaveBeenCalledTimes(1)
     expect(String(mock.mock.calls[0]?.[0])).toContain('ticket_count=10')
+  })
+})
+
+
+describe('sealed K5 authority', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  it.each(CANONICAL_WINDOWS)('loads %s before legacy admission paths and retains every producer value', async (window) => {
+    const calls: string[] = []
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = String(input); calls.push(url)
+      if (url.includes('b649-exact-native-records') && url.includes('ticket_count=5')) return new Response(JSON.stringify(k5Page(window)))
+      return new Response('{}', { status: 503 })
+    }))
+    const rows = await fetchRankingData('BIG_LOTTO', 5, window)
+    const expected = k5Packaged.filter((r) => r.window === window)
+    expect(rows.map((r) => r.k5Record)).toEqual(expected)
+    expect(rows.map((r) => r.officialRank)).toEqual(expected.map((r) => r.rank))
+    expect(rows.map((r) => r.rawRank)).toEqual(expected.map((r) => r.rank))
+    expect(rows.map((r) => r.position)).toEqual([1, 2, 3, 4, 5])
+    expect(rows.map((r) => r.sourceOrder)).toEqual([1, 2, 3, 4, 5])
+    expect(rows.every((r) => r.isAvailable)).toBe(true)
+    expect(rows.every((r) => JSON.stringify(r.producerTies) === JSON.stringify(k5Projection.ties_by_window[window]))).toBe(true)
+    expect(calls).toHaveLength(1)
+    expect(calls[0]).toContain('ticket_count=5')
+  })
+  it('preserves published zero, unavailable reason and sparse prize counts', () => {
+    const source = k5Packaged[0]!
+    const zero = transformB649K5ToRankingRow({ ...source, official_any_prize_rate: '0.000000000000000000', official_any_prize_numerator: 0, best_prize_counts: { GENERAL: 0 } })
+    expect(zero.officialAnyPrizeRateFormatted).toBe('0.00%')
+    expect(zero.successes).toBe(0)
+    expect(zero.k5Record?.best_prize_counts).toEqual({ GENERAL: 0 })
+    expect(zero.k5Record?.typed_replay_failures_count).toBe(500)
+    expect(zero.isAvailable).toBe(true)
+    const unavailable = transformB649K5ToRankingRow({ ...source, metric_status: 'UNAVAILABLE', metric_unavailable_reason: 'EXECUTION_FAILURE', official_rank: null, rank: null, official_any_prize_rate: null, official_any_prize_numerator: null, official_any_prize_denominator: null, official_random_baseline: null, baseline_delta: null, coverage: null, best_prize_counts: null })
+    expect(unavailable.officialAnyPrizeRateFormatted).toBe('Unavailable')
+    expect(unavailable.successes).toBeNull()
+    expect(unavailable.bestOfficialPrize).toBe('Unavailable')
+    expect(unavailable.unrankedReason).toBe('EXECUTION_FAILURE')
+  })
+  it('uses K5 authority for cross-window points including the composite leader', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      expect(url.pathname).toBe('/api/v1/b649-exact-native-records')
+      expect(url.searchParams.get('ticket_count')).toBe('5')
+      return new Response(JSON.stringify(k5Page(url.searchParams.get('window')!)))
+    }))
+    const sid = 'legacy_composite__quick_predict_5bet_ts3_markov_freqort'
+    const result = await fetchCrossWindowData('BIG_LOTTO', 5, sid, 'Composite')
+    expect(result.points.map((p) => p.k5Record)).toEqual(CANONICAL_WINDOWS.map((w) => k5Packaged.find((r) => r.window === w && r.strategy_id === sid)))
+    expect(result.points[1]?.officialRank).toBe(1)
+  })
+  it.each([503, 422])('never falls back when K5 returns %s', async (status) => {
+    const mock = vi.fn<typeof fetch>().mockResolvedValue(new Response('{}', { status }))
+    vi.stubGlobal('fetch', mock)
+    await expect(fetchRankingData('BIG_LOTTO', 5, 'FULL')).rejects.toThrow()
+    expect(mock).toHaveBeenCalledTimes(1)
+    expect(String(mock.mock.calls[0]?.[0])).toContain('ticket_count=5')
+  })
+  it('rejects a legacy or K10 envelope on the K5 route', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockResolvedValue(new Response(JSON.stringify(k10Page('FULL')))))
+    await expect(fetchRankingData('BIG_LOTTO', 5, 'FULL')).rejects.toThrow('Invalid K5 authority response')
+  })
+  it('paginates without renumbering ties or publication order', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>().mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      const page = k5Page('RECENT_50')
+      const offset = Number(url.searchParams.get('offset'))
+      return new Response(JSON.stringify({ ...page, offset, limit: 2, items: page.items.slice(offset, offset + 2) }))
+    }))
+    const rows = await fetchRankingData('BIG_LOTTO', 5, 'RECENT_50')
+    expect(rows.map((r) => r.officialRank)).toEqual([1, 2, 2, 2, 5])
+    expect(rows.map((r) => r.sourceOrder)).toEqual([1, 2, 3, 4, 5])
+    expect(rows[4]?.producerTies).toEqual(k5Projection.ties_by_window.RECENT_50)
   })
 })

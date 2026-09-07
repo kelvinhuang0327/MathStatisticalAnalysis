@@ -16,6 +16,7 @@ from fastapi.testclient import TestClient
 from lottolab.application.biglotto_multi_ticket_records import (
     B649_EXACT_NATIVE_TICKET_COUNTS,
     B649HistoryWindow,
+    B649K5RecordDataset,
     B649K10RecordDataset,
     B649MultiTicketRecord,
     B649MultiTicketRecordDataset,
@@ -27,8 +28,10 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
     load_full_strategy_catalog,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K5_PROJECTION_RESOURCE_NAME,
     K10_PROJECTION_RESOURCE_NAME,
     B649ExactNativeRecordProjectionError,
+    PackagedB649K5RecordReader,
     PackagedB649K10RecordReader,
 )
 from lottolab.interfaces.api.app import create_app
@@ -343,12 +346,12 @@ def test_exact_native_records_api_live_k2_k3() -> None:
 def test_exact_native_records_validation_errors() -> None:
     client = TestClient(create_app())
 
-    # Disallowed ticket_count (5 is legacy prefix count, not exact native 2 or 3)
-    res_5 = client.get(
+    # Disallowed ticket_count (20 remains legacy prefix only)
+    res_20 = client.get(
         EXACT_NATIVE_PATH,
-        params={"ticket_count": 5, "window": "RECENT_300"},
+        params={"ticket_count": 20, "window": "RECENT_300"},
     )
-    assert res_5.status_code == 422
+    assert res_20.status_code == 422
 
     # Disallowed ticket_count (1)
     res_1 = client.get(
@@ -563,3 +566,186 @@ def test_v3_universe_all_windows_order_pagination_and_null_rank(
     assert len(items) == 221
     assert [r["strategy_id"] for r in items] == sorted(str(r["strategy_id"]) for r in items)
     assert all(r["official_rank"] is None and "source_order" not in r for r in items)
+
+
+@pytest.mark.parametrize("window", list(B649HistoryWindow))
+def test_k5_api_preserves_complete_publication_and_filtered_ties(window: B649HistoryWindow) -> None:
+    client = TestClient(create_app())
+    params: dict[str, object] = {"ticket_count": 5, "window": window.value}
+    response = client.get(EXACT_NATIVE_PATH, params=params)
+    assert response.status_code == 200
+    page = response.json()
+    document = json.loads(
+        files("lottolab.strategies.data").joinpath(K5_PROJECTION_RESOURCE_NAME).read_bytes()
+    )
+    expected = [r for r in document["records"] if r["window"] == window.value]
+    assert page["items"] == expected
+    assert page["total"] == 5 and page["ticket_count"] == 5
+    assert page["projection_sha256"] == document["projection_sha256"]
+    assert page["provenance"] == document["provenance"]
+    assert page["window_boundary"] == expected[0]["window_boundary"]
+    assert page["ties"] == document["ties_by_window"][window.value]
+    assert page["criterion"] == "OFFICIAL_ANY_PRIZE"
+    for offset in range(5):
+        filtered = client.get(
+            EXACT_NATIVE_PATH, params={**params, "limit": 1, "offset": offset}
+        ).json()
+        assert filtered["items"] == expected[offset : offset + 1]
+        assert filtered["ties"] == page["ties"]
+    composite = next(r for r in expected if r["strategy_id"].startswith("legacy_composite__"))
+    assert composite["reproduction_status"] is composite["method_family"] is None
+    result = client.get(
+        EXACT_NATIVE_PATH, params={**params, "q": composite["strategy_id"].upper()}
+    ).json()
+    assert result["items"] == [composite] and result["ties"] == page["ties"]
+    enriched = next(r for r in expected if r["method_family"] is not None)
+    for key in ("method_family", "reproduction_status"):
+        result = client.get(EXACT_NATIVE_PATH, params={**params, key: enriched[key]}).json()
+        assert result["items"] == [r for r in expected if r[key] == enriched[key]]
+        assert composite not in result["items"]
+    for key in ("legacy_method_id", "source_path"):
+        result = client.get(EXACT_NATIVE_PATH, params={**params, "q": enriched[key].upper()}).json()
+        assert result["items"] == [
+            r
+            for r in expected
+            if enriched[key].casefold()
+            in " ".join(
+                r[k] or "" for k in ("strategy_id", "legacy_method_id", "source_path")
+            ).casefold()
+        ]
+    for filters in ({"q": "unknown"}, {"method_family": "no-such-method-family"}, {"offset": 5}):
+        empty = client.get(EXACT_NATIVE_PATH, params={**params, **filters})
+        assert empty.status_code == 200 and empty.json()["items"] == []
+        assert empty.json()["ties"] == page["ties"]
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"ticket_count": 4},
+        {"window": "bad"},
+        {"limit": 0},
+        {"limit": 101},
+        {"offset": -1},
+        {"criterion": "M3_PLUS"},
+        {"prefix_count": 5},
+        {"q": ""},
+        {"method_family": ""},
+        {"reproduction_status": "AVAILABLE"},
+        {"sort": "rank"},
+    ],
+)
+def test_k5_invalid_query_is_422(params: dict[str, object]) -> None:
+    response = TestClient(create_app()).get(
+        EXACT_NATIVE_PATH, params={"ticket_count": 5, "window": "FULL", **params}
+    )
+    assert response.status_code == 422
+
+
+def test_k5_availability_is_independent_in_both_directions() -> None:
+    def broken() -> PackagedB649K5RecordReader:
+        raise B649ExactNativeRecordProjectionError("invalid packaged K5")
+
+    client = TestClient(create_app(b649_k5_record_reader_factory=broken))
+    assert (
+        client.get(EXACT_NATIVE_PATH, params={"ticket_count": 5, "window": "FULL"}).status_code
+        == 503
+    )
+    for k in (2, 3, 10):
+        assert (
+            client.get(EXACT_NATIVE_PATH, params={"ticket_count": k, "window": "FULL"}).status_code
+            == 200
+        )
+    assert (
+        client.get(
+            PATH, params={"prefix_count": 20, "window": "FULL", "criterion": "M3_PLUS"}
+        ).status_code
+        == 200
+    )
+    app = FastAPI()
+    app.include_router(
+        create_b649_multi_ticket_records_router(
+            load_full_strategy_catalog(), None, k5_reader_factory=PackagedB649K5RecordReader
+        )
+    )
+    isolated = TestClient(app)
+    assert (
+        isolated.get(EXACT_NATIVE_PATH, params={"ticket_count": 5, "window": "FULL"}).status_code
+        == 200
+    )
+    for k in (2, 3, 10):
+        assert (
+            isolated.get(
+                EXACT_NATIVE_PATH, params={"ticket_count": k, "window": "FULL"}
+            ).status_code
+            == 503
+        )
+    assert (
+        isolated.get(
+            PATH, params={"prefix_count": 20, "window": "FULL", "criterion": "M3_PLUS"}
+        ).status_code
+        == 503
+    )
+
+
+def test_k5_valid_unavailable_row_and_zero_are_200() -> None:
+    dataset = PackagedB649K5RecordReader().read(B649HistoryWindow.FULL)
+    zero = replace(
+        dataset.records[0],
+        official_any_prize_numerator=0,
+        official_any_prize_rate="0.000000000000000000",
+    )
+    unavailable = replace(
+        dataset.records[1],
+        rank=None,
+        official_rank=None,
+        metric_status="UNAVAILABLE",
+        metric_unavailable_reason="EXECUTION_FAILURE",
+        official_any_prize_rate=None,
+        official_random_baseline=None,
+        baseline_delta=None,
+        coverage=None,
+        official_any_prize_numerator=None,
+        official_any_prize_denominator=None,
+        best_prize_counts=None,
+    )
+
+    class Reader:
+        def read(self, window: B649HistoryWindow | None = None) -> B649K5RecordDataset:
+            return replace(dataset, records=(zero, unavailable))
+
+    response = TestClient(create_app(b649_k5_record_reader_factory=Reader)).get(
+        EXACT_NATIVE_PATH, params={"ticket_count": 5, "window": "FULL"}
+    )
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert items[0]["official_any_prize_rate"] == "0.000000000000000000"
+    assert items[0]["official_any_prize_numerator"] == 0
+    assert items[0]["typed_replay_failures_count"] == 500
+    assert items[1]["official_any_prize_rate"] is None
+    assert items[1]["metric_unavailable_reason"] == "EXECUTION_FAILURE"
+
+
+@pytest.mark.parametrize("failure", ["missing", "invalid"])
+def test_k5_packaged_resource_failure_is_503(monkeypatch: pytest.MonkeyPatch, failure: str) -> None:
+    from pathlib import Path
+
+    import lottolab.infrastructure.biglotto_multi_ticket_record_reader as reader
+
+    read = Path.read_bytes
+
+    def fail(path: Path) -> bytes:
+        if path.name == K5_PROJECTION_RESOURCE_NAME:
+            if failure == "missing":
+                raise FileNotFoundError(path)
+            return b"{}"
+        return read(path)
+
+    reader._read_packaged_k5_projection.cache_clear()  # pyright: ignore[reportPrivateUsage]
+    monkeypatch.setattr(Path, "read_bytes", fail)
+    response = TestClient(create_app()).get(
+        EXACT_NATIVE_PATH, params={"ticket_count": 5, "window": "FULL"}
+    )
+    assert response.status_code == 503
+    assert response.json()["error_code"] == "B649_EXACT_NATIVE_RECORDS_UNAVAILABLE"
+    reader._read_packaged_k5_projection.cache_clear()  # pyright: ignore[reportPrivateUsage]

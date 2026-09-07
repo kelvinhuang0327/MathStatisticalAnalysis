@@ -9,6 +9,7 @@ from pathlib import Path
 from lottolab.infrastructure.biglotto_multi_ticket_projection_builder import (
     B649ProjectionBuildError,
     build_b649_k2_k3_projection_bytes,
+    build_b649_k5_projection_bytes,
     build_b649_k10_projection_bytes,
     build_b649_projection_bytes,
 )
@@ -51,6 +52,9 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="New output path. Existing files are never overwritten.",
     )
+    parser.add_argument("--k5-manifest", type=Path)
+    parser.add_argument("--k5-evidence", type=Path)
+    parser.add_argument("--k5-ranking", type=Path)
     parser.add_argument("--k10-manifest", type=Path)
     parser.add_argument("--k10-evidence", type=Path)
     parser.add_argument("--k10-ranking", type=Path)
@@ -64,7 +68,16 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         k10_requested = any((arguments.k10_manifest, arguments.k10_evidence, arguments.k10_ranking))
-        if k10_requested:
+        k5_requested = any((arguments.k5_manifest, arguments.k5_evidence, arguments.k5_ranking))
+        if k5_requested:
+            if k10_requested or successor_requested or arguments.report:
+                parser.error("K5 materialization cannot be combined with other build modes")
+            if not all((arguments.k5_manifest, arguments.k5_evidence, arguments.k5_ranking)):
+                parser.error("K5 requires --k5-manifest, --k5-evidence and --k5-ranking")
+            payload = build_b649_k5_projection_bytes(
+                arguments.k5_manifest, arguments.k5_evidence, arguments.k5_ranking,
+            )
+        elif k10_requested:
             if successor_requested or arguments.report:
                 parser.error("K10 materialization cannot be combined with other build modes")
             if not all((arguments.k10_manifest, arguments.k10_evidence, arguments.k10_ranking)):

@@ -163,8 +163,8 @@ const summaryMetrics = computed(() => {
   let bestStrategy: string | null = null
   let bestDelta: number | null = null
 
-  const isK10 = selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 10
-  const candidates = isK10 ? available.filter((r) => r.officialRank === 1).slice(0, 1) : available
+  const hasProducerRank = selectedLottery.value === 'BIG_LOTTO' && (selectedTicketCount.value === 5 || selectedTicketCount.value === 10)
+  const candidates = hasProducerRank ? available.filter((r) => r.officialRank === 1).slice(0, 1) : available
   for (const r of candidates) {
     if (r.officialAnyPrizeRate !== null && (bestRate === null || r.officialAnyPrizeRate > bestRate)) {
       bestRate = r.officialAnyPrizeRate
@@ -182,6 +182,12 @@ const summaryMetrics = computed(() => {
   }
 })
 
+const selectedK5Row = computed(() =>
+  selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 5
+    ? rawRows.value.find((row) => row.strategyId === selectedStrategyId.value && row.k5Record)
+    : undefined,
+)
+
 // Active Window label
 const activeWindowLabel = computed(() => {
   return WINDOW_OPTIONS.find((w) => w.key === selectedWindow.value)?.label ?? selectedWindow.value
@@ -194,23 +200,29 @@ async function loadData(): Promise<void> {
 
   pageState.value = 'loading'
   errorMessage.value = ''
+  if (selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 5) {
+    rawRows.value = []
+    crossWindowData.value = null
+    chartController?.abort()
+  }
 
   try {
-    const independentK10 = selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 10
+    const independentProducer = selectedLottery.value === 'BIG_LOTTO' && (selectedTicketCount.value === 5 || selectedTicketCount.value === 10)
+    const rankingRequest = fetchRankingData(selectedLottery.value, selectedTicketCount.value, selectedWindow.value, fetchController.signal)
     const matrixRequest = fetchMultiTicketMatrix(selectedLottery.value, selectedWindow.value, fetchController.signal)
-    if (independentK10) {
+    if (independentProducer) {
       matrixRows.value = []
       void matrixRequest.then((rows) => { if (gen === fetchGeneration) matrixRows.value = rows }).catch(() => {})
     }
     const [rankingResult, matrixResult] = await Promise.all([
-      fetchRankingData(selectedLottery.value, selectedTicketCount.value, selectedWindow.value, fetchController.signal),
-      independentK10 ? Promise.resolve([]) : matrixRequest,
+      rankingRequest,
+      independentProducer ? Promise.resolve([]) : matrixRequest,
     ])
 
     if (gen !== fetchGeneration) return
 
     rawRows.value = rankingResult
-    if (!independentK10) matrixRows.value = matrixResult
+    if (!independentProducer) matrixRows.value = matrixResult
 
     // If a strategy was selected previously, update cross-window chart; otherwise select top ranked
     const topRow = rankingResult.find((r) => r.isAvailable && r.officialRank !== null) || rankingResult[0]
@@ -249,7 +261,7 @@ async function selectStrategy(strategyId: string, displayName: string): Promise<
       displayName,
       chartController.signal,
     )
-    crossWindowData.value = result
+    if (!chartController.signal.aborted && result.lotteryType === selectedLottery.value && result.ticketCount === selectedTicketCount.value && result.strategyId === selectedStrategyId.value) crossWindowData.value = result
   } catch {
     // chart failure does not break the table
   } finally {
@@ -272,7 +284,7 @@ function handleSort(field: SortField): void {
     sortField.value = field
     sortDirection.value = field === 'officialRank' ? 'asc' : 'desc'
   }
-  isUserSorted.value = (selectedLottery.value === 'BIG_LOTTO' && selectedTicketCount.value === 10) || field !== 'officialRank' || sortDirection.value !== 'asc'
+  isUserSorted.value = (selectedLottery.value === 'BIG_LOTTO' && (selectedTicketCount.value === 5 || selectedTicketCount.value === 10)) || field !== 'officialRank' || sortDirection.value !== 'asc'
 }
 
 function resetSort(): void {
@@ -419,6 +431,7 @@ onBeforeUnmount(() => {
         label="窗口最高成功率"
         :value="summaryMetrics.bestRateFormatted"
         :hint="summaryMetrics.bestStrategyLabel"
+        :subvalue="selectedLottery === 'BIG_LOTTO' && selectedTicketCount === 5 ? summaryMetrics.bestStrategyLabel : undefined"
         data-testid="metric-best-rate"
       />
       <MetricCard
@@ -619,6 +632,25 @@ onBeforeUnmount(() => {
           :active-window="activeWindowLabel"
           @select-strategy="handleMatrixStrategySelect"
         />
+      </section>
+
+      <section v-if="selectedK5Row?.k5Record" class="canonical-exact-native-banner" data-testid="k5-producer-details" aria-label="K5 官方排名原始資料">
+        <div class="banner-body">
+          <strong>{{ selectedK5Row.displayName }} · {{ selectedK5Row.strategyVersion }} · OFFICIAL_ANY_PRIZE</strong>
+          <p>正式名次 {{ selectedK5Row.officialRank ?? 'Unavailable' }} · 原始 rank {{ selectedK5Row.rawRank ?? 'Unavailable' }} · producer position {{ selectedK5Row.position ?? 'Unavailable' }} · 發布順序 {{ selectedK5Row.sourceOrder }}</p>
+          <p>中獎期數／分母 {{ selectedK5Row.k5Record.official_any_prize_numerator ?? 'Unavailable' }} / {{ selectedK5Row.k5Record.official_any_prize_denominator ?? 'Unavailable' }} · 評估／要求期數 {{ selectedK5Row.k5Record.evaluated_draws ?? 'Unavailable' }} / {{ selectedK5Row.k5Record.requested_draws }}</p>
+          <p>中獎率 {{ selectedK5Row.k5Record.official_any_prize_rate ?? 'Unavailable' }} · 隨機基準 {{ selectedK5Row.k5Record.official_random_baseline ?? 'Unavailable' }} · 基準差 {{ selectedK5Row.k5Record.baseline_delta ?? 'Unavailable' }} · 覆蓋率 {{ selectedK5Row.k5Record.coverage ?? 'Unavailable' }}</p>
+          <p>狀態 {{ selectedK5Row.k5Record.metric_status }} · 原因 {{ selectedK5Row.k5Record.metric_unavailable_reason ?? '—' }}</p>
+          <details>
+            <summary>獎項、同名次與來源資料</summary>
+            <p data-testid="k5-producer-ties">Producer ties: {{ JSON.stringify(selectedK5Row.producerTies) }}</p>
+            <p>獎項計數：{{ selectedK5Row.k5Record.best_prize_counts === null ? 'Unavailable' : JSON.stringify(selectedK5Row.k5Record.best_prize_counts) }}</p>
+            <p>Replay 狀態：{{ JSON.stringify(selectedK5Row.k5Record.replay_status_counts) }} · typed failures {{ selectedK5Row.k5Record.typed_replay_failures_count }}</p>
+            <p>窗口 {{ selectedK5Row.k5Record.window_boundary.first_target }}–{{ selectedK5Row.k5Record.window_boundary.last_target }}</p>
+            <p>Source ranking SHA-256: {{ selectedK5Row.k5Record.provenance.source_ranking_sha256 }}</p>
+            <p>Projection SHA-256: {{ selectedK5Row.projectionSha256 }}</p>
+          </details>
+        </div>
       </section>
 
       <!-- Cross-Window Trend Chart -->

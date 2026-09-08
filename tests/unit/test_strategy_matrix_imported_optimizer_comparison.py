@@ -317,7 +317,7 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
         if row["status"] == "MEASURED"
         and row["strategy_id"] in {HARD_DIV, HARD_DIV_R2, smc.EXPECTED_MAX_EXACT_1EXCHANGE}
     ]
-    assert len(direct_native_rows) == 14
+    assert len(direct_native_rows) == 15
     assert all(
         (
             row["source_evidence"]["dispatch"] == "CANONICAL_ADAPTER_PUBLIC_API"
@@ -510,7 +510,7 @@ def test_native_hash_field_is_sparse_and_always_declares_its_canonicalization(
         HARD_DIV_R2,
         smc.EXPECTED_MAX_EXACT_1EXCHANGE,
     }
-    assert len(carriers) == 14
+    assert len(carriers) == 15
     for row in carriers:
         assert "native_portfolio_sha256_canonicalization" in row
         # Every adapter-provided hash declares its convention, including the baseline/seed

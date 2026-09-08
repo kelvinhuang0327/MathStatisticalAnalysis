@@ -124,7 +124,7 @@ EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH = Path(
     "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json"
 )
 EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256 = (
-    "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+    "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
 )
 METHOD_IDS = (
     SIDON,
@@ -1907,11 +1907,11 @@ def detect_gaps(rows: list[JsonObject], methods: Mapping[str, JsonObject]) -> li
             "EXPECTED_HIT_UTILITY_CONTRACT",
             "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated and a dedicated "
             "exact radius-1 ascent optimizer (ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1) "
-            "is implemented for B649 (k=2, 3, 5, 10).",
-            "Cross-structure replication (Daily 539, Power Lotto Zone-1) and k=20 expansion "
+            "is implemented for B649 (k=2, 3, 5, 10, 20).",
+            "Cross-structure replication (Daily 539, Power Lotto Zone-1) "
             "for the dedicated expected-max optimizer.",
-            "Exact radius-1 local ascent is certified for Big Lotto k<=10; cross-game "
-            "generality and scalable k=20 ascent remain open.",
+            "Exact radius-1 local ascent is certified for Big Lotto k<=20; cross-game "
+            "generality remains open.",
             None,
             [],
         ),
@@ -2100,7 +2100,7 @@ def _expected_max_gap_semantics(
             "optimizer_status": "RESOLVED",
             "dedicated_optimizer_implemented": True,
             "dedicated_optimizer_id": EXPECTED_MAX_EXACT_1EXCHANGE,
-            "remaining_prospective_gap": "CROSS_STRUCTURE_AND_K20_EXPECTED_MAX_OPTIMIZATION",
+            "remaining_prospective_gap": "CROSS_STRUCTURE_EXPECTED_MAX_OPTIMIZATION",
             "evidence_row_ids": evidence_row_ids,
         }
     if classification == "DISTINCT_OBJECTIVE_SIGNAL":

@@ -1296,7 +1296,8 @@
           2,
           3,
           5,
-          10
+          10,
+          20
         ],
         "supported_lottery": [
           "BIG_LOTTO"
@@ -1318,7 +1319,7 @@
       "expected_max_exact_1exchange_ascent": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
-        "sha256": "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+        "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
       },
       "frontier_b649": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",

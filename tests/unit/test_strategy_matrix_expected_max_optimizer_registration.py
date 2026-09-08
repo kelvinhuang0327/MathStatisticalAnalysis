@@ -14,7 +14,6 @@ import pytest
 from lottolab.research.strategy_matrix_comparison import (
     EXPECTED_MAX_EXACT_1EXCHANGE,
     EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH,
-    EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256,
     EXPECTED_MAX_MAIN_MATCHES_V1,
     EXPECTED_MAX_RESULT_PATH,
     LEDGER_PATH,
@@ -66,6 +65,16 @@ FROZEN_ASCENT_EXPECTATIONS: dict[int, dict[str, str]] = {
         "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
         "terminal_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
     },
+    20: {
+        "terminal_expected_max": "8249099/3495954",
+        "exact_q": "2399699/6991908",
+        "move_count": "14",
+        "iteration_count": "15",
+        "delta_seed": "5407/4661272",
+        "delta_ref": "127/635628",
+        "local_optimum_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "terminal_sha256": "a5ce1a828295e50486c999b72fe4073a9172b8e45f9c93c74fed60448c2552f3",
+    },
 }
 
 
@@ -95,7 +104,7 @@ def test_registered_method_metadata_and_ledger_intake(
     assert intake["objective"] == EXPECTED_MAX_MAIN_MATCHES_V1
     assert intake["neighborhood_radius"] == 1
     assert intake["supported_lottery"] == ["BIG_LOTTO"]
-    assert intake["supported_k"] == [2, 3, 5, 10]
+    assert intake["supported_k"] == [2, 3, 5, 10, 20]
     assert intake["source_status"] == "IMPLEMENTED"
     assert intake["search_type"] == "EXACT_ONE_NUMBER_EXCHANGE_LOCAL_ASCENT"
     assert intake["exact_or_heuristic"] == "EXACT_RADIUS_1_LOCAL_ASCENT"
@@ -129,12 +138,12 @@ def test_registered_method_row_structure_and_counts(comparison: dict[str, Any]) 
 
     measured = [row for row in rows if row["status"] == "MEASURED"]
     not_applicable = [row for row in rows if row["status"] == "NOT_APPLICABLE"]
-    assert len(measured) == 4
-    assert len(not_applicable) == 11
+    assert len(measured) == 5
+    assert len(not_applicable) == 10
     assert not any(row["status"] == "NOT_RUN" for row in rows)
 
     assert {row["lottery"] for row in measured} == {"BIG_LOTTO"}
-    assert {row["k"] for row in measured} == {2, 3, 5, 10}
+    assert {row["k"] for row in measured} == {2, 3, 5, 10, 20}
     assert all(row["case_id"] == "NATIVE_BIG_LOTTO" for row in measured)
     assert all(row["evidence_scope"] == "NATIVE_UNIFORM_WINNING_SPACE" for row in measured)
     assert all(row["minimum_matches"] == 3 for row in measured)
@@ -143,9 +152,7 @@ def test_registered_method_row_structure_and_counts(comparison: dict[str, Any]) 
         row for row in not_applicable if row["lottery"] in {"DAILY_539", "POWER_LOTTO_ZONE1"}
     ]
     assert len(unsupported_lotteries) == 10
-    k20_row = [row for row in not_applicable if row["lottery"] == "BIG_LOTTO"]
-    assert len(k20_row) == 1
-    assert k20_row[0]["k"] == 20
+    assert not any(row["lottery"] == "BIG_LOTTO" for row in not_applicable)
     assert all(row["status_reason"] == "UNSUPPORTED_LOTTERY_OR_K" for row in not_applicable)
     assert all(row["exact_q"] is None for row in not_applicable)
     assert all(row["portfolio"] is None for row in not_applicable)
@@ -196,7 +203,7 @@ def test_expected_max_surface_evaluations_and_gap_closure(
         for cell in expected_max_surface["evaluated_cells"]
         if cell["strategy_id"] == EXPECTED_MAX_EXACT_1EXCHANGE
     }
-    assert set(evaluated.keys()) == {2, 3, 5, 10}
+    assert set(evaluated.keys()) == {2, 3, 5, 10, 20}
 
     for k, expected in FROZEN_ASCENT_EXPECTATIONS.items():
         cell = evaluated[k]
@@ -212,7 +219,7 @@ def test_expected_max_surface_evaluations_and_gap_closure(
     assert gap["optimizer_status"] == "RESOLVED"
     assert gap["dedicated_optimizer_implemented"] is True
     assert gap["dedicated_optimizer_id"] == EXPECTED_MAX_EXACT_1EXCHANGE
-    assert gap["remaining_prospective_gap"] == "CROSS_STRUCTURE_AND_K20_EXPECTED_MAX_OPTIMIZATION"
+    assert gap["remaining_prospective_gap"] == "CROSS_STRUCTURE_EXPECTED_MAX_OPTIMIZATION"
 
     claim_boundary = expected_max_surface["claim_boundary"]
     assert claim_boundary["historical_outcomes_used"] == "NO"
@@ -229,7 +236,7 @@ def test_matrix_comparison_gap_resolution(comparison: dict[str, Any]) -> None:
     gap = gaps["EXPECTED_HIT_UTILITY_CONTRACT"]
     assert gap["category"] == "OBJECTIVE_GAPS"
     assert EXPECTED_MAX_EXACT_1EXCHANGE in gap["existing_capability"]
-    assert "k=20" in gap["missing_capability"]
+    assert "k=20" not in gap["missing_capability"]
     assert "Daily 539" in gap["missing_capability"]
 
 
@@ -248,7 +255,14 @@ def test_registration_result_artifact_is_canonical_and_complete() -> None:
     assert artifact["strategy_id"] == EXPECTED_MAX_EXACT_1EXCHANGE
     assert artifact["supported_k"] == [2, 3, 5, 10]
     assert artifact["deferred_k"] == [20]
-    assert artifact["upstream_authority"]["sha256"] == EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256
+    # This receipt is a frozen historical record of the k=2/3/5/10 registration task:
+    # it must keep pointing at the upstream evidence sha256 as it stood back then, not
+    # at EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256, which correctly advanced once a
+    # later task appended k=20 evidence to the same shared file.
+    assert (
+        artifact["upstream_authority"]["sha256"]
+        == "5bafe1d755793b2408504960d8f786264e96c815dfbfda59413ef092ccfc2d00"
+    )
 
     for k_str, rel in artifact["portfolio_relation_to_method_e"].items():
         if k_str in {"2", "3", "5"}:

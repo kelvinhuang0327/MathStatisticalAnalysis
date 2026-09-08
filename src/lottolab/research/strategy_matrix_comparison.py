@@ -126,6 +126,15 @@ EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH = Path(
 EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256 = (
     "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
 )
+EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_PATH = Path(
+    "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-daily539-k2-r1-result.json"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_SHA256 = (
+    "06c2d29f85e69505e01ceabd4a8718db354e3e2e47b214fa60fb48c00790784c"
+)
+EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_NOT_RUN_REASON = (
+    "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K"
+)
 METHOD_IDS = (
     SIDON,
     ARM_B,
@@ -1587,6 +1596,57 @@ def _expected_max_exact_1exchange_search_evidence(
     }
 
 
+def _validated_daily539_expected_max_k2_result(
+    artifact: JsonObject,
+    rules: LotteryRuleContract,
+) -> JsonObject:
+    """Validate the dedicated producer certificate without rerunning its ascent."""
+
+    expected_fields = {
+        "lottery": "DAILY_539",
+        "pool_size": 39,
+        "draw_size": 5,
+        "k": 2,
+        "method_id": EXPECTED_MAX_EXACT_1EXCHANGE,
+        "seed_method_id": ARM_E,
+        "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+        "terminal_portfolio_sha256": (
+            "79739c0f788046ea2b632df223346075d00ba541bee9c410d92a479461f76fbd"
+        ),
+        "move_count": 0,
+        "iteration_count": 1,
+        "terminal_unique_neighbor_count": 340,
+        "total_neighbor_evaluations": 340,
+    }
+    for field, expected in expected_fields.items():
+        actual = artifact.get(field)
+        if type(actual) is not type(expected) or actual != expected:
+            raise ValueError(f"EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 {field}")
+    if (rules.main_number_max, rules.main_number_count) != (39, 5):
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 rule shape")
+
+    portfolio_bytes = json.dumps(artifact.get("terminal_portfolio"), separators=(",", ":")).encode()
+    if hashlib.sha256(portfolio_bytes).hexdigest() != artifact["terminal_portfolio_sha256"]:
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 terminal portfolio")
+    if (
+        artifact.get("seed_portfolio") != artifact["terminal_portfolio"]
+        or artifact.get("seed_portfolio_sha256") != artifact["terminal_portfolio_sha256"]
+    ):
+        raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 seed portfolio")
+    for field, expected_value in (
+        ("terminal_expected_max", Fraction(597050, 575757)),
+        ("seed_expected_max", Fraction(597050, 575757)),
+        ("delta_seed_to_terminal", Fraction(0)),
+    ):
+        value = artifact.get(field)
+        if not isinstance(value, dict) or parse_rational(cast(JsonObject, value)) != expected_value:
+            raise ValueError(f"EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: DAILY_539 {field}")
+
+    # The dedicated artifact stores its local proof at the top level; the shared
+    # BIG_LOTTO artifact stores local_optimum_status inside each k_result.
+    return {**artifact, "local_optimum_status": artifact["proof_status"]}
+
+
 def _expected_max_exact_1exchange_native_row(
     root: Path,
     method: JsonObject,
@@ -1607,25 +1667,40 @@ def _expected_max_exact_1exchange_native_row(
         scope="NATIVE_UNIFORM_WINNING_SPACE",
         minimum_matches=minimum_matches,
     )
-    if lottery != "BIG_LOTTO" or k not in method["supported_k"]:
+    if lottery not in method["supported_lottery"] or k not in method["supported_k"]:
         row.update(status="NOT_APPLICABLE", status_reason="UNSUPPORTED_LOTTERY_OR_K")
         return row
 
-    artifact_path = root / EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH
+    evidence_path = EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH
+    evidence_sha256 = EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256
+    missing_reason = "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_ARTIFACT_MISSING"
+    if lottery == "DAILY_539":
+        if k != 2:
+            row.update(
+                status="NOT_RUN",
+                status_reason=EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_NOT_RUN_REASON,
+            )
+            return row
+        evidence_path = EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_PATH
+        evidence_sha256 = EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_K2_SHA256
+        missing_reason = EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_NOT_RUN_REASON
+
+    artifact_path = root / evidence_path
     if not artifact_path.exists():
-        row.update(
-            status="NOT_RUN",
-            status_reason="CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_ARTIFACT_MISSING",
-        )
+        row.update(status="NOT_RUN", status_reason=missing_reason)
         return row
 
     artifact_bytes = artifact_path.read_bytes()
     artifact_sha = hashlib.sha256(artifact_bytes).hexdigest()
-    if artifact_sha != EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256:
+    if artifact_sha != evidence_sha256:
         raise ValueError("EXPECTED_MAX_EVIDENCE_IDENTITY_MISMATCH: artifact sha256 mismatch")
 
     artifact = json.loads(artifact_bytes.decode("utf-8"))
-    k_res = artifact.get("k_results", {}).get(str(k))
+    k_res = (
+        _validated_daily539_expected_max_k2_result(artifact, rules)
+        if lottery == "DAILY_539"
+        else artifact.get("k_results", {}).get(str(k))
+    )
     if k_res is None:
         raise ValueError(
             f"CANONICAL_METRIC_CONTRACT_CONFLICT: missing k={k} in expected-max ascent artifact"
@@ -1640,7 +1715,7 @@ def _expected_max_exact_1exchange_native_row(
     finally:
         clear_cache()
 
-    reference_row = _get_frozen_canonical_row(root, f"NATIVE_BIG_LOTTO|{ARM_E}|default|k{k}|m3")
+    reference_row = _get_frozen_canonical_row(root, f"NATIVE_{lottery}|{ARM_E}|default|k{k}|m3")
     if reference_row is not None and reference_row.get("exact_q") is not None:
         reference_q = parse_rational(cast(JsonObject, reference_row["exact_q"]))
     else:
@@ -1675,8 +1750,8 @@ def _expected_max_exact_1exchange_native_row(
     row["source_evidence"] = {
         "dispatch": "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_RESULT",
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
-        "path": EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_PATH.as_posix(),
-        "sha256": EXPECTED_MAX_EXACT_1EXCHANGE_ASCENT_SHA256,
+        "path": evidence_path.as_posix(),
+        "sha256": evidence_sha256,
     }
     return row
 
@@ -1907,11 +1982,11 @@ def detect_gaps(rows: list[JsonObject], methods: Mapping[str, JsonObject]) -> li
             "EXPECTED_HIT_UTILITY_CONTRACT",
             "Exact EXPECTED_MAX_MAIN_MATCHES_V1 evaluation is integrated and a dedicated "
             "exact radius-1 ascent optimizer (ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1) "
-            "is implemented for B649 (k=2, 3, 5, 10, 20).",
-            "Cross-structure replication (Daily 539, Power Lotto Zone-1) "
+            "has completed evidence for B649 (k=2, 3, 5, 10, 20) and Daily 539 k=2.",
+            "Cross-structure replication for Daily 539 k=3, 5, 10, 20 and Power Lotto Zone-1 "
             "for the dedicated expected-max optimizer.",
-            "Exact radius-1 local ascent is certified for Big Lotto k<=20; cross-game "
-            "generality remains open.",
+            "Exact radius-1 local ascent is certified for Big Lotto k<=20 and Daily 539 k=2; "
+            "the remaining Daily 539 rungs and Power Lotto Zone-1 replication remain open.",
             None,
             [],
         ),
@@ -2101,6 +2176,13 @@ def _expected_max_gap_semantics(
             "dedicated_optimizer_implemented": True,
             "dedicated_optimizer_id": EXPECTED_MAX_EXACT_1EXCHANGE,
             "remaining_prospective_gap": "CROSS_STRUCTURE_EXPECTED_MAX_OPTIMIZATION",
+            "existing_capability": (
+                "Completed exact radius-1 ascent evidence for BIG_LOTTO k2, k3, k5, k10, k20 "
+                "and DAILY_539 k2."
+            ),
+            "missing_capability": (
+                "DAILY_539 k3, k5, k10, k20; POWER_LOTTO_ZONE1 replication."
+            ),
             "evidence_row_ids": evidence_row_ids,
         }
     if classification == "DISTINCT_OBJECTIVE_SIGNAL":

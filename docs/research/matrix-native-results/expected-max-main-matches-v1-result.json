@@ -16,7 +16,7 @@
   },
   "core_head": "28fe4cf978e64c526f1311be1b497fa6f325464d",
   "core_tree": "8b95a2142506ddaec20b998fca366debd3f93b3c",
-  "evaluated_cell_count": 252,
+  "evaluated_cell_count": 253,
   "evaluated_cells": [
     {
       "case_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon",
@@ -3148,6 +3148,30 @@
       "exactness": "EXACT_COMBINATORIAL_EXPECTATION",
       "expected_max_main_matches_v1": {
         "denominator": 575757,
+        "exact": "597050/575757",
+        "numerator": 597050
+      },
+      "k": 2,
+      "lottery": "DAILY_539",
+      "minimum_matches": 3,
+      "native_evaluation_objective": "UNIFORM_MAIN_DRAW_COVERAGE",
+      "native_exact_q": {
+        "denominator": 191919,
+        "exact": "3854/191919",
+        "numerator": 3854
+      },
+      "native_method_objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "portfolio_sha256": "0ece029beaed891dcc19965bcc20389bbdaf64f7f56ca24ebe92c33d6887343d",
+      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
+      "status": "MEASURED",
+      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    },
+    {
+      "case_id": "NATIVE_DAILY_539",
+      "evaluation_metric_id": "EXPECTED_MAX_MAIN_MATCHES_V1",
+      "exactness": "EXACT_COMBINATORIAL_EXPECTATION",
+      "expected_max_main_matches_v1": {
+        "denominator": 575757,
         "exact": "1102459/575757",
         "numerator": 1102459
       },
@@ -5777,6 +5801,8 @@
       "TOY_14_4|RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1|first_restart|k5|m2",
       "TOY_14_4|RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1|first_restart|k5|m3"
     ],
+    "existing_capability": "Completed exact radius-1 ascent evidence for BIG_LOTTO k2, k3, k5, k10, k20 and DAILY_539 k2.",
+    "missing_capability": "DAILY_539 k3, k5, k10, k20; POWER_LOTTO_ZONE1 replication.",
     "optimizer_gap_id": "EXPECTED_MAX_MAIN_MATCHES_OPTIMIZER",
     "optimizer_status": "RESOLVED",
     "previous_gap_id": "EXPECTED_HIT_UTILITY_CONTRACT",
@@ -5787,13 +5813,13 @@
     "base_tree": "fa28f9af9d75d9d82b99bb2010c6eb4b0fc17ef1",
     "path": "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json",
     "schema_version": "1.0.0",
-    "sha256": "ca94489292a666e4521698d7b21314c7faca6e0881c82deb093bd21b344d88a0",
+    "sha256": "7bc93366ae7e9c1ab3f78ed9cf1ac90e18f1c03cb90211df267cf8e7f9f0e31a",
     "task_id": "STRATEGY_MATRIX_IMPORTED_OPTIMIZER_INTEGRATION_AND_GAP_R1"
   },
-  "matrix_intake_sha256": "fa24f16871f732c5049cdd6e8a709316d659f24165bb8371b950de6a9d1d9b1a",
+  "matrix_intake_sha256": "7210e7faecc1d77325274aaf45f340985eb67fe6d616834ba20bc3bb0c6e8215",
   "matrix_source": {
     "path": "src/lottolab/research/strategy_matrix_comparison.py",
-    "sha256": "9370edda73f9befb5c0105beb8b8e23466da09b7a46f0ce6e88f757667382c03"
+    "sha256": "8298b534b20660573d9d562ba55aad952dec42414f2dbdafd2aa07efc8ceda30"
   },
   "objective": {
     "definition": "E[max_t |t intersection D|]",
@@ -20135,11 +20161,12 @@
       "lottery": "DAILY_539",
       "pool_size": 39,
       "portfolio_sha256": "0ece029beaed891dcc19965bcc20389bbdaf64f7f56ca24ebe92c33d6887343d",
-      "reused_row_count": 5,
+      "reused_row_count": 6,
       "row_ids": [
         "NATIVE_DAILY_539|GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1|default|k2|m3",
         "NATIVE_DAILY_539|GREEDY_MINMAX_THEN_SUM_OVERLAP_V1|default|k2|m3",
         "NATIVE_DAILY_539|GREEDY_MIN_OVERLAP_V1|default|k2|m3",
+        "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
         "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1|default|k2|m3",
         "NATIVE_DAILY_539|REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1|default|k2|m3"
       ]
@@ -21799,7 +21826,7 @@
     20
   ],
   "task_id": "EXPECTED_HIT_UTILITY_MATRIX_INTEGRATION_R1",
-  "unavailable_cell_count": 125,
+  "unavailable_cell_count": 124,
   "unavailable_cells": [
     {
       "case_id": "CANDIDATES_BIG_LOTTO_clustered_plus_sidon",
@@ -22462,45 +22489,36 @@
       "case_id": "NATIVE_DAILY_539",
       "k": 10,
       "lottery": "DAILY_539",
-      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K",
       "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k10|m3",
-      "status": "NOT_APPLICABLE",
+      "status": "NOT_RUN",
       "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {
       "case_id": "NATIVE_DAILY_539",
       "k": 20,
       "lottery": "DAILY_539",
-      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K",
       "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k20|m3",
-      "status": "NOT_APPLICABLE",
-      "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
-    },
-    {
-      "case_id": "NATIVE_DAILY_539",
-      "k": 2,
-      "lottery": "DAILY_539",
-      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
-      "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k2|m3",
-      "status": "NOT_APPLICABLE",
+      "status": "NOT_RUN",
       "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {
       "case_id": "NATIVE_DAILY_539",
       "k": 3,
       "lottery": "DAILY_539",
-      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K",
       "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3",
-      "status": "NOT_APPLICABLE",
+      "status": "NOT_RUN",
       "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {
       "case_id": "NATIVE_DAILY_539",
       "k": 5,
       "lottery": "DAILY_539",
-      "reason": "NO_CANONICAL_PORTFOLIO_STORED:UNSUPPORTED_LOTTERY_OR_K",
+      "reason": "NO_CANONICAL_PORTFOLIO_STORED:CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K",
       "row_id": "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k5|m3",
-      "status": "NOT_APPLICABLE",
+      "status": "NOT_RUN",
       "strategy_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     },
     {

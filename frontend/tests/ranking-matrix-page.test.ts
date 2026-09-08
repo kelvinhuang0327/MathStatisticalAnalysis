@@ -25,7 +25,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import RankingMatrixPage from '../src/features/ranking-matrix/RankingMatrixPage.vue'
-import { B649_RESEARCH_DISCLAIMER } from '../src/api/b649MultiTicketRecords'
+import { B649_RESEARCH_DISCLAIMER, B649_EXACT_NATIVE_TICKET_COUNTS } from '../src/api/b649MultiTicketRecords'
 
 let fetchMock: ReturnType<typeof vi.fn<typeof fetch>>
 
@@ -758,6 +758,464 @@ describe('K5 canonical Ranking Matrix consumer', () => {
     await flushPromises(); await flushPromises()
     expect(wrapper.findAll('.ranking-row')).toHaveLength(5)
     expect(wrapper.find('[data-testid="page-loading-skeleton"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+})
+
+describe('Ranking Matrix Summary Lift Truthfulness (Branch 7 R1)', () => {
+  function mockK20Records(records: unknown[]) {
+    fetchMock.mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/api/v1/b649-multi-ticket-records/summary')) {
+        return Promise.resolve(apiResponse(mockB649Summary))
+      }
+      if (url.includes('/api/v1/strategies')) {
+        return Promise.resolve(apiResponse(mockCatalog))
+      }
+      if (url.includes('/api/v1/b649-exact-native-records')) {
+        const urlObj = new URL(url, 'http://localhost')
+        const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
+        const win = urlObj.searchParams.get('window') || 'RECENT_300'
+        if (tc === 5) return Promise.resolve(apiResponse(k5Page(win)))
+        if (tc === 10) return Promise.resolve(apiResponse(k10Page(win)))
+        return Promise.resolve(apiResponse(mockB649ExactNativeRecords2_300))
+      }
+      if (url.includes('/api/v1/b649-multi-ticket-records')) {
+        if (url.includes('prefix_count=20') && url.includes('window=RECENT_300')) {
+          return Promise.resolve(apiResponse({
+            total: records.length,
+            limit: 100,
+            offset: 0,
+            prefix_count: 20,
+            window: 'RECENT_300',
+            criterion: 'M3_PLUS',
+            research_disclaimer: B649_RESEARCH_DISCLAIMER,
+            items: records,
+          }))
+        }
+        return Promise.resolve(apiResponse(mockB649Records5_300))
+      }
+      return Promise.resolve(apiResponse({ items: [], total: 0 }))
+    })
+  }
+
+  it('truthfully displays maximum baseline delta when rate winner has lower delta (Row A vs Row B vs Row C)', async () => {
+    // Row A: officialAnyPrizeRate higher (0.35 -> 35.00%), baselineDelta lower (0.02 -> +2.00%)
+    // Row B: officialAnyPrizeRate lower (0.20 -> 20.00%), baselineDelta higher (0.095 -> +9.50%)
+    // Row C: officialAnyPrizeRate 0.15, baselineDelta null (ignored)
+    const records = [
+      {
+        strategy_id: 'strat_rate_winner',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_rate_winner',
+        source_path: 'strategies/strat_rate_winner.py',
+        method_family: 'coldpool',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 1,
+        official_rank: 1,
+        official_any_prize_count: 105,
+        official_any_prize_rate: '0.350000000000000000',
+        official_random_baseline_probability: '0.330000000000000000',
+        official_random_baseline_delta: '0.020000000000000000',
+        unranked_reason: null,
+        success_count: 105,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.350000000000000000',
+        random_baseline_success_rate: '0.330000000000000000',
+        random_baseline_rate_difference: '0.020000000000000000',
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 1, fourth: 2, fifth: 3, sixth: 8, seventh: 10, general: 0 },
+        no_prize_count: 195,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+      {
+        strategy_id: 'strat_lift_winner',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_lift_winner',
+        source_path: 'strategies/strat_lift_winner.py',
+        method_family: 'ewma',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 2,
+        official_rank: 2,
+        official_any_prize_count: 60,
+        official_any_prize_rate: '0.200000000000000000',
+        official_random_baseline_probability: '0.105000000000000000',
+        official_random_baseline_delta: '0.095000000000000000',
+        unranked_reason: null,
+        success_count: 60,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.200000000000000000',
+        random_baseline_success_rate: '0.105000000000000000',
+        random_baseline_rate_difference: '0.095000000000000000',
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 0, fourth: 1, fifth: 4, sixth: 7, seventh: 11, general: 0 },
+        no_prize_count: 240,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+      {
+        strategy_id: 'strat_null_delta',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_null_delta',
+        source_path: 'strategies/strat_null_delta.py',
+        method_family: 'ml',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 3,
+        official_rank: 3,
+        official_any_prize_count: 45,
+        official_any_prize_rate: '0.150000000000000000',
+        official_random_baseline_probability: null,
+        official_random_baseline_delta: null,
+        unranked_reason: null,
+        success_count: 45,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.150000000000000000',
+        random_baseline_success_rate: null,
+        random_baseline_rate_difference: null,
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 1, sixth: 2, seventh: 3, general: 0 },
+        no_prize_count: 255,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+    ]
+
+    mockK20Records(records)
+
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises(); await flushPromises()
+
+    const bestRateCard = wrapper.get('[data-testid="metric-best-rate"]')
+    const bestDeltaCard = wrapper.get('[data-testid="metric-best-delta"]')
+
+    // Prove: "窗口最高成功率" remains Row A's success rate under current intended semantics
+    expect(bestRateCard.text()).toContain('35.00%')
+
+    // Prove: "最高基準差異 (Lift)" renders Row B's higher baselineDelta (+9.50%)
+    expect(bestDeltaCard.text()).toContain('+9.50%')
+
+    // Prove: Lift is not copied from the success-rate winner (+2.00%)
+    expect(bestDeltaCard.text()).not.toContain('+2.00%')
+
+    // Prove: null deltas are ignored (Row C with null delta did not break or zero the lift)
+    // Prove: no officialRank is synthesized or mutated
+    const rows = wrapper.findAll('.ranking-row')
+    expect(rows).toHaveLength(3)
+    expect(rows[0]!.find('.rank-badge').text()).toContain('#1')
+    expect(rows[1]!.find('.rank-badge').text()).toContain('#2')
+    expect(rows[2]!.find('.rank-badge').text()).toContain('#3')
+
+    wrapper.unmount()
+  })
+
+  it('renders Unavailable when all available rows have null baseline delta', async () => {
+    const allNullRecords = [
+      {
+        strategy_id: 'strat_null_1',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_null_1',
+        source_path: 'strategies/strat_null_1.py',
+        method_family: 'coldpool',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 1,
+        official_rank: 1,
+        official_any_prize_count: 60,
+        official_any_prize_rate: '0.200000000000000000',
+        official_random_baseline_probability: null,
+        official_random_baseline_delta: null,
+        unranked_reason: null,
+        success_count: 60,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.200000000000000000',
+        random_baseline_success_rate: null,
+        random_baseline_rate_difference: null,
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 0, fourth: 1, fifth: 4, sixth: 7, seventh: 11, general: 0 },
+        no_prize_count: 240,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+      {
+        strategy_id: 'strat_null_2',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_null_2',
+        source_path: 'strategies/strat_null_2.py',
+        method_family: 'ewma',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 2,
+        official_rank: 2,
+        official_any_prize_count: 30,
+        official_any_prize_rate: '0.100000000000000000',
+        official_random_baseline_probability: null,
+        official_random_baseline_delta: null,
+        unranked_reason: null,
+        success_count: 30,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.100000000000000000',
+        random_baseline_success_rate: null,
+        random_baseline_rate_difference: null,
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 1, sixth: 2, seventh: 3, general: 0 },
+        no_prize_count: 270,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+    ]
+
+    mockK20Records(allNullRecords)
+
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises(); await flushPromises()
+
+    const bestRateCard = wrapper.get('[data-testid="metric-best-rate"]')
+    const bestDeltaCard = wrapper.get('[data-testid="metric-best-delta"]')
+
+    expect(bestRateCard.text()).toContain('20.00%')
+    // Prove: all-null delta set renders Unavailable
+    expect(bestDeltaCard.text()).toContain('Unavailable')
+
+    wrapper.unmount()
+  })
+
+  it('selects the numerically highest value when delta set is negative-only', async () => {
+    const negativeRecords = [
+      {
+        strategy_id: 'strat_neg_1',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_neg_1',
+        source_path: 'strategies/strat_neg_1.py',
+        method_family: 'coldpool',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 1,
+        official_rank: 1,
+        official_any_prize_count: 60,
+        official_any_prize_rate: '0.200000000000000000',
+        official_random_baseline_probability: '0.282500000000000000',
+        official_random_baseline_delta: '-0.082500000000000000',
+        unranked_reason: null,
+        success_count: 60,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.200000000000000000',
+        random_baseline_success_rate: '0.282500000000000000',
+        random_baseline_rate_difference: '-0.082500000000000000',
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 0, fourth: 1, fifth: 4, sixth: 7, seventh: 11, general: 0 },
+        no_prize_count: 240,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+      {
+        strategy_id: 'strat_neg_2',
+        strategy_version: 'v1.0',
+        legacy_method_id: 'strat_neg_2',
+        source_path: 'strategies/strat_neg_2.py',
+        method_family: 'ewma',
+        reproduction_status: 'BACKTESTED',
+        duplicate_alias_target: null,
+        prefix_count: 20,
+        window: 'RECENT_300',
+        criterion: 'M3_PLUS',
+        rank: 2,
+        official_rank: 2,
+        official_any_prize_count: 45,
+        official_any_prize_rate: '0.150000000000000000',
+        official_random_baseline_probability: '0.175000000000000000',
+        official_random_baseline_delta: '-0.025000000000000000',
+        unranked_reason: null,
+        success_count: 45,
+        effective_backtest_draw_count: 300,
+        successful_execution_count: 300,
+        historical_success_rate: '0.150000000000000000',
+        random_baseline_success_rate: '0.175000000000000000',
+        random_baseline_rate_difference: '-0.025000000000000000',
+        coverage: '1.000000000000000000',
+        window_available_draws: 300,
+        window_requested_draws: 300,
+        window_complete: true,
+        official_prize_counts: { first: 0, second: 0, third: 0, fourth: 0, fifth: 1, sixth: 2, seventh: 3, general: 0 },
+        no_prize_count: 255,
+        report_sha256: 'c'.repeat(64),
+        report_file_sha256: 'd'.repeat(64),
+        catalog_sha256: 'a'.repeat(64),
+        authority_mode: 'HISTORICAL_SEALED_EVIDENCE_V1',
+        metrics_unavailable_reason: null,
+      },
+    ]
+
+    mockK20Records(negativeRecords)
+
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises(); await flushPromises()
+
+    const bestDeltaCard = wrapper.get('[data-testid="metric-best-delta"]')
+
+    // Prove: negative-only delta set selects numerically highest (least negative) delta: -2.50% > -8.25%
+    expect(bestDeltaCard.text()).toContain('-2.50%')
+    expect(bestDeltaCard.text()).not.toContain('-8.25%')
+
+    wrapper.unmount()
+  })
+
+  it('keeps K5 producer-rank handling and leader card while computing lift independently across all rows', async () => {
+    // In K5 RECENT_300, rank #1 has rate 15.67% and delta 0.0112 (+1.12%).
+    // If row 2 has a higher delta (+4.50%) while lower rate (12.00%):
+    const mutatedK5 = k5Packaged.map((r): B649K5Record => {
+      if (r.window === 'RECENT_300' && r.source_order === 2) {
+        return {
+          ...r,
+          official_any_prize_rate: '0.120000000000000000',
+          baseline_delta: '0.045000000000000000',
+        }
+      }
+      return r
+    })
+
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('b649-exact-native-records') && url.searchParams.get('ticket_count') === '5') {
+        return apiResponse(k5Page(url.searchParams.get('window')!, mutatedK5))
+      }
+      return apiResponse({}, 503)
+    })
+
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+
+    const bestRateCard = wrapper.get('[data-testid="metric-best-rate"]')
+    const bestDeltaCard = wrapper.get('[data-testid="metric-best-delta"]')
+
+    // K5 producer-rank handling: best rate remains rank #1 strategy's rate (15.67%)
+    expect(bestRateCard.text()).toContain('15.67%')
+    expect(bestRateCard.text()).toContain('大樂透 Orthogonal 5-Bet 正交 5注')
+
+    // Lift summary independently chooses row 2's +4.50% over row 1's +1.12%
+    expect(bestDeltaCard.text()).toContain('+4.50%')
+    expect(bestDeltaCard.text()).not.toContain('+1.12%')
+
+    // Official ranks preserved
+    const rows = wrapper.findAll('.ranking-row')
+    expect(rows[0]!.find('.rank-badge').text()).toContain('#1')
+    expect(rows[1]!.find('.rank-badge').text()).toContain('#2')
+
+    wrapper.unmount()
+  })
+
+  it('preserves K2/K3 formal-rank unavailable semantics without rank synthesis from maximum lift', async () => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+
+    // Switch to ticket count 2
+    await wrapper.get('[data-testid="ticket-btn-2"]').trigger('click')
+    await flushPromises(); await flushPromises()
+
+    // Formal rank unavailable banner and badges are displayed
+    expect(wrapper.find('[data-testid="canonical-exact-native-banner"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="badge-formal-rank-unavailable"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('正規 2 注指標可用；官方正式排名尚未發布')
+
+    // Lift summary shows independent maximum delta among available rows (+0.91% for 6bet EWMA)
+    const bestDeltaCard = wrapper.get('[data-testid="metric-best-delta"]')
+    expect(bestDeltaCard.text()).toContain('+0.91%')
+
+    // No official rank is synthesized or mutated: all rows lack official rank badges
+    expect(wrapper.findAll('.rank-badge--unranked').length).toBe(3)
+    expect(wrapper.findAll('.rank-badge:not(.rank-badge--unranked)').length).toBe(0)
+
+    wrapper.unmount()
+  })
+
+  it('maintains K20 as legacy projection only without exact-native integration', async () => {
+    // Assert K20 exact-native authority status remains NOT_READY
+    expect(B649_EXACT_NATIVE_TICKET_COUNTS).toEqual([2, 3, 5, 10])
+    expect((B649_EXACT_NATIVE_TICKET_COUNTS as readonly number[]).includes(20)).toBe(false)
+
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+
+    fetchMock.mockClear()
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises(); await flushPromises()
+
+    const calledUrls = fetchMock.mock.calls.map(([url]) => String(url))
+    expect(calledUrls.some((u) => u.includes('/api/v1/b649-multi-ticket-records') && u.includes('prefix_count=20'))).toBe(true)
+    expect(calledUrls.every((u) => !u.includes('/api/v1/b649-exact-native-records') || !u.includes('ticket_count=20'))).toBe(true)
+
+    // Legacy records render without exact-native banner
+    expect(wrapper.find('[data-testid="canonical-exact-native-banner"]').exists()).toBe(false)
+
     wrapper.unmount()
   })
 })

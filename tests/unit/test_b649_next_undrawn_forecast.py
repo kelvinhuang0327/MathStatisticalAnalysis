@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import json
 import random
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from fractions import Fraction
+from typing import Literal, NoReturn, TypedDict, cast
 
 import pytest
 
@@ -14,6 +16,7 @@ from lottolab.application import b649_next_undrawn_forecast as app
 from lottolab.application.b649_next_undrawn_forecast import (
     CanonicalNativeTicketGenerator,
     ForecastRequest,
+    PreparedForecast,
     evaluate_evidence,
     native_generation_config,
     prepare_forecast,
@@ -24,8 +27,10 @@ from lottolab.domain.b649_next_undrawn_forecast import (
     ClassifiedObservation,
     ExactMetric,
     ForecastContractError,
+    GenerationConfig,
     ObservationStatus,
     ReplayObservation,
+    TicketSet,
     canonical_json,
     digest,
     history_ref,
@@ -44,13 +49,65 @@ from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyD
 from lottolab.strategies.adapters.base import BetAdapter, CausalDrawRow, PortfolioBetAdapter
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
-WIN = (1, 2, 7, 8, 9, 10)  # Two main matches plus special: official seventh prize.
-LOSE = (1, 2, 8, 9, 10, 11)
+WIN: Ticket = (1, 2, 7, 8, 9, 10)  # Two main matches plus special: official seventh prize.
+LOSE: Ticket = (1, 2, 8, 9, 10, 11)
 NOW = datetime(2099, 1, 6, 15, tzinfo=UTC)
 DEADLINE = datetime(2099, 1, 7, 12, 30, tzinfo=UTC)
 
+type Ticket = tuple[int, ...]
+type HistoryMutation = Callable[[ForecastRequest], tuple[Draw, ...]]
 
-def descriptor(strategy_id="fixture_a", k=1, min_history=1):
+
+class MetricPayload(TypedDict):
+    numerator: int
+    denominator: int
+    rate: dict[str, str] | None
+
+
+class CoveragePayload(TypedDict):
+    requested: int
+    counts: dict[str, int]
+    eligible_expected: int
+
+
+class CandidatePayload(TypedDict):
+    strategy_id: str
+    strategy_version: str
+    native_k: int
+    rankable: bool
+    evidence_complete: bool
+    metric: MetricPayload
+    coverage: CoveragePayload
+    observations: list[dict[str, object]]
+
+
+class SelectedPayload(TypedDict):
+    strategy_id: str
+    strategy_version: str
+    response_shape: str
+    metric: MetricPayload
+    coverage: CoveragePayload
+
+
+class BucketPayload(TypedDict):
+    native_k: int
+    status: str
+    selected: SelectedPayload | None
+    tickets: list[list[int]]
+    candidates: list[CandidatePayload]
+    baseline: dict[str, object] | None
+    semantic_tie: bool
+    tied_strategy_ids: list[str]
+    ranking_complete: bool
+    rankable_count: int
+    excluded_count: int
+    candidate_count: int
+    entry_identity: list[object]
+
+
+def descriptor(
+    strategy_id: str = "fixture_a", k: int = 1, min_history: int = 1
+) -> StrategyDescriptor:
     return StrategyDescriptor(
         strategy_id,
         strategy_id,
@@ -65,7 +122,13 @@ def descriptor(strategy_id="fixture_a", k=1, min_history=1):
     )
 
 
-def make_request(descriptors=None, wins=None, *, seed=None, producer=None):
+def make_request(
+    descriptors: tuple[StrategyDescriptor, ...] | None = None,
+    wins: Mapping[str, list[bool]] | None = None,
+    *,
+    seed: int | None = None,
+    producer: ProducerFingerprint | None = None,
+) -> ForecastRequest:
     catalog = tuple(descriptors or (descriptor(),))
     history = tuple(
         Draw(f"{115000080 + i:09d}", date(2099, 1, 1) + timedelta(days=i), (1, 2, 3, 4, 5, 6), 7)
@@ -77,7 +140,7 @@ def make_request(descriptors=None, wins=None, *, seed=None, producer=None):
         producer_version="fixture-v1",
         dependencies=(ProducerDependency("fixture://producer", digest("code"), "fixture code"),),
     )
-    observations = []
+    observations: list[ReplayObservation] = []
     for d in catalog:
         for i, draw in enumerate(history):
             if i < d.min_history:
@@ -111,23 +174,35 @@ def make_request(descriptors=None, wins=None, *, seed=None, producer=None):
 
 
 class Generator:
-    def __init__(self, tickets=None, after=None):
-        self.tickets = tickets or {}
+    def __init__(
+        self,
+        tickets: dict[str, TicketSet] | None = None,
+        after: Callable[[], None] | None = None,
+    ) -> None:
+        self.tickets: dict[str, TicketSet] = tickets or {}
         self.after = after
-        self.calls = []
+        self.calls: list[tuple[str, tuple[Draw, ...]]] = []
 
-    def generate(self, descriptor, config, history):
+    def generate(
+        self,
+        descriptor: StrategyDescriptor,
+        config: GenerationConfig,
+        history: tuple[Draw, ...],
+    ) -> TicketSet:
         self.calls.append((descriptor.strategy_id, history))
-        if self.after:
+        if self.after is not None:
             self.after()
         return self.tickets.get(descriptor.strategy_id, (WIN,) * descriptor.native_ticket_count)
 
 
-def bucket(prepared, k):
-    return next(b for b in prepared.bundle.payload()["buckets"] if b["native_k"] == k)
+def bucket(prepared: PreparedForecast, k: int) -> BucketPayload:
+    raw_buckets = cast(list[dict[str, object]], prepared.bundle.payload()["buckets"])
+    return cast(BucketPayload, next(b for b in raw_buckets if b["native_k"] == k))
 
 
-def test_full_official_ranking_uses_special_number_and_diagnostics_cannot_select(monkeypatch):
+def test_full_official_ranking_uses_special_number_and_diagnostics_cannot_select(
+    monkeypatch: pytest.MonkeyPatch,
+):
     request = make_request(
         (descriptor("fixture_a", 2), descriptor("fixture_z", 2)),
         {
@@ -138,22 +213,26 @@ def test_full_official_ranking_uses_special_number_and_diagnostics_cannot_select
     generator = Generator()
     before = prepare_forecast(request, generator)
     selected = bucket(before, 2)["selected"]
+    assert selected is not None
     assert selected["strategy_id"] == "fixture_z"
     assert selected["metric"] == {
         "numerator": 3,
         "denominator": 5,
         "rate": {"numerator": "3", "denominator": "5"},
     }
-    monkeypatch.setattr(
-        app,
-        "_diagnostics",
-        lambda c: {
-            "RECENT_50": 10**100 if c.descriptor.strategy_id == "fixture_a" else -(10**100),
+    def diagnostics(candidate: CandidateEvidence) -> dict[str, object]:
+        return {
+            "RECENT_50": (
+                10**100
+                if candidate.descriptor.strategy_id == "fixture_a"
+                else -(10**100)
+            ),
             "RECENT_300": -999,
             "RECENT_750": 999,
             "baseline_delta": 999,
-        },
-    )
+        }
+
+    monkeypatch.setattr(app, "_diagnostics", diagnostics)
     after = prepare_forecast(request, Generator())
     assert bucket(after, 2)["selected"] == selected
     assert bucket(after, 2)["tickets"] == bucket(before, 2)["tickets"]
@@ -168,27 +247,34 @@ def test_exact_equal_rates_tie_and_strategy_id_only_selects_display_output():
         {"fixture_z": [True, False], "fixture_a": [True, False, True, False]},
     )
     result = bucket(prepare_forecast(request, Generator()), 2)
-    assert result["selected"]["strategy_id"] == "fixture_a"
-    assert result["selected"]["metric"]["numerator"] == 2
-    assert result["selected"]["metric"]["denominator"] == 4
+    selected = result["selected"]
+    assert selected is not None
+    assert selected["strategy_id"] == "fixture_a"
+    assert selected["metric"]["numerator"] == 2
+    assert selected["metric"]["denominator"] == 4
     assert result["semantic_tie"] is True
     assert result["tied_strategy_ids"] == ["fixture_a", "fixture_z"]
 
 
-def test_ranking_preserves_rationals_beyond_binary_float_resolution(monkeypatch):
+def test_ranking_preserves_rationals_beyond_binary_float_resolution(
+    monkeypatch: pytest.MonkeyPatch,
+):
     a, z = descriptor("fixture_a"), descriptor("fixture_z")
     metrics = {
         a.strategy_id: ExactMetric(2**54 - 1, 2**54),
         z.strategy_id: ExactMetric(2**54, 2**54),
     }
-    assert float(metrics[a.strategy_id].rate) == float(metrics[z.strategy_id].rate)
+    a_rate = metrics[a.strategy_id].rate
+    z_rate = metrics[z.strategy_id].rate
+    assert a_rate is not None and z_rate is not None
+    assert float(a_rate) == float(z_rate)
     monkeypatch.setattr(
         CandidateEvidence, "metric", property(lambda c: metrics[c.descriptor.strategy_id])
     )
     cell = ClassifiedObservation("115000085", ObservationStatus.EVALUATED, True)
     ranked = rank_candidates((CandidateEvidence(a, (cell,)), CandidateEvidence(z, (cell,))))
     assert ranked[0].descriptor.strategy_id == "fixture_z"
-    assert metrics[a.strategy_id].rate < metrics[z.strategy_id].rate
+    assert a_rate < z_rate
 
 
 def test_cross_k_comparison_is_refused():
@@ -198,7 +284,7 @@ def test_cross_k_comparison_is_refused():
 
 
 @pytest.mark.parametrize("cutoff", ["115000082", "115000084"])
-def test_stale_cutoff_cannot_be_represented_as_085(cutoff):
+def test_stale_cutoff_cannot_be_represented_as_085(cutoff: str):
     request = make_request()
     history = tuple(d for d in request.history if d.draw_number <= cutoff)
     with pytest.raises(ForecastContractError, match="STALE_HISTORY"):
@@ -226,16 +312,41 @@ def test_085_accepted_and_corrected_main_special_or_date_changes_identity():
             evaluate_evidence(changed)
 
 
-@pytest.mark.parametrize(
-    "mutate",
-    [
-        lambda r: (*r.history, Draw("115000086", r.target.draw_date, (1, 2, 3, 4, 5, 6), 7)),
-        lambda r: (*r.history[:-1], replace(r.history[-1], draw_date=r.target.draw_date)),
-        lambda r: (r.history[1], r.history[0], *r.history[2:]),
-        lambda r: (*r.history[:-1], replace(r.history[-1], draw_number="115000087")),
-    ],
+def append_target_row(request: ForecastRequest) -> tuple[Draw, ...]:
+    return (
+        *request.history,
+        Draw("115000086", request.target.draw_date, (1, 2, 3, 4, 5, 6), 7),
+    )
+
+
+def change_last_date(request: ForecastRequest) -> tuple[Draw, ...]:
+    return (
+        *request.history[:-1],
+        replace(request.history[-1], draw_date=request.target.draw_date),
+    )
+
+
+def reverse_first_rows(request: ForecastRequest) -> tuple[Draw, ...]:
+    return (request.history[1], request.history[0], *request.history[2:])
+
+
+def change_last_number(request: ForecastRequest) -> tuple[Draw, ...]:
+    return (
+        *request.history[:-1],
+        replace(request.history[-1], draw_number="115000087"),
+    )
+
+
+FUTURE_HISTORY_MUTATIONS: tuple[HistoryMutation, ...] = (
+    append_target_row,
+    change_last_date,
+    reverse_first_rows,
+    change_last_number,
 )
-def test_future_rows_reordered_rows_and_target_leakage_rejected(mutate):
+
+
+@pytest.mark.parametrize("mutate", FUTURE_HISTORY_MUTATIONS)
+def test_future_rows_reordered_rows_and_target_leakage_rejected(mutate: HistoryMutation):
     request = make_request()
     draws = mutate(request)
     with pytest.raises(ForecastContractError, match="FUTURE_OR_NONCHRONOLOGICAL"):
@@ -297,19 +408,21 @@ def test_all_warmup_is_known_unavailable_and_never_divides_by_zero():
     assert k1["candidates"][0]["coverage"]["counts"]["MISSING_OBSERVATION"] == 0
 
 
-@pytest.mark.parametrize(
-    "mutation",
-    [
-        {"strategy_version": "wrong"},
-        {"native_k": 2, "tickets": (WIN, WIN)},
-        {"draw_date": date(2099, 1, 7)},
-        {"causal_history_sha256": "a" * 64},
-        {"generation_config_sha256": "b" * 64},
-        {"draw_number": "115000086"},
-        {"strategy_id": "outside_catalog"},
-    ],
+REPLAY_IDENTITY_MUTATIONS: tuple[dict[str, object], ...] = (
+    {"strategy_version": "wrong"},
+    {"native_k": 2, "tickets": (WIN, WIN)},
+    {"draw_date": date(2099, 1, 7)},
+    {"causal_history_sha256": "a" * 64},
+    {"generation_config_sha256": "b" * 64},
+    {"draw_number": "115000086"},
+    {"strategy_id": "outside_catalog"},
 )
-def test_replay_identity_mismatches_and_future_observations_rejected(mutation):
+
+
+@pytest.mark.parametrize("mutation", REPLAY_IDENTITY_MUTATIONS)
+def test_replay_identity_mismatches_and_future_observations_rejected(
+    mutation: dict[str, object],
+):
     request = make_request()
     rows = (replace(request.observations[0], **mutation), *request.observations[1:])
     with pytest.raises(ForecastContractError):
@@ -331,13 +444,16 @@ def test_all_six_buckets_native_ticket_cardinality_and_truthful_k20():
     request = make_request(tuple(descriptor(f"fixture_k{k}", k) for k in OUTPUT_BUCKETS if k != 20))
     generator = Generator()
     prepared = prepare_forecast(request, generator)
-    assert [b["native_k"] for b in prepared.bundle.payload()["buckets"]] == list(OUTPUT_BUCKETS)
+    payload_buckets = cast(list[BucketPayload], prepared.bundle.payload()["buckets"])
+    assert [b["native_k"] for b in payload_buckets] == list(OUTPUT_BUCKETS)
     assert len(generator.calls) == 5
     for k in OUTPUT_BUCKETS[:-1]:
         b = bucket(prepared, k)
         assert b["status"] == "AVAILABLE" and len(b["tickets"]) == k
         assert b["tickets"] == [list(WIN)] * k
-        assert b["baseline"]["candidate_sizes"] == [6] * k
+        baseline = b["baseline"]
+        assert baseline is not None
+        assert baseline["candidate_sizes"] == [6] * k
         assert len(b["entry_identity"]) == 4
     k20 = bucket(prepared, 20)
     assert k20["status"] == "UNAVAILABLE_NO_CANONICAL_NATIVE_K20_STRATEGY"
@@ -350,13 +466,24 @@ def test_all_six_buckets_native_ticket_cardinality_and_truthful_k20():
     )
 
 
-@pytest.mark.parametrize("bad_output", [(WIN,), (WIN,) * 4, ((1, 2, 3, 4, 5, 50),) * 3])
-def test_native_output_is_never_truncated_padded_or_replaced_by_runner_up(bad_output):
+BAD_OUTPUTS: tuple[TicketSet, ...] = (
+    (WIN,),
+    (WIN,) * 4,
+    ((1, 2, 3, 4, 5, 50),) * 3,
+)
+
+
+@pytest.mark.parametrize("bad_output", BAD_OUTPUTS)
+def test_native_output_is_never_truncated_padded_or_replaced_by_runner_up(
+    bad_output: TicketSet,
+):
     request = make_request((descriptor("fixture_a", 3), descriptor("fixture_z", 3)))
     generator = Generator({"fixture_a": bad_output})
     k3 = bucket(prepare_forecast(request, generator), 3)
     assert k3["status"] == "UNAVAILABLE_GENERATION_FAILURE" and k3["tickets"] == []
-    assert k3["selected"]["strategy_id"] == "fixture_a"
+    selected = k3["selected"]
+    assert selected is not None
+    assert selected["strategy_id"] == "fixture_a"
     assert [call[0] for call in generator.calls] == ["fixture_a"]
 
 
@@ -366,7 +493,9 @@ class FixtureSingle(BetAdapter):
     min_history = 1
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
 
-    def _predict(self, history: tuple[CausalDrawRow, ...], lottery_type: LotteryType):
+    def _predict(
+        self, history: tuple[CausalDrawRow, ...], lottery_type: LotteryType
+    ) -> tuple[int, ...]:
         return tuple(reversed(WIN))
 
 
@@ -377,7 +506,9 @@ class FixturePortfolio(PortfolioBetAdapter):
     supported_lottery_types = (LotteryType.BIG_LOTTO,)
     native_ticket_count = 3
 
-    def _predict_all(self, history: tuple[CausalDrawRow, ...], lottery_type: LotteryType):
+    def _predict_all(
+        self, history: tuple[CausalDrawRow, ...], lottery_type: LotteryType
+    ) -> tuple[tuple[int, ...], ...]:
         return WIN, LOSE, WIN
 
 
@@ -387,8 +518,11 @@ def test_canonical_single_ticket_and_portfolio_type_paths_preserve_exact_emissio
     request = make_request((one, many))
     generator = CanonicalNativeTicketGenerator(StrategyCatalog(request.catalog))
     prepared = prepare_forecast(request, generator)
-    assert bucket(prepared, 1)["tickets"] == [list(WIN)]
-    assert bucket(prepared, 1)["selected"]["response_shape"] == "SINGLE_TICKET"
+    single = bucket(prepared, 1)
+    assert single["tickets"] == [list(WIN)]
+    selected = single["selected"]
+    assert selected is not None
+    assert selected["response_shape"] == "SINGLE_TICKET"
     assert bucket(prepared, 3)["tickets"] == [list(WIN), list(LOSE), list(WIN)]
 
 
@@ -488,10 +622,15 @@ def test_canonical_k10_history_length_rng_reuses_only_the_exact_causal_configura
 
 
 @pytest.mark.parametrize("field", ["parameters_json", "rng_semantics_json"])
-def test_changed_generation_contract_cannot_relabel_old_evidence_into_compatibility(field):
+def test_changed_generation_contract_cannot_relabel_old_evidence_into_compatibility(
+    field: Literal["parameters_json", "rng_semantics_json"],
+):
     request = make_request()
     config = request.generation_configs[0]
-    original = json.loads(getattr(config, field))
+    original_json = (
+        config.parameters_json if field == "parameters_json" else config.rng_semantics_json
+    )
+    original = json.loads(original_json)
     changed = replace(config, **{field: canonical_json({**original, "changed_contract": True})})
     assert changed.sha256 != config.sha256
     altered = replace(request, generation_configs=(changed,))
@@ -506,13 +645,16 @@ def test_changed_generation_contract_cannot_relabel_old_evidence_into_compatibil
 
 class FixtureSeededPortfolio(FixturePortfolio):
     strategy_id = strategy_name = "fixture_seeded"
+    seed: int
 
-    def with_seed(self, seed):
+    def with_seed(self, seed: int) -> FixtureSeededPortfolio:
         result = FixtureSeededPortfolio()
         result.seed = seed
         return result
 
-    def _predict_all(self, history, lottery_type):
+    def _predict_all(
+        self, history: tuple[CausalDrawRow, ...], lottery_type: LotteryType
+    ) -> tuple[tuple[int, ...], ...]:
         rng = random.Random(self.seed)
         return tuple(tuple(sorted(rng.sample(range(1, 50), 6))) for _ in range(3))
 
@@ -540,7 +682,9 @@ def test_applicable_explicit_seed_change_requires_new_observation_identity():
 
 
 @pytest.mark.parametrize("drift", ["producer_version", "generator_source"])
-def test_producer_or_generator_fingerprint_drift_invalidates_prior_evidence(drift):
+def test_producer_or_generator_fingerprint_drift_invalidates_prior_evidence(
+    drift: Literal["producer_version", "generator_source"],
+):
     request = make_request()
     producer = ProducerFingerprint.create(
         producer_id=request.producer.producer_id,
@@ -564,7 +708,9 @@ def test_producer_or_generator_fingerprint_drift_invalidates_prior_evidence(drif
     assert generator.calls == []
 
 
-def test_one_incompatible_row_prevents_partial_ranking_and_denominator_shrinkage(monkeypatch):
+def test_one_incompatible_row_prevents_partial_ranking_and_denominator_shrinkage(
+    monkeypatch: pytest.MonkeyPatch,
+):
     request = make_request((descriptor("fixture_a"), descriptor("fixture_z")))
     request = replace(
         request,
@@ -574,7 +720,7 @@ def test_one_incompatible_row_prevents_partial_ranking_and_denominator_shrinkage
         ),
     )
 
-    def forbidden(*args, **kwargs):
+    def forbidden(*args: object, **kwargs: object) -> NoReturn:
         pytest.fail("incompatible evidence reached prize scoring or ranking")
 
     monkeypatch.setattr(app, "evaluate_lottery_prize", forbidden)

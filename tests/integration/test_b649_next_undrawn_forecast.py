@@ -10,8 +10,9 @@ import sys
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Literal, TypedDict, cast
 
 import pytest
 from tests.unit.test_b649_next_undrawn_forecast import (
@@ -27,6 +28,7 @@ from tests.unit.test_b649_next_undrawn_forecast import (
 from lottolab.application.b649_next_undrawn_forecast import (
     ForecastConflictError,
     ForecastLiveState,
+    ForecastRequest,
     ForecastTimingError,
     NextUndrawnForecastService,
     prepare_forecast,
@@ -43,6 +45,7 @@ from lottolab.domain.pre_outcome_target import (
     TargetSourceProvenance,
 )
 from lottolab.domain.prospective_observer import (
+    ObservationTarget,
     OutcomePresenceAtPrediction,
     PredictionContext,
     PredictionPhaseRequest,
@@ -57,7 +60,65 @@ from lottolab.infrastructure.b649_next_undrawn_forecast import (
 from lottolab.infrastructure.prospective_observer_store import FileSystemProspectiveObservationStore
 
 
-def service_env(tmp_path, request=None, generator=None):
+class ServiceState(TypedDict):
+    now: datetime
+    outcome: bool | None
+    scheduled: datetime
+    digest: str
+
+
+class StateChange(TypedDict, total=False):
+    now: datetime
+    outcome: bool | None
+    scheduled: datetime
+    digest: str
+
+
+class FixtureTarget(TypedDict):
+    draw_number: str
+    draw_date: str
+    scheduled_at: str
+
+
+class FixtureHistoryRow(TypedDict):
+    draw_number: str
+    draw_date: str
+    main_numbers: list[int]
+    special_number: int
+
+
+class FixtureStrategy(TypedDict):
+    strategy_id: str
+    native_k: int
+    generated_tickets: list[list[int]]
+
+
+class FixtureObservation(TypedDict):
+    strategy_id: str
+    draw_number: str
+    status: str
+    tickets: list[list[int]]
+
+
+class FixtureDocument(TypedDict):
+    fixture_only: bool
+    now: str
+    target: FixtureTarget
+    history: list[FixtureHistoryRow]
+    strategies: list[FixtureStrategy]
+    observations: list[FixtureObservation]
+
+
+def service_env(
+    tmp_path: Path,
+    request: ForecastRequest | None = None,
+    generator: Generator | None = None,
+) -> tuple[
+    ForecastRequest,
+    NextUndrawnForecastService,
+    ServiceState,
+    FileSystemForecastBundleStore,
+]:
     request = request or make_request()
     source = TargetSourceProvenance(
         "fixture", "fixture-v1", "fixture://schedule", request.schedule_authority_sha256, NOW
@@ -78,7 +139,7 @@ def service_env(tmp_path, request=None, generator=None):
         registration,
         request.schedule_authority_sha256,
     )
-    state = {
+    state: ServiceState = {
         "now": NOW,
         "outcome": False,
         "scheduled": DEADLINE,
@@ -87,7 +148,9 @@ def service_env(tmp_path, request=None, generator=None):
     store = FileSystemForecastBundleStore(tmp_path)
     service = NextUndrawnForecastService(
         FixtureRegistration(authority),
-        lambda _: ForecastLiveState(state["scheduled"], state["digest"], state["outcome"]),
+        lambda _target: ForecastLiveState(
+            state["scheduled"], state["digest"], cast(bool, state["outcome"])
+        ),
         lambda: state["now"],
         generator or Generator(),
         store,
@@ -95,11 +158,13 @@ def service_env(tmp_path, request=None, generator=None):
     return request, service, state, store
 
 
-def snapshot(path):
+def snapshot(path: Path) -> tuple[bytes, int, int]:
     return path.read_bytes(), path.stat().st_mtime_ns, path.stat().st_ino
 
 
-def test_original_generic_record_and_timestamps_survive_restart_and_idempotence(tmp_path):
+def test_original_generic_record_and_timestamps_survive_restart_and_idempotence(
+    tmp_path: Path,
+):
     request, service, state, store = service_env(tmp_path)
     first = service.run(request)
     path = store.path_for(request.identity)
@@ -119,7 +184,9 @@ def test_original_generic_record_and_timestamps_survive_restart_and_idempotence(
     assert list(store.root.iterdir()) == [path]
 
 
-def test_stale_evidence_fingerprint_cannot_publish_under_new_outer_bundle_identity(tmp_path):
+def test_stale_evidence_fingerprint_cannot_publish_under_new_outer_bundle_identity(
+    tmp_path: Path,
+):
     request, service, _state, store = service_env(tmp_path)
     first = service.run(request)
     path = store.path_for(request.identity)
@@ -140,12 +207,15 @@ def test_stale_evidence_fingerprint_cannot_publish_under_new_outer_bundle_identi
 
 
 @pytest.mark.parametrize("change", ["tickets", "evidence"])
-def test_same_identity_conflicting_payload_never_overwrites(tmp_path, change):
+def test_same_identity_conflicting_payload_never_overwrites(
+    tmp_path: Path, change: Literal["tickets", "evidence"]
+):
     request, service, _state, store = service_env(tmp_path)
     first = service.run(request)
     path = store.path_for(request.identity)
     before = snapshot(path)
     if change == "tickets":
+        assert isinstance(service.generator, Generator)
         service.generator.tickets["fixture_a"] = (LOSE,)
     else:
         request = replace(
@@ -162,7 +232,7 @@ def test_same_identity_conflicting_payload_never_overwrites(tmp_path, change):
     assert list(store.root.iterdir()) == [path]
 
 
-def test_corrupt_existing_record_is_rejected_and_not_replaced(tmp_path):
+def test_corrupt_existing_record_is_rejected_and_not_replaced(tmp_path: Path):
     request, service, _state, store = service_env(tmp_path)
     service.run(request)
     path = store.path_for(request.identity)
@@ -173,7 +243,7 @@ def test_corrupt_existing_record_is_rejected_and_not_replaced(tmp_path):
     assert snapshot(path) == before
 
 
-def test_two_equal_writers_reuse_one_complete_durable_record(tmp_path):
+def test_two_equal_writers_reuse_one_complete_durable_record(tmp_path: Path):
     request, first, _state, store = service_env(tmp_path)
     second = replace(first, clock=lambda: NOW + timedelta(seconds=1))
     with ThreadPoolExecutor(max_workers=2) as workers:
@@ -183,18 +253,20 @@ def test_two_equal_writers_reuse_one_complete_durable_record(tmp_path):
     assert list(store.root.iterdir()) == [store.path_for(request.identity)]
 
 
-@pytest.mark.parametrize(
-    "state_change,reason",
-    [
-        ({"outcome": True}, "OUTCOME_PRESENT"),
-        ({"outcome": None}, "OUTCOME_PRESENT_OR_UNKNOWN"),
-        ({"now": DEADLINE}, "DEADLINE"),
-        ({"now": DEADLINE + timedelta(seconds=1)}, "DEADLINE"),
-        ({"scheduled": DEADLINE - timedelta(minutes=1)}, "AUTHORITY_DRIFT"),
-        ({"digest": "f" * 64}, "AUTHORITY_DRIFT"),
-    ],
+STATE_CHANGES: tuple[tuple[StateChange, str], ...] = (
+    ({"outcome": True}, "OUTCOME_PRESENT"),
+    ({"outcome": None}, "OUTCOME_PRESENT_OR_UNKNOWN"),
+    ({"now": DEADLINE}, "DEADLINE"),
+    ({"now": DEADLINE + timedelta(seconds=1)}, "DEADLINE"),
+    ({"scheduled": DEADLINE - timedelta(minutes=1)}, "AUTHORITY_DRIFT"),
+    ({"digest": "f" * 64}, "AUTHORITY_DRIFT"),
 )
-def test_closed_initial_gate_does_not_generate_or_publish(tmp_path, state_change, reason):
+
+
+@pytest.mark.parametrize("state_change,reason", STATE_CHANGES)
+def test_closed_initial_gate_does_not_generate_or_publish(
+    tmp_path: Path, state_change: StateChange, reason: str
+):
     generator = Generator()
     request, service, state, store = service_env(tmp_path, generator=generator)
     state.update(state_change)
@@ -205,10 +277,12 @@ def test_closed_initial_gate_does_not_generate_or_publish(tmp_path, state_change
 
 
 @pytest.mark.parametrize("change", ["deadline", "outcome", "clock_regression"])
-def test_computation_crossing_deadline_or_new_outcome_is_rejected(tmp_path, change):
+def test_computation_crossing_deadline_or_new_outcome_is_rejected(
+    tmp_path: Path, change: Literal["deadline", "outcome", "clock_regression"]
+):
     request, service, state, store = service_env(tmp_path)
 
-    def during_generation():
+    def during_generation() -> None:
         if change == "deadline":
             state["now"] = DEADLINE
         elif change == "clock_regression":
@@ -226,12 +300,12 @@ def test_computation_crossing_deadline_or_new_outcome_is_rejected(tmp_path, chan
 
 @pytest.mark.parametrize("change", ["deadline", "outcome"])
 def test_fresh_gate_after_archive_preparation_before_atomic_publication(
-    tmp_path, monkeypatch, change
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, change: Literal["deadline", "outcome"]
 ):
     request, service, state, store = service_env(tmp_path)
     original_close = zipfile.ZipFile.close
 
-    def close(archive):
+    def close(archive: zipfile.ZipFile) -> None:
         original_close(archive)
         if archive.filename and Path(archive.filename).name == "bundle.tmp":
             if change == "deadline":
@@ -245,11 +319,11 @@ def test_fresh_gate_after_archive_preparation_before_atomic_publication(
     assert not list(store.root.iterdir())
 
 
-def test_clock_read_after_slow_presence_probe_catches_deadline(tmp_path):
+def test_clock_read_after_slow_presence_probe_catches_deadline(tmp_path: Path):
     request, service, state, store = service_env(tmp_path)
     probes = 0
 
-    def read_presence(_target):
+    def read_presence(_target: ObservationTarget) -> ForecastLiveState:
         nonlocal probes
         probes += 1
         if probes == 4:  # The last probe, after the generic record and archive were prepared.
@@ -262,17 +336,29 @@ def test_clock_read_after_slow_presence_probe_catches_deadline(tmp_path):
 
 
 def test_outcome_appearing_after_publication_does_not_rewrite_accepted_record(
-    tmp_path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
     request, service, state, store = service_env(tmp_path)
     original_link = os.link
 
-    def link(source, destination, **kwargs):
-        result = original_link(source, destination, **kwargs)
+    def link(
+        source: str | os.PathLike[str],
+        destination: str | os.PathLike[str],
+        *,
+        src_dir_fd: int | None = None,
+        dst_dir_fd: int | None = None,
+        follow_symlinks: bool = True,
+    ) -> None:
+        original_link(
+            source,
+            destination,
+            src_dir_fd=src_dir_fd,
+            dst_dir_fd=dst_dir_fd,
+            follow_symlinks=follow_symlinks,
+        )
         if Path(destination).suffix == ".zip":
             state["outcome"] = True
             state["now"] = DEADLINE
-        return result
 
     monkeypatch.setattr(os, "link", link)
     stored = service.run(request)
@@ -280,7 +366,7 @@ def test_outcome_appearing_after_publication_does_not_rewrite_accepted_record(
     assert store.load(request.identity) == stored
 
 
-def test_campaign_namespace_and_existing_comparison_fixture_unchanged(tmp_path):
+def test_campaign_namespace_and_existing_comparison_fixture_unchanged(tmp_path: Path):
     campaign_source = (
         Path(__file__).resolve().parents[2] / "src/lottolab/application/"
         "b649_prospective_campaign_seal.py"
@@ -324,7 +410,7 @@ def test_campaign_namespace_and_existing_comparison_fixture_unchanged(tmp_path):
     assert len(tuple(store.root.glob("*.zip"))) == 2
 
 
-def fixture_document():
+def fixture_document() -> FixtureDocument:
     request = make_request((descriptor("fixture_a"), descriptor("fixture_k2", 2)))
     return {
         "fixture_only": True,
@@ -363,7 +449,7 @@ def fixture_document():
     }
 
 
-def cli(tmp_path, document):
+def cli(tmp_path: Path, document: FixtureDocument) -> subprocess.CompletedProcess[str]:
     fixture = tmp_path / "synthetic.json"
     fixture.write_text(json.dumps(document), encoding="utf-8")
     return subprocess.run(
@@ -383,7 +469,7 @@ def cli(tmp_path, document):
     )
 
 
-def test_cli_uses_only_fixture_store_and_is_reproducible(tmp_path):
+def test_cli_uses_only_fixture_store_and_is_reproducible(tmp_path: Path):
     first = cli(tmp_path, fixture_document())
     assert first.returncode == 0, first.stdout + first.stderr
     result = json.loads(first.stdout)
@@ -399,7 +485,9 @@ def test_cli_uses_only_fixture_store_and_is_reproducible(tmp_path):
 
 
 @pytest.mark.parametrize("change", ["mode", "strategy"])
-def test_cli_rejects_nonfixture_composition_without_creating_store(tmp_path, change):
+def test_cli_rejects_nonfixture_composition_without_creating_store(
+    tmp_path: Path, change: Literal["mode", "strategy"]
+):
     document = fixture_document()
     if change == "mode":
         document["fixture_only"] = False
@@ -410,8 +498,10 @@ def test_cli_rejects_nonfixture_composition_without_creating_store(tmp_path, cha
     assert not (tmp_path / "fixture-store").exists()
 
 
-def test_producer_fingerprint_binds_relative_imports_and_bundled_generation_data(tmp_path):
-    files = {
+def test_producer_fingerprint_binds_relative_imports_and_bundled_generation_data(
+    tmp_path: Path,
+):
+    files: dict[str, str] = {
         "src/lottolab/application/b649_next_undrawn_forecast.py": "from ..domain import loaded\n",
         "src/lottolab/domain/loaded.py": "VALUE = 1\n",
         "src/lottolab/strategies/catalog.py": "# synthetic catalog\n",

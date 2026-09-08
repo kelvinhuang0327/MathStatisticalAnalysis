@@ -161,7 +161,6 @@ const summaryMetrics = computed(() => {
   const available = rawRows.value.filter((r) => r.isAvailable)
   let bestRate: number | null = null
   let bestStrategy: string | null = null
-  let bestDelta: number | null = null
 
   const hasProducerRank = selectedLottery.value === 'BIG_LOTTO' && (selectedTicketCount.value === 5 || selectedTicketCount.value === 10)
   const candidates = hasProducerRank ? available.filter((r) => r.officialRank === 1).slice(0, 1) : available
@@ -169,7 +168,15 @@ const summaryMetrics = computed(() => {
     if (r.officialAnyPrizeRate !== null && (bestRate === null || r.officialAnyPrizeRate > bestRate)) {
       bestRate = r.officialAnyPrizeRate
       bestStrategy = r.displayName
-      bestDelta = r.baselineDelta
+    }
+  }
+
+  let highestBaselineDelta: number | null = null
+  for (const r of available) {
+    if (r.baselineDelta !== null && Number.isFinite(r.baselineDelta)) {
+      if (highestBaselineDelta === null || r.baselineDelta > highestBaselineDelta) {
+        highestBaselineDelta = r.baselineDelta
+      }
     }
   }
 
@@ -178,7 +185,7 @@ const summaryMetrics = computed(() => {
     availableCount: available.length,
     bestRateFormatted: bestRate !== null ? `${(bestRate * 100).toFixed(2)}%` : 'Unavailable',
     bestStrategyLabel: bestStrategy || '—',
-    bestDeltaFormatted: bestDelta !== null ? `${bestDelta > 0 ? '+' : ''}${(bestDelta * 100).toFixed(2)}%` : 'Unavailable',
+    bestDeltaFormatted: highestBaselineDelta !== null ? `${highestBaselineDelta > 0 ? '+' : ''}${(highestBaselineDelta * 100).toFixed(2)}%` : 'Unavailable',
   }
 })
 

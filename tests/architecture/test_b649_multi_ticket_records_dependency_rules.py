@@ -74,4 +74,39 @@ def test_k10_runtime_has_no_materialization_or_external_authority_read_path() ->
     assert [p for p in paths if "exact-native-records" in p] == [endpoint]
     assert create_app().openapi()["components"]["schemas"]["B649ExactNativeTicketCount"][
         "enum"
-    ] == [2, 3, 10]
+    ] == [2, 3, 5, 10]
+
+
+def test_k5_runtime_reads_only_packaged_resource_and_never_catalog_or_task_data() -> None:
+    from unittest.mock import patch
+
+    import lottolab.infrastructure.biglotto_multi_ticket_record_reader as reader
+    from lottolab.application.biglotto_multi_ticket_records import B649_EXACT_NATIVE_TICKET_COUNTS
+    from lottolab.infrastructure.biglotto_multi_ticket_record_reader import parse_b649_k5_projection
+    from lottolab.interfaces.api.b649_multi_ticket_records import B649ExactNativeTicketCount
+
+    assert B649_EXACT_NATIVE_TICKET_COUNTS == (2, 3)
+    assert B649ExactNativeTicketCount.FIVE == 5
+    reader._read_packaged_k5_projection.cache_clear()  # pyright: ignore[reportPrivateUsage]
+    read = Path.read_bytes
+    accessed: list[str] = []
+
+    def guarded(path: Path) -> bytes:
+        accessed.append(str(path))
+        assert ".task-data" not in str(path)
+        assert path.name == reader.K5_PROJECTION_RESOURCE_NAME
+        return read(path)
+
+    with (
+        patch.object(Path, "read_bytes", guarded),
+        patch.object(
+            reader,
+            "load_full_strategy_catalog",
+            side_effect=AssertionError("catalog admission gate"),
+        ),
+    ):
+        dataset = reader.PackagedB649K5RecordReader().read()
+    assert len(dataset.records) == 20
+    assert len(accessed) == 1
+    assert parse_b649_k5_projection.__module__ == reader.__name__
+    reader._read_packaged_k5_projection.cache_clear()  # pyright: ignore[reportPrivateUsage]

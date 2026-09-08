@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
     B649ExactNativeRecordReaderFactory,
+    B649K5RecordReaderFactory,
     B649K10RecordReaderFactory,
     B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
@@ -42,6 +43,7 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PackagedB649ExactNativeRecordReader,
+    PackagedB649K5RecordReader,
     PackagedB649K10RecordReader,
     PackagedB649MultiTicketRecordReader,
 )
@@ -125,6 +127,7 @@ def create_app(
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
     b649_exact_native_record_reader_factory: (B649ExactNativeRecordReaderFactory | None) = None,
     b649_k10_record_reader_factory: B649K10RecordReaderFactory | None = None,
+    b649_k5_record_reader_factory: B649K5RecordReaderFactory | None = None,
     t539_historical_query_repository_factory: (T539HistoricalQueryRepositoryFactory | None) = None,
     t539_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
@@ -198,6 +201,7 @@ def create_app(
             resolved_b649_reader_factory,
             exact_native_reader_factory=resolved_b649_exact_native_reader_factory,
             k10_reader_factory=b649_k10_record_reader_factory or PackagedB649K10RecordReader,
+            k5_reader_factory=b649_k5_record_reader_factory or PackagedB649K5RecordReader,
         )
     )
     app.include_router(

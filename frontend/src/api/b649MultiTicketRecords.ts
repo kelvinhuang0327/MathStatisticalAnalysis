@@ -8,6 +8,9 @@ export type B649MultiTicketRecord = B649MultiTicketRecordPage['items'][number]
 export type B649ExactNativeRecordPage =
   paths['/api/v1/b649-exact-native-records']['get']['responses'][200]['content']['application/json']
 export type B649ExactNativeRecord = components['schemas']['B649ExactNativeRecordView']
+export type B649K5Record = components['schemas']['B649K5Record']
+export type B649K5RecordPage = components['schemas']['B649K5RecordPageResponse']
+export type B649K5Tie = components['schemas']['B649K5Tie']
 export type B649K10Record = components['schemas']['B649K10Record']
 export type B649PrefixCount = components['schemas']['B649PrefixCount']
 export type B649ExactNativeTicketCount = components['schemas']['B649ExactNativeTicketCount']
@@ -20,7 +23,7 @@ export type B649ReproductionStatus =
   | 'DUPLICATE_ALIAS'
 
 export const B649_PREFIX_COUNTS = [5, 10, 15, 20] as const satisfies readonly B649PrefixCount[]
-export const B649_EXACT_NATIVE_TICKET_COUNTS = [2, 3, 10] as const satisfies readonly B649ExactNativeTicketCount[]
+export const B649_EXACT_NATIVE_TICKET_COUNTS = [2, 3, 5, 10] as const satisfies readonly B649ExactNativeTicketCount[]
 export const B649_HISTORY_WINDOWS = [
   'FULL',
   'RECENT_750',
@@ -276,6 +279,7 @@ function isMultiTicketRecord(value: unknown): value is B649MultiTicketRecord {
 }
 
 function isExactNativeRecordPage(value: unknown): value is B649ExactNativeRecordPage {
+  if (isRecord(value) && value.ticket_count === 5) return isK5RecordPage(value)
   return (
     isRecord(value) &&
     Array.isArray(value.items) &&
@@ -333,6 +337,53 @@ function isExactNativeRecord(value: unknown): value is B649ExactNativeRecord | B
     isSha256(value.catalog_sha256) &&
     (value.official_rank === undefined || value.official_rank === null)
   )
+}
+
+function isK5RecordPage(value: Record<string, unknown>): value is B649K5RecordPage {
+  return value.ticket_count === 5 && value.criterion === 'OFFICIAL_ANY_PRIZE' &&
+    B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
+    Array.isArray(value.items) && value.items.every((row: unknown) =>
+      isRecord(row) && isK5Record(row) && row.window === value.window) &&
+    isInteger(value.total) && isInteger(value.limit) && isInteger(value.offset) &&
+    isSha256(value.projection_sha256) && isRecord(value.provenance) &&
+    value.provenance.k === 5 && value.provenance.cutoff === '115000084' &&
+    isExactNumberArray(value.provenance.sealed_manifest_k_values, [2, 3, 5]) &&
+    isExactNumberArray(value.provenance.target_evidence_k_values, [2, 3, 5]) &&
+    isExactNumberArray(value.provenance.source_ranking_k_values, [2, 3, 5, 10]) &&
+    isRecord(value.window_boundary) && value.window_boundary.last_target === '115000084' &&
+    Array.isArray(value.ties) && value.ties.every((tie: unknown) =>
+      isRecord(tie) && isInteger(tie.rank) && isString(tie.strategy_id)) &&
+    value.research_disclaimer === B649_RESEARCH_DISCLAIMER
+}
+
+function isK5Record(value: Record<string, unknown>): value is B649K5Record {
+  const nullableInteger = (v: unknown) => v === null || isInteger(v)
+  const nullableDecimal = (v: unknown) => v === null || (typeof v === 'string' && /^-?\d+\.\d{18}$/.test(v))
+  const nullableString = (v: unknown) => v === null || typeof v === 'string'
+  const metrics = [value.official_any_prize_rate, value.official_random_baseline, value.baseline_delta, value.coverage]
+  return value.ticket_count === 5 && value.native_ticket_count === 5 && value.criterion === 'OFFICIAL_ANY_PRIZE' &&
+    B649_HISTORY_WINDOWS.includes(value.window as B649HistoryWindow) &&
+    isString(value.strategy_id) && isString(value.display_name) && isString(value.strategy_version) &&
+    nullableString(value.catalog_strategy_version) && nullableString(value.legacy_method_id) &&
+    nullableString(value.source_path) && nullableString(value.method_family) &&
+    (value.reproduction_status === null || B649_REPRODUCTION_STATUSES.includes(value.reproduction_status as B649ReproductionStatus)) &&
+    nullableString(value.duplicate_alias_target) &&
+    isInteger(value.source_order) && value.source_order > 0 &&
+    nullableInteger(value.position) && nullableInteger(value.rank) && value.official_rank === value.rank &&
+    nullableString(value.metric_unavailable_reason) && metrics.every(nullableDecimal) &&
+    nullableInteger(value.official_any_prize_numerator) && nullableInteger(value.official_any_prize_denominator) &&
+    nullableInteger(value.evaluated_draws) && isInteger(value.requested_draws) &&
+    nullableString(value.first_evaluated_draw) && nullableString(value.last_evaluated_draw) &&
+    (value.best_prize_counts === null || (isRecord(value.best_prize_counts) && Object.values(value.best_prize_counts).every(isInteger))) &&
+    isRecord(value.replay_status_counts) && Object.values(value.replay_status_counts).every(isInteger) &&
+    isInteger(value.typed_replay_failures_count) &&
+    isRecord(value.provenance) && isSha256(value.provenance.source_ranking_sha256) &&
+    value.provenance.k === 5 && value.provenance.cutoff === '115000084' &&
+    isRecord(value.window_boundary) && value.window_boundary.last_target === '115000084' &&
+    ((value.metric_status === 'AVAILABLE' && metrics.every((v) => v !== null) &&
+      value.rank !== null && value.position !== null && value.metric_unavailable_reason === null) ||
+     (value.metric_status === 'UNAVAILABLE' && metrics.every((v) => v === null) &&
+      value.rank === null && isString(value.metric_unavailable_reason)))
 }
 
 function isK10Record(value: Record<string, unknown>): value is B649K10Record {

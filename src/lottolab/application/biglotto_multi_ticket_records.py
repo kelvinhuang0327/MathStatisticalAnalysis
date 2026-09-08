@@ -300,6 +300,100 @@ class B649K10RecordDataset:
 
 
 @dataclass(frozen=True, slots=True)
+class B649K5Provenance:
+    authority_head: str
+    authority_tree: str
+    manifest_locator: str
+    sealed_manifest_sha256: str
+    target_evidence_sha256: str
+    source_ranking_locator: str
+    source_ranking_sha256: str
+    run_id: str
+    lottery: Literal["BIG_LOTTO"]
+    k: Literal[5]
+    cutoff: str
+    cutoff_label: str
+    evidence_record_count: int
+    consumer_record_count: int
+    strategy_universe: tuple[str, ...]
+    producer_universe_fingerprint: str
+    producer_catalog_fingerprint: str
+    consumer_catalog_sha256: str
+    authority_schema: str
+    source_ranking_schema: str
+    source_ranking_run_id: str
+    target_evidence_locator: str
+    sealed_manifest_k_values: tuple[int, ...]
+    target_evidence_k_values: tuple[int, ...]
+    source_ranking_k_values: tuple[int, ...]
+    target_evidence_total_row_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class B649K5WindowBoundary:
+    first_target: str
+    first_target_date: str
+    last_target: str
+    last_target_date: str
+    observations_required: int
+
+
+@dataclass(frozen=True, slots=True)
+class B649K5Record:
+    """Published producer values; catalog identity is deliberately separate."""
+
+    strategy_id: str
+    strategy_version: str
+    display_name: str
+    native_ticket_count: Literal[5]
+    metric_status: Literal["AVAILABLE", "UNAVAILABLE"]
+    rank: int | None
+    official_rank: int | None
+    position: int | None
+    source_order: int
+    official_any_prize_rate: str | None
+    official_any_prize_numerator: int | None
+    official_any_prize_denominator: int | None
+    official_random_baseline: str | None
+    baseline_delta: str | None
+    coverage: str | None
+    evaluated_draws: int | None
+    requested_draws: int
+    first_evaluated_draw: str | None
+    last_evaluated_draw: str | None
+    best_prize_counts: dict[str, int] | None
+    replay_status_counts: dict[str, int]
+    typed_replay_failures_count: int
+    metric_unavailable_reason: str | None
+    ticket_count: Literal[5]
+    window: B649HistoryWindow
+    criterion: Literal["OFFICIAL_ANY_PRIZE"]
+    catalog_strategy_version: str | None
+    legacy_method_id: str | None
+    source_path: str | None
+    method_family: str | None
+    reproduction_status: ReproductionStatus | None
+    duplicate_alias_target: str | None
+    provenance: B649K5Provenance
+    window_boundary: B649K5WindowBoundary
+
+
+@dataclass(frozen=True, slots=True)
+class B649K5Tie:
+    rank: int
+    strategy_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class B649K5RecordDataset:
+    records: tuple[B649K5Record, ...]
+    projection_sha256: str
+    provenance: B649K5Provenance
+    ties_by_window: dict[str, tuple[B649K5Tie, ...]]
+    window_boundaries: dict[str, B649K5WindowBoundary]
+
+
+@dataclass(frozen=True, slots=True)
 class B649ExactNativeRecordDataset:
     records: tuple[B649ExactNativeRecord, ...]
     catalog_sha256: str
@@ -320,20 +414,20 @@ class B649ExactNativeRecordQuery:
 
 @dataclass(frozen=True, slots=True)
 class B649ExactNativeRecordPage:
-    items: tuple[B649ExactNativeRecord | B649K10Record, ...]
+    items: tuple[B649ExactNativeRecord | B649K5Record | B649K10Record, ...]
     total: int
     limit: int
     offset: int
 
 
 def query_b649_exact_native_records(
-    dataset: B649ExactNativeRecordDataset | B649K10RecordDataset,
+    dataset: B649ExactNativeRecordDataset | B649K5RecordDataset | B649K10RecordDataset,
     query: B649ExactNativeRecordQuery,
 ) -> B649ExactNativeRecordPage:
-    """Filter without ranking: K2/K3 by strategy ID, K10 in publication order."""
+    """Filter without ranking: K2/K3 by strategy ID, K5/K10 in publication order."""
 
-    if query.ticket_count not in (*B649_EXACT_NATIVE_TICKET_COUNTS, 10):
-        raise ValueError("ticket_count is outside the exact-native closed set (2, 3, 10)")
+    if query.ticket_count not in (*B649_EXACT_NATIVE_TICKET_COUNTS, 5, 10):
+        raise ValueError("ticket_count is outside the exact-native closed set (2, 3, 5, 10)")
 
     search = query.q.casefold() if query.q is not None else None
     selected = [
@@ -344,8 +438,8 @@ def query_b649_exact_native_records(
         and (
             search is None
             or search in row.strategy_id.casefold()
-            or search in row.legacy_method_id.casefold()
-            or search in row.source_path.casefold()
+            or search in (row.legacy_method_id or "").casefold()
+            or search in (row.source_path or "").casefold()
         )
         and (query.method_family is None or row.method_family == query.method_family)
         and (
@@ -353,7 +447,7 @@ def query_b649_exact_native_records(
             or row.reproduction_status is query.reproduction_status
         )
     ]
-    if query.ticket_count != 10:
+    if query.ticket_count not in (5, 10):
         selected.sort(key=lambda row: row.strategy_id)
     return B649ExactNativeRecordPage(
         items=tuple(selected[query.offset : query.offset + query.limit]),

@@ -112,7 +112,8 @@ STALE_AFTER_SECONDS = 900
 EXPECTED_STREAM_COUNT = 11
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
-SOURCE_WORKTREE = CANONICAL_REPOSITORY
+# Runtime provenance follows the loaded module, independently of launch configuration.
+SOURCE_WORKTREE = Path(__file__).resolve().parents[1]
 PYTHON_EXECUTABLE = CANONICAL_REPOSITORY / ".venv/bin/python"
 SCRIPT_PATH = CANONICAL_REPOSITORY / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
@@ -923,7 +924,7 @@ def run_scheduler_cycle(
     try:
         started_at = _as_utc(clock())
         previous = _read_optional_json_object(config.health_path)
-        source_head = source_head_resolver(config.source_worktree)
+        source_head = source_head_resolver(SOURCE_WORKTREE)
         running = _base_health(config, started_at, source_head, previous)
         _atomic_health_write(config.health_path, running)
         shadow_summary = shadow_health_not_run(
@@ -1187,7 +1188,7 @@ def _base_health(
         "label": config.label,
         "version": config.version,
         "canonical_repository": str(config.canonical_repository),
-        "source_worktree": str(config.source_worktree),
+        "source_worktree": str(SOURCE_WORKTREE),
         "observed_source_head": source_head,
         "started_at": _utc_text(started_at),
         "finished_at": None,

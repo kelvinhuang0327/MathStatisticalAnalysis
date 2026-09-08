@@ -6,8 +6,10 @@ import hashlib
 import json
 import os
 import plistlib
+import runpy
 import ssl
 import stat
+import subprocess
 from collections.abc import Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
@@ -400,7 +402,7 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.stale_after_seconds == 900
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
-    assert config.source_worktree == canonical_repository
+    assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
     assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
     assert config.operation_root == Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
@@ -887,7 +889,7 @@ def test_shadow_failure_is_returned_separately_without_changing_primary_status(
     assert persisted["current_status"] == "PREDRAW_READY"
 
 
-def test_production_cycle_resolves_source_head_from_canonical_repository(
+def test_production_cycle_resolves_source_head_from_executing_module(
     tmp_path: Path,
 ) -> None:
     temporary = _config(tmp_path)
@@ -916,7 +918,64 @@ def test_production_cycle_resolves_source_head_from_canonical_repository(
     )
 
     assert result["current_status"] == "PREDRAW_READY"
-    assert resolved_paths == [config.canonical_repository]
+    assert resolved_paths == [Path(scheduler_module.__file__).resolve().parents[1]]
+    assert result["source_worktree"] == str(resolved_paths[0])
+    assert result["observed_source_head"] == SOURCE_HEAD
+
+
+@pytest.mark.parametrize("detached", [False, True])
+def test_health_reports_loaded_checkout_despite_unrelated_configuration(
+    tmp_path: Path,
+    detached: bool,
+) -> None:
+    config = _config(tmp_path)
+    repository = config.canonical_repository
+
+    def git(path: Path, *args: str) -> str:
+        return subprocess.run(
+            ["/usr/bin/git", "-C", str(path), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git(repository, "init")
+    git(repository, "config", "user.name", "Scheduler Test")
+    git(repository, "config", "user.email", "scheduler@example.invalid")
+    module_path = repository / "tools/b649_goalc_local_scheduler.py"
+    module_path.parent.mkdir()
+    module_path.write_text(Path(scheduler_module.__file__).read_text())
+    git(repository, "add", "tools/b649_goalc_local_scheduler.py")
+    git(repository, "commit", "-m", "runtime fixture")
+    runtime_head = git(repository, "rev-parse", "HEAD")
+    runtime = tmp_path / "executing-checkout"
+    if detached:
+        git(repository, "worktree", "add", "--detach", str(runtime), runtime_head)
+        assert git(runtime, "rev-parse", "--abbrev-ref", "HEAD") == "HEAD"
+    else:
+        git(repository, "worktree", "add", "-b", "runtime", str(runtime), runtime_head)
+    git(repository, "commit", "--allow-empty", "-m", "unrelated configured head")
+    assert git(repository, "rev-parse", "HEAD") != runtime_head
+    config = replace(
+        config,
+        source_worktree=repository,
+        script_path=module_path,
+    )
+    loaded = runpy.run_path(str(runtime / "tools/b649_goalc_local_scheduler.py"))
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(11),))
+    result = loaded["run_scheduler_cycle"](config, backend, clock=lambda: NOW)
+    persisted = json.loads(config.health_path.read_text())
+
+    assert result["source_worktree"] == str(runtime.resolve())
+    assert result["observed_source_head"] == runtime_head
+    assert persisted["source_worktree"] == result["source_worktree"]
+    assert persisted["observed_source_head"] == runtime_head
+    assert result["canonical_repository"] == str(repository)
+    assert result["schema_version"] == scheduler_module.HEALTH_SCHEMA_VERSION
+    assert result["current_status"] == "PREDRAW_READY"
+    assert result["expected_stream_count"] == result["actual_available_stream_count"] == 11
+    assert result["ready_before_draw"] is True
+    assert backend.generation_calls == []
 
 
 def test_ready_predraw_cycle_is_no_op_and_does_not_call_generation(

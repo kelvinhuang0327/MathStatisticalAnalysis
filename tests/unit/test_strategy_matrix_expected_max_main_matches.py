@@ -15,6 +15,7 @@ from lottolab.research.strategy_matrix_comparison import (
     EXPECTED_MAX_CORE_HEAD,
     EXPECTED_MAX_CORE_PATH,
     EXPECTED_MAX_CORE_TREE,
+    EXPECTED_MAX_EXACT_1EXCHANGE,
     EXPECTED_MAX_EXACTNESS,
     EXPECTED_MAX_MAIN_MATCHES_V1,
     EXPECTED_MAX_RESULT_PATH,
@@ -157,8 +158,8 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
     artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
     evaluated = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
     unavailable = {cell["row_id"]: cell for cell in artifact["unavailable_cells"]}
-    assert len(evaluated) == 252
-    assert len(unavailable) == 125
+    assert len(evaluated) == artifact["evaluated_cell_count"] == 253
+    assert len(unavailable) == artifact["unavailable_cell_count"] == 124
     assert set(evaluated) | set(unavailable) == set(input_rows)
     assert not set(evaluated) & set(unavailable)
 
@@ -187,6 +188,41 @@ def test_surface_preserves_existing_matrix_identity_fields_and_marks_gaps_explic
     assert gap["dedicated_optimizer_implemented"] is True
     assert gap["dedicated_optimizer_id"] == "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
     assert gap["remaining_prospective_gap"] == "CROSS_STRUCTURE_EXPECTED_MAX_OPTIMIZATION"
+    assert "DAILY_539 k2" in gap["existing_capability"]
+    assert gap["missing_capability"] == "DAILY_539 k3, k5, k10, k20; POWER_LOTTO_ZONE1 replication."
+
+
+def test_daily539_k2_adds_one_cell_and_preserves_all_252_existing_evaluations() -> None:
+    artifact = json.loads((ROOT / EXPECTED_MAX_RESULT_PATH).read_text())
+    row_id = f"NATIVE_DAILY_539|{EXPECTED_MAX_EXACT_1EXCHANGE}|default|k2|m3"
+    cells = {cell["row_id"]: cell for cell in artifact["evaluated_cells"]}
+    cell = cells[row_id]
+    assert cell["lottery"] == "DAILY_539"
+    assert cell["k"] == 2
+    assert cell["status"] == "MEASURED"
+    assert cell["expected_max_main_matches_v1"] == rational(Fraction(597050, 575757))
+    assert cell["native_exact_q"] == rational(Fraction(3854, 191919))
+    assert artifact["claim_boundary"]["cross_lottery_normalization"] == "NOT_PERFORMED"
+    # Frozen from producer commit 88a6892: the added cell must be the only
+    # evaluated-cell change, including every BIG_LOTTO value and portfolio hash.
+    previous_cells = [cell for cell in artifact["evaluated_cells"] if cell["row_id"] != row_id]
+    assert len(previous_cells) == 252
+    assert hashlib.sha256(canonical_json_bytes(previous_cells)).hexdigest() == (
+        "aa49ad78598e1b2f770ad6c747205e944fb27d7e7a5af901b355493e1c978fbd"
+    )
+    evaluation = next(e for e in artifact["portfolio_evaluations"] if row_id in e["row_ids"])
+    method_e_id = "NATIVE_DAILY_539|GREEDY_MINMAX_THEN_SUM_OVERLAP_V1|default|k2|m3"
+    assert method_e_id in evaluation["row_ids"]
+    assert evaluation["lottery"] == "DAILY_539"
+    assert evaluation["expected_max_main_matches_v1"] == cell["expected_max_main_matches_v1"]
+    unavailable = {cell["row_id"]: cell for cell in artifact["unavailable_cells"]}
+    for k in (3, 5, 10, 20):
+        sibling = unavailable[f"NATIVE_DAILY_539|{EXPECTED_MAX_EXACT_1EXCHANGE}|default|k{k}|m3"]
+        assert sibling["status"] == "NOT_RUN"
+        assert sibling["reason"] == (
+            "NO_CANONICAL_PORTFOLIO_STORED:"
+            "CANONICAL_EXPECTED_MAX_EXACT_1EXCHANGE_DAILY539_ARTIFACT_NOT_AVAILABLE_FOR_K"
+        )
 
 
 def test_surface_reuses_each_exact_value_for_every_duplicate_portfolio_identity() -> None:

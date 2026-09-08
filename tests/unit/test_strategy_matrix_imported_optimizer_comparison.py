@@ -317,7 +317,7 @@ def test_native_measurement_artifact_closes_open_cells_without_pooling_evidence(
         if row["status"] == "MEASURED"
         and row["strategy_id"] in {HARD_DIV, HARD_DIV_R2, smc.EXPECTED_MAX_EXACT_1EXCHANGE}
     ]
-    assert len(direct_native_rows) == 15
+    assert len(direct_native_rows) == 16
     assert all(
         (
             row["source_evidence"]["dispatch"] == "CANONICAL_ADAPTER_PUBLIC_API"
@@ -510,7 +510,10 @@ def test_native_hash_field_is_sparse_and_always_declares_its_canonicalization(
         HARD_DIV_R2,
         smc.EXPECTED_MAX_EXACT_1EXCHANGE,
     }
-    assert len(carriers) == 15
+    assert len(carriers) == 16
+    assert {row["row_id"] for row in carriers if row["lottery"] != "BIG_LOTTO"} == {
+        f"NATIVE_DAILY_539|{smc.EXPECTED_MAX_EXACT_1EXCHANGE}|default|k2|m3"
+    }
     for row in carriers:
         assert "native_portfolio_sha256_canonicalization" in row
         # Every adapter-provided hash declares its convention, including the baseline/seed
@@ -760,6 +763,32 @@ def test_existing_matrix_rows_preserved_exactly(
             assert row["exact_q"]["exact"] == HARD_DIV_FROZEN[k]["exact_q"]
             assert row["local_optimum_status"] == "CERTIFIED_ONE_NUMBER_EXCHANGE"
             assert row["global_optimum_status"] == "UNKNOWN"
+
+
+def test_daily539_registration_preserves_every_other_canonical_row(
+    comparison: dict[str, Any],
+) -> None:
+    assert len(comparison["rows"]) == 377
+    assert comparison["status_counts"] == {
+        "MEASURED": 245,
+        "REUSED_VERIFIED": 50,
+        "NOT_APPLICABLE": 78,
+        "NOT_RUN": 4,
+    }
+    unchanged_rows = [
+        row
+        for row in comparison["rows"]
+        if not (
+            row["lottery"] == "DAILY_539"
+            and row["strategy_id"] == smc.EXPECTED_MAX_EXACT_1EXCHANGE
+        )
+    ]
+    assert len(unchanged_rows) == 372
+    # All 372 complete row payloads frozen at producer commit 88a6892, including
+    # BIG_LOTTO metrics/hashes/evidence and POWER_LOTTO_ZONE1 status semantics.
+    assert hashlib.sha256(canonical_json_bytes(unchanged_rows)).hexdigest() == (
+        "62d8759bf91d18efa9e8c939216b712c6b561ad1da01f2898defe38012f3007c"
+    )
 
 
 def _independent_tabu7_candidate_pool() -> tuple[tuple[int, ...], ...]:

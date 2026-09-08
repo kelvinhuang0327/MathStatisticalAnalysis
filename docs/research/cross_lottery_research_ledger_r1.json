@@ -1300,7 +1300,8 @@
           20
         ],
         "supported_lottery": [
-          "BIG_LOTTO"
+          "BIG_LOTTO",
+          "DAILY_539"
         ],
         "supports_synthetic_shape": false
       }
@@ -1320,6 +1321,11 @@
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
         "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-r1-result.json",
         "sha256": "f7fd8a7bde805a9715724f09974dcb9e3a4ac3952496da0b3399f3333f8e9cc6"
+      },
+      "expected_max_exact_1exchange_daily539_k2": {
+        "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",
+        "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-daily539-k2-r1-result.json",
+        "sha256": "06c2d29f85e69505e01ceabd4a8718db354e3e2e47b214fa60fb48c00790784c"
       },
       "frontier_b649": {
         "evidence_class": "EXISTING_NATIVE_EXACT_EVIDENCE",

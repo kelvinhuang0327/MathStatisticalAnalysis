@@ -57,6 +57,7 @@ from lottolab.application.p638_historical import (
     P638TargetDetail,
 )
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
+from lottolab.application.strategy_matrix_structural import StrategyMatrixStructuralDataset
 from lottolab.application.t539_historical import (
     T539CoverageLedger,
     T539DrawPage,
@@ -668,3 +669,15 @@ class LotteryPrizeEvaluator(Protocol):
     ) -> PrizeEvaluationResult:
         """Score one ticket against one draw under that lottery's official rules."""
         ...
+
+
+@runtime_checkable
+class StrategyMatrixStructuralReader(Protocol):
+    """Load the one checksum-pinned structural Matrix projection without side effects."""
+
+    def read(self) -> StrategyMatrixStructuralDataset:
+        """Return the complete validated 210-cell structural projection."""
+        ...
+
+
+type StrategyMatrixStructuralReaderFactory = Callable[[], StrategyMatrixStructuralReader]

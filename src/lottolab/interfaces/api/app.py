@@ -30,6 +30,7 @@ from lottolab.application.ports import (
     P638HistoricalQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
     StrategyEvidenceRegistryReader,
+    StrategyMatrixStructuralReaderFactory,
     T539HistoricalQueryRepositoryFactory,
 )
 from lottolab.application.use_cases.generate_bet import (
@@ -54,6 +55,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.strategy_evidence_registry import (
     CommittedStrategyEvidenceRegistry,
+)
+from lottolab.infrastructure.strategy_matrix_structural_reader import (
+    PackagedStrategyMatrixStructuralReader,
 )
 from lottolab.interfaces.api.b649_multi_ticket_records import (
     create_b649_multi_ticket_records_router,
@@ -92,6 +96,9 @@ from lottolab.interfaces.api.strategy_catalog import (
     create_strategy_catalog_router,
 )
 from lottolab.interfaces.api.strategy_evidence import create_strategy_evidence_router
+from lottolab.interfaces.api.strategy_matrix_structural import (
+    create_strategy_matrix_structural_router,
+)
 from lottolab.interfaces.api.t539_historical import create_t539_historical_router
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
@@ -124,6 +131,9 @@ def create_app(
     ) = None,
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
+    strategy_matrix_structural_reader_factory: (
+        StrategyMatrixStructuralReaderFactory | None
+    ) = None,
     b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
     b649_exact_native_record_reader_factory: (B649ExactNativeRecordReaderFactory | None) = None,
     b649_k10_record_reader_factory: B649K10RecordReaderFactory | None = None,
@@ -163,6 +173,11 @@ def create_app(
         b649_exact_native_record_reader_factory
         if b649_exact_native_record_reader_factory is not None
         else PackagedB649ExactNativeRecordReader
+    )
+    resolved_strategy_matrix_structural_reader_factory = (
+        strategy_matrix_structural_reader_factory
+        if strategy_matrix_structural_reader_factory is not None
+        else PackagedStrategyMatrixStructuralReader
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -209,6 +224,9 @@ def create_app(
             resolved_catalog,
             resolved_strategy_evidence_registry,
         )
+    )
+    app.include_router(
+        create_strategy_matrix_structural_router(resolved_strategy_matrix_structural_reader_factory)
     )
     app.include_router(
         create_draw_data_router(

@@ -144,6 +144,34 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/strategy-matrix/structural": {
+      get: {
+          parameters: {
+            "query": {
+              "lottery"?: components['schemas']["StructuralLottery"] | null
+              "method_id"?: components['schemas']["StructuralMethodId"] | null
+              "ticket_count"?: components['schemas']["StructuralTicketCount"] | null
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["StrategyMatrixStructuralResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiValidationErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/draw-imports/preview": {
       post: {
           parameters: Record<string, never>
@@ -3829,6 +3857,10 @@ export interface components {
           "location": string
           "type": string
         }
+    "SourceReferenceView": {
+          "repository_path": string
+          "file_sha256": string
+        }
     "StabilityDeltaView": {
           "strategy_id": string
           "strategy_version": string
@@ -3868,6 +3900,17 @@ export interface components {
           "strategy_combination_hit_rate": components['schemas']["StrategyCombinationHitRateBlock"]
           "d3": components['schemas']["D3AvailabilityBlock"]
         }
+    "StrategyMatrixStructuralResponse": {
+          "schema_id": string
+          "schema_version": string
+          "projection_sha256": string
+          "authority": components['schemas']["StructuralMatrixAuthorityView"]
+          "scope": string
+          "supported_ticket_counts": Array<number>
+          "metric": components['schemas']["StructuralMatrixMetricView"]
+          "claim_boundary": components['schemas']["StructuralMatrixClaimBoundaryView"]
+          "cells": Array<components['schemas']["StructuralMatrixCellView"]>
+        }
     "StrategyOverviewCapabilities": {
           "evaluation_metrics_available": boolean
           "d3_status_available": boolean
@@ -3905,6 +3948,55 @@ export interface components {
           "lifecycle_status": components['schemas']["LifecycleStatus"]
           "executable": boolean
         }
+    "StructuralCaseId": "NATIVE_BIG_LOTTO" | "NATIVE_DAILY_539" | "NATIVE_POWER_LOTTO_ZONE1"
+    "StructuralLottery": "BIG_LOTTO" | "DAILY_539" | "POWER_LOTTO_ZONE1"
+    "StructuralMatrixAuthoritySourcesView": {
+          "metric_surface": components['schemas']["SourceReferenceView"]
+          "matrix": components['schemas']["SourceReferenceView"]
+          "ledger": components['schemas']["SourceReferenceView"]
+        }
+    "StructuralMatrixAuthorityView": {
+          "kind": string
+          "source_head": string
+          "source_tree": string
+          "sources": components['schemas']["StructuralMatrixAuthoritySourcesView"]
+        }
+    "StructuralMatrixCellView": {
+          "row_id": string
+          "case_id": components['schemas']["StructuralCaseId"]
+          "lottery": components['schemas']["StructuralLottery"]
+          "method_id": components['schemas']["StructuralMethodId"]
+          "ticket_count": number
+          "method_objective": string
+          "source_status": components['schemas']["StructuralSourceStatus"]
+          "measurement_status": components['schemas']["StructuralMeasurementStatus"]
+          "value": components['schemas']["StructuralMatrixValueView"] | null
+          "portfolio_sha256": string | null
+          "unavailable_reason": string | null
+          "local_optimum_status": string | null
+        }
+    "StructuralMatrixClaimBoundaryView": {
+          "historical_outcomes_used": boolean
+          "historical_success_rate_claimed": boolean
+          "ranking_score_claimed": boolean
+          "global_optimum_claimed": boolean
+          "cross_lottery_normalization": string
+        }
+    "StructuralMatrixMetricView": {
+          "metric_id": string
+          "definition": string
+          "unit": string
+          "draw_distribution": string
+          "exactness": string
+        }
+    "StructuralMatrixValueView": {
+          "numerator": string
+          "denominator": string
+        }
+    "StructuralMeasurementStatus": "MEASURED" | "NOT_APPLICABLE" | "UNAVAILABLE"
+    "StructuralMethodId": "CYCLIC_SIDON_SHIFT_V1" | "GREEDY_MIN_OVERLAP_V1" | "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1" | "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1" | "CANDIDATE_LOW_OVERLAP_V1" | "RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1" | "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1" | "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1" | "B649_CANDIDATE_SET_LOW_OVERLAP_V1" | "B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1" | "B649_CANDIDATE_SET_HYBRID_DIVERSITY_V1" | "HARD_DIV_PAIRWISE_OVERLAP_R1" | "HARD_DIV_PAIRWISE_OVERLAP_R2" | "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+    "StructuralSourceStatus": "MEASURED" | "REUSED_VERIFIED" | "NOT_APPLICABLE" | "NOT_RUN"
+    "StructuralTicketCount": 2 | 3 | 5 | 10 | 20
     "T539CoverageBlockedView": {
           "strategy_id": string
           "reason_code": string

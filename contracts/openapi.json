@@ -497,6 +497,97 @@
         }
       }
     },
+    "/api/v1/strategy-matrix/structural": {
+      "get": {
+        "tags": [
+          "strategy-matrix-structural"
+        ],
+        "summary": "Query Strategy Matrix Structural Endpoint",
+        "operationId": "queryStrategyMatrixStructural",
+        "parameters": [
+          {
+            "name": "lottery",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StructuralLottery"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Lottery"
+            }
+          },
+          {
+            "name": "method_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StructuralMethodId"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Method Id"
+            }
+          },
+          {
+            "name": "ticket_count",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/StructuralTicketCount"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ticket Count"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StrategyMatrixStructuralResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiValidationErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        }
+      }
+    },
     "/api/v1/draw-imports/preview": {
       "post": {
         "tags": [
@@ -16282,6 +16373,25 @@
         ],
         "title": "RequestValidationIssueView"
       },
+      "SourceReferenceView": {
+        "properties": {
+          "repository_path": {
+            "type": "string",
+            "title": "Repository Path"
+          },
+          "file_sha256": {
+            "type": "string",
+            "title": "File Sha256"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "repository_path",
+          "file_sha256"
+        ],
+        "title": "SourceReferenceView"
+      },
       "StabilityDeltaView": {
         "properties": {
           "strategy_id": {
@@ -16496,6 +16606,63 @@
         ],
         "title": "StrategyEvidenceResponse"
       },
+      "StrategyMatrixStructuralResponse": {
+        "properties": {
+          "schema_id": {
+            "type": "string",
+            "title": "Schema Id"
+          },
+          "schema_version": {
+            "type": "string",
+            "title": "Schema Version"
+          },
+          "projection_sha256": {
+            "type": "string",
+            "title": "Projection Sha256"
+          },
+          "authority": {
+            "$ref": "#/components/schemas/StructuralMatrixAuthorityView"
+          },
+          "scope": {
+            "type": "string",
+            "title": "Scope"
+          },
+          "supported_ticket_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Supported Ticket Counts"
+          },
+          "metric": {
+            "$ref": "#/components/schemas/StructuralMatrixMetricView"
+          },
+          "claim_boundary": {
+            "$ref": "#/components/schemas/StructuralMatrixClaimBoundaryView"
+          },
+          "cells": {
+            "items": {
+              "$ref": "#/components/schemas/StructuralMatrixCellView"
+            },
+            "type": "array",
+            "title": "Cells"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "schema_id",
+          "schema_version",
+          "projection_sha256",
+          "authority",
+          "scope",
+          "supported_ticket_counts",
+          "metric",
+          "claim_boundary",
+          "cells"
+        ],
+        "title": "StrategyMatrixStructuralResponse"
+      },
       "StrategyOverviewCapabilities": {
         "properties": {
           "evaluation_metrics_available": {
@@ -16707,6 +16874,303 @@
           "executable"
         ],
         "title": "StrategyView"
+      },
+      "StructuralCaseId": {
+        "type": "string",
+        "enum": [
+          "NATIVE_BIG_LOTTO",
+          "NATIVE_DAILY_539",
+          "NATIVE_POWER_LOTTO_ZONE1"
+        ],
+        "title": "StructuralCaseId"
+      },
+      "StructuralLottery": {
+        "type": "string",
+        "enum": [
+          "BIG_LOTTO",
+          "DAILY_539",
+          "POWER_LOTTO_ZONE1"
+        ],
+        "title": "StructuralLottery"
+      },
+      "StructuralMatrixAuthoritySourcesView": {
+        "properties": {
+          "metric_surface": {
+            "$ref": "#/components/schemas/SourceReferenceView"
+          },
+          "matrix": {
+            "$ref": "#/components/schemas/SourceReferenceView"
+          },
+          "ledger": {
+            "$ref": "#/components/schemas/SourceReferenceView"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_surface",
+          "matrix",
+          "ledger"
+        ],
+        "title": "StructuralMatrixAuthoritySourcesView"
+      },
+      "StructuralMatrixAuthorityView": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "CANONICAL_PACKAGED_MATRIX",
+            "title": "Kind"
+          },
+          "source_head": {
+            "type": "string",
+            "title": "Source Head"
+          },
+          "source_tree": {
+            "type": "string",
+            "title": "Source Tree"
+          },
+          "sources": {
+            "$ref": "#/components/schemas/StructuralMatrixAuthoritySourcesView"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "source_head",
+          "source_tree",
+          "sources"
+        ],
+        "title": "StructuralMatrixAuthorityView"
+      },
+      "StructuralMatrixCellView": {
+        "properties": {
+          "row_id": {
+            "type": "string",
+            "title": "Row Id"
+          },
+          "case_id": {
+            "$ref": "#/components/schemas/StructuralCaseId"
+          },
+          "lottery": {
+            "$ref": "#/components/schemas/StructuralLottery"
+          },
+          "method_id": {
+            "$ref": "#/components/schemas/StructuralMethodId"
+          },
+          "ticket_count": {
+            "type": "integer",
+            "title": "Ticket Count"
+          },
+          "method_objective": {
+            "type": "string",
+            "title": "Method Objective"
+          },
+          "source_status": {
+            "$ref": "#/components/schemas/StructuralSourceStatus"
+          },
+          "measurement_status": {
+            "$ref": "#/components/schemas/StructuralMeasurementStatus"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StructuralMatrixValueView"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "portfolio_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Portfolio Sha256"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          },
+          "local_optimum_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Local Optimum Status"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "row_id",
+          "case_id",
+          "lottery",
+          "method_id",
+          "ticket_count",
+          "method_objective",
+          "source_status",
+          "measurement_status",
+          "value",
+          "portfolio_sha256",
+          "unavailable_reason",
+          "local_optimum_status"
+        ],
+        "title": "StructuralMatrixCellView"
+      },
+      "StructuralMatrixClaimBoundaryView": {
+        "properties": {
+          "historical_outcomes_used": {
+            "type": "boolean",
+            "title": "Historical Outcomes Used"
+          },
+          "historical_success_rate_claimed": {
+            "type": "boolean",
+            "title": "Historical Success Rate Claimed"
+          },
+          "ranking_score_claimed": {
+            "type": "boolean",
+            "title": "Ranking Score Claimed"
+          },
+          "global_optimum_claimed": {
+            "type": "boolean",
+            "title": "Global Optimum Claimed"
+          },
+          "cross_lottery_normalization": {
+            "type": "string",
+            "title": "Cross Lottery Normalization"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "historical_outcomes_used",
+          "historical_success_rate_claimed",
+          "ranking_score_claimed",
+          "global_optimum_claimed",
+          "cross_lottery_normalization"
+        ],
+        "title": "StructuralMatrixClaimBoundaryView"
+      },
+      "StructuralMatrixMetricView": {
+        "properties": {
+          "metric_id": {
+            "type": "string",
+            "title": "Metric Id"
+          },
+          "definition": {
+            "type": "string",
+            "title": "Definition"
+          },
+          "unit": {
+            "type": "string",
+            "title": "Unit"
+          },
+          "draw_distribution": {
+            "type": "string",
+            "title": "Draw Distribution"
+          },
+          "exactness": {
+            "type": "string",
+            "title": "Exactness"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "metric_id",
+          "definition",
+          "unit",
+          "draw_distribution",
+          "exactness"
+        ],
+        "title": "StructuralMatrixMetricView"
+      },
+      "StructuralMatrixValueView": {
+        "properties": {
+          "numerator": {
+            "type": "string",
+            "title": "Numerator"
+          },
+          "denominator": {
+            "type": "string",
+            "title": "Denominator"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "numerator",
+          "denominator"
+        ],
+        "title": "StructuralMatrixValueView"
+      },
+      "StructuralMeasurementStatus": {
+        "type": "string",
+        "enum": [
+          "MEASURED",
+          "NOT_APPLICABLE",
+          "UNAVAILABLE"
+        ],
+        "title": "StructuralMeasurementStatus"
+      },
+      "StructuralMethodId": {
+        "type": "string",
+        "enum": [
+          "CYCLIC_SIDON_SHIFT_V1",
+          "GREEDY_MIN_OVERLAP_V1",
+          "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+          "GREEDY_MINMAX_SUM_THEN_REUSE_DISPERSION_V1",
+          "CANDIDATE_LOW_OVERLAP_V1",
+          "RESTART_GREEDY_SWAP_COVERAGE_SEARCH_V1",
+          "REFERENCE_E_BEST_1EXCHANGE_EXACT_COVERAGE_V1",
+          "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+          "B649_CANDIDATE_SET_LOW_OVERLAP_V1",
+          "B649_CANDIDATE_SET_EXPOSURE_BALANCED_V1",
+          "B649_CANDIDATE_SET_HYBRID_DIVERSITY_V1",
+          "HARD_DIV_PAIRWISE_OVERLAP_R1",
+          "HARD_DIV_PAIRWISE_OVERLAP_R2",
+          "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1"
+        ],
+        "title": "StructuralMethodId",
+        "description": "The exact 14 canonical Matrix methods from the pinned research ledger's\n``imported_optimizer_matrix.methods[*].strategy_id``."
+      },
+      "StructuralSourceStatus": {
+        "type": "string",
+        "enum": [
+          "MEASURED",
+          "REUSED_VERIFIED",
+          "NOT_APPLICABLE",
+          "NOT_RUN"
+        ],
+        "title": "StructuralSourceStatus"
+      },
+      "StructuralTicketCount": {
+        "type": "integer",
+        "enum": [
+          2,
+          3,
+          5,
+          10,
+          20
+        ],
+        "title": "StructuralTicketCount"
       },
       "T539CoverageBlockedView": {
         "properties": {

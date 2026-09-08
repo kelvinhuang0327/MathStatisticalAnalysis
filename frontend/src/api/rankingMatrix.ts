@@ -4,6 +4,8 @@ import {
   fetchB649MultiTicketRecords,
   fetchB649MultiTicketSummary,
   type B649ExactNativeRecord,
+  type B649K5Record,
+  type B649K5Tie,
   type B649K10Record,
   type B649ExactNativeTicketCount,
   type B649HistoryWindow,
@@ -58,13 +60,16 @@ export type ComparabilityStatus =
   | 'UNAVAILABLE'
 
 export interface RankingRow {
+  k5Record?: B649K5Record
+  producerTies?: B649K5Tie[]
+  projectionSha256?: string
   lotteryType: LotteryType
   ticketCount: TicketCount
   window: RankingWindow
   officialRank: number | null
   sourceOrder?: number
   rawRank?: number | null
-  position?: null
+  position?: number | null
   requestedDraws?: number
   strategyId: string
   displayName: string
@@ -90,6 +95,9 @@ export interface RankingRow {
 }
 
 export interface MatrixCell {
+  k5Record?: B649K5Record
+  producerTies?: B649K5Tie[]
+  projectionSha256?: string
   ticketCount: TicketCount
   officialRank: number | null
   officialAnyPrizeRate: number | null
@@ -112,6 +120,9 @@ export interface MatrixRow {
 }
 
 export interface CrossWindowPoint {
+  k5Record?: B649K5Record
+  producerTies?: B649K5Tie[]
+  projectionSha256?: string
   window: RankingWindow
   windowLabel: string
   officialRank: number | null
@@ -315,13 +326,27 @@ async function loadB649RankingRows(
   window: RankingWindow,
   signal?: AbortSignal,
 ): Promise<RankingRow[]> {
+  if (ticketCount === 5) {
+    const rows: RankingRow[] = []
+    let offset = 0
+    while (true) {
+      const page = await fetchB649ExactNativeRecords({ ticketCount: 5, window, limit: 100, offset }, signal)
+      if (!('ties' in page) || page.ticket_count !== 5 || page.window !== window) throw new Error('Invalid K5 authority response')
+      rows.push(...page.items.map((record) => transformB649K5ToRankingRow(record, page.ties, page.projection_sha256)))
+      offset += page.items.length
+      if (offset >= page.total) break
+      if (!page.items.length) throw new Error('Incomplete K5 authority page')
+    }
+    return rows
+  }
+
   if (ticketCount === 10) {
     const records: B649K10Record[] = []
     let offset = 0
     while (true) {
       const page = await fetchB649ExactNativeRecords({ ticketCount: 10, window, limit: 100, offset }, signal)
       for (const row of page.items) {
-        if (!('source_order' in row) || row.ticket_count !== 10) throw new Error('Invalid K10 authority response')
+        if (!('source_order' in row) || 'metric_unavailable_reason' in row || row.ticket_count !== 10) throw new Error('Invalid K10 authority response')
         records.push(row)
       }
       offset += page.items.length
@@ -376,7 +401,7 @@ async function loadB649RankingRows(
   }
 
   // Canonical B649 multi-ticket dataset supports prefix counts 5, 10, 15, 20.
-  const isAvailablePrefix = (ticketCount === 5 || ticketCount === 20)
+  const isAvailablePrefix = (ticketCount === 20)
   if (!isAvailablePrefix) {
     // Return empty array (the UI will show clean unavailable state for this ticket count)
     return []
@@ -406,6 +431,39 @@ async function loadB649RankingRows(
   }
 
   return records.map((rec) => transformB649ToRankingRow(rec, ticketCount, window, catalogMap))
+}
+
+export function transformB649K5ToRankingRow(
+  record: B649K5Record,
+  ties: B649K5Tie[] = [],
+  projectionSha256?: string,
+): RankingRow {
+  const rate = parseNumberString(record.official_any_prize_rate)
+  const baseline = parseNumberString(record.official_random_baseline)
+  const delta = parseNumberString(record.baseline_delta)
+  const coverage = parseNumberString(record.coverage)
+  const isAvailable = record.metric_status === 'AVAILABLE'
+  const reason = record.metric_unavailable_reason
+  const comp = deriveComparabilityStatus(isAvailable, record.reproduction_status ?? undefined, reason, record.evaluated_draws, record.window)
+  const prizes: [string, string][] = [['FIRST', '頭獎'], ['SECOND', '貳獎'], ['THIRD', '參獎'], ['FOURTH', '肆獎'], ['FIFTH', '伍獎'], ['SIXTH', '陸獎'], ['SEVENTH', '柒獎'], ['GENERAL', '普獎']]
+  const best = prizes.find(([key]) => (record.best_prize_counts?.[key] ?? 0) > 0)
+  return {
+    k5Record: record, producerTies: ties, projectionSha256,
+    lotteryType: 'BIG_LOTTO', ticketCount: 5, window: record.window,
+    officialRank: record.official_rank, rawRank: record.rank, position: record.position,
+    sourceOrder: record.source_order, requestedDraws: record.requested_draws,
+    strategyId: record.strategy_id, displayName: record.display_name,
+    strategyVersion: record.strategy_version, methodFamily: record.method_family ?? 'Unavailable',
+    lifecycleStatus: record.reproduction_status ?? 'Unavailable',
+    successes: record.official_any_prize_numerator, observations: record.evaluated_draws,
+    officialAnyPrizeRate: rate, officialAnyPrizeRateFormatted: formatRatePercentage(rate),
+    baselineRate: baseline, baselineRateFormatted: formatRatePercentage(baseline),
+    baselineDelta: delta, baselineDeltaFormatted: formatDeltaPercentage(delta),
+    coverage, coverageFormatted: formatCoveragePercentage(coverage),
+    bestOfficialPrize: record.best_prize_counts === null ? 'Unavailable' : best ? `${best[1]} (${record.best_prize_counts[best[0]]})` : '無中獎',
+    comparabilityStatus: comp.status, comparabilityLabel: comp.label,
+    warningCodes: reason ? [reason] : [], isAvailable, unrankedReason: reason,
+  }
 }
 
 export function transformB649K10ToRankingRow(record: B649K10Record): RankingRow {
@@ -703,7 +761,7 @@ export async function fetchMultiTicketMatrix(
   signal?: AbortSignal,
 ): Promise<MatrixRow[]> {
   // Load data for all canonical ticket counts (2, 3, 5, 10, 20)
-  const ticketCountsToFetch: TicketCount[] = [2, 3, 5, 10, 20]
+  const ticketCountsToFetch: TicketCount[] = lotteryType === 'BIG_LOTTO' ? [5, 2, 3, 10, 20] : [2, 3, 5, 10, 20]
   const rowsPerCount = await Promise.all(
     ticketCountsToFetch.map(async (tc) => ({
       ticketCount: tc,
@@ -733,8 +791,10 @@ export async function fetchMultiTicketMatrix(
       }
       const entry = strategyMap.get(row.strategyId)!
       entry.cells[ticketCount] = {
+        ...(row.k5Record ? { k5Record: row.k5Record, producerTies: row.producerTies, projectionSha256: row.projectionSha256 } : {}),
         ticketCount,
-        officialRank: row.officialRank,
+        ...(row.k5Record ? { k5Record: row.k5Record, producerTies: row.producerTies, projectionSha256: row.projectionSha256 } : {}),
+      officialRank: row.officialRank,
         officialAnyPrizeRate: row.officialAnyPrizeRate,
         officialAnyPrizeRateFormatted: row.officialAnyPrizeRateFormatted,
         baselineDelta: row.baselineDelta,
@@ -770,8 +830,8 @@ export async function fetchMultiTicketMatrix(
 
   // Sort rows primarily by 5-ticket rank (or first available rank)
   matrixRows.sort((a, b) => {
-    const rankA = a.cells[5]?.officialRank ?? 9999
-    const rankB = b.cells[5]?.officialRank ?? 9999
+    const rankA = a.cells[5]?.k5Record?.source_order ?? a.cells[5]?.officialRank ?? 9999
+    const rankB = b.cells[5]?.k5Record?.source_order ?? b.cells[5]?.officialRank ?? 9999
     return rankA - rankB
   })
 
@@ -820,6 +880,7 @@ export async function fetchCrossWindowData(
       return {
         window,
         windowLabel,
+        ...(row?.k5Record ? { k5Record: row.k5Record, producerTies: row.producerTies, projectionSha256: row.projectionSha256 } : {}),
         officialRank: row?.officialRank ?? null,
         officialAnyPrizeRate: null,
         officialAnyPrizeRateFormatted: 'Unavailable',
@@ -836,6 +897,7 @@ export async function fetchCrossWindowData(
     return {
       window,
       windowLabel,
+      ...(row.k5Record ? { k5Record: row.k5Record, producerTies: row.producerTies, projectionSha256: row.projectionSha256 } : {}),
       officialRank: row.officialRank,
       officialAnyPrizeRate: row.officialAnyPrizeRate,
       officialAnyPrizeRateFormatted: row.officialAnyPrizeRateFormatted,

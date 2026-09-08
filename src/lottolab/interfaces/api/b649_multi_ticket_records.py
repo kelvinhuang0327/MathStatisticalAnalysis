@@ -20,6 +20,10 @@ from lottolab.application.biglotto_multi_ticket_records import (
     B649ExactNativeRecord,
     B649ExactNativeRecordQuery,
     B649HistoryWindow,
+    B649K5Provenance,
+    B649K5Record,
+    B649K5Tie,
+    B649K5WindowBoundary,
     B649K10Record,
     B649MultiTicketRecord,
     B649MultiTicketRecordQuery,
@@ -29,6 +33,7 @@ from lottolab.application.biglotto_multi_ticket_records import (
 )
 from lottolab.application.ports import (
     B649ExactNativeRecordReaderFactory,
+    B649K5RecordReaderFactory,
     B649K10RecordReaderFactory,
     B649MultiTicketRecordReaderFactory,
 )
@@ -50,6 +55,7 @@ class B649PrefixCount(IntEnum):
 class B649ExactNativeTicketCount(IntEnum):
     TWO = 2
     THREE = 3
+    FIVE = 5
     TEN = 10
 
 
@@ -226,6 +232,23 @@ class B649ExactNativeRecordPageResponse(BaseModel):
     research_disclaimer: str
 
 
+class B649K5RecordPageResponse(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    items: list[B649K5Record]
+    total: int
+    limit: int
+    offset: int
+    ticket_count: Literal[5]
+    window: B649HistoryWindow
+    criterion: Literal["OFFICIAL_ANY_PRIZE"]
+    research_disclaimer: str
+    projection_sha256: str
+    provenance: B649K5Provenance
+    window_boundary: B649K5WindowBoundary
+    ties: list[B649K5Tie]
+
+
 class B649ExactNativeRecordQueryView(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -250,6 +273,7 @@ def create_b649_multi_ticket_records_router(
     reader_factory: B649MultiTicketRecordReaderFactory | None,
     exact_native_reader_factory: B649ExactNativeRecordReaderFactory | None = None,
     k10_reader_factory: B649K10RecordReaderFactory | None = None,
+    k5_reader_factory: B649K5RecordReaderFactory | None = None,
 ) -> APIRouter:
     """Expose summary and exact-selection queries without eager artifact reads."""
 
@@ -341,7 +365,7 @@ def create_b649_multi_ticket_records_router(
 
     @router.get(
         "/b649-exact-native-records",
-        response_model=B649ExactNativeRecordPageResponse,
+        response_model=B649K5RecordPageResponse | B649ExactNativeRecordPageResponse,
         responses={
             422: {"model": ApiValidationErrorResponse},
             503: {"model": B649ExactNativeApiErrorResponse},
@@ -350,18 +374,7 @@ def create_b649_multi_ticket_records_router(
     )
     def exact_native_records(
         query: Annotated[B649ExactNativeRecordQueryView, Query()],
-    ) -> B649ExactNativeRecordPageResponse | JSONResponse:
-        try:
-            if query.ticket_count is B649ExactNativeTicketCount.TEN:
-                if k10_reader_factory is None:
-                    return _exact_native_unavailable_response()
-                dataset = k10_reader_factory().read(query.window)
-            else:
-                if exact_native_reader_factory is None:
-                    return _exact_native_unavailable_response()
-                dataset = exact_native_reader_factory().read()
-        except Exception:
-            return _exact_native_unavailable_response()
+    ) -> B649K5RecordPageResponse | B649ExactNativeRecordPageResponse | JSONResponse:
         application_query = B649ExactNativeRecordQuery(
             ticket_count=int(query.ticket_count),
             window=query.window,
@@ -375,9 +388,44 @@ def create_b649_multi_ticket_records_router(
             limit=query.limit,
             offset=query.offset,
         )
+        if query.ticket_count is B649ExactNativeTicketCount.FIVE:
+            try:
+                if k5_reader_factory is None:
+                    return _exact_native_unavailable_response()
+                k5_dataset = k5_reader_factory().read(query.window)
+            except Exception:
+                return _exact_native_unavailable_response()
+            k5_page = query_b649_exact_native_records(k5_dataset, application_query)
+            k5_items: list[B649K5Record] = []
+            for row in k5_page.items:
+                assert isinstance(row, B649K5Record)
+                k5_items.append(row)
+            return B649K5RecordPageResponse(
+                items=k5_items, total=k5_page.total, limit=k5_page.limit, offset=k5_page.offset,
+                ticket_count=5, window=query.window, criterion="OFFICIAL_ANY_PRIZE",
+                research_disclaimer=B649_RESEARCH_DISCLAIMER_ZH_TW,
+                projection_sha256=k5_dataset.projection_sha256,
+                provenance=k5_dataset.provenance,
+                window_boundary=k5_dataset.window_boundaries[query.window.value],
+                ties=list(k5_dataset.ties_by_window[query.window.value]),
+            )
+        try:
+            if query.ticket_count is B649ExactNativeTicketCount.TEN:
+                if k10_reader_factory is None:
+                    return _exact_native_unavailable_response()
+                dataset = k10_reader_factory().read(query.window)
+            else:
+                if exact_native_reader_factory is None:
+                    return _exact_native_unavailable_response()
+                dataset = exact_native_reader_factory().read()
+        except Exception:
+            return _exact_native_unavailable_response()
         page = query_b649_exact_native_records(dataset, application_query)
         return B649ExactNativeRecordPageResponse(
-            items=[_exact_native_record_view(row) for row in page.items],
+            items=[
+                _exact_native_record_view(row)
+                for row in page.items if not isinstance(row, B649K5Record)
+            ],
             total=page.total,
             limit=page.limit,
             offset=page.offset,

@@ -18,16 +18,21 @@ from lottolab.domain.biglotto_full_strategy_catalog import (
 from lottolab.infrastructure.biglotto_multi_ticket_projection_builder import (
     METRICS_UNAVAILABLE_STRATEGY_IDS,
     B649ProjectionBuildError,
+    build_b649_k5_projection_bytes,
     build_b649_k10_projection_bytes,
     build_b649_projection_bytes,
     expected_report_manifest,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K5_AUTHORITY,
+    K5_PROJECTION_RESOURCE_NAME,
     K10_AUTHORITY,
     K10_PROJECTION_RESOURCE_NAME,
     B649ExactNativeRecordProjectionError,
+    PackagedB649K5RecordReader,
     PackagedB649K10RecordReader,
     PackagedB649MultiTicketRecordReader,
+    parse_b649_k5_projection,
     parse_b649_k10_projection,
 )
 
@@ -419,3 +424,283 @@ def test_k10_available_full_exclusions_and_authoritative_zero_unranked_unavailab
     assert parsed[0].official_rank is None and parsed[0].source_order == 1
     assert parsed[1].official_any_prize_rate is None
     assert parsed[1].unavailable_reason == "METRIC_UNAVAILABLE"
+
+
+# K5 is a projection of a shared sealed publication, including an uncatalogued producer.
+def _k5_paths() -> tuple[Path, Path, Path]:
+    return (
+        Path(str(K5_AUTHORITY["manifest_locator"])),
+        Path(str(K5_AUTHORITY["target_evidence_locator"])),
+        Path(str(K5_AUTHORITY["source_ranking_locator"])),
+    )
+
+
+def _require_k5_paths() -> tuple[Path, Path, Path]:
+    paths = _k5_paths()
+    if not all(path.is_file() for path in paths):
+        pytest.skip("explicit offline K5 authorities are not installed")
+    return paths
+
+
+def _k5_document() -> dict[str, object]:
+    return json.loads(
+        (Path("src/lottolab/strategies/data") / K5_PROJECTION_RESOURCE_NAME).read_bytes()
+    )
+
+
+def test_k5_materializes_twice_without_evaluation_and_copies_all_source_fields() -> None:
+    paths = _require_k5_paths()
+    before = [hashlib.sha256(p.read_bytes()).hexdigest() for p in paths]
+    calls: list[str] = []
+
+    def profile(frame: FrameType, event: str, _arg: object) -> None:
+        module = str(frame.f_globals.get("__name__", ""))
+        if event == "call" and any(
+            t in module for t in ("backtest", "replay", "baseline", "ranking", "evaluator")
+        ):
+            calls.append(f"{module}.{frame.f_code.co_name}")
+
+    sys.setprofile(profile)
+    try:
+        first = build_b649_k5_projection_bytes(*paths)
+        second = build_b649_k5_projection_bytes(*paths)
+    finally:
+        sys.setprofile(None)
+    assert calls == []
+    assert (
+        first
+        == second
+        == (Path("src/lottolab/strategies/data") / K5_PROJECTION_RESOURCE_NAME).read_bytes()
+    )
+    assert [hashlib.sha256(p.read_bytes()).hexdigest() for p in paths] == before
+    published = json.loads(paths[2].read_bytes())["leaderboards"]["K5"]
+    data = parse_b649_k5_projection(first)
+    assert len(data.records) == 20
+    assert all(row.metric_status == "AVAILABLE" for row in data.records)
+    for window, board in published.items():
+        rows = [asdict(r) for r in data.records if r.window.value == window]
+        assert len(rows) == 5
+        assert {r["strategy_id"] for r in rows} == set(
+            cast(list[str], K5_AUTHORITY["strategy_universe"])
+        )
+        assert [asdict(t) for t in data.ties_by_window[window]] == board["ties"]
+        for order, (row, producer) in enumerate(zip(rows, board["rankings"], strict=True), 1):
+            assert {key: row[key] for key in producer} == producer
+            assert row["official_rank"] == producer["rank"]
+            assert row["source_order"] == order == producer["position"]
+    composite = [r for r in data.records if r.strategy_id.startswith("legacy_composite__")]
+    assert len(composite) == 4
+    for row in composite:
+        assert row.catalog_strategy_version is row.legacy_method_id is row.source_path is None
+        assert row.method_family is row.reproduction_status is None
+        assert row.metric_status == "AVAILABLE" and row.official_rank is not None
+    recent = [r for r in data.records if r.window is B649HistoryWindow.RECENT_50]
+    assert [r.rank for r in recent] == [1, 2, 2, 2, 5]
+    assert [r.position for r in recent] == [1, 2, 3, 4, 5]
+    assert [r.source_order for r in recent] == [1, 2, 3, 4, 5]
+    assert data.provenance.sealed_manifest_k_values == (2, 3, 5)
+    assert data.provenance.target_evidence_k_values == (2, 3, 5)
+    assert data.provenance.source_ranking_k_values == (2, 3, 5, 10)
+
+
+@pytest.mark.parametrize("source_index", [0, 1, 2])
+def test_k5_refuses_wrong_source_bytes(monkeypatch: pytest.MonkeyPatch, source_index: int) -> None:
+    paths = _require_k5_paths()
+    read = Path.read_bytes
+    def corrupted_read(path: Path) -> bytes:
+        return b"corrupt" if path == paths[source_index] else read(path)
+
+    monkeypatch.setattr(Path, "read_bytes", corrupted_read)
+    with pytest.raises(B649ProjectionBuildError, match="checksum"):
+        build_b649_k5_projection_bytes(*paths)
+
+
+@pytest.mark.parametrize(
+    "source,field,value",
+    [
+        ("manifest", "schema_version", "bad"),
+        ("ranking", "schema_version", "bad"),
+        ("manifest", "run_id", "bad"),
+        ("ranking", "run_id", "bad"),
+        ("ranking", "cutoff", "115000083"),
+        ("ranking", "budgets", [5]),
+        ("ranking", "partition_keys", ["strategy_id"]),
+    ],
+)
+def test_k5_checks_source_semantics_even_with_matching_hash(
+    monkeypatch: pytest.MonkeyPatch,
+    source: str,
+    field: str,
+    value: object,
+) -> None:
+    paths = _require_k5_paths()
+    path = paths[0 if source == "manifest" else 2]
+    document = json.loads(path.read_bytes())
+    document[field] = value
+    raw = json.dumps(document).encode()
+    read = Path.read_bytes
+    def replaced_read(candidate: Path) -> bytes:
+        return raw if candidate == path else read(candidate)
+    monkeypatch.setattr(Path, "read_bytes", replaced_read)
+    monkeypatch.setitem(
+        K5_AUTHORITY,
+        "sealed_manifest_sha256" if source == "manifest" else "source_ranking_sha256",
+        hashlib.sha256(raw).hexdigest(),
+    )
+    with pytest.raises(B649ProjectionBuildError):
+        build_b649_k5_projection_bytes(*paths)
+
+
+@pytest.mark.parametrize(
+    "defect",
+    [
+        "checksum",
+        "schema",
+        "universe",
+        "duplicate",
+        "missing",
+        "K",
+        "cutoff",
+        "run_id",
+        "scope",
+        "ties",
+        "position",
+        "source_order",
+        "rank",
+        "decimal",
+    ],
+)
+def test_k5_rejects_corrupted_projection(defect: str) -> None:
+    document = _k5_document()
+    rows = cast(list[dict[str, object]], document["records"])
+    provenance = cast(dict[str, object], document["provenance"])
+    if defect == "checksum":
+        document["projection_sha256"] = "0" * 64
+    elif defect == "schema":
+        document["projection_schema_version"] = "bad"
+    elif defect == "universe":
+        rows[0]["strategy_id"] = "bad"
+    elif defect == "duplicate":
+        rows[1] = rows[0].copy()
+    elif defect == "missing":
+        rows.pop()
+    elif defect == "K":
+        rows[0]["ticket_count"] = 10
+    elif defect in ("cutoff", "run_id"):
+        provenance[defect] = "bad"
+    elif defect == "scope":
+        provenance["sealed_manifest_k_values"] = [5]
+    elif defect == "ties":
+        cast(dict[str, object], document["ties_by_window"])["RECENT_50"] = []
+    elif defect in ("position", "source_order"):
+        rows[0][defect] = 2
+    elif defect == "rank":
+        rows[0]["official_rank"] = 5
+    else:
+        rows[0]["official_any_prize_rate"] = 0.2
+    with pytest.raises(B649ExactNativeRecordProjectionError):
+        parse_b649_k5_projection(
+            json.dumps(document).encode() if defect == "checksum" else _k10_encode(document)
+        )
+
+
+def test_k5_incomplete_observations_zero_null_and_selected_window_failures() -> None:
+    rows = PackagedB649K5RecordReader().read(B649HistoryWindow.FULL).records
+    assert rows[0].typed_replay_failures_count == 500
+    assert rows[0].evaluated_draws == rows[0].official_any_prize_denominator == 1666
+    assert rows[0].metric_status == "AVAILABLE"
+    document = _k5_document()
+    values = cast(list[dict[str, object]], document["records"])
+    values[0].update(
+        official_any_prize_numerator=0,
+        official_any_prize_rate="0.000000000000000000",
+        best_prize_counts={"GENERAL": 0},
+    )
+    values[1].update(
+        metric_status="UNAVAILABLE",
+        metric_unavailable_reason="EXECUTION_FAILURE",
+        rank=None,
+        official_rank=None,
+    )
+    for key in (
+        "official_any_prize_rate",
+        "official_random_baseline",
+        "baseline_delta",
+        "coverage",
+        "official_any_prize_numerator",
+        "official_any_prize_denominator",
+        "best_prize_counts",
+    ):
+        values[1][key] = None
+    parsed = parse_b649_k5_projection(_k10_encode(document), B649HistoryWindow.FULL).records
+    assert parsed[0].official_any_prize_numerator == 0
+    assert parsed[0].official_any_prize_rate == "0.000000000000000000"
+    assert parsed[0].best_prize_counts == {"GENERAL": 0}
+    assert parsed[0].replay_status_counts == rows[0].replay_status_counts
+    assert parsed[1].official_any_prize_rate is None
+    assert parsed[1].metric_unavailable_reason == "EXECUTION_FAILURE"
+    values[0]["official_any_prize_rate"] = "corrupt"
+    raw = _k10_encode(document)
+    with pytest.raises(B649ExactNativeRecordProjectionError):
+        parse_b649_k5_projection(raw, B649HistoryWindow.FULL)
+    assert len(parse_b649_k5_projection(raw, B649HistoryWindow.RECENT_50).records) == 5
+
+
+@pytest.mark.parametrize("mask", [1, 2, 3, 4, 5, 6])
+def test_k5_cli_requires_all_three_inputs(mask: int) -> None:
+    from tools.build_b649_multi_ticket_historical_records import main
+
+    args = ["--output", "unused.json"]
+    for index, flag in enumerate(("--k5-manifest", "--k5-evidence", "--k5-ranking")):
+        if mask & (1 << index):
+            args.extend((flag, "unused"))
+    with pytest.raises(SystemExit) as error:
+        main(args)
+    assert error.value.code == 2
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        "--report",
+        "--source-projection",
+        "--replay-input",
+        "--dataset-source",
+        "--k10-manifest",
+        "--k10-evidence",
+        "--k10-ranking",
+    ],
+)
+def test_k5_cli_modes_are_exclusive(other: str) -> None:
+    from tools.build_b649_multi_ticket_historical_records import main
+
+    with pytest.raises(SystemExit) as error:
+        main(
+            [
+                "--output",
+                "unused",
+                "--k5-manifest",
+                "unused",
+                "--k5-evidence",
+                "unused",
+                "--k5-ranking",
+                "unused",
+                other,
+                "unused",
+            ]
+        )
+    assert error.value.code == 2
+
+
+def test_k5_cli_refuses_overwrite(tmp_path: Path) -> None:
+    from tools.build_b649_multi_ticket_historical_records import main
+
+    output = tmp_path / "projection.json"
+    output.write_bytes(b"existing")
+    args = ["--output", str(output)]
+    for flag, path in zip(
+        ("--k5-manifest", "--k5-evidence", "--k5-ranking"), _k5_paths(), strict=True
+    ):
+        args.extend((flag, str(path)))
+    assert main(args) == 2
+    assert output.read_bytes() == b"existing"

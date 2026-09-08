@@ -111,7 +111,7 @@ export interface paths {
           responses: {
                   200: {
                           content: {
-                                    "application/json": components['schemas']["B649ExactNativeRecordPageResponse"]
+                                    "application/json": components['schemas']["B649K5RecordPageResponse"] | components['schemas']["B649ExactNativeRecordPageResponse"]
                                   }
                         }
                   422: {
@@ -2197,7 +2197,7 @@ export interface components {
           "catalog_sha256": string
           "official_rank"?: null
         }
-    "B649ExactNativeTicketCount": 2 | 3 | 10
+    "B649ExactNativeTicketCount": 2 | 3 | 5 | 10
     "B649HistoryWindow": "FULL" | "RECENT_750" | "RECENT_300" | "RECENT_50"
     "B649K10Provenance": {
           "authority_head": string
@@ -2257,6 +2257,95 @@ export interface components {
           "window_boundary": components['schemas']["B649K10WindowBoundary"]
         }
     "B649K10WindowBoundary": {
+          "first_target": string
+          "first_target_date": string
+          "last_target": string
+          "last_target_date": string
+          "observations_required": number
+        }
+    "B649K5Provenance": {
+          "authority_head": string
+          "authority_tree": string
+          "manifest_locator": string
+          "sealed_manifest_sha256": string
+          "target_evidence_sha256": string
+          "source_ranking_locator": string
+          "source_ranking_sha256": string
+          "run_id": string
+          "lottery": string
+          "k": number
+          "cutoff": string
+          "cutoff_label": string
+          "evidence_record_count": number
+          "consumer_record_count": number
+          "strategy_universe": Array<string>
+          "producer_universe_fingerprint": string
+          "producer_catalog_fingerprint": string
+          "consumer_catalog_sha256": string
+          "authority_schema": string
+          "source_ranking_schema": string
+          "source_ranking_run_id": string
+          "target_evidence_locator": string
+          "sealed_manifest_k_values": Array<number>
+          "target_evidence_k_values": Array<number>
+          "source_ranking_k_values": Array<number>
+          "target_evidence_total_row_count": number
+        }
+    "B649K5Record": {
+          "strategy_id": string
+          "strategy_version": string
+          "display_name": string
+          "native_ticket_count": number
+          "metric_status": "AVAILABLE" | "UNAVAILABLE"
+          "rank": number | null
+          "official_rank": number | null
+          "position": number | null
+          "source_order": number
+          "official_any_prize_rate": string | null
+          "official_any_prize_numerator": number | null
+          "official_any_prize_denominator": number | null
+          "official_random_baseline": string | null
+          "baseline_delta": string | null
+          "coverage": string | null
+          "evaluated_draws": number | null
+          "requested_draws": number
+          "first_evaluated_draw": string | null
+          "last_evaluated_draw": string | null
+          "best_prize_counts": Record<string, number> | null
+          "replay_status_counts": Record<string, number>
+          "typed_replay_failures_count": number
+          "metric_unavailable_reason": string | null
+          "ticket_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": string
+          "catalog_strategy_version": string | null
+          "legacy_method_id": string | null
+          "source_path": string | null
+          "method_family": string | null
+          "reproduction_status": components['schemas']["ReproductionStatus"] | null
+          "duplicate_alias_target": string | null
+          "provenance": components['schemas']["B649K5Provenance"]
+          "window_boundary": components['schemas']["B649K5WindowBoundary"]
+        }
+    "B649K5RecordPageResponse": {
+          "items": Array<components['schemas']["B649K5Record"]>
+          "total": number
+          "limit": number
+          "offset": number
+          "ticket_count": number
+          "window": components['schemas']["B649HistoryWindow"]
+          "criterion": string
+          "research_disclaimer": string
+          "projection_sha256": string
+          "provenance": components['schemas']["B649K5Provenance"]
+          "window_boundary": components['schemas']["B649K5WindowBoundary"]
+          "ties": Array<components['schemas']["B649K5Tie"]>
+        }
+    "B649K5Tie": {
+          "rank": number
+          "strategy_id": string
+        }
+    "B649K5WindowBoundary": {
           "first_target": string
           "first_target_date": string
           "last_target": string

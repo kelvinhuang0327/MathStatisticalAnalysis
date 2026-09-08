@@ -7,8 +7,10 @@ executes a strategy, opens a database, or regenerates a ticket.
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import stat
+from collections import Counter
 from dataclasses import dataclass
 from fractions import Fraction
 from importlib.resources import files
@@ -38,10 +40,14 @@ from lottolab.infrastructure.b649_dataset_authority import (
     validate_b649_dataset_sha256,
 )
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    K5_AUTHORITY,
+    K5_PROJECTION_SCHEMA_VERSION,
+    K5_WINDOW_BOUNDARIES,
     K10_AUTHORITY,
     K10_PROJECTION_SCHEMA_VERSION,
     K10_WINDOW_BOUNDARIES,
     PROJECTION_SCHEMA_VERSION,
+    parse_b649_k5_projection,
     parse_b649_k10_projection,
 )
 
@@ -1505,4 +1511,156 @@ def build_b649_k10_projection_bytes(
         json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode()
     parse_b649_k10_projection(output)
+    return output
+
+
+def build_b649_k5_projection_bytes(
+    manifest_path: Path,
+    evidence_path: Path,
+    ranking_path: Path,
+) -> bytes:
+    """Materialize the frozen K5 publication; inspect evidence identity, never evaluate it."""
+    raw_sources: dict[str, bytes] = {}
+    for label, path, pin in (
+        ("manifest", manifest_path, "sealed_manifest_sha256"),
+        ("evidence", evidence_path, "target_evidence_sha256"),
+        ("ranking", ranking_path, "source_ranking_sha256"),
+    ):
+        raw = path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != K5_AUTHORITY[pin]:
+            raise B649ProjectionBuildError(f"K5 {label} checksum mismatch")
+        raw_sources[label] = raw
+    try:
+        return _materialize_b649_k5(raw_sources)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise B649ProjectionBuildError("K5 source schema mismatch") from exc
+
+
+def _materialize_b649_k5(raw_sources: dict[str, bytes]) -> bytes:
+    manifest = cast(dict[str, object], json.loads(raw_sources["manifest"]))
+    ranking = cast(dict[str, object], json.loads(raw_sources["ranking"]))
+    source = cast(dict[str, object], manifest["source"])
+    catalog_manifest = cast(dict[str, object], manifest["catalog"])
+    contract = cast(dict[str, object], manifest["execution_contract"])
+    evidence = cast(dict[str, object], manifest["evidence"])
+    windows = cast(dict[str, dict[str, object]], manifest["target_windows"])
+    manifest_universe = cast(dict[str, object], manifest["universe"])
+    source_universe = cast(dict[str, list[str]], ranking["strategy_universe"])
+    universe = cast(list[str], K5_AUTHORITY["strategy_universe"])
+    source_scopes = {"K2", "K3", "K5", "K10"}
+    if not (
+        manifest["schema_version"] == K5_AUTHORITY["authority_schema"]
+        and ranking["schema_version"] == K5_AUTHORITY["source_ranking_schema"]
+        and source["head"] == K5_AUTHORITY["authority_head"]
+        and source["tree"] == K5_AUTHORITY["authority_tree"]
+        and manifest["run_id"] == K5_AUTHORITY["run_id"]
+        and ranking["run_id"] == K5_AUTHORITY["source_ranking_run_id"]
+        and contract["lottery_type"] == K5_AUTHORITY["lottery"]
+        and manifest["max_visible_draw"] == ranking["cutoff"] == K5_AUTHORITY["cutoff"]
+        and ranking["budgets"] == K5_AUTHORITY["source_ranking_k_values"]
+        and ranking["primary_metric"] == "OFFICIAL_ANY_PRIZE"
+        and ranking["partition_keys"] == ["ticket_count", "window"]
+        and cast(dict[str, object], ranking["inputs"])["k2_k3_k5_authority"]
+        == K5_AUTHORITY["manifest_locator"]
+        and manifest_universe["k5_strategy_ids"] == source_universe["K5"] == universe
+        and {k for k in manifest_universe if k.endswith("_strategy_ids")}
+        == {"k2_strategy_ids", "k3_strategy_ids", "k5_strategy_ids"}
+        and set(source_universe) == source_scopes
+        and set(cast(dict[str, object], catalog_manifest["strategies"])) == {"k2", "k3", "k5"}
+        and catalog_manifest["k5_count"] == 5
+        and catalog_manifest["k5_universe_fingerprint"]
+        == K5_AUTHORITY["producer_universe_fingerprint"]
+        and catalog_manifest["catalog_fingerprint"] == K5_AUTHORITY["producer_catalog_fingerprint"]
+        and evidence["sha256"] == K5_AUTHORITY["target_evidence_sha256"]
+        and evidence["schema_version"] == "B649_EXACT_NATIVE_TARGET_EVIDENCE_V1"
+        and evidence["record_count"] == K5_AUTHORITY["target_evidence_total_row_count"]
+        and set(windows) == set(K5_WINDOW_BOUNDARIES)
+    ):
+        raise B649ProjectionBuildError("K5 sealed authority or source scope mismatch")
+    evidence_counts: Counter[tuple[int, str]] = Counter()
+    for line in io.BytesIO(raw_sources["evidence"]):
+        row = cast(dict[str, object], json.loads(line))
+        k, sid = row["native_ticket_count"], row["strategy_id"]
+        if not (
+            row["schema_version"] == evidence["schema_version"]
+            and row["run_id"] == K5_AUTHORITY["run_id"]
+            and type(k) is int
+            and k in (2, 3, 5)
+            and sid in cast(list[str], manifest_universe[f"k{k}_strategy_ids"])
+        ):
+            raise B649ProjectionBuildError("K5 shared evidence identity mismatch")
+        evidence_counts[(cast(int, k), cast(str, sid))] += 1
+    if not (
+        sum(evidence_counts.values()) == K5_AUTHORITY["target_evidence_total_row_count"]
+        and sum(n for (k, _), n in evidence_counts.items() if k == 5)
+        == K5_AUTHORITY["evidence_record_count"]
+        and set(evidence_counts)
+        == {
+            (k, sid)
+            for k in (2, 3, 5)
+            for sid in cast(list[str], manifest_universe[f"k{k}_strategy_ids"])
+        }
+        and all(n == 2166 for n in evidence_counts.values())
+    ):
+        raise B649ProjectionBuildError("K5 shared evidence count/scope mismatch")
+    ranking_windows = cast(dict[str, dict[str, object]], ranking["windows"])
+    for name, boundary in K5_WINDOW_BOUNDARIES.items():
+        if {
+            k: v for k, v in windows[name].items() if k != "draw_numbers"
+        } != boundary or ranking_windows[name] != {
+            k: v for k, v in boundary.items() if not k.endswith("_date")
+        }:
+            raise B649ProjectionBuildError("K5 window boundary mismatch")
+    catalog = load_full_strategy_catalog()
+    if catalog.catalog_sha256 != K5_AUTHORITY["consumer_catalog_sha256"]:
+        raise B649ProjectionBuildError("K5 consumer catalog checksum mismatch")
+    catalog_by_id = {r.strategy_id: r for r in catalog.records}
+    boards = cast(dict[str, dict[str, dict[str, object]]], ranking["leaderboards"])
+    if set(boards) != source_scopes or set(boards["K5"]) != set(K5_WINDOW_BOUNDARIES):
+        raise B649ProjectionBuildError("K5 leaderboard universe mismatch")
+    records: list[dict[str, object]] = []
+    ties_by_window: dict[str, object] = {}
+    for window in K5_WINDOW_BOUNDARIES:
+        board = boards["K5"][window]
+        ties_by_window[window] = board["ties"]
+        for source_order, producer in enumerate(
+            cast(list[dict[str, object]], board["rankings"]), 1
+        ):
+            sid = str(producer["strategy_id"])
+            if sid not in universe or producer["native_ticket_count"] != 5:
+                raise B649ProjectionBuildError("K5 producer strategy mismatch")
+            # The legacy catalog enriches matching identities; the producer owns admission.
+            meta = catalog_by_id.get(sid)
+            records.append(
+                {
+                    **producer,
+                    "official_rank": producer["rank"],
+                    "source_order": source_order,
+                    "ticket_count": 5,
+                    "window": window,
+                    "criterion": "OFFICIAL_ANY_PRIZE",
+                    "catalog_strategy_version": meta.strategy_version if meta else None,
+                    "legacy_method_id": meta.legacy_method_id if meta else None,
+                    "source_path": meta.source_path if meta else None,
+                    "method_family": meta.method_family if meta else None,
+                    "reproduction_status": meta.reproduction_status.value if meta else None,
+                    "duplicate_alias_target": meta.duplicate_alias_target if meta else None,
+                    "provenance": K5_AUTHORITY,
+                    "window_boundary": K5_WINDOW_BOUNDARIES[window],
+                }
+            )
+    payload: dict[str, object] = {
+        "projection_schema_version": K5_PROJECTION_SCHEMA_VERSION,
+        "provenance": K5_AUTHORITY,
+        "records": records,
+        "ties_by_window": ties_by_window,
+    }
+    canonical = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode()
+    payload["projection_sha256"] = hashlib.sha256(canonical).hexdigest()
+    output = (
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    parse_b649_k5_projection(output)
     return output

@@ -26,6 +26,11 @@ from lottolab.application.biglotto_multi_ticket_records import (
     B649ExactNativeRecord,
     B649ExactNativeRecordDataset,
     B649HistoryWindow,
+    B649K5Provenance,
+    B649K5Record,
+    B649K5RecordDataset,
+    B649K5Tie,
+    B649K5WindowBoundary,
     B649K10Provenance,
     B649K10Record,
     B649K10RecordDataset,
@@ -1300,3 +1305,249 @@ def parse_b649_k10_projection(
             )
         result.append(row)
     return B649K10RecordDataset(tuple(result), checksum)
+
+
+K5_PROJECTION_RESOURCE_NAME = "biglotto_exact_native_k5_115000084_records_v1.json"
+K5_PROJECTION_SCHEMA_VERSION = "B649_EXACT_NATIVE_K5_RECORDS_V1"
+K5_AUTHORITY: dict[str, object] = {
+    "authority_head": "8365f253859cc747e6f65688e8249267454cd0d9",
+    "authority_tree": "b053cf6b2a26dd4c7dce620261c1361666c07463",
+    "manifest_locator": (
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BI"
+        "GLOTTO_115000084_K2_K3_K5_DRAW_LEVEL_AUTHORITY_RECOVERY_R1/sealed_manife"
+        "st.json"
+    ),
+    "sealed_manifest_sha256": "3e4604e95248af1a223ba4473d5c1f4debb4405877ce334beca6eac28dca3e4d",
+    "target_evidence_sha256": "c50df2d35e09f487aa2c06e1a08faf4fd6eeee8929b21ef05feb138eae2dd09d",
+    "source_ranking_locator": (
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BR"
+        "ANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1/rankings.json"
+    ),
+    "source_ranking_sha256": "eb41d668c9356a0ce68db2504953e2a2f916f02a709e60dd6ce0d716bcb11e44",
+    "run_id": "BIGLOTTO_115000084_K2_K3_K5_DRAW_LEVEL_AUTHORITY_RECOVERY_R1",
+    "lottery": "BIG_LOTTO",
+    "k": 5,
+    "cutoff": "115000084",
+    "cutoff_label": "084",
+    "evidence_record_count": 10830,
+    "consumer_record_count": 20,
+    "strategy_universe": [
+        "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4",
+        "legacy_biglotto__predict_5me_115000004__8a1c06ce1bdd",
+        "legacy_biglotto__predict_biglotto_115000002_zone_balance__8febca575f5d",
+        "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
+        "legacy_biglotto__backtest_big_lotto_orthogonal_5bet__c4dff46c5a5e",
+    ],
+    "producer_universe_fingerprint": (
+        "fdf451062dcf8206f9396e2c219f3229d86c1f2d47813962637a541dedfcddd0"
+    ),
+    "producer_catalog_fingerprint": (
+        "c618e9d14692cfd23f6b08b3b103a6de64e4b3d5e47025263d3babb9fce47dba"
+    ),
+    "consumer_catalog_sha256": "9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3",
+    "authority_schema": "B649_EXACT_NATIVE_REFRESH_SEALED_MANIFEST_V1",
+    "source_ranking_schema": "BRANCH6_LANE6_FINALIZATION_RANKINGS_V1",
+    "source_ranking_run_id": "BRANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1",
+    "target_evidence_locator": (
+        "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/BI"
+        "GLOTTO_115000084_K2_K3_K5_DRAW_LEVEL_AUTHORITY_RECOVERY_R1/target_eviden"
+        "ce.jsonl"
+    ),
+    "sealed_manifest_k_values": [2, 3, 5],
+    "target_evidence_k_values": [2, 3, 5],
+    "source_ranking_k_values": [2, 3, 5, 10],
+    "target_evidence_total_row_count": 93138,
+}
+K5_WINDOW_BOUNDARIES: dict[str, dict[str, object]] = {
+    "FULL": {
+        "first_target": "96000001",
+        "first_target_date": "2007-01-02",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 2166,
+    },
+    "RECENT_750": {
+        "first_target": "109000027",
+        "first_target_date": "2020-03-06",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 750,
+    },
+    "RECENT_300": {
+        "first_target": "113000021",
+        "first_target_date": "2024-02-16",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 300,
+    },
+    "RECENT_50": {
+        "first_target": "115000035",
+        "first_target_date": "2026-03-13",
+        "last_target": "115000084",
+        "last_target_date": "2026-09-01",
+        "observations_required": 50,
+    },
+}
+K5_TIES_BY_WINDOW: dict[str, list[dict[str, object]]] = {
+    "FULL": [],
+    "RECENT_750": [],
+    "RECENT_300": [],
+    "RECENT_50": [
+        {"rank": 2, "strategy_id": "legacy_biglotto__predict_biglotto_echo_phase2__51c44b5c13d4"},
+        {"rank": 2, "strategy_id": "legacy_composite__quick_predict_5bet_ts3_markov_freqort"},
+    ],
+}
+
+
+class PackagedB649K5RecordReader:
+    """Read the self-contained K5 resource; upstream locators are provenance only."""
+
+    def read(self, window: B649HistoryWindow | None = None) -> B649K5RecordDataset:
+        return _read_packaged_k5_projection(window)
+
+
+@lru_cache(maxsize=5)
+def _read_packaged_k5_projection(
+    window: B649HistoryWindow | None = None,
+) -> B649K5RecordDataset:
+    try:
+        raw = files("lottolab.strategies.data").joinpath(K5_PROJECTION_RESOURCE_NAME).read_bytes()
+    except OSError as exc:
+        raise B649ExactNativeRecordProjectionError(
+            "the pinned K5 projection is unavailable"
+        ) from exc
+    return parse_b649_k5_projection(raw, window)
+
+
+def _k5_require(condition: bool, label: str) -> None:
+    if not condition:
+        raise B649ExactNativeRecordProjectionError(f"invalid K5 {label}")
+
+
+def parse_b649_k5_projection(
+    raw: bytes,
+    window: B649HistoryWindow | None = None,
+) -> B649K5RecordDataset:
+    """Validate sealed identity/order globally and selected-window metrics without evaluation."""
+    try:
+        document = _exact_native_mapping(json.loads(raw), "K5 projection")
+    except (ValueError, UnicodeDecodeError) as exc:
+        raise B649ExactNativeRecordProjectionError("invalid K5 JSON") from exc
+    _k5_require(
+        set(document)
+        == {
+            "projection_schema_version",
+            "projection_sha256",
+            "records",
+            "ties_by_window",
+            "provenance",
+        },
+        "projection fields",
+    )
+    _k5_require(document["projection_schema_version"] == K5_PROJECTION_SCHEMA_VERSION, "schema")
+    canonical = json.dumps(
+        {k: v for k, v in document.items() if k != "projection_sha256"},
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode()
+    checksum = hashlib.sha256(canonical).hexdigest()
+    _k5_require(document["projection_sha256"] == checksum, "checksum")
+    _k5_require(document["provenance"] == K5_AUTHORITY, "authority")
+    _k5_require(document["ties_by_window"] == K5_TIES_BY_WINDOW, "producer ties")
+    values = document["records"]
+    _k5_require(isinstance(values, list) and len(cast(list[object], values)) == 20, "record count")
+    records = [_exact_native_mapping(v, "K5 record") for v in cast(list[object], values)]
+    universe = cast(list[str], K5_AUTHORITY["strategy_universe"])
+    expected = {(sid, w.value) for sid in universe for w in B649_HISTORY_WINDOWS}
+    identities = [(v.get("strategy_id"), v.get("window")) for v in records]
+    _k5_require(all(isinstance(s, str) and isinstance(w, str) for s, w in identities), "identity")
+    _k5_require(set(identities) == expected and len(set(identities)) == 20, "universe")
+    _k5_require(
+        [v["window"] for v in records] == [w.value for w in B649_HISTORY_WINDOWS for _ in range(5)],
+        "window order",
+    )
+    result: list[B649K5Record] = []
+    adapter = TypeAdapter(B649K5Record)
+    for index, value in enumerate(records):
+        w = str(value["window"])
+        _k5_require(
+            type(value.get("source_order")) is int and value["source_order"] == index % 5 + 1,
+            "source order",
+        )
+        _k5_require(value.get("provenance") == K5_AUTHORITY, "record authority")
+        _k5_require(value.get("window_boundary") == K5_WINDOW_BOUNDARIES[w], "window boundary")
+        _k5_require(value.get("ticket_count") == value.get("native_ticket_count") == 5, "K")
+        _k5_require(value.get("criterion") == "OFFICIAL_ANY_PRIZE", "criterion")
+        if window is not None and w != window.value:
+            continue
+        _k5_require(set(value) == {f.name for f in fields(B649K5Record)}, "record fields")
+        try:
+            row = adapter.validate_json(json.dumps(value), strict=True)
+        except ValidationError as exc:
+            raise B649ExactNativeRecordProjectionError("invalid K5 record schema") from exc
+        _k5_require(row.strategy_version == "v0.1", "producer version")
+        _k5_require(
+            row.rank == row.official_rank and (row.rank is None or 1 <= row.rank <= 5), "rank"
+        )
+        _k5_require(row.position is None or row.position == row.source_order, "position")
+        _k5_require(
+            row.requested_draws == row.window_boundary.observations_required, "requested draws"
+        )
+        metrics = (
+            row.official_any_prize_rate,
+            row.official_random_baseline,
+            row.baseline_delta,
+            row.coverage,
+        )
+        for metric in metrics:
+            _k5_require(metric is None or _DECIMAL_18.fullmatch(metric) is not None, "decimal")
+        for count in (
+            row.evaluated_draws,
+            row.official_any_prize_numerator,
+            row.official_any_prize_denominator,
+            row.typed_replay_failures_count,
+        ):
+            _k5_require(count is None or count >= 0, "count")
+        for counts in (row.best_prize_counts, row.replay_status_counts):
+            _k5_require(counts is None or all(n >= 0 for n in counts.values()), "sparse counts")
+        if row.best_prize_counts is not None:
+            _k5_require(set(row.best_prize_counts) <= {p.upper() for p in _PRIZE_FIELDS}, "prizes")
+        if row.metric_status == "UNAVAILABLE":
+            _k5_require(
+                bool(row.metric_unavailable_reason) and row.rank is None, "unavailable reason/rank"
+            )
+            _k5_require(
+                all(v is None for v in metrics)
+                and row.official_any_prize_numerator is None
+                and row.official_any_prize_denominator is None
+                and row.best_prize_counts is None,
+                "unavailable metrics",
+            )
+        else:
+            # Incomplete observations affect the denominator, not producer availability.
+            _k5_require(
+                all(v is not None for v in metrics)
+                and row.official_any_prize_numerator is not None
+                and row.official_any_prize_denominator is not None
+                and row.rank is not None
+                and row.position is not None
+                and row.metric_unavailable_reason is None,
+                "available metrics",
+            )
+        result.append(row)
+    return B649K5RecordDataset(
+        records=tuple(result),
+        projection_sha256=checksum,
+        provenance=TypeAdapter(B649K5Provenance).validate_json(
+            json.dumps(document["provenance"]), strict=True
+        ),
+        ties_by_window={
+            w: TypeAdapter(tuple[B649K5Tie, ...]).validate_json(json.dumps(ties), strict=True)
+            for w, ties in K5_TIES_BY_WINDOW.items()
+        },
+        window_boundaries={
+            w: TypeAdapter(B649K5WindowBoundary).validate_json(json.dumps(boundary), strict=True)
+            for w, boundary in K5_WINDOW_BOUNDARIES.items()
+        },
+    )

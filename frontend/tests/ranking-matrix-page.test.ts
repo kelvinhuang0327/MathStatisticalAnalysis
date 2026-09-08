@@ -1,7 +1,20 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
-import type { B649K10Record } from '../src/api/b649MultiTicketRecords'
+import type { B649K5Record, B649K5RecordPage, B649K10Record } from '../src/api/b649MultiTicketRecords'
 
+const k5Projection = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k5_115000084_records_v1.json', 'utf8'))
+const k5Packaged = k5Projection.records as B649K5Record[]
+function k5Page(window: string, records = k5Packaged): B649K5RecordPage {
+  const items = records.filter((r) => r.window === window)
+  return {
+    items, total: items.length, limit: 100, offset: 0, ticket_count: 5,
+    window: window as B649K5RecordPage['window'], criterion: 'OFFICIAL_ANY_PRIZE',
+    research_disclaimer: '歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、上線決策或中獎保證。',
+    projection_sha256: k5Projection.projection_sha256, provenance: k5Projection.provenance,
+    window_boundary: k5Packaged.find((r) => r.window === window)!.window_boundary,
+    ties: k5Projection.ties_by_window[window],
+  }
+}
 const k10Packaged = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k10_115000084_records_v1.json', 'utf8')).records as B649K10Record[]
 function k10Page(window: string, records = k10Packaged) {
   const items = records.filter((r) => r.window === window)
@@ -422,6 +435,7 @@ beforeEach(() => {
       const urlObj = new URL(url, 'http://localhost')
       const tc = Number(urlObj.searchParams.get('ticket_count') || 2)
       const win = urlObj.searchParams.get('window') || 'RECENT_300'
+      if (tc === 5) return Promise.resolve(apiResponse(k5Page(win)))
       if (tc === 10) return Promise.resolve(apiResponse(k10Page(win)))
       const items = mockB649ExactNativeRecords2_300.items.map((it) => ({
         ...it,
@@ -462,11 +476,11 @@ describe('RankingMatrixPage component', () => {
     expect(wrapper.find('[data-testid="ticket-btn-5"]').classes()).toContain('pill-btn--active')
     expect(wrapper.find('[data-testid="window-btn-300"]').classes()).toContain('pill-btn--active')
 
-    // Verify Ranking Table rendered with 3 rows
-    expect(wrapper.findAll('.ranking-row').length).toBe(3)
-    expect(wrapper.text()).toContain('冷門池 15 注策略 (Coldpool 15)')
-    expect(wrapper.text()).toContain('25.00%')
-    expect(wrapper.text()).toContain('+3.00%')
+    // The default K5 table uses the producer publication.
+    expect(wrapper.findAll('.ranking-row')).toHaveLength(5)
+    expect(wrapper.text()).toContain('大樂透 Orthogonal 5-Bet 正交 5注')
+    expect(wrapper.text()).toContain('15.67%')
+    expect(wrapper.text()).toContain('14.55%')
 
     // Step 2: Switch 2 -> 20 tickets
     // First switch to 2 tickets (canonical exact-native records loaded, banner displayed, formal rank unavailable)
@@ -497,8 +511,8 @@ describe('RankingMatrixPage component', () => {
     expect(wrapper.text()).toContain('48.00%')
 
     // Step 4: Filter strategy by search text
-    // Switch back to 5 tickets, 300 window for rich data filtering
-    await wrapper.find('[data-testid="ticket-btn-5"]').trigger('click')
+    // Exercise the unchanged legacy K20 filters in the 300 window
+    await wrapper.find('[data-testid="ticket-btn-20"]').trigger('click')
     await wrapper.find('[data-testid="window-btn-300"]').trigger('click')
     await flushPromises()
     await flushPromises()
@@ -646,6 +660,104 @@ describe('K10 canonical Ranking Matrix consumer', () => {
     await wrapper.get('[data-testid="reset-official-rank-btn"]').trigger('click')
     expect(order()).toEqual(published)
     expect(wrapper.findAll('.rank-badge--unranked')).toHaveLength(2)
+    wrapper.unmount()
+  })
+})
+
+
+describe('K5 canonical Ranking Matrix consumer', () => {
+  it('shows all windows despite unrelated failures and preserves producer leaders and details', async () => {
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('b649-exact-native-records') && url.searchParams.get('ticket_count') === '5') return apiResponse(k5Page(url.searchParams.get('window')!))
+      return apiResponse({}, 503)
+    })
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain('ticket_count=5')
+    for (const [label, window] of [['FULL', 'FULL'], ['750', 'RECENT_750'], ['300', 'RECENT_300'], ['50', 'RECENT_50']]) {
+      await wrapper.get(`[data-testid="window-btn-${label}"]`).trigger('click')
+      await flushPromises(); await flushPromises()
+      const expected = k5Packaged.filter((r) => r.window === window)
+      const rows = wrapper.findAll('.ranking-row')
+      expect(rows.map((r) => r.attributes('data-testid'))).toEqual(expected.map((r) => `ranking-row-${r.strategy_id}`))
+      expect(rows.map((r) => r.find('.rank-badge').text())).toEqual(expected.map((r) => `#${r.rank}`))
+      expect(wrapper.find('[data-testid="page-error-state"]').exists()).toBe(false)
+      const leaderCard = wrapper.findAllComponents({ name: 'MetricCard' }).find((c) => c.text().includes(expected[0]!.display_name))
+      expect(leaderCard).toBeDefined()
+      await rows[0]!.trigger('click')
+      await flushPromises()
+      const details = wrapper.get('[data-testid="k5-producer-details"]')
+      expect(details.text()).toContain(expected[0]!.official_any_prize_rate!)
+      expect(details.text()).toContain(`${expected[0]!.official_any_prize_numerator} / ${expected[0]!.official_any_prize_denominator}`)
+      expect(details.get('[data-testid="k5-producer-ties"]').text()).toContain(JSON.stringify(k5Projection.ties_by_window[window!]))
+    }
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).includes('prefix_count=5'))).toBe(true)
+    wrapper.unmount()
+  })
+  it('restores source order after user sorting and retains ties after filtering', async () => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    await wrapper.get('[data-testid="window-btn-50"]').trigger('click')
+    await flushPromises(); await flushPromises()
+    const order = () => wrapper.findAll('.ranking-row').map((r) => r.attributes('data-testid'))
+    const records = k5Packaged.filter((r) => r.window === 'RECENT_50')
+    const expected = records.map((r) => `ranking-row-${r.strategy_id}`)
+    expect(order()).toEqual(expected)
+    await wrapper.get('[data-testid="th-baseline-delta"]').trigger('click')
+    await wrapper.get('[data-testid="th-baseline-delta"]').trigger('click')
+    expect(order()).not.toEqual(expected)
+    await wrapper.get('[data-testid="reset-official-rank-btn"]').trigger('click')
+    expect(order()).toEqual(expected)
+    expect(wrapper.findAll('.rank-badge').map((r) => r.text())).toEqual(['#1', '#2', '#2', '#2', '#5'])
+    await wrapper.get('[data-testid="filter-search-input"]').setValue('legacy_composite__')
+    expect(wrapper.findAll('.ranking-row')).toHaveLength(1)
+    expect(wrapper.find('.ranking-row').text()).toContain('#2')
+    await wrapper.find('.ranking-row').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="k5-producer-details"]').text()).toContain('producer position 4')
+    expect(wrapper.get('[data-testid="k5-producer-ties"]').text()).toContain(JSON.stringify(k5Projection.ties_by_window.RECENT_50))
+    await wrapper.get('[data-testid="clear-filters-btn"]').trigger('click')
+    await wrapper.get('[data-testid="view-matrix-btn"]').trigger('click')
+    for (const record of records) {
+      const cell = wrapper.get(`[data-testid="matrix-cell-${record.strategy_id}-5"]`)
+      expect(cell.text()).toContain(`${(Number(record.official_any_prize_rate) * 100).toFixed(2)}%`)
+    }
+    wrapper.unmount()
+  })
+  it('shows authoritative zero and unavailable metrics while keeping the producer leader', async () => {
+    const records = k5Packaged.map((r): B649K5Record => r.source_order === 1
+      ? { ...r, official_any_prize_numerator: 0, official_any_prize_rate: '0.000000000000000000' }
+      : r.source_order === 2
+        ? { ...r, rank: null, official_rank: null, metric_status: 'UNAVAILABLE', metric_unavailable_reason: 'EXECUTION_FAILURE', official_any_prize_rate: null, official_any_prize_numerator: null, official_any_prize_denominator: null, official_random_baseline: null, baseline_delta: null, coverage: null, best_prize_counts: null }
+        : r)
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.searchParams.get('ticket_count') === '5') return apiResponse(k5Page(url.searchParams.get('window')!, records))
+      return apiResponse({}, 503)
+    })
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    const rows = wrapper.findAll('.ranking-row')
+    expect(rows[0]!.get('.td-rate').text()).toContain('0.00%')
+    expect(rows[1]!.get('.td-rate').text()).toContain('Unavailable')
+    const leader = records.find((r) => r.window === 'RECENT_300' && r.source_order === 1)!
+    const card = wrapper.findAllComponents({ name: 'MetricCard' }).find((c) => c.text().includes(leader.display_name))!
+    expect(card.text()).toContain('0.00%')
+    await rows[1]!.trigger('click'); await flushPromises()
+    expect(wrapper.get('[data-testid="k5-producer-details"]').text()).toContain('EXECUTION_FAILURE')
+    wrapper.unmount()
+  })
+  it('keeps the selected K5 table ready while the legacy summary never resolves', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.searchParams.get('ticket_count') === '5') return Promise.resolve(apiResponse(k5Page(url.searchParams.get('window')!)))
+      return new Promise<Response>(() => {})
+    })
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    expect(wrapper.findAll('.ranking-row')).toHaveLength(5)
+    expect(wrapper.find('[data-testid="page-loading-skeleton"]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

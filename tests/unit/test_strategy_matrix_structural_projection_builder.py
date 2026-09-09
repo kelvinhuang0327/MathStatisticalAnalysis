@@ -15,6 +15,11 @@ from lottolab.application.strategy_matrix_structural import (
     PINNED_MATRIX,
     PINNED_METRIC_SURFACE,
     SourceReference,
+    StructuralLottery,
+    StructuralMeasurementStatus,
+    StructuralMethodId,
+    StructuralSourceStatus,
+    StructuralTicketCount,
 )
 from lottolab.infrastructure.strategy_matrix_structural_projection_builder import (
     StrategyMatrixStructuralBuildError,
@@ -215,6 +220,36 @@ def test_missing_metric_surface_row_is_rejected(
             matrix_path=_MATRIX_PATH,
             ledger_path=_LEDGER_PATH,
         )
+
+
+def test_not_run_metric_surface_status_projects_as_unavailable() -> None:
+    payload = build_strategy_matrix_structural_projection_bytes(
+        metric_surface_path=_METRIC_SURFACE_PATH,
+        matrix_path=_MATRIX_PATH,
+        ledger_path=_LEDGER_PATH,
+    )
+    dataset = parse_structural_projection(payload)
+    sibling_ticket_counts = {
+        StructuralTicketCount.THREE,
+        StructuralTicketCount.FIVE,
+        StructuralTicketCount.TEN,
+        StructuralTicketCount.TWENTY,
+    }
+    cells = [
+        cell
+        for cell in dataset.cells
+        if cell.lottery is StructuralLottery.DAILY_539
+        and cell.method_id is StructuralMethodId.ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1
+        and cell.ticket_count in sibling_ticket_counts
+    ]
+    assert len(cells) == len(sibling_ticket_counts)
+    for cell in cells:
+        assert cell.source_status is StructuralSourceStatus.NOT_RUN
+        assert cell.measurement_status is StructuralMeasurementStatus.UNAVAILABLE
+        assert cell.value is None
+        assert cell.portfolio_sha256 is None
+        assert cell.local_optimum_status is None
+        assert cell.unavailable_reason
 
 
 def test_output_path_is_never_overwritten(tmp_path: Path) -> None:

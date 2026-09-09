@@ -8,9 +8,9 @@ import pytest
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
     CURRENT_SCHEMA_VERSION,
-    MIGRATION_CHECKSUM,
     RESEARCH_DATABASE_FILENAME,
     TABLE_NAMES,
+    V3_MIGRATION_CHECKSUM,
     MigrationChecksumError,
     NewerSchemaVersionError,
     ResearchDataError,
@@ -42,9 +42,7 @@ def test_canonical_locator_has_durable_default_and_fixed_sibling_filename(
 
     paths = resolve_research_data_paths(environ={}, home=home)
 
-    assert paths.data_directory == (
-        home / "Library" / "Application Support" / "LottoLab"
-    )
+    assert paths.data_directory == (home / "Library" / "Application Support" / "LottoLab")
     assert paths.database == paths.data_directory / RESEARCH_DATABASE_FILENAME
     assert paths.database.name == "lottolab_research.db"
     assert not paths.data_directory.exists()
@@ -66,6 +64,7 @@ def test_migration_is_idempotent_and_checksum_verified(tmp_path: Path) -> None:
             """
             SELECT version, checksum
             FROM research_schema_migrations
+            ORDER BY version DESC
             """
         ).fetchone()
     initialize_schema(paths)
@@ -81,8 +80,8 @@ def test_migration_is_idempotent_and_checksum_verified(tmp_path: Path) -> None:
             "SELECT COUNT(*) FROM research_schema_migrations"
         ).fetchone()[0]
 
-    assert migration == (CURRENT_SCHEMA_VERSION, MIGRATION_CHECKSUM)
-    assert migration_count == 1
+    assert migration == (CURRENT_SCHEMA_VERSION, V3_MIGRATION_CHECKSUM)
+    assert migration_count == 2
     assert first_schema == second_schema
     assert verify_schema_read_only(paths) is True
     assert not Path(f"{paths.database}-wal").exists()
@@ -94,9 +93,7 @@ def test_migration_checksum_mismatch_fails_closed(tmp_path: Path) -> None:
     initialize_schema(paths)
     connection = _mutable_connection(paths)
     try:
-        connection.execute(
-            "DROP TRIGGER trg_research_schema_migrations_no_update"
-        )
+        connection.execute("DROP TRIGGER trg_research_schema_migrations_no_update")
         connection.execute(
             "UPDATE research_schema_migrations SET checksum = ?",
             ("0" * 64,),
@@ -114,12 +111,10 @@ def test_newer_schema_version_fails_closed(tmp_path: Path) -> None:
     initialize_schema(paths)
     connection = _mutable_connection(paths)
     try:
+        connection.execute("DROP TRIGGER trg_research_schema_migrations_no_update")
         connection.execute(
-            "DROP TRIGGER trg_research_schema_migrations_no_update"
-        )
-        connection.execute(
-            "UPDATE research_schema_migrations SET version = ?",
-            (CURRENT_SCHEMA_VERSION + 1,),
+            "UPDATE research_schema_migrations SET version = ? WHERE version = ?",
+            (CURRENT_SCHEMA_VERSION + 1, CURRENT_SCHEMA_VERSION),
         )
         connection.commit()
     finally:
@@ -191,9 +186,7 @@ def test_schema_has_exact_table_and_append_only_trigger_inventory(
         )
         triggers = {
             row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_schema WHERE type = 'trigger'"
-            )
+            for row in connection.execute("SELECT name FROM sqlite_schema WHERE type = 'trigger'")
         }
 
     assert tables == tuple(sorted(TABLE_NAMES))

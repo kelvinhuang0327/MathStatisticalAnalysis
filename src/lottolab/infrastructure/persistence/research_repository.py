@@ -38,19 +38,28 @@ from lottolab.application.research_store import (
     TicketInput,
     TicketResultInput,
 )
-from lottolab.domain.lottery_rules import LotteryRuleContract
+from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT, LotteryRuleContract
 from lottolab.domain.research import (
     ResearchExecutionStatus,
     ResearchRunKind,
     ResearchRunStatus,
     StrategyProvenanceAvailability,
 )
+from lottolab.domain.research_live_forecast import (
+    ORIGINAL_FIELDS,
+    LiveForecastInput,
+    LiveForecastResult,
+    canonical_json,
+    digest,
+    object_json,
+    utc_text,
+)
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
     BUSY_TIMEOUT_MS,
     IMMUTABLE_TABLE_NAMES,
-    MIGRATION_CHECKSUM,
     TABLE_NAMES,
+    V3_MIGRATION_CHECKSUM,
     ResearchDataPaths,
     initialize_schema,
     open_database,
@@ -98,6 +107,252 @@ class SQLiteResearchRepository:
     @property
     def paths(self) -> ResearchDataPaths:
         return self._paths
+
+    def live_current_version(self, scope: tuple[str, str, str, str, str]) -> int:
+        with open_database(self._paths, read_only=True) as connection:
+            row = connection.execute(
+                "SELECT version FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                scope,
+            ).fetchone()
+        return 0 if row is None else int(row[0])
+
+    def find_live_request(self, request_id: str, request_sha256: str) -> LiveForecastResult | None:
+        with open_database(self._paths, read_only=True) as connection:
+            return self._existing_live_request(connection, request_id, request_sha256)
+
+    @staticmethod
+    def _existing_live_request(
+        connection: sqlite3.Connection, request_id: str, request_sha256: str
+    ) -> LiveForecastResult | None:
+        row = connection.execute(
+            "SELECT run_id, version, pointer_advanced, payload_sha256, "
+            "provenance_envelope_sha256, request_sha256 "
+            "FROM research_live_forecast_versions WHERE request_id=?",
+            (request_id,),
+        ).fetchone()
+        if row is None:
+            return None
+        if row[5] != request_sha256:
+            raise ResearchConflictError("live request id was reused for different inputs")
+        return LiveForecastResult(
+            str(row[0]), int(row[1]), bool(row[2]), True, str(row[3]), str(row[4])
+        )
+
+    def commit_live_forecast(
+        self,
+        forecast: LiveForecastInput,
+        *,
+        expected_current_version: int,
+        current_eligible: Callable[[], bool],
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+    ) -> LiveForecastResult:
+        """Append one request and CAS its pointer in the same SQLite transaction.
+
+        Capture expected_current_version before generation. A concurrent winner
+        makes this run historical, not lost. Retries return without moving a
+        pointer or rerunning the gate. Exceptions (including a final gate error)
+        roll back artifact, rule, run, version, provenance and pointer together.
+        """
+        forecast.validate()
+        if type(expected_current_version) is not int or expected_current_version < 0:
+            raise ResearchRepositoryError("invalid current pointer version")
+
+        def operation(connection: sqlite3.Connection) -> LiveForecastResult:
+            existing = self._existing_live_request(
+                connection, forecast.request_id, forecast.request_sha256
+            )
+            if existing is not None:
+                return existing
+            run_id = f"live-{uuid.uuid4()}"
+            committed_at = utc_text(clock())
+            original = forecast.original
+            legacy = forecast.provenance_class == "LEGACY_MATERIALIZED"
+            if not legacy and datetime.fromisoformat(committed_at) < datetime.fromisoformat(
+                str(original["generation_finished_at"])
+            ):
+                raise ResearchConflictError("commit clock predates native execution")
+            source = None if legacy else object_json(str(original["source_execution_json"]))
+            producer = None if legacy else object_json(str(original["producer_json"]))
+            # A current validation contract is not evidence of the original
+            # legacy execution's rule version. Only native execution binds it.
+            rule_id: str | None = None
+            if not legacy:
+                rule_json = BIG_LOTTO_RULE_CONTRACT.canonical_json()
+                rule_sha = _sha256(rule_json)
+                rule_id = f"rule-{rule_sha}"
+                connection.execute(
+                    "INSERT OR IGNORE INTO research_rule_contracts VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        rule_id,
+                        "BIG_LOTTO",
+                        BIG_LOTTO_RULE_CONTRACT.contract_version,
+                        rule_json,
+                        rule_sha,
+                        committed_at,
+                    ),
+                )
+            artifact_id = f"live-payload-{forecast.payload_sha256}"
+            connection.execute(
+                "INSERT OR IGNORE INTO research_artifacts VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (
+                    artifact_id,
+                    "LIVE_FORECAST_PAYLOAD",
+                    forecast.source_locator,
+                    "application/json",
+                    len(forecast.payload_bytes),
+                    forecast.payload_sha256,
+                    committed_at,
+                ),
+            )
+            target = forecast.target
+            connection.execute(
+                "INSERT INTO research_runs (id, run_kind, rule_contract_id, "
+                "input_dataset_identity, input_dataset_sha256, status, expected_target_count, "
+                "imported_from_artifact_id, producer_identity, execution_code_version, "
+                "source_commit_oid, started_at, created_at, provenance_class) "
+                "VALUES (?, 'LIVE_PREDICTION', ?, ?, ?, 'COMPLETED', 1, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    run_id,
+                    rule_id,
+                    f"causal-history:{target['causal_history_sha256']}",
+                    target["causal_history_sha256"],
+                    artifact_id if legacy else None,
+                    None if producer is None else producer["producer_id"],
+                    None if producer is None else producer["producer_version"],
+                    None if source is None else source["commit"],
+                    original["generation_started_at"],
+                    committed_at,
+                    forecast.provenance_class,
+                ),
+            )
+            current = connection.execute(
+                "SELECT version FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                forecast.scope,
+            ).fetchone()
+            actual = 0 if current is None else int(current[0])
+            eligible = current_eligible()
+            if type(eligible) is not bool:
+                raise ResearchRepositoryError("current eligibility must be explicit")
+            advanced = (
+                eligible and actual == expected_current_version and (not legacy or actual == 0)
+            )
+            version = int(
+                connection.execute(
+                    "SELECT COALESCE(MAX(version), 0) + 1 FROM research_live_forecast_versions"
+                ).fetchone()[0]
+            )
+            envelope = {
+                "run_id": run_id,
+                "request_id": forecast.request_id,
+                "request_sha256": forecast.request_sha256,
+                "run_kind": "LIVE_PREDICTION",
+                "version": version,
+                "scope_version": 1,
+                "scope": forecast.scope,
+                "target": target,
+                "payload_sha256": forecast.payload_sha256,
+                "source_locator": forecast.source_locator,
+                "provenance_class": forecast.provenance_class,
+                "original_execution": original,
+                "missing_provenance": object_json(forecast.missing_provenance_json),
+                "import_execution": None
+                if forecast.import_execution_json is None
+                else object_json(forecast.import_execution_json),
+                "committed_at": committed_at,
+                "expected_current_version": expected_current_version,
+                "pointer_advanced": advanced,
+            }
+            envelope_json = canonical_json(envelope)
+            envelope_sha = digest(envelope)
+            columns = (
+                "version",
+                "run_id",
+                "request_id",
+                "request_sha256",
+                "lottery_type",
+                "target_draw_number",
+                "target_draw_date",
+                "forecast_stream_id",
+                "forecast_stream_version",
+                "target_json",
+                "provenance_class",
+                "original_execution_provenance_status",
+                "payload_bytes",
+                "payload_sha256",
+                "source_payload_sha256",
+                "source_locator",
+                "bundle_id",
+                *ORIGINAL_FIELDS,
+                "missing_provenance_json",
+                "import_execution_json",
+                "committed_at",
+                "expected_current_version",
+                "pointer_advanced",
+                "provenance_envelope_json",
+                "provenance_envelope_sha256",
+            )
+            payload = cast(dict[str, object], json.loads(forecast.payload_bytes))
+            values = (
+                version,
+                run_id,
+                forecast.request_id,
+                forecast.request_sha256,
+                *forecast.scope,
+                forecast.target_json,
+                forecast.provenance_class,
+                "UNKNOWN_LEGACY_PROVENANCE" if legacy else "COMPLETE",
+                forecast.payload_bytes,
+                forecast.payload_sha256,
+                forecast.payload_sha256,
+                forecast.source_locator,
+                None if legacy else payload.get("bundle_id"),
+                *(original[field] for field in ORIGINAL_FIELDS),
+                forecast.missing_provenance_json,
+                forecast.import_execution_json,
+                committed_at,
+                expected_current_version,
+                int(advanced),
+                envelope_json,
+                envelope_sha,
+            )
+            connection.execute(
+                f"INSERT INTO research_live_forecast_versions ({', '.join(columns)}) "
+                f"VALUES ({', '.join('?' for _ in columns)})",
+                values,
+            )
+            connection.execute(
+                "INSERT INTO research_run_status_events VALUES "
+                "(?, ?, 0, 'COMPLETED', NULL, 1, ?, ?)",
+                (f"status-{run_id}", run_id, committed_at, committed_at),
+            )
+            if advanced:
+                connection.execute(
+                    "INSERT INTO research_live_forecast_current_pointer "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?) "
+                    "ON CONFLICT(lottery_type, target_draw_number, target_draw_date, "
+                    "forecast_stream_id, forecast_stream_version) DO UPDATE SET "
+                    "version=excluded.version, run_id=excluded.run_id "
+                    "WHERE research_live_forecast_current_pointer.version=?",
+                    (*forecast.scope, version, run_id, expected_current_version),
+                )
+            # Recheck after all writes: a deadline/schedule/outcome change must
+            # roll back the whole native transaction. Legacy may be history-only.
+            final_eligible = current_eligible()
+            if (
+                type(final_eligible) is not bool
+                or (advanced and not final_eligible)
+                or clock() < datetime.fromisoformat(committed_at)
+            ):
+                raise ResearchConflictError("forecast validity changed before commit")
+            return LiveForecastResult(
+                run_id, version, advanced, False, forecast.payload_sha256, envelope_sha
+            )
+
+        return self._write_transaction(operation)
 
     def register_rule_contract(
         self,
@@ -343,9 +598,7 @@ class SQLiteResearchRepository:
             if value.parameters_json is None
             else _validated_canonical_json(value.parameters_json, "parameters_json")
         )
-        parameters_sha256 = (
-            None if canonical_parameters is None else _sha256(canonical_parameters)
-        )
+        parameters_sha256 = None if canonical_parameters is None else _sha256(canonical_parameters)
         selected_id = snapshot_id or f"strategy-{uuid.uuid4()}"
         payload = {
             "parameters_sha256": parameters_sha256,
@@ -806,9 +1059,7 @@ class SQLiteResearchRepository:
             ).fetchone()
             if existing is not None:
                 if tuple(existing) != expected:
-                    raise ResearchConflictError(
-                        "run summary identity conflicts with stored bytes"
-                    )
+                    raise ResearchConflictError("run summary identity conflicts with stored bytes")
                 return selected_summary_id
             connection.execute(
                 """
@@ -842,12 +1093,8 @@ class SQLiteResearchRepository:
         cursor_clause = ""
         parameters: list[object] = [run_id]
         if after is not None:
-            cursor_clause = (
-                "AND (target_order, strategy_snapshot_id, id) > (?, ?, ?)"
-            )
-            parameters.extend(
-                (after.target_order, after.strategy_snapshot_id, after.target_id)
-            )
+            cursor_clause = "AND (target_order, strategy_snapshot_id, id) > (?, ?, ?)"
+            parameters.extend((after.target_order, after.strategy_snapshot_id, after.target_id))
         parameters.append(limit + 1)
         with open_database(self._paths, read_only=True) as connection:
             rows = connection.execute(
@@ -872,9 +1119,7 @@ class SQLiteResearchRepository:
                 target_id=str(last[4]),
             )
         return QueryPage(
-            items=tuple(
-                (str(row[0]), str(row[1]), str(row[2])) for row in page_rows
-            ),
+            items=tuple((str(row[0]), str(row[1]), str(row[2])) for row in page_rows),
             next_cursor=next_cursor,
         )
 
@@ -940,12 +1185,8 @@ class SQLiteResearchRepository:
             parameters.append(ResearchRunKind.REFERENCE_BASELINE.value)
         cursor_clause = ""
         if after is not None:
-            cursor_clause = (
-                "WHERE (started_at, run_id, strategy_snapshot_id) > (?, ?, ?)"
-            )
-            parameters.extend(
-                (after.started_at, after.run_id, after.strategy_snapshot_id)
-            )
+            cursor_clause = "WHERE (started_at, run_id, strategy_snapshot_id) > (?, ?, ?)"
+            parameters.extend((after.started_at, after.run_id, after.strategy_snapshot_id))
         parameters.append(limit + 1)
         with open_database(self._paths, read_only=True) as connection:
             rows = connection.execute(
@@ -1209,7 +1450,7 @@ class SQLiteResearchRepository:
             resolved_path=str(self._paths.database),
             schema_version=int(migration_row[0]),
             migration_checksum=str(migration_row[1]),
-            migration_checksum_match=str(migration_row[1]) == MIGRATION_CHECKSUM,
+            migration_checksum_match=str(migration_row[1]) == V3_MIGRATION_CHECKSUM,
             table_inventory=inventory,
             row_counts=counts,
             append_only_triggers=tuple(
@@ -1314,9 +1555,7 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
         if ticket.ordered_portfolio_position is not None
     ]
     if sorted(ordered_positions) != list(range(1, len(ordered_positions) + 1)):
-        raise ResearchRepositoryError(
-            "ordered portfolio positions must be unique and contiguous"
-        )
+        raise ResearchRepositoryError("ordered portfolio positions must be unique and contiguous")
     result_positions = [row.ticket_native_position for row in value.ticket_results]
     if result_positions and result_positions != positions:
         raise ResearchRepositoryError(
@@ -1373,9 +1612,7 @@ def _normalize_target(value: TargetCommitInput) -> _NormalizedTarget:
                 native_duplicate_of_position=native_duplicate,
                 portfolio_duplicate_of_position=portfolio_duplicate,
                 legacy_record_json=legacy_record,
-                legacy_record_sha256=(
-                    None if legacy_record is None else _sha256(legacy_record)
-                ),
+                legacy_record_sha256=(None if legacy_record is None else _sha256(legacy_record)),
                 legacy_provenance_hash=ticket.legacy_provenance_hash,
                 legacy_provenance_source=ticket.legacy_provenance_source,
             )
@@ -1528,12 +1765,8 @@ def _commit_ticket_result_rows(
             {
                 "draw_sha256": draw.draw_sha256,
                 "hit_numbers_json": normalized["hit_numbers_json"],
-                "legacy_reported_result_json": normalized[
-                    "legacy_reported_result_json"
-                ],
-                "legacy_reported_result_sha256": normalized[
-                    "legacy_reported_result_sha256"
-                ],
+                "legacy_reported_result_json": normalized["legacy_reported_result_json"],
+                "legacy_reported_result_sha256": normalized["legacy_reported_result_sha256"],
                 "main_hit_count": row.main_hit_count,
                 "prize_tier_id": row.prize_tier_id,
                 "special_hit_count": row.special_hit_count,
@@ -1558,9 +1791,7 @@ def _commit_ticket_result_rows(
         ).fetchone()
         if existing is not None:
             if str(existing[0]) != result_sha256:
-                raise ResearchConflictError(
-                    "same draw checksum produced different ticket results"
-                )
+                raise ResearchConflictError("same draw checksum produced different ticket results")
             continue
         version_row = connection.execute(
             """

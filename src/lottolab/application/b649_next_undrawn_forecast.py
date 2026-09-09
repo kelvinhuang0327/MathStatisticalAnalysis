@@ -163,9 +163,15 @@ def native_generation_config(
 class CanonicalNativeTicketGenerator:
     """Use each canonical response path without changing descriptor type or K."""
 
-    def __init__(self, catalog: StrategyCatalog) -> None:
+    def __init__(
+        self,
+        catalog: StrategyCatalog,
+        *,
+        before_execution: Callable[[str, object], None] | None = None,
+    ) -> None:
         self.catalog = catalog
         self.registry = ExecutableRegistry(catalog)
+        self.before_execution = before_execution
 
     def generate(
         self, descriptor: StrategyDescriptor, config: GenerationConfig, history: tuple[Draw, ...]
@@ -187,9 +193,11 @@ class CanonicalNativeTicketGenerator:
         )
         if descriptor.response_shape is ResponseShape.SINGLE_TICKET:
             adapter = instantiate_adapter(descriptor.strategy_id, adapter_class)
-            result = GenerateOneBet(self.catalog, {descriptor.strategy_id: adapter}).execute(
-                request
-            )
+            result = GenerateOneBet(
+                self.catalog,
+                {descriptor.strategy_id: adapter},
+                before_execution=self.before_execution,
+            ).execute(request)
             if result.status is not GenerateOneBetStatus.OK or result.numbers is None:
                 raise ForecastGenerationError(f"SINGLE_TICKET:{result.status}:{result.reason_code}")
             if result.special_number is not None:
@@ -198,7 +206,9 @@ class CanonicalNativeTicketGenerator:
         else:
             portfolio = instantiate_portfolio_adapter(descriptor.strategy_id, adapter_class)
             result_many = GeneratePortfolio(
-                self.catalog, {descriptor.strategy_id: portfolio}
+                self.catalog,
+                {descriptor.strategy_id: portfolio},
+                before_execution=self.before_execution,
             ).execute(request)
             if result_many.status is not GeneratePortfolioStatus.OK or result_many.numbers is None:
                 raise ForecastGenerationError(
@@ -309,8 +319,7 @@ def evaluate_evidence(request: ForecastRequest) -> tuple[CandidateEvidence, ...]
             raise ForecastContractError("REPLAY_HISTORY_OR_GENERATION_IDENTITY_MISMATCH")
         if (
             observation.status is ObservationStatus.EVALUATED
-            and json.loads(effective_config.rng_semantics_json)["behavior"]
-            == "UNSEEDED_STOCHASTIC"
+            and json.loads(effective_config.rng_semantics_json)["behavior"] == "UNSEEDED_STOCHASTIC"
         ):
             # No state capture/regeneration adapter is part of this producer.
             # A shared RNG class alone cannot establish call identity.

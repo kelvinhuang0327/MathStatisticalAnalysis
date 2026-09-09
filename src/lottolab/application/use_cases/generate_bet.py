@@ -95,7 +95,14 @@ class GenerateOneBetExecution:
 class GenerateOneBet:
     """Resolve an injected adapter and convert every outcome to a closed result."""
 
-    def __init__(self, catalog: StrategyCatalog, adapters: Mapping[str, BetAdapter]) -> None:
+    def __init__(
+        self,
+        catalog: StrategyCatalog,
+        adapters: Mapping[str, BetAdapter],
+        *,
+        before_execution: Callable[[str, object], None] | None = None,
+    ) -> None:
+        self._before_execution = before_execution
         adapter_snapshot: dict[str, BetAdapter] = {}
         runtime_entries = cast(Mapping[object, object], adapters)
         for candidate_id, candidate_adapter in runtime_entries.items():
@@ -165,6 +172,8 @@ class GenerateOneBet:
                 GenerateOneBetReason.UNSUPPORTED_LOTTERY_TYPE,
             )
 
+        if self._before_execution is not None:
+            self._before_execution(request.strategy_id, adapter)
         try:
             adapter_execution = adapter.get_one_bet_with_emission(
                 request.history,
@@ -391,8 +400,13 @@ class GeneratePortfolio:
     """
 
     def __init__(
-        self, catalog: StrategyCatalog, adapters: Mapping[str, PortfolioBetAdapter]
+        self,
+        catalog: StrategyCatalog,
+        adapters: Mapping[str, PortfolioBetAdapter],
+        *,
+        before_execution: Callable[[str, object], None] | None = None,
     ) -> None:
+        self._before_execution = before_execution
         adapter_snapshot: dict[str, PortfolioBetAdapter] = {}
         runtime_entries = cast(Mapping[object, object], adapters)
         for candidate_id, candidate_adapter in runtime_entries.items():
@@ -475,6 +489,8 @@ class GeneratePortfolio:
                         f"{request.strategy_id}: an explicit integer seed is required"
                     )
                 adapter = adapter.with_seed(request.seed)
+            if self._before_execution is not None:
+                self._before_execution(request.strategy_id, adapter)
             executions = adapter.get_bets_with_emission(
                 request.history,
                 request.lottery_type,

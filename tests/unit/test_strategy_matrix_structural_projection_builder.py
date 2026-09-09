@@ -15,6 +15,8 @@ from lottolab.application.strategy_matrix_structural import (
     PINNED_MATRIX,
     PINNED_METRIC_SURFACE,
     SourceReference,
+    StructuralMeasurementStatus,
+    StructuralSourceStatus,
 )
 from lottolab.infrastructure.strategy_matrix_structural_projection_builder import (
     StrategyMatrixStructuralBuildError,
@@ -48,6 +50,25 @@ def test_builds_a_valid_projection_from_the_real_pinned_sources() -> None:
     )
     dataset = parse_structural_projection(payload)
     assert len(dataset.cells) == 210
+
+
+def test_not_run_unavailable_status_builds_as_unavailable() -> None:
+    payload = build_strategy_matrix_structural_projection_bytes(
+        metric_surface_path=_METRIC_SURFACE_PATH,
+        matrix_path=_MATRIX_PATH,
+        ledger_path=_LEDGER_PATH,
+    )
+    dataset = parse_structural_projection(payload)
+    cell = next(
+        cell
+        for cell in dataset.cells
+        if cell.row_id
+        == "NATIVE_DAILY_539|ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1|default|k3|m3"
+    )
+    assert cell.source_status is StructuralSourceStatus.NOT_RUN
+    assert cell.measurement_status is StructuralMeasurementStatus.UNAVAILABLE
+    assert cell.value is None
+    assert cell.unavailable_reason
 
 
 def test_rebuilding_from_the_real_pinned_sources_matches_the_committed_artifact() -> None:

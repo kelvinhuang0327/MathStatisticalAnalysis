@@ -75,9 +75,9 @@ def test_status_partition_matches_the_frozen_v1_grid() -> None:
     assert counts[(StructuralLottery.BIG_LOTTO, StructuralMeasurementStatus.MEASURED)] == 46
     assert counts[(StructuralLottery.BIG_LOTTO, StructuralMeasurementStatus.NOT_APPLICABLE)] == 6
     assert counts[(StructuralLottery.BIG_LOTTO, StructuralMeasurementStatus.UNAVAILABLE)] == 18
-    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.MEASURED)] == 28
-    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.NOT_APPLICABLE)] == 30
-    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.UNAVAILABLE)] == 12
+    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.MEASURED)] == 29
+    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.NOT_APPLICABLE)] == 25
+    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.UNAVAILABLE)] == 16
     assert counts[(StructuralLottery.POWER_LOTTO_ZONE1, StructuralMeasurementStatus.MEASURED)] == 28
     assert (
         counts[(StructuralLottery.POWER_LOTTO_ZONE1, StructuralMeasurementStatus.NOT_APPLICABLE)]

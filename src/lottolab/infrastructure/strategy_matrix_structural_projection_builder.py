@@ -324,7 +324,7 @@ def _build_cell(
     else:
         assert unavailable is not None
         source_status = unavailable.get("status")
-        if source_status not in ("NOT_APPLICABLE", "REUSED_VERIFIED"):
+        if source_status not in ("NOT_APPLICABLE", "REUSED_VERIFIED", "NOT_RUN"):
             raise StrategyMatrixStructuralBuildError(
                 f"row {row_id} unavailable status {source_status!r} is unexpected"
             )

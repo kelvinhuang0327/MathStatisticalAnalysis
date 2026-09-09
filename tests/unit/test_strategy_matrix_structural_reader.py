@@ -17,6 +17,7 @@ from lottolab.application.strategy_matrix_structural import (
     StructuralLottery,
     StructuralMeasurementStatus,
     StructuralMethodId,
+    StructuralSourceStatus,
     StructuralTicketCount,
 )
 from lottolab.infrastructure.strategy_matrix_structural_reader import (
@@ -75,9 +76,9 @@ def test_status_partition_matches_the_frozen_v1_grid() -> None:
     assert counts[(StructuralLottery.BIG_LOTTO, StructuralMeasurementStatus.MEASURED)] == 46
     assert counts[(StructuralLottery.BIG_LOTTO, StructuralMeasurementStatus.NOT_APPLICABLE)] == 6
     assert counts[(StructuralLottery.BIG_LOTTO, StructuralMeasurementStatus.UNAVAILABLE)] == 18
-    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.MEASURED)] == 28
-    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.NOT_APPLICABLE)] == 30
-    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.UNAVAILABLE)] == 12
+    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.MEASURED)] == 29
+    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.NOT_APPLICABLE)] == 25
+    assert counts[(StructuralLottery.DAILY_539, StructuralMeasurementStatus.UNAVAILABLE)] == 16
     assert counts[(StructuralLottery.POWER_LOTTO_ZONE1, StructuralMeasurementStatus.MEASURED)] == 28
     assert (
         counts[(StructuralLottery.POWER_LOTTO_ZONE1, StructuralMeasurementStatus.NOT_APPLICABLE)]
@@ -86,6 +87,46 @@ def test_status_partition_matches_the_frozen_v1_grid() -> None:
     assert (
         counts[(StructuralLottery.POWER_LOTTO_ZONE1, StructuralMeasurementStatus.UNAVAILABLE)] == 12
     )
+
+
+def test_daily539_k2_expected_max_cell_is_measured_with_local_optimum() -> None:
+    dataset = PackagedStrategyMatrixStructuralReader().read()
+    cell = next(
+        cell
+        for cell in dataset.cells
+        if cell.lottery is StructuralLottery.DAILY_539
+        and cell.method_id is StructuralMethodId.ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1
+        and cell.ticket_count is StructuralTicketCount.TWO
+    )
+    assert cell.measurement_status is StructuralMeasurementStatus.MEASURED
+    assert cell.value is not None
+    assert (cell.value.numerator, cell.value.denominator) == ("597050", "575757")
+    assert cell.local_optimum_status == "COMPLETE_RADIUS_1_LOCAL_OPTIMUM"
+
+
+def test_daily539_sibling_ticket_counts_are_not_run_and_unavailable() -> None:
+    dataset = PackagedStrategyMatrixStructuralReader().read()
+    sibling_counts = {
+        StructuralTicketCount.THREE,
+        StructuralTicketCount.FIVE,
+        StructuralTicketCount.TEN,
+        StructuralTicketCount.TWENTY,
+    }
+    cells = [
+        cell
+        for cell in dataset.cells
+        if cell.lottery is StructuralLottery.DAILY_539
+        and cell.method_id is StructuralMethodId.ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1
+        and cell.ticket_count in sibling_counts
+    ]
+    assert len(cells) == len(sibling_counts)
+    for cell in cells:
+        assert cell.source_status is StructuralSourceStatus.NOT_RUN
+        assert cell.measurement_status is StructuralMeasurementStatus.UNAVAILABLE
+        assert cell.value is None
+        assert cell.portfolio_sha256 is None
+        assert cell.local_optimum_status is None
+        assert cell.unavailable_reason
 
 
 def test_no_measured_cell_is_silently_zero_and_absent() -> None:

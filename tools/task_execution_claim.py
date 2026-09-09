@@ -24,8 +24,9 @@ import stat
 import subprocess
 import sys
 import uuid
-from collections.abc import Generator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict, cast
@@ -308,9 +309,31 @@ class ClaimStore:
             self._release(record)
         return code if code >= 0 else 128 - code
 
-    def run(self, task_key: str, command: Sequence[str], *, takeover_stale: bool = False) -> int:
+    def run(
+        self,
+        task_key: str,
+        command: Sequence[str],
+        *,
+        takeover_stale: bool = False,
+        expected_predecessor_owner_id: str | None = None,
+        prepare_takeover: Callable[[Metadata, Metadata], None] | None = None,
+    ) -> int:
+        """Optionally admit an exact predecessor transfer inside the transaction.
+
+        The trusted preparation hook must durably prepare successor state before
+        returning. Failure leaves predecessor ownership unchanged. Copies keep a
+        callback from accidentally changing the gate's ownership/command metadata.
+        """
         if not command or not command[0] or any("\0" in arg for arg in command):
             raise ClaimError("A valid foreground command is required")
+        if (expected_predecessor_owner_id is None) != (prepare_takeover is None):
+            raise ClaimError("Expected predecessor and preparation must be supplied together")
+        if expected_predecessor_owner_id is not None:
+            if str(uuid.UUID(expected_predecessor_owner_id)) != expected_predecessor_owner_id:
+                raise ClaimError("Invalid expected predecessor owner")
+            if not takeover_stale:
+                print(json.dumps({"reason": "Explicit --takeover-stale required"}))
+                return TAKEOVER_REQUIRED
         record: Metadata
         child: subprocess.Popen[bytes]
         with self._transaction():
@@ -327,6 +350,12 @@ class ClaimStore:
             if status != "ABSENT" and not (status == "STALE_CONFIRMED" and takeover_stale):
                 print(json.dumps(state))
                 return REFUSED if str(status).startswith("ACTIVE") else UNVERIFIABLE
+            if expected_predecessor_owner_id is not None and (
+                status != "STALE_CONFIRMED"
+                or state.get("owner_id") != expected_predecessor_owner_id
+            ):
+                print(json.dumps({**state, "reason": "Expected predecessor no longer owns claim"}))
+                return UNVERIFIABLE
             stamp = _now()
             record = Metadata(
                 schema_version=1,
@@ -341,6 +370,11 @@ class ClaimStore:
                 command=list(command),
                 claim_root=str(self.root),
             )
+            if prepare_takeover is not None:
+                predecessor = self._read(task_key)
+                if predecessor is None or predecessor["owner_id"] != expected_predecessor_owner_id:
+                    raise ClaimError("Expected predecessor changed before preparation")
+                prepare_takeover(deepcopy(predecessor), deepcopy(record))
             self._write(record)
             read_fd, write_fd = os.pipe()
             try:

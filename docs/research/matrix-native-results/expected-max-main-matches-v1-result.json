@@ -5813,10 +5813,10 @@
     "base_tree": "fa28f9af9d75d9d82b99bb2010c6eb4b0fc17ef1",
     "path": "docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json",
     "schema_version": "1.0.0",
-    "sha256": "7bc93366ae7e9c1ab3f78ed9cf1ac90e18f1c03cb90211df267cf8e7f9f0e31a",
+    "sha256": "0c2cfa9d1ec90238699f1a878ec00ef98aa29b14bb02cacbade38159c8cee802",
     "task_id": "STRATEGY_MATRIX_IMPORTED_OPTIMIZER_INTEGRATION_AND_GAP_R1"
   },
-  "matrix_intake_sha256": "7210e7faecc1d77325274aaf45f340985eb67fe6d616834ba20bc3bb0c6e8215",
+  "matrix_intake_sha256": "9da785d1edaa42caafc83771f9a9f28c13eb6942204731e6290e2f0ff5b71148",
   "matrix_source": {
     "path": "src/lottolab/research/strategy_matrix_comparison.py",
     "sha256": "8298b534b20660573d9d562ba55aad952dec42414f2dbdafd2aa07efc8ceda30"

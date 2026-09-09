@@ -320,7 +320,7 @@
     }
   },
   "imported_method_count": 14,
-  "matrix_intake_sha256": "7210e7faecc1d77325274aaf45f340985eb67fe6d616834ba20bc3bb0c6e8215",
+  "matrix_intake_sha256": "9da785d1edaa42caafc83771f9a9f28c13eb6942204731e6290e2f0ff5b71148",
   "method_families": [
     "BOUNDED_COVERAGE_SEARCH",
     "CALLER_SUPPLIED_CANDIDATE_DIVERSIFICATION",
@@ -894,7 +894,7 @@
       "correctness_evidence": [
         {
           "path": "tests/unit/test_expected_max_main_matches_exact_1exchange_ascent.py",
-          "sha256": "2402a28553ad17dee9bd095c1f8da0e15a6f101aaec59030d296a7ac8d638aa7"
+          "sha256": "3e0773613116441b467b6be84371deda9dcbd958fa0f966e4afee7e93e05a25a"
         }
       ],
       "deterministic": true,
@@ -910,7 +910,7 @@
       "source_files": [
         {
           "path": "src/lottolab/research/expected_max_main_matches_exact_1exchange_ascent.py",
-          "sha256": "86ea737f3ff720cab0f30f35d375369ba2f6997464df7c7f7c9a9cef996ccfcc"
+          "sha256": "bbb97bd7250b5c2966a98e07d7bd92571befef6e1585045b8b74fccfd60be47d"
         }
       ],
       "source_status": "IMPLEMENTED",

@@ -576,6 +576,7 @@ def test_cli_inspect_is_read_only_and_run_requires_separator(tmp_path: Path) -> 
     assert inspected.returncode == 0
     assert json.loads(inspected.stdout)["status"] == "ABSENT"
     assert not (canonical / ".task-data").exists()
+
     invalid = subprocess.run(
         [*cli, "run", "--task-key", "task", sys.executable, "-c", "pass"],
         cwd=canonical,
@@ -586,3 +587,85 @@ def test_cli_inspect_is_read_only_and_run_requires_separator(tmp_path: Path) -> 
     )
     assert invalid.returncode == 2
     assert not (canonical / ".task-data").exists()
+
+
+def test_expected_predecessor_preparation_is_before_replacement_and_launch(
+    tmp_path: Path,
+    dead_pid: int,
+) -> None:
+    store = claims.ClaimStore(tmp_path / "claims")
+    old = _seed(store, owner_pid=dead_pid, child_pid=dead_pid)
+    marker = tmp_path / "prepared"
+
+    def prepare(before: claims.Metadata, after: claims.Metadata) -> None:
+        assert before == old == store._read("task")
+        assert after["owner_id"] != before["owner_id"]
+        assert after["child_pid"] is None
+        marker.write_text("prepared")
+        after["command"].clear()  # Copies cannot corrupt the actual launch.
+
+    command = [
+        sys.executable,
+        "-c",
+        "from pathlib import Path; import sys; assert Path(sys.argv[1]).read_text() == 'prepared'",
+        str(marker),
+    ]
+    assert (
+        store.run(
+            "task",
+            command,
+            takeover_stale=True,
+            expected_predecessor_owner_id=old["owner_id"],
+            prepare_takeover=prepare,
+        )
+        == 0
+    )
+    assert store.inspect("task")["status"] == "ABSENT"
+
+
+@pytest.mark.parametrize(
+    "kind", ["missing_authorization", "absent", "new_owner", "callback_failure"]
+)
+def test_expected_predecessor_failures_preserve_claim_and_launch_nothing(
+    tmp_path: Path,
+    dead_pid: int,
+    kind: str,
+) -> None:
+    store = claims.ClaimStore(tmp_path / "claims")
+    old = _seed(store, owner_pid=dead_pid, child_pid=dead_pid)
+    if kind == "absent":
+        with store._transaction():
+            store._release(old)
+    elif kind == "new_owner":
+        _seed(store, owner_pid=dead_pid, child_pid=dead_pid)
+    before = store.location("task").read_bytes() if kind != "absent" else None
+    marker = tmp_path / "child"
+    calls: list[str] = []
+
+    def prepare(predecessor: claims.Metadata, successor: claims.Metadata) -> None:
+        calls.append(predecessor["owner_id"])
+        raise RuntimeError("preparation failed")
+
+    def run() -> int:
+        return store.run(
+            "task",
+            [
+                sys.executable,
+                "-c",
+                "from pathlib import Path; import sys; Path(sys.argv[1]).touch()",
+                str(marker),
+            ],
+            takeover_stale=kind != "missing_authorization",
+            expected_predecessor_owner_id=old["owner_id"],
+            prepare_takeover=prepare,
+        )
+
+    if kind == "callback_failure":
+        with pytest.raises(RuntimeError, match="preparation failed"):
+            run()
+        assert calls == [old["owner_id"]]
+    else:
+        assert run() in (claims.TAKEOVER_REQUIRED, claims.UNVERIFIABLE)
+        assert calls == []
+    assert not marker.exists()
+    assert (store.location("task").read_bytes() if kind != "absent" else None) == before

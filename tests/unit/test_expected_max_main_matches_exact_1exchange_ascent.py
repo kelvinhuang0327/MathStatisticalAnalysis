@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import itertools
 import random
+from dataclasses import replace
 from fractions import Fraction
 
+import pytest
+
+from lottolab.research import expected_max_main_matches_exact_1exchange_ascent as science
 from lottolab.research.expected_max_main_matches import expected_max_main_matches
 from lottolab.research.expected_max_main_matches_exact_1exchange_ascent import (
     Portfolio,
@@ -328,3 +332,117 @@ def test_no_floating_point_used_anywhere_in_the_result() -> None:
         assert isinstance(iteration.input_expected_max, Fraction)
         assert isinstance(iteration.best_neighbor_expected_max, Fraction)
         assert isinstance(iteration.delta, Fraction)
+
+
+def test_resume_fixture_against_complete_independent_oracle() -> None:
+    current = ((1, 2, 3), (1, 2, 4))
+    result = iterative_exact_1exchange_expected_max_ascent(10, 3, current)
+    assert result.seed_expected_max == Fraction(17, 15)
+    assert result.terminal_expected_max == Fraction(27, 20)
+    assert result.move_count == 2
+    assert [r.unique_legal_neighbor_count for r in result.iterations] == [40, 42, 42]
+    assert result.total_neighbor_evaluations == 124
+    assert result.terminal_portfolio == ((1, 2, 3), (4, 5, 6))
+    for row in result.iterations:
+        assert row.input_portfolio == current
+        assert row.input_expected_max == _brute_force_expected_max(10, 3, current)
+        best, score = _brute_force_best_neighbor(10, 3, current)
+        assert (row.best_neighbor_portfolio, row.best_neighbor_expected_max) == (best, score)
+        assert row.delta == score - row.input_expected_max
+        if row.accepted_move:
+            current = best
+
+
+@pytest.mark.parametrize("seed", [((1, 2, 3), (1, 2, 4)), ((1, 2, 3), (4, 5, 6))])
+def test_validated_prefix_continues_only_unsaved_rows(
+    monkeypatch: pytest.MonkeyPatch,
+    seed: Portfolio,
+) -> None:
+    uninterrupted = iterative_exact_1exchange_expected_max_ascent(10, 3, seed)
+    real_evaluate = science.evaluate_expected_max_one_exchange_neighborhood
+    for count in range(1, len(uninterrupted.iterations) + 1):
+        observed: list[tuple[int, int]] = []
+        state = science.ExpectedMaxResumeState(
+            10,
+            3,
+            seed,
+            uninterrupted.iterations[:count],
+            lambda index, neighbors, sink=observed: sink.append((index, neighbors)),
+        )
+        assert observed == [
+            (r.iteration_index, r.unique_legal_neighbor_count) for r in state.iterations
+        ]
+        scans: list[Portfolio] = []
+        appends: list[tuple[science.ExpectedMaxAscentIteration, ...]] = []
+
+        def evaluate(
+            pool: int, draw: int, current: Portfolio, sink: list[Portfolio] = scans
+        ) -> science.ExpectedMaxNeighborhoodResult:
+            sink.append(current)
+            return real_evaluate(pool, draw, current)
+
+        with monkeypatch.context() as patch:
+            patch.setattr(science, "evaluate_expected_max_one_exchange_neighborhood", evaluate)
+            resumed = iterative_exact_1exchange_expected_max_ascent(
+                10,
+                3,
+                seed,
+                resume_state=state,
+                on_completed_iteration=appends.append,
+            )
+        assert resumed == uninterrupted
+        assert scans == [r.input_portfolio for r in uninterrupted.iterations[count:]]
+        assert [len(rows) for rows in appends] == list(
+            range(count + 1, len(uninterrupted.iterations) + 1)
+        )
+        if not state.iterations[-1].accepted_move:
+            assert scans == appends == []
+        with pytest.raises(AttributeError):
+            state.pool_size = 9  # pyright: ignore[reportAttributeAccessIssue]
+
+
+def test_callback_failure_stops_before_next_scan(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = 0
+    real_evaluate = science.evaluate_expected_max_one_exchange_neighborhood
+
+    def evaluate(pool: int, draw: int, current: Portfolio) -> science.ExpectedMaxNeighborhoodResult:
+        nonlocal calls
+        calls += 1
+        return real_evaluate(pool, draw, current)
+
+    def failed(rows: tuple[science.ExpectedMaxAscentIteration, ...]) -> None:
+        assert len(rows) == 1 and rows[0].accepted_move
+        raise OSError("checkpoint publication failure")
+
+    monkeypatch.setattr(science, "evaluate_expected_max_one_exchange_neighborhood", evaluate)
+    with pytest.raises(OSError, match="checkpoint publication failure"):
+        iterative_exact_1exchange_expected_max_ascent(
+            10,
+            3,
+            ((1, 2, 3), (1, 2, 4)),
+            on_completed_iteration=failed,
+        )
+    assert calls == 1
+
+
+def test_revalidation_rejects_consistent_wrong_tie_and_false_terminal() -> None:
+    seed = ((1, 2, 3), (1, 2, 4))
+    result = iterative_exact_1exchange_expected_max_ascent(10, 3, seed)
+    wrong_tie = replace(result.iterations[-1], best_neighbor_portfolio=((1, 2, 3), (4, 5, 8)))
+    assert (
+        _brute_force_expected_max(10, 3, wrong_tie.best_neighbor_portfolio)
+        == wrong_tie.best_neighbor_expected_max
+    )
+    with pytest.raises(ValueError, match="Scientific resume validation"):
+        science.ExpectedMaxResumeState(10, 3, seed, (*result.iterations[:-1], wrong_tie))
+    equal_neighbor = ((1, 2, 3), (1, 2, 5))
+    assert _brute_force_expected_max(10, 3, equal_neighbor) == result.seed_expected_max
+    false_terminal = replace(
+        result.iterations[0],
+        best_neighbor_portfolio=equal_neighbor,
+        best_neighbor_expected_max=result.seed_expected_max,
+        delta=Fraction(0),
+        accepted_move=False,
+    )
+    with pytest.raises(ValueError, match="Scientific resume validation"):
+        science.ExpectedMaxResumeState(10, 3, seed, (false_terminal,))

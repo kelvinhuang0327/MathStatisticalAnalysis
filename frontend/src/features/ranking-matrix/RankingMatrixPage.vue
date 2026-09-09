@@ -21,6 +21,8 @@ import {
   type RankingWindow,
   type TicketCount,
 } from '../../api/rankingMatrix'
+import { queryStrategyMatrixStructural, type StructuralMatrixCell, type StructuralLottery } from '../../api/strategyMatrixStructural'
+import StructuralExpectedMax from './components/StructuralExpectedMax.vue'
 import CrossWindowChart from './components/CrossWindowChart.vue'
 import MultiTicketMatrix from './components/MultiTicketMatrix.vue'
 import RankingTable from './components/RankingTable.vue'
@@ -67,6 +69,36 @@ const chartLoading = ref(false)
 let fetchController: AbortController | undefined
 let chartController: AbortController | undefined
 let fetchGeneration = 0
+
+const structuralCells = ref<StructuralMatrixCell[]>([])
+const structuralState = ref<PageLoadState>('loading')
+const structuralError = ref('')
+const structuralLottery = computed<StructuralLottery>(() =>
+  selectedLottery.value === 'POWER_LOTTO' ? 'POWER_LOTTO_ZONE1' : selectedLottery.value,
+)
+let structuralController: AbortController | undefined
+let structuralGeneration = 0
+
+async function loadStructuralData(): Promise<void> {
+  structuralController?.abort()
+  structuralController = new AbortController()
+  const generation = ++structuralGeneration
+  structuralCells.value = []
+  structuralState.value = 'loading'
+  structuralError.value = ''
+  const lottery = structuralLottery.value
+  const ticketCount = selectedTicketCount.value
+  try {
+    const result = await queryStrategyMatrixStructural({ lottery, ticketCount }, structuralController.signal)
+    if (generation !== structuralGeneration) return
+    structuralCells.value = result.cells.filter((cell) => cell.lottery === lottery && cell.ticket_count === ticketCount)
+    structuralState.value = 'ready'
+  } catch (error: unknown) {
+    if (generation !== structuralGeneration) return
+    structuralError.value = error instanceof Error ? error.message : '載入結構期望值資料失敗。'
+    structuralState.value = 'error'
+  }
+}
 
 // Distinct lifecycle & comparability options from data
 const lifecycleOptions = computed(() => {
@@ -316,11 +348,16 @@ watch([selectedLottery, selectedTicketCount, selectedWindow], () => {
   loadData()
 })
 
+watch([selectedLottery, selectedTicketCount], loadStructuralData)
+
 onMounted(() => {
   loadData()
+  loadStructuralData()
 })
 
 onBeforeUnmount(() => {
+  ++structuralGeneration
+  structuralController?.abort()
   fetchController?.abort()
   chartController?.abort()
 })
@@ -331,7 +368,7 @@ onBeforeUnmount(() => {
     <!-- Header Section -->
     <SectionHeader
       title="策略排名／多注數矩陣 (Strategy Ranking & Multi-Ticket Matrix)"
-      subtitle="基於官方正規回測紀錄之策略排名、多注數矩陣比較與跨窗口穩定度分析。嚴格遵循上游資料規範，不重算正式排名與成功率。"
+      description="分別呈現均勻開獎空間的結構期望值與歷史回測表現；歷史排名保留發布來源的比較口徑。"
     >
       <template #actions>
         <div class="view-mode-toggle" role="group" aria-label="檢視模式切換">
@@ -420,8 +457,31 @@ onBeforeUnmount(() => {
       </div>
     </section>
 
+    <StructuralExpectedMax
+      :cells="structuralCells"
+      :state="structuralState"
+      :error-message="structuralError"
+      :lottery="structuralLottery"
+      :ticket-count="selectedTicketCount"
+      @retry="loadStructuralData"
+    />
+
+    <section class="historical-section" aria-labelledby="historical-heading" data-testid="historical-section">
+      <h2 id="historical-heading">歷史表現 (Historical performance)</h2>
+      <p>歷史成功率來自回測；排名依歷史發布來源定義。結構期望值不參與歷史策略排名，兩類證據不合成分數。</p>
+      <div
+        v-if="selectedLottery === 'BIG_LOTTO' && (selectedTicketCount === 20 || activeViewMode === 'matrix')"
+        class="canonical-exact-native-banner"
+        data-testid="k20-historical-boundary"
+      >
+        <div class="banner-body">
+          <strong data-testid="k20-exact-native-status">K20 exact-native 歷史表現：Deferred / Unavailable</strong>
+          <p>K20 歷史表格、矩陣欄位與跨窗口資料僅為 legacy prefix_count=20 / M3_PLUS；不填入 exact-native 歷史欄位，也不由結構期望值推算。</p>
+        </div>
+      </div>
+
     <!-- Metrics Overview Cards -->
-    <section class="metrics-grid" aria-label="指標概覽">
+    <section v-if="pageState === 'ready'" class="metrics-grid" aria-label="指標概覽">
       <MetricCard
         label="策略總數"
         :value="summaryMetrics.totalLoaded"
@@ -669,6 +729,8 @@ onBeforeUnmount(() => {
       </section>
     </div>
 
+    </section>
+
     <!-- Warning Legend & Scientific Governance Disclaimers -->
     <footer class="research-disclaimer-panel" aria-label="研究聲明與警示說明">
       <div class="disclaimer-title">
@@ -710,6 +772,17 @@ onBeforeUnmount(() => {
   max-width: 1400px;
   margin: 0 auto;
   padding-bottom: 40px;
+}
+
+.historical-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4, 16px);
+}
+
+.historical-section > h2,
+.historical-section > p {
+  margin: 0;
 }
 
 .view-mode-toggle {

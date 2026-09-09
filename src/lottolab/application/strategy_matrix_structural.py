@@ -295,20 +295,20 @@ class StrategyMatrixStructuralDataset:
             raise StrategyMatrixStructuralContractError("dataset contains a duplicate cell row_id")
 
 
-PINNED_SOURCE_HEAD = "8267a936214c7e769455af75eac399bedb65ae0f"
-PINNED_SOURCE_TREE = "dadc5c1cef56119fdbe3b06697db70fbff028c02"
+PINNED_SOURCE_HEAD = "9486a67ed358c96435cc8b913962380c3db6b100"
+PINNED_SOURCE_TREE = "d53c0a23f9df12127f2ea16d480705c146f4e62b"
 
 PINNED_METRIC_SURFACE = SourceReference(
     repository_path="docs/research/matrix-native-results/expected-max-main-matches-v1-result.json",
-    file_sha256="9dcbd9cdad2ff9389f323a7a892d55b0542c6f886cf80e722cdd0ac0947f769a",
+    file_sha256="bb0cb899dd301711f926617e74af01d14ce7c134b7ed96f7ae0acefcfa532d85",
 )
 PINNED_MATRIX = SourceReference(
     repository_path="docs/research/matrix-native-results/imported-optimizer-integration-r1-result.json",
-    file_sha256="7bc93366ae7e9c1ab3f78ed9cf1ac90e18f1c03cb90211df267cf8e7f9f0e31a",
+    file_sha256="0c2cfa9d1ec90238699f1a878ec00ef98aa29b14bb02cacbade38159c8cee802",
 )
 PINNED_LEDGER = SourceReference(
     repository_path="docs/research/cross_lottery_research_ledger_r1.json",
-    file_sha256="4bd9d04783219bb93cca5d980004e9eb4bc9993ac5362e993de9d21f0756b360",
+    file_sha256="56a6d801636afeb883a2937762cf123ef2fa96a763f13bcb748dce32b66995d9",
 )
 PINNED_AUTHORITY_SOURCES = StructuralMatrixAuthoritySources(
     metric_surface=PINNED_METRIC_SURFACE,

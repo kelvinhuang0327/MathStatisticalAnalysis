@@ -53,7 +53,8 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import InitVar, dataclass
 from fractions import Fraction
 
 from lottolab.research.exact_coverage_fast_evaluator import (
@@ -276,10 +277,115 @@ def evaluate_expected_max_one_exchange_neighborhood(
     )
 
 
+def _iteration(
+    index: int, neighborhood: ExpectedMaxNeighborhoodResult
+) -> ExpectedMaxAscentIteration:
+    return ExpectedMaxAscentIteration(
+        iteration_index=index,
+        input_portfolio=neighborhood.input_portfolio,
+        input_expected_max=neighborhood.input_expected_max,
+        unique_legal_neighbor_count=neighborhood.unique_legal_neighbor_count,
+        best_neighbor_portfolio=neighborhood.best_neighbor_portfolio,
+        best_neighbor_expected_max=neighborhood.best_neighbor_expected_max,
+        delta=neighborhood.delta,
+        accepted_move=neighborhood.delta > 0,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class ExpectedMaxResumeState:
+    """Immutable, fully re-evaluated completed trace; validation is physical work.
+
+    Construction rejects rather than repairs saved data. The observer records
+    only completed validation scans, including one whose saved row disagrees.
+    Neither validation nor its observer changes scientific logical counters.
+    """
+
+    pool_size: int
+    draw_size: int
+    seed_portfolio: Portfolio
+    iterations: tuple[ExpectedMaxAscentIteration, ...]
+    on_validation_scan: InitVar[Callable[[int, int], None] | None] = None
+
+    def __post_init__(self, on_validation_scan: Callable[[int, int], None] | None) -> None:
+        if type(self.pool_size) is not int or type(self.draw_size) is not int:
+            raise ValueError("Invalid resume dimensions")
+        self._check_portfolio(self.seed_portfolio)
+        if type(self.iterations) is not tuple or not self.iterations:
+            raise ValueError("Resume requires complete immutable iteration rows")
+        current = self.seed_portfolio
+        previous_score: Fraction | None = None
+        for index, row in enumerate(self.iterations):
+            if type(row) is not ExpectedMaxAscentIteration:
+                raise ValueError("Invalid resume iteration")
+            self._check_portfolio(row.input_portfolio)
+            self._check_portfolio(row.best_neighbor_portfolio)
+            if (
+                type(row.iteration_index) is not int
+                or row.iteration_index != index
+                or row.input_portfolio != current
+                or type(row.unique_legal_neighbor_count) is not int
+                or row.unique_legal_neighbor_count < 1
+                or type(row.accepted_move) is not bool
+                or any(
+                    type(v) is not Fraction
+                    for v in (row.input_expected_max, row.best_neighbor_expected_max, row.delta)
+                )
+                or (previous_score is not None and row.input_expected_max != previous_score)
+                or (not row.accepted_move and index != len(self.iterations) - 1)
+            ):
+                raise ValueError("Invalid resume trace structure or chaining")
+            neighborhood = evaluate_expected_max_one_exchange_neighborhood(
+                self.pool_size, self.draw_size, current
+            )
+            if on_validation_scan is not None:
+                on_validation_scan(index, neighborhood.unique_legal_neighbor_count)
+            if row != _iteration(index, neighborhood):
+                raise ValueError(f"Scientific resume validation failed at iteration {index}")
+            if row.accepted_move:
+                current = row.best_neighbor_portfolio
+                previous_score = row.best_neighbor_expected_max
+            else:
+                previous_score = row.input_expected_max
+        if (
+            expected_max_main_matches_exact(self.pool_size, self.draw_size, current)
+            != previous_score
+        ):
+            raise ValueError("Saved incumbent score mismatch")
+
+    def _check_portfolio(self, portfolio: Portfolio) -> None:
+        if (
+            type(portfolio) is not tuple
+            or any(type(t) is not tuple or any(type(n) is not int for n in t) for t in portfolio)
+            or _validate_and_canonicalize(self.pool_size, self.draw_size, portfolio) != portfolio
+            or len(portfolio) != len(self.seed_portfolio)
+        ):
+            raise ValueError("Resume portfolios must be canonical, legal and immutable")
+
+
+def _terminal_result(iterations: tuple[ExpectedMaxAscentIteration, ...]) -> ExpectedMaxAscentResult:
+    terminal = iterations[-1]
+    if terminal.accepted_move:
+        raise ValueError("A terminal scan is required")
+    return ExpectedMaxAscentResult(
+        seed_portfolio=iterations[0].input_portfolio,
+        seed_expected_max=iterations[0].input_expected_max,
+        iterations=iterations,
+        move_count=sum(row.accepted_move for row in iterations),
+        terminal_portfolio=terminal.input_portfolio,
+        terminal_expected_max=terminal.input_expected_max,
+        total_neighbor_evaluations=sum(row.unique_legal_neighbor_count for row in iterations),
+        terminal_unique_neighbor_count=terminal.unique_legal_neighbor_count,
+    )
+
+
 def iterative_exact_1exchange_expected_max_ascent(
     pool_size: int,
     draw_size: int,
     seed_portfolio: Portfolio,
+    *,
+    resume_state: ExpectedMaxResumeState | None = None,
+    on_completed_iteration: Callable[[tuple[ExpectedMaxAscentIteration, ...]], None] | None = None,
 ) -> ExpectedMaxAscentResult:
     """Deterministic strict-best-improvement 1-exchange ascent on
     ``EXPECTED_MAX_MAIN_MATCHES_V1``. Halts the first time the complete
@@ -289,39 +395,27 @@ def iterative_exact_1exchange_expected_max_ascent(
 
     current = _validate_and_canonicalize(pool_size, draw_size, seed_portfolio)
     iterations: list[ExpectedMaxAscentIteration] = []
-    move_count = 0
-    total_neighbor_evaluations = 0
+    if resume_state is not None:
+        if (resume_state.pool_size, resume_state.draw_size, resume_state.seed_portfolio) != (
+            pool_size,
+            draw_size,
+            current,
+        ):
+            raise ValueError("Resume state belongs to another scientific input")
+        iterations = list(resume_state.iterations)
+        if not iterations[-1].accepted_move:
+            return _terminal_result(tuple(iterations))
+        current = iterations[-1].best_neighbor_portfolio
 
     while True:
         neighborhood = evaluate_expected_max_one_exchange_neighborhood(
             pool_size, draw_size, current
         )
-        accepted_move = neighborhood.best_neighbor_expected_max > neighborhood.input_expected_max
-        total_neighbor_evaluations += neighborhood.unique_legal_neighbor_count
-        iterations.append(
-            ExpectedMaxAscentIteration(
-                iteration_index=len(iterations),
-                input_portfolio=current,
-                input_expected_max=neighborhood.input_expected_max,
-                unique_legal_neighbor_count=neighborhood.unique_legal_neighbor_count,
-                best_neighbor_portfolio=neighborhood.best_neighbor_portfolio,
-                best_neighbor_expected_max=neighborhood.best_neighbor_expected_max,
-                delta=neighborhood.delta,
-                accepted_move=accepted_move,
-            )
-        )
-
-        if not accepted_move:
-            return ExpectedMaxAscentResult(
-                seed_portfolio=iterations[0].input_portfolio,
-                seed_expected_max=iterations[0].input_expected_max,
-                iterations=tuple(iterations),
-                move_count=move_count,
-                terminal_portfolio=current,
-                terminal_expected_max=neighborhood.input_expected_max,
-                total_neighbor_evaluations=total_neighbor_evaluations,
-                terminal_unique_neighbor_count=neighborhood.unique_legal_neighbor_count,
-            )
-
-        current = neighborhood.best_neighbor_portfolio
-        move_count += 1
+        row = _iteration(len(iterations), neighborhood)
+        iterations.append(row)
+        if row.accepted_move:
+            current = row.best_neighbor_portfolio
+        if on_completed_iteration is not None:
+            on_completed_iteration(tuple(iterations))
+        if not row.accepted_move:
+            return _terminal_result(tuple(iterations))

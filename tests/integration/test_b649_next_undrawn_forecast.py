@@ -498,7 +498,7 @@ def test_cli_rejects_nonfixture_composition_without_creating_store(
     assert not (tmp_path / "fixture-store").exists()
 
 
-def test_producer_fingerprint_binds_relative_imports_and_bundled_generation_data(
+def test_producer_fingerprint_binds_relative_imports_and_excludes_unrelated_catalog_data(
     tmp_path: Path,
 ):
     files: dict[str, str] = {
@@ -514,7 +514,10 @@ def test_producer_fingerprint_binds_relative_imports_and_bundled_generation_data
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
     first = source_producer_fingerprint(tmp_path, ())
-    assert "src/lottolab/domain/loaded.py" in [d.locator for d in first.dependencies]
+    locators = [d.locator for d in first.dependencies]
+    assert "src/lottolab/domain/loaded.py" in locators
+    assert "src/lottolab/strategies/catalog.py" not in locators
+    assert "src/lottolab/strategies/data/parameters.json" not in locators
     assert first == source_producer_fingerprint(tmp_path, ())
     (tmp_path / "src/lottolab/domain/loaded.py").write_text("VALUE = 2\n", encoding="utf-8")
     changed_code = source_producer_fingerprint(tmp_path, ())
@@ -522,4 +525,8 @@ def test_producer_fingerprint_binds_relative_imports_and_bundled_generation_data
     (tmp_path / "src/lottolab/strategies/data/parameters.json").write_text(
         '{"seed":2}', encoding="utf-8"
     )
-    assert source_producer_fingerprint(tmp_path, ()).digest != changed_code.digest
+    assert source_producer_fingerprint(tmp_path, ()).digest == changed_code.digest
+    (tmp_path / "src/lottolab/strategies/catalog.py").write_text(
+        "# unrelated catalog entry added\n", encoding="utf-8"
+    )
+    assert source_producer_fingerprint(tmp_path, ()).digest == changed_code.digest

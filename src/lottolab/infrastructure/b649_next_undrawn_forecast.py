@@ -9,6 +9,7 @@ gate, so a rejected or interrupted attempt cannot expose a partial forecast.
 from __future__ import annotations
 
 import ast
+import builtins
 import hashlib
 import json
 import os
@@ -158,69 +159,234 @@ class FileSystemForecastBundleStore:
         return existing
 
 
+# A shared aggregator module that mixes this producer's own consumed contracts
+# with unrelated ones (e.g. other lotteries' repositories). Listing it here
+# switches its handling from whole-file hashing to per-symbol extraction, so
+# an unrelated declaration added to it can never perturb this digest.
+_SYMBOL_SCOPED_SHARED_MODULES = frozenset({"lottolab.application.ports"})
+
+
+def _resolve_module_path(source: Path, module: str) -> Path | None:
+    parts = module.split(".")
+    path = source.joinpath(*parts).with_suffix(".py")
+    if path.is_file():
+        return path
+    path = source.joinpath(*parts) / "__init__.py"
+    return path if path.is_file() else None
+
+
+def _module_top_level_bindings(tree: ast.Module) -> tuple[dict[str, ast.stmt], dict[str, str]]:
+    """Map each top-level defined name to its statement, and each name this
+    module imports from elsewhere to the dotted module it came from."""
+    definitions: dict[str, ast.stmt] = {}
+    imported_from: dict[str, str] = {}
+    for stmt in tree.body:
+        if isinstance(stmt, ast.ImportFrom) and stmt.module and not stmt.level:
+            for alias in stmt.names:
+                imported_from[alias.asname or alias.name] = stmt.module
+        elif isinstance(stmt, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            definitions[stmt.name] = stmt
+        elif isinstance(stmt, ast.Assign):
+            for target in stmt.targets:
+                if isinstance(target, ast.Name):
+                    definitions[target.id] = stmt
+        elif isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            definitions[stmt.target.id] = stmt
+        elif isinstance(stmt, ast.TypeAlias):
+            definitions[stmt.name.id] = stmt
+    return definitions, imported_from
+
+
+def _source_segment_including_decorators(source_lines: list[str], stmt: ast.stmt) -> str:
+    start = stmt.lineno
+    for decorator in getattr(stmt, "decorator_list", ()):
+        start = min(start, decorator.lineno)
+    end = stmt.end_lineno or stmt.lineno
+    return "\n".join(source_lines[start - 1 : end])
+
+
+def _extract_consumed_symbols(
+    module_source: str, names: frozenset[str]
+) -> tuple[str, frozenset[str]]:
+    """Bind exactly the reachable source for the requested top-level names.
+
+    A shared aggregator module may define many unrelated contracts; this
+    returns only ``names`` plus, recursively, every other top-level name in
+    the same module their own definitions reference (including decorators) --
+    never the whole file. A referenced name the module itself imports from
+    elsewhere is returned separately for the caller to resolve as an ordinary
+    module dependency. Fails closed (raises) rather than silently omitting a
+    name that resolves to neither a local definition nor an import.
+    """
+    definitions, imported_from = _module_top_level_bindings(ast.parse(module_source))
+    source_lines = module_source.splitlines()
+    included: dict[str, ast.stmt] = {}
+    forwarded: set[str] = set()
+    pending_names = set(names)
+    while pending_names:
+        name = pending_names.pop()
+        if name in included:
+            continue
+        stmt = definitions.get(name)
+        if stmt is None:
+            if hasattr(builtins, name):
+                continue
+            source_module = imported_from.get(name)
+            if source_module is None:
+                raise ForecastContractError(
+                    f"PRODUCER_FINGERPRINT_REQUIRED_SYMBOL_UNRESOLVED: {name}"
+                )
+            forwarded.add(source_module)
+            continue
+        included[name] = stmt
+        for node in ast.walk(stmt):
+            if (
+                isinstance(node, ast.Name)
+                and isinstance(node.ctx, ast.Load)
+                and node.id not in included
+            ):
+                pending_names.add(node.id)
+    ordered = sorted(included.values(), key=lambda stmt: stmt.lineno)
+    segments = [_source_segment_including_decorators(source_lines, stmt) for stmt in ordered]
+    return "\n\n".join(segments), frozenset(forwarded)
+
+
 def source_producer_fingerprint(
     repository: Path,
     catalog: tuple[StrategyDescriptor, ...],
     *,
-    version: str = "1",
+    version: str = "2",
 ) -> ProducerFingerprint:
-    """Bind repository Python dependencies, catalog data and native adapter code.
+    """Bind exactly this producer's own code, adapters, and consumed shared symbols.
 
-    Static import closure plus explicit catalog adapter modules covers dynamically
-    loaded adapters. Bundled strategy data is included; no adapter runs and no
-    external evidence store or database is opened.
+    Static import closure from this producer's own modules, plus each selected
+    descriptor's explicit adapter module, covers dynamically loaded adapters.
+    A module listed in ``_SYMBOL_SCOPED_SHARED_MODULES`` (a shared aggregator
+    like ``ports.py`` that mixes causal and unrelated contracts) contributes
+    only the specific top-level symbols this producer's own closure actually
+    imports from it, plus whatever those symbols themselves reference --
+    never its unrelated declarations, so an unrelated subsystem sharing that
+    module cannot make its own contract load-bearing here. This producer's
+    own modules, the CLI entrypoint, and each selected descriptor's adapter
+    module are explicitly required: fingerprint construction fails closed if
+    any of them cannot be resolved. No adapter runs and no external evidence
+    store or database is opened.
     """
     source = repository / "src"
-    pending = {
-        "lottolab.application.b649_next_undrawn_forecast",
-        "lottolab.infrastructure.b649_next_undrawn_forecast",
-        "lottolab.strategies.catalog",
-    }
-    pending.update(
+    entrypoint = repository / "tools" / "b649_next_undrawn_forecast.py"
+    if not entrypoint.is_file():
+        raise ForecastContractError("PRODUCER_FINGERPRINT_REQUIRED_PATH_MISSING: CLI entrypoint")
+
+    required_seeds = frozenset(
+        {
+            "lottolab.application.b649_next_undrawn_forecast",
+            "lottolab.infrastructure.b649_next_undrawn_forecast",
+        }
+    )
+    adapter_modules = frozenset(
         d.adapter_path.split(":", 1)[0]
         for d in catalog
         if d.adapter_path and d.adapter_path.startswith("lottolab.")
     )
+    pending = set(required_seeds) | set(adapter_modules)
     seen: set[str] = set()
-    paths = {repository / "tools" / "b649_next_undrawn_forecast.py"}
-    paths.update((source / "lottolab").rglob("*.json"))
-    while pending:
-        module = pending.pop()
-        if module in seen or not module.startswith("lottolab"):
-            continue
-        seen.add(module)
-        parts = module.split(".")
-        pending.update(".".join(parts[:i]) for i in range(1, len(parts)))
-        path = source.joinpath(*module.split(".")).with_suffix(".py")
-        if not path.is_file():
-            path = source.joinpath(*module.split(".")) / "__init__.py"
-        if not path.is_file():
-            continue
-        paths.add(path)
-        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
-            if isinstance(node, ast.Import):
-                pending.update(alias.name for alias in node.names)
-            elif isinstance(node, ast.ImportFrom):
-                base = node.module or ""
-                if node.level:
-                    package = parts if path.name == "__init__.py" else parts[:-1]
-                    base = ".".join(
-                        (*package[: len(package) - node.level + 1], *base.split("."))
-                    ).rstrip(".")
-                pending.add(base)
-                pending.update(f"{base}.{alias.name}" for alias in node.names if alias.name != "*")
-    dependencies = tuple(
+    paths = {entrypoint}
+    shared_symbol_names: dict[str, set[str]] = {}
+
+    while True:
+        while pending:
+            module = pending.pop()
+            if module in seen or not module.startswith("lottolab"):
+                continue
+            seen.add(module)
+            parts = module.split(".")
+            pending.update(".".join(parts[:i]) for i in range(1, len(parts)))
+            path = _resolve_module_path(source, module)
+            if path is None:
+                if module in required_seeds or module in adapter_modules:
+                    raise ForecastContractError(
+                        f"PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING: {module}"
+                    )
+                continue
+            if module in _SYMBOL_SCOPED_SHARED_MODULES:
+                continue
+            paths.add(path)
+            for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                if isinstance(node, ast.Import):
+                    pending.update(alias.name for alias in node.names)
+                elif isinstance(node, ast.ImportFrom):
+                    base = node.module or ""
+                    if node.level:
+                        package = parts if path.name == "__init__.py" else parts[:-1]
+                        base = ".".join(
+                            (*package[: len(package) - node.level + 1], *base.split("."))
+                        ).rstrip(".")
+                    pending.add(base)
+                    if base in _SYMBOL_SCOPED_SHARED_MODULES:
+                        if any(alias.name == "*" for alias in node.names):
+                            raise ForecastContractError(
+                                "PRODUCER_FINGERPRINT_WILDCARD_IMPORT_OF_SHARED_MODULE: "
+                                f"{base}"
+                            )
+                        shared_symbol_names.setdefault(base, set()).update(
+                            alias.name for alias in node.names
+                        )
+                    else:
+                        # `from package import name` may import a submodule
+                        # rather than a symbol defined in package/__init__.py
+                        # (e.g. `from ..domain import loaded` importing the
+                        # file domain/loaded.py) -- queue that possibility too;
+                        # it is a harmless no-op when `name` is really a symbol.
+                        pending.update(
+                            f"{base}.{alias.name}" for alias in node.names if alias.name != "*"
+                        )
+        forwarded_any: set[str] = set()
+        for shared_module, names in shared_symbol_names.items():
+            shared_path = _resolve_module_path(source, shared_module)
+            if shared_path is None:
+                raise ForecastContractError(
+                    f"PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING: {shared_module}"
+                )
+            _, forwarded = _extract_consumed_symbols(
+                shared_path.read_text(encoding="utf-8"), frozenset(names)
+            )
+            forwarded_any.update(
+                m for m in forwarded if m.startswith("lottolab") and m not in seen
+            )
+        if not forwarded_any:
+            break
+        pending.update(forwarded_any)
+
+    dependencies = [
         ProducerDependency(
             path.relative_to(repository).as_posix(),
             hashlib.sha256(path.read_bytes()).hexdigest(),
             "canonical producer, native generation, ranking or prospective contract code",
         )
         for path in sorted(paths)
-    )
+    ]
+    for shared_module, names in sorted(shared_symbol_names.items()):
+        shared_path = _resolve_module_path(source, shared_module)
+        if shared_path is None:
+            raise ForecastContractError(
+                f"PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING: {shared_module}"
+            )
+        extracted, _ = _extract_consumed_symbols(
+            shared_path.read_text(encoding="utf-8"), frozenset(names)
+        )
+        locator = f"{shared_path.relative_to(repository).as_posix()}::{','.join(sorted(names))}"
+        dependencies.append(
+            ProducerDependency(
+                locator,
+                hashlib.sha256(extracted.encode("utf-8")).hexdigest(),
+                "consumed shared-contract symbols from a shared aggregator module",
+            )
+        )
+    dependencies.sort(key=lambda dependency: dependency.locator)
     return ProducerFingerprint.create(
         producer_id="b649_next_undrawn_forecast",
         producer_version=version,
-        dependencies=dependencies,
+        dependencies=tuple(dependencies),
     )
 
 
@@ -332,7 +498,7 @@ def run_fixture(fixture: Path, output_root: Path) -> StoredForecast:
         tickets[strategy_id] = _tickets(row["generated_tickets"])
     catalog = tuple(descriptors)
     producer = source_producer_fingerprint(
-        Path(__file__).resolve().parents[3], catalog, version="fixture-only-v1"
+        Path(__file__).resolve().parents[3], catalog, version="fixture-only-v2"
     )
     configs = tuple(native_generation_config(d, history) for d in catalog)
     config_by_id = {c.strategy_id: c for c in configs}

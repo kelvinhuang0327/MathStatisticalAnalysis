@@ -8,6 +8,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from fractions import Fraction
+from pathlib import Path
 from typing import Literal, NoReturn, TypedDict, cast
 
 import pytest
@@ -46,6 +47,7 @@ from lottolab.domain.prospective_observer import (
     ProducerFingerprint,
 )
 from lottolab.domain.strategies import LifecycleStatus, ResponseShape, StrategyDescriptor
+from lottolab.infrastructure.b649_next_undrawn_forecast import source_producer_fingerprint
 from lottolab.strategies.adapters.base import BetAdapter, CausalDrawRow, PortfolioBetAdapter
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
@@ -773,3 +775,178 @@ def test_observation_requires_explicit_valid_producer_provenance():
     request = make_request()
     with pytest.raises(ForecastContractError, match="SHA-256"):
         replace(request.observations[0], producer_fingerprint="")
+
+
+def test_source_producer_fingerprint_excludes_unrelated_catalog_module_and_data(tmp_path: Path):
+    files: dict[str, str] = {
+        "src/lottolab/application/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "src/lottolab/infrastructure/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "src/lottolab/strategies/catalog.py": "UNRELATED = 1\n",
+        "src/lottolab/strategies/data/unrelated_evidence.json": '{"unrelated": 1}',
+        "tools/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+    }
+    for relative, content in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    baseline = source_producer_fingerprint(tmp_path, ())
+    locators = {d.locator for d in baseline.dependencies}
+    assert "src/lottolab/strategies/catalog.py" not in locators
+    assert not any(locator.endswith(".json") for locator in locators)
+
+    (tmp_path / "src/lottolab/strategies/catalog.py").write_text(
+        "UNRELATED = 2\n", encoding="utf-8"
+    )
+    (tmp_path / "src/lottolab/strategies/data/unrelated_evidence.json").write_text(
+        '{"unrelated": 2}', encoding="utf-8"
+    )
+    assert source_producer_fingerprint(tmp_path, ()).digest == baseline.digest
+
+    (tmp_path / "src/lottolab/application/b649_next_undrawn_forecast.py").write_text(
+        "VALUE = 2\n", encoding="utf-8"
+    )
+    assert source_producer_fingerprint(tmp_path, ()).digest != baseline.digest
+
+
+def test_source_producer_fingerprint_version_bump_changes_digest(tmp_path: Path):
+    files: dict[str, str] = {
+        "src/lottolab/application/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "src/lottolab/infrastructure/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "tools/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+    }
+    for relative, content in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    default = source_producer_fingerprint(tmp_path, ())
+    assert default.producer_version != "1"
+    pinned_v1 = source_producer_fingerprint(tmp_path, (), version="1")
+    assert pinned_v1.producer_version == "1"
+    assert pinned_v1.digest != default.digest
+
+
+def test_source_producer_fingerprint_shared_module_binds_only_consumed_symbols(
+    tmp_path: Path,
+):
+    files: dict[str, str] = {
+        "src/lottolab/application/b649_next_undrawn_forecast.py": (
+            "from lottolab.application.ports import ConsumedPort\n"
+        ),
+        "src/lottolab/application/ports.py": (
+            "class ConsumedPort:\n"
+            "    VALUE = 1\n"
+            "\n"
+            "\n"
+            "class UnrelatedPort:\n"
+            "    VALUE = 1\n"
+        ),
+        "src/lottolab/infrastructure/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "tools/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+    }
+    for relative, content in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    ports_path = tmp_path / "src/lottolab/application/ports.py"
+
+    baseline = source_producer_fingerprint(tmp_path, ())
+    locators = {d.locator for d in baseline.dependencies}
+    assert any("ports.py::ConsumedPort" in locator for locator in locators)
+    assert "src/lottolab/application/ports.py" not in locators
+    assert not any("UnrelatedPort" in locator for locator in locators)
+
+    # An unrelated declaration sharing ports.py must not perturb identity.
+    ports_path.write_text(
+        "class ConsumedPort:\n    VALUE = 1\n\n\nclass UnrelatedPort:\n    VALUE = 2\n",
+        encoding="utf-8",
+    )
+    assert source_producer_fingerprint(tmp_path, ()).digest == baseline.digest
+
+    # The actually consumed contract itself remains bound.
+    ports_path.write_text(
+        "class ConsumedPort:\n    VALUE = 2\n\n\nclass UnrelatedPort:\n    VALUE = 1\n",
+        encoding="utf-8",
+    )
+    assert source_producer_fingerprint(tmp_path, ()).digest != baseline.digest
+
+
+def test_source_producer_fingerprint_adapter_sensitivity_and_exclusion(tmp_path: Path):
+    files: dict[str, str] = {
+        "src/lottolab/application/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "src/lottolab/infrastructure/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "src/lottolab/strategies/adapters/consumed_adapter.py": "TICKET_LOGIC = 1\n",
+        "src/lottolab/strategies/adapters/excluded_adapter.py": "TICKET_LOGIC = 1\n",
+        "tools/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+    }
+    for relative, content in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    consumed = StrategyDescriptor(
+        "consumed_native",
+        "consumed_native",
+        "v1",
+        (LotteryType.BIG_LOTTO,),
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.consumed_adapter:Consumed",
+    )
+    baseline = source_producer_fingerprint(tmp_path, (consumed,))
+    locators = {d.locator for d in baseline.dependencies}
+    assert "src/lottolab/strategies/adapters/consumed_adapter.py" in locators
+    assert "src/lottolab/strategies/adapters/excluded_adapter.py" not in locators
+
+    # A module belonging only to a descriptor excluded from `catalog` must not
+    # perturb identity merely because it exists in the repository.
+    (tmp_path / "src/lottolab/strategies/adapters/excluded_adapter.py").write_text(
+        "TICKET_LOGIC = 2\n", encoding="utf-8"
+    )
+    assert source_producer_fingerprint(tmp_path, (consumed,)).digest == baseline.digest
+
+    # An adapter actually consumed by `catalog` must change the fingerprint.
+    (tmp_path / "src/lottolab/strategies/adapters/consumed_adapter.py").write_text(
+        "TICKET_LOGIC = 2\n", encoding="utf-8"
+    )
+    assert source_producer_fingerprint(tmp_path, (consumed,)).digest != baseline.digest
+
+
+def test_source_producer_fingerprint_fails_closed_on_missing_required_paths(
+    tmp_path: Path,
+):
+    files: dict[str, str] = {
+        "src/lottolab/application/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "src/lottolab/infrastructure/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+        "tools/b649_next_undrawn_forecast.py": "VALUE = 1\n",
+    }
+    for relative, content in files.items():
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+
+    entrypoint = tmp_path / "tools/b649_next_undrawn_forecast.py"
+    entrypoint.unlink()
+    with pytest.raises(ForecastContractError, match="PRODUCER_FINGERPRINT_REQUIRED_PATH_MISSING"):
+        source_producer_fingerprint(tmp_path, ())
+    entrypoint.write_text("VALUE = 1\n", encoding="utf-8")
+
+    infra = tmp_path / "src/lottolab/infrastructure/b649_next_undrawn_forecast.py"
+    infra.unlink()
+    with pytest.raises(
+        ForecastContractError, match="PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING"
+    ):
+        source_producer_fingerprint(tmp_path, ())
+    infra.write_text("VALUE = 1\n", encoding="utf-8")
+
+    missing_adapter = StrategyDescriptor(
+        "missing_native",
+        "missing_native",
+        "v1",
+        (LotteryType.BIG_LOTTO,),
+        LifecycleStatus.ONLINE,
+        True,
+        "lottolab.strategies.adapters.does_not_exist:Missing",
+    )
+    with pytest.raises(
+        ForecastContractError, match="PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING"
+    ):
+        source_producer_fingerprint(tmp_path, (missing_adapter,))

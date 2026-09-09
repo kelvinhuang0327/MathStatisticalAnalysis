@@ -34,6 +34,8 @@ from lottolab.domain.prospective_observer import (
     ProducerFingerprint,
 )
 from lottolab.domain.research_live_forecast import (
+    NATIVE_ARRAY_REQUIRED_PATHS,
+    NATIVE_REQUIRED_PATHS,
     ORIGINAL_FIELDS,
     LiveForecastInput,
     LiveForecastResult,
@@ -198,13 +200,20 @@ def test_different_requests_append_same_content_and_retry_does_not_reset_current
     assert buckets[-1]["status"] == "UNAVAILABLE_NO_CANONICAL_NATIVE_K20_STRATEGY"
 
 
-def test_stale_writer_retains_history(native: NativeFixture) -> None:
+def test_stale_writer_retains_history(
+    native: NativeFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
     service, generate, captured = native
     current = generate("newer")
-    stale = replace(captured["newer"], request_id="older")
-    result = service.repository.commit_live_forecast(
-        stale, expected_current_version=0, current_eligible=lambda: True, clock=service.clock
-    )
+
+    def old_version(_scope: object) -> int:
+        return 0
+
+    # The second real request sees the pre-winner pointer version.
+    with monkeypatch.context() as stale_reader:
+        stale_reader.setattr(service.repository, "live_current_version", old_version)
+        result = generate("older")
+    stale = captured["older"]
     assert result.version > current.version and not result.pointer_advanced
     assert service.repository.live_current_version(stale.scope) == current.version
     assert service.repository.find_live_request(stale.request_id, stale.request_sha256) is not None
@@ -220,6 +229,117 @@ def test_native_live_version_is_append_only_at_sql_boundary(native: NativeFixtur
         ):
             with pytest.raises(sqlite3.IntegrityError, match="append-only"):
                 connection.execute(sql)
+
+
+def test_sql_boundary_rejects_missing_nested_native_provenance(native: NativeFixture) -> None:
+    service, generate, _ = native
+    generate("native")
+    with sqlite3.connect(service.repository.paths.database) as connection:
+        connection.row_factory = sqlite3.Row
+        run = dict(connection.execute("SELECT * FROM research_runs").fetchone())
+        row = dict(connection.execute("SELECT * FROM research_live_forecast_versions").fetchone())
+        run["id"] = row["run_id"] = "sql-probe"
+        row["request_id"], row["version"], row["pointer_advanced"] = "sql-probe", 2, 0
+        rng = json.loads(row["rng_semantics_json"])
+        for stage in rng["stages"]:
+            stage["invocation_identity"] = "sql-probe"
+        row["rng_semantics_json"] = canonical_json(rng)
+
+        def insert(candidate: dict[str, object], *, valid: bool = False) -> None:
+            connection.execute("SAVEPOINT direct_sql")
+            try:
+                connection.execute(
+                    f"INSERT INTO research_runs ({','.join(run)}) "
+                    f"VALUES ({','.join('?' for _ in run)})",
+                    tuple(run.values()),
+                )
+                sql = (
+                    f"INSERT INTO research_live_forecast_versions ({','.join(candidate)}) "
+                    f"VALUES ({','.join('?' for _ in candidate)})"
+                )
+                if valid:
+                    connection.execute(sql, tuple(candidate.values()))
+                else:
+                    with pytest.raises(sqlite3.IntegrityError, match=r"native|CHECK constraint"):
+                        connection.execute(sql, tuple(candidate.values()))
+            finally:
+                connection.execute("ROLLBACK TO direct_sql")
+                connection.execute("RELEASE direct_sql")
+
+        # A valid raw-SQL control passes, so negative cases cannot accidentally
+        # pass because of run/request uniqueness or an unrelated constraint.
+        insert(row, valid=True)
+        for column, paths in NATIVE_REQUIRED_PATHS.items():
+            for path in paths:
+                value = connection.execute(
+                    "SELECT json_remove(?, ?)", (row[column], f"$.{path}")
+                ).fetchone()[0]
+                insert({**row, column: value})
+        for inventory, paths in NATIVE_ARRAY_REQUIRED_PATHS.items():
+            column, array = inventory.split(".")
+            for path in paths:
+                value = connection.execute(
+                    "SELECT json_remove(?, ?)", (row[column], f"$.{array}[0].{path}")
+                ).fetchone()[0]
+                insert({**row, column: value})
+            if inventory != "ranking_evidence_json.observations":
+                value = connection.execute(
+                    "SELECT json_set(?, ?, json('[]'))", (row[column], f"$.{array}")
+                ).fetchone()[0]
+                insert({**row, column: value})
+        for path in (
+            "scheduled_at",
+            "timezone",
+            "schedule_authority_sha256",
+            "data_cutoff",
+            "history_draw_count",
+            "causal_history_sha256",
+            "forecast_horizon",
+        ):
+            value = connection.execute(
+                "SELECT json_remove(?, ?)", (row["target_json"], f"$.{path}")
+            ).fetchone()[0]
+            insert({**row, "target_json": value})
+        insert(
+            {
+                **row,
+                "runtime_manifest_json": canonical_json(
+                    {
+                        "python": {},
+                        "os": "x",
+                        "architecture": "x",
+                        "dependencies": [],
+                        "sha256": "x",
+                    }
+                ),
+            }
+        )
+        corruptions: tuple[tuple[str, str, object], ...] = (
+            ("runtime_manifest_json", "$.dependencies[0].versions", {}),
+            ("runtime_manifest_json", "$.python.executable_sha256", "x"),
+            ("source_execution_json", "$.commit", "x"),
+            ("effective_parameters_json", "$.strategies[0].instance_state", None),
+            ("rng_semantics_json", "$.stages[0].rng_semantics.seed", 0),
+            ("ticket_lineage_json", "$.buckets[0].adapter_locator", None),
+        )
+        for column, path, value in corruptions:
+            damaged = connection.execute(
+                "SELECT json_set(?, ?, json(?))", (row[column], path, canonical_json(value))
+            ).fetchone()[0]
+            insert({**row, column: damaged})
+        assert connection.execute("SELECT count(*) FROM research_runs").fetchone()[0] == 1
+        assert (
+            service.repository.live_current_version(
+                (
+                    row["lottery_type"],
+                    row["target_draw_number"],
+                    row["target_draw_date"],
+                    row["forecast_stream_id"],
+                    row["forecast_stream_version"],
+                )
+            )
+            == 1
+        )
 
 
 @pytest.mark.parametrize("missing", ORIGINAL_FIELDS)

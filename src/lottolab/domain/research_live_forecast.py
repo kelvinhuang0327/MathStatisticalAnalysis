@@ -40,7 +40,7 @@ ORIGINAL_JSON_FIELDS = (
 ORIGINAL_TIME_FIELDS = ("generation_started_at", "generation_finished_at")
 ORIGINAL_FIELDS = ORIGINAL_JSON_FIELDS + ORIGINAL_TIME_FIELDS
 
-# The same top-level required leaves feed SQL constraints and Python validation.
+# Required leaves feed both SQL constraints and Python validation.
 NATIVE_REQUIRED_PATHS: dict[str, dict[str, str]] = {
     "producer_json": {
         "schema_version": "text",
@@ -57,6 +57,10 @@ NATIVE_REQUIRED_PATHS: dict[str, dict[str, str]] = {
     },
     "runtime_manifest_json": {
         "python": "object",
+        "python.implementation": "text",
+        "python.version": "text",
+        "python.executable": "text",
+        "python.executable_sha256": "text",
         "os": "text",
         "architecture": "text",
         "dependencies": "array",
@@ -76,12 +80,95 @@ NATIVE_REQUIRED_PATHS: dict[str, dict[str, str]] = {
     },
     "ticket_lineage_json": {"buckets": "array", "upstream_payload_sha256": "text"},
 }
+NATIVE_ARRAY_REQUIRED_PATHS: dict[str, dict[str, str]] = {
+    "producer_json.dependencies": {
+        "locator": "text",
+        "source_sha256": "text",
+        "load_bearing_role": "text",
+    },
+    "runtime_manifest_json.dependencies": {
+        "name": "text",
+        "locator": "text",
+        "versions": "object",
+        "content_sha256": "text",
+    },
+    "history_snapshot_json.draws": {
+        "lottery_type": "text",
+        "draw_number": "text",
+        "draw_date": "text",
+        "main_numbers": "array",
+        "special_number": "integer",
+    },
+    "catalog_json.strategies": {"strategy_id": "text", "version": "text"},
+    "generation_configs_json.strategies": {
+        "strategy_id": "text",
+        "strategy_version": "text",
+        "native_k": "integer",
+        "parameters": "object",
+        "rng_semantics": "object",
+        "rng_semantics.behavior": "text",
+        "rng_semantics.rng_source": "text",
+        "rng_semantics.rng_state_rule": "text",
+        "rng_semantics.configuration": "text",
+        "rng_semantics.prestate_dependency": "text",
+    },
+    "effective_parameters_json.strategies": {
+        "strategy_id": "text",
+        "strategy_version": "text",
+        "native_k": "integer",
+        "parameters_json": "text",
+        "generation_config_sha256": "text",
+        "status": "text",
+    },
+    "rng_semantics_json.stages": {
+        "strategy_id": "text",
+        "stage": "text",
+        "status": "text",
+        "rng_semantics": "object",
+        "rng_semantics.behavior": "text",
+        "rng_semantics.rng_source": "text",
+        "rng_semantics.rng_state_rule": "text",
+        "rng_semantics.configuration": "text",
+        "rng_semantics.prestate_dependency": "text",
+        "seed_status": "text",
+        "invocation_identity": "text",
+        "replicate": "integer",
+    },
+    "ranking_evidence_json.observations": {
+        "strategy_id": "text",
+        "strategy_version": "text",
+        "native_k": "integer",
+        "draw_number": "text",
+        "draw_date": "text",
+        "causal_history_sha256": "text",
+        "generation_config_sha256": "text",
+        "status": "text",
+        "producer_fingerprint": "text",
+        "tickets": "array",
+    },
+    "ticket_lineage_json.buckets": {
+        "native_k": "integer",
+        "status": "text",
+        "tickets": "array",
+        "selector_status": "text",
+        "selection_rule": "text",
+        "tie_break": "text",
+        "candidate_binding_sha256": "text",
+        "evidence_payload_sha256": "text",
+        "constructor_status": "text",
+    },
+}
 LEGACY_MISSING = {
     "research_runs.rule_contract_id": "NOT_CAPTURED",
     **{field: "NOT_CAPTURED" for field in ORIGINAL_FIELDS},
     **{
         f"{field}.{path}": "NOT_CAPTURED"
         for field, paths in NATIVE_REQUIRED_PATHS.items()
+        for path in paths
+    },
+    **{
+        f"{inventory}[].{path}": "NOT_CAPTURED"
+        for inventory, paths in NATIVE_ARRAY_REQUIRED_PATHS.items()
         for path in paths
     },
 }
@@ -245,6 +332,14 @@ class LiveForecastInput:
             raise ValueError("unknown provenance class")
 
 
+def _json_leaf(value: object, path: str) -> object:
+    for part in path.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = cast(dict[str, object], value).get(part)
+    return value
+
+
 def _validate_native(
     original: dict[str, object], payload_bytes: bytes, target: dict[str, object]
 ) -> None:
@@ -256,7 +351,8 @@ def _validate_native(
             raise ValueError(f"native original field is missing: {field}")
         group = object_json(value)
         for name, kind in paths.items():
-            if not isinstance(group.get(name), types[kind]) or group[name] in ("", None):
+            leaf = _json_leaf(group, name)
+            if not isinstance(leaf, types[kind]) or leaf in ("", None):
                 raise ValueError(f"native provenance missing: {field}.{name}")
         groups[field] = group
     for field in ORIGINAL_TIME_FIELDS:

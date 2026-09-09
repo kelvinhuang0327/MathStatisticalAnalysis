@@ -22,6 +22,7 @@ from lottolab.domain.research_live_forecast import (
     LEGACY_MISSING,
     LEGACY_SHA256,
     LEGACY_STREAM,
+    NATIVE_ARRAY_REQUIRED_PATHS,
     NATIVE_REQUIRED_PATHS,
     NATIVE_STREAM,
     NATIVE_STREAM_VERSION,
@@ -675,14 +676,42 @@ _V3_RUNS_SQL = _v3_runs_sql.replace(
 _ORIGINAL_COLUMN_SQL = ",\n".join(f"{field} TEXT" for field in ORIGINAL_FIELDS)
 _NATIVE_NONNULL_SQL = " AND ".join(f"{field} IS NOT NULL" for field in ORIGINAL_FIELDS)
 _LEGACY_NULL_SQL = " AND ".join(f"{field} IS NULL" for field in ORIGINAL_FIELDS)
+
+
+def _json_contract_sql(expression: str, paths: Mapping[str, str]) -> str:
+    clauses: list[str] = []
+    for path, kind in paths.items():
+        value = f"json_extract({expression}, '$.{path}')"
+        clauses.append(f"COALESCE(json_type({expression}, '$.{path}') = '{kind}', 0)")
+        if kind == "text":
+            clauses.append(f"length(trim({value})) > 0")
+            leaf = path.rsplit(".", 1)[-1]
+            size = 40 if leaf in ("commit", "tree") else 64
+            if leaf in ("commit", "tree", "digest", "producer_fingerprint") or leaf.endswith(
+                "sha256"
+            ):
+                clauses.append(f"length({value}) = {size} AND {value} NOT GLOB '*[^0-9a-f]*'")
+    return " AND ".join(clauses)
+
+
 _NATIVE_JSON_SQL = " AND ".join(
-    f"json_valid({field}) AND "
-    + " AND ".join(
-        f"COALESCE(json_type({field}, '$.{path}') = '{kind}', 0)"
-        + (f" AND length(json_extract({field}, '$.{path}')) > 0" if kind == "text" else "")
-        for path, kind in paths.items()
-    )
+    f"json_valid({field}) AND {_json_contract_sql(field, paths)}"
     for field, paths in NATIVE_REQUIRED_PATHS.items()
+)
+_NATIVE_TARGET_SQL = _json_contract_sql(
+    "target_json",
+    {
+        "lottery_type": "text",
+        "target_draw_number": "text",
+        "target_draw_date": "text",
+        "scheduled_at": "text",
+        "timezone": "text",
+        "data_cutoff": "text",
+        "forecast_horizon": "integer",
+        "history_draw_count": "integer",
+        "causal_history_sha256": "text",
+        "schedule_authority_sha256": "text",
+    },
 )
 _LIVE_VERSION_SQL = f"""
 CREATE TABLE research_live_forecast_versions (
@@ -719,6 +748,15 @@ CREATE TABLE research_live_forecast_versions (
         AND forecast_stream_version = '{NATIVE_STREAM_VERSION}'
         AND original_execution_provenance_status = 'COMPLETE'
         AND {_NATIVE_NONNULL_SQL} AND {_NATIVE_JSON_SQL}
+        AND {_NATIVE_TARGET_SQL}
+        AND json_extract(target_json, '$.lottery_type') = lottery_type
+        AND json_extract(target_json, '$.target_draw_number') = target_draw_number
+        AND json_extract(target_json, '$.target_draw_date') = target_draw_date
+        AND json_extract(target_json, '$.forecast_horizon') = 1
+        AND json_extract(target_json, '$.history_draw_count') > 0
+        AND CAST(json_extract(target_json, '$.data_cutoff') AS INTEGER)
+            < CAST(target_draw_number AS INTEGER)
+        AND julianday(json_extract(target_json, '$.scheduled_at')) IS NOT NULL
         AND julianday(generation_finished_at) >= julianday(generation_started_at)
         AND julianday(committed_at) >= julianday(generation_finished_at)
         AND missing_provenance_json = '{{}}' AND import_execution_json IS NULL
@@ -755,7 +793,157 @@ CREATE TABLE research_live_forecast_current_pointer (
 _POINTER_VERSION_GUARD = (
     "SELECT CASE WHEN NEW.version <= OLD.version THEN RAISE(ABORT, 'stale live pointer') END;"
 )
+
+
+def _inventory_check_sql(inventory: str, paths: Mapping[str, str]) -> str:
+    column, array = inventory.split(".")
+    source = f"NEW.{column}, '$.{array}'"
+    empty = "0" if array == "observations" else f"json_array_length({source}) = 0"
+    return f"""
+    SELECT CASE WHEN {empty}
+        OR EXISTS (
+            SELECT 1 FROM json_each({source}) AS item
+            WHERE CASE WHEN item.type != 'object' THEN 1
+                ELSE NOT COALESCE(({_json_contract_sql("item.value", paths)}), 0) END
+        ) THEN RAISE(ABORT, 'incomplete native {inventory}') END;
+    """
+
+
+_NATIVE_INVENTORY_CHECKS = tuple(
+    _inventory_check_sql(inventory, paths)
+    for inventory, paths in NATIVE_ARRAY_REQUIRED_PATHS.items()
+)
+_EXECUTED_PARAMETERS_SQL = _json_contract_sql(
+    "item.value",
+    {
+        "constructor_defaults": "object",
+        "instance_state": "object",
+        "adapter_class": "text",
+    },
+)
+_EXECUTED_CONSTRUCTOR_SQL = _json_contract_sql(
+    "item.value",
+    {
+        "selected_strategy": "text",
+        "adapter_locator": "text",
+        "adapter_version": "text",
+        "adapter_source_sha256": "text",
+        "generation_config_sha256": "text",
+        "rng_binding_sha256": "text",
+    },
+)
+_NATIVE_STRUCTURE_TRIGGER = f"""
+CREATE TRIGGER trg_live_forecast_native_structure
+BEFORE INSERT ON research_live_forecast_versions
+WHEN NEW.provenance_class = 'NATIVE_GENERATED'
+BEGIN
+    {"".join(_NATIVE_INVENTORY_CHECKS)}
+    SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM json_each(NEW.runtime_manifest_json, '$.dependencies') AS item
+        WHERE NOT EXISTS (SELECT 1 FROM json_each(item.value, '$.versions'))
+           OR EXISTS (SELECT 1 FROM json_each(item.value, '$.versions') AS v
+                      WHERE v.type != 'text' OR length(trim(v.value)) = 0)
+    ) THEN RAISE(ABORT, 'incomplete native dependency versions') END;
+    SELECT CASE WHEN NOT COALESCE((
+        json_array_length(NEW.history_snapshot_json, '$.draws')
+            = json_extract(NEW.target_json, '$.history_draw_count')
+        AND json_extract(NEW.history_snapshot_json, '$.sha256')
+            = json_extract(NEW.target_json, '$.causal_history_sha256')
+        AND json_extract(NEW.ranking_evidence_json, '$.objective') = 'OFFICIAL_ANY_PRIZE'
+        AND json_extract(NEW.ranking_evidence_json, '$.ranking_policy_version')
+            = '{NATIVE_STREAM_VERSION}'
+        AND json_extract(NEW.ranking_evidence_json, '$.evaluation_window') = 'FULL'
+        AND json_array_length(NEW.ticket_lineage_json, '$.buckets') = 6
+        AND json_extract(NEW.ticket_lineage_json, '$.upstream_payload_sha256') = NEW.payload_sha256
+    ), 0) THEN RAISE(ABORT, 'native target or evidence binding mismatch') END;
+    SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM json_each(NEW.history_snapshot_json, '$.draws') AS item
+        WHERE json_extract(item.value, '$.lottery_type') != 'BIG_LOTTO'
+           OR json_array_length(item.value, '$.main_numbers') != 6
+           OR CAST(json_extract(item.value, '$.draw_number') AS INTEGER)
+              >= CAST(NEW.target_draw_number AS INTEGER)
+    ) THEN RAISE(ABORT, 'invalid native history inventory') END;
+    SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM json_each(NEW.effective_parameters_json, '$.strategies') AS item
+        WHERE NOT COALESCE((json_extract(item.value, '$.status') = 'NOT_EXECUTED' OR (
+            json_extract(item.value, '$.status') = 'EXECUTED'
+            AND {_EXECUTED_PARAMETERS_SQL}
+        )), 0)
+    ) THEN RAISE(ABORT, 'incomplete executed native parameters') END;
+    SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM json_each(NEW.rng_semantics_json, '$.stages') AS item
+        WHERE NOT COALESCE((
+            json_extract(item.value, '$.status') IN ('EXECUTED', 'NOT_EXECUTED')
+            AND json_extract(item.value, '$.stage') = 'NATIVE_GENERATION'
+            AND json_extract(item.value, '$.replicate') = 1
+            AND json_extract(item.value, '$.invocation_identity') = NEW.request_id
+            AND ((json_extract(item.value, '$.rng_semantics.behavior') = 'DETERMINISTIC'
+                  AND json_type(item.value, '$.rng_semantics.seed') = 'null'
+                  AND json_extract(item.value, '$.seed_status') = 'NOT_APPLICABLE')
+              OR (json_extract(item.value, '$.rng_semantics.behavior') = 'SEEDED_STOCHASTIC'
+                  AND json_type(item.value, '$.rng_semantics.seed') IN ('integer', 'text')
+                  AND length(CAST(json_extract(item.value, '$.rng_semantics.seed') AS TEXT)) > 0
+                  AND json_extract(item.value, '$.seed_status') = 'EFFECTIVE_SEED_CAPTURED')
+              OR (json_extract(item.value, '$.rng_semantics.behavior') = 'UNSEEDED_STOCHASTIC'
+                  AND json_type(item.value, '$.rng_semantics.seed') = 'null'
+                  AND json_extract(item.value, '$.seed_status')
+                      = 'uncaptured_process_global_rng_state'))
+        ), 0)
+    ) THEN RAISE(ABORT, 'incomplete native RNG execution') END;
+    SELECT CASE WHEN EXISTS (
+        SELECT 1 FROM json_each(NEW.ticket_lineage_json, '$.buckets') AS item
+        WHERE NOT COALESCE((
+            json_extract(item.value, '$.selector_status') = 'EXECUTED'
+            AND json_extract(item.value, '$.selection_rule') = '{NATIVE_STREAM_VERSION}'
+            AND ((json_extract(item.value, '$.constructor_status') = 'NOT_EXECUTED'
+                  AND json_extract(item.value, '$.status') != 'AVAILABLE')
+              OR (json_extract(item.value, '$.constructor_status') = 'EXECUTED'
+                  AND {_EXECUTED_CONSTRUCTOR_SQL}))
+        ), 0)
+    ) THEN RAISE(ABORT, 'incomplete native constructor lineage') END;
+    SELECT CASE WHEN (
+        SELECT count(DISTINCT json_extract(value, '$.strategy_id'))
+        FROM json_each(NEW.generation_configs_json, '$.strategies')
+    ) != json_array_length(NEW.generation_configs_json, '$.strategies')
+    OR json_array_length(NEW.generation_configs_json, '$.strategies')
+        != json_array_length(NEW.effective_parameters_json, '$.strategies')
+    OR json_array_length(NEW.generation_configs_json, '$.strategies')
+        != json_array_length(NEW.rng_semantics_json, '$.stages')
+    OR EXISTS (
+        SELECT 1 FROM json_each(NEW.generation_configs_json, '$.strategies') AS config
+        WHERE NOT EXISTS (
+            SELECT 1 FROM json_each(NEW.effective_parameters_json, '$.strategies') AS parameters
+            WHERE json_extract(config.value, '$.strategy_id')
+                = json_extract(parameters.value, '$.strategy_id')
+              AND json_extract(config.value, '$.strategy_version')
+                = json_extract(parameters.value, '$.strategy_version')
+              AND json_extract(config.value, '$.native_k')
+                = json_extract(parameters.value, '$.native_k')
+              AND json_extract(config.value, '$.parameters')
+                = json_extract(parameters.value, '$.parameters_json')
+        ) OR NOT EXISTS (
+            SELECT 1 FROM json_each(NEW.rng_semantics_json, '$.stages') AS rng
+            WHERE json_extract(config.value, '$.strategy_id')
+                = json_extract(rng.value, '$.strategy_id')
+              AND json_extract(config.value, '$.rng_semantics')
+                = json_extract(rng.value, '$.rng_semantics')
+        )
+    ) THEN RAISE(ABORT, 'native execution inventory mismatch') END;
+    SELECT CASE WHEN (
+        SELECT count(DISTINCT json_extract(value, '$.native_k'))
+        FROM json_each(NEW.ticket_lineage_json, '$.buckets')
+        WHERE json_extract(value, '$.native_k') IN (1,2,3,5,10,20)
+    ) != 6 OR NOT EXISTS (
+        SELECT 1 FROM json_each(NEW.ticket_lineage_json, '$.buckets') AS item
+        WHERE json_extract(item.value, '$.native_k') = 20
+          AND json_extract(item.value, '$.status') = 'UNAVAILABLE_NO_CANONICAL_NATIVE_K20_STRATEGY'
+          AND json_array_length(item.value, '$.tickets') = 0
+          AND json_extract(item.value, '$.constructor_status') = 'NOT_EXECUTED'
+    ) THEN RAISE(ABORT, 'native K bucket inventory mismatch') END;
+END
+"""
 _LIVE_TRIGGER_SQL = (
+    _NATIVE_STRUCTURE_TRIGGER,
     """
     CREATE TRIGGER trg_live_forecast_run_identity
     BEFORE INSERT ON research_live_forecast_versions

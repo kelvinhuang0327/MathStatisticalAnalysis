@@ -58,6 +58,36 @@ from lottolab.infrastructure.b649_next_undrawn_forecast import (
     source_producer_fingerprint,
 )
 from lottolab.infrastructure.prospective_observer_store import FileSystemProspectiveObservationStore
+from lottolab.strategies.catalog import production_catalog
+
+
+@pytest.fixture
+def real_source_overlay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, dict[Path, str]]:
+    """Read the real src import graph, overlaying source only in memory.
+
+    Both text and bytes reads are overlaid so a whole-file hash regression
+    cannot accidentally pass. No repository input or production data is written.
+    """
+    repository = Path(__file__).resolve().parents[2]
+    overrides: dict[Path, str] = {}
+    original_text = Path.read_text
+    original_bytes = Path.read_bytes
+
+    def read_text(path: Path, encoding: str | None = None, errors: str | None = None) -> str:
+        if path in overrides:
+            return overrides[path]
+        return original_text(path, encoding=encoding, errors=errors)
+
+    def read_bytes(path: Path) -> bytes:
+        if path in overrides:
+            return overrides[path].encode("utf-8")
+        return original_bytes(path)
+
+    monkeypatch.setattr(Path, "read_text", read_text)
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    return repository, overrides
 
 
 class ServiceState(TypedDict):
@@ -530,3 +560,99 @@ def test_producer_fingerprint_binds_relative_imports_and_excludes_unrelated_cata
         "# unrelated catalog entry added\n", encoding="utf-8"
     )
     assert source_producer_fingerprint(tmp_path, ()).digest == changed_code.digest
+
+
+@pytest.mark.parametrize("empty", (False, True), ids=("selected-catalog", "empty-catalog"))
+def test_real_catalog_unrelated_descriptor_stability(
+    real_source_overlay: tuple[Path, dict[Path, str]],
+    empty: bool,
+):
+    repository, overrides = real_source_overlay
+    path = repository / "src/lottolab/strategies/catalog.py"
+    original = path.read_text(encoding="utf-8")
+    selected = production_catalog().get("biglotto_social_wisdom_anti_popularity")
+    catalog = () if empty else (selected,)
+    baseline = source_producer_fingerprint(repository, catalog)
+    locators = {d.locator for d in baseline.dependencies}
+    assert "src/lottolab/strategies/catalog.py" not in locators
+    assert any("catalog.py::" in locator and "StrategyCatalog" in locator for locator in locators)
+    assert any(
+        "catalog.py::" in locator and "production_catalog" in locator for locator in locators
+    )
+    assert not any(locator.endswith(".json") for locator in locators)
+    assert "src/lottolab/application/ports.py" not in locators
+    if empty:
+        assert not any(locator.startswith("catalog-argument://") for locator in locators)
+    # A real Power Lotto descriptor cannot participate in this selected B649 call.
+    old = 'version="v0.1-seed42"'
+    assert original.count(old) == 1
+    overrides[path] = original.replace(old, 'version="v0.2-seed42"')
+    assert source_producer_fingerprint(repository, catalog) == baseline
+
+
+def test_real_catalog_selected_descriptor_changes_producer_identity(
+    real_source_overlay: tuple[Path, dict[Path, str]],
+):
+    repository, _overrides = real_source_overlay
+    selected = production_catalog().get("biglotto_social_wisdom_anti_popularity")
+    baseline = source_producer_fingerprint(repository, (selected,))
+    changed = source_producer_fingerprint(repository, (replace(selected, version="v-next"),))
+    assert changed.digest != baseline.digest
+    assert tuple(
+        d for d in changed.dependencies if not d.locator.startswith("catalog-argument://")
+    ) == tuple(d for d in baseline.dependencies if not d.locator.startswith("catalog-argument://"))
+
+
+@pytest.mark.parametrize(
+    "before,after",
+    (
+        ("return self._by_id[strategy_id]", "return self._by_id[strategy_id.lower()]"),
+        (
+            "return StrategyCatalog(_PRODUCTION_DESCRIPTORS)",
+            "return StrategyCatalog(reversed(_PRODUCTION_DESCRIPTORS))",
+        ),
+        ("class UnknownStrategyError(KeyError):", "class UnknownStrategyError(LookupError):"),
+    ),
+    ids=("StrategyCatalog", "production_catalog", "required-helper"),
+)
+def test_real_catalog_implementation_sensitivity_and_old_observation_rejection(
+    real_source_overlay: tuple[Path, dict[Path, str]],
+    before: str,
+    after: str,
+):
+    repository, overrides = real_source_overlay
+    path = repository / "src/lottolab/strategies/catalog.py"
+    original = path.read_text(encoding="utf-8")
+    catalog = (descriptor(),)
+    baseline = source_producer_fingerprint(repository, catalog)
+    request = make_request(catalog, producer=baseline)
+    assert original.count(before) == 1
+    overrides[path] = original.replace(before, after)
+    changed = source_producer_fingerprint(repository, catalog)
+    assert changed.digest != baseline.digest
+    refreshed = replace(request, producer=changed)
+    assert refreshed.identity.bundle_id != request.identity.bundle_id
+    generator = Generator()
+    with pytest.raises(ForecastContractError, match="REPLAY_HISTORY_OR_GENERATION"):
+        prepare_forecast(refreshed, generator)
+    assert generator.calls == []
+
+
+@pytest.mark.parametrize(
+    "symbol", ("StrategyCatalog", "production_catalog", "UnknownStrategyError")
+)
+def test_real_catalog_required_symbol_fails_closed(
+    real_source_overlay: tuple[Path, dict[Path, str]],
+    symbol: str,
+):
+    repository, overrides = real_source_overlay
+    path = repository / "src/lottolab/strategies/catalog.py"
+    original = path.read_text(encoding="utf-8")
+    declaration = f"def {symbol}(" if symbol == "production_catalog" else f"class {symbol}"
+    assert original.count(declaration) == 1
+    overrides[path] = original.replace(declaration, declaration.replace(symbol, f"Missing{symbol}"))
+    with pytest.raises(
+        ForecastContractError,
+        match=f"PRODUCER_FINGERPRINT_REQUIRED_SYMBOL_UNRESOLVED: {symbol}",
+    ):
+        source_producer_fingerprint(repository, ())

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import random
 from collections.abc import Callable, Mapping
-from dataclasses import replace
+from dataclasses import asdict, replace
 from datetime import UTC, date, datetime, timedelta
 from fractions import Fraction
 from pathlib import Path
@@ -950,3 +950,61 @@ def test_source_producer_fingerprint_fails_closed_on_missing_required_paths(
         ForecastContractError, match="PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING"
     ):
         source_producer_fingerprint(tmp_path, (missing_adapter,))
+
+
+@pytest.mark.parametrize(
+    "changed",
+    (
+        replace(descriptor(k=2), strategy_id="fixture_other"),
+        replace(descriptor(k=2), version="fixture-v2"),
+        replace(descriptor(k=2), lottery_types=(LotteryType.POWER_LOTTO,)),
+        replace(descriptor(k=2), adapter_path="fixture:other_attribute"),
+        replace(descriptor(k=2), native_ticket_count=3),
+        replace(descriptor(k=2), minimum_native_ticket_count=1),
+        replace(descriptor(k=2), maximum_native_ticket_count=2),
+        replace(descriptor(k=2), response_shape=ResponseShape.SINGLE_TICKET, native_ticket_count=1),
+        replace(descriptor(k=2), min_history=3),
+        replace(descriptor(k=2), provenance=("seed_semantics:CALLER_SEED",)),
+        replace(
+            descriptor(k=2),
+            lifecycle_status=LifecycleStatus.RETIRED,
+            executable=False,
+            adapter_path=None,
+        ),
+    ),
+    ids=(
+        "id",
+        "version",
+        "lottery",
+        "adapter",
+        "k",
+        "min-k",
+        "max-k",
+        "shape",
+        "history",
+        "provenance",
+        "executability",
+    ),
+)
+def test_producer_catalog_argument_uses_canonical_descriptors_and_is_order_stable(
+    tmp_path: Path,
+    changed: StrategyDescriptor,
+):
+    for relative in (
+        "src/lottolab/application/b649_next_undrawn_forecast.py",
+        "src/lottolab/infrastructure/b649_next_undrawn_forecast.py",
+        "tools/b649_next_undrawn_forecast.py",
+    ):
+        path = tmp_path / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("VALUE = 1\n", encoding="utf-8")
+    selected = descriptor(k=2)
+    other = descriptor("fixture_z")
+    baseline = source_producer_fingerprint(tmp_path, (selected, other))
+    assert baseline.producer_version == "2"
+    assert baseline == source_producer_fingerprint(tmp_path, (other, selected))
+    data = next(d for d in baseline.dependencies if d.locator.startswith("catalog-argument://"))
+    assert data.source_sha256 == digest(
+        sorted((asdict(selected), asdict(other)), key=canonical_json)
+    )
+    assert source_producer_fingerprint(tmp_path, (changed, other)).digest != baseline.digest

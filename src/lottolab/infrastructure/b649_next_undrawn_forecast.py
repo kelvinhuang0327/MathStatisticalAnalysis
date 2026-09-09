@@ -14,10 +14,12 @@ import hashlib
 import json
 import os
 import re
+import symtable
 import tempfile
 import zipfile
 from collections.abc import Callable
 from contextlib import suppress
+from dataclasses import asdict
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import cast
@@ -45,6 +47,7 @@ from lottolab.domain.b649_next_undrawn_forecast import (
     ObservationStatus,
     ReplayObservation,
     TicketSet,
+    canonical_json,
     digest,
     history_ref,
     validate_tickets,
@@ -163,7 +166,23 @@ class FileSystemForecastBundleStore:
 # with unrelated ones (e.g. other lotteries' repositories). Listing it here
 # switches its handling from whole-file hashing to per-symbol extraction, so
 # an unrelated declaration added to it can never perturb this digest.
-_SYMBOL_SCOPED_SHARED_MODULES = frozenset({"lottolab.application.ports"})
+_CATALOG_MODULE = "lottolab.strategies.catalog"
+_SYMBOL_SCOPED_SHARED_MODULES = frozenset({"lottolab.application.ports", _CATALOG_MODULE})
+
+
+def _catalog_global_references(segment: str) -> set[str]:
+    """Resolve method/comprehension locals without mistaking them for helpers."""
+    pending = [symtable.symtable(segment, "<catalog-contract>", "exec")]
+    references: set[str] = set()
+    while pending:
+        table = pending.pop()
+        references.update(
+            symbol.get_name()
+            for symbol in table.get_symbols()
+            if symbol.is_referenced() and symbol.is_global()
+        )
+        pending.extend(table.get_children())
+    return references
 
 
 def _resolve_module_path(source: Path, module: str) -> Path | None:
@@ -206,7 +225,7 @@ def _source_segment_including_decorators(source_lines: list[str], stmt: ast.stmt
 
 
 def _extract_consumed_symbols(
-    module_source: str, names: frozenset[str]
+    module_source: str, names: frozenset[str], *, catalog_contract: bool = False
 ) -> tuple[str, frozenset[str]]:
     """Bind exactly the reachable source for the requested top-level names.
 
@@ -228,6 +247,10 @@ def _extract_consumed_symbols(
         if name in included:
             continue
         stmt = definitions.get(name)
+        # This constructor input is data, represented by the exact caller's
+        # descriptors below. Never recursively hash the module-wide tuple.
+        if catalog_contract and name == "_PRODUCTION_DESCRIPTORS" and stmt is not None:
+            continue
         if stmt is None:
             if hasattr(builtins, name):
                 continue
@@ -239,6 +262,12 @@ def _extract_consumed_symbols(
             forwarded.add(source_module)
             continue
         included[name] = stmt
+        if catalog_contract:
+            pending_names.update(
+                _catalog_global_references(_source_segment_including_decorators(source_lines, stmt))
+                - included.keys()
+            )
+            continue
         for node in ast.walk(stmt):
             if (
                 isinstance(node, ast.Name)
@@ -266,7 +295,10 @@ def source_producer_fingerprint(
     only the specific top-level symbols this producer's own closure actually
     imports from it, plus whatever those symbols themselves reference --
     never its unrelated declarations, so an unrelated subsystem sharing that
-    module cannot make its own contract load-bearing here. This producer's
+    module cannot make its own contract load-bearing here. The catalog's
+    constructor data is replaced by the exact passed descriptors, using the
+    existing canonical descriptor serialization. Its source-wide descriptor
+    universe is not a producer dependency. This producer's
     own modules, the CLI entrypoint, and each selected descriptor's adapter
     module are explicitly required: fingerprint construction fails closed if
     any of them cannot be resolved. No adapter runs and no external evidence
@@ -348,7 +380,9 @@ def source_producer_fingerprint(
                     f"PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING: {shared_module}"
                 )
             _, forwarded = _extract_consumed_symbols(
-                shared_path.read_text(encoding="utf-8"), frozenset(names)
+                shared_path.read_text(encoding="utf-8"),
+                frozenset(names),
+                catalog_contract=shared_module == _CATALOG_MODULE,
             )
             forwarded_any.update(
                 m for m in forwarded if m.startswith("lottolab") and m not in seen
@@ -372,7 +406,9 @@ def source_producer_fingerprint(
                 f"PRODUCER_FINGERPRINT_REQUIRED_MODULE_MISSING: {shared_module}"
             )
         extracted, _ = _extract_consumed_symbols(
-            shared_path.read_text(encoding="utf-8"), frozenset(names)
+            shared_path.read_text(encoding="utf-8"),
+            frozenset(names),
+            catalog_contract=shared_module == _CATALOG_MODULE,
         )
         locator = f"{shared_path.relative_to(repository).as_posix()}::{','.join(sorted(names))}"
         dependencies.append(
@@ -380,6 +416,14 @@ def source_producer_fingerprint(
                 locator,
                 hashlib.sha256(extracted.encode("utf-8")).hexdigest(),
                 "consumed shared-contract symbols from a shared aggregator module",
+            )
+        )
+    if catalog:
+        dependencies.append(
+            ProducerDependency(
+                "catalog-argument://strategy-descriptors",
+                digest(sorted((asdict(d) for d in catalog), key=canonical_json)),
+                "exact descriptors used to resolve this producer's adapter dependencies",
             )
         )
     dependencies.sort(key=lambda dependency: dependency.locator)

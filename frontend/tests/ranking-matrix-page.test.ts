@@ -1,6 +1,17 @@
 // @vitest-environment jsdom
 import { readFileSync } from 'node:fs'
+import type { StrategyMatrixStructuralResponse, StructuralMatrixCell } from '../src/api/strategyMatrixStructural'
 import type { B649K5Record, B649K5RecordPage, B649K10Record } from '../src/api/b649MultiTicketRecords'
+
+const structuralProjection = JSON.parse(readFileSync('../src/lottolab/strategies/data/strategy_matrix_structural_v1.json', 'utf8')) as StrategyMatrixStructuralResponse
+function structuralPage(url: URL): StrategyMatrixStructuralResponse {
+  return {
+    ...structuralProjection,
+    cells: structuralProjection.cells.filter((cell) =>
+      cell.lottery === url.searchParams.get('lottery') && cell.ticket_count === Number(url.searchParams.get('ticket_count')),
+    ),
+  }
+}
 
 const k5Projection = JSON.parse(readFileSync('../src/lottolab/strategies/data/biglotto_exact_native_k5_115000084_records_v1.json', 'utf8'))
 const k5Packaged = k5Projection.records as B649K5Record[]
@@ -425,6 +436,7 @@ const mockCatalog = [
 beforeEach(() => {
   fetchMock = vi.fn<typeof fetch>().mockImplementation((input) => {
     const url = String(input)
+    if (url.includes('/api/v1/strategy-matrix/structural')) return Promise.resolve(apiResponse(structuralPage(new URL(url, 'http://localhost'))))
     if (url.includes('/api/v1/b649-multi-ticket-records/summary')) {
       return Promise.resolve(apiResponse(mockB649Summary))
     }
@@ -462,6 +474,192 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals()
+})
+
+describe('Structural and historical evidence separation', () => {
+  function interceptStructural(respond: (url: URL, init?: RequestInit) => Promise<Response>) {
+    const historical = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      return url.pathname === '/api/v1/strategy-matrix/structural' ? respond(url, init) : historical(input, init)
+    })
+  }
+
+  it('renders every K20 structural method separately from Deferred exact-native and labelled legacy history', async () => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises(); await flushPromises()
+    const structural = wrapper.get('[data-testid="structural-section"]')
+    const historical = wrapper.get('[data-testid="historical-section"]')
+    expect(structural.get('h2').text()).toContain('Structural expected-max')
+    expect(historical.get('h2').text()).toContain('Historical performance')
+    const expected = structuralProjection.cells.filter((c) => c.lottery === 'BIG_LOTTO' && c.ticket_count === 20)
+    const rows = structural.findAll('[data-testid="structural-method-row"]')
+    expect(rows.map((row) => row.get('th').text())).toEqual(expected.map((c) => c.method_id))
+    const exact = rows.find((row) => row.get('th').text() === 'ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1')!
+    expect(exact.text()).toContain('MEASURED')
+    expect(exact.get('[data-testid="structural-value"]').text()).toBe('8249099 / 3495954 主號命中數 (main matches)')
+    expect(exact.text()).toContain('COMPLETE_RADIUS_1_LOCAL_OPTIMUM')
+    expect(structural.text()).not.toContain('%')
+    expect(structural.findAll('.rank-badge')).toHaveLength(0)
+    expect(historical.get('[data-testid="k20-exact-native-status"]').text()).toContain('Deferred / Unavailable')
+    expect(historical.get('[data-testid="k20-historical-boundary"]').text()).toContain('legacy prefix_count=20 / M3_PLUS')
+    expect(historical.findAll('.ranking-row').length).toBeGreaterThan(0)
+    expect(historical.text()).not.toContain('8249099')
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).includes('b649-exact-native-records?ticket_count=20'))).toBe(true)
+    await wrapper.get('[data-testid="ticket-btn-5"]').trigger('click')
+    await flushPromises()
+    await wrapper.get('[data-testid="view-matrix-btn"]').trigger('click')
+    expect(historical.get('[data-testid="k20-historical-boundary"]').text()).toContain('legacy prefix_count=20 / M3_PLUS')
+    expect(historical.find('[data-testid="multi-ticket-matrix"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('keeps typed null states distinct from a valid measured zero and does not broaden local optimum claims', async () => {
+    const base = structuralProjection.cells.find((c) => c.lottery === 'BIG_LOTTO' && c.ticket_count === 5)!
+    const cells: StructuralMatrixCell[] = [
+      { ...base, row_id: 'zero', measurement_status: 'MEASURED', source_status: 'MEASURED', unavailable_reason: null, value: { numerator: '0', denominator: '3495954' }, local_optimum_status: null },
+      { ...base, row_id: 'na', method_id: 'GREEDY_MIN_OVERLAP_V1', measurement_status: 'NOT_APPLICABLE', source_status: 'NOT_APPLICABLE', value: null, unavailable_reason: 'UNSUPPORTED_LOTTERY_OR_K', local_optimum_status: null },
+      { ...base, row_id: 'deferred', method_id: 'CANDIDATE_LOW_OVERLAP_V1', measurement_status: 'UNAVAILABLE', source_status: 'NOT_RUN', value: null, unavailable_reason: 'DEFERRED', local_optimum_status: null },
+    ]
+    interceptStructural(async () => apiResponse({ ...structuralProjection, cells }))
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    const rows = wrapper.findAll('[data-testid="structural-method-row"]')
+    expect(rows).toHaveLength(3)
+    expect(rows[0]!.get('[data-testid="structural-value"]').text()).toBe('0 / 3495954 主號命中數 (main matches)')
+    expect(rows[1]!.text()).toContain('NOT_APPLICABLE')
+    expect(rows[1]!.text()).toContain('UNSUPPORTED_LOTTERY_OR_K')
+    expect(rows[2]!.text()).toContain('UNAVAILABLE')
+    expect(rows[2]!.text()).toContain('DEFERRED')
+    for (const row of rows.slice(1)) {
+      expect(row.find('[data-testid="structural-value"]').exists()).toBe(false)
+      expect(row.get('[data-testid="structural-unavailable"]').text()).not.toContain('0')
+    }
+    expect(rows.every((row) => row.findAll('td')[2]!.text() === '')).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('uses only lottery and K, labels Power Lotto Zone 1, and ignores historical windows and filters', async () => {
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    const calls = () => fetchMock.mock.calls.filter(([url]) => String(url).includes('/strategy-matrix/structural'))
+    expect(new URL(String(calls()[0]![0]), 'http://localhost').searchParams.toString()).toBe('lottery=BIG_LOTTO&ticket_count=5')
+    const methods = () => wrapper.findAll('[data-testid="structural-method-row"]').map((row) => row.get('th').text())
+    const initial = methods()
+    await wrapper.get('[data-testid="window-btn-50"]').trigger('click')
+    await wrapper.get('[data-testid="filter-search-input"]').setValue('no-historical-strategy-matches')
+    await flushPromises()
+    expect(calls()).toHaveLength(1)
+    expect(methods()).toEqual(initial)
+    for (const [lottery, mapped, label] of [
+      ['DAILY_539', 'DAILY_539', '今彩 539 主號'],
+      ['POWER_LOTTO', 'POWER_LOTTO_ZONE1', 'Zone 1 / 第一區主號'],
+    ]) {
+      await wrapper.get('[data-testid="lottery-selector"]').setValue(lottery)
+      await flushPromises()
+      expect(String(calls().at(-1)![0])).toContain(`lottery=${mapped}&ticket_count=5`)
+      expect(wrapper.get('[data-testid="structural-scope"]').text()).toContain(label)
+      expect(methods()).toEqual(structuralProjection.cells.filter((c) => c.lottery === mapped && c.ticket_count === 5).map((c) => c.method_id))
+    }
+    wrapper.unmount()
+  })
+
+  it('keeps structural MEASURED visible when history fails, and historical retry leaves structural intact', async () => {
+    const original = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => String(input).includes('/strategy-matrix/structural')
+      ? original(input, init) : Promise.resolve(apiResponse({ message: 'Historical unavailable' }, 503)))
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="structural-table"]').text()).toContain('8249099 / 3495954')
+    expect(wrapper.find('[data-testid="page-error-state"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="metric-best-rate"]').exists()).toBe(false)
+    fetchMock.mockImplementation(original)
+    fetchMock.mockClear()
+    await wrapper.get('[data-testid="page-error-state"] button').trigger('click')
+    await flushPromises(); await flushPromises()
+    expect(wrapper.find('[data-testid="page-error-state"]').exists()).toBe(false)
+    expect(wrapper.findAll('.ranking-row').length).toBeGreaterThan(0)
+    expect(wrapper.get('[data-testid="structural-table"]').text()).toContain('8249099 / 3495954')
+    expect(fetchMock.mock.calls.every(([url]) => !String(url).includes('/strategy-matrix/structural'))).toBe(true)
+    wrapper.unmount()
+  })
+
+  it.each([5, 10])('preserves K%i historical ranks and rates through structural 503 and independent retry', async (ticketCount) => {
+    interceptStructural(async () => apiResponse({ message: 'Structural authority unavailable' }, 503))
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    await wrapper.get(`[data-testid="ticket-btn-${ticketCount}"]`).trigger('click')
+    await flushPromises(); await flushPromises()
+    const published = (ticketCount === 5 ? k5Packaged : k10Packaged).filter((r) => r.window === 'RECENT_300')
+    const rows = wrapper.findAll('.ranking-row')
+    expect(rows.map((r) => r.attributes('data-testid'))).toEqual(published.map((r) => `ranking-row-${r.strategy_id}`))
+    expect(rows.map((r) => r.find('.rank-badge').text())).toEqual(published.map((r) => `#${r.rank}`))
+    expect(rows.map((r) => r.get('.td-rate').text())).toEqual(published.map((r) => `${(Number(r.official_any_prize_rate) * 100).toFixed(2)}%`))
+    const before = rows.map((row) => row.text())
+    expect(wrapper.get('[data-testid="structural-error-state"]').text()).toContain('Structural authority unavailable')
+    expect(wrapper.find('[data-testid="page-error-state"]').exists()).toBe(false)
+    interceptStructural(async (url) => apiResponse(structuralPage(url)))
+    fetchMock.mockClear()
+    await wrapper.get('[data-testid="structural-error-state"] button').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="structural-table"]').exists()).toBe(true)
+    expect(wrapper.findAll('.ranking-row').map((row) => row.text())).toEqual(before)
+    expect(fetchMock.mock.calls).toHaveLength(1)
+    wrapper.unmount()
+  })
+
+  it('does not join identical-looking method and strategy identities or synthesize a rank from measured values', async () => {
+    const method = 'ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1'
+    const historical = fetchMock.getMockImplementation()!
+    fetchMock.mockImplementation((input, init) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('b649-exact-native-records') && url.searchParams.get('ticket_count') === '5') {
+        return Promise.resolve(apiResponse(k5Page(url.searchParams.get('window')!, k5Packaged.map((r) => r.source_order === 1 ? { ...r, strategy_id: method, display_name: method } : r))))
+      }
+      return historical(input, init)
+    })
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises(); await flushPromises()
+    const historyBefore = wrapper.get('[data-testid="historical-section"]').text()
+    const table = wrapper.get('[data-testid="structural-table"]')
+    expect(table.text()).toContain(method)
+    expect(table.findAll('.rank-badge')).toHaveLength(0)
+    expect(table.findAll('button')).toHaveLength(0)
+    await wrapper.get(`[data-testid="ranking-row-${method}"]`).trigger('click')
+    await flushPromises()
+    expect(wrapper.get('[data-testid="historical-section"]').text()).toBe(historyBefore)
+    expect(wrapper.get('[data-testid="historical-section"]').text()).not.toContain('主號命中數 (main matches)')
+    expect(table.findAll('.selected, .is-selected')).toHaveLength(0)
+    wrapper.unmount()
+  })
+
+  it('aborts obsolete structural requests and rejects late success and failure after selection changes', async () => {
+    const pending: { url: URL; signal?: AbortSignal | null; resolve: (response: Response) => void; reject: (reason: Error) => void }[] = []
+    interceptStructural((url, init) => new Promise((resolve, reject) => pending.push({ url, signal: init?.signal, resolve, reject })))
+    const wrapper = mount(RankingMatrixPage)
+    await flushPromises()
+    expect(wrapper.find('[data-testid="structural-loading"]').exists()).toBe(true)
+    expect(wrapper.findAll('.ranking-row')).toHaveLength(5)
+    await wrapper.get('[data-testid="ticket-btn-10"]').trigger('click')
+    await wrapper.get('[data-testid="ticket-btn-20"]').trigger('click')
+    expect(pending[0]!.signal?.aborted).toBe(true)
+    expect(pending[1]!.signal?.aborted).toBe(true)
+    pending[2]!.resolve(apiResponse(structuralPage(pending[2]!.url)))
+    await flushPromises()
+    const latest = wrapper.get('[data-testid="structural-table"]').text()
+    pending[0]!.resolve(apiResponse(structuralPage(pending[0]!.url)))
+    pending[1]!.reject(new Error('obsolete failure'))
+    await flushPromises()
+    expect(wrapper.get('[data-testid="structural-table"]').text()).toBe(latest)
+    expect(latest).toContain('8249099 / 3495954')
+    expect(wrapper.find('[data-testid="structural-error-state"]').exists()).toBe(false)
+    wrapper.unmount()
+    expect(pending[2]!.signal?.aborted).toBe(true)
+  })
 })
 
 describe('RankingMatrixPage component', () => {

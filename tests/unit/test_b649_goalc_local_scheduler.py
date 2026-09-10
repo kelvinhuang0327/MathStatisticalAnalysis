@@ -1537,7 +1537,7 @@ def test_forecast_does_not_require_or_read_target_outcome(tmp_path: Path) -> Non
 
 
 def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
-    """Acceptance 4: missing streams return INCOMPLETE_PRE_DRAW, not blocked."""
+    """Acceptance 4: missing streams return internal readiness, not blocked."""
 
     config = _config(tmp_path)
     target = _target()
@@ -1548,7 +1548,7 @@ def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code == 0
-    assert result["FORECAST_STATUS"] == "INCOMPLETE_PRE_DRAW"
+    assert result["FORECAST_STATUS"] == "INTERNAL_PREDRAW_READINESS_STATE"
     assert result["EXPECTED_STREAM_COUNT"] == 11
     assert result["AVAILABLE_STREAM_COUNT"] == 7
     assert result["MISSING_STREAM_IDS"] == list(STREAM_IDS[7:])
@@ -1576,7 +1576,7 @@ def test_forecast_excludes_post_draw_predictions_from_availability(tmp_path: Pat
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code == 0
-    assert result["FORECAST_STATUS"] == "INCOMPLETE_PRE_DRAW"
+    assert result["FORECAST_STATUS"] == "INTERNAL_PREDRAW_READINESS_STATE"
     assert result["MISSING_STREAM_IDS"] == [STREAM_IDS[0]]
     assert result["AVAILABLE_STREAM_COUNT"] == 10
 

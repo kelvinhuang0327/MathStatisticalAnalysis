@@ -1726,7 +1726,7 @@ def _forecast_command(
     missing = list(inventory.missing_stream_ids)
     if missing:
         return {
-            "FORECAST_STATUS": "INCOMPLETE_PRE_DRAW",
+            "FORECAST_STATUS": "INTERNAL_PREDRAW_READINESS_STATE",
             **target_fields,
             "EXPECTED_STREAM_COUNT": EXPECTED_STREAM_COUNT,
             "AVAILABLE_STREAM_COUNT": len(inventory.available_stream_ids),

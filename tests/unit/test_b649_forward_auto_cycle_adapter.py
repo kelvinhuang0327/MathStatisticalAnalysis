@@ -12,6 +12,8 @@ from tools.b649_operational_prediction_loop import (
     HistorySnapshot,
     PredictionTarget,
     StrategyStream,
+    canonical_consensus_path,
+    iter_prediction_files,
 )
 
 from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
@@ -193,6 +195,25 @@ def test_b649_adapter_runs_new_target_then_repeats_without_duplicate_prediction(
     assert second.outcome_status == "IDENTICAL_OUTCOME"
     assert second.next_action == "NO_OP"
     assert hashlib.sha256(prediction_path.read_bytes()).hexdigest() == before
+
+
+def test_b649_adapter_persists_consensus_after_configured_stream_is_saved(
+    tmp_path: Path,
+) -> None:
+    adapter = _core(
+        tmp_path,
+        streams=(_stream(_FakeSingleAdapter),),
+        official=None,
+    )
+
+    result = ForwardAutoCycleCore(adapter).run()
+    consensus_path = canonical_consensus_path(tmp_path, "115000081")
+    payload = json.loads(consensus_path.read_text(encoding="utf-8"))
+
+    assert len(result.created_predictions) == 1
+    assert payload["family_count"] == 1
+    assert payload["final_recommended_ticket"] == [1, 2, 3, 4, 5, 6]
+    assert len(iter_prediction_files(tmp_path, "115000081")) == 1
 
 
 def test_b649_adapter_corrected_official_outcome_rescores_existing_prediction(

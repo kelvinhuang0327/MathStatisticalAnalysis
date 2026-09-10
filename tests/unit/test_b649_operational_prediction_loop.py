@@ -14,9 +14,12 @@ from tools.b649_operational_prediction_loop import (
     HistorySnapshot,
     PredictionTarget,
     StrategyStream,
+    build_canonical_predraw_consensus,
     build_current_target_freshness_report,
     classify_prediction_temporal,
     compute_history_freshness,
+    compute_number_consensus,
+    compute_pairwise_stream_overlap,
     create_prediction_payload,
     rebuild_history_freshness_ledger,
     resolve_latest_known_draw,
@@ -1030,3 +1033,275 @@ def test_resolve_latest_known_draw_prefers_a_newer_recorded_outcome_over_the_dat
     )
 
     assert resolve_latest_known_draw(tmp_path, database) == "115000079"
+
+
+_REAL_PREDRAW_CONSENSUS_DIRECTORY = Path(
+    "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
+    "/predictions/115000087"
+)
+_REAL_PREDRAW_TARGET_DRAW = "115000087"
+_REAL_PREDRAW_HISTORY_CUTOFF = "115000086"
+
+
+def _write_predraw_prediction(
+    directory: Path,
+    *,
+    strategy_id: str,
+    tickets: list[list[int]],
+    draw_number: str = "115000087",
+    cutoff_draw_number: str = "115000086",
+    availability: str = "AVAILABLE",
+    temporal_class: str = "PRE_DRAW",
+    run_suffix: str = "1",
+) -> None:
+    """Write one minimal, schema-valid synthetic PRE_DRAW prediction record.
+
+    Mirrors the real ``b649-operational-prediction-v1`` field set exactly so
+    aggregator tests exercise the real parsing/validation path rather than a
+    simplified stand-in.
+    """
+
+    stream_dir = directory / strategy_id
+    stream_dir.mkdir(parents=True, exist_ok=True)
+    run_id = f"{draw_number}-{strategy_id}-{run_suffix}"
+    payload: dict[str, object] = {
+        "schema_version": "b649-operational-prediction-v1",
+        "task_id": "TEST_TASK",
+        "prediction_run_id": run_id,
+        "lottery_type": "BIG_LOTTO",
+        "draw_number": draw_number,
+        "draw_date": "2026-09-11",
+        "scheduled_at": "2026-09-11T20:30:00+08:00",
+        "prediction_created_at": "2026-09-08T22:00:00.000000+08:00",
+        "strategy_id": strategy_id,
+        "strategy_version": "v0.1",
+        "strategy_config": {},
+        "history_cutoff": {"draw_number": cutoff_draw_number, "draw_date": "2026-09-08"},
+        "history_draw_count": 100,
+        "history_sha256": "0" * 64,
+        "history_caveat": "YES",
+        "producer_fingerprint": None,
+        "pinned_implementation": None,
+        "prediction_temporal_class": temporal_class,
+        "availability": availability,
+        "unavailable_reason": None,
+        "native_ticket_count": len(tickets),
+        "tickets": [
+            {"ticket_position": position, "predicted_numbers": numbers}
+            for position, numbers in enumerate(tickets, start=1)
+        ],
+    }
+    (stream_dir / f"{run_id}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_build_canonical_predraw_consensus_matches_115000087_characterization() -> None:
+    result = build_canonical_predraw_consensus(
+        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
+        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
+        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        expected_stream_count=11,
+    )
+
+    assert result["target_draw"] == "115000087"
+    assert result["history_cutoff"] == "115000086"
+    assert result["prediction_temporal_class"] == "PRE_DRAW"
+    assert result["stream_count"] == 11
+    assert result["ticket_count"] == 22
+    assert result["top6"] == [1, 4, 18, 25, 26, 29]
+    assert result["top_k"] == [1, 4, 8, 18, 24, 25, 26, 29, 43, 45]
+    assert result["target_result_used"] is False
+    assert result["aggregation_weight_mode"] == "UNWEIGHTED"
+    assert result["weight_authority_status"] == "LIMITED"
+    assert len(cast(list[object], result["stream_identities"])) == 11
+
+
+def test_build_canonical_predraw_consensus_is_deterministic_across_repeated_runs() -> None:
+    generated_at = datetime.fromisoformat("2026-09-10T00:00:00+08:00")
+
+    first = build_canonical_predraw_consensus(
+        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
+        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
+        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        expected_stream_count=11,
+        generated_at=generated_at,
+    )
+    second = build_canonical_predraw_consensus(
+        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
+        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
+        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        expected_stream_count=11,
+        generated_at=generated_at,
+    )
+
+    assert first == second
+
+
+def test_upstream_prediction_locator_is_absolute_and_matches_input_directory() -> None:
+    result = build_canonical_predraw_consensus(
+        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
+        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
+        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+    )
+
+    locator = Path(cast(str, result["upstream_prediction_locator"]))
+    assert locator.is_absolute()
+    assert locator == _REAL_PREDRAW_CONSENSUS_DIRECTORY.resolve()
+
+
+def test_target_result_independence_no_outcome_file_is_ever_read() -> None:
+    outcome_path = (
+        _REAL_PREDRAW_CONSENSUS_DIRECTORY.parent.parent / "outcomes" / "115000087.json"
+    )
+    assert not outcome_path.exists()  # the real upstream root has no 087 outcome yet
+
+    result = build_canonical_predraw_consensus(
+        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
+        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
+        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+    )
+
+    assert result["target_result_used"] is False
+
+
+def test_compute_number_consensus_tie_break_is_ascending_natural_number() -> None:
+    predictions: list[dict[str, object]] = [
+        {"strategy_id": "stream_a", "tickets": [{"predicted_numbers": [5, 24]}]},
+        {"strategy_id": "stream_b", "tickets": [{"predicted_numbers": [5, 18]}]},
+    ]
+
+    ranking = compute_number_consensus(predictions)
+    by_number = {entry["number"]: entry for entry in ranking}
+
+    assert by_number[5]["unique_stream_count"] == 2
+    assert by_number[18]["unique_stream_count"] == by_number[24]["unique_stream_count"] == 1
+    assert by_number[18]["ticket_count"] == by_number[24]["ticket_count"] == 1
+    numbers_in_rank_order = [entry["number"] for entry in ranking]
+    assert numbers_in_rank_order.index(18) < numbers_in_rank_order.index(24)
+
+
+def test_compute_pairwise_stream_overlap_is_descriptive_only() -> None:
+    predictions: list[dict[str, object]] = [
+        {"strategy_id": "alpha_stream", "tickets": [{"predicted_numbers": [1, 2, 3]}]},
+        {"strategy_id": "beta_stream", "tickets": [{"predicted_numbers": [2, 3, 4]}]},
+    ]
+
+    overlap = compute_pairwise_stream_overlap(predictions)
+
+    assert overlap == (
+        {"stream_a": "alpha_stream", "stream_b": "beta_stream", "shared_number_count": 2},
+    )
+
+
+def test_stream_count_mismatch_raises_when_expected_count_is_supplied(tmp_path: Path) -> None:
+    _write_predraw_prediction(tmp_path, strategy_id="only_stream", tickets=[[1, 2, 3, 4, 5, 6]])
+
+    with pytest.raises(ValueError, match="STREAM_COUNT_MISMATCH"):
+        build_canonical_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+            expected_stream_count=2,
+        )
+
+
+def test_stream_count_validation_is_skipped_when_not_supplied(tmp_path: Path) -> None:
+    _write_predraw_prediction(tmp_path, strategy_id="only_stream", tickets=[[1, 2, 3, 4, 5, 6]])
+
+    result = build_canonical_predraw_consensus(
+        tmp_path,
+        expected_target_draw="115000087",
+        expected_history_cutoff="115000086",
+    )
+
+    assert result["stream_count"] == 1
+
+
+def test_target_draw_mismatch_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="wrong_draw_stream",
+        tickets=[[1, 2, 3, 4, 5, 6]],
+        draw_number="115000086",
+    )
+
+    with pytest.raises(ValueError, match="TARGET_DRAW_MISMATCH"):
+        build_canonical_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_prediction_not_available_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="unavailable_stream",
+        tickets=[],
+        availability="UNAVAILABLE",
+    )
+
+    with pytest.raises(ValueError, match="PREDICTION_NOT_AVAILABLE"):
+        build_canonical_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_prediction_not_pre_draw_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="post_draw_stream",
+        tickets=[[1, 2, 3, 4, 5, 6]],
+        temporal_class="POST_DRAW",
+    )
+
+    with pytest.raises(ValueError, match="PREDICTION_NOT_PRE_DRAW"):
+        build_canonical_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_history_cutoff_exceeding_allowed_ceiling_raises(tmp_path: Path) -> None:
+    _write_predraw_prediction(
+        tmp_path,
+        strategy_id="leaky_cutoff_stream",
+        tickets=[[1, 2, 3, 4, 5, 6]],
+        cutoff_draw_number="115000087",  # equals the target itself: not allowed
+    )
+
+    with pytest.raises(ValueError, match="HISTORY_CUTOFF_EXCEEDS_ALLOWED"):
+        build_canonical_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_weighted_mode_fails_closed_when_authority_is_not_ready(tmp_path: Path) -> None:
+    for status in ("LIMITED", "NOT_AVAILABLE"):
+        with pytest.raises(ValueError, match="WEIGHTED_MODE_REQUIRES_READY_AUTHORITY"):
+            build_canonical_predraw_consensus(
+                tmp_path,
+                expected_target_draw="115000087",
+                expected_history_cutoff="115000086",
+                weight_authority_status=status,
+                aggregation_weight_mode="CANONICAL_WEIGHTED",
+            )
+
+
+def test_weighted_mode_is_not_implemented_even_when_authority_is_ready(tmp_path: Path) -> None:
+    """No canonical stream weight source exists anywhere in this codebase, so
+    a READY authority must never be silently accepted as license to invent
+    weights; this must fail differently from the not-ready case above."""
+
+    with pytest.raises(ValueError, match="CANONICAL_WEIGHTED_NOT_IMPLEMENTED"):
+        build_canonical_predraw_consensus(
+            tmp_path,
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+            weight_authority_status="READY",
+            aggregation_weight_mode="CANONICAL_WEIGHTED",
+        )

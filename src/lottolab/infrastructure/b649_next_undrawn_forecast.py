@@ -554,6 +554,7 @@ def run_fixture(fixture: Path, output_root: Path) -> StoredForecast:
         config = config_by_id[_text(row["strategy_id"])]
         index, draw = draw_by_id[_text(row["draw_number"])]
         failure_code = row.get("failure_code")
+        replay_invocation_identity = row.get("replay_invocation_identity")
         observations.append(
             ReplayObservation(
                 config.strategy_id,
@@ -569,6 +570,11 @@ def run_fixture(fixture: Path, output_root: Path) -> StoredForecast:
                 _tickets(row.get("tickets", [])),
                 None if failure_code is None else _text(failure_code),
                 producer_fingerprint=producer.digest,
+                replay_invocation_identity=(
+                    None
+                    if replay_invocation_identity is None
+                    else _text(replay_invocation_identity)
+                ),
             )
         )
     scheduled = _utc(target_data["scheduled_at"])

@@ -28,11 +28,7 @@ from lottolab.application.b649_next_undrawn_forecast import (
     native_generation_config,
     prepare_forecast,
 )
-from lottolab.application.future_draw_identity import (
-    FutureDrawIdentityError,
-    ScheduledDrawIdentityRecord,
-)
-from lottolab.application.pre_outcome_target_operational import PreOutcomeTargetOperationalError
+from lottolab.application.future_draw_identity import ScheduledDrawIdentityRecord
 from lottolab.domain.b649_next_undrawn_forecast import (
     ReplayObservation,
     catalog_exclusion,
@@ -69,6 +65,12 @@ from lottolab.infrastructure.pre_outcome_target_operational import (
     SQLiteOfficialOutcomePresenceProbe,
 )
 from lottolab.strategies.catalog import production_catalog
+
+
+def _schedule_binding(record: ScheduledDrawIdentityRecord) -> str:
+    """Native current binds the reader-verified announcement, never an immutable fact."""
+
+    return record.normalized_announcement_hash
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -256,7 +258,7 @@ class B649LiveForecastService:
             LotteryType.BIG_LOTTO,
             self.clock(),
         )
-        if record is None or record.immutable_schedule_sha256 is None:
+        if record is None:
             raise ForecastTimingError("CANONICAL_NEXT_UNDRAWN_SCHEDULE_UNAVAILABLE")
         return record
 
@@ -265,7 +267,7 @@ class B649LiveForecastService:
         if (
             latest.announcement.target != record.announcement.target
             or latest.announcement.scheduled_at != record.announcement.scheduled_at
-            or latest.immutable_schedule_sha256 != record.immutable_schedule_sha256
+            or _schedule_binding(latest) != _schedule_binding(record)
         ):
             raise ForecastTimingError("CANONICAL_TARGET_OR_SCHEDULE_CHANGED")
         attestation = SQLiteOfficialOutcomePresenceProbe(self.draw_paths).probe(
@@ -353,7 +355,7 @@ class B649LiveForecastService:
             target,
             history,
             history_ref(history),
-            cast(str, record.immutable_schedule_sha256),
+            _schedule_binding(record),
             descriptors,
             configs,
             observations,
@@ -533,7 +535,7 @@ class B649LiveForecastService:
             "forecast_horizon": 1,
             "history_draw_count": len(history),
             "causal_history_sha256": history_sha,
-            "schedule_authority_sha256": record.immutable_schedule_sha256,
+            "schedule_authority_sha256": _schedule_binding(record),
         }
         forecast = LiveForecastInput(
             request_id,
@@ -596,30 +598,10 @@ class B649LiveForecastService:
             canonical_json(import_execution),
         )
 
-        def eligible() -> bool:
-            # An unavailable current gate does not erase a valid historical
-            # materialization. It only prevents initialization of its pointer.
-            try:
-                record = self._schedule()
-                if (
-                    record.announcement.target.draw_number != "115000087"
-                    or record.announcement.target.draw_date != date(2026, 9, 11)
-                    or record.announcement.scheduled_at
-                    != datetime.fromisoformat(str(target["scheduled_at"]))
-                ):
-                    return False
-                return self._gate(record)
-            except (
-                ForecastTimingError,
-                FutureDrawIdentityError,
-                PreOutcomeTargetOperationalError,
-                ValueError,
-            ):
-                return False
-
+        # Native announcement binding must not initialize legacy current.
         return self.repository.commit_live_forecast(
             forecast,
             expected_current_version=0,
-            current_eligible=eligible,
+            current_eligible=lambda: False,
             clock=self.clock,
         )

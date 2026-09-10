@@ -1485,7 +1485,15 @@ def _iter_prediction_files(root: Path, draw_number: str) -> tuple[Path, ...]:
     base = root / "predictions" / draw_number
     if not base.is_dir():
         return ()
-    return tuple(sorted((*base.glob("*.json"), *base.glob("*/*.json")), key=str))
+    return tuple(
+        sorted(
+            (
+                path
+                for path in (*base.glob("*.json"), *base.glob("*/*.json"))
+            ),
+            key=str,
+        )
+    )
 
 
 def _iter_all_prediction_files(root: Path) -> tuple[Path, ...]:
@@ -1496,7 +1504,13 @@ def _iter_all_prediction_files(root: Path) -> tuple[Path, ...]:
         return ()
     return tuple(
         sorted(
-            (*predictions_root.glob("*/*.json"), *predictions_root.glob("*/*/*.json")),
+            (
+                path
+                for path in (
+                    *predictions_root.glob("*/*.json"),
+                    *predictions_root.glob("*/*/*.json"),
+                )
+            ),
             key=str,
         )
     )
@@ -1864,7 +1878,11 @@ def main(argv: list[str] | None = None) -> int:
                 target_draw_number=target.draw_number,
                 target_draw_date=target.draw_date,
             )
-            results = run_all_enabled_streams(root, target=target, history=history)
+            results = run_all_enabled_streams(
+                root,
+                target=target,
+                history=history,
+            )
             print(_canonical_json({"results": results}))
             return 0
         prediction = create_prediction_payload(load_canonical_history(database))

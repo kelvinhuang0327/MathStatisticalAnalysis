@@ -108,7 +108,7 @@ def validate_history(
         if (
             not draw.draw_number.isascii()
             or not draw.draw_number.isdecimal()
-            or len(draw.draw_number) != 9
+            or len(draw.draw_number) not in (8, 9)
         ):
             raise ForecastContractError("INVALID_DRAW_IDENTITY")
         validate_tickets((draw.main_numbers,), 1)
@@ -207,6 +207,7 @@ class ReplayObservation:
     producer_fingerprint: str = field(kw_only=True)
     tickets: TicketSet = ()
     failure_code: str | None = None
+    replay_invocation_identity: str | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
         require_digest(self.causal_history_sha256)
@@ -216,6 +217,17 @@ class ReplayObservation:
             raise ForecastContractError("UNTYPED_OBSERVATION")
         if type(self.tickets) is not tuple:
             raise ForecastContractError("IMMUTABLE_TICKETS_REQUIRED")
+        if self.replay_invocation_identity is not None:
+            try:
+                parsed_identity = json.loads(self.replay_invocation_identity)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise ForecastContractError("INVALID_REPLAY_INVOCATION_IDENTITY") from exc
+            if (
+                type(parsed_identity) is not dict
+                or canonical_json(cast(dict[str, object], parsed_identity))
+                != self.replay_invocation_identity
+            ):
+                raise ForecastContractError("INVALID_REPLAY_INVOCATION_IDENTITY")
         if self.status is ObservationStatus.EVALUATED:
             validate_tickets(self.tickets, self.native_k)
         elif self.tickets:
@@ -236,6 +248,11 @@ class ReplayObservation:
                 "causal_history_sha256": self.causal_history_sha256,
                 "generation_config_sha256": self.generation_config_sha256,
                 "producer_fingerprint": self.producer_fingerprint,
+                "replay_invocation_identity": (
+                    None
+                    if self.replay_invocation_identity is None
+                    else json.loads(self.replay_invocation_identity)
+                ),
             }
         )
 

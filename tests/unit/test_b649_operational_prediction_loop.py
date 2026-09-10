@@ -16,6 +16,7 @@ from tools.b649_operational_prediction_loop import (
     StrategyStream,
     build_canonical_predraw_consensus,
     build_current_target_freshness_report,
+    build_descriptive_predraw_consensus,
     classify_prediction_temporal,
     compute_history_freshness,
     compute_number_consensus,
@@ -1146,10 +1147,10 @@ def _write_predraw_prediction(
     (stream_dir / f"{run_id}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_build_canonical_predraw_consensus_matches_115000087_characterization(
+def test_build_descriptive_predraw_consensus_matches_115000087_characterization(
     tmp_path: Path,
 ) -> None:
-    """Hermetic characterization of the 115000087 canonical PRE_DRAW consensus.
+    """Hermetic characterization of the 115000087 descriptive PRE_DRAW diagnostic.
 
     The 11-stream ticket data is inlined from the real 115000087 run in
     ``_FIXTURE_STREAMS``; the computed top6/top_k values are therefore
@@ -1158,7 +1159,7 @@ def test_build_canonical_predraw_consensus_matches_115000087_characterization(
     """
     _populate_fixture_directory(tmp_path)
 
-    result = build_canonical_predraw_consensus(
+    result = build_descriptive_predraw_consensus(
         tmp_path,
         expected_target_draw=_FIXTURE_TARGET_DRAW,
         expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
@@ -1170,28 +1171,51 @@ def test_build_canonical_predraw_consensus_matches_115000087_characterization(
     assert result["prediction_temporal_class"] == "PRE_DRAW"
     assert result["stream_count"] == 11
     assert result["ticket_count"] == 22
-    assert result["top6"] == [1, 4, 18, 25, 26, 29]
-    assert result["top_k"] == [1, 4, 8, 18, 24, 25, 26, 29, 43, 45]
+    assert result["schema_version"] == "b649-descriptive-predraw-consensus-v1"
+    assert result["authority_status"] == "NONCANONICAL_DESCRIPTIVE"
+    assert result["descriptive_top6"] == [1, 4, 18, 25, 26, 29]
+    assert result["descriptive_top_k"] == [1, 4, 8, 18, 24, 25, 26, 29, 43, 45]
+    assert cast(list[object], result["descriptive_number_consensus"])
+    assert "final_recommended_output" not in result
     assert result["target_result_used"] is False
     assert result["aggregation_weight_mode"] == "UNWEIGHTED"
     assert result["weight_authority_status"] == "LIMITED"
     assert len(cast(list[object], result["stream_identities"])) == 11
 
 
-def test_build_canonical_predraw_consensus_is_deterministic_across_repeated_runs(
+def test_legacy_canonical_predraw_consensus_fails_closed_before_input_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def must_not_read(_directory: Path) -> tuple[dict[str, object], ...]:
+        raise AssertionError("legacy canonical entrypoint read prediction inputs")
+
+    monkeypatch.setattr(
+        "tools.b649_operational_prediction_loop._load_predraw_consensus_predictions",
+        must_not_read,
+    )
+
+    with pytest.raises(ValueError, match="CANONICAL_PREDRAW_CONSENSUS_RETIRED"):
+        build_canonical_predraw_consensus(
+            Path("/path/that/must/not/be-read"),
+            expected_target_draw="115000087",
+            expected_history_cutoff="115000086",
+        )
+
+
+def test_build_descriptive_predraw_consensus_is_deterministic_across_repeated_runs(
     tmp_path: Path,
 ) -> None:
     _populate_fixture_directory(tmp_path)
     generated_at = datetime.fromisoformat("2026-09-10T00:00:00+08:00")
 
-    first = build_canonical_predraw_consensus(
+    first = build_descriptive_predraw_consensus(
         tmp_path,
         expected_target_draw=_FIXTURE_TARGET_DRAW,
         expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
         expected_stream_count=11,
         generated_at=generated_at,
     )
-    second = build_canonical_predraw_consensus(
+    second = build_descriptive_predraw_consensus(
         tmp_path,
         expected_target_draw=_FIXTURE_TARGET_DRAW,
         expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
@@ -1207,7 +1231,7 @@ def test_upstream_prediction_locator_is_absolute_and_matches_input_directory(
 ) -> None:
     _populate_fixture_directory(tmp_path)
 
-    result = build_canonical_predraw_consensus(
+    result = build_descriptive_predraw_consensus(
         tmp_path,
         expected_target_draw=_FIXTURE_TARGET_DRAW,
         expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
@@ -1228,7 +1252,7 @@ def test_target_result_independence_no_outcome_file_is_ever_read(
     outcome_path = tmp_path.parent / "outcomes" / f"{_FIXTURE_TARGET_DRAW}.json"
     assert not outcome_path.exists()
 
-    result = build_canonical_predraw_consensus(
+    result = build_descriptive_predraw_consensus(
         tmp_path,
         expected_target_draw=_FIXTURE_TARGET_DRAW,
         expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
@@ -1270,7 +1294,7 @@ def test_stream_count_mismatch_raises_when_expected_count_is_supplied(tmp_path: 
     _write_predraw_prediction(tmp_path, strategy_id="only_stream", tickets=[[1, 2, 3, 4, 5, 6]])
 
     with pytest.raises(ValueError, match="STREAM_COUNT_MISMATCH"):
-        build_canonical_predraw_consensus(
+        build_descriptive_predraw_consensus(
             tmp_path,
             expected_target_draw="115000087",
             expected_history_cutoff="115000086",
@@ -1281,7 +1305,7 @@ def test_stream_count_mismatch_raises_when_expected_count_is_supplied(tmp_path: 
 def test_stream_count_validation_is_skipped_when_not_supplied(tmp_path: Path) -> None:
     _write_predraw_prediction(tmp_path, strategy_id="only_stream", tickets=[[1, 2, 3, 4, 5, 6]])
 
-    result = build_canonical_predraw_consensus(
+    result = build_descriptive_predraw_consensus(
         tmp_path,
         expected_target_draw="115000087",
         expected_history_cutoff="115000086",
@@ -1299,7 +1323,7 @@ def test_target_draw_mismatch_raises(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="TARGET_DRAW_MISMATCH"):
-        build_canonical_predraw_consensus(
+        build_descriptive_predraw_consensus(
             tmp_path,
             expected_target_draw="115000087",
             expected_history_cutoff="115000086",
@@ -1315,7 +1339,7 @@ def test_prediction_not_available_raises(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="PREDICTION_NOT_AVAILABLE"):
-        build_canonical_predraw_consensus(
+        build_descriptive_predraw_consensus(
             tmp_path,
             expected_target_draw="115000087",
             expected_history_cutoff="115000086",
@@ -1331,7 +1355,7 @@ def test_prediction_not_pre_draw_raises(tmp_path: Path) -> None:
     )
 
     with pytest.raises(ValueError, match="PREDICTION_NOT_PRE_DRAW"):
-        build_canonical_predraw_consensus(
+        build_descriptive_predraw_consensus(
             tmp_path,
             expected_target_draw="115000087",
             expected_history_cutoff="115000086",
@@ -1347,7 +1371,7 @@ def test_history_cutoff_exceeding_allowed_ceiling_raises(tmp_path: Path) -> None
     )
 
     with pytest.raises(ValueError, match="HISTORY_CUTOFF_EXCEEDS_ALLOWED"):
-        build_canonical_predraw_consensus(
+        build_descriptive_predraw_consensus(
             tmp_path,
             expected_target_draw="115000087",
             expected_history_cutoff="115000086",
@@ -1357,7 +1381,7 @@ def test_history_cutoff_exceeding_allowed_ceiling_raises(tmp_path: Path) -> None
 def test_weighted_mode_fails_closed_when_authority_is_not_ready(tmp_path: Path) -> None:
     for status in ("LIMITED", "NOT_AVAILABLE"):
         with pytest.raises(ValueError, match="WEIGHTED_MODE_REQUIRES_READY_AUTHORITY"):
-            build_canonical_predraw_consensus(
+            build_descriptive_predraw_consensus(
                 tmp_path,
                 expected_target_draw="115000087",
                 expected_history_cutoff="115000086",
@@ -1372,7 +1396,7 @@ def test_weighted_mode_is_not_implemented_even_when_authority_is_ready(tmp_path:
     weights; this must fail differently from the not-ready case above."""
 
     with pytest.raises(ValueError, match="CANONICAL_WEIGHTED_NOT_IMPLEMENTED"):
-        build_canonical_predraw_consensus(
+        build_descriptive_predraw_consensus(
             tmp_path,
             expected_target_draw="115000087",
             expected_history_cutoff="115000086",

@@ -21,6 +21,7 @@ from urllib.error import URLError
 import pytest
 import tools.b649_goalc_local_scheduler as scheduler_module
 from tools.b649_goalc_local_scheduler import (
+    FORECAST_RANKING_AUTHORITY_UNRESOLVED,
     SHADOW_HEALTH_NAMESPACE,
     AdvisoryProcessLock,
     OfficialHttpsClient,
@@ -42,7 +43,6 @@ from tools.b649_goalc_local_scheduler import (
     run_scheduler_cycle,
 )
 from tools.b649_operational_prediction_loop import (
-    CANONICAL_PREDRAW_CONSENSUS_METHOD,
     LOTTERY_TYPE,
     STRATEGY_STREAMS,
     PredictionTarget,
@@ -1470,13 +1470,11 @@ def test_forecast_ready_when_all_eleven_streams_are_available(tmp_path: Path) ->
     assert result["AVAILABLE_STREAM_COUNT"] == 11
     assert result["MISSING_STREAM_IDS"] == []
     assert result["ANALYSIS_MAX_DATA_CUTOFF"] == _FORECAST_CUTOFF_DRAW
-    assert result["RANKING_AUTHORITY"] == CANONICAL_PREDRAW_CONSENSUS_METHOD
-    ranking = cast(list[dict[str, object]], result["FINAL_DECISION_RANKING"])
-    assert [entry["number"] for entry in ranking] == [1, 2, 3, 4, 5, 6]
-    assert result["TOP6"] == [1, 2, 3, 4, 5, 6]
-    assert result["TOP10"] == [1, 2, 3, 4, 5, 6]
-    assert result["WEIGHT_AUTHORITY_STATUS"] == "LIMITED"
-    assert result["AGGREGATION_WEIGHT_MODE"] == "UNWEIGHTED"
+    assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
+    assert result["RANKING_AUTHORITY"] == FORECAST_RANKING_AUTHORITY_UNRESOLVED
+    assert "FINAL_DECISION_RANKING" not in result
+    assert "TOP6" not in result
+    assert "TOP10" not in result
     assert "WEIGHTED_CONSENSUS" not in result
     streams = cast(list[dict[str, object]], result["STREAMS"])
     assert len(streams) == 11
@@ -1667,30 +1665,29 @@ def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None
     assert backend.mutating_calls == []
 
 
-def test_forecast_delivery_is_deterministic_and_uses_canonical_ranking(
+def test_forecast_reports_unresolved_ranking_authority_without_fabricating_a_ranking(
     tmp_path: Path,
 ) -> None:
-    """Repeated read-only delivery returns the same canonical forecast payload."""
+    """The scheduler does not promote descriptive streams to production authority."""
 
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+    result, exit_code = _forecast_command(config, backend)
 
-    first, first_exit_code = _forecast_command(config, backend)
-    second, second_exit_code = _forecast_command(config, backend)
-
-    assert first_exit_code == second_exit_code == 0
-    assert first == second
-    assert first["FORECAST_STATUS"] == "READY"
-    assert first["RANKING_AUTHORITY"] == CANONICAL_PREDRAW_CONSENSUS_METHOD
-    assert "FINAL_DECISION_RANKING" in first
-    assert "TOP6" in first
-    assert "TOP10" in first
-    assert first["WEIGHT_AUTHORITY_STATUS"] == "LIMITED"
-    assert first["AGGREGATION_WEIGHT_MODE"] == "UNWEIGHTED"
-    assert first["TARGET_RESULT_USED"] == "NO"
-    assert "WEIGHTED_CONSENSUS" not in first
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
+    assert result["RANKING_AUTHORITY"] == FORECAST_RANKING_AUTHORITY_UNRESOLVED
+    assert result["RANKING_AUTHORITY"] == "FORECAST_RANKING_AUTHORITY_UNRESOLVED"
+    assert "FINAL_DECISION_RANKING" not in result
+    assert "TOP6" not in result
+    assert "TOP10" not in result
+    assert "CANONICAL_PREDRAW_CONSENSUS" not in result
+    assert "WEIGHTED_CONSENSUS" not in result
+    assert "CONFIDENCE" not in result
+    assert "CLAIM_SCOPE" not in result
 
 
 def test_forecast_reports_no_target_resolved_without_reading_predictions(tmp_path: Path) -> None:

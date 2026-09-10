@@ -32,7 +32,6 @@ from tools.b649_operational_prediction_loop import (
     build_head_to_head_summary,
     compute_history_freshness,
     ensure_operation_root,
-    finalize_canonical_consensus,
     iter_prediction_files,
     load_canonical_history,
     rebuild_history_freshness_ledger,
@@ -84,7 +83,6 @@ class B649ForwardAutoCycleAdapter:
         self._history_builder = history_builder
         self._streams = tuple(streams)
         self._clock = _taipei_now if clock is None else clock
-        self._active_target: PredictionTarget | None = None
 
     def resolve_next_target(self) -> PredictionTarget | None:
         if self._target is not None:
@@ -93,7 +91,6 @@ class B649ForwardAutoCycleAdapter:
             target = self._target_resolver()
         else:
             target = self._resolve_canonical_due_or_future_target()
-        self._active_target = target
         return target
 
     def list_enabled_strategy_streams(self) -> tuple[StrategyStream, ...]:
@@ -120,11 +117,9 @@ class B649ForwardAutoCycleAdapter:
             history=history,
             streams=(stream,),
             created_at=self._clock(),
-            finalize_consensus=False,
         )
         if len(results) != 1:
             raise RuntimeError(f"expected one B649 stream result, got {len(results)}")
-        finalize_canonical_consensus(self.root, target, streams=self._streams)
         return results[0]
 
     def prediction_exists(self, target: PredictionTarget, stream: StrategyStream) -> bool:
@@ -226,12 +221,6 @@ class B649ForwardAutoCycleAdapter:
         return rescore_draw(self.root, target.draw_number, scored_at=self._clock())
 
     def refresh_reporting(self) -> dict[str, str]:
-        if self._active_target is not None:
-            finalize_canonical_consensus(
-                self.root,
-                self._active_target,
-                streams=self._streams,
-            )
         ensure_operation_root(self.root)
         paths = {
             "performance": rebuild_performance_ledger(self.root),

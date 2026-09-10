@@ -13,7 +13,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from functools import partial
@@ -26,7 +26,6 @@ if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from lottolab.application.use_cases.generate_bet import instantiate_portfolio_adapter
-from lottolab.domain.b649_canonical_consensus import build_canonical_consensus
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.lottery_rules import BIG_LOTTO_RULE_CONTRACT
 from lottolab.domain.prize_evaluation import evaluate_big_lotto_ticket
@@ -79,7 +78,6 @@ PRODUCER_FINGERPRINT = (
 DEFAULT_OPERATION_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
 )
-CANONICAL_CONSENSUS_FILENAME = "canonical-consensus-v1.json"
 TAIPEI = ZoneInfo("Asia/Taipei")
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.-]+", flags=re.ASCII)
 _TEMPORAL_CLASSES = ("PRE_DRAW", "POST_DRAW")
@@ -486,92 +484,6 @@ def save_strategy_prediction(root: Path, prediction: dict[str, object]) -> Path:
     return path
 
 
-def build_canonical_consensus_payload(
-    artifacts: Sequence[Mapping[str, object]],
-) -> dict[str, object]:
-    """Serialize one pure canonical decision without reading any outcome."""
-
-    return build_canonical_consensus(artifacts).to_payload(
-        task_id=TASK_ID,
-        lottery_type=LOTTERY_TYPE,
-    )
-
-
-def canonical_consensus_path(root: Path, draw_number: str) -> Path:
-    """Return the single canonical decision path inside a draw prediction directory."""
-
-    _require_identifier(draw_number, "draw_number")
-    return root / "predictions" / draw_number / CANONICAL_CONSENSUS_FILENAME
-
-
-def save_canonical_consensus(root: Path, payload: dict[str, object]) -> Path:
-    """Persist one immutable canonical decision, allowing only an identical retry."""
-
-    _ensure_directories(root)
-    draw_number = _required_identifier(payload, "draw_number")
-    path = canonical_consensus_path(root, draw_number)
-    serialized = _canonical_json(payload) + "\n"
-    if path.exists():
-        if not path.is_file() or path.read_text(encoding="utf-8") != serialized:
-            raise FileExistsError(
-                f"canonical consensus already exists and differs: {path}"
-            )
-        return path
-    _create_json(path, payload)
-    return path
-
-
-def persist_canonical_consensus_if_ready(
-    root: Path,
-    draw_number: str,
-    *,
-    expected_strategy_ids: Sequence[str],
-) -> Path | None:
-    """Persist consensus once every configured strategy artifact is available."""
-
-    expected = tuple(sorted(set(expected_strategy_ids)))
-    if not expected:
-        raise ValueError("at least one expected strategy is required")
-    artifacts: list[dict[str, object]] = []
-    for prediction_path in _iter_prediction_files(root, draw_number):
-        prediction = _read_json_object(prediction_path)
-        if prediction.get("lottery_type") != LOTTERY_TYPE:
-            continue
-        strategy_id = prediction.get("strategy_id")
-        if not isinstance(strategy_id, str) or strategy_id not in expected:
-            continue
-        artifacts.append({**prediction, "prediction_path": str(prediction_path)})
-
-    present = {
-        cast(str, artifact["strategy_id"])
-        for artifact in artifacts
-        if isinstance(artifact.get("strategy_id"), str)
-    }
-    if not set(expected).issubset(present):
-        return None
-    payload = build_canonical_consensus_payload(artifacts)
-    if payload.get("draw_number") != draw_number:
-        raise ValueError("canonical consensus target draw does not match the requested draw")
-    return save_canonical_consensus(root, payload)
-
-
-def finalize_canonical_consensus(
-    root: Path,
-    target: PredictionTarget,
-    *,
-    streams: Sequence[StrategyStream] = STRATEGY_STREAMS,
-) -> Path | None:
-    """Finalize one target from the configured streams' stored artifacts."""
-
-    return persist_canonical_consensus_if_ready(
-        root,
-        target.draw_number,
-        expected_strategy_ids=tuple(
-            stream.strategy_id for stream in streams if stream.enabled
-        ),
-    )
-
-
 def run_strategy_stream(
     stream: StrategyStream,
     history: HistorySnapshot,
@@ -669,7 +581,6 @@ def run_all_enabled_streams(
     history: HistorySnapshot,
     streams: Sequence[StrategyStream] = STRATEGY_STREAMS,
     created_at: datetime | None = None,
-    finalize_consensus: bool = False,
 ) -> tuple[dict[str, object], ...]:
     """Run every enabled strategy stream independently against one shared
     target and history snapshot, saving each stream's own prediction record.
@@ -719,8 +630,6 @@ def run_all_enabled_streams(
                     "prediction_path": None,
                 }
             )
-    if finalize_consensus:
-        finalize_canonical_consensus(root, target, streams=streams)
     return tuple(results)
 
 
@@ -1375,7 +1284,6 @@ def _iter_prediction_files(root: Path, draw_number: str) -> tuple[Path, ...]:
             (
                 path
                 for path in (*base.glob("*.json"), *base.glob("*/*.json"))
-                if path.name != CANONICAL_CONSENSUS_FILENAME
             ),
             key=str,
         )
@@ -1396,7 +1304,6 @@ def _iter_all_prediction_files(root: Path) -> tuple[Path, ...]:
                     *predictions_root.glob("*/*.json"),
                     *predictions_root.glob("*/*/*.json"),
                 )
-                if path.name != CANONICAL_CONSENSUS_FILENAME
             ),
             key=str,
         )
@@ -1769,7 +1676,6 @@ def main(argv: list[str] | None = None) -> int:
                 root,
                 target=target,
                 history=history,
-                finalize_consensus=True,
             )
             print(_canonical_json({"results": results}))
             return 0

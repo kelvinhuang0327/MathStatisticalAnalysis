@@ -7,7 +7,7 @@ evidence, opens a database, schedules a job, or calls the frozen campaign.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from typing import Protocol, cast
@@ -217,6 +217,116 @@ class CanonicalNativeTicketGenerator:
             tickets = result_many.numbers
         validate_tickets(tickets, descriptor.native_ticket_count)
         return tickets
+
+
+def iter_native_replay_observations(
+    *,
+    target: ObservationTarget,
+    history: tuple[Draw, ...],
+    catalog: tuple[StrategyDescriptor, ...],
+    producer: ProducerFingerprint,
+    generator: NativeTicketGenerator,
+    seeds: Mapping[str, int] | None = None,
+) -> Iterator[ReplayObservation]:
+    """Yield typed replay cells using the current native generation contract.
+
+    The target is used only to validate the causal boundary; its outcome is not
+    an input.  A process-global unseeded strategy cannot establish replay call
+    identity, so its eligible cells are recorded as typed failures without
+    invoking the generator.  Caller seeds are passed only where the current
+    generator contract requires them; native internal seed rules remain in the
+    generation configuration for each exact causal prefix.
+    """
+
+    if not history:
+        raise ForecastContractError("BIG_LOTTO_FULL_HISTORY_REQUIRED")
+    caller_seeds = dict(seeds or {})
+    descriptors = tuple(
+        sorted(
+            (descriptor for descriptor in catalog if catalog_exclusion(descriptor) is None),
+            key=lambda descriptor: descriptor.strategy_id,
+        )
+    )
+    descriptor_ids = {descriptor.strategy_id for descriptor in descriptors}
+    if len(descriptor_ids) != len(descriptors):
+        raise ForecastContractError("DUPLICATE_CATALOG_IDENTITY")
+    if set(caller_seeds) - descriptor_ids:
+        raise ForecastContractError("SEED_AUTHORITY_OUTSIDE_CANONICAL_UNIVERSE")
+    history_authority = history_ref(history)
+    validate_history(history, target, history_authority, history[-1].draw_number)
+    prefix_authorities = tuple(history_ref(history[:index]) for index in range(len(history)))
+
+    for descriptor in descriptors:
+        caller_seed = caller_seeds.get(descriptor.strategy_id)
+        for index, draw in enumerate(history):
+            prefix = history[:index]
+            try:
+                configuration = native_generation_config(
+                    descriptor, prefix, seed=caller_seed
+                )
+            except ForecastContractError as exc:
+                raise ForecastContractError(
+                    f"REPLAY_SEED_AUTHORITY_REQUIRED:{descriptor.strategy_id}"
+                ) from exc
+            if index < descriptor.min_history:
+                yield ReplayObservation(
+                    descriptor.strategy_id,
+                    descriptor.version,
+                    descriptor.native_ticket_count,
+                    draw.draw_number,
+                    draw.draw_date,
+                    prefix_authorities[index].history_sha256,
+                    configuration.sha256,
+                    status=ObservationStatus.WARMUP,
+                    producer_fingerprint=producer.digest,
+                )
+                continue
+
+            semantics = json.loads(configuration.rng_semantics_json)
+            if semantics.get("behavior") == "UNSEEDED_STOCHASTIC":
+                yield ReplayObservation(
+                    descriptor.strategy_id,
+                    descriptor.version,
+                    descriptor.native_ticket_count,
+                    draw.draw_number,
+                    draw.draw_date,
+                    prefix_authorities[index].history_sha256,
+                    configuration.sha256,
+                    status=ObservationStatus.FAILURE,
+                    producer_fingerprint=producer.digest,
+                    failure_code="UNSEEDED_STOCHASTIC_REPLAY_CALL_IDENTITY_UNAVAILABLE",
+                )
+                continue
+
+            try:
+                tickets = generator.generate(descriptor, configuration, prefix)
+                validate_tickets(tickets, descriptor.native_ticket_count)
+            except Exception as exc:
+                yield ReplayObservation(
+                    descriptor.strategy_id,
+                    descriptor.version,
+                    descriptor.native_ticket_count,
+                    draw.draw_number,
+                    draw.draw_date,
+                    prefix_authorities[index].history_sha256,
+                    configuration.sha256,
+                    status=ObservationStatus.FAILURE,
+                    producer_fingerprint=producer.digest,
+                    failure_code=f"REPLAY_GENERATION_FAILURE:{type(exc).__name__}",
+                )
+                continue
+            yield ReplayObservation(
+                descriptor.strategy_id,
+                descriptor.version,
+                descriptor.native_ticket_count,
+                draw.draw_number,
+                draw.draw_date,
+                prefix_authorities[index].history_sha256,
+                configuration.sha256,
+                status=ObservationStatus.EVALUATED,
+                producer_fingerprint=producer.digest,
+                tickets=tickets,
+            )
 
 
 @dataclass(frozen=True, slots=True)

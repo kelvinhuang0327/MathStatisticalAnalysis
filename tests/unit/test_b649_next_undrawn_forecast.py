@@ -19,6 +19,7 @@ from lottolab.application.b649_next_undrawn_forecast import (
     ForecastRequest,
     PreparedForecast,
     evaluate_evidence,
+    iter_native_replay_observations,
     native_generation_config,
     prepare_forecast,
 )
@@ -312,6 +313,13 @@ def test_085_accepted_and_corrected_main_special_or_date_changes_identity():
         assert changed.identity.bundle_id != request.identity.bundle_id
         with pytest.raises(ForecastContractError, match="REPLAY_HISTORY"):
             evaluate_evidence(changed)
+
+
+def test_canonical_eight_digit_history_draw_ids_are_accepted():
+    request = make_request()
+    history = (replace(request.history[0], draw_number="96000001"), *request.history[1:])
+    corrected = replace(request, history=history, history_authority=history_ref(history))
+    validate_history(corrected.history, corrected.target, corrected.history_authority)
 
 
 def append_target_row(request: ForecastRequest) -> tuple[Draw, ...]:
@@ -769,6 +777,69 @@ def test_canonical_unseeded_stream_cannot_be_misrepresented_as_deterministic_evi
     assert semantics["seed"] is None
     with pytest.raises(ForecastContractError, match="RNG_STATE_UNAVAILABLE_REGENERATION_REQUIRED"):
         evaluate_evidence(request)
+
+
+def test_native_replay_iterator_classifies_warmup_and_unseeded_cells_without_running_them():
+    deterministic = descriptor("fixture_deterministic")
+    unseeded = replace(
+        descriptor("fixture_unseeded"),
+        provenance=("randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT",),
+    )
+    request = make_request((deterministic, unseeded))
+    generator = Generator()
+    observations = tuple(
+        iter_native_replay_observations(
+            target=request.target,
+            history=request.history,
+            catalog=request.catalog,
+            producer=request.producer,
+            generator=generator,
+        )
+    )
+
+    assert len(observations) == 12
+    assert [strategy_id for strategy_id, _ in generator.calls] == [
+        "fixture_deterministic"
+    ] * 5
+    assert sum(row.status is ObservationStatus.WARMUP for row in observations) == 2
+    unseeded_rows = [row for row in observations if row.strategy_id == "fixture_unseeded"]
+    assert all(row.status is ObservationStatus.FAILURE for row in unseeded_rows[1:])
+    assert all(
+        row.failure_code == "UNSEEDED_STOCHASTIC_REPLAY_CALL_IDENTITY_UNAVAILABLE"
+        for row in unseeded_rows[1:]
+    )
+    assert evaluate_evidence(replace(request, observations=observations))[0].complete
+    assert not evaluate_evidence(replace(request, observations=observations))[1].complete
+
+
+def test_native_replay_iterator_binds_each_cell_to_its_exact_causal_configuration():
+    replay_descriptor = descriptor("fixture_replay", 3)
+    request = make_request((replay_descriptor,))
+    observations = tuple(
+        iter_native_replay_observations(
+            target=request.target,
+            history=request.history,
+            catalog=request.catalog,
+            producer=request.producer,
+            generator=Generator(),
+        )
+    )
+
+    assert observations[0].status is ObservationStatus.WARMUP
+    for index, observation in enumerate(observations):
+        assert (
+            observation.causal_history_sha256
+            == history_ref(request.history[:index]).history_sha256
+        )
+        assert observation.generation_config_sha256 == native_generation_config(
+            replay_descriptor, request.history[:index]
+        ).sha256
+    assert all(
+        observation.status is ObservationStatus.EVALUATED
+        and observation.tickets == (WIN,) * 3
+        for observation in observations[1:]
+    )
+    assert evaluate_evidence(replace(request, observations=observations))[0].complete
 
 
 def test_observation_requires_explicit_valid_producer_provenance():

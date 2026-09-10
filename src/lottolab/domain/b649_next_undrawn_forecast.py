@@ -108,7 +108,7 @@ def validate_history(
         if (
             not draw.draw_number.isascii()
             or not draw.draw_number.isdecimal()
-            or len(draw.draw_number) != 9
+            or len(draw.draw_number) not in (8, 9)
         ):
             raise ForecastContractError("INVALID_DRAW_IDENTITY")
         validate_tickets((draw.main_numbers,), 1)

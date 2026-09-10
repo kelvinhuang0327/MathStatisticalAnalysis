@@ -46,20 +46,22 @@ from lottolab.domain.research import (
     StrategyProvenanceAvailability,
 )
 from lottolab.domain.research_live_forecast import (
+    CANONICAL_CONSENSUS,
+    CONSENSUS_STREAM,
+    CONSENSUS_STREAM_VERSION,
     ORIGINAL_FIELDS,
     LiveForecastInput,
     LiveForecastResult,
     canonical_json,
     digest,
     object_json,
-    utc_text,
 )
 from lottolab.infrastructure.persistence.research_schema import (
     APPEND_ONLY_TRIGGER_NAMES,
     BUSY_TIMEOUT_MS,
     IMMUTABLE_TABLE_NAMES,
     TABLE_NAMES,
-    V3_MIGRATION_CHECKSUM,
+    V4_MIGRATION_CHECKSUM,
     ResearchDataPaths,
     initialize_schema,
     open_database,
@@ -96,6 +98,60 @@ class HistoricalReplayDiscoveryCorpusRows:
     common_rows: tuple[dict[str, object], ...]
 
 
+@dataclass(frozen=True, slots=True)
+class LiveForecastCurrentResult:
+    """The version selected by the exact live-current pointer join."""
+
+    forecast: LiveForecastInput
+    version: int
+    run_id: str
+    pointer_advanced: bool = True
+
+    @property
+    def scope(self) -> tuple[str, str, str, str, str]:
+        return self.forecast.scope
+
+    @property
+    def request_id(self) -> str:
+        return self.forecast.request_id
+
+    @property
+    def request_sha256(self) -> str:
+        return self.forecast.request_sha256
+
+    @property
+    def payload_bytes(self) -> bytes:
+        return self.forecast.payload_bytes
+
+    @property
+    def payload_sha256(self) -> str:
+        return self.forecast.payload_sha256
+
+    @property
+    def provenance_class(self) -> str:
+        return self.forecast.provenance_class
+
+    @property
+    def forecast_stream_id(self) -> str:
+        return self.forecast.forecast_stream_id
+
+    @property
+    def forecast_stream_version(self) -> str:
+        return self.forecast.forecast_stream_version
+
+    @property
+    def source_locator(self) -> str:
+        return self.forecast.source_locator
+
+    @property
+    def consensus_provenance_json(self) -> str | None:
+        return self.forecast.consensus_provenance_json
+
+    @property
+    def schedule_authority_sha256(self) -> str:
+        return str(self.forecast.target["schedule_authority_sha256"])
+
+
 class SQLiteResearchRepository:
     """The only production-authorized SQL writer for research tables."""
 
@@ -122,13 +178,196 @@ class SQLiteResearchRepository:
         with open_database(self._paths, read_only=True) as connection:
             return self._existing_live_request(connection, request_id, request_sha256)
 
+    def read_current_consensus(
+        self,
+        scope: tuple[str, str, str, str, str] = (
+            "BIG_LOTTO",
+            "115000087",
+            "2026-09-11",
+            CONSENSUS_STREAM,
+            CONSENSUS_STREAM_VERSION,
+        ),
+    ) -> LiveForecastCurrentResult | None:
+        """Read the canonical version selected by the complete pointer join."""
+
+        if len(scope) != 5:
+            raise ResearchRepositoryError("live forecast scope must contain five fields")
+        with open_database(self._paths, read_only=True) as connection:
+            connection.row_factory = sqlite3.Row
+            pointer_row = connection.execute(
+                "SELECT version, run_id FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                scope,
+            ).fetchone()
+            row = connection.execute(
+                """
+                SELECT
+                    p.lottery_type AS pointer_lottery_type,
+                    p.target_draw_number AS pointer_target_draw_number,
+                    p.target_draw_date AS pointer_target_draw_date,
+                    p.forecast_stream_id AS pointer_forecast_stream_id,
+                    p.forecast_stream_version AS pointer_forecast_stream_version,
+                    p.version AS pointer_version,
+                    p.run_id AS pointer_run_id,
+                    v.version,
+                    v.run_id,
+                    v.request_id,
+                    v.request_sha256,
+                    v.lottery_type,
+                    v.target_draw_number,
+                    v.target_draw_date,
+                    v.forecast_stream_id,
+                    v.forecast_stream_version,
+                    v.target_json,
+                    v.provenance_class,
+                    v.payload_bytes,
+                    v.payload_sha256,
+                    v.source_payload_sha256,
+                    v.source_locator,
+                    v.missing_provenance_json,
+                    v.import_execution_json,
+                    v.consensus_provenance_json,
+                    v.pointer_advanced,
+                    v.provenance_envelope_json,
+                    v.provenance_envelope_sha256,
+                    v.committed_at,
+                    v.expected_current_version,
+                    v.producer_json,
+                    v.source_execution_json,
+                    v.runtime_manifest_json,
+                    v.history_snapshot_json,
+                    v.catalog_json,
+                    v.generation_configs_json,
+                    v.effective_parameters_json,
+                    v.rng_semantics_json,
+                    v.ranking_evidence_json,
+                    v.ticket_lineage_json,
+                    v.generation_started_at,
+                    v.generation_finished_at
+                FROM research_live_forecast_current_pointer AS p
+                JOIN research_live_forecast_versions AS v
+                  ON v.version = p.version
+                 AND v.run_id = p.run_id
+                 AND v.lottery_type = p.lottery_type
+                 AND v.target_draw_number = p.target_draw_number
+                 AND v.target_draw_date = p.target_draw_date
+                 AND v.forecast_stream_id = p.forecast_stream_id
+                 AND v.forecast_stream_version = p.forecast_stream_version
+                WHERE p.lottery_type = ?
+                  AND p.target_draw_number = ?
+                  AND p.target_draw_date = ?
+                  AND p.forecast_stream_id = ?
+                  AND p.forecast_stream_version = ?
+                """,
+                scope,
+            ).fetchone()
+        if row is None:
+            if pointer_row is not None:
+                raise ResearchConflictError("canonical current pointer has no matching version")
+            return None
+
+        pointer_scope = tuple(
+            str(row[f"pointer_{name}"])
+            for name in (
+                "lottery_type",
+                "target_draw_number",
+                "target_draw_date",
+                "forecast_stream_id",
+                "forecast_stream_version",
+            )
+        )
+        version = int(row["version"])
+        run_id = str(row["run_id"])
+        if (
+            pointer_scope != tuple(scope)
+            or row["pointer_version"] != version
+            or str(row["pointer_run_id"]) != run_id
+            or tuple(
+                str(row[name])
+                for name in (
+                    "lottery_type",
+                    "target_draw_number",
+                    "target_draw_date",
+                    "forecast_stream_id",
+                    "forecast_stream_version",
+                )
+            )
+            != tuple(scope)
+            or row["pointer_advanced"] != 1
+            or row["provenance_class"] != CANONICAL_CONSENSUS
+            or row["forecast_stream_id"] != CONSENSUS_STREAM
+            or row["forecast_stream_version"] != CONSENSUS_STREAM_VERSION
+        ):
+            raise ResearchConflictError("canonical current pointer identity is invalid")
+        payload = row["payload_bytes"]
+        if not isinstance(payload, bytes):
+            if isinstance(payload, memoryview):
+                payload = payload.tobytes()
+            else:
+                raise ResearchConflictError("canonical current payload is not stored as bytes")
+        payload_sha256 = hashlib.sha256(payload).hexdigest()
+        envelope_raw = row["provenance_envelope_json"]
+        try:
+            envelope = object_json(envelope_raw) if isinstance(envelope_raw, str) else None
+        except (TypeError, ValueError):
+            envelope = None
+        try:
+            target_for_envelope = (
+                object_json(str(row["target_json"]))
+                if isinstance(row["target_json"], str)
+                else None
+            )
+        except (TypeError, ValueError):
+            target_for_envelope = None
+        if (
+            row["payload_sha256"] != payload_sha256
+            or row["source_payload_sha256"] != payload_sha256
+            or row["consensus_provenance_json"] is None
+            or row["import_execution_json"] is None
+            or envelope is None
+            or target_for_envelope is None
+            or envelope.get("schedule_authority_sha256")
+            != target_for_envelope.get("schedule_authority_sha256")
+            or digest(envelope) != row["provenance_envelope_sha256"]
+        ):
+            raise ResearchConflictError("canonical current payload or provenance hash mismatch")
+        original = {field: row[field] for field in ORIGINAL_FIELDS}
+        forecast = LiveForecastInput(
+            request_id=str(row["request_id"]),
+            request_sha256=str(row["request_sha256"]),
+            provenance_class=str(row["provenance_class"]),
+            forecast_stream_id=str(row["forecast_stream_id"]),
+            forecast_stream_version=str(row["forecast_stream_version"]),
+            target_json=str(row["target_json"]),
+            payload_bytes=payload,
+            source_locator=str(row["source_locator"]),
+            original_execution_json=canonical_json(original),
+            missing_provenance_json=str(row["missing_provenance_json"]),
+            import_execution_json=str(row["import_execution_json"]),
+            consensus_provenance_json=str(row["consensus_provenance_json"]),
+        )
+        try:
+            forecast.validate()
+        except (TypeError, ValueError) as exc:
+            raise ResearchConflictError("canonical current row failed domain validation") from exc
+        return LiveForecastCurrentResult(forecast, version, run_id)
+
     @staticmethod
     def _existing_live_request(
-        connection: sqlite3.Connection, request_id: str, request_sha256: str
+        connection: sqlite3.Connection,
+        request_id: str,
+        request_sha256: str,
+        *,
+        scope: tuple[str, str, str, str, str] | None = None,
+        forecast: LiveForecastInput | None = None,
     ) -> LiveForecastResult | None:
         row = connection.execute(
             "SELECT run_id, version, pointer_advanced, payload_sha256, "
-            "provenance_envelope_sha256, request_sha256 "
+            "provenance_envelope_sha256, request_sha256, source_locator, "
+            "provenance_class, forecast_stream_id, forecast_stream_version, "
+            "lottery_type, target_draw_number, target_draw_date, target_json, "
+            "import_execution_json, consensus_provenance_json "
             "FROM research_live_forecast_versions WHERE request_id=?",
             (request_id,),
         ).fetchone()
@@ -136,8 +375,41 @@ class SQLiteResearchRepository:
             return None
         if row[5] != request_sha256:
             raise ResearchConflictError("live request id was reused for different inputs")
+        if forecast is not None:
+            stored_scope = (
+                str(row[10]),
+                str(row[11]),
+                str(row[12]),
+                str(row[8]),
+                str(row[9]),
+            )
+            expected_scope = forecast.scope
+            if (
+                row[3] != forecast.payload_sha256
+                or row[6] != forecast.source_locator
+                or row[7] != forecast.provenance_class
+                or row[8] != forecast.forecast_stream_id
+                or row[9] != forecast.forecast_stream_version
+                or stored_scope != expected_scope
+                or row[13] != forecast.target_json
+                or row[15] != forecast.consensus_provenance_json
+            ):
+                raise ResearchConflictError("live request id was reused for different content")
+        pointer_advanced = bool(row[2])
+        if scope is not None:
+            pointer = connection.execute(
+                "SELECT version, run_id FROM research_live_forecast_current_pointer WHERE "
+                "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                scope,
+            ).fetchone()
+            pointer_advanced = (
+                pointer is not None
+                and int(pointer[0]) == int(row[1])
+                and str(pointer[1]) == str(row[0])
+            )
         return LiveForecastResult(
-            str(row[0]), int(row[1]), bool(row[2]), True, str(row[3]), str(row[4])
+            str(row[0]), int(row[1]), pointer_advanced, True, str(row[3]), str(row[4])
         )
 
     def commit_live_forecast(
@@ -147,6 +419,8 @@ class SQLiteResearchRepository:
         expected_current_version: int,
         current_eligible: Callable[[], bool],
         clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        strict_consensus: bool = False,
+        idempotency_key: str | None = None,
     ) -> LiveForecastResult:
         """Append one request and CAS its pointer in the same SQLite transaction.
 
@@ -158,27 +432,58 @@ class SQLiteResearchRepository:
         forecast.validate()
         if type(expected_current_version) is not int or expected_current_version < 0:
             raise ResearchRepositoryError("invalid current pointer version")
+        consensus = forecast.provenance_class == CANONICAL_CONSENSUS
+        strict = strict_consensus or consensus
+        if strict and not consensus:
+            raise ResearchRepositoryError("strict consensus mode requires canonical consensus")
+        selected_idempotency_key = idempotency_key or forecast.request_id
 
         def operation(connection: sqlite3.Connection) -> LiveForecastResult:
             existing = self._existing_live_request(
-                connection, forecast.request_id, forecast.request_sha256
+                connection,
+                forecast.request_id,
+                forecast.request_sha256,
+                scope=forecast.scope if strict else None,
+                forecast=forecast if strict else None,
             )
             if existing is not None:
                 return existing
+            if strict:
+                current = connection.execute(
+                    "SELECT version FROM research_live_forecast_current_pointer WHERE "
+                    "lottery_type=? AND target_draw_number=? AND target_draw_date=? "
+                    "AND forecast_stream_id=? AND forecast_stream_version=?",
+                    forecast.scope,
+                ).fetchone()
+                actual = 0 if current is None else int(current[0])
+                if actual != expected_current_version:
+                    raise ResearchConflictError("canonical current pointer changed")
+                eligible = current_eligible()
+                if type(eligible) is not bool:
+                    raise ResearchRepositoryError("current eligibility must be explicit")
+                if not eligible:
+                    raise ResearchConflictError("canonical consensus promotion is not eligible")
+                _claim_idempotency(
+                    connection,
+                    operation_name="commit_consensus_promotion",
+                    idempotency_key=selected_idempotency_key,
+                    request_sha256=forecast.request_sha256,
+                )
             run_id = f"live-{uuid.uuid4()}"
-            committed_at = utc_text(clock())
+            committed_at = _utc_text(clock())
             original = forecast.original
             legacy = forecast.provenance_class == "LEGACY_MATERIALIZED"
-            if not legacy and datetime.fromisoformat(committed_at) < datetime.fromisoformat(
+            native = forecast.provenance_class == "NATIVE_GENERATED"
+            if native and datetime.fromisoformat(committed_at) < datetime.fromisoformat(
                 str(original["generation_finished_at"])
             ):
                 raise ResearchConflictError("commit clock predates native execution")
-            source = None if legacy else object_json(str(original["source_execution_json"]))
-            producer = None if legacy else object_json(str(original["producer_json"]))
+            source = None if not native else object_json(str(original["source_execution_json"]))
+            producer = None if not native else object_json(str(original["producer_json"]))
             # A current validation contract is not evidence of the original
             # legacy execution's rule version. Only native execution binds it.
             rule_id: str | None = None
-            if not legacy:
+            if native:
                 rule_json = BIG_LOTTO_RULE_CONTRACT.canonical_json()
                 rule_sha = _sha256(rule_json)
                 rule_id = f"rule-{rule_sha}"
@@ -218,11 +523,11 @@ class SQLiteResearchRepository:
                     rule_id,
                     f"causal-history:{target['causal_history_sha256']}",
                     target["causal_history_sha256"],
-                    artifact_id if legacy else None,
+                    artifact_id if (legacy or consensus) else None,
                     None if producer is None else producer["producer_id"],
                     None if producer is None else producer["producer_version"],
                     None if source is None else source["commit"],
-                    original["generation_started_at"],
+                    original["generation_started_at"] if native else None,
                     committed_at,
                     forecast.provenance_class,
                 ),
@@ -234,12 +539,17 @@ class SQLiteResearchRepository:
                 forecast.scope,
             ).fetchone()
             actual = 0 if current is None else int(current[0])
-            eligible = current_eligible()
-            if type(eligible) is not bool:
-                raise ResearchRepositoryError("current eligibility must be explicit")
-            advanced = (
-                eligible and actual == expected_current_version and (not legacy or actual == 0)
-            )
+            if strict:
+                if actual != expected_current_version:
+                    raise ResearchConflictError("canonical current pointer changed")
+                advanced = True
+            else:
+                eligible = current_eligible()
+                if type(eligible) is not bool:
+                    raise ResearchRepositoryError("current eligibility must be explicit")
+                advanced = (
+                    eligible and actual == expected_current_version and (not legacy or actual == 0)
+                )
             version = int(
                 connection.execute(
                     "SELECT COALESCE(MAX(version), 0) + 1 FROM research_live_forecast_versions"
@@ -254,6 +564,7 @@ class SQLiteResearchRepository:
                 "scope_version": 1,
                 "scope": forecast.scope,
                 "target": target,
+                "schedule_authority_sha256": target.get("schedule_authority_sha256"),
                 "payload_sha256": forecast.payload_sha256,
                 "source_locator": forecast.source_locator,
                 "provenance_class": forecast.provenance_class,
@@ -262,6 +573,9 @@ class SQLiteResearchRepository:
                 "import_execution": None
                 if forecast.import_execution_json is None
                 else object_json(forecast.import_execution_json),
+                "consensus_provenance": None
+                if forecast.consensus_provenance_json is None
+                else object_json(forecast.consensus_provenance_json),
                 "committed_at": committed_at,
                 "expected_current_version": expected_current_version,
                 "pointer_advanced": advanced,
@@ -289,6 +603,7 @@ class SQLiteResearchRepository:
                 *ORIGINAL_FIELDS,
                 "missing_provenance_json",
                 "import_execution_json",
+                "consensus_provenance_json",
                 "committed_at",
                 "expected_current_version",
                 "pointer_advanced",
@@ -304,15 +619,22 @@ class SQLiteResearchRepository:
                 *forecast.scope,
                 forecast.target_json,
                 forecast.provenance_class,
-                "UNKNOWN_LEGACY_PROVENANCE" if legacy else "COMPLETE",
+                (
+                    "UNKNOWN_LEGACY_PROVENANCE"
+                    if legacy
+                    else "CONSENSUS_SOURCE_BOUND"
+                    if consensus
+                    else "COMPLETE"
+                ),
                 forecast.payload_bytes,
                 forecast.payload_sha256,
                 forecast.payload_sha256,
                 forecast.source_locator,
-                None if legacy else payload.get("bundle_id"),
+                payload.get("bundle_id") if native else None,
                 *(original[field] for field in ORIGINAL_FIELDS),
                 forecast.missing_provenance_json,
                 forecast.import_execution_json,
+                forecast.consensus_provenance_json,
                 committed_at,
                 expected_current_version,
                 int(advanced),
@@ -330,7 +652,7 @@ class SQLiteResearchRepository:
                 (f"status-{run_id}", run_id, committed_at, committed_at),
             )
             if advanced:
-                connection.execute(
+                pointer_write = connection.execute(
                     "INSERT INTO research_live_forecast_current_pointer "
                     "VALUES (?, ?, ?, ?, ?, ?, ?) "
                     "ON CONFLICT(lottery_type, target_draw_number, target_draw_date, "
@@ -339,13 +661,16 @@ class SQLiteResearchRepository:
                     "WHERE research_live_forecast_current_pointer.version=?",
                     (*forecast.scope, version, run_id, expected_current_version),
                 )
+                if strict and pointer_write.rowcount != 1:
+                    raise ResearchConflictError("canonical current pointer CAS failed")
             # Recheck after all writes: a deadline/schedule/outcome change must
             # roll back the whole native transaction. Legacy may be history-only.
             final_eligible = current_eligible()
             if (
                 type(final_eligible) is not bool
-                or (advanced and not final_eligible)
-                or clock() < datetime.fromisoformat(committed_at)
+                or (strict and not final_eligible)
+                or (advanced and not strict and not final_eligible)
+                or _as_utc(clock()) < datetime.fromisoformat(committed_at)
             ):
                 raise ResearchConflictError("forecast validity changed before commit")
             return LiveForecastResult(
@@ -353,6 +678,26 @@ class SQLiteResearchRepository:
             )
 
         return self._write_transaction(operation)
+
+    def commit_consensus_promotion(
+        self,
+        forecast: LiveForecastInput,
+        *,
+        expected_current_version: int,
+        current_eligible: Callable[[], bool],
+        clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+        idempotency_key: str | None = None,
+    ) -> LiveForecastResult:
+        """Promote one canonical consensus candidate with strict CAS semantics."""
+
+        return self.commit_live_forecast(
+            forecast,
+            expected_current_version=expected_current_version,
+            current_eligible=current_eligible,
+            clock=clock,
+            strict_consensus=True,
+            idempotency_key=idempotency_key,
+        )
 
     def register_rule_contract(
         self,
@@ -1450,7 +1795,7 @@ class SQLiteResearchRepository:
             resolved_path=str(self._paths.database),
             schema_version=int(migration_row[0]),
             migration_checksum=str(migration_row[1]),
-            migration_checksum_match=str(migration_row[1]) == V3_MIGRATION_CHECKSUM,
+            migration_checksum_match=str(migration_row[1]) == V4_MIGRATION_CHECKSUM,
             table_inventory=inventory,
             row_counts=counts,
             append_only_triggers=tuple(
@@ -1979,6 +2324,16 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.utcoffset() is None:
+        raise ResearchRepositoryError("repository clock must be timezone-aware")
+    return value.astimezone(UTC)
+
+
+def _utc_text(value: datetime) -> str:
+    return _as_utc(value).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
 def fetch_research_draw_bindings_for_dataset(
     connection: sqlite3.Connection,
     *,
@@ -2383,6 +2738,7 @@ __all__ = [
     "DrawBindingInput",
     "DuplicateIdempotencyKeyError",
     "HistoricalReplayDiscoveryCorpusRows",
+    "LiveForecastCurrentResult",
     "QueryPage",
     "RankingCursor",
     "RankingRow",

@@ -7,6 +7,7 @@ evidence, opens a database, schedules a job, or calls the frozen campaign.
 from __future__ import annotations
 
 import json
+import random
 from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
@@ -56,6 +57,7 @@ from lottolab.domain.b649_next_undrawn_forecast import (
     history_ref,
     rank_candidates,
     rational_payload,
+    require_digest,
     validate_history,
     validate_tickets,
 )
@@ -219,6 +221,90 @@ class CanonicalNativeTicketGenerator:
         return tickets
 
 
+_PROCESS_GLOBAL_RNG_STREAM = "python.random.module"
+_PROCESS_GLOBAL_RNG_STATE_FORMAT = "python.random.getstate.v3"
+
+
+def _process_global_rng_state_digest(state: object) -> str:
+    return digest({"format": _PROCESS_GLOBAL_RNG_STATE_FORMAT, "state": state})
+
+
+def _replay_invocation_identity(
+    *,
+    descriptor: StrategyDescriptor,
+    draw: Draw,
+    causal_history_sha256: str,
+    configuration: GenerationConfig,
+    producer: ProducerFingerprint,
+    invocation_ordinal: int,
+    prestate_sha256: str,
+    poststate_sha256: str,
+) -> str:
+    payload: dict[str, object] = {
+        "causal_history_sha256": causal_history_sha256,
+        "draw_date": draw.draw_date.isoformat(),
+        "draw_number": draw.draw_number,
+        "generation_config_sha256": configuration.sha256,
+        "invocation_ordinal": invocation_ordinal,
+        "poststate_sha256": poststate_sha256,
+        "prestate_sha256": prestate_sha256,
+        "producer_fingerprint": producer.digest,
+        "state_format": _PROCESS_GLOBAL_RNG_STATE_FORMAT,
+        "strategy_id": descriptor.strategy_id,
+        "stream": _PROCESS_GLOBAL_RNG_STREAM,
+    }
+    return canonical_json({**payload, "identity_sha256": digest(payload)})
+
+
+def _validate_replay_invocation_identity(
+    observation: ReplayObservation,
+    configuration: GenerationConfig,
+) -> None:
+    raw = observation.replay_invocation_identity
+    if raw is None:
+        raise ForecastContractError("REPLAY_RNG_STATE_UNAVAILABLE_REGENERATION_REQUIRED")
+    try:
+        parsed = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as exc:
+        raise ForecastContractError("INVALID_REPLAY_INVOCATION_IDENTITY") from exc
+    if type(parsed) is not dict:
+        raise ForecastContractError("INVALID_REPLAY_INVOCATION_IDENTITY")
+    payload = cast(dict[str, object], parsed).copy()
+    identity_sha256 = payload.pop("identity_sha256", None)
+    if type(identity_sha256) is not str or digest(payload) != identity_sha256:
+        raise ForecastContractError("INVALID_REPLAY_INVOCATION_IDENTITY")
+    expected_keys = {
+        "causal_history_sha256",
+        "draw_date",
+        "draw_number",
+        "generation_config_sha256",
+        "invocation_ordinal",
+        "poststate_sha256",
+        "prestate_sha256",
+        "producer_fingerprint",
+        "state_format",
+        "strategy_id",
+        "stream",
+    }
+    if set(payload) != expected_keys:
+        raise ForecastContractError("INVALID_REPLAY_INVOCATION_IDENTITY")
+    if (
+        payload["causal_history_sha256"] != observation.causal_history_sha256
+        or payload["draw_date"] != observation.draw_date.isoformat()
+        or payload["draw_number"] != observation.draw_number
+        or payload["generation_config_sha256"] != configuration.sha256
+        or payload["producer_fingerprint"] != observation.producer_fingerprint
+        or payload["strategy_id"] != observation.strategy_id
+        or payload["state_format"] != _PROCESS_GLOBAL_RNG_STATE_FORMAT
+        or payload["stream"] != _PROCESS_GLOBAL_RNG_STREAM
+        or type(payload["invocation_ordinal"]) is not int
+        or payload["invocation_ordinal"] < 1
+    ):
+        raise ForecastContractError("REPLAY_INVOCATION_IDENTITY_MISMATCH")
+    require_digest(cast(str, payload["prestate_sha256"]))
+    require_digest(cast(str, payload["poststate_sha256"]))
+
+
 def iter_native_replay_observations(
     *,
     target: ObservationTarget,
@@ -231,11 +317,12 @@ def iter_native_replay_observations(
     """Yield typed replay cells using the current native generation contract.
 
     The target is used only to validate the causal boundary; its outcome is not
-    an input.  A process-global unseeded strategy cannot establish replay call
-    identity, so its eligible cells are recorded as typed failures without
-    invoking the generator.  Caller seeds are passed only where the current
-    generator contract requires them; native internal seed rules remain in the
-    generation configuration for each exact causal prefix.
+    an input. Process-global unseeded strategies run through their native
+    adapter unchanged; the exact global RNG state fingerprints and canonical
+    invocation ordinal are bound to each resulting observation. Caller seeds
+    are passed only where the current generator contract requires them; native
+    internal seed rules remain in the generation configuration for each exact
+    causal prefix.
     """
 
     if not history:
@@ -255,6 +342,7 @@ def iter_native_replay_observations(
     history_authority = history_ref(history)
     validate_history(history, target, history_authority, history[-1].draw_number)
     prefix_authorities = tuple(history_ref(history[:index]) for index in range(len(history)))
+    invocation_ordinal = 0
 
     for descriptor in descriptors:
         caller_seed = caller_seeds.get(descriptor.strategy_id)
@@ -283,25 +371,14 @@ def iter_native_replay_observations(
                 continue
 
             semantics = json.loads(configuration.rng_semantics_json)
-            if semantics.get("behavior") == "UNSEEDED_STOCHASTIC":
-                yield ReplayObservation(
-                    descriptor.strategy_id,
-                    descriptor.version,
-                    descriptor.native_ticket_count,
-                    draw.draw_number,
-                    draw.draw_date,
-                    prefix_authorities[index].history_sha256,
-                    configuration.sha256,
-                    status=ObservationStatus.FAILURE,
-                    producer_fingerprint=producer.digest,
-                    failure_code="UNSEEDED_STOCHASTIC_REPLAY_CALL_IDENTITY_UNAVAILABLE",
-                )
-                continue
-
+            unseeded = semantics.get("behavior") == "UNSEEDED_STOCHASTIC"
+            invocation_ordinal += 1
+            prestate_sha256 = _process_global_rng_state_digest(random.getstate())
             try:
                 tickets = generator.generate(descriptor, configuration, prefix)
                 validate_tickets(tickets, descriptor.native_ticket_count)
             except Exception as exc:
+                poststate_sha256 = _process_global_rng_state_digest(random.getstate())
                 yield ReplayObservation(
                     descriptor.strategy_id,
                     descriptor.version,
@@ -312,9 +389,26 @@ def iter_native_replay_observations(
                     configuration.sha256,
                     status=ObservationStatus.FAILURE,
                     producer_fingerprint=producer.digest,
-                    failure_code=f"REPLAY_GENERATION_FAILURE:{type(exc).__name__}",
+                    failure_code=(
+                        f"REPLAY_GENERATION_FAILURE:{type(exc).__name__}:{exc}"
+                    ),
+                    replay_invocation_identity=(
+                        _replay_invocation_identity(
+                            descriptor=descriptor,
+                            draw=draw,
+                            causal_history_sha256=prefix_authorities[index].history_sha256,
+                            configuration=configuration,
+                            producer=producer,
+                            invocation_ordinal=invocation_ordinal,
+                            prestate_sha256=prestate_sha256,
+                            poststate_sha256=poststate_sha256,
+                        )
+                        if unseeded
+                        else None
+                    ),
                 )
                 continue
+            poststate_sha256 = _process_global_rng_state_digest(random.getstate())
             yield ReplayObservation(
                 descriptor.strategy_id,
                 descriptor.version,
@@ -326,6 +420,20 @@ def iter_native_replay_observations(
                 status=ObservationStatus.EVALUATED,
                 producer_fingerprint=producer.digest,
                 tickets=tickets,
+                replay_invocation_identity=(
+                    _replay_invocation_identity(
+                        descriptor=descriptor,
+                        draw=draw,
+                        causal_history_sha256=prefix_authorities[index].history_sha256,
+                        configuration=configuration,
+                        producer=producer,
+                        invocation_ordinal=invocation_ordinal,
+                        prestate_sha256=prestate_sha256,
+                        poststate_sha256=poststate_sha256,
+                    )
+                    if unseeded
+                    else None
+                ),
             )
 
 
@@ -427,12 +535,15 @@ def evaluate_evidence(request: ForecastRequest) -> tuple[CandidateEvidence, ...]
             or observation.producer_fingerprint != request.producer.digest
         ):
             raise ForecastContractError("REPLAY_HISTORY_OR_GENERATION_IDENTITY_MISMATCH")
-        if (
+        behavior = json.loads(effective_config.rng_semantics_json)["behavior"]
+        if observation.replay_invocation_identity is not None:
+            if behavior != "UNSEEDED_STOCHASTIC":
+                raise ForecastContractError("UNEXPECTED_REPLAY_INVOCATION_IDENTITY")
+            _validate_replay_invocation_identity(observation, effective_config)
+        elif (
             observation.status is ObservationStatus.EVALUATED
-            and json.loads(effective_config.rng_semantics_json)["behavior"] == "UNSEEDED_STOCHASTIC"
+            and behavior == "UNSEEDED_STOCHASTIC"
         ):
-            # No state capture/regeneration adapter is part of this producer.
-            # A shared RNG class alone cannot establish call identity.
             raise ForecastContractError("REPLAY_RNG_STATE_UNAVAILABLE_REGENERATION_REQUIRED")
         key = observation.strategy_id, observation.draw_number
         if key in indexed:

@@ -800,16 +800,58 @@ def test_native_replay_iterator_classifies_warmup_and_unseeded_cells_without_run
     assert len(observations) == 12
     assert [strategy_id for strategy_id, _ in generator.calls] == [
         "fixture_deterministic"
-    ] * 5
+    ] * 5 + ["fixture_unseeded"] * 5
     assert sum(row.status is ObservationStatus.WARMUP for row in observations) == 2
     unseeded_rows = [row for row in observations if row.strategy_id == "fixture_unseeded"]
-    assert all(row.status is ObservationStatus.FAILURE for row in unseeded_rows[1:])
-    assert all(
-        row.failure_code == "UNSEEDED_STOCHASTIC_REPLAY_CALL_IDENTITY_UNAVAILABLE"
-        for row in unseeded_rows[1:]
-    )
+    assert all(row.status is ObservationStatus.EVALUATED for row in unseeded_rows[1:])
+    assert all(row.replay_invocation_identity is not None for row in unseeded_rows[1:])
     assert evaluate_evidence(replace(request, observations=observations))[0].complete
-    assert not evaluate_evidence(replace(request, observations=observations))[1].complete
+    assert evaluate_evidence(replace(request, observations=observations))[1].complete
+
+
+def test_unseeded_replay_identity_is_reproducible_and_rejects_tampering():
+    unseeded = replace(
+        descriptor("fixture_unseeded"),
+        provenance=("randomness:PROCESS_GLOBAL_UNSEEDED_MATH_RANDOM_EQUIVALENT",),
+    )
+    request = make_request((unseeded,))
+    original_state = random.getstate()
+    try:
+        first = tuple(
+            iter_native_replay_observations(
+                target=request.target,
+                history=request.history,
+                catalog=request.catalog,
+                producer=request.producer,
+                generator=Generator(),
+            )
+        )
+        random.setstate(original_state)
+        second = tuple(
+            iter_native_replay_observations(
+                target=request.target,
+                history=request.history,
+                catalog=request.catalog,
+                producer=request.producer,
+                generator=Generator(),
+            )
+        )
+    finally:
+        random.setstate(original_state)
+
+    assert first == second
+    tampered = json.loads(cast(str, first[1].replay_invocation_identity))
+    tampered["prestate_sha256"] = digest("unrelated stochastic call")
+    altered = replace(
+        request,
+        observations=(
+            *first[:1],
+            replace(first[1], replay_invocation_identity=canonical_json(tampered)),
+            *first[2:],
+        ),
+    )
+    with pytest.raises(ForecastContractError, match="INVALID_REPLAY_INVOCATION_IDENTITY"):
+        evaluate_evidence(altered)
 
 
 def test_native_replay_iterator_binds_each_cell_to_its_exact_causal_configuration():

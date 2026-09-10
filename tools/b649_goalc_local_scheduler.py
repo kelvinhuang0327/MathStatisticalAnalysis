@@ -33,6 +33,10 @@ from uuid import uuid4
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from lottolab.application.b649_operational_portfolio_materializer import (
+    default_portfolio_destination,
+    materialize_portfolios,
+)
 from lottolab.application.draw_automation import DrawSyncRequest
 from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
 from lottolab.application.schedule_sync import (
@@ -286,6 +290,7 @@ class PredictionInventory:
     available_stream_ids: tuple[str, ...]
     observed_stream_ids: tuple[str, ...]
     score_required_run_ids: tuple[str, ...]
+    available_prediction_paths: tuple[Path, ...] = ()
 
     @property
     def missing_stream_ids(self) -> tuple[str, ...]:
@@ -336,6 +341,12 @@ class SchedulerBackend(Protocol):
         self,
         target: PredictionTarget,
         missing_stream_ids: Sequence[str],
+    ) -> dict[str, object]: ...
+
+    def materialize_predraw_portfolios(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
     ) -> dict[str, object]: ...
 
     def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]: ...
@@ -576,6 +587,38 @@ class ProductionSchedulerBackend:
             "failures": failures,
         }
 
+    def materialize_predraw_portfolios(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> dict[str, object]:
+        """Pool the persisted PRE_DRAW streams after the inventory is complete."""
+
+        if not inventory.ready:
+            raise SchedulerInvariantError(
+                "cannot materialize portfolios before every PRE_DRAW stream is available"
+            )
+        if len(inventory.available_prediction_paths) != len(inventory.available_stream_ids):
+            raise SchedulerInvariantError(
+                "ready prediction inventory has no exact candidate-path authority"
+            )
+        upstream_locator = (
+            f"{self._config.operation_root / 'predictions' / target.draw_number}/"
+        )
+        result = materialize_portfolios(
+            candidate_paths=inventory.available_prediction_paths,
+            expected_strategy_ids=inventory.expected_stream_ids,
+            target_draw_number=target.draw_number,
+            target_draw_date=target.draw_date,
+            scheduled_at=target.scheduled_at,
+            upstream_authority_locator=upstream_locator,
+            destination=default_portfolio_destination(
+                self._config.operation_root,
+                target.draw_number,
+            ),
+        )
+        return result.health_dict()
+
     def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]:
         report = inspect_draw_data_integrity_report(self._config.database)
         if (
@@ -796,7 +839,7 @@ def inspect_prediction_inventory(
         raise SchedulerInvariantError("enabled B649 strategy universe is not exactly 11")
     expected_set = frozenset(expected)
     scheduled_at = _target_scheduled_at(target)
-    available: dict[str, str] = {}
+    available: dict[str, Path] = {}
     observed: set[str] = set()
     score_required: list[str] = []
     for path in iter_prediction_files(root, target.draw_number):
@@ -835,7 +878,7 @@ def inspect_prediction_inventory(
                 tickets = prediction.get("tickets")
                 if not isinstance(tickets, list) or not tickets:
                     raise SchedulerInvariantError(f"AVAILABLE prediction has no tickets: {path}")
-                available[strategy_id] = run_id
+                available[strategy_id] = path
                 score_required.append(run_id)
             elif availability not in {"UNAVAILABLE", "TECHNICAL_FAILURE"}:
                 raise SchedulerInvariantError(f"prediction availability is invalid: {path}")
@@ -848,6 +891,9 @@ def inspect_prediction_inventory(
         available_stream_ids=available_ids,
         observed_stream_ids=observed_ids,
         score_required_run_ids=tuple(score_required),
+        available_prediction_paths=tuple(
+            available[strategy_id] for strategy_id in expected if strategy_id in available
+        ),
     )
 
 
@@ -970,6 +1016,7 @@ def run_scheduler_cycle(
                 "failures": [],
             }
             official_sync: dict[str, object] = {"status": "NOT_DUE"}
+            portfolio_materialization: dict[str, object] = {"status": "NOT_DUE"}
             if decision_at < scheduled_at:
                 if inventory.missing_stream_ids:
                     generation = backend.generate_predraw(
@@ -980,6 +1027,10 @@ def run_scheduler_cycle(
                     inventory = backend.inspect_predictions(target)
                 else:
                     generation = {**generation, "status": "NO_OP"}
+                if inventory.ready:
+                    portfolio_materialization = backend.materialize_predraw_portfolios(
+                        target, inventory
+                    )
                 postdraw = PostDrawResult(
                     outcome_status="NOT_DUE",
                     scoring_status="NOT_DUE",
@@ -1004,6 +1055,10 @@ def run_scheduler_cycle(
                         canonical_source_head=source_head,
                     )
             else:
+                if inventory.ready:
+                    portfolio_materialization = backend.materialize_predraw_portfolios(
+                        target, inventory
+                    )
                 official_sync = backend.sync_official_outcome(target)
                 postdraw = backend.complete_postdraw(target, inventory)
                 terminal_status = (
@@ -1049,6 +1104,7 @@ def run_scheduler_cycle(
                 "ready_before_draw": inventory.ready,
                 "prediction_inventory": inventory.health_dict(),
                 "prediction_generation": generation,
+                "portfolio_materialization": portfolio_materialization,
                 "announcement": announcement.health_dict(),
                 "official_sync": official_sync,
                 "outcome_status": postdraw.outcome_status,
@@ -1062,6 +1118,30 @@ def run_scheduler_cycle(
                 "pre_draw_incomplete_targets": incomplete,
                 "warnings": list(cycle_warnings),
             }
+            if decision_at < scheduled_at and inventory.ready:
+                terminal.update(
+                    {
+                        "pre_outcome_forecast_status": portfolio_materialization.get(
+                            "pre_outcome_forecast_status"
+                        ),
+                        "post_outcome_scoring_status": portfolio_materialization.get(
+                            "post_outcome_scoring_status"
+                        ),
+                        "next_draw_rollover_status": portfolio_materialization.get(
+                            "next_draw_rollover_status"
+                        ),
+                        "k5_status": portfolio_materialization.get("k5_status"),
+                        "k10_status": portfolio_materialization.get("k10_status"),
+                        "k20_status": portfolio_materialization.get("k20_status"),
+                        "outcome_used": portfolio_materialization.get("outcome_used"),
+                        "upstream_authority_locator": portfolio_materialization.get(
+                            "upstream_authority_locator"
+                        ),
+                        "portfolio_authority_locator": portfolio_materialization.get(
+                            "portfolio_authority_locator"
+                        ),
+                    }
+                )
             _atomic_health_write(config.health_path, _primary_health_payload(terminal))
             lock.__exit__(None, None, None)
             lock_released = True

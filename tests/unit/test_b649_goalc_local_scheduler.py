@@ -333,7 +333,7 @@ class _ForecastOnlyBackend:
 
     ``resolve_target``/``inspect_predictions`` are exactly the two
     ``SchedulerBackend`` methods Section 4 of the Packet names as the
-    existing authority ``forecast`` must reuse. The other four methods raise
+    existing authority ``forecast`` must reuse. The other five methods raise
     instead of acting, so any accidental call from ``_forecast_command``
     surfaces immediately as a test failure rather than a silent write.
     """
@@ -358,6 +358,12 @@ class _ForecastOnlyBackend:
     ) -> dict[str, object]:
         self.mutating_calls.append("generate_predraw")
         raise AssertionError("forecast must never call generate_predraw")
+
+    def materialize_predraw_portfolios(
+        self, target: PredictionTarget, inventory: PredictionInventory
+    ) -> dict[str, object]:
+        self.mutating_calls.append("materialize_predraw_portfolios")
+        raise AssertionError("forecast must never call materialize_predraw_portfolios")
 
     def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]:
         self.mutating_calls.append("sync_official_outcome")
@@ -389,6 +395,7 @@ class _FakeBackend:
         )
         self.fail_refresh = fail_refresh
         self.generation_calls: list[tuple[str, ...]] = []
+        self.materialization_calls: list[tuple[PredictionTarget, PredictionInventory]] = []
         self.sync_calls = 0
         self.complete_calls = 0
 
@@ -426,6 +433,27 @@ class _FakeBackend:
             "requested_stream_ids": list(call),
             "created_prediction_paths": ["fixture.json"],
             "failures": [],
+        }
+
+    def materialize_predraw_portfolios(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> dict[str, object]:
+        assert target == self.target
+        assert inventory.ready
+        self.materialization_calls.append((target, inventory))
+        return {
+            "status": "ALREADY_PRESENT",
+            "pre_outcome_forecast_status": "COMPLETE",
+            "post_outcome_scoring_status": "NOT_DUE",
+            "next_draw_rollover_status": "NOT_DUE",
+            "k5_status": "COMPLETE",
+            "k10_status": "COMPLETE",
+            "k20_status": "COMPLETE",
+            "outcome_used": "NO",
+            "upstream_authority_locator": str(Path.cwd() / "upstream" / target.draw_number),
+            "portfolio_authority_locator": str(Path.cwd() / "portfolio" / target.draw_number),
         }
 
     def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]:
@@ -528,7 +556,7 @@ class _ShadowFailureBackend(_ShadowHookBackend):
 
 def test_production_config_is_the_exact_authorized_runtime() -> None:
     config = production_config()
-    canonical_repository = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
+    canonical_repository = scheduler_module.CANONICAL_REPOSITORY
 
     assert config.label == "com.lottolab.b649-goalc-r1"
     assert config.start_interval_seconds == 300
@@ -536,10 +564,8 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
-    assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
-    assert config.operation_root == Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
-    )
+    assert config.script_path == scheduler_module.SCRIPT_PATH
+    assert config.operation_root == scheduler_module.GOALC_ROOT
     assert config.health_path == config.operation_root / "scheduler/health.json"
 
 
@@ -861,6 +887,68 @@ def test_prediction_inventory_requires_exactly_one_available_predraw_per_stream(
     assert inventory.actual_available_count == 11
     assert inventory.available_stream_ids == STREAM_IDS
     assert inventory.missing_stream_ids == ()
+    assert inventory.available_prediction_paths == tuple(
+        tmp_path / "predictions" / target.draw_number / strategy_id / "prediction.json"
+        for strategy_id in STREAM_IDS
+    )
+
+
+def test_production_backend_passes_exact_predraw_paths_to_portfolio_materializer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    temporary = _config(tmp_path)
+    config = replace(
+        production_config(),
+        operation_root=temporary.operation_root,
+        scheduler_root=temporary.scheduler_root,
+        lock_path=temporary.lock_path,
+        health_path=temporary.health_path,
+        stdout_path=temporary.stdout_path,
+        stderr_path=temporary.stderr_path,
+        plist_path=temporary.plist_path,
+    )
+    target = _target()
+    candidate_paths = tuple(tmp_path / f"candidate-{index}.json" for index in range(11))
+    inventory = replace(_inventory(11), available_prediction_paths=candidate_paths)
+    captured: dict[str, object] = {}
+
+    class _Materialized:
+        def health_dict(self) -> dict[str, object]:
+            return {"status": "CREATED"}
+
+    def fake_materialize(**kwargs: object) -> _Materialized:
+        captured.update(kwargs)
+        return _Materialized()
+
+    monkeypatch.setattr(scheduler_module, "materialize_portfolios", fake_materialize)
+    backend = ProductionSchedulerBackend(
+        config,
+        clock=lambda: NOW,
+        https_client=OfficialHttpsClient(
+            transport=lambda _request, _context, _timeout, _limit: b"{}"
+        ),
+        environ={
+            "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
+            "LOTTOLAB_DATA_DIR": str(config.data_root),
+        },
+    )
+
+    result = backend.materialize_predraw_portfolios(target, inventory)
+
+    assert result == {"status": "CREATED"}
+    assert captured["candidate_paths"] == candidate_paths
+    assert captured["expected_strategy_ids"] == STREAM_IDS
+    assert captured["target_draw_number"] == target.draw_number
+    assert captured["target_draw_date"] == target.draw_date
+    assert captured["scheduled_at"] == target.scheduled_at
+    assert captured["upstream_authority_locator"] == (
+        f"{config.operation_root / 'predictions' / target.draw_number}/"
+    )
+    assert captured["destination"] == scheduler_module.default_portfolio_destination(
+        config.operation_root, target.draw_number
+    )
+    assert callable(captured["pre_outcome_seal_check"])
 
 
 def test_prediction_inventory_does_not_count_unavailable_or_postdraw_records(
@@ -934,6 +1022,13 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["ready_before_draw"] is True
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
+    assert len(backend.materialization_calls) == 1
+    assert backend.materialization_calls[0][1].ready is True
+    assert result["pre_outcome_forecast_status"] == "COMPLETE"
+    assert result["post_outcome_scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
+    assert result["k5_status"] == result["k10_status"] == result["k20_status"] == "COMPLETE"
+    assert result["outcome_used"] == "NO"
     assert backend.sync_calls == 0
     persisted = json.loads(config.health_path.read_text())
     assert SHADOW_HEALTH_NAMESPACE not in persisted
@@ -1128,6 +1223,7 @@ def test_ready_predraw_cycle_is_no_op_and_does_not_call_generation(
     assert cast(dict[str, object], result["prediction_generation"])["status"] == "NO_OP"
     assert result["cycle_action"] == "NO_OP"
     assert backend.generation_calls == []
+    assert len(backend.materialization_calls) == 1
 
 
 def test_deadline_cycle_never_generates_and_keeps_incomplete_target_visible(

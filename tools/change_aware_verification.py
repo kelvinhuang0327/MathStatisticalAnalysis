@@ -8,14 +8,24 @@ from __future__ import annotations
 
 import argparse
 import ast
+import hashlib
 import json
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+CANONICAL_CURRENT_AUTHORITY_PATH = "docs/research/cross_lottery_research_ledger_r1.json"
+PINNED_SOURCE_REFRESH_RULE = "PINNED_SOURCE_AUTHORITY_REFRESH_REQUIRED"
+CURRENT_AUTHORITY_PIN_KINDS = ("source_files", "correctness_evidence")
+STRUCTURAL_VERIFICATION_COMMAND = (
+    "uv run pytest -q tests/contract/test_strategy_matrix_structural_api.py "
+    "tests/unit/test_strategy_matrix_structural_projection_builder.py "
+    "tests/unit/test_strategy_matrix_structural_reader.py"
+)
 
 READ_METHODS: set[str] = {
     "read_bytes",
@@ -77,11 +87,36 @@ class HermeticityFinding:
 
 
 @dataclass(frozen=True)
+class PinnedSourceConsumer:
+    source_path: str
+    consumer_path: str
+    consumer_id: str
+    pin_kind: str
+    status: str
+    pinned_sha256: str | None
+    snapshot_sha256: str | None
+    detail: str = ""
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "source_path": self.source_path,
+            "consumer_path": self.consumer_path,
+            "consumer_id": self.consumer_id,
+            "pin_kind": self.pin_kind,
+            "status": self.status,
+            "pinned_sha256": self.pinned_sha256,
+            "snapshot_sha256": self.snapshot_sha256,
+            "detail": self.detail,
+        }
+
+
+@dataclass(frozen=True)
 class VerificationPlan:
     changed_paths: list[str]
     recommended_commands: list[str]
     hermeticity_findings: list[HermeticityFinding]
     rules_triggered: list[str]
+    pinned_source_consumers: list[PinnedSourceConsumer]
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -89,6 +124,7 @@ class VerificationPlan:
             "recommended_commands": self.recommended_commands,
             "hermeticity_findings": [f.to_dict() for f in self.hermeticity_findings],
             "rules_triggered": self.rules_triggered,
+            "pinned_source_consumers": [h.to_dict() for h in self.pinned_source_consumers],
         }
 
 
@@ -459,9 +495,307 @@ def scan_test_file_hermeticity(file_path: Path) -> list[HermeticityFinding]:
     return scan_test_source_hermeticity(content, file_path=str(file_path))
 
 
+def _normalize_repo_relpath(raw: str) -> str | None:
+    rel = Path(raw).as_posix()
+    if rel.startswith("./"):
+        rel = rel[2:]
+    if not rel or rel.startswith("/") or ".." in Path(rel).parts:
+        return None
+    return rel
+
+
+def _sha256_hex(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _is_sha256_hex(value: object) -> bool:
+    if not isinstance(value, str) or len(value) != 64:
+        return False
+    return all(char in "0123456789abcdefABCDEF" for char in value)
+
+
+def _read_snapshot_bytes(
+    repo_root: Path,
+    relative_path: str,
+    snapshot_ref: str | None,
+) -> bytes | None:
+    rel = _normalize_repo_relpath(relative_path)
+    if rel is None:
+        return None
+    if snapshot_ref is None:
+        path = repo_root / rel
+        try:
+            if path.is_symlink() or not path.is_file():
+                return None
+            return path.read_bytes()
+        except OSError:
+            return None
+    proc = subprocess.run(
+        ["git", "show", f"{snapshot_ref}:{rel}"],
+        cwd=repo_root,
+        capture_output=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        return None
+    return proc.stdout
+
+
+def _parse_git_name_status(stdout: str) -> list[str]:
+    paths: set[str] = set()
+    for raw_line in stdout.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        parts = line.split("\t")
+        if len(parts) == 1:
+            normalized = _normalize_repo_relpath(parts[0])
+            if normalized:
+                paths.add(normalized)
+            continue
+        for part in parts[1:]:
+            normalized = _normalize_repo_relpath(part)
+            if normalized:
+                paths.add(normalized)
+    return sorted(paths)
+
+
+def _git_diff_name_status_cmd(base_ref: str, head_ref: str, range_syntax: bool) -> list[str]:
+    cmd = ["git", "diff", "--name-status", "--diff-filter=ACDMRT"]
+    if range_syntax:
+        cmd.append(f"{base_ref}...{head_ref}")
+    else:
+        cmd.extend([base_ref, head_ref])
+    return cmd
+
+
+def _as_object_map(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    mapped: dict[str, object] = {}
+    for key, item in cast(dict[object, object], value).items():
+        if not isinstance(key, str):
+            return None
+        mapped[key] = item
+    return mapped
+
+
+def _as_object_list(value: object) -> list[object] | None:
+    if not isinstance(value, list):
+        return None
+    return list(cast(list[object], value))
+
+
+def _authority_error_hit(status: str, detail: str) -> PinnedSourceConsumer:
+    return PinnedSourceConsumer(
+        source_path="",
+        consumer_path=CANONICAL_CURRENT_AUTHORITY_PATH,
+        consumer_id="",
+        pin_kind="",
+        status=status,
+        pinned_sha256=None,
+        snapshot_sha256=None,
+        detail=detail,
+    )
+
+
+def _load_current_authority_methods(
+    repo_root: Path,
+    snapshot_ref: str | None,
+) -> tuple[list[object] | None, PinnedSourceConsumer | None]:
+    raw = _read_snapshot_bytes(repo_root, CANONICAL_CURRENT_AUTHORITY_PATH, snapshot_ref)
+    if raw is None:
+        return None, None
+    loaded: object
+    try:
+        loaded = json.loads(raw)
+    except (TypeError, ValueError, UnicodeDecodeError):
+        return None, _authority_error_hit(
+            "unreadable",
+            "current-authority JSON is unreadable",
+        )
+    payload = _as_object_map(loaded)
+    if payload is None:
+        return None, _authority_error_hit(
+            "unsupported",
+            "current-authority JSON is not an object",
+        )
+    matrix = _as_object_map(payload.get("imported_optimizer_matrix"))
+    if matrix is None:
+        return None, _authority_error_hit(
+            "unsupported",
+            "imported_optimizer_matrix is missing or unsupported",
+        )
+    methods = _as_object_list(matrix.get("methods"))
+    if methods is None:
+        return None, _authority_error_hit(
+            "unsupported",
+            "imported_optimizer_matrix.methods is missing or unsupported",
+        )
+    return methods, None
+
+
+def _collect_pinned_source_consumers(
+    changed_paths: list[str],
+    repo_root: Path,
+    snapshot_ref: str | None,
+) -> tuple[list[PinnedSourceConsumer], list[str]]:
+    methods, load_error = _load_current_authority_methods(repo_root, snapshot_ref)
+    if load_error is not None:
+        return [load_error], [STRUCTURAL_VERIFICATION_COMMAND]
+    if methods is None:
+        return [], []
+
+    changed_set = set(changed_paths)
+    hits: list[PinnedSourceConsumer] = []
+    evidence_by_consumer: dict[str, set[str]] = {}
+
+    for index, method_raw in enumerate(methods):
+        method = _as_object_map(method_raw)
+        if method is None:
+            if changed_paths:
+                hits.append(
+                    _authority_error_hit(
+                        "unsupported",
+                        f"imported_optimizer_matrix.methods[{index}] is not an object",
+                    )
+                )
+            continue
+        consumer_id_value = method.get("strategy_id")
+        consumer_id = (
+            consumer_id_value
+            if isinstance(consumer_id_value, str) and consumer_id_value
+            else f"method[{index}]"
+        )
+        evidence_paths = evidence_by_consumer.setdefault(consumer_id, set())
+        for pin_kind in CURRENT_AUTHORITY_PIN_KINDS:
+            entries_value = method.get(pin_kind)
+            if entries_value is None:
+                continue
+            entries = _as_object_list(entries_value)
+            if entries is None:
+                if changed_paths:
+                    hits.append(
+                        PinnedSourceConsumer(
+                            source_path="",
+                            consumer_path=CANONICAL_CURRENT_AUTHORITY_PATH,
+                            consumer_id=consumer_id,
+                            pin_kind=pin_kind,
+                            status="unsupported",
+                            pinned_sha256=None,
+                            snapshot_sha256=None,
+                            detail=f"{pin_kind} is not a list",
+                        )
+                    )
+                continue
+            for entry_raw in entries:
+                entry = _as_object_map(entry_raw)
+                if entry is None:
+                    if changed_paths:
+                        hits.append(
+                            PinnedSourceConsumer(
+                                source_path="",
+                                consumer_path=CANONICAL_CURRENT_AUTHORITY_PATH,
+                                consumer_id=consumer_id,
+                                pin_kind=pin_kind,
+                                status="unsupported",
+                                pinned_sha256=None,
+                                snapshot_sha256=None,
+                                detail=f"{pin_kind} entry is not an object",
+                            )
+                        )
+                    continue
+                raw_path = entry.get("path")
+                if not isinstance(raw_path, str):
+                    continue
+                source_path = _normalize_repo_relpath(raw_path)
+                if source_path is None:
+                    if raw_path in changed_set or raw_path in changed_paths:
+                        hits.append(
+                            PinnedSourceConsumer(
+                                source_path=raw_path,
+                                consumer_path=CANONICAL_CURRENT_AUTHORITY_PATH,
+                                consumer_id=consumer_id,
+                                pin_kind=pin_kind,
+                                status="unsupported",
+                                pinned_sha256=None,
+                                snapshot_sha256=None,
+                                detail="pinned path is unsupported",
+                            )
+                        )
+                    continue
+                if pin_kind == "correctness_evidence":
+                    evidence_paths.add(source_path)
+                if source_path not in changed_set:
+                    continue
+                pinned_sha = entry.get("sha256")
+                if not isinstance(pinned_sha, str) or not _is_sha256_hex(pinned_sha):
+                    hits.append(
+                        PinnedSourceConsumer(
+                            source_path=source_path,
+                            consumer_path=CANONICAL_CURRENT_AUTHORITY_PATH,
+                            consumer_id=consumer_id,
+                            pin_kind=pin_kind,
+                            status="unsupported",
+                            pinned_sha256=pinned_sha if isinstance(pinned_sha, str) else None,
+                            snapshot_sha256=None,
+                            detail="pinned sha256 is missing or unsupported",
+                        )
+                    )
+                    continue
+                snapshot_bytes = _read_snapshot_bytes(repo_root, source_path, snapshot_ref)
+                snapshot_sha = None if snapshot_bytes is None else _sha256_hex(snapshot_bytes)
+                pinned_sha_norm = pinned_sha.lower()
+                if snapshot_sha is not None and snapshot_sha == pinned_sha_norm:
+                    status = "affected"
+                    detail = "current-authority consumer pins this changed path"
+                else:
+                    status = "confirmed_mismatch"
+                    detail = (
+                        "pinned sha256 does not match snapshot bytes"
+                        if snapshot_sha is not None
+                        else "pinned path has no snapshot bytes"
+                    )
+                hits.append(
+                    PinnedSourceConsumer(
+                        source_path=source_path,
+                        consumer_path=CANONICAL_CURRENT_AUTHORITY_PATH,
+                        consumer_id=consumer_id,
+                        pin_kind=pin_kind,
+                        status=status,
+                        pinned_sha256=pinned_sha_norm,
+                        snapshot_sha256=snapshot_sha,
+                        detail=detail,
+                    )
+                )
+
+    hits.sort(
+        key=lambda hit: (
+            hit.status,
+            hit.source_path,
+            hit.consumer_path,
+            hit.consumer_id,
+            hit.pin_kind,
+            hit.detail,
+        )
+    )
+
+    extra_commands: list[str] = []
+    if hits:
+        extra_commands.append(STRUCTURAL_VERIFICATION_COMMAND)
+        evidence_targets: set[str] = set()
+        for hit in hits:
+            if hit.status in {"affected", "confirmed_mismatch"}:
+                evidence_targets.update(evidence_by_consumer.get(hit.consumer_id, set()))
+        if evidence_targets:
+            extra_commands.append(f"uv run pytest -q {' '.join(sorted(evidence_targets))}")
+    return hits, extra_commands
+
+
 def generate_verification_plan(
     changed_paths: list[str],
     repo_root: Path | None = None,
+    snapshot_ref: str | None = None,
 ) -> VerificationPlan:
     """Generate a verification plan and run hermeticity checks on changed paths."""
     if repo_root is None:
@@ -556,6 +890,18 @@ def generate_verification_plan(
                     rules_triggered.add(f.rule_id)
 
     hermeticity_findings.sort(key=lambda f: (f.file, f.line, f.rule_id, f.message))
+
+    pinned_hits, pinned_commands = _collect_pinned_source_consumers(
+        sorted_changed_paths,
+        repo_root,
+        snapshot_ref,
+    )
+    if any(hit.status == "confirmed_mismatch" for hit in pinned_hits):
+        rules_triggered.add(PINNED_SOURCE_REFRESH_RULE)
+    for command in pinned_commands:
+        if command not in recommended_commands:
+            recommended_commands.append(command)
+
     sorted_rules_triggered = sorted(rules_triggered)
 
     return VerificationPlan(
@@ -563,6 +909,7 @@ def generate_verification_plan(
         recommended_commands=recommended_commands,
         hermeticity_findings=hermeticity_findings,
         rules_triggered=sorted_rules_triggered,
+        pinned_source_consumers=pinned_hits,
     )
 
 
@@ -590,6 +937,23 @@ def format_text_output(plan: VerificationPlan) -> str:
     if plan.hermeticity_findings:
         for f in plan.hermeticity_findings:
             lines.append(f"  {f.file}:{f.line} [{f.rule_id}] {f.message}")
+    else:
+        lines.append("  None")
+    lines.append("")
+
+    lines.append("PINNED_SOURCE_CONSUMERS")
+    if plan.pinned_source_consumers:
+        for hit in plan.pinned_source_consumers:
+            source = hit.source_path or hit.consumer_path
+            snapshot = hit.snapshot_sha256 or "missing"
+            pinned = hit.pinned_sha256 or "missing"
+            lines.append(
+                f"  {source} -> {hit.consumer_path} [{hit.status}] "
+                f"consumer_id={hit.consumer_id or '-'} pin_kind={hit.pin_kind or '-'} "
+                f"pinned_sha256={pinned} snapshot_sha256={snapshot}"
+            )
+            if hit.detail:
+                lines.append(f"    detail={hit.detail}")
     else:
         lines.append("  None")
 
@@ -659,18 +1023,14 @@ def main(argv: list[str] | None = None) -> int:
         return 64
 
     changed_paths: list[str] = []
+    snapshot_ref: str | None = None
 
     if has_explicit:
         changed_paths = list(args.changed_paths)
     else:
-        # Git range mode
-        cmd = [
-            "git",
-            "diff",
-            "--name-only",
-            "--diff-filter=ACMRT",
-            f"{args.base_ref}...{args.head_ref}",
-        ]
+        # Git range mode: include deletions and rename old paths; bind later
+        # source/authority reads to the range head snapshot.
+        cmd = _git_diff_name_status_cmd(args.base_ref, args.head_ref, range_syntax=True)
         proc = subprocess.run(
             cmd,
             cwd=repo_root,
@@ -679,15 +1039,11 @@ def main(argv: list[str] | None = None) -> int:
             check=False,
         )
         if proc.returncode != 0:
-            # Fallback to direct two-arg diff if range syntax fails
-            fallback_cmd = [
-                "git",
-                "diff",
-                "--name-only",
-                "--diff-filter=ACMRT",
+            fallback_cmd = _git_diff_name_status_cmd(
                 args.base_ref,
                 args.head_ref,
-            ]
+                range_syntax=False,
+            )
             fallback_proc = subprocess.run(
                 fallback_cmd,
                 cwd=repo_root,
@@ -700,9 +1056,14 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             proc = fallback_proc
 
-        changed_paths = [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+        changed_paths = _parse_git_name_status(proc.stdout)
+        snapshot_ref = args.head_ref
 
-    plan = generate_verification_plan(changed_paths, repo_root=repo_root)
+    plan = generate_verification_plan(
+        changed_paths,
+        repo_root=repo_root,
+        snapshot_ref=snapshot_ref,
+    )
 
     if args.format == "json":
         print(json.dumps(plan.to_dict(), indent=2))
@@ -710,6 +1071,9 @@ def main(argv: list[str] | None = None) -> int:
         print(format_text_output(plan))
 
     if plan.hermeticity_findings:
+        return 2
+    blocking_pin_statuses = {"confirmed_mismatch", "unreadable", "unsupported"}
+    if any(hit.status in blocking_pin_statuses for hit in plan.pinned_source_consumers):
         return 2
 
     return 0

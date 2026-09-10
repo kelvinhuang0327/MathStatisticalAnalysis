@@ -92,6 +92,7 @@ from tools.b649_operational_prediction_loop import (
     TAIPEI,
     PredictionTarget,
     StrategyStream,
+    _assert_causal_cutoff,  # pyright: ignore[reportPrivateUsage]
     iter_prediction_files,
     load_canonical_history,
     rescore_draw,
@@ -110,6 +111,12 @@ SCHEDULER_LABEL = "com.lottolab.b649-goalc-r1"
 START_INTERVAL_SECONDS = 300
 STALE_AFTER_SECONDS = 900
 EXPECTED_STREAM_COUNT = 11
+# No existing Goal-C authority resolves an 11-stream decision consensus into a
+# single ranked number list (checked: this module, the operational prediction
+# loop, and the pair-rule shadow -- none defines one). ``forecast`` reports
+# this literally instead of recomputing the one-off, explicitly non-canonical
+# equal-weight mean-rank method used for the prior 115000087 research report.
+FORECAST_RANKING_AUTHORITY_UNRESOLVED = "FORECAST_RANKING_AUTHORITY_UNRESOLVED"
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -1584,6 +1591,165 @@ def _resolve_source_head(worktree: Path) -> str:
     return value
 
 
+def _load_available_predraw_records(
+    root: Path, target: PredictionTarget
+) -> dict[str, tuple[Path, dict[str, object]]]:
+    """Re-read exactly the AVAILABLE PRE_DRAW records ``inspect_prediction_inventory``
+    already proved unique and deadline-valid, keeping each record's source path
+    for error reporting.
+    """
+
+    records: dict[str, tuple[Path, dict[str, object]]] = {}
+    for path in iter_prediction_files(root, target.draw_number):
+        prediction = _read_json_object(path)
+        if prediction.get("prediction_temporal_class") != "PRE_DRAW":
+            continue
+        if prediction.get("availability", "AVAILABLE") != "AVAILABLE":
+            continue
+        strategy_id = prediction.get("strategy_id")
+        if isinstance(strategy_id, str) and strategy_id:
+            records[strategy_id] = (path, prediction)
+    return records
+
+
+def _forecast_stream_record(
+    target: PredictionTarget,
+    strategy_id: str,
+    path: Path,
+    prediction: Mapping[str, object],
+) -> dict[str, object]:
+    """Build one STREAMS entry, independently re-verifying its causal cutoff.
+
+    ``inspect_prediction_inventory`` already proves temporal class, the
+    before-deadline timestamp, and ticket presence; this adds the one PRE_OUTCOME
+    check it does not make -- that the stored history cutoff is strictly before
+    the target draw -- by reusing the exact same authority prediction generation
+    itself is bound by (``_assert_causal_cutoff``), never a new comparison.
+    """
+
+    strategy_version = _required_text(prediction, "strategy_version", path)
+    prediction_run_id = _required_text(prediction, "prediction_run_id", path)
+    prediction_created_at = _required_text(prediction, "prediction_created_at", path)
+    history_cutoff_value = prediction.get("history_cutoff")
+    if not isinstance(history_cutoff_value, dict):
+        raise SchedulerInvariantError(f"{strategy_id}: history_cutoff must be an object: {path}")
+    history_cutoff = cast(dict[str, object], history_cutoff_value)
+    cutoff_draw = history_cutoff.get("draw_number")
+    cutoff_date = history_cutoff.get("draw_date")
+    if type(cutoff_draw) is not str or not cutoff_draw:
+        raise SchedulerInvariantError(
+            f"{strategy_id}: history_cutoff.draw_number must be non-empty text: {path}"
+        )
+    if type(cutoff_date) is not str or not cutoff_date:
+        raise SchedulerInvariantError(
+            f"{strategy_id}: history_cutoff.draw_date must be non-empty text: {path}"
+        )
+    try:
+        _assert_causal_cutoff(
+            target_draw_number=target.draw_number,
+            target_draw_date=target.draw_date,
+            history_cutoff_draw=cutoff_draw,
+            history_cutoff_date=cutoff_date,
+            history_rows=(),
+        )
+    except ValueError as exc:
+        raise SchedulerInvariantError(f"{strategy_id}: {exc}: {path}") from exc
+    tickets = prediction.get("tickets")
+    if not isinstance(tickets, list) or not tickets:
+        raise SchedulerInvariantError(f"{strategy_id}: AVAILABLE prediction has no tickets: {path}")
+    return {
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "prediction_run_id": prediction_run_id,
+        "prediction_created_at": prediction_created_at,
+        "history_cutoff_draw": cutoff_draw,
+        "tickets": tickets,
+    }
+
+
+def _forecast_command(
+    config: SchedulerConfig, backend: SchedulerBackend
+) -> tuple[dict[str, object], int]:
+    """Deliver the currently available PRE_OUTCOME forecast without any write.
+
+    Reuses exactly the existing target resolution and prediction-inventory
+    authority ``run`` itself uses (``backend.resolve_target`` /
+    ``backend.inspect_predictions``); never refreshes the official schedule,
+    generates predictions, syncs an outcome, completes post-draw, or runs a
+    scheduler cycle. No existing decision-ranking authority combines the 11
+    streams into one ranked number list, so ``RANKING_AUTHORITY`` reports that
+    literally and no ``FINAL_DECISION_RANKING``/``WEIGHTED_CONSENSUS`` is
+    fabricated -- see ``FORECAST_RANKING_AUTHORITY_UNRESOLVED`` above.
+    """
+
+    target = backend.resolve_target()
+    if target is None:
+        return {"FORECAST_STATUS": "NO_TARGET_RESOLVED"}, 1
+
+    target_fields: dict[str, object] = {
+        "TARGET_DRAW": target.draw_number,
+        "TARGET_DRAW_DATE": target.draw_date,
+        "TARGET_SCHEDULED_AT": target.scheduled_at,
+    }
+    try:
+        inventory = backend.inspect_predictions(target)
+    except SchedulerInvariantError as exc:
+        return {
+            "FORECAST_STATUS": "INVALID_TEMPORAL_AUTHORITY",
+            **target_fields,
+            "VIOLATIONS": [str(exc)],
+        }, 1
+
+    records = _load_available_predraw_records(config.operation_root, target)
+    streams: list[dict[str, object]] = []
+    violations: list[str] = []
+    for strategy_id in inventory.available_stream_ids:
+        located = records.get(strategy_id)
+        if located is None:
+            violations.append(
+                f"{strategy_id}: AVAILABLE PRE_DRAW record vanished between inventory and read"
+            )
+            continue
+        path, prediction = located
+        try:
+            streams.append(_forecast_stream_record(target, strategy_id, path, prediction))
+        except SchedulerInvariantError as exc:
+            violations.append(str(exc))
+
+    if violations:
+        return {
+            "FORECAST_STATUS": "INVALID_TEMPORAL_AUTHORITY",
+            **target_fields,
+            "VIOLATIONS": violations,
+        }, 1
+
+    missing = list(inventory.missing_stream_ids)
+    if missing:
+        return {
+            "FORECAST_STATUS": "INTERNAL_PREDRAW_READINESS_STATE",
+            **target_fields,
+            "EXPECTED_STREAM_COUNT": EXPECTED_STREAM_COUNT,
+            "AVAILABLE_STREAM_COUNT": len(inventory.available_stream_ids),
+            "MISSING_STREAM_IDS": missing,
+        }, 0
+
+    analysis_max_data_cutoff = str(
+        max(int(cast(str, entry["history_cutoff_draw"])) for entry in streams)
+    )
+    return {
+        "FORECAST_STATUS": "READY",
+        **target_fields,
+        "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
+        "TARGET_RESULT_USED": "NO",
+        "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
+        "EXPECTED_STREAM_COUNT": EXPECTED_STREAM_COUNT,
+        "AVAILABLE_STREAM_COUNT": len(streams),
+        "MISSING_STREAM_IDS": [],
+        "RANKING_AUTHORITY": FORECAST_RANKING_AUTHORITY_UNRESOLVED,
+        "STREAMS": streams,
+    }, 0
+
+
 def _status_command(config: SchedulerConfig, *, clock: Clock) -> tuple[dict[str, object], int]:
     health = _read_optional_json_object(config.health_path)
     if health is None:
@@ -1598,6 +1764,10 @@ def _parser() -> argparse.ArgumentParser:
     commands.add_parser("run", help="Run one locked scheduler cycle.")
     commands.add_parser("status", help="Report live health, including stale detection.")
     commands.add_parser("write-plist", help="Atomically emit the exact user LaunchAgent plist.")
+    commands.add_parser(
+        "forecast",
+        help="Read-only: deliver the currently available PRE_OUTCOME forecast.",
+    )
     return parser
 
 
@@ -1610,6 +1780,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "status":
         result, exit_code = _status_command(config, clock=lambda: datetime.now(UTC))
+        print(_canonical_json(result))
+        return exit_code
+    if args.command == "forecast":
+        backend = ProductionSchedulerBackend(
+            config, clock=lambda: datetime.now(UTC)
+        )
+        result, exit_code = _forecast_command(config, backend)
         print(_canonical_json(result))
         return exit_code
 
@@ -1637,6 +1814,7 @@ if __name__ == "__main__":
 
 
 __all__ = [
+    "FORECAST_RANKING_AUTHORITY_UNRESOLVED",
     "AdvisoryProcessLock",
     "OfficialHttpsClient",
     "OfficialScheduleUnavailableError",

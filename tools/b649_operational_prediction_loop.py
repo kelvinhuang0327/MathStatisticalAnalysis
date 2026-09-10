@@ -88,12 +88,7 @@ _AVAILABILITY_VALUES = ("AVAILABLE", "UNAVAILABLE", "TECHNICAL_FAILURE")
 _HEAD_TO_HEAD_METRICS = ("M2+", "official_any_prize")
 _WEIGHT_AUTHORITY_VALUES = ("LIMITED", "READY", "NOT_AVAILABLE")
 _WEIGHT_MODE_VALUES = ("UNWEIGHTED", "CANONICAL_WEIGHTED")
-DESCRIPTIVE_PREDRAW_CONSENSUS_METHOD = "b649-descriptive-predraw-consensus-v1"
-DESCRIPTIVE_AUTHORITY_STATUS = "NONCANONICAL_DESCRIPTIVE"
-LEGACY_CANONICAL_PREDRAW_CONSENSUS_ERROR = (
-    "CANONICAL_PREDRAW_CONSENSUS_RETIRED: production canonical consensus is "
-    "owned by Authority B; use build_descriptive_predraw_consensus for PR #283 diagnostics"
-)
+CANONICAL_PREDRAW_CONSENSUS_METHOD = "b649-canonical-predraw-consensus-v1"
 DEFAULT_CONSENSUS_TOP_K = 10
 
 
@@ -905,11 +900,10 @@ def build_head_to_head_summary(root: Path) -> Path:
 def compute_number_consensus(
     predictions: Sequence[dict[str, object]],
 ) -> tuple[dict[str, int], ...]:
-    """Rank predicted numbers for the descriptive PR #283 diagnostic only.
-
-    The retained ranking uses unique-stream endorsement count descending, then
-    total ticket appearance count descending, then ascending natural number as
-    the deterministic tie-break. It is not production authority.
+    """Rank every predicted number by the existing canonical unweighted rule:
+    unique-stream endorsement count descending, then total ticket appearance
+    count descending, then ascending natural number as the deterministic
+    tie-break.
     """
 
     unique_streams: dict[int, set[str]] = defaultdict(set)
@@ -979,7 +973,7 @@ def _load_predraw_consensus_predictions(directory: Path) -> tuple[dict[str, obje
     return tuple(_read_json_object(path) for path in files)
 
 
-def build_descriptive_predraw_consensus(
+def build_canonical_predraw_consensus(
     prediction_directory: Path,
     *,
     expected_target_draw: str,
@@ -990,20 +984,19 @@ def build_descriptive_predraw_consensus(
     aggregation_weight_mode: str = "UNWEIGHTED",
     generated_at: datetime | None = None,
 ) -> dict[str, object]:
-    """Build the noncanonical descriptive PRE_DRAW consensus diagnostic.
-
-    This retains PR #283's number ranking, Top-K, and pairwise overlap
-    diagnostics without producing a production final recommendation. It never
-    reads or requires the target's own outcome.
+    """Deterministically aggregate one target draw's persisted PRE_DRAW streams
+    into a final canonical forecast payload, without reading or requiring the
+    target's own outcome.
 
     ``expected_history_cutoff`` is the target's allowed cutoff ceiling: every
     stream's own history cutoff must be at or before it, but streams are not
     required to share one exact cutoff. The returned ``history_cutoff`` is
     that validated ceiling, not an arbitrary pick among per-stream values.
 
-    ``CANONICAL_WEIGHTED`` always fails closed for this diagnostic interface:
-    no production stream weight source exists here, so weighted aggregation is
-    never silently substituted for the descriptive unweighted ranking.
+    ``CANONICAL_WEIGHTED`` always fails closed: no canonical production
+    stream weight source exists anywhere in this codebase, so weighted
+    aggregation is never silently substituted for the canonical unweighted
+    method, even if a caller supplies ``weight_authority_status="READY"``.
     """
 
     if weight_authority_status not in _WEIGHT_AUTHORITY_VALUES:
@@ -1083,7 +1076,7 @@ def build_descriptive_predraw_consensus(
     _require_aware_datetime(observed_at, "generated_at")
 
     result: dict[str, object] = {
-        "schema_version": DESCRIPTIVE_PREDRAW_CONSENSUS_METHOD,
+        "schema_version": CANONICAL_PREDRAW_CONSENSUS_METHOD,
         "target_draw": expected_target_draw,
         "history_cutoff": expected_history_cutoff,
         "prediction_temporal_class": "PRE_DRAW",
@@ -1091,38 +1084,17 @@ def build_descriptive_predraw_consensus(
         "stream_count": len(predictions),
         "stream_identities": stream_identities,
         "ticket_count": ticket_count,
-        "descriptive_number_consensus": list(number_consensus),
-        "descriptive_top6": top6,
-        "descriptive_top_k": top_k_numbers,
+        "number_consensus": list(number_consensus),
+        "top6": top6,
+        "top_k": top_k_numbers,
         "descriptive_stream_overlap": list(compute_pairwise_stream_overlap(predictions)),
-        "aggregation_method": DESCRIPTIVE_PREDRAW_CONSENSUS_METHOD,
-        "authority_status": DESCRIPTIVE_AUTHORITY_STATUS,
+        "aggregation_method": CANONICAL_PREDRAW_CONSENSUS_METHOD,
         "weight_authority_status": weight_authority_status,
         "aggregation_weight_mode": aggregation_weight_mode,
         "target_result_used": False,
         "generated_at": observed_at.isoformat(timespec="microseconds"),
     }
     return result
-
-
-def build_canonical_predraw_consensus(
-    prediction_directory: Path,
-    *,
-    expected_target_draw: str,
-    expected_history_cutoff: str,
-    expected_stream_count: int | None = None,
-    top_k: int = DEFAULT_CONSENSUS_TOP_K,
-    weight_authority_status: str = "LIMITED",
-    aggregation_weight_mode: str = "UNWEIGHTED",
-    generated_at: datetime | None = None,
-) -> dict[str, object]:
-    """Reject the retired PR #283 canonical compatibility entrypoint.
-
-    The rejection is intentionally the first operation so this historical
-    name can never read prediction inputs or return a recommendation.
-    """
-
-    raise ValueError(LEGACY_CANONICAL_PREDRAW_CONSENSUS_ERROR)
 
 
 def _read_ingested_draws(database: Path) -> tuple[tuple[str, datetime], ...]:

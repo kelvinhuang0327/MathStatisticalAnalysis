@@ -41,6 +41,13 @@ from lottolab.application.schedule_sync import (
     SynchronizeOfficialSchedule,
 )
 from lottolab.application.use_cases.draw_automation import ScheduledDrawSync
+from lottolab.domain.b649_canonical_consensus import (
+    CANONICAL_CONSENSUS_METHOD_ID,
+    CANONICAL_CONSENSUS_METHOD_VERSION,
+    CanonicalConsensusContext,
+    CanonicalConsensusInputError,
+    StreamConsensusInput,
+)
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import IngestionRunStatus
@@ -93,7 +100,6 @@ from tools.b649_operational_prediction_loop import (
     PredictionTarget,
     StrategyStream,
     _assert_causal_cutoff,  # pyright: ignore[reportPrivateUsage]
-    build_canonical_predraw_consensus,
     iter_prediction_files,
     load_canonical_history,
     rescore_draw,
@@ -104,6 +110,12 @@ from tools.b649_pair_rule_forward_shadow import (
     SHADOW_HEALTH_NAMESPACE,
     PairRuleForwardShadow,
     shadow_health_not_run,
+)
+from tools.materialize_b649_canonical_forecast import (
+    ForecastAuthorityMissingError,
+    canonical_forecast_path,
+    load_canonical_forecast_authority,
+    materialize_dynamic_canonical_forecast,
 )
 
 TASK_VERSION = "B649_GOALC_LOCAL_LAUNCHD_R1"
@@ -134,6 +146,18 @@ PLIST_PATH = Path.home() / "Library/LaunchAgents/com.lottolab.b649-goalc-r1.plis
 _NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
 _CLOEXEC = getattr(os, "O_CLOEXEC", 0)
 _NONBLOCK = getattr(os, "O_NONBLOCK", 0)
+_SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
+_FORBIDDEN_OUTCOME_KEYS = frozenset(
+    {
+        "outcome",
+        "result",
+        "score",
+        "official_outcome",
+        "winning_numbers",
+        "main_numbers",
+        "special_number",
+    }
+)
 
 Clock = Callable[[], datetime]
 SourceHeadResolver = Callable[[Path], str]
@@ -153,6 +177,10 @@ class SchedulerInvariantError(GoalCSchedulerError):
 
 class SchedulerAlreadyRunning(GoalCSchedulerError):
     """A different process currently holds the advisory scheduler lock."""
+
+
+class CanonicalForecastNotReady(SchedulerInvariantError):
+    """The inventory claimed readiness but a canonical source record was absent."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -797,7 +825,7 @@ def inspect_prediction_inventory(
     if len(expected) != EXPECTED_STREAM_COUNT or len(set(expected)) != EXPECTED_STREAM_COUNT:
         raise SchedulerInvariantError("enabled B649 strategy universe is not exactly 11")
     expected_set = frozenset(expected)
-    scheduled_at = _target_scheduled_at(target)
+    scheduled_at = _parse_context_datetime(target.scheduled_at, "target scheduled_at")
     available: dict[str, str] = {}
     observed: set[str] = set()
     score_required: list[str] = []
@@ -823,7 +851,7 @@ def inspect_prediction_inventory(
         )
         if prediction.get("draw_date") != target.draw_date:
             raise SchedulerInvariantError(f"prediction draw_date conflicts: {path}")
-        if prediction_scheduled != scheduled_at:
+        if prediction_scheduled != _as_utc(scheduled_at):
             raise SchedulerInvariantError(f"prediction scheduled_at conflicts: {path}")
         if temporal_class == "PRE_DRAW":
             if created_at >= scheduled_at:
@@ -859,6 +887,25 @@ def _primary_health_payload(payload: Mapping[str, object]) -> dict[str, object]:
     primary = dict(payload)
     primary.pop(SHADOW_HEALTH_NAMESPACE, None)
     return primary
+
+
+def _canonical_forecast_health(
+    status: str,
+    *,
+    destination: Path | None = None,
+    payload_sha256: str | None = None,
+) -> dict[str, object]:
+    if status not in {"CREATED", "ALREADY_PRESENT", "NOT_READY", "ERROR"}:
+        raise SchedulerInvariantError(f"unsupported canonical forecast status: {status}")
+    if payload_sha256 is not None and _SHA256.fullmatch(payload_sha256) is None:
+        raise SchedulerInvariantError("canonical forecast SHA-256 is invalid")
+    return {
+        "CANONICAL_FORECAST_STATUS": status,
+        "CANONICAL_FORECAST_PATH": "NONE" if destination is None else str(destination),
+        "CANONICAL_FORECAST_SHA256": "NONE" if payload_sha256 is None else payload_sha256,
+        "CANONICAL_FORECAST_METHOD": CANONICAL_CONSENSUS_METHOD_ID,
+        "CANONICAL_FORECAST_VERSION": CANONICAL_CONSENSUS_METHOD_VERSION,
+    }
 
 
 def _run_shadow_hook(
@@ -935,6 +982,7 @@ def run_scheduler_cycle(
         shadow_hook_name: str | None = None
         shadow_primary_status = "NOT_RUN"
         cycle_warnings: list[str] = []
+        canonical_health = _canonical_forecast_health("NOT_READY")
         try:
             try:
                 announcement = backend.refresh_schedule(started_at)
@@ -982,6 +1030,25 @@ def run_scheduler_cycle(
                     inventory = backend.inspect_predictions(target)
                 else:
                     generation = {**generation, "status": "NO_OP"}
+                if inventory.ready:
+                    try:
+                        canonical_health = _materialize_scheduler_canonical_forecast(
+                            config,
+                            target,
+                            inventory,
+                            clock=clock,
+                        )
+                    except CanonicalForecastNotReady:
+                        canonical_health = _canonical_forecast_health("NOT_READY")
+                    except Exception:
+                        canonical_health = _canonical_forecast_health(
+                            "ERROR",
+                            destination=canonical_forecast_path(
+                                config.operation_root,
+                                target.draw_number,
+                            ),
+                        )
+                        raise
                 postdraw = PostDrawResult(
                     outcome_status="NOT_DUE",
                     scoring_status="NOT_DUE",
@@ -1046,6 +1113,7 @@ def run_scheduler_cycle(
                 "next_target": None if next_target is None else _target_dict(next_target),
                 "target_draw_date": target.draw_date,
                 "readiness_deadline": _utc_text(scheduled_at),
+                **canonical_health,
                 "expected_stream_count": config.expected_stream_count,
                 "actual_available_stream_count": inventory.actual_available_count,
                 "ready_before_draw": inventory.ready,
@@ -1083,6 +1151,7 @@ def run_scheduler_cycle(
             failures = _previous_failure_count(previous) + 1
             failed = {
                 **running,
+                **canonical_health,
                 "current_status": "ERROR",
                 "finished_at": _utc_text(finished_at),
                 "last_success_at": _previous_last_success(previous),
@@ -1200,6 +1269,7 @@ def _base_health(
         "next_target": None,
         "target_draw_date": None,
         "readiness_deadline": None,
+        **_canonical_forecast_health("NOT_READY"),
         "expected_stream_count": config.expected_stream_count,
         "actual_available_stream_count": 0,
         "ready_before_draw": False,
@@ -1603,8 +1673,257 @@ def _load_available_predraw_records(
             continue
         strategy_id = prediction.get("strategy_id")
         if isinstance(strategy_id, str) and strategy_id:
+            if strategy_id in records:
+                raise SchedulerInvariantError(
+                    f"multiple AVAILABLE PRE_DRAW records exist for {strategy_id}"
+                )
             records[strategy_id] = (path, prediction)
     return records
+
+
+def _build_canonical_consensus_context(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    inventory: PredictionInventory,
+) -> CanonicalConsensusContext:
+    """Build the dynamic canonical contract from the ready inventory records."""
+
+    if not inventory.ready:
+        raise CanonicalForecastNotReady("canonical consensus requires all eleven ready streams")
+    expected_streams = {
+        stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled
+    }
+    expected_ids = tuple(stream.strategy_id for stream in STRATEGY_STREAMS if stream.enabled)
+    if (
+        len(expected_ids) != EXPECTED_STREAM_COUNT
+        or len(expected_streams) != EXPECTED_STREAM_COUNT
+        or inventory.expected_stream_ids != expected_ids
+    ):
+        raise SchedulerInvariantError("enabled B649 strategy universe is not exactly 11")
+    if target.lottery_type != LOTTERY_TYPE:
+        raise SchedulerInvariantError("canonical forecast target lottery_type is not BIG_LOTTO")
+
+    records = _load_available_predraw_records(config.operation_root, target)
+    missing = [strategy_id for strategy_id in expected_ids if strategy_id not in records]
+    if missing:
+        raise CanonicalForecastNotReady(
+            "canonical prediction records are missing: " + ", ".join(missing)
+        )
+
+    scheduled_at = _parse_context_datetime(target.scheduled_at, "target scheduled_at")
+    streams: list[StreamConsensusInput] = []
+    shared_history: tuple[str, str, int, str, str] | None = None
+    for strategy_id in expected_ids:
+        path, prediction = records[strategy_id]
+        _reject_target_outcome_fields(prediction, path)
+        expected = expected_streams[strategy_id]
+        if prediction.get("lottery_type") != target.lottery_type:
+            raise SchedulerInvariantError(f"prediction lottery_type conflicts: {path}")
+        if prediction.get("draw_number") != target.draw_number:
+            raise SchedulerInvariantError(f"prediction draw_number conflicts: {path}")
+        if prediction.get("draw_date") != target.draw_date:
+            raise SchedulerInvariantError(f"prediction draw_date conflicts: {path}")
+        if prediction.get("scheduled_at") is None:
+            raise SchedulerInvariantError(f"prediction scheduled_at is missing: {path}")
+        prediction_scheduled = _parse_aware_datetime(
+            _required_text(prediction, "scheduled_at", path),
+            "scheduled_at",
+        )
+        if prediction_scheduled != scheduled_at:
+            raise SchedulerInvariantError(f"prediction scheduled_at conflicts: {path}")
+        if prediction.get("prediction_temporal_class") != "PRE_DRAW":
+            raise SchedulerInvariantError(f"prediction is not PRE_DRAW: {path}")
+        if prediction.get("availability", "AVAILABLE") != "AVAILABLE":
+            raise SchedulerInvariantError(f"prediction is not AVAILABLE: {path}")
+        strategy_version = _required_text(prediction, "strategy_version", path)
+        if strategy_version != expected.strategy_version:
+            raise SchedulerInvariantError(f"strategy_version conflicts: {path}")
+        native_count = prediction.get("native_ticket_count")
+        if type(native_count) is not int or native_count != expected.native_ticket_count:
+            raise SchedulerInvariantError(f"native_ticket_count conflicts: {path}")
+        prediction_run_id = _required_text(prediction, "prediction_run_id", path)
+        prediction_created_at = _parse_aware_datetime(
+            _required_text(prediction, "prediction_created_at", path),
+            "prediction_created_at",
+        )
+        if prediction_created_at >= scheduled_at:
+            raise SchedulerInvariantError(f"PRE_DRAW timestamp is not before deadline: {path}")
+
+        cutoff_value = prediction.get("history_cutoff")
+        if not isinstance(cutoff_value, Mapping):
+            raise SchedulerInvariantError(f"history_cutoff must be an object: {path}")
+        cutoff = cast(Mapping[str, object], cutoff_value)
+        cutoff_draw = _required_text(cutoff, "draw_number", path)
+        cutoff_date = _required_text(cutoff, "draw_date", path)
+        history_count = prediction.get("history_draw_count")
+        if type(history_count) is not int or history_count < 1:
+            raise SchedulerInvariantError(f"history_draw_count is invalid: {path}")
+        history_sha = _required_text(prediction, "history_sha256", path)
+        if _SHA256.fullmatch(history_sha) is None:
+            raise SchedulerInvariantError(f"history_sha256 is invalid: {path}")
+        history_caveat = prediction.get("history_caveat", "YES")
+        if type(history_caveat) is not str or not history_caveat.strip():
+            raise SchedulerInvariantError(f"history_caveat is invalid: {path}")
+        current_history = (
+            cutoff_draw,
+            cutoff_date,
+            history_count,
+            history_sha,
+            history_caveat,
+        )
+        if shared_history is None:
+            shared_history = current_history
+        elif shared_history != current_history:
+            raise SchedulerInvariantError(
+                "canonical streams do not share one history/cutoff identity"
+            )
+
+        source_relative_path, raw_source = _read_canonical_prediction_source(
+            config.operation_root, path
+        )
+        source_sha256 = hashlib.sha256(raw_source).hexdigest()
+        declared_source_sha = prediction.get("source_sha256")
+        if declared_source_sha is not None and declared_source_sha != source_sha256:
+            raise SchedulerInvariantError(f"source_sha256 conflicts with prediction bytes: {path}")
+        streams.append(
+            StreamConsensusInput(
+                strategy_id=strategy_id,
+                strategy_version=strategy_version,
+                native_ticket_count=native_count,
+                prediction_run_id=prediction_run_id,
+                source_relative_path=source_relative_path,
+                source_sha256=source_sha256,
+                prediction_created_at=prediction_created_at,
+                tickets=_canonical_prediction_tickets(prediction, path, native_count),
+            )
+        )
+
+    if shared_history is None:
+        raise CanonicalForecastNotReady("canonical history identity is absent")
+    try:
+        return CanonicalConsensusContext(
+            lottery_type=target.lottery_type,
+            target_draw_number=target.draw_number,
+            target_draw_date=target.draw_date,
+            scheduled_at=scheduled_at,
+            causal_cutoff_draw_number=shared_history[0],
+            causal_cutoff_date=shared_history[1],
+            history_draw_count=shared_history[2],
+            history_sha256=shared_history[3],
+            streams=tuple(streams),
+            history_caveat=shared_history[4],
+        )
+    except CanonicalConsensusInputError as exc:
+        raise SchedulerInvariantError(f"canonical execution context is invalid: {exc}") from exc
+
+
+def _canonical_prediction_tickets(
+    prediction: Mapping[str, object], path: Path, native_ticket_count: int
+) -> tuple[tuple[int, ...], ...]:
+    tickets_value = prediction.get("tickets")
+    if not isinstance(tickets_value, list):
+        raise SchedulerInvariantError(f"ticket cardinality conflicts: {path}")
+    ticket_rows = cast(list[object], tickets_value)
+    if len(ticket_rows) != native_ticket_count:
+        raise SchedulerInvariantError(f"ticket cardinality conflicts: {path}")
+    tickets: list[tuple[int, ...]] = []
+    for position, item in enumerate(ticket_rows, start=1):
+        if not isinstance(item, Mapping):
+            raise SchedulerInvariantError(f"ticket row is not an object: {path}")
+        ticket = cast(Mapping[str, object], item)
+        if ticket.get("ticket_position") != position:
+            raise SchedulerInvariantError(f"ticket positions are not contiguous: {path}")
+        numbers = ticket.get("predicted_numbers")
+        if not isinstance(numbers, list):
+            raise SchedulerInvariantError(f"ticket numbers are not six integers: {path}")
+        number_values = cast(list[object], numbers)
+        if len(number_values) != 6:
+            raise SchedulerInvariantError(f"ticket numbers are not six integers: {path}")
+        if any(type(number) is not int for number in number_values):
+            raise SchedulerInvariantError(f"ticket numbers are not six integers: {path}")
+        tickets.append(tuple(cast(list[int], number_values)))
+    return tuple(tickets)
+
+
+def _parse_context_datetime(value: str, label: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise SchedulerInvariantError(f"{label} must be an ISO datetime") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise SchedulerInvariantError(f"{label} must be timezone-aware")
+    return parsed
+
+
+def _read_canonical_prediction_source(root: Path, path: Path) -> tuple[str, bytes]:
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise SchedulerInvariantError(f"prediction source escapes operation_root: {path}") from exc
+    current = root
+    try:
+        root_metadata = current.lstat()
+    except OSError as exc:
+        raise SchedulerInvariantError(f"cannot inspect operation_root: {root}") from exc
+    if stat.S_ISLNK(root_metadata.st_mode) or not stat.S_ISDIR(root_metadata.st_mode):
+        raise SchedulerInvariantError("operation_root is not a directory")
+    if not relative.parts:
+        raise SchedulerInvariantError(f"prediction source is not a file: {path}")
+    metadata: os.stat_result | None = None
+    for part in relative.parts:
+        current /= part
+        try:
+            metadata = current.lstat()
+        except OSError as exc:
+            raise SchedulerInvariantError(f"cannot inspect prediction source: {current}") from exc
+        if stat.S_ISLNK(metadata.st_mode):
+            raise SchedulerInvariantError(f"prediction source symlink is forbidden: {current}")
+    if metadata is None or not stat.S_ISREG(metadata.st_mode):
+        raise SchedulerInvariantError(f"prediction source is not a regular file: {path}")
+    try:
+        return relative.as_posix(), path.read_bytes()
+    except OSError as exc:
+        raise SchedulerInvariantError(f"cannot read prediction source: {path}") from exc
+
+
+def _reject_target_outcome_fields(value: object, path: Path) -> None:
+    if isinstance(value, Mapping):
+        mapping = cast(Mapping[object, object], value)
+        for key, item in mapping.items():
+            if key in _FORBIDDEN_OUTCOME_KEYS:
+                raise SchedulerInvariantError(
+                    f"target outcome field is forbidden in canonical input: {path}: {key}"
+                )
+            _reject_target_outcome_fields(item, path)
+    elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        sequence = cast(Sequence[object], value)
+        for item in sequence:
+            _reject_target_outcome_fields(item, path)
+
+
+def _materialize_scheduler_canonical_forecast(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    inventory: PredictionInventory,
+    *,
+    clock: Clock,
+) -> dict[str, object]:
+    """Materialize the final authority while the caller still owns the lock."""
+
+    context = _build_canonical_consensus_context(config, target, inventory)
+    destination = canonical_forecast_path(config.operation_root, target.draw_number)
+    result = materialize_dynamic_canonical_forecast(
+        context=context,
+        operation_root=config.operation_root,
+        destination=destination,
+        clock=clock,
+    )
+    payload_sha256 = hashlib.sha256(result.destination.read_bytes()).hexdigest()
+    return _canonical_forecast_health(
+        result.status,
+        destination=result.destination,
+        payload_sha256=payload_sha256,
+    )
 
 
 def _forecast_stream_record(
@@ -1671,9 +1990,8 @@ def _forecast_command(
     authority ``run`` itself uses (``backend.resolve_target`` /
     ``backend.inspect_predictions``); never refreshes the official schedule,
     generates predictions, syncs an outcome, completes post-draw, or runs a
-    scheduler cycle. The canonical PRE_DRAW consensus authority is consumed
-    only after all expected streams pass the existing temporal checks; this
-    function only projects the returned consensus payload into CLI fields.
+    scheduler cycle. The final ranking is projected from the scheduler's
+    already-materialized canonical authority.
     """
 
     target = backend.resolve_target()
@@ -1706,6 +2024,7 @@ def _forecast_command(
             continue
         path, prediction = located
         try:
+            _reject_target_outcome_fields(prediction, path)
             streams.append(_forecast_stream_record(target, strategy_id, path, prediction))
         except SchedulerInvariantError as exc:
             violations.append(str(exc))
@@ -1727,54 +2046,86 @@ def _forecast_command(
             "MISSING_STREAM_IDS": missing,
         }, 0
 
-    analysis_max_data_cutoff = str(
-        max(int(cast(str, entry["history_cutoff_draw"])) for entry in streams)
-    )
-    prediction_directory = config.operation_root / "predictions" / target.draw_number
     try:
-        canonical_consensus = build_canonical_predraw_consensus(
-            prediction_directory,
-            expected_target_draw=target.draw_number,
-            expected_history_cutoff=analysis_max_data_cutoff,
-            expected_stream_count=config.expected_stream_count,
-            aggregation_weight_mode="UNWEIGHTED",
-            weight_authority_status="LIMITED",
-        )
+        context = _build_canonical_consensus_context(config, target, inventory)
+    except CanonicalForecastNotReady as exc:
+        return {
+            "FORECAST_STATUS": "CANONICAL_FORECAST_NOT_READY",
+            **target_fields,
+            "EXPECTED_STREAM_COUNT": config.expected_stream_count,
+            "AVAILABLE_STREAM_COUNT": len(streams),
+            "MISSING_STREAM_IDS": [],
+            "CANONICAL_FORECAST_ERROR": str(exc),
+        }, 0
     except Exception as exc:
         return {
-            "FORECAST_STATUS": "INVALID_CANONICAL_CONSENSUS_AUTHORITY",
+            "FORECAST_STATUS": "INVALID_CANONICAL_FORECAST_INPUT",
             **target_fields,
-            "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
+            "TARGET_RESULT_DEPENDENCY": "NONE",
+            "TARGET_RESULT_USED": "NO",
+            "CANONICAL_CONSENSUS_ERROR": f"{type(exc).__name__}: {exc}",
+        }, 1
+
+    destination = canonical_forecast_path(config.operation_root, target.draw_number)
+    try:
+        canonical_authority = load_canonical_forecast_authority(
+            context=context,
+            operation_root=config.operation_root,
+            destination=destination,
+        )
+    except ForecastAuthorityMissingError:
+        return {
+            "FORECAST_STATUS": "CANONICAL_FORECAST_NOT_MATERIALIZED",
+            **target_fields,
+            "ANALYSIS_MAX_DATA_CUTOFF": context.causal_cutoff_draw_number,
             "TARGET_RESULT_DEPENDENCY": "NONE",
             "TARGET_RESULT_USED": "NO",
             "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
             "EXPECTED_STREAM_COUNT": config.expected_stream_count,
             "AVAILABLE_STREAM_COUNT": len(streams),
             "MISSING_STREAM_IDS": [],
-            "CANONICAL_CONSENSUS_ERROR": f"{type(exc).__name__}: {exc}",
+            "CANONICAL_FORECAST_PATH": str(destination),
+        }, 0
+    except Exception as exc:
+        return {
+            "FORECAST_STATUS": "INVALID_CANONICAL_FORECAST_AUTHORITY",
+            **target_fields,
+            "ANALYSIS_MAX_DATA_CUTOFF": context.causal_cutoff_draw_number,
+            "TARGET_RESULT_DEPENDENCY": "NONE",
+            "TARGET_RESULT_USED": "NO",
+            "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
+            "EXPECTED_STREAM_COUNT": config.expected_stream_count,
+            "AVAILABLE_STREAM_COUNT": len(streams),
+            "MISSING_STREAM_IDS": [],
+            "CANONICAL_FORECAST_PATH": str(destination),
+            "CANONICAL_FORECAST_ERROR": f"{type(exc).__name__}: {exc}",
         }, 1
 
-    ranked_numbers = [
-        entry["number"]
-        for entry in cast(list[dict[str, object]], canonical_consensus["number_consensus"])
-    ]
+    ranking = cast(list[dict[str, object]], canonical_authority["final_decision_ranking"])
+    ranked_numbers = [entry["number"] for entry in ranking]
+    final_output = cast(
+        list[dict[str, object]], canonical_authority["final_recommended_output"]
+    )
+    top6 = cast(list[int], final_output[0]["predicted_numbers"])
     return {
         "FORECAST_STATUS": "READY",
         **target_fields,
-        "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
+        "ANALYSIS_MAX_DATA_CUTOFF": context.causal_cutoff_draw_number,
         "TARGET_RESULT_DEPENDENCY": "NONE",
         "TARGET_RESULT_USED": "NO",
         "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
         "EXPECTED_STREAM_COUNT": config.expected_stream_count,
         "AVAILABLE_STREAM_COUNT": len(streams),
         "MISSING_STREAM_IDS": [],
-        "RANKING_AUTHORITY": canonical_consensus["aggregation_method"],
+        "RANKING_AUTHORITY": canonical_authority["aggregation_method_id"],
+        "RANKING_AUTHORITY_VERSION": canonical_authority["aggregation_method_version"],
+        "CANONICAL_FORECAST_PATH": str(destination),
         "FINAL_DECISION_RANKING": {
-            "top6": canonical_consensus["top6"],
-            "top10": canonical_consensus["top_k"],
+            "top6": top6,
+            "top10": ranked_numbers[:10],
             "ranked_numbers": ranked_numbers,
         },
-        "CANONICAL_PREDRAW_CONSENSUS": canonical_consensus,
+        "CANONICAL_PREDRAW_CONSENSUS": canonical_authority,
         "STREAMS": streams,
     }, 0
 

@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import cast
 
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
 
+from lottolab.domain.b649_canonical_consensus import (
+    CanonicalConsensusContext,
+    StreamConsensusInput,
+)
 from lottolab.evidence.canonical_json import canonical_file_bytes
 
 FIXTURE_NUMBERS = (4, 12, 24, 25, 26, 29)
@@ -88,9 +93,20 @@ def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path
     assert result.status == "CREATED"
     assert result.payload["target_result_used"] is False
     assert result.payload["stream_count"] == 11
+    ranking_value = result.payload["final_decision_ranking"]
+    assert isinstance(ranking_value, list)
+    ranking = cast(list[dict[str, object]], ranking_value)
+    assert len(ranking) == 49
+    assert [entry["number"] for entry in ranking[:10]] == [4, 12, 24, 25, 26, 29, 1, 2, 3, 5]
+    assert [entry["support_units"] for entry in ranking[:6]] == [66] * 6
+    assert all(entry["support_units"] == 0 for entry in ranking[6:])
     assert result.payload["final_recommended_output"] == [
         {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
     ]
+    assert result.payload["aggregation_method_id"] == (
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    )
+    assert result.payload["aggregation_method_version"] == "1.0.0"
     raw = destination.read_bytes()
     assert raw == canonical_file_bytes(result.payload)
     assert not list(destination.parent.glob("*.tmp"))
@@ -255,3 +271,61 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
             clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
         )
     assert destination.read_bytes() == b"{\"competing\":true}\n"
+
+
+def test_dynamic_materializer_binds_later_target_and_causal_history(tmp_path: Path) -> None:
+    created_at = datetime(2099, 1, 2, 10, 0, 0, tzinfo=UTC)
+    scheduled_at = datetime(2099, 1, 2, 12, 30, 0, tzinfo=UTC)
+    streams = tuple(
+        StreamConsensusInput(
+            strategy_id=f"synthetic_stream_{index:02d}",
+            strategy_version="v1.0",
+            native_ticket_count=1,
+            prediction_run_id=f"run-{index:02d}",
+            source_relative_path=f"predictions/209900001/stream-{index:02d}.json",
+            source_sha256=f"{index + 1:064x}",
+            prediction_created_at=created_at,
+            tickets=(FIXTURE_NUMBERS,),
+        )
+        for index in range(11)
+    )
+    context = CanonicalConsensusContext(
+        lottery_type="BIG_LOTTO",
+        target_draw_number="209900001",
+        target_draw_date="2099-01-02",
+        scheduled_at=scheduled_at,
+        causal_cutoff_draw_number="209899999",
+        causal_cutoff_date="2099-01-01",
+        history_draw_count=42,
+        history_sha256="d" * 64,
+        streams=streams,
+    )
+
+    result = materializer.materialize_dynamic_canonical_forecast(
+        context=context,
+        operation_root=tmp_path / "operation",
+        clock=_clock(created_at + timedelta(minutes=1), created_at + timedelta(minutes=2)),
+    )
+
+    expected_destination = materializer.canonical_forecast_path(
+        tmp_path / "operation", "209900001"
+    )
+    assert result.status == "CREATED"
+    assert result.destination == expected_destination
+    assert result.payload["target_result_used"] is False
+    assert result.payload["target_draw"] == {
+        "draw_number": "209900001",
+        "draw_date": "2099-01-02",
+    }
+    assert result.payload["scheduled_at"] == "2099-01-02T12:30:00+00:00"
+    assert result.payload["max_data_cutoff"] == {
+        "draw_number": "209899999",
+        "draw_date": "2099-01-01",
+    }
+    assert result.payload["history_draw_count"] == 42
+    assert result.payload["history_sha256"] == "d" * 64
+    assert result.payload["aggregation_method_id"] == (
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    )
+    assert result.payload["aggregation_method_version"] == "1.0.0"
+    assert expected_destination.read_bytes() == canonical_file_bytes(result.payload)

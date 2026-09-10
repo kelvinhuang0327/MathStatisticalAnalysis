@@ -21,7 +21,6 @@ from urllib.error import URLError
 import pytest
 import tools.b649_goalc_local_scheduler as scheduler_module
 from tools.b649_goalc_local_scheduler import (
-    FORECAST_RANKING_AUTHORITY_UNRESOLVED,
     SHADOW_HEALTH_NAMESPACE,
     AdvisoryProcessLock,
     OfficialHttpsClient,
@@ -1536,7 +1535,9 @@ def test_forecast_does_not_require_or_read_target_outcome(tmp_path: Path) -> Non
     assert backend.mutating_calls == []
 
 
-def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
+def test_forecast_incomplete_when_streams_are_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Acceptance 4: missing streams return internal readiness, not blocked."""
 
     config = _config(tmp_path)
@@ -1544,6 +1545,12 @@ def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
     available = STREAM_IDS[:7]
     _write_all_streams(config.operation_root, target, available)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    def fail_if_called(*args: object, **kwargs: object) -> dict[str, object]:
+        del args, kwargs
+        raise AssertionError("missing-stream forecast must not invoke canonical consensus")
+
+    monkeypatch.setattr(scheduler_module, "build_canonical_predraw_consensus", fail_if_called)
 
     result, exit_code = _forecast_command(config, backend)
 
@@ -1656,29 +1663,116 @@ def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None
     assert backend.mutating_calls == []
 
 
-def test_forecast_reports_unresolved_ranking_authority_without_fabricating_a_ranking(
-    tmp_path: Path,
+def test_forecast_projects_canonical_consensus_and_provenance(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Acceptance 8 and 9: no existing authority combines the 11 streams into one
-    ranked number list, so forecast must report that literally rather than
-    recomputing or silently promoting the one-off equal-weight mean-rank method.
-    """
+    """READY output is a mechanical projection of the canonical payload."""
 
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+    canonical: dict[str, object] = {
+        "schema_version": "b649-canonical-predraw-consensus-v1",
+        "target_draw": target.draw_number,
+        "history_cutoff": _FORECAST_CUTOFF_DRAW,
+        "prediction_temporal_class": "PRE_DRAW",
+        "upstream_prediction_locator": str(
+            config.operation_root / "predictions" / target.draw_number
+        ),
+        "stream_count": 11,
+        "stream_identities": [],
+        "ticket_count": 22,
+        "number_consensus": [
+            {"rank": 1, "number": 1},
+            {"rank": 2, "number": 4},
+            {"rank": 3, "number": 18},
+            {"rank": 4, "number": 25},
+            {"rank": 5, "number": 26},
+            {"rank": 6, "number": 29},
+            {"rank": 7, "number": 8},
+            {"rank": 8, "number": 24},
+            {"rank": 9, "number": 43},
+            {"rank": 10, "number": 45},
+        ],
+        "top6": [1, 4, 18, 25, 26, 29],
+        "top_k": [1, 4, 8, 18, 24, 25, 26, 29, 43, 45],
+        "aggregation_method": "b649-canonical-predraw-consensus-v1",
+        "aggregation_weight_mode": "UNWEIGHTED",
+        "weight_authority_status": "LIMITED",
+        "target_result_used": False,
+    }
+    calls: list[tuple[Path, dict[str, object]]] = []
+
+    def build_consensus(
+        prediction_directory: Path, **kwargs: object
+    ) -> dict[str, object]:
+        calls.append((prediction_directory, kwargs))
+        return canonical
+
+    monkeypatch.setattr(scheduler_module, "build_canonical_predraw_consensus", build_consensus)
 
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code == 0
     assert result["FORECAST_STATUS"] == "READY"
-    assert result["RANKING_AUTHORITY"] == FORECAST_RANKING_AUTHORITY_UNRESOLVED
-    assert result["RANKING_AUTHORITY"] == "FORECAST_RANKING_AUTHORITY_UNRESOLVED"
+    assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
+    assert result["RANKING_AUTHORITY"] == "b649-canonical-predraw-consensus-v1"
+    number_consensus = cast(list[dict[str, object]], canonical["number_consensus"])
+    assert result["FINAL_DECISION_RANKING"] == {
+        "top6": canonical["top6"],
+        "top10": canonical["top_k"],
+        "ranked_numbers": [entry["number"] for entry in number_consensus],
+    }
+    assert result["CANONICAL_PREDRAW_CONSENSUS"] is canonical
+    assert calls == [
+        (
+            config.operation_root / "predictions" / target.draw_number,
+            {
+                "expected_target_draw": target.draw_number,
+                "expected_history_cutoff": _FORECAST_CUTOFF_DRAW,
+                "expected_stream_count": config.expected_stream_count,
+                "aggregation_weight_mode": "UNWEIGHTED",
+                "weight_authority_status": "LIMITED",
+            },
+        )
+    ]
+    assert "WEIGHTED_CONSENSUS" not in result
+
+
+def test_forecast_fails_closed_when_canonical_consensus_rejects_input(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    def reject_consensus(*args: object, **kwargs: object) -> dict[str, object]:
+        del args, kwargs
+        raise ValueError("STREAM_COUNT_MISMATCH: synthetic canonical failure")
+
+    monkeypatch.setattr(scheduler_module, "build_canonical_predraw_consensus", reject_consensus)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code != 0
+    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_CONSENSUS_AUTHORITY"
+    assert "STREAM_COUNT_MISMATCH" in cast(str, result["CANONICAL_CONSENSUS_ERROR"])
+    assert "FORECAST_RANKING_AUTHORITY_UNRESOLVED" not in json.dumps(result)
     assert "FINAL_DECISION_RANKING" not in result
     assert "WEIGHTED_CONSENSUS" not in result
-    assert "CONFIDENCE" not in result
-    assert "CLAIM_SCOPE" not in result
+
+
+def test_forecast_does_not_duplicate_canonical_ranking_formula() -> None:
+    source = getsource(scheduler_module._forecast_command)  # pyright: ignore[reportPrivateUsage]
+
+    assert "build_canonical_predraw_consensus" in source
+    assert "compute_number_consensus" not in source
+    assert "unique_stream_count" not in source
+    assert "ticket_count" not in source
+    assert "pairwise_stream_overlap" not in source
+    assert "sorted(" not in source
 
 
 def test_forecast_reports_no_target_resolved_without_reading_predictions(tmp_path: Path) -> None:

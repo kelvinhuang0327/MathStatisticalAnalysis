@@ -93,6 +93,7 @@ from tools.b649_operational_prediction_loop import (
     PredictionTarget,
     StrategyStream,
     _assert_causal_cutoff,  # pyright: ignore[reportPrivateUsage]
+    build_canonical_predraw_consensus,
     iter_prediction_files,
     load_canonical_history,
     rescore_draw,
@@ -111,12 +112,6 @@ SCHEDULER_LABEL = "com.lottolab.b649-goalc-r1"
 START_INTERVAL_SECONDS = 300
 STALE_AFTER_SECONDS = 900
 EXPECTED_STREAM_COUNT = 11
-# No existing Goal-C authority resolves an 11-stream decision consensus into a
-# single ranked number list (checked: this module, the operational prediction
-# loop, and the pair-rule shadow -- none defines one). ``forecast`` reports
-# this literally instead of recomputing the one-off, explicitly non-canonical
-# equal-weight mean-rank method used for the prior 115000087 research report.
-FORECAST_RANKING_AUTHORITY_UNRESOLVED = "FORECAST_RANKING_AUTHORITY_UNRESOLVED"
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -1676,10 +1671,9 @@ def _forecast_command(
     authority ``run`` itself uses (``backend.resolve_target`` /
     ``backend.inspect_predictions``); never refreshes the official schedule,
     generates predictions, syncs an outcome, completes post-draw, or runs a
-    scheduler cycle. No existing decision-ranking authority combines the 11
-    streams into one ranked number list, so ``RANKING_AUTHORITY`` reports that
-    literally and no ``FINAL_DECISION_RANKING``/``WEIGHTED_CONSENSUS`` is
-    fabricated -- see ``FORECAST_RANKING_AUTHORITY_UNRESOLVED`` above.
+    scheduler cycle. The canonical PRE_DRAW consensus authority is consumed
+    only after all expected streams pass the existing temporal checks; this
+    function only projects the returned consensus payload into CLI fields.
     """
 
     target = backend.resolve_target()
@@ -1736,16 +1730,51 @@ def _forecast_command(
     analysis_max_data_cutoff = str(
         max(int(cast(str, entry["history_cutoff_draw"])) for entry in streams)
     )
+    prediction_directory = config.operation_root / "predictions" / target.draw_number
+    try:
+        canonical_consensus = build_canonical_predraw_consensus(
+            prediction_directory,
+            expected_target_draw=target.draw_number,
+            expected_history_cutoff=analysis_max_data_cutoff,
+            expected_stream_count=config.expected_stream_count,
+            aggregation_weight_mode="UNWEIGHTED",
+            weight_authority_status="LIMITED",
+        )
+    except Exception as exc:
+        return {
+            "FORECAST_STATUS": "INVALID_CANONICAL_CONSENSUS_AUTHORITY",
+            **target_fields,
+            "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
+            "TARGET_RESULT_DEPENDENCY": "NONE",
+            "TARGET_RESULT_USED": "NO",
+            "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
+            "EXPECTED_STREAM_COUNT": config.expected_stream_count,
+            "AVAILABLE_STREAM_COUNT": len(streams),
+            "MISSING_STREAM_IDS": [],
+            "CANONICAL_CONSENSUS_ERROR": f"{type(exc).__name__}: {exc}",
+        }, 1
+
+    ranked_numbers = [
+        entry["number"]
+        for entry in cast(list[dict[str, object]], canonical_consensus["number_consensus"])
+    ]
     return {
         "FORECAST_STATUS": "READY",
         **target_fields,
         "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
+        "TARGET_RESULT_DEPENDENCY": "NONE",
         "TARGET_RESULT_USED": "NO",
         "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
-        "EXPECTED_STREAM_COUNT": EXPECTED_STREAM_COUNT,
+        "EXPECTED_STREAM_COUNT": config.expected_stream_count,
         "AVAILABLE_STREAM_COUNT": len(streams),
         "MISSING_STREAM_IDS": [],
-        "RANKING_AUTHORITY": FORECAST_RANKING_AUTHORITY_UNRESOLVED,
+        "RANKING_AUTHORITY": canonical_consensus["aggregation_method"],
+        "FINAL_DECISION_RANKING": {
+            "top6": canonical_consensus["top6"],
+            "top10": canonical_consensus["top_k"],
+            "ranked_numbers": ranked_numbers,
+        },
+        "CANONICAL_PREDRAW_CONSENSUS": canonical_consensus,
         "STREAMS": streams,
     }, 0
 
@@ -1814,7 +1843,6 @@ if __name__ == "__main__":
 
 
 __all__ = [
-    "FORECAST_RANKING_AUTHORITY_UNRESOLVED",
     "AdvisoryProcessLock",
     "OfficialHttpsClient",
     "OfficialScheduleUnavailableError",

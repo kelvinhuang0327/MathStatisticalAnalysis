@@ -87,12 +87,14 @@ from lottolab.interfaces.cli.draw_data_integrity import (
 )
 from tools.b649_forward_auto_cycle_adapter import B649ForwardAutoCycleAdapter
 from tools.b649_operational_prediction_loop import (
+    CANONICAL_PREDRAW_CONSENSUS_METHOD,
     LOTTERY_TYPE,
     STRATEGY_STREAMS,
     TAIPEI,
     PredictionTarget,
     StrategyStream,
     _assert_causal_cutoff,  # pyright: ignore[reportPrivateUsage]
+    build_canonical_predraw_consensus,
     iter_prediction_files,
     load_canonical_history,
     rescore_draw,
@@ -111,12 +113,6 @@ SCHEDULER_LABEL = "com.lottolab.b649-goalc-r1"
 START_INTERVAL_SECONDS = 300
 STALE_AFTER_SECONDS = 900
 EXPECTED_STREAM_COUNT = 11
-# No existing Goal-C authority resolves an 11-stream decision consensus into a
-# single ranked number list (checked: this module, the operational prediction
-# loop, and the pair-rule shadow -- none defines one). ``forecast`` reports
-# this literally instead of recomputing the one-off, explicitly non-canonical
-# equal-weight mean-rank method used for the prior 115000087 research report.
-FORECAST_RANKING_AUTHORITY_UNRESOLVED = "FORECAST_RANKING_AUTHORITY_UNRESOLVED"
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -1676,10 +1672,9 @@ def _forecast_command(
     authority ``run`` itself uses (``backend.resolve_target`` /
     ``backend.inspect_predictions``); never refreshes the official schedule,
     generates predictions, syncs an outcome, completes post-draw, or runs a
-    scheduler cycle. No existing decision-ranking authority combines the 11
-    streams into one ranked number list, so ``RANKING_AUTHORITY`` reports that
-    literally and no ``FINAL_DECISION_RANKING``/``WEIGHTED_CONSENSUS`` is
-    fabricated -- see ``FORECAST_RANKING_AUTHORITY_UNRESOLVED`` above.
+    scheduler cycle. Once all existing readiness and temporal gates pass, the
+    canonical persisted PRE_DRAW consensus builder supplies the ranking and
+    Top-6/Top-10 projections without changing the scheduler's read-only role.
     """
 
     target = backend.resolve_target()
@@ -1736,6 +1731,23 @@ def _forecast_command(
     analysis_max_data_cutoff = str(
         max(int(cast(str, entry["history_cutoff_draw"])) for entry in streams)
     )
+    prediction_directory = config.operation_root / "predictions" / target.draw_number
+    try:
+        consensus = build_canonical_predraw_consensus(
+            prediction_directory,
+            expected_target_draw=target.draw_number,
+            expected_history_cutoff=analysis_max_data_cutoff,
+            expected_stream_count=EXPECTED_STREAM_COUNT,
+            weight_authority_status="LIMITED",
+            aggregation_weight_mode="UNWEIGHTED",
+        )
+    except (OSError, TypeError, ValueError) as exc:
+        return {
+            "FORECAST_STATUS": "INVALID_TEMPORAL_AUTHORITY",
+            **target_fields,
+            "VIOLATIONS": [f"canonical consensus: {exc}"],
+        }, 1
+
     return {
         "FORECAST_STATUS": "READY",
         **target_fields,
@@ -1745,7 +1757,12 @@ def _forecast_command(
         "EXPECTED_STREAM_COUNT": EXPECTED_STREAM_COUNT,
         "AVAILABLE_STREAM_COUNT": len(streams),
         "MISSING_STREAM_IDS": [],
-        "RANKING_AUTHORITY": FORECAST_RANKING_AUTHORITY_UNRESOLVED,
+        "RANKING_AUTHORITY": CANONICAL_PREDRAW_CONSENSUS_METHOD,
+        "FINAL_DECISION_RANKING": consensus["number_consensus"],
+        "TOP6": consensus["top6"],
+        "TOP10": consensus["top_k"],
+        "WEIGHT_AUTHORITY_STATUS": "LIMITED",
+        "AGGREGATION_WEIGHT_MODE": "UNWEIGHTED",
         "STREAMS": streams,
     }, 0
 
@@ -1814,7 +1831,6 @@ if __name__ == "__main__":
 
 
 __all__ = [
-    "FORECAST_RANKING_AUTHORITY_UNRESOLVED",
     "AdvisoryProcessLock",
     "OfficialHttpsClient",
     "OfficialScheduleUnavailableError",

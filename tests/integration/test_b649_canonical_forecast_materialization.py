@@ -9,7 +9,9 @@ from pathlib import Path
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
 
+from lottolab.domain.b649_canonical_consensus import build_canonical_consensus
 from lottolab.evidence.canonical_json import canonical_file_bytes
+from lottolab.infrastructure.b649_canonical_forecast_writer import StagedCanonicalForecast
 
 FIXTURE_NUMBERS = (4, 12, 24, 25, 26, 29)
 FIXTURE_PREDICTION_CREATED_AT = "2026-09-10T13:00:00+00:00"
@@ -237,7 +239,7 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
     destination = tmp_path / "authority" / "final_forecast_payload.json"
     original_publish = materializer.publish_staged
 
-    def competing_publish(staged: materializer.StagedCanonicalForecast):
+    def competing_publish(staged: StagedCanonicalForecast):
         staged.destination.write_bytes(b"{\"competing\":true}\n")
         return original_publish(staged)
 
@@ -255,3 +257,37 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
             clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
         )
     assert destination.read_bytes() == b"{\"competing\":true}\n"
+
+
+def test_historical_087_authority_and_domain_parity_are_read_only() -> None:
+    """The approved 087 artifact is verified in place and never rematerialized."""
+
+    operation_root = materializer.OPERATION_ROOT
+    artifact = operation_root / materializer.FORECAST_RELATIVE_PATH
+    if not artifact.is_file():
+        pytest.fail(f"bounded compatibility artifact is absent: {artifact}")
+    before = artifact.read_bytes()
+    before_stat = artifact.stat()
+    payload = json.loads(before.decode("utf-8"))
+    bundle = materializer.load_frozen_stream_inputs(
+        operation_root,
+        expected_manifest_sha256=materializer.EXPECTED_STREAM_INPUT_MANIFEST_SHA256,
+    )
+    decision = build_canonical_consensus(bundle.streams)
+    expected_ranking = tuple(
+        entry["number"] for entry in payload["final_decision_ranking"]
+    )
+
+    assert len(bundle.streams) == 11
+    assert len(decision.deterministic_ranking) == 49
+    assert decision.deterministic_ranking == expected_ranking
+    assert sum(decision.support_units) == 396
+    assert decision.final_ticket == (4, 12, 24, 25, 26, 29)
+    assert payload["final_recommended_output"] == [
+        {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
+    ]
+    assert before == artifact.read_bytes()
+    after_stat = artifact.stat()
+    assert before_stat.st_ino == after_stat.st_ino
+    assert before_stat.st_size == after_stat.st_size
+    assert before_stat.st_mtime_ns == after_stat.st_mtime_ns

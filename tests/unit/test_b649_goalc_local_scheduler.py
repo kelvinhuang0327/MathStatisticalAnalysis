@@ -47,6 +47,21 @@ from tools.b649_operational_prediction_loop import (
     PredictionTarget,
 )
 
+from lottolab.application.b649_canonical_forecast_materialization import (
+    CanonicalForecastAuthorityPort,
+    CanonicalForecastCutoff,
+    CanonicalForecastMaterializationRequest,
+    CanonicalForecastMaterializationResult,
+    CanonicalForecastTarget,
+    CanonicalHistoryIdentity,
+    ForecastAuthorityConflictError,
+    ImplementationIdentity,
+    ImplementationSource,
+    PersistedForecastPrediction,
+    PreOutcomeWindowClosedError,
+    RegisteredForecastStream,
+    materialize_canonical_forecast,
+)
 from lottolab.application.pre_outcome_target_operational import (
     TargetAnnouncementSourceStatus,
 )
@@ -55,6 +70,14 @@ from lottolab.domain.draw_data_integrity import (
     DrawDataIntegrityStatus,
 )
 from lottolab.domain.draws import LotteryType
+from lottolab.infrastructure.b649_canonical_forecast_writer import (
+    discard_staged,
+    ensure_output_parent,
+    publish_staged,
+    read_existing_bytes,
+    read_persisted_prediction_records,
+    stage_payload,
+)
 from lottolab.infrastructure.pre_outcome_target_operational import (
     OFFICIAL_SCHEDULE_SOURCE_ID,
     OFFICIAL_SCHEDULE_SOURCE_VERSION,
@@ -240,6 +263,7 @@ def _write_prediction(
 
 _FORECAST_CUTOFF_DRAW = "209899999"
 _FORECAST_CUTOFF_DATE = "2099-01-01"
+_FORECAST_HISTORY_SHA256 = "a" * 64
 
 
 def _forecast_prediction(
@@ -277,6 +301,10 @@ def _forecast_prediction(
             "draw_number": history_cutoff_draw,
             "draw_date": history_cutoff_date,
         },
+        "history_draw_count": 1,
+        "history_sha256": _FORECAST_HISTORY_SHA256,
+        "history_caveat": "YES",
+        "native_ticket_count": 1,
         "tickets": (
             [{"ticket_position": 1, "predicted_numbers": [1, 2, 3, 4, 5, 6]}]
             if availability == "AVAILABLE"
@@ -298,8 +326,6 @@ def _write_forecast_prediction(
     history_cutoff_draw: str,
     history_cutoff_date: str,
 ) -> Path:
-    path = root / "predictions" / target.draw_number / strategy_id / "prediction.json"
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     payload = _forecast_prediction(
         target,
         strategy_id,
@@ -311,6 +337,9 @@ def _write_forecast_prediction(
         history_cutoff_draw=history_cutoff_draw,
         history_cutoff_date=history_cutoff_date,
     )
+    run_id = cast(str, payload["prediction_run_id"])
+    path = root / "predictions" / target.draw_number / strategy_id / f"{run_id}.json"
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)
     return path
@@ -349,6 +378,96 @@ class _ForecastOnlyBackend:
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
         return inspect_prediction_inventory(self.operation_root, target)
 
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]:
+        del target, source_head
+        self.mutating_calls.append("materialize_forecast")
+        raise AssertionError("forecast must never publish a forecast")
+
+    def preview_forecast(
+        self,
+        target: PredictionTarget,
+    ) -> CanonicalForecastMaterializationResult:
+        records = read_persisted_prediction_records(self.operation_root, target.draw_number)
+        cutoff_draw = _FORECAST_CUTOFF_DRAW
+        cutoff_date = _FORECAST_CUTOFF_DATE
+        for record in records:
+            cutoff = record.payload.get("history_cutoff")
+            if type(cutoff) is dict:
+                cutoff_mapping = cast(dict[str, object], cutoff)
+                candidate_draw = cutoff_mapping.get("draw_number")
+                candidate_date = cutoff_mapping.get("draw_date")
+                if type(candidate_draw) is str and type(candidate_date) is str:
+                    cutoff_draw = candidate_draw
+                    cutoff_date = candidate_date
+                    break
+        predictions = tuple(
+            PersistedForecastPrediction(
+                source_relative_path=record.source_relative_path,
+                source_sha256=record.source_sha256,
+                raw_bytes=record.raw_bytes,
+                payload=record.payload,
+            )
+            for record in records
+        )
+        registered = tuple(
+            RegisteredForecastStream(strategy_id, "v-forecast-test", 1)
+            for strategy_id in STREAM_IDS
+        )
+        request = CanonicalForecastMaterializationRequest(
+            task_id="forecast-test",
+            upstream_task_id="prediction-test",
+            target=CanonicalForecastTarget(
+                lottery_type=target.lottery_type,
+                draw_number=target.draw_number,
+                draw_date=target.draw_date,
+                scheduled_at=target.scheduled_at,
+            ),
+            max_data_cutoff=CanonicalForecastCutoff(
+                cutoff_draw,
+                cutoff_date,
+            ),
+            history=CanonicalHistoryIdentity(
+                cutoff_draw,
+                cutoff_date,
+                1,
+                _FORECAST_HISTORY_SHA256,
+                "YES",
+            ),
+            registered_streams=registered,
+            predictions=predictions,
+            implementation_identity=ImplementationIdentity(
+                "a" * 40,
+                "b" * 40,
+                (ImplementationSource("tests", "c" * 64),),
+            ),
+        )
+        authority = CanonicalForecastAuthorityPort(
+            read_existing_bytes=read_existing_bytes,
+            ensure_output_parent=ensure_output_parent,
+            stage_payload=stage_payload,
+            publish_staged=publish_staged,
+            discard_staged=discard_staged,
+        )
+        return materialize_canonical_forecast(
+            request,
+            destination=(
+                self.operation_root
+                / "forecasts"
+                / target.draw_number
+                / scheduler_module.CANONICAL_CONSENSUS_METHOD_ID
+                / scheduler_module.CANONICAL_CONSENSUS_METHOD_VERSION
+                / "final_forecast_payload.json"
+            ),
+            authority=authority,
+            clock=lambda: NOW,
+            dry_run=True,
+        )
+
     def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
         self.mutating_calls.append("refresh_schedule")
         raise AssertionError("forecast must never call refresh_schedule")
@@ -378,6 +497,7 @@ class _FakeBackend:
         inventories: Sequence[PredictionInventory],
         postdraw: PostDrawResult | None = None,
         fail_refresh: Exception | None = None,
+        materialization_error: Exception | None = None,
     ) -> None:
         self.target = target
         self.inventories = list(inventories)
@@ -388,7 +508,9 @@ class _FakeBackend:
             cycle_action="WAITING_FOR_OUTCOME",
         )
         self.fail_refresh = fail_refresh
+        self.materialization_error = materialization_error
         self.generation_calls: list[tuple[str, ...]] = []
+        self.materialization_calls: list[tuple[str, str]] = []
         self.sync_calls = 0
         self.complete_calls = 0
 
@@ -414,6 +536,13 @@ class _FakeBackend:
             return self.inventories.pop(0)
         return self.inventories[0]
 
+    def preview_forecast(
+        self,
+        target: PredictionTarget,
+    ) -> CanonicalForecastMaterializationResult:
+        del target
+        raise AssertionError("scheduler cycle must not preview a forecast")
+
     def generate_predraw(
         self,
         target: PredictionTarget,
@@ -426,6 +555,29 @@ class _FakeBackend:
             "requested_stream_ids": list(call),
             "created_prediction_paths": ["fixture.json"],
             "failures": [],
+        }
+
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]:
+        assert target == self.target
+        self.materialization_calls.append((target.draw_number, source_head))
+        if self.materialization_error is not None:
+            raise self.materialization_error
+        return {
+            "status": "COMPLETE",
+            "publication": "CREATED",
+            "target_draw": target.draw_number,
+            "method_id": scheduler_module.CANONICAL_CONSENSUS_METHOD_ID,
+            "method_version": scheduler_module.CANONICAL_CONSENSUS_METHOD_VERSION,
+            "artifact_path": f"forecast/{target.draw_number}/final_forecast_payload.json",
+            "artifact_sha256": "d" * 64,
+            "input_manifest_sha256": "e" * 64,
+            "error_class": None,
+            "reason": None,
         }
 
     def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]:
@@ -934,6 +1086,14 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["ready_before_draw"] is True
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    assert forecast_health["status"] == "COMPLETE"
+    assert forecast_health["publication"] == "CREATED"
+    assert forecast_health["method_id"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    assert forecast_health["method_version"] == "1.0.0"
+    assert result["scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
     assert backend.sync_calls == 0
     persisted = json.loads(config.health_path.read_text())
     assert SHADOW_HEALTH_NAMESPACE not in persisted
@@ -941,6 +1101,70 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
         key: value for key, value in result.items() if key != SHADOW_HEALTH_NAMESPACE
     }
     assert stat.S_IMODE(os.lstat(config.health_path).st_mode) == 0o600
+
+
+def test_scheduler_waits_for_forecast_before_predraw_ready(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(10),))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "WAITING_FOR_PREDRAW"
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    assert forecast_health["status"] == "WAITING_FOR_PREDICTIONS"
+    assert forecast_health["error_class"] == "MISSING_STREAM_INPUT"
+    assert forecast_health["reason"] == "BLOCK_MISSING_STREAM_INPUT"
+    assert backend.materialization_calls == []
+    assert result["scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
+
+
+@pytest.mark.parametrize(
+    ("materialization_error", "expected_status"),
+    (
+        (
+            ForecastAuthorityConflictError("fixture conflict"),
+            "CONFLICT",
+        ),
+        (
+            PreOutcomeWindowClosedError("fixture deadline"),
+            "MISSED_PRE_OUTCOME_WINDOW",
+        ),
+        (RuntimeError("fixture error"), "ERROR"),
+    ),
+)
+def test_scheduler_forecast_failure_is_health_separate_from_predraw_state(
+    tmp_path: Path,
+    materialization_error: Exception,
+    expected_status: str,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        materialization_error=materialization_error,
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "WAITING_FOR_FORECAST"
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    assert forecast_health["status"] == expected_status
+    assert forecast_health["error_class"] is not None
+    assert forecast_health["reason"] is not None
+    assert result["scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
+    assert backend.sync_calls == 0
 
 
 def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream_schema(
@@ -1469,20 +1693,22 @@ def test_forecast_ready_when_all_eleven_streams_are_available(tmp_path: Path) ->
     assert result["AVAILABLE_STREAM_COUNT"] == 11
     assert result["MISSING_STREAM_IDS"] == []
     assert result["ANALYSIS_MAX_DATA_CUTOFF"] == _FORECAST_CUTOFF_DRAW
+    assert result["RANKING_AUTHORITY"] == (
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS@1.0.0"
+    )
     streams = cast(list[dict[str, object]], result["STREAMS"])
     assert len(streams) == 11
     assert {cast(str, entry["strategy_id"]) for entry in streams} == set(STREAM_IDS)
     for entry in streams:
-        assert entry["history_cutoff_draw"] == _FORECAST_CUTOFF_DRAW
-        assert entry["tickets"]
         assert {
+            "native_ticket_count",
+            "source_relative_path",
+            "source_sha256",
             "strategy_id",
             "strategy_version",
             "prediction_run_id",
-            "prediction_created_at",
-            "history_cutoff_draw",
-            "tickets",
         } == set(entry)
+    assert "CANONICAL_PREDRAW_CONSENSUS" not in result
     assert backend.mutating_calls == []
 
 
@@ -1535,9 +1761,7 @@ def test_forecast_does_not_require_or_read_target_outcome(tmp_path: Path) -> Non
     assert backend.mutating_calls == []
 
 
-def test_forecast_incomplete_when_streams_are_missing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
     """Acceptance 4: missing streams return internal readiness, not blocked."""
 
     config = _config(tmp_path)
@@ -1545,12 +1769,6 @@ def test_forecast_incomplete_when_streams_are_missing(
     available = STREAM_IDS[:7]
     _write_all_streams(config.operation_root, target, available)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
-
-    def fail_if_called(*args: object, **kwargs: object) -> dict[str, object]:
-        del args, kwargs
-        raise AssertionError("missing-stream forecast must not invoke canonical consensus")
-
-    monkeypatch.setattr(scheduler_module, "build_canonical_predraw_consensus", fail_if_called)
 
     result, exit_code = _forecast_command(config, backend)
 
@@ -1622,21 +1840,15 @@ def test_forecast_treats_malformed_history_cutoff_as_invalid_temporal_authority(
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
-    path = (
-        config.operation_root
-        / "predictions"
-        / target.draw_number
-        / STREAM_IDS[0]
-        / "prediction.json"
-    )
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    payload = _forecast_prediction(
+    path = _write_forecast_prediction(
+        config.operation_root,
         target,
         STREAM_IDS[0],
         created_at=NOW,
         history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
         history_cutoff_date=_FORECAST_CUTOFF_DATE,
     )
+    payload = json.loads(path.read_text(encoding="utf-8"))
     del payload["history_cutoff"]
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)
@@ -1645,9 +1857,9 @@ def test_forecast_treats_malformed_history_cutoff_as_invalid_temporal_authority(
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code != 0
-    assert result["FORECAST_STATUS"] == "INVALID_TEMPORAL_AUTHORITY"
-    violations = cast(list[str], result["VIOLATIONS"])
-    assert any(STREAM_IDS[0] in violation for violation in violations)
+    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_FORECAST_AUTHORITY"
+    error = cast(dict[str, object], result["CANONICAL_FORECAST_ERROR"])
+    assert error["error_class"] == "CAUSAL_CUTOFF_MISMATCH"
 
 
 def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None:
@@ -1663,102 +1875,58 @@ def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None
     assert backend.mutating_calls == []
 
 
-def test_forecast_projects_canonical_consensus_and_provenance(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+def test_forecast_projects_canonical_service_payload_and_provenance(
+    tmp_path: Path,
 ) -> None:
-    """READY output is a mechanical projection of the canonical payload."""
+    """READY output projects the reusable service payload and method identity."""
 
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
-    canonical: dict[str, object] = {
-        "schema_version": "b649-canonical-predraw-consensus-v1",
-        "target_draw": target.draw_number,
-        "history_cutoff": _FORECAST_CUTOFF_DRAW,
-        "prediction_temporal_class": "PRE_DRAW",
-        "upstream_prediction_locator": str(
-            config.operation_root / "predictions" / target.draw_number
-        ),
-        "stream_count": 11,
-        "stream_identities": [],
-        "ticket_count": 22,
-        "number_consensus": [
-            {"rank": 1, "number": 1},
-            {"rank": 2, "number": 4},
-            {"rank": 3, "number": 18},
-            {"rank": 4, "number": 25},
-            {"rank": 5, "number": 26},
-            {"rank": 6, "number": 29},
-            {"rank": 7, "number": 8},
-            {"rank": 8, "number": 24},
-            {"rank": 9, "number": 43},
-            {"rank": 10, "number": 45},
-        ],
-        "top6": [1, 4, 18, 25, 26, 29],
-        "top_k": [1, 4, 8, 18, 24, 25, 26, 29, 43, 45],
-        "aggregation_method": "b649-canonical-predraw-consensus-v1",
-        "aggregation_weight_mode": "UNWEIGHTED",
-        "weight_authority_status": "LIMITED",
-        "target_result_used": False,
-    }
-    calls: list[tuple[Path, dict[str, object]]] = []
-
-    def build_consensus(
-        prediction_directory: Path, **kwargs: object
-    ) -> dict[str, object]:
-        calls.append((prediction_directory, kwargs))
-        return canonical
-
-    monkeypatch.setattr(scheduler_module, "build_canonical_predraw_consensus", build_consensus)
 
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code == 0
     assert result["FORECAST_STATUS"] == "READY"
     assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
-    assert result["RANKING_AUTHORITY"] == "b649-canonical-predraw-consensus-v1"
-    number_consensus = cast(list[dict[str, object]], canonical["number_consensus"])
+    assert result["RANKING_AUTHORITY"] == (
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS@1.0.0"
+    )
+    payload = cast(dict[str, object], result["CANONICAL_FORECAST_PAYLOAD"])
+    assert payload["aggregation_method_id"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    assert payload["aggregation_method_version"] == "1.0.0"
+    assert payload["target_result_used"] is False
     assert result["FINAL_DECISION_RANKING"] == {
-        "top6": canonical["top6"],
-        "top10": canonical["top_k"],
-        "ranked_numbers": [entry["number"] for entry in number_consensus],
+        "top6": [1, 2, 3, 4, 5, 6],
+        "top10": list(range(1, 11)),
+        "ranked_numbers": list(range(1, 50)),
     }
-    assert result["CANONICAL_PREDRAW_CONSENSUS"] is canonical
-    assert calls == [
-        (
-            config.operation_root / "predictions" / target.draw_number,
-            {
-                "expected_target_draw": target.draw_number,
-                "expected_history_cutoff": _FORECAST_CUTOFF_DRAW,
-                "expected_stream_count": config.expected_stream_count,
-                "aggregation_weight_mode": "UNWEIGHTED",
-                "weight_authority_status": "LIMITED",
-            },
-        )
-    ]
+    assert "CANONICAL_PREDRAW_CONSENSUS" not in result
     assert "WEIGHTED_CONSENSUS" not in result
 
 
-def test_forecast_fails_closed_when_canonical_consensus_rejects_input(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_forecast_fails_closed_when_canonical_service_rejects_input(tmp_path: Path) -> None:
     config = _config(tmp_path)
     target = _target()
-    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
+    _write_forecast_prediction(
+        config.operation_root,
+        target,
+        STREAM_IDS[0],
+        strategy_version="wrong-version",
+        created_at=NOW,
+        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+        history_cutoff_date=_FORECAST_CUTOFF_DATE,
+    )
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
-
-    def reject_consensus(*args: object, **kwargs: object) -> dict[str, object]:
-        del args, kwargs
-        raise ValueError("STREAM_COUNT_MISMATCH: synthetic canonical failure")
-
-    monkeypatch.setattr(scheduler_module, "build_canonical_predraw_consensus", reject_consensus)
 
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code != 0
-    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_CONSENSUS_AUTHORITY"
-    assert "STREAM_COUNT_MISMATCH" in cast(str, result["CANONICAL_CONSENSUS_ERROR"])
+    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_FORECAST_AUTHORITY"
+    error = cast(dict[str, object], result["CANONICAL_FORECAST_ERROR"])
+    assert error["error_class"] == "STREAM_VERSION_MISMATCH"
     assert "FORECAST_RANKING_AUTHORITY_UNRESOLVED" not in json.dumps(result)
     assert "FINAL_DECISION_RANKING" not in result
     assert "WEIGHTED_CONSENSUS" not in result
@@ -1767,7 +1935,8 @@ def test_forecast_fails_closed_when_canonical_consensus_rejects_input(
 def test_forecast_does_not_duplicate_canonical_ranking_formula() -> None:
     source = getsource(scheduler_module._forecast_command)  # pyright: ignore[reportPrivateUsage]
 
-    assert "build_canonical_predraw_consensus" in source
+    assert "preview_forecast" in source
+    assert "build_canonical_predraw_consensus" not in source
     assert "compute_number_consensus" not in source
     assert "unique_stream_count" not in source
     assert "ticket_count" not in source

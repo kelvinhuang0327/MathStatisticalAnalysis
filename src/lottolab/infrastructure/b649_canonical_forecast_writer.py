@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import re
 import stat
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Final, Literal
+from typing import Final, Literal, cast
 from uuid import uuid4
 
 _OUTPUT_NAME: Final = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", flags=re.ASCII)
@@ -24,6 +26,16 @@ class CanonicalForecastWriterError(RuntimeError):
 
 class CanonicalForecastConflictError(CanonicalForecastWriterError):
     """An existing authority path is malformed or has different content."""
+
+
+@dataclass(frozen=True, slots=True)
+class PersistedPredictionRecord:
+    """One raw prediction file and the hash captured while it was read."""
+
+    source_relative_path: str
+    source_sha256: str
+    raw_bytes: bytes
+    payload: dict[str, object]
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +79,70 @@ def read_existing_bytes(destination: Path) -> bytes | None:
         return destination.read_bytes()
     except OSError as exc:
         raise CanonicalForecastConflictError("cannot read the existing authority") from exc
+
+
+def read_persisted_prediction_records(
+    operation_root: Path,
+    target_draw: str,
+) -> tuple[PersistedPredictionRecord, ...]:
+    """Read all direct and one-level prediction files for one target.
+
+    Selection remains an application concern: this boundary only enumerates
+    the exact persisted files and captures their raw bytes and source hashes.
+    No ``latest file wins`` behavior is possible because every discovered file
+    is returned to the caller for exact-one validation.
+    """
+
+    if not operation_root.is_absolute():
+        raise CanonicalForecastWriterError("operation_root must be an absolute Path")
+    if type(target_draw) is not str or not target_draw or not target_draw.isdecimal():
+        raise CanonicalForecastWriterError("target_draw must be a decimal identity")
+    _validate_read_root(operation_root)
+    prediction_root = operation_root / "predictions" / target_draw
+    if not prediction_root.exists():
+        return ()
+    _validate_no_symlink(prediction_root, "prediction directory")
+    if not prediction_root.is_dir():
+        raise CanonicalForecastWriterError("prediction target path is not a directory")
+
+    paths = tuple(
+        sorted(
+            (*prediction_root.glob("*.json"), *prediction_root.glob("*/*.json")),
+            key=str,
+        )
+    )
+    records: list[PersistedPredictionRecord] = []
+    for path in paths:
+        _validate_prediction_path(path, operation_root)
+        try:
+            raw = path.read_bytes()
+            parsed = json.loads(
+                raw.decode("utf-8"),
+                object_pairs_hook=_reject_duplicate_keys,
+                parse_constant=_reject_constant,
+            )
+        except (OSError, UnicodeDecodeError, ValueError) as exc:
+            raise CanonicalForecastWriterError(
+                f"persisted prediction is not valid JSON: {path}"
+            ) from exc
+        if not isinstance(parsed, dict):
+            raise CanonicalForecastWriterError(
+                f"persisted prediction must be one JSON object: {path}"
+            )
+        mapping = cast(dict[object, object], parsed)
+        if any(type(key) is not str for key in mapping):
+            raise CanonicalForecastWriterError(
+                f"persisted prediction keys must be strings: {path}"
+            )
+        records.append(
+            PersistedPredictionRecord(
+                source_relative_path=path.relative_to(operation_root).as_posix(),
+                source_sha256=hashlib.sha256(raw).hexdigest(),
+                raw_bytes=raw,
+                payload=cast(dict[str, object], mapping),
+            )
+        )
+    return tuple(records)
 
 
 def stage_payload(destination: Path, payload_bytes: bytes) -> StagedCanonicalForecast:
@@ -139,6 +215,19 @@ def publish_staged(staged: StagedCanonicalForecast) -> CanonicalForecastWriteRes
             raise CanonicalForecastWriterError("staged temporary cleanup failed") from exc
 
 
+def discard_staged(staged: StagedCanonicalForecast) -> None:
+    """Remove a staged file after a pre-publication abort."""
+
+    if type(staged) is not StagedCanonicalForecast:
+        raise CanonicalForecastWriterError("staged value has the wrong type")
+    try:
+        staged.temporary.unlink()
+    except FileNotFoundError:
+        return
+    except OSError as exc:
+        raise CanonicalForecastWriterError("staged temporary cleanup failed") from exc
+
+
 def _validate_destination_shape(destination: Path) -> None:
     if not destination.is_absolute():
         raise CanonicalForecastWriterError("destination must be an absolute Path")
@@ -183,13 +272,64 @@ def _fsync_directory(path: Path) -> None:
         os.close(descriptor)
 
 
+def _validate_read_root(root: Path) -> None:
+    try:
+        metadata = root.lstat()
+    except OSError as exc:
+        raise CanonicalForecastWriterError("operation_root cannot be inspected") from exc
+    if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
+        raise CanonicalForecastWriterError("operation_root must be a non-symlink directory")
+
+
+def _validate_prediction_path(path: Path, root: Path) -> None:
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise CanonicalForecastWriterError("prediction path escapes operation_root") from exc
+    current = root
+    for part in relative.parts:
+        current /= part
+        _validate_no_symlink(current, "prediction path")
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise CanonicalForecastWriterError("prediction file cannot be inspected") from exc
+    if not stat.S_ISREG(metadata.st_mode):
+        raise CanonicalForecastWriterError("prediction path must be a regular file")
+
+
+def _validate_no_symlink(path: Path, label: str) -> None:
+    try:
+        metadata = path.lstat()
+    except OSError as exc:
+        raise CanonicalForecastWriterError(f"{label} cannot be inspected") from exc
+    if stat.S_ISLNK(metadata.st_mode):
+        raise CanonicalForecastWriterError(f"symlink is forbidden in {label}")
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate object key: {key}")
+        result[key] = value
+    return result
+
+
+def _reject_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON constant: {value}")
+
+
 __all__ = [
     "CanonicalForecastConflictError",
     "CanonicalForecastWriteResult",
     "CanonicalForecastWriterError",
+    "PersistedPredictionRecord",
     "StagedCanonicalForecast",
+    "discard_staged",
     "ensure_output_parent",
     "publish_staged",
     "read_existing_bytes",
+    "read_persisted_prediction_records",
     "stage_payload",
 ]

@@ -10,6 +10,7 @@ import B649ReplayPage from './features/b649-replay/B649ReplayPage.vue'
 import P638ReplayPage from './features/p638-replay/P638ReplayPage.vue'
 import T539ReplayPage from './features/t539-replay/T539ReplayPage.vue'
 import FutureModulesPage from './features/future-modules/FutureModulesPage.vue'
+import AnalysisWorkspacePage from './features/analysis-workspace/AnalysisWorkspacePage.vue'
 
 // Direct sub-page components for full backwards compatibility
 import StrategyCatalogPage from './features/strategy-catalog/StrategyCatalogPage.vue'
@@ -26,6 +27,7 @@ import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
 import RankingMatrixPage from './features/ranking-matrix/RankingMatrixPage.vue'
 
 type Page =
+  | 'analysis-workspace'
   | 'data-operations'
   | 'data-center'
   | 'history'
@@ -55,6 +57,7 @@ const currentPage = ref<Page>(pageFromHash())
 
 function pageFromHash(): Page {
   const route = window.location.hash.replace(/^#\/?/, '')
+  if (route === 'analysis-workspace') return 'analysis-workspace'
   if (route === 'data-operations' || route === 'data-center') return route as Page
   if (route === 'history' || route === 'draw-history') return route as Page
   if (route === 'best-replay') return 'best-replay'
@@ -81,6 +84,7 @@ function pageFromHash(): Page {
 
 const activeNavSection = computed(() => {
   const p = currentPage.value
+  if (p === 'analysis-workspace') return 'analysis-workspace'
   if (p === 'data-operations' || p === 'data-center') return 'data-operations'
   if (p === 'history' || p === 'draw-history') return 'history'
   if (p === 'best-replay' || p === 'ranking-matrix') return 'best-replay'
@@ -173,13 +177,20 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
         >
           Future Modules
         </a>
+        <a
+          href="#/analysis-workspace"
+          :aria-current="activeNavSection === 'analysis-workspace' ? 'page' : undefined"
+        >
+          Analysis Workspace
+        </a>
       </nav>
       <span class="environment-badge">Audited Research</span>
     </header>
 
     <main>
       <!-- Canonical Pages -->
-      <DataOperationsPage v-if="currentPage === 'data-operations' || currentPage === 'data-center'" />
+      <AnalysisWorkspacePage v-if="currentPage === 'analysis-workspace'" />
+      <DataOperationsPage v-else-if="currentPage === 'data-operations' || currentPage === 'data-center'" />
       <HistoryPage v-else-if="currentPage === 'history' || currentPage === 'draw-history'" />
       <BestReplayPage v-else-if="currentPage === 'best-replay'" />
       <ReplayOverviewPage v-else-if="currentPage === 'replay-overview' || currentPage === 'all-strategy-replay'" />
@@ -207,7 +218,10 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
 
     <footer class="app-footer">
       <div>
-        <template v-if="activeNavSection === 'data-operations'">
+        <template v-if="activeNavSection === 'analysis-workspace'">
+          Analysis Workspace links to the existing product sections without creating new analytical results.
+        </template>
+        <template v-else-if="activeNavSection === 'data-operations'">
           Local draw data stays outside Git. Import writes occur only after explicit confirmation.
         </template>
         <template v-else-if="activeNavSection === 'strategy-intelligence'">

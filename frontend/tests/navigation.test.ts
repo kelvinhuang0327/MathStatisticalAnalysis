@@ -325,6 +325,7 @@ describe('App navigation', () => {
       'P638 Replay',
       'T539 Replay',
       'Future Modules',
+      'Analysis Workspace',
     ])
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
 

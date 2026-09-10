@@ -21,6 +21,7 @@ from urllib.error import URLError
 import pytest
 import tools.b649_goalc_local_scheduler as scheduler_module
 from tools.b649_goalc_local_scheduler import (
+    FORECAST_RANKING_AUTHORITY_UNRESOLVED,
     SHADOW_HEALTH_NAMESPACE,
     AdvisoryProcessLock,
     OfficialHttpsClient,
@@ -32,6 +33,7 @@ from tools.b649_goalc_local_scheduler import (
     SchedulerConfig,
     ScheduleRefreshResult,
     SchedulerInvariantError,
+    _forecast_command,  # pyright: ignore[reportPrivateUsage]
     build_launchd_plist,
     evaluate_health_status,
     inspect_prediction_inventory,
@@ -235,6 +237,138 @@ def _write_prediction(
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)
     return path
+
+
+_FORECAST_CUTOFF_DRAW = "209899999"
+_FORECAST_CUTOFF_DATE = "2099-01-01"
+
+
+def _forecast_prediction(
+    target: PredictionTarget,
+    strategy_id: str,
+    *,
+    strategy_version: str = "v-forecast-test",
+    run_suffix: str = "one",
+    created_at: datetime,
+    temporal_class: str = "PRE_DRAW",
+    availability: str = "AVAILABLE",
+    history_cutoff_draw: str,
+    history_cutoff_date: str,
+) -> dict[str, object]:
+    """A real 11-stream ``run_strategy_stream`` record shape, forecast-focused.
+
+    Unlike the shared ``_prediction`` fixture above (used by non-forecast
+    tests that never look at ``history_cutoff``), this includes it -- the one
+    field the existing ``inspect_prediction_inventory`` authority never
+    validates and ``forecast`` must independently re-verify.
+    """
+
+    return {
+        "lottery_type": target.lottery_type,
+        "draw_number": target.draw_number,
+        "draw_date": target.draw_date,
+        "scheduled_at": target.scheduled_at,
+        "prediction_created_at": created_at.isoformat(),
+        "prediction_temporal_class": temporal_class,
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "prediction_run_id": f"{target.draw_number}-{strategy_id}-{run_suffix}",
+        "availability": availability,
+        "history_cutoff": {
+            "draw_number": history_cutoff_draw,
+            "draw_date": history_cutoff_date,
+        },
+        "tickets": (
+            [{"ticket_position": 1, "predicted_numbers": [1, 2, 3, 4, 5, 6]}]
+            if availability == "AVAILABLE"
+            else []
+        ),
+    }
+
+
+def _write_forecast_prediction(
+    root: Path,
+    target: PredictionTarget,
+    strategy_id: str,
+    *,
+    strategy_version: str = "v-forecast-test",
+    run_suffix: str = "one",
+    created_at: datetime,
+    temporal_class: str = "PRE_DRAW",
+    availability: str = "AVAILABLE",
+    history_cutoff_draw: str,
+    history_cutoff_date: str,
+) -> Path:
+    path = root / "predictions" / target.draw_number / strategy_id / "prediction.json"
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    payload = _forecast_prediction(
+        target,
+        strategy_id,
+        strategy_version=strategy_version,
+        run_suffix=run_suffix,
+        created_at=created_at,
+        temporal_class=temporal_class,
+        availability=availability,
+        history_cutoff_draw=history_cutoff_draw,
+        history_cutoff_date=history_cutoff_date,
+    )
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.chmod(0o600)
+    return path
+
+
+def _write_all_streams(root: Path, target: PredictionTarget, strategy_ids: Sequence[str]) -> None:
+    for strategy_id in strategy_ids:
+        _write_forecast_prediction(
+            root,
+            target,
+            strategy_id,
+            created_at=NOW,
+            history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+            history_cutoff_date=_FORECAST_CUTOFF_DATE,
+        )
+
+
+class _ForecastOnlyBackend:
+    """Delegate to the real inventory authority; hard-fail on any mutating call.
+
+    ``resolve_target``/``inspect_predictions`` are exactly the two
+    ``SchedulerBackend`` methods Section 4 of the Packet names as the
+    existing authority ``forecast`` must reuse. The other four methods raise
+    instead of acting, so any accidental call from ``_forecast_command``
+    surfaces immediately as a test failure rather than a silent write.
+    """
+
+    def __init__(self, *, target: PredictionTarget | None, operation_root: Path) -> None:
+        self.target = target
+        self.operation_root = operation_root
+        self.mutating_calls: list[str] = []
+
+    def resolve_target(self) -> PredictionTarget | None:
+        return self.target
+
+    def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
+        return inspect_prediction_inventory(self.operation_root, target)
+
+    def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
+        self.mutating_calls.append("refresh_schedule")
+        raise AssertionError("forecast must never call refresh_schedule")
+
+    def generate_predraw(
+        self, target: PredictionTarget, missing_stream_ids: Sequence[str]
+    ) -> dict[str, object]:
+        self.mutating_calls.append("generate_predraw")
+        raise AssertionError("forecast must never call generate_predraw")
+
+    def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]:
+        self.mutating_calls.append("sync_official_outcome")
+        raise AssertionError("forecast must never call sync_official_outcome")
+
+    def complete_postdraw(
+        self, target: PredictionTarget, inventory: PredictionInventory
+    ) -> PostDrawResult:
+        self.mutating_calls.append("complete_postdraw")
+        raise AssertionError("forecast must never call complete_postdraw")
 
 
 class _FakeBackend:
@@ -1301,3 +1435,295 @@ def test_launchd_plist_has_exact_trigger_paths_environment_and_no_keepalive(
     }
     assert "Program" not in parsed
     assert "ShellPath" not in parsed
+
+
+# ---------------------------------------------------------------------------
+# `forecast` (B649_PRE_OUTCOME_FORECAST_CLI_DELIVERY_R1)
+# ---------------------------------------------------------------------------
+
+
+def test_parser_accepts_all_four_subcommands() -> None:
+    parser = scheduler_module._parser()  # pyright: ignore[reportPrivateUsage]
+    for command in ("run", "status", "write-plist", "forecast"):
+        args = parser.parse_args([command])
+        assert args.command == command
+
+
+def test_forecast_ready_when_all_eleven_streams_are_available(tmp_path: Path) -> None:
+    """Acceptance 1: 11/11 valid PRE_DRAW records produce FORECAST_STATUS=READY."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["TARGET_DRAW"] == target.draw_number
+    assert result["TARGET_DRAW_DATE"] == target.draw_date
+    assert result["TARGET_SCHEDULED_AT"] == target.scheduled_at
+    assert result["TARGET_RESULT_USED"] == "NO"
+    assert result["PRE_OUTCOME_TEMPORAL_INTEGRITY"] == "PASS"
+    assert result["EXPECTED_STREAM_COUNT"] == 11
+    assert result["AVAILABLE_STREAM_COUNT"] == 11
+    assert result["MISSING_STREAM_IDS"] == []
+    assert result["ANALYSIS_MAX_DATA_CUTOFF"] == _FORECAST_CUTOFF_DRAW
+    streams = cast(list[dict[str, object]], result["STREAMS"])
+    assert len(streams) == 11
+    assert {cast(str, entry["strategy_id"]) for entry in streams} == set(STREAM_IDS)
+    for entry in streams:
+        assert entry["history_cutoff_draw"] == _FORECAST_CUTOFF_DRAW
+        assert entry["tickets"]
+        assert {
+            "strategy_id",
+            "strategy_version",
+            "prediction_run_id",
+            "prediction_created_at",
+            "history_cutoff_draw",
+            "tickets",
+        } == set(entry)
+    assert backend.mutating_calls == []
+
+
+def test_forecast_115000087_style_cutoff_passes_temporal_integrity(tmp_path: Path) -> None:
+    """Acceptance 2: a 115000087-style target with cutoff 115000086 passes."""
+
+    config = _config(tmp_path)
+    scheduled_at = datetime(2026, 9, 12, 12, 30, tzinfo=UTC)
+    target = PredictionTarget(
+        lottery_type=LOTTERY_TYPE,
+        draw_number="115000087",
+        draw_date=scheduled_at.astimezone(scheduler_module.TAIPEI).date().isoformat(),
+        scheduled_at=scheduled_at.astimezone(scheduler_module.TAIPEI).isoformat(),
+    )
+    created_at = datetime(2026, 9, 10, 12, 0, tzinfo=UTC)
+    for strategy_id in STREAM_IDS:
+        _write_forecast_prediction(
+            config.operation_root,
+            target,
+            strategy_id,
+            created_at=created_at,
+            history_cutoff_draw="115000086",
+            history_cutoff_date="2026-09-09",
+        )
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["PRE_OUTCOME_TEMPORAL_INTEGRITY"] == "PASS"
+    assert result["ANALYSIS_MAX_DATA_CUTOFF"] == "115000086"
+
+
+def test_forecast_does_not_require_or_read_target_outcome(tmp_path: Path) -> None:
+    """Acceptance 3: the target outcome is neither required nor read."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    assert not (config.operation_root / "outcomes").exists()
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["TARGET_RESULT_USED"] == "NO"
+    assert not (config.operation_root / "outcomes").exists()
+    assert backend.mutating_calls == []
+
+
+def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
+    """Acceptance 4: missing streams return INCOMPLETE_PRE_DRAW, not blocked."""
+
+    config = _config(tmp_path)
+    target = _target()
+    available = STREAM_IDS[:7]
+    _write_all_streams(config.operation_root, target, available)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "INCOMPLETE_PRE_DRAW"
+    assert result["EXPECTED_STREAM_COUNT"] == 11
+    assert result["AVAILABLE_STREAM_COUNT"] == 7
+    assert result["MISSING_STREAM_IDS"] == list(STREAM_IDS[7:])
+    assert "STREAMS" not in result
+    assert backend.mutating_calls == []
+
+
+def test_forecast_excludes_post_draw_predictions_from_availability(tmp_path: Path) -> None:
+    """Acceptance 5: a POST_DRAW prediction cannot enter forecast authority."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
+    _write_forecast_prediction(
+        config.operation_root,
+        target,
+        STREAM_IDS[0],
+        created_at=SCHEDULED + timedelta(hours=1),
+        temporal_class="POST_DRAW",
+        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+        history_cutoff_date=_FORECAST_CUTOFF_DATE,
+    )
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "INCOMPLETE_PRE_DRAW"
+    assert result["MISSING_STREAM_IDS"] == [STREAM_IDS[0]]
+    assert result["AVAILABLE_STREAM_COUNT"] == 10
+
+
+def test_forecast_rejects_predraw_timestamp_at_or_after_deadline(tmp_path: Path) -> None:
+    """Acceptance 6: prediction_created_at >= scheduled_at is rejected."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
+    _write_forecast_prediction(
+        config.operation_root,
+        target,
+        STREAM_IDS[0],
+        created_at=SCHEDULED,
+        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+        history_cutoff_date=_FORECAST_CUTOFF_DATE,
+    )
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code != 0
+    assert result["FORECAST_STATUS"] == "INVALID_TEMPORAL_AUTHORITY"
+    violations = cast(list[str], result["VIOLATIONS"])
+    assert violations
+    assert "STREAMS" not in result
+    assert backend.mutating_calls == []
+
+
+def test_forecast_treats_malformed_history_cutoff_as_invalid_temporal_authority(
+    tmp_path: Path,
+) -> None:
+    """A stored record missing history_cutoff fails closed, never crashes uncaught."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
+    path = (
+        config.operation_root
+        / "predictions"
+        / target.draw_number
+        / STREAM_IDS[0]
+        / "prediction.json"
+    )
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    payload = _forecast_prediction(
+        target,
+        STREAM_IDS[0],
+        created_at=NOW,
+        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+        history_cutoff_date=_FORECAST_CUTOFF_DATE,
+    )
+    del payload["history_cutoff"]
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.chmod(0o600)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code != 0
+    assert result["FORECAST_STATUS"] == "INVALID_TEMPORAL_AUTHORITY"
+    violations = cast(list[str], result["VIOLATIONS"])
+    assert any(STREAM_IDS[0] in violation for violation in violations)
+
+
+def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None:
+    """Acceptance 7: forecast never calls scheduler run/generation/outcome sync."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    _forecast_command(config, backend)
+
+    assert backend.mutating_calls == []
+
+
+def test_forecast_reports_unresolved_ranking_authority_without_fabricating_a_ranking(
+    tmp_path: Path,
+) -> None:
+    """Acceptance 8 and 9: no existing authority combines the 11 streams into one
+    ranked number list, so forecast must report that literally rather than
+    recomputing or silently promoting the one-off equal-weight mean-rank method.
+    """
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["RANKING_AUTHORITY"] == FORECAST_RANKING_AUTHORITY_UNRESOLVED
+    assert result["RANKING_AUTHORITY"] == "FORECAST_RANKING_AUTHORITY_UNRESOLVED"
+    assert "FINAL_DECISION_RANKING" not in result
+    assert "WEIGHTED_CONSENSUS" not in result
+    assert "CONFIDENCE" not in result
+    assert "CLAIM_SCOPE" not in result
+
+
+def test_forecast_reports_no_target_resolved_without_reading_predictions(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    backend = _ForecastOnlyBackend(target=None, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code != 0
+    assert result == {"FORECAST_STATUS": "NO_TARGET_RESOLVED"}
+    assert backend.mutating_calls == []
+
+
+def _snapshot_files(root: Path) -> set[tuple[str, int, int]]:
+    entries: set[tuple[str, int, int]] = set()
+    for path in root.rglob("*"):
+        if path.is_file():
+            info = path.stat()
+            entries.add((str(path.relative_to(root)), info.st_size, info.st_mtime_ns))
+    return entries
+
+
+def test_forecast_writes_nothing_under_operation_root_or_scheduler_paths(
+    tmp_path: Path,
+) -> None:
+    """Acceptance (read-only guarantee): no health.json, predictions, scores,
+    outcomes, lock, or plist write -- proven by filesystem snapshot, not by
+    trusting the implementation's own claims.
+    """
+
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    before = _snapshot_files(config.operation_root)
+    assert not config.health_path.exists()
+    assert not config.lock_path.exists()
+    assert not config.plist_path.exists()
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    after = _snapshot_files(config.operation_root)
+    assert after == before
+    assert not config.health_path.exists()
+    assert not config.lock_path.exists()
+    assert not config.plist_path.exists()

@@ -10,13 +10,13 @@ that constructs :class:`StreamConsensusInput` values.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Final, cast
-
-from lottolab.evidence.canonical_json import canonical_bytes, sha256_hex
 
 MIN_NUMBER: Final = 1
 MAX_NUMBER: Final = 49
@@ -246,14 +246,19 @@ def build_canonical_consensus(
         )
     )
     selected = ranking[:FINAL_TICKET_SIZE]
-    manifest_bytes = canonical_bytes([stream.canonical_dict() for stream in ordered])
+    manifest_bytes = json.dumps(
+        [stream.canonical_dict() for stream in ordered],
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
     return CanonicalConsensusDecision(
         sources=ordered,
         support_units=tuple(support),
         deterministic_ranking=ranking,
         selected_ranked_numbers=selected,
         final_ticket=tuple(sorted(selected)),
-        stream_input_manifest_sha256=sha256_hex(manifest_bytes),
+        stream_input_manifest_sha256=hashlib.sha256(manifest_bytes).hexdigest(),
     )
 
 

@@ -1035,12 +1035,64 @@ def test_resolve_latest_known_draw_prefers_a_newer_recorded_outcome_over_the_dat
     assert resolve_latest_known_draw(tmp_path, database) == "115000079"
 
 
-_REAL_PREDRAW_CONSENSUS_DIRECTORY = Path(
-    "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
-    "/predictions/115000087"
+# ---------------------------------------------------------------------------
+# Hermetic fixture constants and helper used by the aggregator tests below.
+# ---------------------------------------------------------------------------
+# NOTE: No developer-host absolute paths exist here.
+# Every aggregator test is self-contained and runs in any CI environment.
+
+_FIXTURE_TARGET_DRAW = "115000087"
+_FIXTURE_HISTORY_CUTOFF = "115000086"
+
+# Exact tickets from the real 115000087 PRE_DRAW run (11 strategies, 22 tickets
+# total).  Inlined here so characterization tests remain hermetic while
+# preserving the same computed top6 / top_k values.
+_FIXTURE_STREAMS: tuple[tuple[str, list[list[int]]], ...] = (
+    (
+        "b649_new_horizon_minimax_disagreement_r1",
+        [[15, 16, 23, 26, 29, 35], [4, 7, 12, 22, 29, 34]],
+    ),
+    ("biglotto_deviation_2bet", [[4, 12, 16, 25, 26, 29]]),
+    ("biglotto_social_wisdom_anti_popularity", [[42, 43, 44, 45, 47, 49]]),
+    (
+        "legacy_biglotto__graph_predictor__cd70713a5709",
+        [[16, 23, 24, 26, 29, 47]],
+    ),
+    (
+        "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8",
+        [[12, 24, 25, 26, 29, 35]],
+    ),
+    (
+        "legacy_biglotto__pure_cold_predict__9e89f2b41add",
+        [[7, 22, 31, 38, 39, 42]],
+    ),
+    (
+        "legacy_biglotto__test_asm__d39a233a4c75",
+        [[1, 4, 6, 9, 10, 25], [1, 4, 34, 36, 45, 46], [6, 8, 9, 10, 11, 18]],
+    ),
+    (
+        "legacy_biglotto__test_ces__78d17c530ab8",
+        [[8, 9, 11, 26, 29, 43], [1, 9, 18, 19, 26, 39], [4, 9, 18, 24, 28, 29]],
+    ),
+    (
+        "legacy_biglotto__test_ecp__c9d5ac6decdd",
+        [[8, 10, 11, 18, 19, 43], [10, 25, 34, 36, 43, 45], [1, 4, 6, 36, 45, 46]],
+    ),
+    (
+        "legacy_biglotto__test_mwsc__ba37643d6a3b",
+        [[10, 12, 25, 26, 36, 38], [10, 24, 36, 45, 46, 47], [24, 32, 34, 39, 40, 47]],
+    ),
+    (
+        "legacy_biglotto__test_tme__f3bb5106dfe3",
+        [[2, 8, 11, 18, 19, 43], [1, 2, 3, 4, 6, 9], [9, 26, 28, 29, 39, 44]],
+    ),
 )
-_REAL_PREDRAW_TARGET_DRAW = "115000087"
-_REAL_PREDRAW_HISTORY_CUTOFF = "115000086"
+
+
+def _populate_fixture_directory(directory: Path) -> None:
+    """Write all 11 canonical streams from ``_FIXTURE_STREAMS`` into *directory*."""
+    for strategy_id, tickets in _FIXTURE_STREAMS:
+        _write_predraw_prediction(directory, strategy_id=strategy_id, tickets=tickets)
 
 
 def _write_predraw_prediction(
@@ -1094,11 +1146,22 @@ def _write_predraw_prediction(
     (stream_dir / f"{run_id}.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
-def test_build_canonical_predraw_consensus_matches_115000087_characterization() -> None:
+def test_build_canonical_predraw_consensus_matches_115000087_characterization(
+    tmp_path: Path,
+) -> None:
+    """Hermetic characterization of the 115000087 canonical PRE_DRAW consensus.
+
+    The 11-stream ticket data is inlined from the real 115000087 run in
+    ``_FIXTURE_STREAMS``; the computed top6/top_k values are therefore
+    identical to what the original developer-host test verified, but this
+    version works in any CI environment without any local file dependencies.
+    """
+    _populate_fixture_directory(tmp_path)
+
     result = build_canonical_predraw_consensus(
-        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
-        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
-        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
         expected_stream_count=11,
     )
 
@@ -1115,20 +1178,23 @@ def test_build_canonical_predraw_consensus_matches_115000087_characterization() 
     assert len(cast(list[object], result["stream_identities"])) == 11
 
 
-def test_build_canonical_predraw_consensus_is_deterministic_across_repeated_runs() -> None:
+def test_build_canonical_predraw_consensus_is_deterministic_across_repeated_runs(
+    tmp_path: Path,
+) -> None:
+    _populate_fixture_directory(tmp_path)
     generated_at = datetime.fromisoformat("2026-09-10T00:00:00+08:00")
 
     first = build_canonical_predraw_consensus(
-        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
-        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
-        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
         expected_stream_count=11,
         generated_at=generated_at,
     )
     second = build_canonical_predraw_consensus(
-        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
-        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
-        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
         expected_stream_count=11,
         generated_at=generated_at,
     )
@@ -1136,28 +1202,36 @@ def test_build_canonical_predraw_consensus_is_deterministic_across_repeated_runs
     assert first == second
 
 
-def test_upstream_prediction_locator_is_absolute_and_matches_input_directory() -> None:
+def test_upstream_prediction_locator_is_absolute_and_matches_input_directory(
+    tmp_path: Path,
+) -> None:
+    _populate_fixture_directory(tmp_path)
+
     result = build_canonical_predraw_consensus(
-        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
-        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
-        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
     )
 
     locator = Path(cast(str, result["upstream_prediction_locator"]))
     assert locator.is_absolute()
-    assert locator == _REAL_PREDRAW_CONSENSUS_DIRECTORY.resolve()
+    assert locator == tmp_path.resolve()
 
 
-def test_target_result_independence_no_outcome_file_is_ever_read() -> None:
-    outcome_path = (
-        _REAL_PREDRAW_CONSENSUS_DIRECTORY.parent.parent / "outcomes" / "115000087.json"
-    )
-    assert not outcome_path.exists()  # the real upstream root has no 087 outcome yet
+def test_target_result_independence_no_outcome_file_is_ever_read(
+    tmp_path: Path,
+) -> None:
+    """The aggregator must never read an outcome file; ``target_result_used``
+    must always be False regardless of whether an outcome file is present."""
+    _populate_fixture_directory(tmp_path)
+    # Verify there is genuinely no outcome file in our hermetic sandbox.
+    outcome_path = tmp_path.parent / "outcomes" / f"{_FIXTURE_TARGET_DRAW}.json"
+    assert not outcome_path.exists()
 
     result = build_canonical_predraw_consensus(
-        _REAL_PREDRAW_CONSENSUS_DIRECTORY,
-        expected_target_draw=_REAL_PREDRAW_TARGET_DRAW,
-        expected_history_cutoff=_REAL_PREDRAW_HISTORY_CUTOFF,
+        tmp_path,
+        expected_target_draw=_FIXTURE_TARGET_DRAW,
+        expected_history_cutoff=_FIXTURE_HISTORY_CUTOFF,
     )
 
     assert result["target_result_used"] is False

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
@@ -11,9 +10,9 @@ from typing import cast
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
 
-import lottolab.infrastructure.b649_canonical_forecast_writer as writer
 from lottolab.domain.b649_canonical_consensus import build_canonical_consensus
 from lottolab.evidence.canonical_json import canonical_file_bytes
+from lottolab.infrastructure.b649_canonical_forecast_writer import StagedCanonicalForecast
 
 FIXTURE_NUMBERS = (4, 12, 24, 25, 26, 29)
 FIXTURE_PREDICTION_CREATED_AT = "2026-09-10T13:00:00+00:00"
@@ -231,73 +230,12 @@ def _clock(*values: datetime):
     return next_value
 
 
-def _application_materialize(
-    *,
-    operation_root: Path,
-    destination: Path,
-    implementation_identity: materializer.ImplementationIdentity,
-    specs: tuple[materializer.FrozenStreamSpec, ...] = materializer.FROZEN_STREAM_SPECS,
-    expected_manifest_sha256: str | None,
-    clock: Callable[[], datetime],
-) -> materializer.MaterializationResult:
-    records = writer.read_persisted_prediction_records(
-        operation_root, materializer.TARGET_DRAW_NUMBER
-    )
-    by_path = {record.source_relative_path: record for record in records}
-    selected: list[materializer.PersistedForecastPrediction] = []
-    registered: list[materializer.RegisteredForecastStream] = []
-    for spec in specs:
-        record = by_path.get(spec.source_relative_path)
-        if record is None:
-            raise AssertionError(f"missing fixture input: {spec.source_relative_path}")
-        selected.append(
-            materializer.PersistedForecastPrediction(
-                source_relative_path=record.source_relative_path,
-                source_sha256=record.source_sha256,
-                raw_bytes=record.raw_bytes,
-                payload=record.payload,
-            )
-        )
-        registered.append(
-            materializer.RegisteredForecastStream(
-                strategy_id=spec.strategy_id,
-                strategy_version=spec.strategy_version,
-                native_ticket_count=spec.native_ticket_count,
-            )
-        )
-    request = materializer._request(  # pyright: ignore[reportPrivateUsage]
-        selected,
-        registered,
-        implementation_identity,
-        expected_manifest_sha256=expected_manifest_sha256,
-    )
-    authority = materializer.CanonicalForecastAuthorityPort(
-        read_existing_bytes=writer.read_existing_bytes,
-        ensure_output_parent=writer.ensure_output_parent,
-        stage_payload=writer.stage_payload,
-        publish_staged=writer.publish_staged,
-        discard_staged=writer.discard_staged,
-    )
-    result = materializer._materialize_service(  # pyright: ignore[reportPrivateUsage]
-        request,
-        destination=destination,
-        authority=authority,
-        clock=clock,
-    )
-    assert result.publication is not None
-    return materializer.MaterializationResult(
-        status=result.publication,
-        destination=result.destination,
-        payload=result.payload,
-    )
-
-
 def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path) -> None:
     operation_root = tmp_path / "operation"
     _copy_inputs(operation_root)
     destination = tmp_path / "authority" / "final_forecast_payload.json"
 
-    result = _application_materialize(
+    result = materializer.materialize_canonical_forecast(
         operation_root=operation_root,
         destination=destination,
         implementation_identity=IDENTITY,
@@ -319,7 +257,7 @@ def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path
     def clock_must_not_be_called() -> datetime:
         raise AssertionError("idempotent authority retry sampled the clock")
 
-    retry = _application_materialize(
+    retry = materializer.materialize_canonical_forecast(
         operation_root=operation_root,
         destination=destination,
         implementation_identity=IDENTITY,
@@ -357,14 +295,14 @@ def test_canonical_authority_ignores_descriptive_diagnostics_and_limited_status(
         + b"\n"
     )
 
-    plain = _application_materialize(
+    plain = materializer.materialize_canonical_forecast(
         operation_root=plain_root,
         destination=tmp_path / "plain-authority" / "final_forecast_payload.json",
         implementation_identity=IDENTITY,
         expected_manifest_sha256=None,
         clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
     )
-    diagnostic = _application_materialize(
+    diagnostic = materializer.materialize_canonical_forecast(
         operation_root=diagnostic_root,
         destination=tmp_path / "diagnostic-authority" / "final_forecast_payload.json",
         implementation_identity=IDENTITY,
@@ -399,7 +337,7 @@ def test_created_at_boundary_fails_closed_without_authority_file(tmp_path: Path)
         materializer.PreOutcomeWindowClosedError,
         match="BLOCKED_PRE_OUTCOME_WINDOW_CLOSED",
     ):
-        _application_materialize(
+        materializer.materialize_canonical_forecast(
             operation_root=operation_root,
             destination=destination,
             implementation_identity=IDENTITY,
@@ -428,7 +366,7 @@ def test_prediction_created_at_must_precede_created_at(tmp_path: Path) -> None:
         materializer.PreOutcomeWindowClosedError,
         match="prediction_created_at",
     ):
-        _application_materialize(
+        materializer.materialize_canonical_forecast(
             operation_root=operation_root,
             destination=destination,
             implementation_identity=IDENTITY,
@@ -449,7 +387,7 @@ def test_pre_publish_boundary_is_checked_immediately_before_publish(tmp_path: Pa
         materializer.PreOutcomeWindowClosedError,
         match="pre_publish_now",
     ):
-        _application_materialize(
+        materializer.materialize_canonical_forecast(
             operation_root=operation_root,
             destination=destination,
             implementation_identity=IDENTITY,
@@ -475,7 +413,7 @@ def test_existing_malformed_authority_blocks_without_sampling_clock(tmp_path: Pa
         materializer.ForecastAuthorityConflictError,
         match="BLOCK_FORECAST_AUTHORITY_REMEDIATION_REQUIRED",
     ):
-        _application_materialize(
+        materializer.materialize_canonical_forecast(
             operation_root=operation_root,
             destination=destination,
             implementation_identity=IDENTITY,
@@ -498,7 +436,7 @@ def test_outcome_key_in_any_frozen_input_is_rejected(tmp_path: Path) -> None:
     )
 
     with pytest.raises(materializer.FrozenInputError, match="forbidden outcome/scoring key"):
-        _application_materialize(
+        materializer.materialize_canonical_forecast(
             operation_root=operation_root,
             destination=tmp_path / "authority" / "final_forecast_payload.json",
             implementation_identity=IDENTITY,
@@ -514,18 +452,18 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
     operation_root = tmp_path / "operation"
     _copy_inputs(operation_root)
     destination = tmp_path / "authority" / "final_forecast_payload.json"
-    original_publish = writer.publish_staged
+    original_publish = materializer.publish_staged
 
-    def competing_publish(staged: writer.StagedCanonicalForecast):
+    def competing_publish(staged: StagedCanonicalForecast):
         staged.destination.write_bytes(b"{\"competing\":true}\n")
         return original_publish(staged)
 
-    monkeypatch.setattr(writer, "publish_staged", competing_publish)
+    monkeypatch.setattr(materializer, "publish_staged", competing_publish)
     with pytest.raises(
         materializer.ForecastAuthorityConflictError,
         match="BLOCK_FORECAST_AUTHORITY_REMEDIATION_REQUIRED",
     ):
-        _application_materialize(
+        materializer.materialize_canonical_forecast(
             operation_root=operation_root,
             destination=destination,
             implementation_identity=IDENTITY,
@@ -544,7 +482,7 @@ def test_historical_087_authority_and_domain_parity_are_read_only(
     operation_root = tmp_path / "operation"
     _copy_inputs(operation_root, tickets_by_strategy=HISTORICAL_087_TICKETS)
     artifact = tmp_path / "authority" / "final_forecast_payload.json"
-    historical = _application_materialize(
+    historical = materializer.materialize_canonical_forecast(
         operation_root=operation_root,
         destination=artifact,
         implementation_identity=HISTORICAL_IDENTITY,

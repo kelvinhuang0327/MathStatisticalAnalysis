@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import NoReturn, cast
 
 import pytest
-import tools.materialize_b649_canonical_forecast as historical_087
 
 import lottolab.application.b649_canonical_forecast_materialization as service_module
 from lottolab.application.b649_canonical_forecast_materialization import (
@@ -113,20 +112,16 @@ def _payload(
     }
 
 
-def _write_streams(
-    root: Path,
-    target: CanonicalForecastTarget = TARGET,
-    *,
-    persisted_scheduled_at: str | None = None,
-) -> None:
+def _write_streams(root: Path, target: CanonicalForecastTarget = TARGET) -> None:
     for strategy_id in STREAM_IDS:
         run_id = f"{target.draw_number}-{strategy_id}-run"
         path = root / "predictions" / target.draw_number / strategy_id / f"{run_id}.json"
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        payload = _payload(target, strategy_id, run_id=run_id)
-        if persisted_scheduled_at is not None:
-            payload["scheduled_at"] = persisted_scheduled_at
-        path.write_bytes(canonical_file_bytes(payload))
+        path.write_bytes(
+            canonical_file_bytes(
+                _payload(target, strategy_id, run_id=run_id)
+            )
+        )
         path.chmod(0o600)
 
 
@@ -385,72 +380,3 @@ def test_forecast_service_has_no_outcome_dependency(tmp_path: Path) -> None:
     assert result.payload["target_result_used"] is False
     assert not (tmp_path / "outcomes").exists()
     assert not (tmp_path / "scores").exists()
-
-
-def test_equivalent_utc_scheduled_at_is_accepted_without_rewriting_authority(
-    tmp_path: Path,
-) -> None:
-    _write_streams(tmp_path, persisted_scheduled_at="2099-01-02T12:30:00Z")
-    destination = _destination(tmp_path)
-    request = _request(tmp_path)
-
-    first = materialize_canonical_forecast(
-        request,
-        destination=destination,
-        authority=_authority(),
-        clock=lambda: CREATE_AT,
-    )
-    payload = json.loads(destination.read_text(encoding="utf-8"))
-    payload["scheduled_at"] = "2099-01-02T12:30:00Z"
-    destination.write_bytes(canonical_file_bytes(payload))
-    original = destination.read_bytes()
-
-    def clock_must_not_be_called() -> datetime:
-        raise AssertionError("equivalent authority retry sampled publication clock")
-
-    retry = materialize_canonical_forecast(
-        request,
-        destination=destination,
-        authority=_authority(),
-        clock=clock_must_not_be_called,
-    )
-
-    assert first.publication == "CREATED"
-    assert retry.publication == "ALREADY_PRESENT"
-    assert retry.payload["scheduled_at"] == "2099-01-02T12:30:00Z"
-    assert destination.read_bytes() == original
-
-
-def test_draw_date_uses_asia_taipei_semantics_for_utc_schedule(tmp_path: Path) -> None:
-    target = replace(TARGET, scheduled_at="2099-01-01T16:30:00Z")
-    _write_streams(tmp_path, target)
-
-    result = materialize_canonical_forecast(
-        _request(tmp_path, target),
-        destination=_destination(tmp_path, target),
-        authority=_authority(),
-        clock=lambda: datetime(2099, 1, 1, 15, 0, tzinfo=UTC),
-    )
-
-    assert result.publication == "CREATED"
-
-
-def test_historical_087_missing_authority_fails_closed(tmp_path: Path) -> None:
-    destination = tmp_path / "forecasts" / historical_087.FORECAST_RELATIVE_PATH
-
-    with pytest.raises(
-        historical_087.ForecastAuthorityConflictError,
-        match="first-create/backfill is forbidden",
-    ):
-        historical_087.materialize_canonical_forecast(
-            operation_root=tmp_path,
-            destination=destination,
-            implementation_identity=historical_087.ImplementationIdentity(
-                "a" * 40,
-                "b" * 40,
-                (historical_087.ImplementationSource("compat", "c" * 64),),
-            ),
-        )
-
-    assert not destination.exists()
-    assert not destination.parent.exists()

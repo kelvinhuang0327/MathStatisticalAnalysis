@@ -495,6 +495,7 @@ class _FakeBackend:
         inventories: Sequence[PredictionInventory],
         postdraw: PostDrawResult | None = None,
         fail_refresh: Exception | None = None,
+        fail_materialization: Exception | None = None,
     ) -> None:
         self.target = target
         self.inventories = list(inventories)
@@ -505,7 +506,9 @@ class _FakeBackend:
             cycle_action="WAITING_FOR_OUTCOME",
         )
         self.fail_refresh = fail_refresh
+        self.fail_materialization = fail_materialization
         self.generation_calls: list[tuple[str, ...]] = []
+        self.materialization_calls: list[tuple[str, str]] = []
         self.sync_calls = 0
         self.complete_calls = 0
 
@@ -530,6 +533,22 @@ class _FakeBackend:
         if len(self.inventories) > 1:
             return self.inventories.pop(0)
         return self.inventories[0]
+
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]:
+        assert target == self.target
+        self.materialization_calls.append((target.draw_number, source_head))
+        if self.fail_materialization is not None:
+            raise self.fail_materialization
+        return {
+            "status": "COMPLETE",
+            "publication": "ALREADY_PRESENT",
+            "target_draw": target.draw_number,
+        }
 
     def generate_predraw(
         self,
@@ -628,6 +647,32 @@ class _ShadowHookBackend(_FakeBackend):
             "status": "WAITING_FOR_OUTCOME",
             "observed_at": observed_at.isoformat(),
         }
+
+
+class _LockAwareMaterializationBackend(_FakeBackend):
+    def __init__(
+        self,
+        *,
+        lock_path: Path,
+        target: PredictionTarget,
+        inventories: Sequence[PredictionInventory],
+    ) -> None:
+        super().__init__(target=target, inventories=inventories)
+        self.lock_path = lock_path
+        self.materialization_saw_lock = False
+
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]:
+        try:
+            with AdvisoryProcessLock(self.lock_path):
+                pass
+        except SchedulerAlreadyRunning:
+            self.materialization_saw_lock = True
+        return super().materialize_forecast(target, source_head=source_head)
 
 
 class _ShadowFailureBackend(_ShadowHookBackend):
@@ -1051,7 +1096,8 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["ready_before_draw"] is True
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
-    assert "forecast_materialization" not in result
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
+    assert cast(dict[str, object], result["forecast_materialization"])["status"] == "COMPLETE"
     assert result["scoring_status"] == "NOT_DUE"
     assert result["next_draw_rollover_status"] == "NOT_DUE"
     assert backend.sync_calls == 0
@@ -1061,6 +1107,78 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
         key: value for key, value in result.items() if key != SHADOW_HEALTH_NAMESPACE
     }
     assert stat.S_IMODE(os.lstat(config.health_path).st_mode) == 0o600
+
+
+def test_generation_crossing_deadline_does_not_call_forecast_materializer(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(10), _inventory(11)),
+    )
+    clock_values = iter((NOW, NOW, SCHEDULED, SCHEDULED))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: next(clock_values),
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "WAITING_FOR_FORECAST"
+    assert cast(dict[str, object], result["forecast_materialization"])["status"] == (
+        "MISSED_PRE_OUTCOME_WINDOW"
+    )
+    assert backend.materialization_calls == []
+    assert backend.generation_calls == [(STREAM_IDS[-1],)]
+
+
+def test_predraw_materialization_runs_inside_existing_scheduler_lock(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _LockAwareMaterializationBackend(
+        lock_path=config.lock_path,
+        target=_target(),
+        inventories=(_inventory(11),),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "PREDRAW_READY"
+    assert backend.materialization_saw_lock is True
+
+
+def test_predraw_materialization_failure_is_fail_closed_without_postdraw_work(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        fail_materialization=RuntimeError("synthetic materialization failure"),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    forecast = cast(dict[str, object], result["forecast_materialization"])
+    assert result["current_status"] == "WAITING_FOR_FORECAST"
+    assert forecast["status"] == "ERROR"
+    assert forecast["error_class"] == "RuntimeError"
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
+    assert backend.sync_calls == 0
+    assert backend.complete_calls == 0
 
 
 def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream_schema(
@@ -1082,6 +1200,7 @@ def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream
 
     assert backend.shadow_predraw_calls == [(_target().draw_number, "PREDRAW_READY", SOURCE_HEAD)]
     assert backend.shadow_postdraw_calls == []
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
     assert backend.shadow_lock_available is True
     shadow_health = cast(dict[str, object], result[SHADOW_HEALTH_NAMESPACE])
     assert shadow_health["status"] == "PREDRAW_COMPLETE"
@@ -1134,6 +1253,7 @@ def test_shadow_failure_is_returned_separately_without_changing_primary_status(
     assert result["current_status"] == "PREDRAW_READY"
     assert result["expected_stream_count"] == 11
     assert result["actual_available_stream_count"] == 11
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
     shadow_health = cast(dict[str, object], result[SHADOW_HEALTH_NAMESPACE])
     assert shadow_health["status"] == "ERROR"
     assert "shadow fixture failed" in cast(str, shadow_health["last_error"])
@@ -1229,6 +1349,7 @@ def test_health_reports_loaded_checkout_despite_unrelated_configuration(
     assert result["expected_stream_count"] == result["actual_available_stream_count"] == 11
     assert result["ready_before_draw"] is True
     assert backend.generation_calls == []
+    assert backend.materialization_calls == [(_target().draw_number, runtime_head)]
 
 
 def test_ready_predraw_cycle_is_no_op_and_does_not_call_generation(
@@ -1248,6 +1369,7 @@ def test_ready_predraw_cycle_is_no_op_and_does_not_call_generation(
     assert cast(dict[str, object], result["prediction_generation"])["status"] == "NO_OP"
     assert result["cycle_action"] == "NO_OP"
     assert backend.generation_calls == []
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
 
 
 def test_deadline_cycle_never_generates_and_keeps_incomplete_target_visible(
@@ -1277,6 +1399,7 @@ def test_deadline_cycle_never_generates_and_keeps_incomplete_target_visible(
     assert result["actual_available_stream_count"] == 10
     assert result["ready_before_draw"] is False
     assert backend.generation_calls == []
+    assert backend.materialization_calls == []
     assert backend.sync_calls == 1
     incomplete = cast(list[dict[str, object]], result["pre_draw_incomplete_targets"])
     assert incomplete[0]["draw_number"] == "209900001"
@@ -1319,6 +1442,7 @@ def test_ready_postdraw_cycle_reports_waiting_or_complete(
 
     assert result["current_status"] == expected_status
     assert backend.generation_calls == []
+    assert backend.materialization_calls == []
     assert backend.sync_calls == 1
     assert backend.complete_calls == 1
 
@@ -1379,6 +1503,7 @@ def test_schedule_sync_warning_keeps_a_valid_database_target_running(
     announcement = cast(dict[str, object], result["announcement"])
     assert announcement["status"] == "SYNC_WARNING_DB_FALLBACK"
     assert backend.generation_calls == []
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
 
 
 def test_scheduler_invariant_is_not_downgraded_to_schedule_sync_warning(
@@ -1617,6 +1742,36 @@ def test_forecast_ready_when_all_eleven_streams_are_available(
             "tickets",
         } == set(entry)
     assert "CANONICAL_PREDRAW_CONSENSUS" not in result
+    assert backend.mutating_calls == []
+
+
+def test_forecast_uses_dynamic_authority_path_for_later_target(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    authority = _authority_payload(target)
+    authority_path = scheduler_module._forecast_destination(  # pyright: ignore[reportPrivateUsage]
+        config,
+        target,
+    )
+    authority_path.parent.mkdir(mode=0o700, parents=True)
+    authority_path.write_bytes(
+        (scheduler_module._canonical_json(authority) + "\n").encode("utf-8")  # pyright: ignore[reportPrivateUsage]
+    )
+    authority_path.chmod(0o600)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["CANONICAL_AUTHORITY_PATH"] == str(authority_path)
+    assert result["CANONICAL_AUTHORITY_SHA256"] == hashlib.sha256(
+        authority_path.read_bytes()
+    ).hexdigest()
+    assert result["FINAL_RECOMMENDED_TICKET"] == [4, 12, 24, 25, 26, 29]
     assert backend.mutating_calls == []
 
 

@@ -47,6 +47,8 @@ from lottolab.domain.research import (
 )
 from lottolab.domain.research_live_forecast import (
     CANONICAL_CONSENSUS,
+    CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256,
+    CONSENSUS_AUTHORITY_B_SCOPE,
     CONSENSUS_STREAM,
     CONSENSUS_STREAM_VERSION,
     ORIGINAL_FIELDS,
@@ -429,6 +431,7 @@ class SQLiteResearchRepository:
         pointer or rerunning the gate. Exceptions (including a final gate error)
         roll back artifact, rule, run, version, provenance and pointer together.
         """
+        _require_canonical_consensus_authority(forecast)
         forecast.validate()
         if type(expected_current_version) is not int or expected_current_version < 0:
             raise ResearchRepositoryError("invalid current pointer version")
@@ -690,6 +693,7 @@ class SQLiteResearchRepository:
     ) -> LiveForecastResult:
         """Promote one canonical consensus candidate with strict CAS semantics."""
 
+        _require_canonical_consensus_authority(forecast)
         return self.commit_live_forecast(
             forecast,
             expected_current_version=expected_current_version,
@@ -1723,6 +1727,7 @@ class SQLiteResearchRepository:
 
     def verify_store(self) -> ResearchStoreReport:
         with open_database(self._paths, read_only=True) as connection:
+            _verify_canonical_consensus_payload_rows(connection)
             inventory = tuple(
                 str(row[0])
                 for row in connection.execute(
@@ -1834,6 +1839,45 @@ class SQLiteResearchRepository:
             f"research writer remained busy after {WRITE_RETRY_ATTEMPTS} attempts "
             f"with {BUSY_TIMEOUT_MS}ms busy timeout"
         ) from last_busy_error
+
+
+def _require_canonical_consensus_authority(forecast: LiveForecastInput) -> None:
+    if forecast.provenance_class != CANONICAL_CONSENSUS:
+        return
+    if (
+        forecast.scope == CONSENSUS_AUTHORITY_B_SCOPE
+        and forecast.payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+    ):
+        raise ResearchRepositoryError("canonical consensus payload is not Authority B")
+
+
+def _verify_canonical_consensus_payload_rows(connection: sqlite3.Connection) -> None:
+    rows = connection.execute(
+        """
+        SELECT version, payload_bytes, payload_sha256, source_payload_sha256
+        FROM research_live_forecast_versions
+        WHERE provenance_class = ?
+          AND lottery_type = ?
+          AND target_draw_number = ?
+          AND target_draw_date = ?
+          AND forecast_stream_id = ?
+          AND forecast_stream_version = ?
+        ORDER BY version
+        """,
+        (CANONICAL_CONSENSUS, *CONSENSUS_AUTHORITY_B_SCOPE),
+    ).fetchall()
+    for version, payload_bytes, payload_sha256, source_payload_sha256 in rows:
+        if isinstance(payload_bytes, memoryview):
+            payload_bytes = payload_bytes.tobytes()
+        if (
+            not isinstance(payload_bytes, bytes)
+            or payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+            or source_payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+            or hashlib.sha256(payload_bytes).hexdigest() != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+        ):
+            raise ResearchRepositoryError(
+                f"canonical consensus row {version} is not bound to Authority B"
+            )
 
 
 @dataclass(frozen=True, slots=True)

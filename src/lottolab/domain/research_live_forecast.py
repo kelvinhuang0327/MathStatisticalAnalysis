@@ -34,6 +34,16 @@ CONSENSUS_TARGET_TIMEZONE = "Asia/Taipei"
 CONSENSUS_TARGET_DATA_CUTOFF = "115000086"
 CONSENSUS_TARGET_HISTORY_DRAW_COUNT = 2168
 CONSENSUS_TARGET_HISTORY_SHA256 = "c2ba95be375c739c096baaae6ac03b666bc93ef81c9a721ec9381ed7b4c2cec4"
+CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256 = (
+    "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
+)
+CONSENSUS_AUTHORITY_B_SCOPE = (
+    CONSENSUS_TARGET_LOTTERY_TYPE,
+    CONSENSUS_TARGET_DRAW_NUMBER,
+    CONSENSUS_TARGET_DRAW_DATE,
+    CONSENSUS_STREAM,
+    CONSENSUS_STREAM_VERSION,
+)
 CONSENSUS_UPSTREAM_TASK_ID = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
 CONSENSUS_PRODUCTION_TASK_ID = (
     "B649_11_STREAM_CANONICAL_AGGREGATION_IMPLEMENT_AND_MATERIALIZE_115000087_R1"
@@ -550,6 +560,11 @@ class LiveForecastInput:
                 or missing != CONSENSUS_MISSING
             ):
                 raise ValueError("invalid canonical consensus provenance class")
+            if (
+                self.scope == CONSENSUS_AUTHORITY_B_SCOPE
+                and self.payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+            ):
+                raise ValueError("canonical consensus payload is not Authority B")
             require_sha(t["schedule_authority_sha256"])
             payload = json.loads(self.payload_bytes)
             if not isinstance(payload, dict):

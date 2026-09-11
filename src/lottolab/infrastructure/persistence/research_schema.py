@@ -21,6 +21,7 @@ from pathlib import Path
 from lottolab.domain.research_live_forecast import (
     CANONICAL_CONSENSUS,
     CONSENSUS_AGGREGATION_UNIT,
+    CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256,
     CONSENSUS_CORRELATED_FAMILY_POLICY,
     CONSENSUS_METHOD_ID,
     CONSENSUS_METHOD_VERSION,
@@ -857,6 +858,7 @@ _V4_LIVE_VERSION_SQL = (
         AND consensus_provenance_json IS NOT NULL
         AND json_valid(consensus_provenance_json)
         AND source_payload_sha256 = payload_sha256
+        AND payload_sha256 = '{CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256}'
         AND bundle_id IS NULL
         AND json_extract(target_json, '$.lottery_type') = 'BIG_LOTTO'
         AND json_extract(target_json, '$.target_draw_number') = '115000087'
@@ -1046,6 +1048,14 @@ CREATE TRIGGER trg_live_forecast_consensus_structure
 BEFORE INSERT ON research_live_forecast_versions
 WHEN NEW.provenance_class = 'CANONICAL_CONSENSUS'
 BEGIN
+    SELECT CASE WHEN (
+        NEW.lottery_type = '{CONSENSUS_TARGET_LOTTERY_TYPE}'
+        AND NEW.target_draw_number = '{CONSENSUS_TARGET_DRAW_NUMBER}'
+        AND NEW.target_draw_date = '{CONSENSUS_TARGET_DRAW_DATE}'
+        AND NEW.forecast_stream_id = '{CONSENSUS_STREAM}'
+        AND NEW.forecast_stream_version = '{CONSENSUS_STREAM_VERSION}'
+        AND NEW.payload_sha256 != '{CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256}'
+    ) THEN RAISE(ABORT, 'canonical consensus payload is not Authority B') END;
     SELECT CASE WHEN NOT COALESCE((
         json_extract(NEW.consensus_provenance_json, '$.contract_version')
             = '{CONSENSUS_PROVENANCE_SCHEMA_VERSION}'

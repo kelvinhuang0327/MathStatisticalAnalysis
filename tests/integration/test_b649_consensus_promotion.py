@@ -10,6 +10,7 @@ import subprocess
 import sys
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -18,11 +19,13 @@ from typing import cast
 import pytest
 
 from lottolab.domain.research_live_forecast import (
+    CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256,
     CONSENSUS_MISSING,
     LEGACY_MISSING,
     LEGACY_SHA256,
     LEGACY_STREAM,
     ORIGINAL_FIELDS,
+    LiveForecastInput,
     canonical_json,
     object_json,
 )
@@ -36,9 +39,11 @@ from lottolab.infrastructure.b649_consensus_promotion import (
     load_consensus_candidate,
     promote_consensus_candidate,
 )
+from lottolab.infrastructure.persistence import research_repository as repository_module
 from lottolab.infrastructure.persistence import research_schema as schema
 from lottolab.infrastructure.persistence.research_repository import (
     ResearchConflictError,
+    ResearchRepositoryError,
     SQLiteResearchRepository,
 )
 
@@ -119,6 +124,222 @@ def _count_rows(repository: SQLiteResearchRepository) -> dict[str, int]:
             for table in schema.TABLE_NAMES
             if table != "research_schema_migrations"
         }
+
+
+def _self_consistent_mutation(
+    request_id: str,
+    suffix: bytes,
+) -> tuple[LiveForecastInput, str]:
+    forecast = _candidate().build_forecast(_request(request_id))
+    payload_bytes = forecast.payload_bytes + suffix
+    payload_sha256 = hashlib.sha256(payload_bytes).hexdigest()
+    provenance = object_json(forecast.consensus_provenance_json or "")
+    candidate = cast(dict[str, object], provenance["candidate"])
+    candidate["sha256"] = payload_sha256
+    source_provenance = cast(dict[str, object], provenance["source_provenance"])
+    source_provenance["sha256"] = payload_sha256
+    return replace(
+        forecast,
+        payload_bytes=payload_bytes,
+        consensus_provenance_json=canonical_json(provenance),
+    ), payload_sha256
+
+
+@pytest.mark.parametrize(
+    ("suffix", "expected_sha256"),
+    [
+        (
+            b"\n",
+            "bbd42d9cd78eb4fae9b8b305da6b3ab6343925d3f620f13e8dea0148c97121c9",
+        ),
+        (b" ", None),
+    ],
+)
+def test_domain_rejects_self_consistent_non_authority_b_bytes(
+    suffix: bytes,
+    expected_sha256: str | None,
+) -> None:
+    forecast, payload_sha256 = _self_consistent_mutation("domain-adversarial", suffix)
+
+    assert payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+    if expected_sha256 is not None:
+        assert payload_sha256 == expected_sha256
+    with pytest.raises(ValueError, match="Authority B"):
+        forecast.validate()
+
+
+@pytest.mark.parametrize("suffix", [b"\n", b" "])
+def test_both_repository_writer_boundaries_reject_and_allow_request_reuse(
+    tmp_path: Path,
+    suffix: bytes,
+) -> None:
+    repository = SQLiteResearchRepository(_paths(tmp_path))
+    malicious, payload_sha256 = _self_consistent_mutation("writer-adversarial", suffix)
+    assert payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+
+    with pytest.raises(ResearchRepositoryError, match="Authority B"):
+        repository.commit_live_forecast(
+            malicious,
+            expected_current_version=0,
+            current_eligible=lambda: pytest.fail("rejected payload must not reach the gate"),
+            clock=lambda: _CLOCK,
+        )
+    assert all(value == 0 for value in _count_rows(repository).values())
+
+    with pytest.raises(ResearchRepositoryError, match="Authority B"):
+        repository.commit_consensus_promotion(
+            malicious,
+            expected_current_version=0,
+            current_eligible=lambda: pytest.fail("rejected payload must not reach the gate"),
+            clock=lambda: _CLOCK,
+        )
+    assert all(value == 0 for value in _count_rows(repository).values())
+
+    real = _candidate().build_forecast(_request("writer-adversarial"))
+    result = repository.commit_consensus_promotion(
+        real,
+        expected_current_version=0,
+        current_eligible=lambda: True,
+        clock=lambda: _CLOCK,
+    )
+    assert result.pointer_advanced and not result.idempotent
+    assert result.payload_sha256 == CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+
+
+def test_v4_direct_persistence_rejects_self_consistent_alternate_sha(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteResearchRepository(paths)
+    seed = _candidate().build_forecast(_request("schema-seed"))
+    seed_result = repository.commit_consensus_promotion(
+        seed,
+        expected_current_version=0,
+        current_eligible=lambda: True,
+        clock=lambda: _CLOCK,
+    )
+    malicious, payload_sha256 = _self_consistent_mutation("schema-adversarial", b"\n")
+
+    with schema.open_database(paths) as connection:
+
+        def clone(table: str) -> tuple[list[str], dict[str, object]]:
+            columns = [str(row[1]) for row in connection.execute(f"PRAGMA table_info({table})")]
+            row = connection.execute(f"SELECT * FROM {table} LIMIT 1").fetchone()
+            assert row is not None
+            return columns, dict(zip(columns, row, strict=True))
+
+        def insert(table: str, columns: list[str], values: dict[str, object]) -> None:
+            connection.execute(
+                f"INSERT INTO {table} ({', '.join(columns)}) VALUES "
+                f"({', '.join('?' for _ in columns)})",
+                tuple(values[column] for column in columns),
+            )
+
+        artifact_columns, artifact = clone("research_artifacts")
+        artifact.update(
+            id="schema-adversarial-artifact",
+            byte_length=len(malicious.payload_bytes),
+            artifact_sha256=payload_sha256,
+        )
+        run_columns, run = clone("research_runs")
+        run.update(id="schema-adversarial-run", imported_from_artifact_id=artifact["id"])
+        event_columns, event = clone("research_run_status_events")
+        event.update(id="schema-adversarial-event", run_id=run["id"])
+        version_columns, version = clone("research_live_forecast_versions")
+        version.update(
+            version=seed_result.version + 1,
+            run_id=run["id"],
+            request_id=malicious.request_id,
+            request_sha256=malicious.request_sha256,
+            payload_bytes=malicious.payload_bytes,
+            payload_sha256=payload_sha256,
+            source_payload_sha256=payload_sha256,
+            consensus_provenance_json=malicious.consensus_provenance_json,
+            expected_current_version=seed_result.version,
+            pointer_advanced=0,
+        )
+        envelope = object_json(str(version["provenance_envelope_json"]))
+        envelope.update(
+            run_id=run["id"],
+            request_id=malicious.request_id,
+            request_sha256=malicious.request_sha256,
+            version=version["version"],
+            payload_sha256=payload_sha256,
+            expected_current_version=seed_result.version,
+            pointer_advanced=False,
+        )
+        version["provenance_envelope_json"] = canonical_json(envelope)
+        version["provenance_envelope_sha256"] = hashlib.sha256(
+            str(version["provenance_envelope_json"]).encode()
+        ).hexdigest()
+
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            insert("research_artifacts", artifact_columns, artifact)
+            insert("research_runs", run_columns, run)
+            insert("research_run_status_events", event_columns, event)
+            with pytest.raises(sqlite3.IntegrityError, match="Authority B"):
+                insert("research_live_forecast_versions", version_columns, version)
+        finally:
+            connection.rollback()
+
+    assert payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+    counts = _count_rows(repository)
+    assert counts["research_artifacts"] == 1
+    assert counts["research_runs"] == 1
+    assert counts["research_run_status_events"] == 1
+    assert counts["research_live_forecast_versions"] == 1
+    current = repository.read_current_consensus()
+    assert current is not None
+    assert current.version == seed_result.version
+    assert current.payload_bytes == seed.payload_bytes
+
+
+def test_store_verification_rejects_tampered_canonical_consensus_sha(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteResearchRepository(paths)
+    seed = _candidate().build_forecast(_request("store-seed"))
+    seed_result = repository.commit_consensus_promotion(
+        seed,
+        expected_current_version=0,
+        current_eligible=lambda: True,
+        clock=lambda: _CLOCK,
+    )
+    malicious, payload_sha256 = _self_consistent_mutation("store-adversarial", b"\n")
+
+    with sqlite3.connect(paths.database) as connection:
+        connection.execute("DROP TRIGGER trg_research_live_forecast_versions_no_update")
+        connection.execute("PRAGMA ignore_check_constraints = ON")
+        connection.execute(
+            "UPDATE research_live_forecast_versions SET payload_bytes=?, "
+            "payload_sha256=?, source_payload_sha256=?, consensus_provenance_json=? "
+            "WHERE version=?",
+            (
+                malicious.payload_bytes,
+                payload_sha256,
+                payload_sha256,
+                malicious.consensus_provenance_json,
+                seed_result.version,
+            ),
+        )
+        connection.commit()
+
+    @contextmanager
+    def open_tampered_store(
+        _paths: schema.ResearchDataPaths,
+        *,
+        read_only: bool = False,
+    ):
+        del _paths, read_only
+        with sqlite3.connect(paths.database) as connection:
+            yield connection
+
+    monkeypatch.setattr(repository_module, "open_database", open_tampered_store)
+    with pytest.raises(ResearchRepositoryError, match="Authority B"):
+        repository.verify_store()
 
 
 def test_promotion_is_byte_exact_append_only_idempotent_and_readable(tmp_path: Path) -> None:

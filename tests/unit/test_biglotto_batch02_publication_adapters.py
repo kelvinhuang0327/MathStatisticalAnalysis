@@ -1,6 +1,6 @@
-"""Parity and contract tests for the admitted BigLotto native-strategy
-batch 16 adapters (backtest_apriori, covering_strategy_research,
-evolution_engine).
+"""Parity and contract tests for the BigLotto native-strategy batch 16
+adapters (Base Method Universe Batch02 intake: predict_evolutionary_gum,
+backtest_apriori, covering_strategy_research, evolution_engine).
 
 Scope note: unlike wave 14's 60+-sample, independently-re-derived golden
 fixtures, this suite verifies a smaller number of spot-check goldens
@@ -42,25 +42,30 @@ from lottolab.strategies.adapters.biglotto_batch16 import (
     BigLottoBacktestAprioriAdapter,
     BigLottoCoveringStrategyResearchAdapter,
     BigLottoEvolutionEngineAdapter,
+    BigLottoPredictEvolutionaryGumAdapter,
     _apriori_mine_frequent_itemsets,
     _covering_fourier_rank,
     _EvolutionEngine,
+    _gum_cluster_pivot_bets,
 )
 from lottolab.strategies.catalog import production_catalog
 
 BATCH16_IDS = {
+    "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
     "legacy_biglotto__backtest_apriori__2abb53765703",
     "legacy_biglotto__covering_strategy_research__214ecc206fc9",
     "legacy_biglotto__evolution_engine__3df019c31ce4",
 }
 
 PORTFOLIO_ADAPTER_CLASSES = (
+    BigLottoPredictEvolutionaryGumAdapter,
     BigLottoBacktestAprioriAdapter,
     BigLottoCoveringStrategyResearchAdapter,
     BigLottoEvolutionEngineAdapter,
 )
 
 _MIN_HISTORY_BY_CLASS: dict[type[PortfolioBetAdapter], int] = {
+    BigLottoPredictEvolutionaryGumAdapter: 150,
     BigLottoBacktestAprioriAdapter: 150,
     BigLottoCoveringStrategyResearchAdapter: 200,
     BigLottoEvolutionEngineAdapter: 501,
@@ -115,6 +120,16 @@ def test_batch16_rejects_wrong_lottery_type(
         adapter_class().get_bets(history, LotteryType.POWER_LOTTO)
 
 
+def test_gum_legal_deterministic_and_fixed_count() -> None:
+    history = _history(200)
+    adapter = BigLottoPredictEvolutionaryGumAdapter()
+    first = adapter.get_bets(history, LotteryType.BIG_LOTTO)
+    second = adapter.get_bets(history, LotteryType.BIG_LOTTO)
+    assert first == second
+    assert len(first) == 2
+    _assert_legal_portfolio(first)
+
+
 def test_apriori_legal_deterministic_and_fixed_count() -> None:
     history = _history(200)
     adapter = BigLottoBacktestAprioriAdapter()
@@ -133,6 +148,17 @@ def test_covering_legal_deterministic_and_fixed_count() -> None:
     assert first == second
     assert len(first) == 40
     _assert_legal_portfolio(first)
+
+
+def test_gum_only_reads_its_declared_window() -> None:
+    """``strat_cluster_pivot`` only ever reads ``history[-window:]`` -- a
+    row strictly older than the window must not affect its bets."""
+
+    window_history = _history(150)
+    padded_history = (_row(-1, prefix="older"), *window_history)
+    bets_a = _gum_cluster_pivot_bets(window_history, window=150, n_bets=4)
+    bets_b = _gum_cluster_pivot_bets(padded_history, window=150, n_bets=4)
+    assert bets_a == bets_b
 
 
 def test_apriori_mine_frequent_itemsets_is_pure_history_function() -> None:
@@ -179,6 +205,7 @@ def test_batch16_adapters_need_no_filesystem_clock_or_network(
     monkeypatch.setattr(time, "time", forbidden)
     monkeypatch.setattr(time, "monotonic", forbidden)
 
+    BigLottoPredictEvolutionaryGumAdapter().get_bets(_history(150), LotteryType.BIG_LOTTO)
     BigLottoBacktestAprioriAdapter().get_bets(_history(150), LotteryType.BIG_LOTTO)
     BigLottoCoveringStrategyResearchAdapter().get_bets(_history(250), LotteryType.BIG_LOTTO)
     # Evolution engine's own cost is covered by a dedicated, smaller-history
@@ -187,11 +214,12 @@ def test_batch16_adapters_need_no_filesystem_clock_or_network(
 
 
 def test_batch16_global_random_state_is_unchanged() -> None:
-    """None of the three ports may touch the interpreter's global ``random``
+    """None of the four ports may touch the interpreter's global ``random``
     module state -- every seeded draw uses a local ``random.Random``."""
 
     random.seed(20260818)
     before = random.getstate()
+    BigLottoPredictEvolutionaryGumAdapter().get_bets(_history(150), LotteryType.BIG_LOTTO)
     BigLottoBacktestAprioriAdapter().get_bets(_history(150), LotteryType.BIG_LOTTO)
     BigLottoCoveringStrategyResearchAdapter().get_bets(_history(250), LotteryType.BIG_LOTTO)
     after = random.getstate()
@@ -199,6 +227,20 @@ def test_batch16_global_random_state_is_unchanged() -> None:
 
 
 # ─── load-bearing internal helper checks ───────────────────────────────────
+
+
+def test_gum_cluster_pivot_bets_are_load_bearing(monkeypatch: pytest.MonkeyPatch) -> None:
+    import lottolab.strategies.adapters.biglotto_batch16 as module
+
+    history = _history(150)
+    baseline = BigLottoPredictEvolutionaryGumAdapter().get_bets(history, LotteryType.BIG_LOTTO)
+
+    def _stub(_history: object, *, window: int, n_bets: int) -> list[list[int]]:
+        return [[1, 2, 3, 4, 5, 6], [7, 8, 9, 10, 11, 12]][:n_bets]
+
+    monkeypatch.setattr(module, "_gum_cluster_pivot_bets", _stub)
+    mutated = BigLottoPredictEvolutionaryGumAdapter().get_bets(history, LotteryType.BIG_LOTTO)
+    assert mutated != baseline
 
 
 def test_apriori_rule_mining_is_load_bearing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -235,6 +277,12 @@ def test_covering_signal_guided_is_load_bearing(monkeypatch: pytest.MonkeyPatch)
 def test_production_catalog_batch16_descriptors_declare_expected_shapes() -> None:
     catalog = production_catalog()
 
+    gum = catalog.get("legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0")
+    assert gum.response_shape is ResponseShape.PORTFOLIO
+    assert gum.native_ticket_count == 2
+    assert gum.executable is True
+    assert gum.min_history == 150
+
     apriori = catalog.get("legacy_biglotto__backtest_apriori__2abb53765703")
     assert apriori.response_shape is ResponseShape.PORTFOLIO
     assert apriori.native_ticket_count == 13
@@ -256,16 +304,17 @@ def test_production_catalog_batch16_descriptors_declare_expected_shapes() -> Non
 
 def test_pre_batch16_descriptors_are_unaffected_by_batch16() -> None:
     """Every pre-existing descriptor and its declaration order must remain
-    unchanged; batch 16's three admitted descriptors are appended strictly after
+    unchanged; batch 16's four new descriptors are appended strictly after
     them."""
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
     pre_existing_ids = all_ids[:80]
-    batch16_ids_in_order = all_ids[80:83]
+    batch16_ids_in_order = all_ids[80:84]
     assert set(pre_existing_ids).isdisjoint(BATCH16_IDS)
     assert set(batch16_ids_in_order) == BATCH16_IDS
     assert batch16_ids_in_order == (
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
         "legacy_biglotto__backtest_apriori__2abb53765703",
         "legacy_biglotto__covering_strategy_research__214ecc206fc9",
         "legacy_biglotto__evolution_engine__3df019c31ce4",
@@ -280,9 +329,10 @@ def test_all_batch16_strategies_are_reachable_through_portfolio_path() -> None:
 # ─── generate_portfolio replay-path tests ──────────────────────────────────
 
 
-def test_generate_portfolio_returns_complete_native_ticket_set_for_apriori_and_covering() -> None:
+def test_generate_portfolio_returns_complete_native_ticket_set_for_gum_apriori_covering() -> None:
     use_case = build_production_generate_portfolio()
     expectations = (
+        ("legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0", 150, 2),
         ("legacy_biglotto__backtest_apriori__2abb53765703", 150, 13),
         ("legacy_biglotto__covering_strategy_research__214ecc206fc9", 250, 40),
     )

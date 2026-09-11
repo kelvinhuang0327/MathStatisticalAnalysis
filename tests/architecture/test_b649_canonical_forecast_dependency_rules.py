@@ -59,12 +59,18 @@ def test_scheduler_consumes_immutable_authority_and_keeps_materializer_standalon
     source = SCHEDULER.read_text(encoding="utf-8")
     assert "_load_canonical_forecast_authority" in source
     assert "read_existing_bytes" in source
-    assert "materialize_canonical_forecast" not in source
+    assert "materialize_canonical_forecast" in source
+    assert "def materialize_predraw_forecast(" in source
     assert "def materialize_forecast(" not in source
     assert "build_canonical_predraw_consensus" not in source
     assert "tools.materialize_b649_canonical_forecast" not in source
     assert "next_draw_rollover_status" in source
-    assert "forecast_materialization" not in source
+    assert "forecast_materialization" in source
+    forecast_source = source.split("def _forecast_command(", 1)[1].split(
+        "def _status_command(", 1
+    )[0]
+    assert "materialize_canonical_forecast" not in forecast_source
+    assert "inspect_predictions" not in forecast_source
     assert "def materialize_canonical_forecast(" in APPLICATION.read_text(encoding="utf-8")
     assert "materialize_canonical_forecast" in COMPATIBILITY.read_text(encoding="utf-8")
 

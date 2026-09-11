@@ -10,7 +10,7 @@ import runpy
 import ssl
 import stat
 import subprocess
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from inspect import getsource
@@ -33,6 +33,7 @@ from tools.b649_goalc_local_scheduler import (
     ScheduleRefreshResult,
     SchedulerInvariantError,
     _forecast_command,  # pyright: ignore[reportPrivateUsage]
+    _status_command,  # pyright: ignore[reportPrivateUsage]
     build_launchd_plist,
     evaluate_health_status,
     inspect_prediction_inventory,
@@ -98,6 +99,43 @@ def _config(tmp_path: Path) -> SchedulerConfig:
         stdout_path=scheduler / "launchd.stdout.log",
         stderr_path=scheduler / "launchd.stderr.log",
         plist_path=launch_agents / "com.lottolab.b649-goalc-r1.plist",
+    )
+
+
+def _production_test_config(tmp_path: Path) -> SchedulerConfig:
+    temporary = _config(tmp_path)
+    return replace(
+        production_config(),
+        canonical_repository=temporary.canonical_repository,
+        source_worktree=temporary.source_worktree,
+        python_executable=temporary.python_executable,
+        script_path=temporary.script_path,
+        operation_root=temporary.operation_root,
+        data_root=temporary.data_root,
+        database=temporary.database,
+        announcement=temporary.announcement,
+        scheduler_root=temporary.scheduler_root,
+        lock_path=temporary.lock_path,
+        health_path=temporary.health_path,
+        stdout_path=temporary.stdout_path,
+        stderr_path=temporary.stderr_path,
+        plist_path=temporary.plist_path,
+    )
+
+
+def _production_backend(
+    config: SchedulerConfig, *, clock: Callable[[], datetime]
+) -> ProductionSchedulerBackend:
+    return ProductionSchedulerBackend(
+        config,
+        clock=clock,
+        https_client=OfficialHttpsClient(
+            transport=lambda _request, _context, _timeout, _limit: b"{}"
+        ),
+        environ={
+            "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
+            "LOTTOLAB_DATA_DIR": str(config.data_root),
+        },
     )
 
 
@@ -391,6 +429,10 @@ def _authority_payload(
             "draw_number": target.draw_number,
             "draw_date": target.draw_date,
         },
+        "max_data_cutoff": {
+            "draw_number": "115000086",
+            "draw_date": "2026-09-08",
+        },
         "lottery_type": target.lottery_type,
         "stream_count": 11,
         "target_result_used": False,
@@ -411,6 +453,64 @@ def _authority_payload(
     }
     payload.update(overrides)
     return payload
+
+
+def _future_authority_payload(
+    target: PredictionTarget,
+    **overrides: object,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "schema_version": "b649-canonical-forecast-v1",
+        "aggregation_method_id": "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS",
+        "aggregation_method_version": "1.0.0",
+        "target_draw": {
+            "draw_number": target.draw_number,
+            "draw_date": target.draw_date,
+        },
+        "lottery_type": target.lottery_type,
+        "scheduled_at": target.scheduled_at,
+        "max_data_cutoff": {
+            "draw_number": "209900000",
+            "draw_date": "2099-01-01",
+        },
+        "history_sha256": "e" * 64,
+        "history_draw_count": 100,
+        "history_caveat": "fixture history identity",
+        "stream_count": 11,
+        "target_result_used": False,
+        "pre_outcome_temporal_integrity": "PASS",
+        "weight_policy": "EQUAL_STREAM_WEIGHT",
+        "stream_input_manifest_sha256": "f" * 64,
+        "final_decision_ranking": [
+            {"rank": 1, "number": 4, "support_units": 11},
+            {"rank": 2, "number": 12, "support_units": 10},
+            {"rank": 3, "number": 24, "support_units": 9},
+            {"rank": 4, "number": 25, "support_units": 8},
+            {"rank": 5, "number": 26, "support_units": 7},
+            {"rank": 6, "number": 29, "support_units": 6},
+        ],
+        "final_recommended_output": [
+            {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
+        ],
+        "created_at": "2099-01-02T10:00:00+00:00",
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _install_future_authority_fixture(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    **overrides: object,
+) -> tuple[Path, dict[str, object]]:
+    payload = _future_authority_payload(target, **overrides)
+    path = scheduler_module._forecast_authority_destination(  # pyright: ignore[reportPrivateUsage]
+        config, target
+    )
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    path.write_bytes(scheduler_module.canonical_file_bytes(payload))
+    path.chmod(0o600)
+    return path, payload
 
 
 def _install_authority_fixture(
@@ -512,6 +612,9 @@ class _FakeBackend:
         )
         self.fail_refresh = fail_refresh
         self.generation_calls: list[tuple[str, ...]] = []
+        self.forecast_materialization_calls: list[
+            tuple[PredictionTarget, PredictionInventory]
+        ] = []
         self.materialization_calls: list[tuple[PredictionTarget, PredictionInventory]] = []
         self.sync_calls = 0
         self.complete_calls = 0
@@ -550,6 +653,19 @@ class _FakeBackend:
             "requested_stream_ids": list(call),
             "created_prediction_paths": ["fixture.json"],
             "failures": [],
+        }
+
+    def materialize_predraw_forecast(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> dict[str, object]:
+        assert target == self.target
+        self.forecast_materialization_calls.append((target, inventory))
+        return {
+            "status": "ALREADY_PRESENT",
+            "publication": "ALREADY_PRESENT",
+            "target_draw": target.draw_number,
         }
 
     def materialize_predraw_portfolios(
@@ -673,7 +789,7 @@ class _ShadowFailureBackend(_ShadowHookBackend):
 
 def test_production_config_is_the_exact_authorized_runtime() -> None:
     config = production_config()
-    canonical_repository = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
+    canonical_repository = scheduler_module.CANONICAL_REPOSITORY
 
     assert config.label == "com.lottolab.b649-goalc-r1"
     assert config.start_interval_seconds == 300
@@ -681,10 +797,8 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
-    assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
-    assert config.operation_root == Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
-    )
+    assert config.script_path == scheduler_module.SCRIPT_PATH
+    assert config.operation_root == scheduler_module.GOALC_ROOT
     assert config.health_path == config.operation_root / "scheduler/health.json"
 
 
@@ -1070,6 +1184,163 @@ def test_production_backend_passes_exact_predraw_paths_to_portfolio_materializer
     assert callable(captured["pre_outcome_seal_check"])
 
 
+def test_future_existing_forecast_is_consumed_without_materializer_or_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _production_test_config(tmp_path)
+    target = _target()
+    path, _payload = _install_future_authority_fixture(config, target)
+    before = _snapshot_files(config.operation_root)
+
+    def fail_materializer(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("existing future authority must not invoke the materializer")
+
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fail_materializer)
+    backend = _production_backend(config, clock=lambda: NOW)
+
+    result = backend.materialize_predraw_forecast(target, _inventory(0))
+
+    assert result["status"] == "ALREADY_PRESENT"
+    assert result["publication"] == "ALREADY_PRESENT"
+    assert result["artifact_path"] == str(path)
+    assert result["artifact_sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert _snapshot_files(config.operation_root) == before
+
+
+def test_087_existing_forecast_is_consumed_exactly_without_materializer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _production_test_config(tmp_path)
+    target = _canonical_target()
+    raw = scheduler_module._canonical_json(  # pyright: ignore[reportPrivateUsage]
+        _authority_payload(target)
+    ).encode("utf-8") + b"\n"
+    path = tmp_path / "authority" / "final_forecast_payload.json"
+    path.parent.mkdir(mode=0o700)
+    path.write_bytes(raw)
+    path.chmod(0o600)
+    monkeypatch.setattr(scheduler_module, "CANONICAL_FORECAST_AUTHORITY_PATH", path)
+    monkeypatch.setattr(
+        scheduler_module,
+        "CANONICAL_FORECAST_SHA256",
+        hashlib.sha256(raw).hexdigest(),
+    )
+
+    def fail_materializer(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("115000087 must remain consume-only")
+
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fail_materializer)
+    backend = _production_backend(config, clock=lambda: NOW)
+
+    result = backend.materialize_predraw_forecast(target, _inventory(0))
+
+    assert result["status"] == "ALREADY_PRESENT"
+    assert result["artifact_sha256"] == hashlib.sha256(raw).hexdigest()
+    assert path.read_bytes() == raw
+
+
+def test_missing_087_fails_closed_without_materializer_or_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _production_test_config(tmp_path)
+    target = _canonical_target()
+    path = tmp_path / "authority" / "final_forecast_payload.json"
+    path.parent.mkdir(mode=0o700)
+    monkeypatch.setattr(scheduler_module, "CANONICAL_FORECAST_AUTHORITY_PATH", path)
+
+    def fail_materializer(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("missing 115000087 must not be recreated")
+
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fail_materializer)
+    before = _snapshot_files(config.operation_root)
+    backend = _production_backend(config, clock=lambda: NOW)
+
+    with pytest.raises(SchedulerInvariantError, match=r"115000087.*missing"):
+        backend.materialize_predraw_forecast(target, _inventory(0))
+
+    assert not path.exists()
+    assert _snapshot_files(config.operation_root) == before
+
+
+def test_future_forecast_materializer_creates_once_then_consumes_existing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _production_test_config(tmp_path)
+    target = _target()
+    path = scheduler_module._forecast_authority_destination(  # pyright: ignore[reportPrivateUsage]
+        config, target
+    )
+    payload = _future_authority_payload(target)
+    raw = scheduler_module.canonical_file_bytes(payload)
+    calls = 0
+
+    class _Created:
+        def __init__(self) -> None:
+            self.destination = path
+            self.payload = payload
+            self.publication = "CREATED"
+            self.artifact_sha256 = hashlib.sha256(raw).hexdigest()
+
+    def fake_build(*_args: object) -> object:
+        return object()
+
+    def fake_materializer(
+        _request: object,
+        *,
+        destination: Path,
+        authority: object,
+        clock: Callable[[], datetime],
+    ) -> _Created:
+        nonlocal calls
+        del authority, clock
+        calls += 1
+        destination.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        destination.write_bytes(raw)
+        destination.chmod(0o600)
+        return _Created()
+
+    monkeypatch.setattr(
+        scheduler_module,
+        "_build_forecast_materialization_request",
+        fake_build,
+    )
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fake_materializer)
+    backend = _production_backend(config, clock=lambda: NOW)
+
+    first = backend.materialize_predraw_forecast(target, _inventory(11))
+    second = backend.materialize_predraw_forecast(target, _inventory(0))
+
+    assert first["status"] == "CREATED"
+    assert second["status"] == "ALREADY_PRESENT"
+    assert calls == 1
+    assert path.read_bytes() == raw
+
+
+def test_future_missing_forecast_at_deadline_never_creates(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _production_test_config(tmp_path)
+    target = _target()
+
+    def fail_materializer(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("deadline-crossing cycle must not create a forecast")
+
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fail_materializer)
+    backend = _production_backend(config, clock=lambda: SCHEDULED)
+
+    result = backend.materialize_predraw_forecast(target, _inventory(11))
+
+    assert result["status"] == "PRE_OUTCOME_WINDOW_CLOSED"
+    assert not scheduler_module._forecast_authority_destination(  # pyright: ignore[reportPrivateUsage]
+        config, target
+    ).exists()
+
+
 def test_prediction_inventory_does_not_count_unavailable_or_postdraw_records(
     tmp_path: Path,
 ) -> None:
@@ -1148,7 +1419,12 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["next_draw_rollover_status"] == "NOT_DUE"
     assert result["k5_status"] == result["k10_status"] == result["k20_status"] == "COMPLETE"
     assert result["outcome_used"] == "NO"
-    assert "forecast_materialization" not in result
+    assert result["forecast_materialization"] == {
+        "status": "ALREADY_PRESENT",
+        "publication": "ALREADY_PRESENT",
+        "target_draw": "209900001",
+    }
+    assert len(backend.forecast_materialization_calls) == 1
     assert result["scoring_status"] == "NOT_DUE"
     assert backend.sync_calls == 0
     persisted = json.loads(config.health_path.read_text())
@@ -1427,6 +1703,100 @@ def test_ready_postdraw_cycle_reports_waiting_or_complete(
     assert backend.materialization_calls == []
     assert backend.sync_calls == 1
     assert backend.complete_calls == 1
+    portfolio_health = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio_health["status"] == "SKIPPED_POST_OUTCOME"
+
+
+def test_scheduler_conditional_forecast_materializer_runs_once_then_consumes(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+
+    class _ConditionalBackend(_FakeBackend):
+        def __init__(self) -> None:
+            super().__init__(target=_target(), inventories=(_inventory(11),))
+            self.forecast_exists = False
+            self.forecast_create_calls = 0
+
+        def materialize_predraw_forecast(
+            self,
+            target: PredictionTarget,
+            inventory: PredictionInventory,
+        ) -> dict[str, object]:
+            self.forecast_materialization_calls.append((target, inventory))
+            if self.forecast_exists:
+                return {
+                    "status": "ALREADY_PRESENT",
+                    "publication": "ALREADY_PRESENT",
+                    "target_draw": target.draw_number,
+                }
+            self.forecast_exists = True
+            self.forecast_create_calls += 1
+            return {
+                "status": "CREATED",
+                "publication": "CREATED",
+                "target_draw": target.draw_number,
+            }
+
+    backend = _ConditionalBackend()
+
+    first = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+    second = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW + timedelta(minutes=5),
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    first_forecast = cast(dict[str, object], first["forecast_materialization"])
+    second_forecast = cast(dict[str, object], second["forecast_materialization"])
+    assert first_forecast["status"] == "CREATED"
+    assert second_forecast["status"] == "ALREADY_PRESENT"
+    assert backend.forecast_create_calls == 1
+    assert len(backend.forecast_materialization_calls) == 2
+
+
+def test_post_outcome_forecast_failure_does_not_block_official_lifecycle(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+
+    class _InvalidForecastBackend(_FakeBackend):
+        def materialize_predraw_forecast(
+            self,
+            target: PredictionTarget,
+            inventory: PredictionInventory,
+        ) -> dict[str, object]:
+            self.forecast_materialization_calls.append((target, inventory))
+            raise SchedulerInvariantError("persisted forecast authority is invalid")
+
+    backend = _InvalidForecastBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        postdraw=PostDrawResult("NEW_OUTCOME", "COMPLETE", "REBUILT", "COMPLETE"),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: SCHEDULED,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "COMPLETE"
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    portfolio_health = cast(dict[str, object], result["portfolio_materialization"])
+    assert forecast_health["status"] == "NON_SUCCESS"
+    assert portfolio_health["status"] == "SKIPPED_POST_OUTCOME"
+    assert backend.forecast_materialization_calls
+    assert backend.materialization_calls == []
+    assert backend.sync_calls == 1
+    assert backend.complete_calls == 1
 
 
 def test_cycle_exception_atomically_replaces_running_with_error_and_counts_failures(
@@ -1564,6 +1934,23 @@ def test_health_status_reports_stale_and_error_deterministically() -> None:
     assert stale["status"] == "STALE"
     assert stale["recorded_status"] == "PREDRAW_READY"
     assert error["status"] == "ERROR"
+
+
+def test_status_does_not_invoke_forecast_materialization(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+
+    def fail_materializer(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("status must not invoke any forecast materializer")
+
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fail_materializer)
+
+    result, exit_code = _status_command(config, clock=lambda: NOW)
+
+    assert result == {"status": "NOT_CONFIGURED", "health_path": str(config.health_path)}
+    assert exit_code == 1
 
 
 def test_postdraw_composition_uses_empty_stream_set_and_cannot_backfill(
@@ -1708,64 +2095,30 @@ def test_forecast_ready_when_all_eleven_streams_are_available(
     assert result["FINAL_RECOMMENDED_OUTPUT"] == [
         {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
     ]
-    streams = cast(list[dict[str, object]], result["STREAMS"])
-    assert len(streams) == 11
-    assert {cast(str, entry["strategy_id"]) for entry in streams} == set(STREAM_IDS)
-    for entry in streams:
-        assert entry["history_cutoff_draw"] == "115000086"
-        assert entry["tickets"]
-        assert {
-            "strategy_id",
-            "strategy_version",
-            "prediction_run_id",
-            "prediction_created_at",
-            "history_cutoff_draw",
-            "tickets",
-        } == set(entry)
+    assert "STREAMS" not in result
     assert "CANONICAL_PREDRAW_CONSENSUS" not in result
     assert backend.mutating_calls == []
 
 
-def test_forecast_reuses_validated_prediction_snapshot_without_second_scan(
+def test_forecast_reads_existing_authority_without_scanning_predictions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """An existing target authority is sufficient for the read-only command."""
+
     config = _config(tmp_path)
     target = _canonical_target()
-    _write_canonical_streams(config.operation_root, target)
-    prediction_paths = {
-        config.operation_root
-        / "predictions"
-        / target.draw_number
-        / strategy_id
-        / "prediction.json"
-        for strategy_id in STREAM_IDS
-    }
     _install_authority_fixture(tmp_path, monkeypatch, target)
-    original_iter_prediction_files = scheduler_module.iter_prediction_files
-    original_reader = scheduler_module._read_json_object_with_bytes  # pyright: ignore[reportPrivateUsage]
-    scan_count = 0
-    read_paths: list[Path] = []
 
-    def count_scans(root: Path, draw_number: str) -> object:
-        nonlocal scan_count
-        scan_count += 1
-        return original_iter_prediction_files(root, draw_number)
+    def fail_prediction_scan(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("forecast must consume the existing authority without scanning streams")
 
-    def count_reads(path: Path) -> tuple[dict[str, object], bytes]:
-        read_paths.append(path)
-        return original_reader(path)
-
-    monkeypatch.setattr(scheduler_module, "iter_prediction_files", count_scans)
-    monkeypatch.setattr(scheduler_module, "_read_json_object_with_bytes", count_reads)
+    monkeypatch.setattr(scheduler_module, "iter_prediction_files", fail_prediction_scan)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
 
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code == 0
     assert result["FORECAST_STATUS"] == "READY"
-    assert scan_count == 1
-    assert len(read_paths) == 11
-    assert set(read_paths) == prediction_paths
     assert result["STREAM_INPUT_MANIFEST_SHA256"] == "d" * 64
 
 
@@ -1855,26 +2208,22 @@ def test_forecast_does_not_require_or_read_target_outcome(
     assert backend.mutating_calls == []
 
 
-def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
-    """Acceptance 4: missing streams return internal readiness, not blocked."""
+def test_forecast_missing_future_authority_is_non_success_without_creation(
+    tmp_path: Path,
+) -> None:
+    """A missing future artifact is not a forecast-ready state."""
 
     config = _config(tmp_path)
     target = _target()
-    available = STREAM_IDS[:7]
-    _write_all_streams(config.operation_root, target, available)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
 
     result, exit_code = _forecast_command(config, backend)
 
-    assert exit_code == 0
-    assert result["FORECAST_STATUS"] == "INTERNAL_PREDRAW_READINESS_STATE"
-    assert result["EXPECTED_STREAM_COUNT"] == 11
-    assert result["AVAILABLE_STREAM_COUNT"] == 7
-    assert result["MISSING_STREAM_IDS"] == list(STREAM_IDS[7:])
-    assert "STREAMS" not in result
-    assert "FINAL_DECISION_RANKING" not in result
-    assert "FINAL_RECOMMENDED_TICKET" not in result
-    assert "STREAM_INPUT_MANIFEST_SHA256" not in result
+    assert exit_code != 0
+    assert result["FORECAST_STATUS"] == "FORECAST_AUTHORITY_UNAVAILABLE"
+    assert result["AUTHORITY_STATUS"] == "NON_SUCCESS"
+    assert "no persisted forecast" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
+    assert not (config.operation_root / "forecasts").exists()
     assert backend.mutating_calls == []
 
 
@@ -1907,85 +2256,65 @@ def test_forecast_ignores_extra_technical_failure_record_when_inventory_is_ready
     assert result["FINAL_RECOMMENDED_TICKET"] == [4, 12, 24, 25, 26, 29]
 
 
-def test_forecast_excludes_post_draw_predictions_from_availability(tmp_path: Path) -> None:
-    """Acceptance 5: a POST_DRAW prediction cannot enter forecast authority."""
+def test_forecast_future_existing_authority_is_target_aware_and_read_only(
+    tmp_path: Path,
+) -> None:
+    """A future target is projected from its own persisted authority."""
 
     config = _config(tmp_path)
     target = _target()
-    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
-    _write_forecast_prediction(
-        config.operation_root,
-        target,
-        STREAM_IDS[0],
-        created_at=SCHEDULED + timedelta(hours=1),
-        temporal_class="POST_DRAW",
-        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
-        history_cutoff_date=_FORECAST_CUTOFF_DATE,
-    )
+    path, authority = _install_future_authority_fixture(config, target)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
 
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code == 0
-    assert result["FORECAST_STATUS"] == "INTERNAL_PREDRAW_READINESS_STATE"
-    assert result["MISSING_STREAM_IDS"] == [STREAM_IDS[0]]
-    assert result["AVAILABLE_STREAM_COUNT"] == 10
-
-
-def test_forecast_rejects_predraw_timestamp_at_or_after_deadline(tmp_path: Path) -> None:
-    """Acceptance 6: prediction_created_at >= scheduled_at is rejected."""
-
-    config = _config(tmp_path)
-    target = _target()
-    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
-    _write_forecast_prediction(
-        config.operation_root,
-        target,
-        STREAM_IDS[0],
-        created_at=SCHEDULED,
-        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
-        history_cutoff_date=_FORECAST_CUTOFF_DATE,
-    )
-    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
-
-    result, exit_code = _forecast_command(config, backend)
-
-    assert exit_code != 0
-    assert result["FORECAST_STATUS"] == "INVALID_TEMPORAL_AUTHORITY"
-    violations = cast(list[str], result["VIOLATIONS"])
-    assert violations
-    assert "STREAMS" not in result
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["CANONICAL_AUTHORITY_PATH"] == str(path)
+    assert result["ANALYSIS_MAX_DATA_CUTOFF"] == "209900000"
+    output = cast(list[dict[str, object]], authority["final_recommended_output"])
+    assert result["FINAL_RECOMMENDED_TICKET"] == output[0]["predicted_numbers"]
     assert backend.mutating_calls == []
 
 
-def test_forecast_treats_malformed_history_cutoff_as_invalid_temporal_authority(
-    tmp_path: Path,
-) -> None:
-    """A stored record missing history_cutoff fails closed, never crashes uncaught."""
+def test_forecast_rejects_future_authority_created_at_at_deadline(tmp_path: Path) -> None:
+    """A persisted forecast created at the deadline is invalid."""
 
     config = _config(tmp_path)
     target = _target()
-    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
-    path = _write_forecast_prediction(
-        config.operation_root,
-        target,
-        STREAM_IDS[0],
-        created_at=NOW,
-        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
-        history_cutoff_date=_FORECAST_CUTOFF_DATE,
-    )
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    del payload["history_cutoff"]
-    path.write_text(json.dumps(payload), encoding="utf-8")
-    path.chmod(0o600)
+    _install_future_authority_fixture(config, target, created_at=SCHEDULED.isoformat())
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
 
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code != 0
-    assert result["FORECAST_STATUS"] == "INVALID_TEMPORAL_AUTHORITY"
-    violations = cast(list[str], result["VIOLATIONS"])
-    assert any(STREAM_IDS[0] in violation for violation in violations)
+    assert result["FORECAST_STATUS"] == "FORECAST_AUTHORITY_UNAVAILABLE"
+    assert "created_at" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
+    assert backend.mutating_calls == []
+
+
+def test_forecast_rejects_future_authority_with_noncausal_cutoff(
+    tmp_path: Path,
+) -> None:
+    """A stored target authority with a non-causal cutoff fails closed."""
+
+    config = _config(tmp_path)
+    target = _target()
+    _install_future_authority_fixture(
+        config,
+        target,
+        max_data_cutoff={
+            "draw_number": target.draw_number,
+            "draw_date": target.draw_date,
+        },
+    )
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code != 0
+    assert result["FORECAST_STATUS"] == "FORECAST_AUTHORITY_UNAVAILABLE"
+    assert "causal" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
     assert "FINAL_DECISION_RANKING" not in result
     assert "FINAL_RECOMMENDED_TICKET" not in result
     assert "STREAM_INPUT_MANIFEST_SHA256" not in result
@@ -2185,7 +2514,7 @@ def test_forecast_rejects_descriptive_fields_in_canonical_authority(
 def test_forecast_directly_calls_domain_authority_and_not_legacy_builder() -> None:
     source = getsource(_forecast_command)
 
-    assert "_load_canonical_forecast_authority" in source
+    assert "_load_forecast_authority" in source
     assert "build_canonical_consensus" not in source
     assert "build_canonical_predraw_consensus" not in source
     assert "compute_number_consensus" not in source
@@ -2193,6 +2522,7 @@ def test_forecast_directly_calls_domain_authority_and_not_legacy_builder() -> No
     assert "descriptive_top6" not in source
     assert "descriptive_top_k" not in source
     assert "sorted(" not in source
+    assert "materialize_canonical_forecast" not in source
 
 
 def test_forecast_reports_no_target_resolved_without_reading_predictions(tmp_path: Path) -> None:

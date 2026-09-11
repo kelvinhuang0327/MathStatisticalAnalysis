@@ -57,12 +57,8 @@ from lottolab.domain.b649_canonical_consensus import (
 )
 from lottolab.evidence.canonical_json import sha256_hex
 from lottolab.infrastructure.b649_canonical_forecast_writer import (
-    discard_staged,
-    ensure_output_parent,
-    publish_staged,
     read_existing_bytes,
     read_persisted_prediction_records,
-    stage_payload,
 )
 
 TASK_ID: Final = (
@@ -124,6 +120,40 @@ class MaterializationResult:
     status: Literal["CREATED", "ALREADY_PRESENT", "DRY_RUN"]
     destination: Path
     payload: dict[str, object]
+
+
+def _historical_authority_conflict() -> ForecastAuthorityConflictError:
+    return ForecastAuthorityConflictError(
+        "historical 087 authority is read-only; first-create/backfill is forbidden"
+    )
+
+
+def _forbid_historical_write_parent(destination: Path) -> None:
+    del destination
+    raise _historical_authority_conflict()
+
+
+def _forbid_historical_stage(destination: Path, payload_bytes: bytes) -> object:
+    del destination, payload_bytes
+    raise _historical_authority_conflict()
+
+
+def _forbid_historical_publish(staged: object) -> object:
+    del staged
+    raise _historical_authority_conflict()
+
+
+def _forbid_historical_discard(staged: object) -> None:
+    del staged
+    raise _historical_authority_conflict()
+
+
+# Keep the historical CLI/test names importable while preventing this adapter
+# from acquiring a writable filesystem surface again.
+ensure_output_parent = _forbid_historical_write_parent
+stage_payload = _forbid_historical_stage
+publish_staged = _forbid_historical_publish
+discard_staged = _forbid_historical_discard
 
 
 FROZEN_STREAM_SPECS: Final = (
@@ -317,6 +347,10 @@ def materialize_canonical_forecast(
 ) -> MaterializationResult:
     """Adapt the historical 087 inputs to the target-parameterized service."""
 
+    output = operation_root / FORECAST_RELATIVE_PATH if destination is None else destination
+    if read_existing_bytes(output) is None:
+        raise _historical_authority_conflict()
+
     spec_tuple = tuple(specs)
     records = read_persisted_prediction_records(operation_root, TARGET_DRAW_NUMBER)
     by_path = {record.source_relative_path: record for record in records}
@@ -352,13 +386,12 @@ def materialize_canonical_forecast(
         identity,
         expected_manifest_sha256=expected_manifest_sha256,
     )
-    output = operation_root / FORECAST_RELATIVE_PATH if destination is None else destination
     authority = CanonicalForecastAuthorityPort(
         read_existing_bytes=read_existing_bytes,
-        ensure_output_parent=ensure_output_parent,
-        stage_payload=stage_payload,
-        publish_staged=publish_staged,
-        discard_staged=discard_staged,
+        ensure_output_parent=_forbid_historical_write_parent,
+        stage_payload=_forbid_historical_stage,
+        publish_staged=_forbid_historical_publish,
+        discard_staged=_forbid_historical_discard,
     )
     result = _materialize_service(
         request,

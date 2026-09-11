@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
+from zoneinfo import ZoneInfo
 
 from lottolab.domain.b649_canonical_consensus import (
     AGGREGATION_CONTRACT_APPROVED_AT,
@@ -57,6 +58,10 @@ _IMPLEMENTATION_KEYS = frozenset(
 _NON_SEMANTIC_AUTHORITY_KEYS = _IMPLEMENTATION_KEYS | frozenset(
     {"task_id", "upstream_task_id"}
 )
+_SEMANTIC_TIMESTAMP_KEYS = frozenset(
+    {"scheduled_at", "aggregation_contract_approved_at"}
+)
+_TAIPEI = ZoneInfo("Asia/Taipei")
 
 Clock = Callable[[], datetime]
 
@@ -450,7 +455,7 @@ def _validate_request(request: CanonicalForecastMaterializationRequest) -> None:
         raise TargetIdentityMismatchError("target draw number is not decimal")
     _parse_date(target.draw_date, "target draw_date")
     scheduled = _parse_timestamp(target.scheduled_at, "target scheduled_at")
-    if scheduled.date().isoformat() != target.draw_date:
+    if scheduled.astimezone(_TAIPEI).date().isoformat() != target.draw_date:
         raise TargetIdentityMismatchError(
             "target scheduled_at local date conflicts with target draw_date"
         )
@@ -588,7 +593,15 @@ def _validate_prediction_record(
         ("draw_date", request.target.draw_date),
         ("scheduled_at", request.target.scheduled_at),
     ):
-        if payload.get(key) != expected:
+        if key == "scheduled_at":
+            actual_identity = _timestamp_identity(
+                payload.get(key), f"{record.source_relative_path}.{key}"
+            )
+            expected_identity = _timestamp_identity(expected, f"target {key}")
+            matches = actual_identity is not None and actual_identity == expected_identity
+        else:
+            matches = payload.get(key) == expected
+        if not matches:
             raise TargetIdentityMismatchError(
                 f"{record.source_relative_path}: {key} does not match target"
             )
@@ -852,6 +865,17 @@ def _validate_existing_payload(
         for key, value in actual_immutable.items()
         if key not in _NON_SEMANTIC_AUTHORITY_KEYS
     }
+    try:
+        actual_comparable = _normalize_semantic_timestamps(
+            actual_comparable, context="existing authority"
+        )
+        expected_immutable = _normalize_semantic_timestamps(
+            expected_immutable, context="expected authority"
+        )
+    except CanonicalForecastMaterializationError as exc:
+        raise ForecastAuthorityConflictError(
+            "existing authority timestamp identity is invalid"
+        ) from exc
     if actual_comparable != expected_immutable:
         raise ForecastAuthorityConflictError(
             "existing authority immutable fields differ from target/input/method authority"
@@ -953,6 +977,22 @@ def _format_timestamp(value: datetime) -> str:
     return _as_utc(value, "created_at").isoformat(timespec="microseconds").replace(
         "+00:00", "Z"
     )
+
+
+def _timestamp_identity(value: object, label: str) -> str | None:
+    if type(value) is not str:
+        return None
+    return _format_timestamp(_parse_timestamp(value, label))
+
+
+def _normalize_semantic_timestamps(
+    value: Mapping[str, object], *, context: str
+) -> dict[str, object]:
+    normalized = dict(value)
+    for key in _SEMANTIC_TIMESTAMP_KEYS:
+        if key in normalized:
+            normalized[key] = _timestamp_identity(normalized[key], f"{context}.{key}")
+    return normalized
 
 
 def _reject_forbidden_keys(value: object, source: str) -> None:

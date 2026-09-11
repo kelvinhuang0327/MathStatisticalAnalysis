@@ -47,6 +47,10 @@ from tools.b649_operational_prediction_loop import (
     PredictionTarget,
 )
 
+from lottolab.application.b649_canonical_forecast_materialization import (
+    ForecastAuthorityConflictError,
+    PreOutcomeWindowClosedError,
+)
 from lottolab.application.pre_outcome_target_operational import (
     TargetAnnouncementSourceStatus,
 )
@@ -495,6 +499,7 @@ class _FakeBackend:
         inventories: Sequence[PredictionInventory],
         postdraw: PostDrawResult | None = None,
         fail_refresh: Exception | None = None,
+        materialization_error: Exception | None = None,
     ) -> None:
         self.target = target
         self.inventories = list(inventories)
@@ -505,7 +510,9 @@ class _FakeBackend:
             cycle_action="WAITING_FOR_OUTCOME",
         )
         self.fail_refresh = fail_refresh
+        self.materialization_error = materialization_error
         self.generation_calls: list[tuple[str, ...]] = []
+        self.materialization_calls: list[tuple[str, str]] = []
         self.sync_calls = 0
         self.complete_calls = 0
 
@@ -543,6 +550,29 @@ class _FakeBackend:
             "requested_stream_ids": list(call),
             "created_prediction_paths": ["fixture.json"],
             "failures": [],
+        }
+
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]:
+        assert target == self.target
+        self.materialization_calls.append((target.draw_number, source_head))
+        if self.materialization_error is not None:
+            raise self.materialization_error
+        return {
+            "status": "COMPLETE",
+            "publication": "CREATED",
+            "target_draw": target.draw_number,
+            "method_id": scheduler_module.CANONICAL_CONSENSUS_METHOD_ID,
+            "method_version": scheduler_module.CANONICAL_CONSENSUS_METHOD_VERSION,
+            "artifact_path": f"forecast/{target.draw_number}/final_forecast_payload.json",
+            "artifact_sha256": "d" * 64,
+            "input_manifest_sha256": "e" * 64,
+            "error_class": None,
+            "reason": None,
         }
 
     def sync_official_outcome(self, target: PredictionTarget) -> dict[str, object]:
@@ -1051,7 +1081,12 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["ready_before_draw"] is True
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
-    assert "forecast_materialization" not in result
+    assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    assert forecast_health["status"] == "COMPLETE"
+    assert forecast_health["publication"] == "CREATED"
+    assert forecast_health["method_id"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    assert forecast_health["method_version"] == "1.0.0"
     assert result["scoring_status"] == "NOT_DUE"
     assert result["next_draw_rollover_status"] == "NOT_DUE"
     assert backend.sync_calls == 0
@@ -1061,6 +1096,70 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
         key: value for key, value in result.items() if key != SHADOW_HEALTH_NAMESPACE
     }
     assert stat.S_IMODE(os.lstat(config.health_path).st_mode) == 0o600
+
+
+def test_scheduler_waits_for_forecast_before_predraw_ready(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(10),))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "WAITING_FOR_PREDRAW"
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    assert forecast_health["status"] == "WAITING_FOR_PREDICTIONS"
+    assert forecast_health["error_class"] == "MISSING_STREAM_INPUT"
+    assert forecast_health["reason"] == "BLOCK_MISSING_STREAM_INPUT"
+    assert backend.materialization_calls == []
+    assert result["scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
+
+
+@pytest.mark.parametrize(
+    ("materialization_error", "expected_status"),
+    (
+        (
+            ForecastAuthorityConflictError("fixture conflict"),
+            "CONFLICT",
+        ),
+        (
+            PreOutcomeWindowClosedError("fixture deadline"),
+            "MISSED_PRE_OUTCOME_WINDOW",
+        ),
+        (RuntimeError("fixture error"), "ERROR"),
+    ),
+)
+def test_scheduler_forecast_failure_is_health_separate_from_predraw_state(
+    tmp_path: Path,
+    materialization_error: Exception,
+    expected_status: str,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        materialization_error=materialization_error,
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert result["current_status"] == "WAITING_FOR_FORECAST"
+    forecast_health = cast(dict[str, object], result["forecast_materialization"])
+    assert forecast_health["status"] == expected_status
+    assert forecast_health["error_class"] is not None
+    assert forecast_health["reason"] is not None
+    assert result["scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
+    assert backend.sync_calls == 0
 
 
 def test_shadow_hook_runs_after_ready_primary_and_primary_health_stays_11_stream_schema(

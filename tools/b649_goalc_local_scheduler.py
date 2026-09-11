@@ -46,12 +46,6 @@ from lottolab.domain.b649_canonical_consensus import (
     CANONICAL_CONSENSUS_METHOD_VERSION,
     CANONICAL_CONSENSUS_SCHEMA_VERSION,
 )
-from lottolab.domain.b649_canonical_consensus import (
-    TARGET_DRAW_DATE as CANONICAL_TARGET_DRAW_DATE,
-)
-from lottolab.domain.b649_canonical_consensus import (
-    TARGET_DRAW_NUMBER as CANONICAL_TARGET_DRAW_NUMBER,
-)
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import IngestionRunStatus
@@ -132,6 +126,9 @@ CANONICAL_FORECAST_SHA256 = (
     "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
 )
 CANONICAL_FINAL_TICKET = (4, 12, 24, 25, 26, 29)
+# Authority B is the already-published immutable forecast for this exact target.
+CANONICAL_TARGET_DRAW_NUMBER = "115000087"
+CANONICAL_TARGET_DRAW_DATE = "2026-09-11"
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -379,6 +376,14 @@ class SchedulerBackend(Protocol):
         target: PredictionTarget,
         inventory: PredictionInventory,
     ) -> PostDrawResult: ...
+
+
+class ForecastBackend(Protocol):
+    """Read-only backend surface required by the ``forecast`` command."""
+
+    def resolve_target(self) -> PredictionTarget | None: ...
+
+    def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory: ...
 
 
 class AdvisoryProcessLock:
@@ -1255,6 +1260,7 @@ def _base_health(
         "scoring_status": "NOT_RUN",
         "reporting_status": "NOT_RUN",
         "cycle_action": "RUNNING",
+        "next_draw_rollover_status": "NOT_DUE",
         "lock_contention": False,
         "error_class": None,
         "error_message": None,
@@ -1840,7 +1846,7 @@ def _load_canonical_forecast_authority(
 
 
 def _forecast_command(
-    config: SchedulerConfig, backend: SchedulerBackend
+    config: SchedulerConfig, backend: ForecastBackend
 ) -> tuple[dict[str, object], int]:
     """Deliver the currently available PRE_OUTCOME forecast without any write.
 

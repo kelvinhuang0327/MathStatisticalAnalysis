@@ -1051,6 +1051,9 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["ready_before_draw"] is True
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
+    assert "forecast_materialization" not in result
+    assert result["scoring_status"] == "NOT_DUE"
+    assert result["next_draw_rollover_status"] == "NOT_DUE"
     assert backend.sync_calls == 0
     persisted = json.loads(config.health_path.read_text())
     assert SHADOW_HEALTH_NAMESPACE not in persisted
@@ -1613,6 +1616,7 @@ def test_forecast_ready_when_all_eleven_streams_are_available(
             "history_cutoff_draw",
             "tickets",
         } == set(entry)
+    assert "CANONICAL_PREDRAW_CONSENSUS" not in result
     assert backend.mutating_calls == []
 
 
@@ -1856,21 +1860,15 @@ def test_forecast_treats_malformed_history_cutoff_as_invalid_temporal_authority(
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
-    path = (
-        config.operation_root
-        / "predictions"
-        / target.draw_number
-        / STREAM_IDS[0]
-        / "prediction.json"
-    )
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    payload = _forecast_prediction(
+    path = _write_forecast_prediction(
+        config.operation_root,
         target,
         STREAM_IDS[0],
         created_at=NOW,
         history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
         history_cutoff_date=_FORECAST_CUTOFF_DATE,
     )
+    payload = json.loads(path.read_text(encoding="utf-8"))
     del payload["history_cutoff"]
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)

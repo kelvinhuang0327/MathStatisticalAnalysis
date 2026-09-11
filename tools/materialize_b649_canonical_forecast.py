@@ -43,6 +43,7 @@ from lottolab.domain.b649_canonical_consensus import (
     TARGET_DRAW_DATE,
     TARGET_DRAW_NUMBER,
     TARGET_SCHEDULED_AT,
+    CanonicalConsensusContext,
     CanonicalConsensusDecision,
     StreamConsensusInput,
     build_canonical_consensus,
@@ -123,6 +124,10 @@ class ForecastAuthorityConflictError(ForecastMaterializationError):
 
     def __init__(self, detail: str) -> None:
         super().__init__(f"{self.code}: {detail}")
+
+
+class ForecastAuthorityMissingError(ForecastMaterializationError):
+    """The requested canonical forecast authority has not been published."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -368,47 +373,180 @@ def materialize_canonical_forecast(
     """
 
     _require_absolute_path(operation_root, "operation_root")
-    effective_repo = Path(__file__).resolve().parents[1] if repo_root is None else repo_root
-    _require_absolute_path(effective_repo, "repo_root")
-    output = (
-        operation_root / FORECAST_RELATIVE_PATH if destination is None else destination
-    )
     bundle = load_frozen_stream_inputs(
         operation_root,
         specs=specs,
         expected_manifest_sha256=expected_manifest_sha256,
     )
-    decision = build_canonical_consensus(bundle.streams)
+    context = CanonicalConsensusContext(
+        lottery_type=LOTTERY_TYPE,
+        target_draw_number=TARGET_DRAW_NUMBER,
+        target_draw_date=TARGET_DRAW_DATE,
+        scheduled_at=bundle.scheduled_at,
+        causal_cutoff_draw_number=MAX_DATA_CUTOFF,
+        causal_cutoff_date=MAX_DATA_CUTOFF_DATE,
+        history_draw_count=HISTORY_DRAW_COUNT,
+        history_sha256=HISTORY_SHA256,
+        streams=bundle.streams,
+        history_caveat=HISTORY_CAVEAT,
+    )
+    effective_repo = Path(__file__).resolve().parents[1] if repo_root is None else repo_root
+    _require_absolute_path(effective_repo, "repo_root")
     identity = (
         resolve_implementation_identity(effective_repo)
         if implementation_identity is None
         else implementation_identity
     )
-    base = _base_payload(decision, bundle, identity)
+    output = operation_root / FORECAST_RELATIVE_PATH if destination is None else destination
+    return _materialize_context(
+        context=context,
+        operation_root=operation_root,
+        destination=output,
+        clock=clock,
+        implementation_identity=identity,
+        task_id=TASK_ID,
+        upstream_task_id=UPSTREAM_TASK_ID,
+        dry_run=dry_run,
+    )
+
+
+def materialize_dynamic_canonical_forecast(
+    *,
+    context: CanonicalConsensusContext,
+    operation_root: Path,
+    repo_root: Path | None = None,
+    destination: Path | None = None,
+    clock: Clock | None = None,
+    implementation_identity: ImplementationIdentity | None = None,
+    task_id: str = "B649_GOALC_LOCAL_LAUNCHD_R1",
+    upstream_task_id: str = UPSTREAM_TASK_ID,
+    dry_run: bool = False,
+) -> MaterializationResult:
+    """Create one dynamic-target canonical authority under the scheduler lock."""
+
+    context = _require_context(context)
+    _require_absolute_path(operation_root, "operation_root")
+    effective_identity = implementation_identity
+    if effective_identity is None and repo_root is not None:
+        _require_absolute_path(repo_root, "repo_root")
+        effective_identity = resolve_implementation_identity(repo_root)
+    output = (
+        canonical_forecast_path(operation_root, context.target_draw_number)
+        if destination is None
+        else destination
+    )
+    return _materialize_context(
+        context=context,
+        operation_root=operation_root,
+        destination=output,
+        clock=clock,
+        implementation_identity=effective_identity,
+        task_id=task_id,
+        upstream_task_id=upstream_task_id,
+        dry_run=dry_run,
+    )
+
+
+def load_canonical_forecast_authority(
+    *,
+    context: CanonicalConsensusContext,
+    operation_root: Path,
+    destination: Path | None = None,
+    implementation_identity: ImplementationIdentity | None = None,
+    task_id: str = "B649_GOALC_LOCAL_LAUNCHD_R1",
+    upstream_task_id: str = UPSTREAM_TASK_ID,
+) -> dict[str, object]:
+    """Read and validate one already-materialized dynamic authority."""
+
+    context = _require_context(context)
+    _require_absolute_path(operation_root, "operation_root")
+    output = (
+        canonical_forecast_path(operation_root, context.target_draw_number)
+        if destination is None
+        else destination
+    )
+    raw = read_existing_bytes(output)
+    if raw is None:
+        raise ForecastAuthorityMissingError(f"canonical forecast authority is absent: {output}")
+    decision = build_canonical_consensus(context)
+    base = _base_payload(
+        decision,
+        context,
+        implementation_identity,
+        task_id=task_id,
+        upstream_task_id=upstream_task_id,
+    )
+    return _validate_existing_payload(raw, base, context)
+
+
+def canonical_forecast_path(operation_root: Path, target_draw_number: str) -> Path:
+    """Return the canonical forecast hierarchy for one validated target number."""
+
+    _require_absolute_path(operation_root, "operation_root")
+    if type(target_draw_number) is not str or not re.fullmatch(
+        r"[0-9]+", target_draw_number, flags=re.ASCII
+    ):
+        raise ForecastMaterializationError("target draw number is not numeric text")
+    return (
+        operation_root
+        / "forecasts"
+        / target_draw_number
+        / CANONICAL_CONSENSUS_METHOD_ID
+        / CANONICAL_CONSENSUS_METHOD_VERSION
+        / "final_forecast_payload.json"
+    )
+
+
+def _require_context(value: object) -> CanonicalConsensusContext:
+    if not isinstance(value, CanonicalConsensusContext):
+        raise ForecastMaterializationError("canonical forecast context has the wrong type")
+    return value
+
+
+def _materialize_context(
+    *,
+    context: CanonicalConsensusContext,
+    operation_root: Path,
+    destination: Path,
+    clock: Clock | None,
+    implementation_identity: ImplementationIdentity | None,
+    task_id: str,
+    upstream_task_id: str,
+    dry_run: bool,
+) -> MaterializationResult:
+    _require_absolute_path(operation_root, "operation_root")
+    decision = build_canonical_consensus(context)
+    base = _base_payload(
+        decision,
+        context,
+        implementation_identity,
+        task_id=task_id,
+        upstream_task_id=upstream_task_id,
+    )
 
     # Idempotent retries never sample the clock or stage a replacement.  The
     # existing bytes are independently checked against the immutable base and
     # its own original created_at window.
-    existing = read_existing_bytes(output)
+    existing = read_existing_bytes(destination)
     if existing is not None:
-        payload = _validate_existing_payload(existing, base, bundle)
-        return MaterializationResult("ALREADY_PRESENT", output, payload)
+        payload = _validate_existing_payload(existing, base, context)
+        return MaterializationResult("ALREADY_PRESENT", destination, payload)
     if dry_run:
-        return MaterializationResult("DRY_RUN", output, base)
+        return MaterializationResult("DRY_RUN", destination, base)
 
     now = _clock(clock)
-    _require_creation_window(now, bundle, context="created_at")
+    _require_creation_window(now, context, context_label="created_at")
     created_payload = {**base, "created_at": _format_timestamp(now)}
     payload_bytes = canonical_file_bytes(created_payload)
 
     # Directory creation and staging happen before the final clock sample;
     # neither operation can create the authority destination itself.
-    ensure_output_parent(output)
+    ensure_output_parent(destination)
     staged: StagedCanonicalForecast | None = None
     try:
-        staged = stage_payload(output, payload_bytes)
+        staged = stage_payload(destination, payload_bytes)
         pre_publish_now = _clock(clock)
-        if _as_utc(pre_publish_now) >= bundle.scheduled_at.astimezone(UTC):
+        if _as_utc(pre_publish_now) >= context.scheduled_at.astimezone(UTC):
             raise PreOutcomeWindowClosedError(
                 "pre_publish_now must be strictly before scheduled_at"
             )
@@ -416,19 +554,19 @@ def materialize_canonical_forecast(
         # writer's first operation is the atomic no-overwrite link.
         result = publish_staged(staged)
         if result.status == "CREATED":
-            observed = read_existing_bytes(output)
+            observed = read_existing_bytes(destination)
             if observed != payload_bytes:
                 raise ForecastAuthorityConflictError(
                     "read-after-write authority bytes differ from the staged payload"
                 )
-            return MaterializationResult("CREATED", output, created_payload)
-        observed = read_existing_bytes(output)
+            return MaterializationResult("CREATED", destination, created_payload)
+        observed = read_existing_bytes(destination)
         if observed is None:
             raise ForecastAuthorityConflictError(
                 "atomic publication reported an existing authority that disappeared"
             )
-        existing_payload = _validate_existing_payload(observed, base, bundle)
-        return MaterializationResult("ALREADY_PRESENT", output, existing_payload)
+        existing_payload = _validate_existing_payload(observed, base, context)
+        return MaterializationResult("ALREADY_PRESENT", destination, existing_payload)
     finally:
         # publish_staged owns normal temporary cleanup.  This branch handles a
         # closed second boundary before publish_staged is entered.
@@ -443,54 +581,66 @@ def materialize_canonical_forecast(
 
 def _base_payload(
     decision: CanonicalConsensusDecision,
-    bundle: FrozenInputBundle,
-    identity: ImplementationIdentity,
+    context: CanonicalConsensusContext,
+    identity: ImplementationIdentity | None,
+    *,
+    task_id: str,
+    upstream_task_id: str,
 ) -> dict[str, object]:
     # ``decision`` is kept as an object at this boundary so this helper remains
     # easy to audit: only the domain serializer supplies ranking and manifest
     # fields, while this module supplies authority and provenance metadata.
-    decision_payload = decision.to_payload(task_id=TASK_ID, lottery_type=LOTTERY_TYPE)
+    decision_payload = decision.to_payload(
+        task_id=task_id,
+        lottery_type=context.lottery_type,
+    )
     if decision_payload.get("stream_count") != EXPECTED_STREAM_COUNT:
         raise FrozenInputError("decision stream count is not eleven")
     if decision_payload.get("stream_input_manifest_sha256") is None:
         raise FrozenInputError("decision has no stream input manifest")
-    source_rows = [
-        {"path": source.path, "sha256": source.sha256}
-        for source in sorted(identity.source_hashes, key=lambda item: item.path)
-    ]
-    if tuple(row["path"] for row in source_rows) != IMPLEMENTATION_SOURCE_PATHS:
-        raise ImplementationIdentityError("implementation source hash scope is not exact")
-    return {
+    payload: dict[str, object] = {
         **decision_payload,
-        "task_id": TASK_ID,
+        "task_id": task_id,
         "target_draw": {
-            "draw_number": TARGET_DRAW_NUMBER,
-            "draw_date": TARGET_DRAW_DATE,
+            "draw_number": context.target_draw_number,
+            "draw_date": context.target_draw_date,
         },
-        "scheduled_at": TARGET_SCHEDULED_AT,
+        "scheduled_at": context.scheduled_at.isoformat(),
         "max_data_cutoff": {
-            "draw_number": MAX_DATA_CUTOFF,
-            "draw_date": MAX_DATA_CUTOFF_DATE,
+            "draw_number": context.causal_cutoff_draw_number,
+            "draw_date": context.causal_cutoff_date,
         },
-        "history_sha256": HISTORY_SHA256,
-        "history_draw_count": HISTORY_DRAW_COUNT,
-        "history_caveat": HISTORY_CAVEAT,
+        "history_sha256": context.history_sha256,
+        "history_draw_count": context.history_draw_count,
+        "history_caveat": context.history_caveat,
         "target_result_used": False,
         "aggregation_contract_review_id": AGGREGATION_CONTRACT_REVIEW_ID,
         "aggregation_contract_approved_at": AGGREGATION_CONTRACT_APPROVED_AT,
         "decision_ranking_formula": DECISION_RANKING_FORMULA,
-        "implementation_commit": identity.commit,
-        "implementation_tree": identity.tree,
-        "implementation_source_hashes": source_rows,
         "pre_outcome_temporal_integrity": "PASS",
-        "upstream_task_id": UPSTREAM_TASK_ID,
+        "upstream_task_id": upstream_task_id,
     }
+    if identity is not None:
+        source_rows = [
+            {"path": source.path, "sha256": source.sha256}
+            for source in sorted(identity.source_hashes, key=lambda item: item.path)
+        ]
+        if tuple(row["path"] for row in source_rows) != IMPLEMENTATION_SOURCE_PATHS:
+            raise ImplementationIdentityError("implementation source hash scope is not exact")
+        payload.update(
+            {
+                "implementation_commit": identity.commit,
+                "implementation_tree": identity.tree,
+                "implementation_source_hashes": source_rows,
+            }
+        )
+    return payload
 
 
 def _validate_existing_payload(
     raw: bytes,
     base: Mapping[str, object],
-    bundle: FrozenInputBundle,
+    context: CanonicalConsensusContext,
 ) -> dict[str, object]:
     if not raw.endswith(b"\n"):
         raise ForecastAuthorityConflictError(
@@ -519,7 +669,7 @@ def _validate_existing_payload(
     if "created_at" not in payload or type(payload["created_at"]) is not str:
         raise ForecastAuthorityConflictError("existing authority has no canonical created_at")
     created_at = _parse_timestamp(payload["created_at"], "existing.created_at")
-    _require_creation_window(created_at, bundle, context="existing.created_at")
+    _require_creation_window(created_at, context, context_label="existing.created_at")
     if {key: value for key, value in payload.items() if key != "created_at"} != dict(base):
         raise ForecastAuthorityConflictError(
             "existing authority immutable fields differ from the committed forecast"
@@ -621,21 +771,25 @@ def _stream_from_source(
 
 def _require_creation_window(
     created_at: datetime,
-    bundle: FrozenInputBundle,
+    context: CanonicalConsensusContext,
     *,
-    context: str,
+    context_label: str,
 ) -> None:
     created_utc = _as_utc(created_at)
-    scheduled_utc = _as_utc(bundle.scheduled_at)
+    scheduled_utc = _as_utc(context.scheduled_at)
     approved_utc = _as_utc(_parse_timestamp(AGGREGATION_CONTRACT_APPROVED_AT, "approval"))
-    if any(_as_utc(stream.prediction_created_at) > created_utc for stream in bundle.streams):
-        raise PreOutcomeWindowClosedError(f"{context} is earlier than a prediction_created_at")
+    if any(_as_utc(stream.prediction_created_at) > created_utc for stream in context.streams):
+        raise PreOutcomeWindowClosedError(
+            f"{context_label} is earlier than a prediction_created_at"
+        )
     if approved_utc > created_utc:
         raise PreOutcomeWindowClosedError(
-            f"{context} is earlier than aggregation_contract_approved_at"
+            f"{context_label} is earlier than aggregation_contract_approved_at"
         )
     if created_utc >= scheduled_utc:
-        raise PreOutcomeWindowClosedError(f"{context} must be strictly before scheduled_at")
+        raise PreOutcomeWindowClosedError(
+            f"{context_label} must be strictly before scheduled_at"
+        )
 
 
 def _read_json_object(path: Path, operation_root: Path) -> tuple[bytes, dict[str, object]]:
@@ -879,7 +1033,9 @@ __all__ = [
     "OPERATION_ROOT",
     "TASK_ID",
     "UPSTREAM_TASK_ID",
+    "CanonicalConsensusContext",
     "ForecastAuthorityConflictError",
+    "ForecastAuthorityMissingError",
     "ForecastMaterializationError",
     "FrozenInputBundle",
     "FrozenInputError",
@@ -889,7 +1045,10 @@ __all__ = [
     "ImplementationSource",
     "MaterializationResult",
     "PreOutcomeWindowClosedError",
+    "canonical_forecast_path",
+    "load_canonical_forecast_authority",
     "load_frozen_stream_inputs",
     "materialize_canonical_forecast",
+    "materialize_dynamic_canonical_forecast",
     "resolve_implementation_identity",
 ]

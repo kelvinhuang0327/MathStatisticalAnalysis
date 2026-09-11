@@ -3,20 +3,21 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import os
 import sqlite3
 import subprocess
-import sys
 from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
 import pytest
+from tools import b649_promote_consensus_candidate as cli_module
 
 from lottolab.domain.research_live_forecast import (
     CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256,
@@ -29,14 +30,12 @@ from lottolab.domain.research_live_forecast import (
     canonical_json,
     object_json,
 )
+from lottolab.infrastructure import b649_consensus_promotion as promotion_module
 from lottolab.infrastructure.b649_consensus_promotion import (
     CONSENSUS_SCOPE,
-    EXPECTED_CANDIDATE_LOCATOR,
-    EXPECTED_CANDIDATE_SHA256,
     CanonicalConsensusEligibilityGate,
     CanonicalEligibilityResult,
     PromotionRequest,
-    load_consensus_candidate,
     promote_consensus_candidate,
 )
 from lottolab.infrastructure.persistence import research_repository as repository_module
@@ -49,10 +48,42 @@ from lottolab.infrastructure.persistence.research_repository import (
 
 _SCHEDULE_HASH = "a" * 64
 _CLOCK = datetime(2026, 9, 11, 12, 29, 59, tzinfo=UTC)
+_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures/b649_consensus_promotion"
+_HERMETIC_OPERATION_ROOT = _FIXTURE_ROOT / "authority_b"
+_HERMETIC_CANDIDATE_LOCATOR = _HERMETIC_OPERATION_ROOT / (
+    "forecasts/115000087/B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/"
+    "final_forecast_payload.json"
+)
+_PR283_CANDIDATE_LOCATOR = _FIXTURE_ROOT / "pr283_descriptive/successor_candidate_payload.json"
+_AUTHORITY_B_SHA256 = "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
+_AUTHORITY_B_BYTE_LENGTH = 9959
+_PR283_CANDIDATE_SHA256 = "d21444820905d49aefb84bfb405709cfd95b95a9484ef525244f9e1c1d40ea3e"
+
+
+@pytest.fixture(autouse=True)
+def _use_hermetic_authority_b(  # pyright: ignore[reportUnusedFunction]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Route production loader globals to the committed test-only mirror."""
+
+    monkeypatch.setattr(
+        promotion_module,
+        "EXPECTED_OPERATION_ROOT",
+        _HERMETIC_OPERATION_ROOT,
+    )
+    monkeypatch.setattr(
+        promotion_module,
+        "EXPECTED_CANDIDATE_LOCATOR",
+        _HERMETIC_CANDIDATE_LOCATOR,
+    )
 
 
 def _candidate():
-    return load_consensus_candidate(EXPECTED_CANDIDATE_LOCATOR)
+    return promotion_module.load_consensus_candidate(
+        _HERMETIC_CANDIDATE_LOCATOR,
+        candidate_sha256=_AUTHORITY_B_SHA256,
+        source_root=_HERMETIC_OPERATION_ROOT,
+    )
 
 
 def _paths(tmp_path: Path) -> schema.ResearchDataPaths:
@@ -373,8 +404,9 @@ def test_promotion_is_byte_exact_append_only_idempotent_and_readable(tmp_path: P
     assert current.version == first.version
     assert current.run_id == first.run_id
     assert current.payload_bytes == candidate.candidate_bytes
-    assert current.payload_sha256 == EXPECTED_CANDIDATE_SHA256
-    assert current.forecast.source_locator == str(EXPECTED_CANDIDATE_LOCATOR)
+    assert len(candidate.candidate_bytes) == _AUTHORITY_B_BYTE_LENGTH
+    assert current.payload_sha256 == _AUTHORITY_B_SHA256
+    assert current.forecast.source_locator == str(_HERMETIC_CANDIDATE_LOCATOR)
     assert current.schedule_authority_sha256 == _SCHEDULE_HASH
     assert current.forecast.original == dict.fromkeys(ORIGINAL_FIELDS)
     assert current.forecast.missing_provenance_json == canonical_json(CONSENSUS_MISSING)
@@ -385,8 +417,8 @@ def test_promotion_is_byte_exact_append_only_idempotent_and_readable(tmp_path: P
     provenance = current.forecast.consensus_provenance
     assert provenance is not None
     assert provenance["candidate"] == {
-        "locator": str(EXPECTED_CANDIDATE_LOCATOR),
-        "sha256": EXPECTED_CANDIDATE_SHA256,
+        "locator": str(_HERMETIC_CANDIDATE_LOCATOR),
+        "sha256": _AUTHORITY_B_SHA256,
     }
     implementation = cast(dict[str, object], provenance["implementation"])
     assert implementation["commit"] == "573eb1aa519ccf4eb0c688bff0ca2b6c28183558"
@@ -605,9 +637,9 @@ def test_cli_preflight_and_blocked_promote_are_read_only_and_current_is_exact(
         "--draw-database",
         str(draw_database),
         "--candidate",
-        str(EXPECTED_CANDIDATE_LOCATOR),
+        str(_HERMETIC_CANDIDATE_LOCATOR),
         "--candidate-sha256",
-        EXPECTED_CANDIDATE_SHA256,
+        _AUTHORITY_B_SHA256,
         "--expected-current-version",
         "0",
         "--request-id",
@@ -664,20 +696,15 @@ def test_cli_preflight_and_blocked_promote_are_read_only_and_current_is_exact(
 def test_cli_rejects_descriptive_candidate_without_touching_research_store(tmp_path: Path) -> None:
     paths = _paths(tmp_path)
     SQLiteResearchRepository(paths)
-    old_candidate = Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-        "B649_115000087_PR283_CANONICAL_SUCCESSOR_CANDIDATE_R1/candidate/"
-        "successor_candidate_payload.json"
-    )
     before = paths.database.read_bytes()
     result = _run_cli(
         "preflight",
         "--database",
         str(paths.database),
         "--candidate",
-        str(old_candidate),
+        str(_PR283_CANDIDATE_LOCATOR),
         "--candidate-sha256",
-        "d21444820905d49aefb84bfb405709cfd95b95a9484ef525244f9e1c1d40ea3e",
+        _PR283_CANDIDATE_SHA256,
         "--expected-current-version",
         "0",
         "--request-id",
@@ -836,13 +863,15 @@ def _v3_rows(paths: schema.ResearchDataPaths) -> tuple[object, ...]:
 
 
 def _run_cli(*arguments: str) -> subprocess.CompletedProcess[str]:
-    environment = os.environ.copy()
-    environment["PYTHONPATH"] = "src"
-    return subprocess.run(
-        [sys.executable, "tools/b649_promote_consensus_candidate.py", *arguments],
-        cwd=Path(__file__).resolve().parents[2],
-        env=environment,
-        capture_output=True,
-        text=True,
-        check=False,
+    # A subprocess cannot receive the module-global test seam. Calling main()
+    # directly still exercises the real CLI parser, routing, and repository.
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    with redirect_stdout(stdout), redirect_stderr(stderr):
+        returncode = cli_module.main(list(arguments))
+    return subprocess.CompletedProcess(
+        list(arguments),
+        returncode,
+        stdout=stdout.getvalue(),
+        stderr=stderr.getvalue(),
     )

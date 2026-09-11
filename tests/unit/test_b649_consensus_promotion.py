@@ -31,6 +31,7 @@ from lottolab.domain.research_live_forecast import (
     canonical_json,
     object_json,
 )
+from lottolab.infrastructure import b649_consensus_promotion as promotion_module
 from lottolab.infrastructure.b649_consensus_promotion import (
     BLOCKER_DEADLINE_PASSED,
     BLOCKER_DEADLINE_REACHED,
@@ -42,12 +43,18 @@ from lottolab.infrastructure.b649_consensus_promotion import (
     BLOCKER_TARGET_CHANGED,
     CONSENSUS_STREAM,
     CONSENSUS_STREAM_VERSION,
-    EXPECTED_CANDIDATE_LOCATOR,
-    EXPECTED_CANDIDATE_SHA256,
     CanonicalConsensusEligibilityGate,
     ConsensusCandidateError,
     PromotionRequest,
-    load_consensus_candidate,
+)
+from lottolab.infrastructure.b649_consensus_promotion import (
+    EXPECTED_CANDIDATE_LOCATOR as PRODUCTION_CANDIDATE_LOCATOR,
+)
+from lottolab.infrastructure.b649_consensus_promotion import (
+    EXPECTED_CANDIDATE_SHA256 as PRODUCTION_CANDIDATE_SHA256,
+)
+from lottolab.infrastructure.b649_consensus_promotion import (
+    EXPECTED_OPERATION_ROOT as PRODUCTION_OPERATION_ROOT,
 )
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
     normalized_announcement_sha256,
@@ -55,10 +62,42 @@ from lottolab.infrastructure.persistence.future_draw_identity_repository import 
 
 _SCHEDULE_HASH = "a" * 64
 _BEFORE_DEADLINE = datetime(2026, 9, 11, 12, 29, 59, tzinfo=UTC)
+_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures/b649_consensus_promotion"
+_HERMETIC_OPERATION_ROOT = _FIXTURE_ROOT / "authority_b"
+_HERMETIC_CANDIDATE_LOCATOR = _HERMETIC_OPERATION_ROOT / (
+    "forecasts/115000087/B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/"
+    "final_forecast_payload.json"
+)
+_PR283_CANDIDATE_LOCATOR = _FIXTURE_ROOT / "pr283_descriptive/successor_candidate_payload.json"
+_AUTHORITY_B_SHA256 = "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
+_AUTHORITY_B_BYTE_LENGTH = 9959
+_PR283_CANDIDATE_SHA256 = "d21444820905d49aefb84bfb405709cfd95b95a9484ef525244f9e1c1d40ea3e"
+
+
+@pytest.fixture(autouse=True)
+def _use_hermetic_authority_b(  # pyright: ignore[reportUnusedFunction]
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Route production loader globals to the committed test-only mirror."""
+
+    monkeypatch.setattr(
+        promotion_module,
+        "EXPECTED_OPERATION_ROOT",
+        _HERMETIC_OPERATION_ROOT,
+    )
+    monkeypatch.setattr(
+        promotion_module,
+        "EXPECTED_CANDIDATE_LOCATOR",
+        _HERMETIC_CANDIDATE_LOCATOR,
+    )
 
 
 def _candidate():
-    return load_consensus_candidate(EXPECTED_CANDIDATE_LOCATOR)
+    return promotion_module.load_consensus_candidate(
+        _HERMETIC_CANDIDATE_LOCATOR,
+        candidate_sha256=_AUTHORITY_B_SHA256,
+        source_root=_HERMETIC_OPERATION_ROOT,
+    )
 
 
 def _request(
@@ -165,15 +204,25 @@ def _gate(
     )
 
 
-def test_authority_b_loader_preserves_exact_bytes_and_rejects_old_locator() -> None:
+def test_authority_b_loader_preserves_exact_bytes_and_rejects_old_locator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     candidate = _candidate()
     request = _request()
     forecast = candidate.build_forecast(request)
 
-    assert candidate.candidate_locator == EXPECTED_CANDIDATE_LOCATOR
-    assert candidate.candidate_bytes == EXPECTED_CANDIDATE_LOCATOR.read_bytes()
-    assert candidate.candidate_sha256 == EXPECTED_CANDIDATE_SHA256
-    assert candidate.source_root.name == "B649_OPERATIONAL_PREDICTION_LOOP_R1"
+    assert Path(
+        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
+        "B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000087/"
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/"
+        "final_forecast_payload.json"
+    ) == PRODUCTION_CANDIDATE_LOCATOR
+    assert PRODUCTION_CANDIDATE_SHA256 == _AUTHORITY_B_SHA256
+    assert candidate.candidate_locator == _HERMETIC_CANDIDATE_LOCATOR
+    assert candidate.candidate_bytes == _HERMETIC_CANDIDATE_LOCATOR.read_bytes()
+    assert len(candidate.candidate_bytes) == _AUTHORITY_B_BYTE_LENGTH
+    assert candidate.candidate_sha256 == _AUTHORITY_B_SHA256
+    assert candidate.source_root == _HERMETIC_OPERATION_ROOT
     assert len(candidate.stream_inputs) == 11
     assert forecast.provenance_class == CANONICAL_CONSENSUS
     assert forecast.forecast_stream_id == CONSENSUS_STREAM
@@ -190,8 +239,8 @@ def test_authority_b_loader_preserves_exact_bytes_and_rejects_old_locator() -> N
     provenance = forecast.consensus_provenance
     assert provenance is not None
     assert provenance["candidate"] == {
-        "locator": str(EXPECTED_CANDIDATE_LOCATOR),
-        "sha256": EXPECTED_CANDIDATE_SHA256,
+        "locator": str(_HERMETIC_CANDIDATE_LOCATOR),
+        "sha256": _AUTHORITY_B_SHA256,
     }
     implementation = cast(dict[str, object], provenance["implementation"])
     assert implementation["commit"] == "573eb1aa519ccf4eb0c688bff0ca2b6c28183558"
@@ -200,13 +249,22 @@ def test_authority_b_loader_preserves_exact_bytes_and_rejects_old_locator() -> N
     assert provenance["aggregation_reexecution"] == "NO"
     forecast.validate()
 
-    old_candidate = Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
-        "B649_115000087_PR283_CANONICAL_SUCCESSOR_CANDIDATE_R1/candidate/"
-        "successor_candidate_payload.json"
-    )
-    with pytest.raises(ConsensusCandidateError, match="Authority B artifact"):
-        load_consensus_candidate(old_candidate, candidate_sha256="d" * 64)
+    with monkeypatch.context() as production:
+        production.setattr(
+            promotion_module,
+            "EXPECTED_OPERATION_ROOT",
+            PRODUCTION_OPERATION_ROOT,
+        )
+        production.setattr(
+            promotion_module,
+            "EXPECTED_CANDIDATE_LOCATOR",
+            PRODUCTION_CANDIDATE_LOCATOR,
+        )
+        with pytest.raises(ConsensusCandidateError, match="Authority B artifact"):
+            promotion_module.load_consensus_candidate(
+                _PR283_CANDIDATE_LOCATOR,
+                candidate_sha256=_PR283_CANDIDATE_SHA256,
+            )
 
 
 def test_promotion_request_requires_schedule_authority_hash() -> None:

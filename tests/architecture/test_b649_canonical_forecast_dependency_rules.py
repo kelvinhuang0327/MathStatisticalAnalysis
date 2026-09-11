@@ -55,14 +55,18 @@ def test_infrastructure_writer_does_not_depend_on_application_or_domain() -> Non
     assert not any(name.startswith("lottolab.") for name in imports)
 
 
-def test_scheduler_composes_service_and_deauthorizes_legacy_helper() -> None:
+def test_scheduler_consumes_immutable_authority_and_keeps_materializer_standalone() -> None:
     source = SCHEDULER.read_text(encoding="utf-8")
-    assert "materialize_canonical_forecast" in source
-    assert "def materialize_forecast(" in source
+    assert "_load_canonical_forecast_authority" in source
+    assert "read_existing_bytes" in source
+    assert "materialize_canonical_forecast" not in source
+    assert "def materialize_forecast(" not in source
     assert "build_canonical_predraw_consensus" not in source
     assert "tools.materialize_b649_canonical_forecast" not in source
     assert "next_draw_rollover_status" in source
-    assert "forecast_materialization" in source
+    assert "forecast_materialization" not in source
+    assert "def materialize_canonical_forecast(" in APPLICATION.read_text(encoding="utf-8")
+    assert "materialize_canonical_forecast" in COMPATIBILITY.read_text(encoding="utf-8")
 
 
 def test_087_constants_are_confined_to_explicit_compatibility_adapter() -> None:

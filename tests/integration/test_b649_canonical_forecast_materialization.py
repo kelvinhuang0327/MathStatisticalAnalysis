@@ -509,7 +509,9 @@ def test_historical_087_authority_and_domain_parity_are_read_only(
     assert before_stat.st_ino == after_stat.st_ino
     assert before_stat.st_size == after_stat.st_size
     assert before_stat.st_mtime_ns == after_stat.st_mtime_ns
-def test_dynamic_materializer_binds_later_target_and_causal_history(tmp_path: Path) -> None:
+def test_dynamic_materializer_binds_later_target_and_causal_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     created_at = datetime(2099, 1, 2, 10, 0, 0, tzinfo=UTC)
     scheduled_at = datetime(2099, 1, 2, 12, 30, 0, tzinfo=UTC)
     streams = tuple(
@@ -565,3 +567,32 @@ def test_dynamic_materializer_binds_later_target_and_causal_history(tmp_path: Pa
     )
     assert result.payload["aggregation_method_version"] == "1.0.0"
     assert expected_destination.read_bytes() == canonical_file_bytes(result.payload)
+
+    def fail_clock(_provider: object = None) -> datetime:
+        raise AssertionError("existing authority retry sampled the publication clock")
+
+    def fail_operation(*args: object, **kwargs: object) -> object:
+        del args, kwargs
+        raise AssertionError("existing authority retry attempted a write or recomputation")
+
+    monkeypatch.setattr(materializer, "_clock", fail_clock)
+    monkeypatch.setattr(materializer, "build_canonical_consensus", fail_operation)
+    monkeypatch.setattr(materializer, "ensure_output_parent", fail_operation)
+    monkeypatch.setattr(materializer, "stage_payload", fail_operation)
+    monkeypatch.setattr(materializer, "publish_staged", fail_operation)
+
+    retry = materializer.materialize_dynamic_canonical_forecast(
+        context=context,
+        operation_root=tmp_path / "operation",
+        clock=fail_clock,
+    )
+    assert retry.status == "ALREADY_PRESENT"
+    assert retry.payload == result.payload
+    assert expected_destination.read_bytes() == canonical_file_bytes(result.payload)
+
+    loaded = materializer.load_canonical_forecast_authority(
+        context=context,
+        operation_root=tmp_path / "operation",
+        destination=expected_destination,
+    )
+    assert loaded == result.payload

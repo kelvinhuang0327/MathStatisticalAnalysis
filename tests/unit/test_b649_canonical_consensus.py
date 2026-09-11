@@ -15,6 +15,7 @@ from lottolab.domain.b649_canonical_consensus import (
     SCORE_DENOMINATOR,
     STREAM_WEIGHT_POLICY,
     TIE_BREAK,
+    CanonicalConsensusContext,
     CanonicalConsensusInputError,
     StreamConsensusInput,
     build_canonical_consensus,
@@ -41,6 +42,38 @@ def _stream(
     )
 
 
+def _padding(
+    count: int, numbers: tuple[int, ...] = (30, 31, 32, 33, 34, 35)
+) -> tuple[StreamConsensusInput, ...]:
+    return tuple(
+        _stream(f"padding_{index:02d}", (numbers,)) for index in range(count)
+    )
+
+
+def _context(
+    streams: tuple[StreamConsensusInput, ...],
+    *,
+    target_draw_number: str = "209900001",
+    target_draw_date: str = "2099-01-02",
+    scheduled_at: datetime = datetime(2099, 1, 2, 12, 30, tzinfo=UTC),
+    cutoff_draw_number: str = "209899999",
+    cutoff_date: str = "2099-01-01",
+    history_draw_count: int = 7,
+    history_sha256: str = "a" * 64,
+) -> CanonicalConsensusContext:
+    return CanonicalConsensusContext(
+        lottery_type="BIG_LOTTO",
+        target_draw_number=target_draw_number,
+        target_draw_date=target_draw_date,
+        scheduled_at=scheduled_at,
+        causal_cutoff_draw_number=cutoff_draw_number,
+        causal_cutoff_date=cutoff_date,
+        history_draw_count=history_draw_count,
+        history_sha256=history_sha256,
+        streams=streams,
+    )
+
+
 def test_contract_metadata_is_the_cto_approved_stream_policy() -> None:
     assert CANONICAL_CONSENSUS_METHOD_ID == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
     assert AGGREGATION_UNIT == "NUMBER_LEVEL"
@@ -53,6 +86,7 @@ def test_contract_metadata_is_the_cto_approved_stream_policy() -> None:
 def test_native_ticket_positions_are_normalized_to_equal_stream_mass() -> None:
     decision = build_canonical_consensus(
         (
+            *_padding(9),
             _stream(
                 "stream_two",
                 (
@@ -66,7 +100,7 @@ def test_native_ticket_positions_are_normalized_to_equal_stream_mass() -> None:
 
     # Each stream contributes 6 * 6 = 36 support units in total, regardless
     # of whether its native prediction contains one or two tickets.
-    assert sum(decision.support_units) == 72
+    assert sum(decision.support_units) == 11 * 36
     assert decision.number_scores[0] == 12
     assert decision.number_scores[6] == 3
     assert decision.number_scores[11] == 6
@@ -80,8 +114,10 @@ def test_repeated_ticket_positions_are_counted_and_duplicate_numbers_are_rejecte
             (20, 21, 22, 23, 24, 25),
         ),
     )
-    decision = build_canonical_consensus((repeated,))
-    assert decision.number_scores[19] == 6
+    decision = build_canonical_consensus(
+        (repeated, *_padding(10, (20, 21, 22, 23, 24, 25)))
+    )
+    assert decision.number_scores[19] == 66
     assert decision.final_ticket == (20, 21, 22, 23, 24, 25)
 
     with pytest.raises(CanonicalConsensusInputError, match="legal six-number"):
@@ -93,6 +129,7 @@ def test_ranking_is_full_49_number_support_descending_then_numeric_ascending() -
         (
             _stream("a", ((26, 29, 12, 4, 16, 24),)),
             _stream("b", ((26, 29, 12, 4, 16, 25),)),
+            *_padding(9, (26, 29, 12, 4, 16, 24)),
         )
     )
 
@@ -101,22 +138,21 @@ def test_ranking_is_full_49_number_support_descending_then_numeric_ascending() -
     assert decision.final_ticket == (4, 12, 16, 24, 26, 29)
     rows = decision.decision_fields()["final_decision_ranking"]
     assert isinstance(rows, list)
-    assert rows[0] == {"rank": 1, "number": 4, "support_units": 12}
+    assert rows[0] == {"rank": 1, "number": 4, "support_units": 66}
 
 
 def test_stream_order_does_not_change_decision_or_manifest() -> None:
     streams = (
         _stream("z", ((1, 2, 3, 4, 5, 6),)),
         _stream("a", ((7, 8, 9, 10, 11, 12),)),
+        *_padding(9),
     )
     left = build_canonical_consensus(streams)
     right = build_canonical_consensus(tuple(reversed(streams)))
     assert left == right
     input_rows = cast(list[dict[str, object]], left.decision_fields()["stream_inputs"])
-    assert [row["strategy_id"] for row in input_rows] == [
-        "a",
-        "z",
-    ]
+    assert input_rows[0]["strategy_id"] == "a"
+    assert input_rows[-1]["strategy_id"] == "z"
 
 
 @pytest.mark.parametrize(
@@ -148,4 +184,27 @@ def test_stream_identity_and_temporal_fields_are_strict(
 def test_duplicate_stream_ids_are_rejected() -> None:
     stream = _stream("same", ((1, 2, 3, 4, 5, 6),))
     with pytest.raises(CanonicalConsensusInputError, match="unique"):
-        build_canonical_consensus((stream, stream))
+        build_canonical_consensus((stream, stream, *_padding(9)))
+
+
+def test_dynamic_context_binds_later_target_and_causal_history() -> None:
+    decision = build_canonical_consensus(_context(_padding(11)))
+
+    assert decision.target_draw_number == "209900001"
+    assert decision.target_draw_date == "2099-01-02"
+    assert decision.scheduled_at == datetime(2099, 1, 2, 12, 30, tzinfo=UTC)
+    assert decision.input_cutoff_draw_number == "209899999"
+    assert decision.input_cutoff_date == "2099-01-01"
+    assert decision.history_draw_count == 7
+    assert decision.history_sha256 == "a" * 64
+    payload = decision.to_payload(task_id="scheduler-test", lottery_type="BIG_LOTTO")
+    assert payload["target_draw"] == {
+        "draw_number": "209900001",
+        "draw_date": "2099-01-02",
+    }
+    assert payload["max_data_cutoff"] == "209899999"
+
+
+def test_canonical_context_requires_exactly_eleven_streams() -> None:
+    with pytest.raises(CanonicalConsensusInputError, match="exactly 11"):
+        _context(_padding(10))

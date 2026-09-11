@@ -269,6 +269,64 @@ def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path
     assert destination.read_bytes() == raw
 
 
+def test_canonical_authority_ignores_descriptive_diagnostics_and_limited_status(
+    tmp_path: Path,
+) -> None:
+    plain_root = tmp_path / "plain-operation"
+    diagnostic_root = tmp_path / "diagnostic-operation"
+    _copy_inputs(plain_root)
+    _copy_inputs(diagnostic_root)
+
+    first = materializer.FROZEN_STREAM_SPECS[0]
+    source = diagnostic_root / first.source_relative_path
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload.update(
+        {
+            "authority_status": "NONCANONICAL_DESCRIPTIVE",
+            "descriptive_number_consensus": [{"number": 1, "rank": 1}],
+            "descriptive_stream_overlap": [],
+            "descriptive_top6": [1, 4, 18, 25, 26, 29],
+            "descriptive_top_k": [1, 4, 8, 18, 24, 25, 26, 29, 43, 45],
+            "weight_authority_status": "LIMITED",
+        }
+    )
+    source.write_bytes(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+        + b"\n"
+    )
+
+    plain = materializer.materialize_canonical_forecast(
+        operation_root=plain_root,
+        destination=tmp_path / "plain-authority" / "final_forecast_payload.json",
+        implementation_identity=IDENTITY,
+        expected_manifest_sha256=None,
+        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
+    )
+    diagnostic = materializer.materialize_canonical_forecast(
+        operation_root=diagnostic_root,
+        destination=tmp_path / "diagnostic-authority" / "final_forecast_payload.json",
+        implementation_identity=IDENTITY,
+        expected_manifest_sha256=None,
+        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
+    )
+
+    expected_ticket = [{"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}]
+    assert plain.payload["final_recommended_output"] == expected_ticket
+    assert diagnostic.payload["final_recommended_output"] == expected_ticket
+    assert diagnostic.payload["target_result_used"] is False
+    assert not any(
+        key in diagnostic.payload
+        for key in (
+            "authority_status",
+            "descriptive_number_consensus",
+            "descriptive_stream_overlap",
+            "descriptive_top6",
+            "descriptive_top_k",
+            "weight_authority_status",
+        )
+    )
+
+
 def test_created_at_boundary_fails_closed_without_authority_file(tmp_path: Path) -> None:
     operation_root = tmp_path / "operation"
     _copy_inputs(operation_root)

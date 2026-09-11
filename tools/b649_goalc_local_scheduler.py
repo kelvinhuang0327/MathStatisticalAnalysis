@@ -59,10 +59,7 @@ from lottolab.application.use_cases.draw_automation import ScheduledDrawSync
 from lottolab.domain.b649_canonical_consensus import (
     CANONICAL_CONSENSUS_METHOD_ID,
     CANONICAL_CONSENSUS_METHOD_VERSION,
-    STREAM_WEIGHT_POLICY,
-    CanonicalConsensusInputError,
-    StreamConsensusInput,
-    build_canonical_consensus,
+    CANONICAL_CONSENSUS_SCHEMA_VERSION,
 )
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
@@ -150,6 +147,15 @@ CANONICAL_FORECAST_SOURCE_PATHS = (
     "src/lottolab/infrastructure/b649_canonical_forecast_writer.py",
     "tools/b649_goalc_local_scheduler.py",
 )
+CANONICAL_FORECAST_AUTHORITY_PATH = Path(
+    "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
+    "B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000087/"
+    "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/final_forecast_payload.json"
+)
+CANONICAL_FORECAST_SHA256 = (
+    "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
+)
+CANONICAL_FINAL_TICKET = (4, 12, 24, 25, 26, 29)
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -2017,63 +2023,142 @@ def _forecast_stream_record(
     }
 
 
-def _build_canonical_stream_input(
-    config: SchedulerConfig,
-    stream: StrategyStream,
-    record: ValidatedPredictionRecord,
-) -> StreamConsensusInput:
-    """Bind one accepted record to the canonical domain input contract."""
+def _load_canonical_forecast_authority(
+    target: PredictionTarget,
+) -> tuple[Path, dict[str, object]]:
+    """Read and validate the already-materialized Authority B result.
 
+    The scheduler is a consumer here: it never rebuilds or republishes the
+    canonical forecast.  The pinned digest and contract fields keep the
+    immutable production result distinct from PR #283 descriptive diagnostics.
+    """
+
+    raw = read_existing_bytes(CANONICAL_FORECAST_AUTHORITY_PATH)
+    if raw is None:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_UNAVAILABLE: immutable canonical forecast is absent"
+        )
+    observed_sha256 = hashlib.sha256(raw).hexdigest()
+    if observed_sha256 != CANONICAL_FORECAST_SHA256:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: immutable canonical forecast digest mismatch"
+        )
+    if not raw.endswith(b"\n"):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical forecast is missing its trailing LF"
+        )
     try:
-        source_relative_path = record.path.relative_to(config.operation_root).as_posix()
-    except ValueError as exc:
-        raise CanonicalConsensusInputError(
-            f"{stream.strategy_id}: prediction path is outside operation_root"
+        parsed: object = json.loads(raw[:-1].decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical forecast is not valid JSON"
         ) from exc
-
-    strategy_version = _required_text(record.payload, "strategy_version", record.path)
-    prediction_run_id = _required_text(record.payload, "prediction_run_id", record.path)
-    tickets_value = record.payload.get("tickets")
-    if not isinstance(tickets_value, list):
-        raise CanonicalConsensusInputError(
-            f"{stream.strategy_id}: tickets must be a list"
+    if not isinstance(parsed, dict):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical forecast is not one JSON object"
         )
-
-    tickets: list[tuple[int, ...]] = []
-    for position, raw_ticket in enumerate(cast(list[object], tickets_value), start=1):
-        if not isinstance(raw_ticket, Mapping):
-            raise CanonicalConsensusInputError(
-                f"{stream.strategy_id}: ticket {position} must be an object"
-            )
-        ticket_mapping = cast(Mapping[str, object], raw_ticket)
-        numbers = ticket_mapping.get("predicted_numbers")
-        if not isinstance(numbers, list):
-            raise CanonicalConsensusInputError(
-                f"{stream.strategy_id}: ticket {position} numbers are invalid"
-            )
-        number_values = cast(list[object], numbers)
-        if any(type(number) is not int for number in number_values):
-            raise CanonicalConsensusInputError(
-                f"{stream.strategy_id}: ticket {position} numbers are invalid"
-            )
-        tickets.append(tuple(cast(list[int], number_values)))
-
-    if len(tickets) != stream.native_ticket_count:
-        raise CanonicalConsensusInputError(
-            f"{stream.strategy_id}: observed {len(tickets)} tickets, expected "
-            f"{stream.native_ticket_count} from the frozen registry"
+    payload = cast(dict[str, object], parsed)
+    if _canonical_json(payload).encode("utf-8") + b"\n" != raw:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical forecast is not canonical JSON"
         )
-
-    return StreamConsensusInput(
-        strategy_id=stream.strategy_id,
-        strategy_version=strategy_version,
-        native_ticket_count=stream.native_ticket_count,
-        prediction_run_id=prediction_run_id,
-        source_relative_path=source_relative_path,
-        source_sha256=hashlib.sha256(record.raw_bytes).hexdigest(),
-        prediction_created_at=record.prediction_created_at,
-        tickets=tuple(tickets),
-    )
+    if payload.get("schema_version") != CANONICAL_CONSENSUS_SCHEMA_VERSION:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical schema is not Authority B"
+        )
+    if payload.get("aggregation_method_id") != CANONICAL_CONSENSUS_METHOD_ID:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical method is not Authority B"
+        )
+    if payload.get("aggregation_method_version") != CANONICAL_CONSENSUS_METHOD_VERSION:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical method version is not Authority B"
+        )
+    target_payload = payload.get("target_draw")
+    if not isinstance(target_payload, dict):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical target is not an object"
+        )
+    target_fields = cast(dict[str, object], target_payload)
+    if {
+        "draw_number": target_fields.get("draw_number"),
+        "draw_date": target_fields.get("draw_date"),
+    } != {
+        "draw_number": target.draw_number,
+        "draw_date": target.draw_date,
+    }:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical target does not match the resolved target"
+        )
+    if payload.get("lottery_type") != target.lottery_type:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical lottery type does not match"
+        )
+    if payload.get("stream_count") != EXPECTED_STREAM_COUNT:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical stream count is not eleven"
+        )
+    if payload.get("target_result_used") is not False:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical forecast used target outcome data"
+        )
+    if payload.get("pre_outcome_temporal_integrity") != "PASS":
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical PRE_OUTCOME integrity is not PASS"
+        )
+    final_output = payload.get("final_recommended_output")
+    if not isinstance(final_output, list):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical final output is not one ticket"
+        )
+    final_rows = cast(list[object], final_output)
+    if len(final_rows) != 1 or not isinstance(final_rows[0], dict):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical final output position is invalid"
+        )
+    final_row = cast(dict[str, object], final_rows[0])
+    if final_row.get("ticket_position") != 1:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical final output position is invalid"
+        )
+    predicted_numbers = final_row.get("predicted_numbers")
+    if predicted_numbers != list(CANONICAL_FINAL_TICKET):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical final ticket does not match Authority B"
+        )
+    if not isinstance(payload.get("final_decision_ranking"), list):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical decision ranking is absent"
+        )
+    weight_policy = payload.get("weight_policy")
+    if type(weight_policy) is not str or not weight_policy:
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical weight policy is absent"
+        )
+    manifest_sha256 = payload.get("stream_input_manifest_sha256")
+    if (
+        type(manifest_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", manifest_sha256, flags=re.ASCII) is None
+    ):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: canonical stream manifest is invalid"
+        )
+    if any(
+        key in payload
+        for key in (
+            "number_consensus",
+            "top6",
+            "top_k",
+            "descriptive_number_consensus",
+            "descriptive_top6",
+            "descriptive_top_k",
+            "descriptive_stream_overlap",
+        )
+    ):
+        raise SchedulerInvariantError(
+            "AUTHORITY_B_RESULT_INVALID: descriptive diagnostics cannot be canonical output"
+        )
+    return CANONICAL_FORECAST_AUTHORITY_PATH, payload
 
 
 def _forecast_command(
@@ -2085,9 +2170,9 @@ def _forecast_command(
     authority ``run`` itself uses (``backend.resolve_target`` /
     ``backend.inspect_predictions``); never refreshes the official schedule,
     generates predictions, syncs an outcome, completes post-draw, or runs a
-    scheduler cycle. The canonical consensus is delegated directly to the
-    approved pure domain authority after all accepted stream records are bound
-    to their provenance and native ticket counts.
+    scheduler cycle. The already-materialized Authority B forecast is read
+    only after all expected streams pass the existing temporal checks; this
+    function only projects that immutable payload into CLI fields.
     """
 
     target = backend.resolve_target()
@@ -2143,30 +2228,30 @@ def _forecast_command(
     analysis_max_data_cutoff = str(
         max(int(cast(str, entry["history_cutoff_draw"])) for entry in streams)
     )
-    registry = {stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled}
     try:
-        canonical_inputs = tuple(
-            _build_canonical_stream_input(config, registry[strategy_id], records[strategy_id])
-            for strategy_id in inventory.available_stream_ids
-        )
-        canonical_decision = build_canonical_consensus(canonical_inputs)
+        authority_path, canonical_forecast = _load_canonical_forecast_authority(target)
     except Exception as exc:
         return {
-            "FORECAST_STATUS": "INVALID_CANONICAL_CONSENSUS_AUTHORITY",
+            "FORECAST_STATUS": "CANONICAL_AUTHORITY_UNAVAILABLE",
+            "AUTHORITY_STATUS": "NON_SUCCESS",
             **target_fields,
             "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
             "TARGET_RESULT_DEPENDENCY": "NONE",
             "TARGET_RESULT_USED": "NO",
-            "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
             "EXPECTED_STREAM_COUNT": config.expected_stream_count,
             "AVAILABLE_STREAM_COUNT": len(streams),
             "MISSING_STREAM_IDS": [],
-            "CANONICAL_CONSENSUS_ERROR": f"{type(exc).__name__}: {exc}",
+            "CANONICAL_AUTHORITY_PATH": str(CANONICAL_FORECAST_AUTHORITY_PATH),
+            "CANONICAL_AUTHORITY_ERROR": f"{type(exc).__name__}: {exc}",
         }, 1
 
-    decision_fields = canonical_decision.decision_fields()
+    final_recommended_output = cast(
+        list[object], canonical_forecast["final_recommended_output"]
+    )
+    final_recommended_row = cast(dict[str, object], final_recommended_output[0])
     return {
         "FORECAST_STATUS": "READY",
+        "AUTHORITY_STATUS": "CANONICAL",
         **target_fields,
         "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
         "TARGET_RESULT_DEPENDENCY": "NONE",
@@ -2175,13 +2260,17 @@ def _forecast_command(
         "EXPECTED_STREAM_COUNT": config.expected_stream_count,
         "AVAILABLE_STREAM_COUNT": len(streams),
         "MISSING_STREAM_IDS": [],
-        "RANKING_AUTHORITY": CANONICAL_CONSENSUS_METHOD_ID,
-        "RANKING_AUTHORITY_VERSION": CANONICAL_CONSENSUS_METHOD_VERSION,
-        "WEIGHT_POLICY": STREAM_WEIGHT_POLICY,
-        "FINAL_DECISION_RANKING": decision_fields["final_decision_ranking"],
-        "FINAL_RECOMMENDED_TICKET": list(canonical_decision.final_ticket),
-        "STREAM_INPUT_MANIFEST_SHA256": canonical_decision.stream_input_manifest_sha256,
-        "STREAMS": decision_fields["stream_inputs"],
+        "CANONICAL_AUTHORITY_PATH": str(authority_path),
+        "CANONICAL_AUTHORITY_SHA256": CANONICAL_FORECAST_SHA256,
+        "RANKING_AUTHORITY": canonical_forecast["aggregation_method_id"],
+        "RANKING_AUTHORITY_VERSION": canonical_forecast["aggregation_method_version"],
+        "WEIGHT_POLICY": canonical_forecast["weight_policy"],
+        "STREAM_INPUT_MANIFEST_SHA256": canonical_forecast["stream_input_manifest_sha256"],
+        "FINAL_DECISION_RANKING": canonical_forecast["final_decision_ranking"],
+        "FINAL_RECOMMENDED_OUTPUT": final_recommended_output,
+        "FINAL_RECOMMENDED_TICKET": final_recommended_row["predicted_numbers"],
+        "CANONICAL_FORECAST_AUTHORITY": canonical_forecast,
+        "STREAMS": streams,
     }, 0
 
 

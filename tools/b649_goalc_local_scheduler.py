@@ -33,6 +33,21 @@ from uuid import uuid4
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from lottolab.application.b649_canonical_forecast_materialization import (
+    CanonicalForecastAuthorityPort,
+    CanonicalForecastCutoff,
+    CanonicalForecastMaterializationError,
+    CanonicalForecastMaterializationRequest,
+    CanonicalForecastMaterializationResult,
+    CanonicalForecastTarget,
+    CanonicalHistoryIdentity,
+    ImplementationIdentity,
+    ImplementationSource,
+    PersistedForecastPrediction,
+    RegisteredForecastStream,
+    build_forecast_health,
+    materialize_canonical_forecast,
+)
 from lottolab.application.draw_automation import DrawSyncRequest
 from lottolab.application.forward_auto_cycle_core import ForwardAutoCycleCore
 from lottolab.application.schedule_sync import (
@@ -50,7 +65,14 @@ from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.ingestion import IngestionRunStatus
 from lottolab.domain.pre_outcome_target import TargetAnnouncement
-from lottolab.infrastructure.b649_canonical_forecast_writer import read_existing_bytes
+from lottolab.infrastructure.b649_canonical_forecast_writer import (
+    discard_staged,
+    ensure_output_parent,
+    publish_staged,
+    read_existing_bytes,
+    read_persisted_prediction_records,
+    stage_payload,
+)
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
     CURRENT_SCHEMA_VERSION,
@@ -117,6 +139,14 @@ SCHEDULER_LABEL = "com.lottolab.b649-goalc-r1"
 START_INTERVAL_SECONDS = 300
 STALE_AFTER_SECONDS = 900
 EXPECTED_STREAM_COUNT = 11
+CANONICAL_FORECAST_TASK_ID = "B649_GOALC_LOCAL_LAUNCHD_R1"
+CANONICAL_FORECAST_UPSTREAM_TASK_ID = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
+CANONICAL_FORECAST_SOURCE_PATHS = (
+    "src/lottolab/application/b649_canonical_forecast_materialization.py",
+    "src/lottolab/domain/b649_canonical_consensus.py",
+    "src/lottolab/infrastructure/b649_canonical_forecast_writer.py",
+    "tools/b649_goalc_local_scheduler.py",
+)
 CANONICAL_FORECAST_AUTHORITY_PATH = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/"
     "B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000087/"
@@ -126,9 +156,6 @@ CANONICAL_FORECAST_SHA256 = (
     "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
 )
 CANONICAL_FINAL_TICKET = (4, 12, 24, 25, 26, 29)
-# Authority B is the already-published immutable forecast for this exact target.
-CANONICAL_TARGET_DRAW_NUMBER = "115000087"
-CANONICAL_TARGET_DRAW_DATE = "2026-09-11"
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -363,6 +390,13 @@ class SchedulerBackend(Protocol):
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory: ...
 
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]: ...
+
     def generate_predraw(
         self,
         target: PredictionTarget,
@@ -512,6 +546,60 @@ class ProductionSchedulerBackend:
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
         return inspect_prediction_inventory(self._config.operation_root, target)
+
+    def materialize_forecast(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+    ) -> dict[str, object]:
+        """Ensure the scheduler-owned canonical forecast authority exists."""
+
+        result = self._execute_forecast_materialization(
+            target,
+            source_head=source_head,
+            dry_run=False,
+        )
+        return build_forecast_health(result)
+
+    def preview_forecast(
+        self,
+        target: PredictionTarget,
+    ) -> CanonicalForecastMaterializationResult:
+        """Read and validate the forecast without creating any filesystem state."""
+
+        return self._execute_forecast_materialization(
+            target,
+            source_head=_resolve_source_head(SOURCE_WORKTREE),
+            dry_run=True,
+        )
+
+    def _execute_forecast_materialization(
+        self,
+        target: PredictionTarget,
+        *,
+        source_head: str,
+        dry_run: bool,
+    ) -> CanonicalForecastMaterializationResult:
+        request = _build_forecast_materialization_request(
+            self._config,
+            target,
+            source_head=source_head,
+        )
+        authority = CanonicalForecastAuthorityPort(
+            read_existing_bytes=read_existing_bytes,
+            ensure_output_parent=ensure_output_parent,
+            stage_payload=stage_payload,
+            publish_staged=publish_staged,
+            discard_staged=discard_staged,
+        )
+        return materialize_canonical_forecast(
+            request,
+            destination=_forecast_destination(self._config, target),
+            authority=authority,
+            clock=self._clock,
+            dry_run=dry_run,
+        )
 
     def run_shadow_predraw(
         self,
@@ -949,6 +1037,197 @@ def _run_shadow_hook(
         )
 
 
+def _forecast_destination(config: SchedulerConfig, target: PredictionTarget) -> Path:
+    return (
+        config.operation_root
+        / "forecasts"
+        / target.draw_number
+        / CANONICAL_CONSENSUS_METHOD_ID
+        / CANONICAL_CONSENSUS_METHOD_VERSION
+        / "final_forecast_payload.json"
+    )
+
+
+def _build_forecast_materialization_request(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    *,
+    source_head: str,
+) -> CanonicalForecastMaterializationRequest:
+    history = load_canonical_history(
+        config.database,
+        target_draw_number=target.draw_number,
+        target_draw_date=target.draw_date,
+    )
+    persisted = read_persisted_prediction_records(config.operation_root, target.draw_number)
+    streams = tuple(
+        RegisteredForecastStream(
+            strategy_id=stream.strategy_id,
+            strategy_version=stream.strategy_version,
+            native_ticket_count=stream.native_ticket_count,
+        )
+        for stream in STRATEGY_STREAMS
+        if stream.enabled
+    )
+    predictions = tuple(
+        PersistedForecastPrediction(
+            source_relative_path=record.source_relative_path,
+            source_sha256=record.source_sha256,
+            raw_bytes=record.raw_bytes,
+            payload=record.payload,
+        )
+        for record in persisted
+    )
+    return CanonicalForecastMaterializationRequest(
+        task_id=CANONICAL_FORECAST_TASK_ID,
+        upstream_task_id=CANONICAL_FORECAST_UPSTREAM_TASK_ID,
+        target=CanonicalForecastTarget(
+            lottery_type=target.lottery_type,
+            draw_number=target.draw_number,
+            draw_date=target.draw_date,
+            scheduled_at=target.scheduled_at,
+        ),
+        max_data_cutoff=CanonicalForecastCutoff(
+            draw_number=history.cutoff_draw,
+            draw_date=history.cutoff_date,
+        ),
+        history=CanonicalHistoryIdentity(
+            cutoff_draw_number=history.cutoff_draw,
+            cutoff_date=history.cutoff_date,
+            draw_count=history.draw_count,
+            history_sha256=history.history_sha256,
+            history_caveat=history.history_caveat,
+        ),
+        registered_streams=streams,
+        predictions=predictions,
+        implementation_identity=_resolve_forecast_implementation_identity(source_head),
+    )
+
+
+def _resolve_forecast_implementation_identity(source_head: str) -> ImplementationIdentity:
+    if re.fullmatch(r"[0-9a-f]{40}", source_head, flags=re.ASCII) is None:
+        raise SchedulerInvariantError("canonical forecast source HEAD is invalid")
+    try:
+        completed = subprocess.run(
+            [
+                "/usr/bin/git",
+                "-C",
+                str(SOURCE_WORKTREE),
+                "rev-parse",
+                f"{source_head}^{{tree}}",
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        tree = completed.stdout.strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise SchedulerInvariantError(
+            "canonical forecast implementation tree cannot be resolved"
+        ) from exc
+    if re.fullmatch(r"[0-9a-f]{40}", tree, flags=re.ASCII) is None:
+        raise SchedulerInvariantError("canonical forecast implementation tree is invalid")
+    sources: list[ImplementationSource] = []
+    try:
+        for relative_path in CANONICAL_FORECAST_SOURCE_PATHS:
+            raw = (SOURCE_WORKTREE / relative_path).read_bytes()
+            sources.append(
+                ImplementationSource(relative_path, hashlib.sha256(raw).hexdigest())
+            )
+    except OSError as exc:
+        raise SchedulerInvariantError(
+            "canonical forecast implementation source cannot be read"
+        ) from exc
+    return ImplementationIdentity(source_head, tree, tuple(sources))
+
+
+def _forecast_health_template(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    *,
+    status: str,
+    publication: str | None = None,
+    artifact_sha256: str | None = None,
+    input_manifest_sha256: str | None = None,
+    error_class: str | None = None,
+    reason: str | None = None,
+) -> dict[str, object]:
+    return {
+        "status": status,
+        "publication": publication,
+        "target_draw": target.draw_number,
+        "method_id": CANONICAL_CONSENSUS_METHOD_ID,
+        "method_version": CANONICAL_CONSENSUS_METHOD_VERSION,
+        "artifact_path": str(_forecast_destination(config, target)),
+        "artifact_sha256": artifact_sha256,
+        "input_manifest_sha256": input_manifest_sha256,
+        "error_class": error_class,
+        "reason": reason,
+    }
+
+
+def _forecast_waiting_health(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+) -> dict[str, object]:
+    return _forecast_health_template(
+        config,
+        target,
+        status="WAITING_FOR_PREDICTIONS",
+        error_class="MISSING_STREAM_INPUT",
+        reason="BLOCK_MISSING_STREAM_INPUT",
+    )
+
+
+def _forecast_failure_health(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    exc: CanonicalForecastMaterializationError,
+) -> dict[str, object]:
+    status = {
+        "FORECAST_AUTHORITY_CONFLICT": "CONFLICT",
+        "PRE_OUTCOME_WINDOW_MISSED": "MISSED_PRE_OUTCOME_WINDOW",
+    }.get(exc.code, "ERROR")
+    return _forecast_health_template(
+        config,
+        target,
+        status=status,
+        error_class=exc.code,
+        reason=exc.reason,
+    )
+
+
+def _ensure_forecast_materialization(
+    config: SchedulerConfig,
+    backend: SchedulerBackend,
+    target: PredictionTarget,
+    *,
+    source_head: str,
+) -> dict[str, object]:
+    try:
+        health = backend.materialize_forecast(target, source_head=source_head)
+    except CanonicalForecastMaterializationError as exc:
+        return _forecast_failure_health(config, target, exc)
+    except Exception as exc:
+        return _forecast_health_template(
+            config,
+            target,
+            status="ERROR",
+            error_class=type(exc).__name__,
+            reason="BLOCK_FORECAST_MATERIALIZATION",
+        )
+    if health.get("status") != "COMPLETE":
+        return _forecast_health_template(
+            config,
+            target,
+            status="ERROR",
+            error_class="FORECAST_HEALTH_INVALID",
+            reason="BLOCK_FORECAST_HEALTH_INVALID",
+        )
+    return health
+
+
 def run_scheduler_cycle(
     config: SchedulerConfig,
     backend: SchedulerBackend,
@@ -1030,30 +1309,62 @@ def run_scheduler_cycle(
                     inventory = backend.inspect_predictions(target)
                 else:
                     generation = {**generation, "status": "NO_OP"}
+                forecast_materialization = (
+                    _forecast_waiting_health(config, target)
+                    if not inventory.ready
+                    else _ensure_forecast_materialization(
+                        config,
+                        backend,
+                        target,
+                        source_head=source_head,
+                    )
+                )
+                forecast_complete = forecast_materialization.get("status") == "COMPLETE"
                 postdraw = PostDrawResult(
                     outcome_status="NOT_DUE",
                     scoring_status="NOT_DUE",
                     reporting_status="CURRENT",
                     cycle_action=(
                         "PREDRAW_CREATED"
-                        if inventory.ready and generation["status"] == "ATTEMPTED"
+                        if inventory.ready
+                        and forecast_complete
+                        and generation["status"] == "ATTEMPTED"
                         else "NO_OP"
+                        if inventory.ready and forecast_complete
+                        else "WAITING_FOR_FORECAST"
                         if inventory.ready
                         else "WAITING_FOR_PREDRAW"
                     ),
                 )
-                terminal_status = "PREDRAW_READY" if inventory.ready else "WAITING_FOR_PREDRAW"
-                if inventory.ready:
+                terminal_status = (
+                    "PREDRAW_READY"
+                    if inventory.ready and forecast_complete
+                    else "WAITING_FOR_FORECAST"
+                    if inventory.ready
+                    else "WAITING_FOR_PREDRAW"
+                )
+                if inventory.ready and forecast_complete:
                     shadow_hook_name = "run_shadow_predraw"
                     shadow_primary_status = "PREDRAW_READY"
                 else:
                     shadow_summary = shadow_health_not_run(
                         "SKIPPED_PRIMARY_NOT_READY",
                         target=target,
-                        primary_status_observed="WAITING_FOR_PREDRAW",
+                        primary_status_observed=terminal_status,
                         canonical_source_head=source_head,
                     )
             else:
+                forecast_materialization = (
+                    _forecast_waiting_health(config, target)
+                    if not inventory.ready
+                    else _ensure_forecast_materialization(
+                        config,
+                        backend,
+                        target,
+                        source_head=source_head,
+                    )
+                )
+                forecast_complete = forecast_materialization.get("status") == "COMPLETE"
                 official_sync = backend.sync_official_outcome(target)
                 postdraw = backend.complete_postdraw(target, inventory)
                 terminal_status = (
@@ -1063,7 +1374,7 @@ def run_scheduler_cycle(
                     if postdraw.outcome_available
                     else "WAITING_FOR_OUTCOME"
                 )
-                if inventory.ready:
+                if inventory.ready and forecast_complete:
                     shadow_hook_name = "run_shadow_postdraw"
                     shadow_primary_status = (
                         "COMPLETE" if postdraw.outcome_available else "WAITING_FOR_OUTCOME"
@@ -1099,12 +1410,14 @@ def run_scheduler_cycle(
                 "ready_before_draw": inventory.ready,
                 "prediction_inventory": inventory.health_dict(),
                 "prediction_generation": generation,
+                "forecast_materialization": forecast_materialization,
                 "announcement": announcement.health_dict(),
                 "official_sync": official_sync,
                 "outcome_status": postdraw.outcome_status,
                 "scoring_status": postdraw.scoring_status,
                 "reporting_status": postdraw.reporting_status,
                 "cycle_action": postdraw.cycle_action,
+                "next_draw_rollover_status": "NOT_DUE",
                 "lock_contention": False,
                 "error_class": None,
                 "error_message": None,
@@ -1253,6 +1566,18 @@ def _base_health(
         "ready_before_draw": False,
         "prediction_inventory": None,
         "prediction_generation": None,
+        "forecast_materialization": {
+            "status": "NOT_DUE",
+            "publication": None,
+            "target_draw": None,
+            "method_id": CANONICAL_CONSENSUS_METHOD_ID,
+            "method_version": CANONICAL_CONSENSUS_METHOD_VERSION,
+            "artifact_path": None,
+            "artifact_sha256": None,
+            "input_manifest_sha256": None,
+            "error_class": None,
+            "reason": None,
+        },
         "announcement": None,
         "official_sync": {"status": "NOT_RUN"},
         "warnings": [],
@@ -1707,15 +2032,6 @@ def _load_canonical_forecast_authority(
     canonical forecast.  The pinned digest and contract fields keep the
     immutable production result distinct from PR #283 descriptive diagnostics.
     """
-
-    if (
-        target.draw_number != CANONICAL_TARGET_DRAW_NUMBER
-        or target.draw_date != CANONICAL_TARGET_DRAW_DATE
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_UNAVAILABLE_FOR_TARGET: resolved target is not the "
-            "approved canonical forecast target"
-        )
 
     raw = read_existing_bytes(CANONICAL_FORECAST_AUTHORITY_PATH)
     if raw is None:

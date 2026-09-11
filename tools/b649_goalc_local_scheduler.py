@@ -868,9 +868,11 @@ def inspect_prediction_inventory(
         if prediction_scheduled != _as_utc(scheduled_at):
             raise SchedulerInvariantError(f"prediction scheduled_at conflicts: {path}")
         if temporal_class == "PRE_DRAW":
-            if created_at >= scheduled_at:
-                raise SchedulerInvariantError(f"PRE_DRAW timestamp is not before deadline: {path}")
             if availability == "AVAILABLE":
+                if created_at >= scheduled_at:
+                    raise SchedulerInvariantError(
+                        f"PRE_DRAW timestamp is not before deadline: {path}"
+                    )
                 if strategy_id in available:
                     raise SchedulerInvariantError(
                         f"multiple AVAILABLE PRE_DRAW records exist for {strategy_id}"

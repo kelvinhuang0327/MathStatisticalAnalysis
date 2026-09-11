@@ -673,7 +673,7 @@ class _ShadowFailureBackend(_ShadowHookBackend):
 
 def test_production_config_is_the_exact_authorized_runtime() -> None:
     config = production_config()
-    canonical_repository = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
+    canonical_repository = scheduler_module.CANONICAL_REPOSITORY
 
     assert config.label == "com.lottolab.b649-goalc-r1"
     assert config.start_interval_seconds == 300
@@ -681,10 +681,8 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
-    assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
-    assert config.operation_root == Path(
-        "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
-    )
+    assert config.script_path == scheduler_module.SCRIPT_PATH
+    assert config.operation_root == scheduler_module.GOALC_ROOT
     assert config.health_path == config.operation_root / "scheduler/health.json"
 
 

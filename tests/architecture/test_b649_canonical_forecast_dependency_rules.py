@@ -55,16 +55,31 @@ def test_infrastructure_writer_does_not_depend_on_application_or_domain() -> Non
     assert not any(name.startswith("lottolab.") for name in imports)
 
 
-def test_scheduler_consumes_immutable_authority_and_keeps_materializer_standalone() -> None:
+def test_scheduler_owns_dynamic_materialization_and_keeps_087_adapter_standalone() -> None:
     source = SCHEDULER.read_text(encoding="utf-8")
     assert "_load_canonical_forecast_authority" in source
     assert "read_existing_bytes" in source
-    assert "materialize_canonical_forecast" not in source
-    assert "def materialize_forecast(" not in source
+    assert "materialize_canonical_forecast" in source
+    assert "def materialize_forecast(" in source
     assert "build_canonical_predraw_consensus" not in source
     assert "tools.materialize_b649_canonical_forecast" not in source
     assert "next_draw_rollover_status" in source
-    assert "forecast_materialization" not in source
+    assert "forecast_materialization" in source
+    tree = ast.parse(source, filename=str(SCHEDULER))
+    scheduler_cycle = next(
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "run_scheduler_cycle"
+    )
+    materializer_calls = [
+        node
+        for node in ast.walk(scheduler_cycle)
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "materialize_forecast"
+    ]
+    assert len(materializer_calls) == 1
+    assert "NO_MATERIALIZATION_AFTER_SCHEDULED_AT" in source
     assert "def materialize_canonical_forecast(" in APPLICATION.read_text(encoding="utf-8")
     assert "materialize_canonical_forecast" in COMPATIBILITY.read_text(encoding="utf-8")
 

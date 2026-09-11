@@ -34,6 +34,7 @@ class Harness:
     calls: list[tuple[str, ...]] = field(default_factory=lambda: list[tuple[str, ...]]())
     loaded: bool = True
     disabled: bool = False
+    disabled_output: str | None = None
     loaded_old: bool = False
     process_error: bool = False
     lsof_error: bool = False
@@ -136,7 +137,11 @@ class Harness:
                 )
             out = self.launch_text()
         elif args == ("launchctl", "print-disabled", DOMAIN):
-            out = f'disabled services = {{\n    "{LABEL}" => {str(self.disabled).lower()}\n}}\n'
+            out = (
+                self.disabled_output
+                if self.disabled_output is not None
+                else f'disabled services = {{\n    "{LABEL}" => {str(self.disabled).lower()}\n}}\n'
+            )
         elif args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,command="):
             if self.process_error:
                 return subprocess.CompletedProcess(args, 1, "", "process enumeration denied")
@@ -468,6 +473,80 @@ def test_disabled_job_fails(harness: Harness, capsys: pytest.CaptureFixture[str]
     assert "launchagent_enabled" in cast(list[str], result["failures"])
 
 
+@pytest.mark.parametrize(
+    ("token", "enabled"),
+    [("false", True), ("enabled", True), ("true", False), ("disabled", False)],
+)
+def test_disabled_service_tokens(
+    harness: Harness, capsys: pytest.CaptureFixture[str], token: str, enabled: bool
+) -> None:
+    harness.disabled_output = f'''\n\tdisabled services = {{
+        "unrelated.boolean" => true
+        "{LABEL}" => {token}
+        "unrelated.native" => enabled
+    }}\n'''
+    code, result = execute(harness, capsys, "post-load")
+    assert code == (0 if enabled else 1), result
+    entry = checkpoint.object_record(
+        checkpoint.object_record(result["checks"])["launchagent_enabled"]
+    )
+    assert entry["observed"] is enabled
+    assert result["failures"] == ([] if enabled else ["launchagent_enabled"])
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        "",
+        f'''"{LABEL}.other" => disabled
+        "prefix.{LABEL}" => true
+        "{LABEL.replace(".", "x")}" => disabled
+        "unrelated.enabled" => enabled
+        "unrelated.boolean" => false''',
+    ],
+)
+def test_absent_disabled_service_keeps_default_enabled(
+    harness: Harness, capsys: pytest.CaptureFixture[str], entries: str
+) -> None:
+    harness.disabled_output = f"disabled services = {{\n{entries}\n}}"
+    code, result = execute(harness, capsys, "post-load")
+    assert code == 0, result
+    entry = checkpoint.object_record(
+        checkpoint.object_record(result["checks"])["launchagent_enabled"]
+    )
+    assert entry["observed"] is True
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        "",
+        f'disabled services = {{ "{LABEL}" => unknown }}',
+        f'disabled services = {{ "{LABEL}" => enabled-extra }}',
+        f'disabled services = {{ "{LABEL}" => FALSE }}',
+        f'disabled services = {{ "{LABEL}" => 0 }}',
+        f'disabled services = {{ "{LABEL}" => enabled',
+        f'disabled services = {{ "{LABEL}" => enabled }} trailing',
+        f'disabled services = {{ "{LABEL}" => enabled "other" => unknown }}',
+        f'disabled services = {{ "{LABEL}" => false "{LABEL}" => false }}',
+        f'disabled services = {{ "{LABEL}" => enabled "{LABEL}" => enabled }}',
+        f'disabled services = {{ "{LABEL}" => enabled "{LABEL}" => false }}',
+        f'disabled services = {{ "{LABEL}" => enabled "{LABEL}" => disabled }}',
+    ],
+)
+def test_unverifiable_disabled_services_fail_closed(
+    harness: Harness, capsys: pytest.CaptureFixture[str], raw: str
+) -> None:
+    harness.disabled_output = raw
+    code, result = execute(harness, capsys, "post-load")
+    assert code == 1
+    assert result["failures"] == ["launchagent_enabled"]
+    entry = checkpoint.object_record(
+        checkpoint.object_record(result["checks"])["launchagent_enabled"]
+    )
+    assert entry["classification"] == "UNVERIFIABLE"
+
+
 @pytest.mark.parametrize("phase", checkpoint.PHASES)
 def test_failed_checks_never_mutate(
     harness: Harness,
@@ -548,10 +627,23 @@ def test_pre_expected_identity_mismatch(
     assert code == 1
 
 
-@pytest.mark.parametrize("phase", checkpoint.PHASES)
+@pytest.mark.parametrize(
+    ("phase", "token"),
+    [
+        ("pre-cutover", "false"),
+        ("post-unload", "false"),
+        ("post-load", "false"),
+        ("post-load", "enabled"),
+        ("post-load", "true"),
+        ("post-load", "disabled"),
+    ],
+)
 @pytest.mark.parametrize("fail", [False, True])
-def test_real_entrypoint_json_and_exit(harness: Harness, phase: str, fail: bool) -> None:
+def test_real_entrypoint_json_and_exit(
+    harness: Harness, phase: str, token: str, fail: bool
+) -> None:
     harness.loaded = phase != "post-unload"
+    harness.disabled_output = f'disabled services = {{ "{LABEL}" => {token} }}'
     if fail:
         harness.job_error = True
     args = harness.argv(phase)
@@ -593,11 +685,12 @@ runpy.run_path(script, run_name='__main__')
         check=False,
         timeout=10,
     )
-    assert completed.returncode == (1 if fail else 0), completed.stdout + completed.stderr
+    expected_fail = fail or (phase == "post-load" and token in ("true", "disabled"))
+    assert completed.returncode == (1 if expected_fail else 0), completed.stdout + completed.stderr
     assert not completed.stderr
     result = checkpoint.object_record(json.loads(completed.stdout))
     assert result["phase"] == phase
-    assert result["status"] == ("FAIL" if fail else "PASS")
+    assert result["status"] == ("FAIL" if expected_fail else "PASS")
 
 
 @pytest.mark.parametrize("args", [[], ["post-unload"], ["invalid-phase"], ["--unknown"]])

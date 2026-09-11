@@ -10,7 +10,7 @@ from lottolab.infrastructure.persistence.research_schema import (
     CURRENT_SCHEMA_VERSION,
     RESEARCH_DATABASE_FILENAME,
     TABLE_NAMES,
-    V3_MIGRATION_CHECKSUM,
+    V4_MIGRATION_CHECKSUM,
     MigrationChecksumError,
     NewerSchemaVersionError,
     ResearchDataError,
@@ -80,8 +80,8 @@ def test_migration_is_idempotent_and_checksum_verified(tmp_path: Path) -> None:
             "SELECT COUNT(*) FROM research_schema_migrations"
         ).fetchone()[0]
 
-    assert migration == (CURRENT_SCHEMA_VERSION, V3_MIGRATION_CHECKSUM)
-    assert migration_count == 2
+    assert migration == (CURRENT_SCHEMA_VERSION, V4_MIGRATION_CHECKSUM)
+    assert migration_count == 3
     assert first_schema == second_schema
     assert verify_schema_read_only(paths) is True
     assert not Path(f"{paths.database}-wal").exists()

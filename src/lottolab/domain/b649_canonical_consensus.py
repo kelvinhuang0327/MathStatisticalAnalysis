@@ -31,18 +31,14 @@ CORRELATED_FAMILY_POLICY: Final = "FULL_VOTE_PER_FROZEN_STREAM_NO_FAMILY_NORMALI
 TIE_BREAK: Final = "SUPPORT_UNITS_DESC_NUMBER_ASC"
 SCORE_DENOMINATOR: Final = 66
 EXPECTED_STREAM_COUNT: Final = 11
-TARGET_DRAW_NUMBER: Final = "115000087"
-TARGET_DRAW_DATE: Final = "2026-09-11"
-TARGET_SCHEDULED_AT: Final = "2026-09-11T20:30:00+08:00"
-MAX_DATA_CUTOFF: Final = "115000086"
-MAX_DATA_CUTOFF_DATE: Final = "2026-09-08"
-HISTORY_DRAW_COUNT: Final = 2168
-HISTORY_SHA256: Final = "c2ba95be375c739c096baaae6ac03b666bc93ef81c9a721ec9381ed7b4c2cec4"
-HISTORY_CAVEAT: Final = "YES"
 AGGREGATION_CONTRACT_REVIEW_ID: Final = (
     "B649_11_STREAM_CANONICAL_AGGREGATION_CTO_REVIEW_R1"
 )
 AGGREGATION_CONTRACT_APPROVED_AT: Final = "2026-09-10T05:50:29Z"
+DECISION_RANKING_FORMULA: Final = (
+    "U(n)=sum_i((6/k_i)*c_i(n)); rank by U(n) descending, then number ascending; "
+    "each stream has equal weight and c_i(n) counts native ticket positions containing n"
+)
 
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.-]+", flags=re.ASCII)
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
@@ -140,22 +136,6 @@ class CanonicalConsensusDecision:
 
         return self.support_units
 
-    @property
-    def target_draw_number(self) -> str:
-        return TARGET_DRAW_NUMBER
-
-    @property
-    def target_draw_date(self) -> str:
-        return TARGET_DRAW_DATE
-
-    @property
-    def input_cutoff_draw_number(self) -> str:
-        return MAX_DATA_CUTOFF
-
-    @property
-    def input_cutoff_date(self) -> str:
-        return MAX_DATA_CUTOFF_DATE
-
     def decision_fields(self) -> dict[str, object]:
         """Return payload fields that are independent of publication timestamps."""
 
@@ -191,11 +171,6 @@ class CanonicalConsensusDecision:
             "schema_version": CANONICAL_CONSENSUS_SCHEMA_VERSION,
             "task_id": task_id,
             "lottery_type": lottery_type,
-            "target_draw": {
-                "draw_number": TARGET_DRAW_NUMBER,
-                "draw_date": TARGET_DRAW_DATE,
-            },
-            "max_data_cutoff": MAX_DATA_CUTOFF,
             "aggregation_method_id": CANONICAL_CONSENSUS_METHOD_ID,
             "aggregation_method_version": CANONICAL_CONSENSUS_METHOD_VERSION,
             "aggregation_unit": AGGREGATION_UNIT,
@@ -203,6 +178,7 @@ class CanonicalConsensusDecision:
             "correlated_family_policy": CORRELATED_FAMILY_POLICY,
             "tie_break": TIE_BREAK,
             "score_denominator": SCORE_DENOMINATOR,
+            "decision_ranking_formula": DECISION_RANKING_FORMULA,
             **self.decision_fields(),
         }
 
@@ -327,21 +303,14 @@ __all__ = [
     "CANONICAL_CONSENSUS_METHOD_VERSION",
     "CANONICAL_CONSENSUS_SCHEMA_VERSION",
     "CORRELATED_FAMILY_POLICY",
+    "DECISION_RANKING_FORMULA",
     "EXPECTED_STREAM_COUNT",
     "FINAL_TICKET_SIZE",
-    "HISTORY_CAVEAT",
-    "HISTORY_DRAW_COUNT",
-    "HISTORY_SHA256",
-    "MAX_DATA_CUTOFF",
-    "MAX_DATA_CUTOFF_DATE",
     "MAX_NUMBER",
     "MIN_NUMBER",
     "PRE_DRAW",
     "SCORE_DENOMINATOR",
     "STREAM_WEIGHT_POLICY",
-    "TARGET_DRAW_DATE",
-    "TARGET_DRAW_NUMBER",
-    "TARGET_SCHEDULED_AT",
     "TIE_BREAK",
     "CanonicalConsensusDecision",
     "CanonicalConsensusInputError",

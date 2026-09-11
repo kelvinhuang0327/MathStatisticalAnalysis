@@ -5,14 +5,156 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
 
+from lottolab.domain.b649_canonical_consensus import build_canonical_consensus
 from lottolab.evidence.canonical_json import canonical_file_bytes
+from lottolab.infrastructure.b649_canonical_forecast_writer import StagedCanonicalForecast
 
 FIXTURE_NUMBERS = (4, 12, 24, 25, 26, 29)
 FIXTURE_PREDICTION_CREATED_AT = "2026-09-10T13:00:00+00:00"
+HISTORICAL_087_TICKETS = {
+    "b649_new_horizon_minimax_disagreement_r1": (
+        (15, 16, 23, 26, 29, 35),
+        (4, 7, 12, 22, 29, 34),
+    ),
+    "biglotto_deviation_2bet": ((4, 12, 16, 25, 26, 29),),
+    "biglotto_social_wisdom_anti_popularity": ((42, 43, 44, 45, 47, 49),),
+    "legacy_biglotto__graph_predictor__cd70713a5709": ((16, 23, 24, 26, 29, 47),),
+    "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8": ((12, 24, 25, 26, 29, 35),),
+    "legacy_biglotto__pure_cold_predict__9e89f2b41add": ((7, 22, 31, 38, 39, 42),),
+    "legacy_biglotto__test_asm__d39a233a4c75": (
+        (1, 4, 6, 9, 10, 25),
+        (1, 4, 34, 36, 45, 46),
+        (6, 8, 9, 10, 11, 18),
+    ),
+    "legacy_biglotto__test_ces__78d17c530ab8": (
+        (8, 9, 11, 26, 29, 43),
+        (1, 9, 18, 19, 26, 39),
+        (4, 9, 18, 24, 28, 29),
+    ),
+    "legacy_biglotto__test_ecp__c9d5ac6decdd": (
+        (8, 10, 11, 18, 19, 43),
+        (10, 25, 34, 36, 43, 45),
+        (1, 4, 6, 36, 45, 46),
+    ),
+    "legacy_biglotto__test_mwsc__ba37643d6a3b": (
+        (10, 12, 25, 26, 36, 38),
+        (10, 24, 36, 45, 46, 47),
+        (24, 32, 34, 39, 40, 47),
+    ),
+    "legacy_biglotto__test_tme__f3bb5106dfe3": (
+        (2, 8, 11, 18, 19, 43),
+        (1, 2, 3, 4, 6, 9),
+        (9, 26, 28, 29, 39, 44),
+    ),
+}
+HISTORICAL_087_RANKING = (
+    29,
+    26,
+    4,
+    24,
+    25,
+    12,
+    47,
+    16,
+    9,
+    43,
+    45,
+    10,
+    39,
+    42,
+    1,
+    18,
+    36,
+    7,
+    22,
+    23,
+    34,
+    35,
+    6,
+    8,
+    11,
+    38,
+    44,
+    19,
+    31,
+    46,
+    49,
+    2,
+    28,
+    15,
+    3,
+    32,
+    40,
+    5,
+    13,
+    14,
+    17,
+    20,
+    21,
+    27,
+    30,
+    33,
+    37,
+    41,
+    48,
+)
+HISTORICAL_087_SUPPORT_UNITS = (
+    30,
+    29,
+    19,
+    18,
+    18,
+    17,
+    16,
+    15,
+    14,
+    14,
+    14,
+    12,
+    12,
+    12,
+    10,
+    10,
+    10,
+    9,
+    9,
+    9,
+    9,
+    9,
+    8,
+    8,
+    8,
+    8,
+    8,
+    6,
+    6,
+    6,
+    6,
+    4,
+    4,
+    3,
+    2,
+    2,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+)
+HISTORICAL_087_MANIFEST_SHA256 = "ce725dfdb2e162f1c68f9cb2dc75bc2fc073a0ba55ea6fa29a4fbc5cc647ded8"
 IDENTITY = materializer.ImplementationIdentity(
     commit="a" * 40,
     tree="b" * 40,
@@ -21,14 +163,31 @@ IDENTITY = materializer.ImplementationIdentity(
         for path in materializer.IMPLEMENTATION_SOURCE_PATHS
     ),
 )
+HISTORICAL_IDENTITY = materializer.ImplementationIdentity(
+    commit="d" * 40,
+    tree="e" * 40,
+    source_hashes=tuple(
+        materializer.ImplementationSource(path, "f" * 64)
+        for path in materializer.IMPLEMENTATION_SOURCE_PATHS
+    ),
+)
 CREATED_AT = datetime(2026, 9, 10, 14, 0, 0, tzinfo=UTC)
 PRE_PUBLISH_AT = datetime(2026, 9, 10, 14, 0, 1, tzinfo=UTC)
 
 
-def _copy_inputs(destination: Path) -> None:
+def _copy_inputs(
+    destination: Path,
+    *,
+    tickets_by_strategy: dict[str, tuple[tuple[int, ...], ...]] | None = None,
+) -> None:
+    ticket_sets = {} if tickets_by_strategy is None else tickets_by_strategy
     for spec in materializer.FROZEN_STREAM_SPECS:
         target = destination / spec.source_relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
+        tickets = ticket_sets.get(spec.strategy_id)
+        if tickets is None:
+            tickets = tuple(FIXTURE_NUMBERS for _ in range(spec.native_ticket_count))
+        assert len(tickets) == spec.native_ticket_count
         payload = {
             "schema_version": "b649-operational-prediction-v1",
             "task_id": "B649_OPERATIONAL_PREDICTION_LOOP_R1",
@@ -50,9 +209,9 @@ def _copy_inputs(destination: Path) -> None:
             "tickets": [
                 {
                     "ticket_position": position,
-                    "predicted_numbers": list(FIXTURE_NUMBERS),
+                    "predicted_numbers": list(numbers),
                 }
-                for position in range(1, spec.native_ticket_count + 1)
+                for position, numbers in enumerate(tickets, start=1)
             ],
         }
         target.write_bytes(
@@ -108,6 +267,64 @@ def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path
     )
     assert retry.status == "ALREADY_PRESENT"
     assert destination.read_bytes() == raw
+
+
+def test_canonical_authority_ignores_descriptive_diagnostics_and_limited_status(
+    tmp_path: Path,
+) -> None:
+    plain_root = tmp_path / "plain-operation"
+    diagnostic_root = tmp_path / "diagnostic-operation"
+    _copy_inputs(plain_root)
+    _copy_inputs(diagnostic_root)
+
+    first = materializer.FROZEN_STREAM_SPECS[0]
+    source = diagnostic_root / first.source_relative_path
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload.update(
+        {
+            "authority_status": "NONCANONICAL_DESCRIPTIVE",
+            "descriptive_number_consensus": [{"number": 1, "rank": 1}],
+            "descriptive_stream_overlap": [],
+            "descriptive_top6": [1, 4, 18, 25, 26, 29],
+            "descriptive_top_k": [1, 4, 8, 18, 24, 25, 26, 29, 43, 45],
+            "weight_authority_status": "LIMITED",
+        }
+    )
+    source.write_bytes(
+        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
+        + b"\n"
+    )
+
+    plain = materializer.materialize_canonical_forecast(
+        operation_root=plain_root,
+        destination=tmp_path / "plain-authority" / "final_forecast_payload.json",
+        implementation_identity=IDENTITY,
+        expected_manifest_sha256=None,
+        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
+    )
+    diagnostic = materializer.materialize_canonical_forecast(
+        operation_root=diagnostic_root,
+        destination=tmp_path / "diagnostic-authority" / "final_forecast_payload.json",
+        implementation_identity=IDENTITY,
+        expected_manifest_sha256=None,
+        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
+    )
+
+    expected_ticket = [{"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}]
+    assert plain.payload["final_recommended_output"] == expected_ticket
+    assert diagnostic.payload["final_recommended_output"] == expected_ticket
+    assert diagnostic.payload["target_result_used"] is False
+    assert not any(
+        key in diagnostic.payload
+        for key in (
+            "authority_status",
+            "descriptive_number_consensus",
+            "descriptive_stream_overlap",
+            "descriptive_top6",
+            "descriptive_top_k",
+            "weight_authority_status",
+        )
+    )
 
 
 def test_created_at_boundary_fails_closed_without_authority_file(tmp_path: Path) -> None:
@@ -237,7 +454,7 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
     destination = tmp_path / "authority" / "final_forecast_payload.json"
     original_publish = materializer.publish_staged
 
-    def competing_publish(staged: materializer.StagedCanonicalForecast):
+    def competing_publish(staged: StagedCanonicalForecast):
         staged.destination.write_bytes(b"{\"competing\":true}\n")
         return original_publish(staged)
 
@@ -255,3 +472,76 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
             clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
         )
     assert destination.read_bytes() == b"{\"competing\":true}\n"
+
+
+def test_historical_087_authority_and_domain_parity_are_read_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify an older immutable authority is accepted without rematerialization."""
+
+    operation_root = tmp_path / "operation"
+    _copy_inputs(operation_root, tickets_by_strategy=HISTORICAL_087_TICKETS)
+    artifact = tmp_path / "authority" / "final_forecast_payload.json"
+    historical = materializer.materialize_canonical_forecast(
+        operation_root=operation_root,
+        destination=artifact,
+        implementation_identity=HISTORICAL_IDENTITY,
+        specs=materializer.FROZEN_STREAM_SPECS,
+        expected_manifest_sha256=HISTORICAL_087_MANIFEST_SHA256,
+        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
+    )
+    assert historical.status == "CREATED"
+    assert historical.payload["implementation_commit"] == HISTORICAL_IDENTITY.commit
+    before = artifact.read_bytes()
+    before_stat = artifact.stat()
+    payload = json.loads(before.decode("utf-8"))
+    bundle = materializer.load_frozen_stream_inputs(
+        operation_root,
+        expected_manifest_sha256=HISTORICAL_087_MANIFEST_SHA256,
+    )
+    decision = build_canonical_consensus(bundle.streams)
+    ranking_payload = cast(list[dict[str, object]], payload["final_decision_ranking"])
+    expected_ranking = tuple(cast(int, entry["number"]) for entry in ranking_payload)
+
+    assert len(bundle.streams) == 11
+    assert len(decision.deterministic_ranking) == 49
+    assert decision.stream_input_manifest_sha256 == payload["stream_input_manifest_sha256"]
+    assert expected_ranking == HISTORICAL_087_RANKING
+    assert decision.deterministic_ranking == expected_ranking
+    assert tuple(
+        decision.support_units[number - 1] for number in expected_ranking
+    ) == HISTORICAL_087_SUPPORT_UNITS
+    assert sum(decision.support_units) == 396
+    assert decision.final_ticket == (4, 12, 24, 25, 26, 29)
+    assert payload["final_recommended_output"] == [
+        {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
+    ]
+
+    def fail_write(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("historical authority retry attempted a write")
+
+    monkeypatch.setattr(materializer, "ensure_output_parent", fail_write)
+    monkeypatch.setattr(materializer, "stage_payload", fail_write)
+    monkeypatch.setattr(materializer, "publish_staged", fail_write)
+    monkeypatch.setattr(materializer, "discard_staged", fail_write)
+
+    def clock_must_not_be_called() -> datetime:
+        raise AssertionError("historical authority retry sampled the clock")
+
+    retry = materializer.materialize_canonical_forecast(
+        operation_root=operation_root,
+        destination=artifact,
+        implementation_identity=IDENTITY,
+        specs=materializer.FROZEN_STREAM_SPECS,
+        expected_manifest_sha256=HISTORICAL_087_MANIFEST_SHA256,
+        clock=clock_must_not_be_called,
+    )
+    assert retry.status == "ALREADY_PRESENT"
+    assert retry.payload["implementation_commit"] == HISTORICAL_IDENTITY.commit
+    assert retry.payload["created_at"] == payload["created_at"]
+    assert retry.payload["created_at"] == historical.payload["created_at"]
+    assert before == artifact.read_bytes()
+    after_stat = artifact.stat()
+    assert before_stat.st_ino == after_stat.st_ino
+    assert before_stat.st_size == after_stat.st_size
+    assert before_stat.st_mtime_ns == after_stat.st_mtime_ns

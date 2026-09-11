@@ -273,13 +273,17 @@ def launch_fields(raw: str) -> dict[str, str | list[str]]:
 def enabled_snapshot(args: argparse.Namespace, runner: Runner) -> bool:
     raw = checked(runner, ["launchctl", "print-disabled", args.launch_domain])
     if not re.fullmatch(
-        r'disabled services = \{\s*(?:"[^"\n]+" => (?:true|false)\s*)*}', raw.strip()
+        r'disabled services = \{\s*(?:"[^"\n]+" => (?:true|false|enabled|disabled)\s*)*}',
+        raw.strip(),
     ):
         raise Unverifiable("unrecognized launchctl disabled-services output")
-    values = re.findall(r'"' + re.escape(args.expected_label) + r'" => (true|false)', raw)
+    values = re.findall(
+        r'"' + re.escape(args.expected_label) + r'" => (true|false|enabled|disabled)', raw
+    )
     if len(values) > 1:
         raise Unverifiable("duplicate disabled-service entry")
-    return not values or values[0] == "false"
+    # Boolean values describe the disabled override; words describe service state.
+    return not values or values[0] in ("false", "enabled")
 
 
 def database_metadata(path: Path) -> Record:

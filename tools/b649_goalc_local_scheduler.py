@@ -59,7 +59,6 @@ from lottolab.application.use_cases.draw_automation import ScheduledDrawSync
 from lottolab.domain.b649_canonical_consensus import (
     CANONICAL_CONSENSUS_METHOD_ID,
     CANONICAL_CONSENSUS_METHOD_VERSION,
-    CANONICAL_CONSENSUS_SCHEMA_VERSION,
 )
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
@@ -70,7 +69,6 @@ from lottolab.infrastructure.b649_canonical_forecast_writer import (
     ensure_output_parent,
     publish_staged,
     read_existing_bytes,
-    read_persisted_prediction_records,
     stage_payload,
 )
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
@@ -156,7 +154,6 @@ CANONICAL_FORECAST_SHA256 = (
     "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
 )
 _DEFAULT_CANONICAL_FORECAST_AUTHORITY_PATH = CANONICAL_FORECAST_AUTHORITY_PATH
-CANONICAL_FINAL_TICKET = (4, 12, 24, 25, 26, 29)
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
@@ -396,6 +393,7 @@ class SchedulerBackend(Protocol):
         target: PredictionTarget,
         *,
         source_head: str,
+        inventory: PredictionInventory,
     ) -> dict[str, object]: ...
 
     def generate_predraw(
@@ -419,6 +417,12 @@ class ForecastBackend(Protocol):
     def resolve_target(self) -> PredictionTarget | None: ...
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory: ...
+
+    def preview_forecast(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> CanonicalForecastMaterializationResult: ...
 
 
 class AdvisoryProcessLock:
@@ -553,12 +557,14 @@ class ProductionSchedulerBackend:
         target: PredictionTarget,
         *,
         source_head: str,
+        inventory: PredictionInventory,
     ) -> dict[str, object]:
         """Ensure the scheduler-owned canonical forecast authority exists."""
 
         result = self._execute_forecast_materialization(
             target,
             source_head=source_head,
+            inventory=inventory,
             dry_run=False,
         )
         return build_forecast_health(result)
@@ -566,12 +572,14 @@ class ProductionSchedulerBackend:
     def preview_forecast(
         self,
         target: PredictionTarget,
+        inventory: PredictionInventory,
     ) -> CanonicalForecastMaterializationResult:
         """Read and validate the forecast without creating any filesystem state."""
 
         return self._execute_forecast_materialization(
             target,
             source_head=_resolve_source_head(SOURCE_WORKTREE),
+            inventory=inventory,
             dry_run=True,
         )
 
@@ -580,11 +588,13 @@ class ProductionSchedulerBackend:
         target: PredictionTarget,
         *,
         source_head: str,
+        inventory: PredictionInventory,
         dry_run: bool,
     ) -> CanonicalForecastMaterializationResult:
         request = _build_forecast_materialization_request(
             self._config,
             target,
+            inventory,
             source_head=source_head,
         )
         authority = CanonicalForecastAuthorityPort(
@@ -596,7 +606,7 @@ class ProductionSchedulerBackend:
         )
         return materialize_canonical_forecast(
             request,
-            destination=_forecast_destination(self._config, target),
+            destination=_forecast_authority_path(self._config.operation_root, target),
             authority=authority,
             clock=self._clock,
             dry_run=dry_run,
@@ -929,6 +939,7 @@ def inspect_prediction_inventory(
     observed: set[str] = set()
     score_required: list[str] = []
     for path in iter_prediction_files(root, target.draw_number):
+        _canonical_prediction_source_relative_path(root, path)
         prediction, raw_bytes = _read_json_object_with_bytes(path)
         if prediction.get("lottery_type") != LOTTERY_TYPE:
             raise SchedulerInvariantError(f"prediction lottery_type conflicts: {path}")
@@ -990,6 +1001,44 @@ def inspect_prediction_inventory(
     )
 
 
+def _canonical_prediction_source_relative_path(root: Path, path: Path) -> str:
+    """Return a safe operation-root-relative identity for one inventory file."""
+
+    try:
+        relative = path.relative_to(root)
+    except ValueError as exc:
+        raise SchedulerInvariantError(
+            f"prediction source escapes operation_root: {path}"
+        ) from exc
+    if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
+        raise SchedulerInvariantError(f"prediction source path is not safe: {path}")
+
+    current = root
+    try:
+        root_metadata = current.lstat()
+    except OSError as exc:
+        raise SchedulerInvariantError(f"cannot inspect operation_root: {root}") from exc
+    if stat.S_ISLNK(root_metadata.st_mode) or not stat.S_ISDIR(root_metadata.st_mode):
+        raise SchedulerInvariantError("operation_root is not a directory")
+
+    metadata: os.stat_result | None = None
+    for part in relative.parts:
+        current /= part
+        try:
+            metadata = current.lstat()
+        except OSError as exc:
+            raise SchedulerInvariantError(
+                f"cannot inspect prediction source: {current}"
+            ) from exc
+        if stat.S_ISLNK(metadata.st_mode):
+            raise SchedulerInvariantError(
+                f"prediction source symlink is forbidden: {current}"
+            )
+    if metadata is None or not stat.S_ISREG(metadata.st_mode):
+        raise SchedulerInvariantError(f"prediction source is not a regular file: {path}")
+    return relative.as_posix()
+
+
 def _primary_health_payload(payload: Mapping[str, object]) -> dict[str, object]:
     """Remove the research namespace before persisting primary health."""
 
@@ -1038,29 +1087,30 @@ def _run_shadow_hook(
         )
 
 
-def _forecast_destination(config: SchedulerConfig, target: PredictionTarget) -> Path:
-    return (
-        config.operation_root
-        / "forecasts"
-        / target.draw_number
-        / CANONICAL_CONSENSUS_METHOD_ID
-        / CANONICAL_CONSENSUS_METHOD_VERSION
-        / "final_forecast_payload.json"
-    )
-
-
 def _build_forecast_materialization_request(
     config: SchedulerConfig,
     target: PredictionTarget,
+    inventory: PredictionInventory,
     *,
     source_head: str,
 ) -> CanonicalForecastMaterializationRequest:
+    """Bind the final validated inventory into the application request.
+
+    ``inspect_prediction_inventory`` captures both parsed payloads and their
+    exact source bytes.  The materializer must consume that snapshot rather
+    than rediscovering or reopening prediction files after readiness has been
+    established.
+    """
+
+    if not inventory.ready or len(inventory.available_records) != EXPECTED_STREAM_COUNT:
+        raise SchedulerInvariantError(
+            "canonical materialization requires exactly eleven ready inventory records"
+        )
     history = load_canonical_history(
         config.database,
         target_draw_number=target.draw_number,
         target_draw_date=target.draw_date,
     )
-    persisted = read_persisted_prediction_records(config.operation_root, target.draw_number)
     streams = tuple(
         RegisteredForecastStream(
             strategy_id=stream.strategy_id,
@@ -1072,13 +1122,16 @@ def _build_forecast_materialization_request(
     )
     predictions = tuple(
         PersistedForecastPrediction(
-            source_relative_path=record.source_relative_path,
-            source_sha256=record.source_sha256,
+            source_relative_path=_canonical_prediction_source_relative_path(
+                config.operation_root, record.path
+            ),
+            source_sha256=hashlib.sha256(record.raw_bytes).hexdigest(),
             raw_bytes=record.raw_bytes,
             payload=record.payload,
         )
-        for record in persisted
+        for record in inventory.available_records
     )
+    destination = _forecast_authority_path(config.operation_root, target)
     return CanonicalForecastMaterializationRequest(
         task_id=CANONICAL_FORECAST_TASK_ID,
         upstream_task_id=CANONICAL_FORECAST_UPSTREAM_TASK_ID,
@@ -1102,6 +1155,11 @@ def _build_forecast_materialization_request(
         registered_streams=streams,
         predictions=predictions,
         implementation_identity=_resolve_forecast_implementation_identity(source_head),
+        expected_authority_sha256=(
+            CANONICAL_FORECAST_SHA256
+            if destination == CANONICAL_FORECAST_AUTHORITY_PATH
+            else None
+        ),
     )
 
 
@@ -1160,7 +1218,7 @@ def _forecast_health_template(
         "target_draw": target.draw_number,
         "method_id": CANONICAL_CONSENSUS_METHOD_ID,
         "method_version": CANONICAL_CONSENSUS_METHOD_VERSION,
-        "artifact_path": str(_forecast_destination(config, target)),
+        "artifact_path": str(_forecast_authority_path(config.operation_root, target)),
         "artifact_sha256": artifact_sha256,
         "input_manifest_sha256": input_manifest_sha256,
         "error_class": error_class,
@@ -1315,6 +1373,7 @@ def run_scheduler_cycle(
                         forecast_materialization = backend.materialize_forecast(
                             target,
                             source_head=source_head,
+                            inventory=inventory,
                         )
                     except CanonicalForecastMaterializationError as exc:
                         forecast_materialization = _forecast_failure_health(
@@ -2053,182 +2112,6 @@ def _forecast_authority_path(operation_root: Path, target: PredictionTarget) -> 
     )
 
 
-def _load_canonical_forecast_authority(
-    target: PredictionTarget,
-    *,
-    operation_root: Path = GOALC_ROOT,
-) -> tuple[Path, dict[str, object]]:
-    """Read and validate one already-materialized dynamic forecast authority.
-
-    The scheduler is a consumer here: it never rebuilds or republishes the
-    canonical forecast.  The historical 087 path/digest remain pinned, while
-    future targets resolve their own create-once authority path.
-    """
-
-    authority_path = _forecast_authority_path(operation_root, target)
-    raw = read_existing_bytes(authority_path)
-    if raw is None:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_UNAVAILABLE: immutable canonical forecast is absent"
-        )
-    observed_sha256 = hashlib.sha256(raw).hexdigest()
-    expected_sha256 = (
-        CANONICAL_FORECAST_SHA256
-        if authority_path == CANONICAL_FORECAST_AUTHORITY_PATH
-        else None
-    )
-    if expected_sha256 is not None and observed_sha256 != expected_sha256:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: immutable canonical forecast digest mismatch"
-        )
-    if not raw.endswith(b"\n"):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical forecast is missing its trailing LF"
-        )
-    try:
-        parsed: object = json.loads(raw[:-1].decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical forecast is not valid JSON"
-        ) from exc
-    if not isinstance(parsed, dict):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical forecast is not one JSON object"
-        )
-    payload = cast(dict[str, object], parsed)
-    if _canonical_json(payload).encode("utf-8") + b"\n" != raw:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical forecast is not canonical JSON"
-        )
-    if payload.get("schema_version") != CANONICAL_CONSENSUS_SCHEMA_VERSION:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical schema is not Authority B"
-        )
-    if payload.get("aggregation_method_id") != CANONICAL_CONSENSUS_METHOD_ID:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical method is not Authority B"
-        )
-    if payload.get("aggregation_method_version") != CANONICAL_CONSENSUS_METHOD_VERSION:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical method version is not Authority B"
-        )
-    target_payload = payload.get("target_draw")
-    if not isinstance(target_payload, dict):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical target is not an object"
-        )
-    target_fields = cast(dict[str, object], target_payload)
-    if {
-        "draw_number": target_fields.get("draw_number"),
-        "draw_date": target_fields.get("draw_date"),
-    } != {
-        "draw_number": target.draw_number,
-        "draw_date": target.draw_date,
-    }:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical target does not match the resolved target"
-        )
-    if payload.get("lottery_type") != target.lottery_type:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical lottery type does not match"
-        )
-    if (
-        payload.get("scheduled_at") is not None
-        and payload.get("scheduled_at") != target.scheduled_at
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical scheduled_at does not match"
-        )
-    if payload.get("stream_count") != EXPECTED_STREAM_COUNT:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical stream count is not eleven"
-        )
-    if payload.get("target_result_used") is not False:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical forecast used target outcome data"
-        )
-    if payload.get("pre_outcome_temporal_integrity") != "PASS":
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical PRE_OUTCOME integrity is not PASS"
-        )
-    final_output = payload.get("final_recommended_output")
-    if not isinstance(final_output, list):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final output is not one ticket"
-        )
-    final_rows = cast(list[object], final_output)
-    if len(final_rows) != 1 or not isinstance(final_rows[0], dict):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final output position is invalid"
-        )
-    final_row = cast(dict[str, object], final_rows[0])
-    if final_row.get("ticket_position") != 1:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final output position is invalid"
-        )
-    predicted_numbers = final_row.get("predicted_numbers")
-    if not isinstance(predicted_numbers, list):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final ticket is invalid"
-        )
-    predicted_values = cast(list[object], predicted_numbers)
-    if (
-        len(predicted_values) != 6
-        or any(type(number) is not int for number in predicted_values)
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final ticket is invalid"
-        )
-    predicted_ticket = cast(list[int], predicted_values)
-    if len(set(predicted_ticket)) != 6 or any(
-        number < 1 or number > 49 for number in predicted_ticket
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final ticket is invalid"
-        )
-    if (
-        target.draw_number == "115000087"
-        and target.draw_date == "2026-09-11"
-        and predicted_ticket != list(CANONICAL_FINAL_TICKET)
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical final ticket does not match Authority B"
-        )
-    if not isinstance(payload.get("final_decision_ranking"), list):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical decision ranking is absent"
-        )
-    weight_policy = payload.get("weight_policy")
-    if type(weight_policy) is not str or not weight_policy:
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical weight policy is absent"
-        )
-    manifest_sha256 = payload.get("stream_input_manifest_sha256")
-    if (
-        type(manifest_sha256) is not str
-        or re.fullmatch(r"[0-9a-f]{64}", manifest_sha256, flags=re.ASCII) is None
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: canonical stream manifest is invalid"
-        )
-    if any(
-        key in payload
-        for key in (
-            "number_consensus",
-            "top6",
-            "top_k",
-            "descriptive_number_consensus",
-            "descriptive_top6",
-            "descriptive_top_k",
-            "descriptive_stream_overlap",
-        )
-    ):
-        raise SchedulerInvariantError(
-            "AUTHORITY_B_RESULT_INVALID: descriptive diagnostics cannot be canonical output"
-        )
-    return authority_path, payload
-
-
 def _forecast_command(
     config: SchedulerConfig, backend: ForecastBackend
 ) -> tuple[dict[str, object], int]:
@@ -2238,9 +2121,8 @@ def _forecast_command(
     authority ``run`` itself uses (``backend.resolve_target`` /
     ``backend.inspect_predictions``); never refreshes the official schedule,
     generates predictions, syncs an outcome, completes post-draw, or runs a
-    scheduler cycle. The already-materialized Authority B forecast is read
-    only after all expected streams pass the existing temporal checks; this
-    function only projects that immutable payload into CLI fields.
+    scheduler cycle.  Existing-authority validation is delegated to the
+    application service in the read-only backend preview.
     """
 
     target = backend.resolve_target()
@@ -2298,10 +2180,14 @@ def _forecast_command(
     )
     authority_path = _forecast_authority_path(config.operation_root, target)
     try:
-        authority_path, canonical_forecast = _load_canonical_forecast_authority(
-            target,
-            operation_root=config.operation_root,
-        )
+        preview = backend.preview_forecast(target, inventory)
+        if preview.publication != "ALREADY_PRESENT":
+            raise SchedulerInvariantError(
+                "AUTHORITY_B_RESULT_UNAVAILABLE: canonical forecast is not materialized"
+            )
+        authority_path = preview.destination
+        canonical_forecast = preview.payload
+        artifact_sha256 = preview.artifact_sha256
     except Exception as exc:
         return {
             "FORECAST_STATUS": "CANONICAL_AUTHORITY_UNAVAILABLE",
@@ -2333,9 +2219,7 @@ def _forecast_command(
         "AVAILABLE_STREAM_COUNT": len(streams),
         "MISSING_STREAM_IDS": [],
         "CANONICAL_AUTHORITY_PATH": str(authority_path),
-        "CANONICAL_AUTHORITY_SHA256": hashlib.sha256(
-            (_canonical_json(canonical_forecast) + "\n").encode("utf-8")
-        ).hexdigest(),
+        "CANONICAL_AUTHORITY_SHA256": artifact_sha256,
         "RANKING_AUTHORITY": canonical_forecast["aggregation_method_id"],
         "RANKING_AUTHORITY_VERSION": canonical_forecast["aggregation_method_version"],
         "WEIGHT_POLICY": canonical_forecast["weight_policy"],

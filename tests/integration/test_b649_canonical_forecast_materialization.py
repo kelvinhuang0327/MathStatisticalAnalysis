@@ -163,6 +163,14 @@ IDENTITY = materializer.ImplementationIdentity(
         for path in materializer.IMPLEMENTATION_SOURCE_PATHS
     ),
 )
+HISTORICAL_IDENTITY = materializer.ImplementationIdentity(
+    commit="d" * 40,
+    tree="e" * 40,
+    source_hashes=tuple(
+        materializer.ImplementationSource(path, "f" * 64)
+        for path in materializer.IMPLEMENTATION_SOURCE_PATHS
+    ),
+)
 CREATED_AT = datetime(2026, 9, 10, 14, 0, 0, tzinfo=UTC)
 PRE_PUBLISH_AT = datetime(2026, 9, 10, 14, 0, 1, tzinfo=UTC)
 
@@ -211,32 +219,6 @@ def _copy_inputs(
                 "utf-8"
             )
         )
-
-
-def _write_historical_087_authority(destination: Path) -> None:
-    payload = {
-        "stream_input_manifest_sha256": HISTORICAL_087_MANIFEST_SHA256,
-        "final_decision_ranking": [
-            {
-                "rank": rank,
-                "number": number,
-                "support_units": support_units,
-            }
-            for rank, (number, support_units) in enumerate(
-                zip(
-                    HISTORICAL_087_RANKING,
-                    HISTORICAL_087_SUPPORT_UNITS,
-                    strict=True,
-                ),
-                start=1,
-            )
-        ],
-        "final_recommended_output": [
-            {"ticket_position": 1, "predicted_numbers": list(FIXTURE_NUMBERS)}
-        ],
-    }
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_bytes(canonical_file_bytes(payload))
 
 
 def _clock(*values: datetime):
@@ -434,13 +416,24 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
     assert destination.read_bytes() == b"{\"competing\":true}\n"
 
 
-def test_historical_087_authority_and_domain_parity_are_read_only(tmp_path: Path) -> None:
-    """Verify a committed characterization fixture without touching developer state."""
+def test_historical_087_authority_and_domain_parity_are_read_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify an older immutable authority is accepted without rematerialization."""
 
     operation_root = tmp_path / "operation"
     _copy_inputs(operation_root, tickets_by_strategy=HISTORICAL_087_TICKETS)
     artifact = tmp_path / "authority" / "final_forecast_payload.json"
-    _write_historical_087_authority(artifact)
+    historical = materializer.materialize_canonical_forecast(
+        operation_root=operation_root,
+        destination=artifact,
+        implementation_identity=HISTORICAL_IDENTITY,
+        specs=materializer.FROZEN_STREAM_SPECS,
+        expected_manifest_sha256=HISTORICAL_087_MANIFEST_SHA256,
+        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
+    )
+    assert historical.status == "CREATED"
+    assert historical.payload["implementation_commit"] == HISTORICAL_IDENTITY.commit
     before = artifact.read_bytes()
     before_stat = artifact.stat()
     payload = json.loads(before.decode("utf-8"))
@@ -466,6 +459,29 @@ def test_historical_087_authority_and_domain_parity_are_read_only(tmp_path: Path
         {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
     ]
 
+    def fail_write(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("historical authority retry attempted a write")
+
+    monkeypatch.setattr(materializer, "ensure_output_parent", fail_write)
+    monkeypatch.setattr(materializer, "stage_payload", fail_write)
+    monkeypatch.setattr(materializer, "publish_staged", fail_write)
+    monkeypatch.setattr(materializer, "discard_staged", fail_write)
+
+    def clock_must_not_be_called() -> datetime:
+        raise AssertionError("historical authority retry sampled the clock")
+
+    retry = materializer.materialize_canonical_forecast(
+        operation_root=operation_root,
+        destination=artifact,
+        implementation_identity=IDENTITY,
+        specs=materializer.FROZEN_STREAM_SPECS,
+        expected_manifest_sha256=HISTORICAL_087_MANIFEST_SHA256,
+        clock=clock_must_not_be_called,
+    )
+    assert retry.status == "ALREADY_PRESENT"
+    assert retry.payload["implementation_commit"] == HISTORICAL_IDENTITY.commit
+    assert retry.payload["created_at"] == payload["created_at"]
+    assert retry.payload["created_at"] == historical.payload["created_at"]
     assert before == artifact.read_bytes()
     after_stat = artifact.stat()
     assert before_stat.st_ino == after_stat.st_ino

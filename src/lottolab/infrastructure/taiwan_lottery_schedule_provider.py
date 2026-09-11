@@ -20,6 +20,7 @@ from urllib.request import Request, urlopen
 from zoneinfo import ZoneInfo
 
 from lottolab.application.schedule_sync import (
+    BIG_LOTTO_SCHEDULE_GAME_CODE,
     CANONICAL_NORMAL_DRAW_LOCAL_TIME,
     CANONICAL_SCHEDULE_TIMEZONE,
     P638_SCHEDULE_GAME_CODE,
@@ -43,7 +44,7 @@ from lottolab.infrastructure.persistence.future_draw_identity_repository import 
 )
 
 SCHEDULE_URL = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/NextDrawDate"
-SCHEDULE_GAME_CODE = 5118
+SCHEDULE_GAME_CODE = BIG_LOTTO_SCHEDULE_GAME_CODE
 SCHEDULE_MAX_RESPONSE_BYTES = 1024 * 1024
 SCHEDULE_MAX_ANNOUNCEMENTS = 1024
 HTTPS_TIMEOUT_SECONDS = 15.0
@@ -192,7 +193,7 @@ class TaiwanLotteryScheduleProvider:
 
 
 class TaiwanLotteryCanonicalScheduleAuthorityProvider:
-    """Fetch the shared official response for independently isolated T539/P638 use."""
+    """Fetch one bounded official response for a selected canonical game contract."""
 
     def __init__(
         self,
@@ -200,6 +201,10 @@ class TaiwanLotteryCanonicalScheduleAuthorityProvider:
         https_client: OfficialHttpsClient | None = None,
         source_url: str = SCHEDULE_URL,
         active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+        lottery_types: tuple[LotteryType, ...] = (
+            LotteryType.DAILY_539,
+            LotteryType.POWER_LOTTO,
+        ),
     ) -> None:
         _validate_official_https_url(source_url)
         if type(active_vetoes) is not tuple or any(
@@ -209,6 +214,7 @@ class TaiwanLotteryCanonicalScheduleAuthorityProvider:
         self._https = OfficialHttpsClient() if https_client is None else https_client
         self._source_url = source_url
         self._active_vetoes = active_vetoes
+        self._lottery_types = _validate_lottery_contract(lottery_types)
 
     @property
     def provider_id(self) -> str:
@@ -229,11 +235,12 @@ class TaiwanLotteryCanonicalScheduleAuthorityProvider:
                 self._source_url,
                 max_response_bytes=SCHEDULE_MAX_RESPONSE_BYTES,
             )
-            return parse_official_t539_p638_schedule(
+            return parse_official_canonical_schedule_authority(
                 body,
                 observed_at=observed_utc,
                 source_url=self._source_url,
                 active_vetoes=self._active_vetoes,
+                lottery_types=self._lottery_types,
             )
         except (OfficialScheduleUnavailableError, OfficialScheduleContractError):
             raise
@@ -245,6 +252,26 @@ class TaiwanLotteryCanonicalScheduleAuthorityProvider:
             raise OfficialScheduleUnavailableError(
                 "official Taiwan Lottery schedule is unavailable"
             ) from exc
+
+
+class TaiwanLotteryBigLottoCanonicalScheduleAuthorityProvider(
+    TaiwanLotteryCanonicalScheduleAuthorityProvider
+):
+    """Fetch exactly the official BIG_LOTTO/5118 canonical authority contract."""
+
+    def __init__(
+        self,
+        *,
+        https_client: OfficialHttpsClient | None = None,
+        source_url: str = SCHEDULE_URL,
+        active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+    ) -> None:
+        super().__init__(
+            https_client=https_client,
+            source_url=source_url,
+            active_vetoes=active_vetoes,
+            lottery_types=(LotteryType.BIG_LOTTO,),
+        )
 
 
 def parse_official_b649_schedule(
@@ -355,6 +382,43 @@ def parse_official_t539_p638_schedule(
 ) -> CanonicalScheduleAuthorityFetchResult:
     """Classify T539/P638 independently from one fixture-verifiable envelope."""
 
+    return parse_official_canonical_schedule_authority(
+        body,
+        observed_at=observed_at,
+        source_url=source_url,
+        active_vetoes=active_vetoes,
+        lottery_types=(LotteryType.DAILY_539, LotteryType.POWER_LOTTO),
+    )
+
+
+def parse_official_biglotto_schedule_authority(
+    body: bytes,
+    *,
+    observed_at: datetime,
+    source_url: str = SCHEDULE_URL,
+    active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+) -> CanonicalScheduleAuthorityFetchResult:
+    """Classify exactly the official BIG_LOTTO/5118 authority contract."""
+
+    return parse_official_canonical_schedule_authority(
+        body,
+        observed_at=observed_at,
+        source_url=source_url,
+        active_vetoes=active_vetoes,
+        lottery_types=(LotteryType.BIG_LOTTO,),
+    )
+
+
+def parse_official_canonical_schedule_authority(
+    body: bytes,
+    *,
+    observed_at: datetime,
+    source_url: str = SCHEDULE_URL,
+    active_vetoes: tuple[AuthoritativeScheduleVeto, ...] = (),
+    lottery_types: tuple[LotteryType, ...],
+) -> CanonicalScheduleAuthorityFetchResult:
+    """Classify each caller-selected game from one bounded official envelope."""
+
     observed_utc = _as_utc(observed_at)
     _validate_official_https_url(source_url)
     if type(body) is not bytes:
@@ -367,6 +431,7 @@ def parse_official_t539_p638_schedule(
         type(item) is not AuthoritativeScheduleVeto for item in active_vetoes
     ):
         raise ValueError("active_vetoes must contain AuthoritativeScheduleVeto values")
+    selected_lotteries = _validate_lottery_contract(lottery_types)
     rows = _decode_shared_schedule_rows(body)
     payload_sha256 = hashlib.sha256(body).hexdigest()
     source = TargetSourceProvenance(
@@ -380,15 +445,16 @@ def parse_official_t539_p638_schedule(
         _parse_canonical_game_authority(
             rows,
             lottery_type=lottery_type,
-            game_code=game_code,
+            game_code={
+                LotteryType.BIG_LOTTO: SCHEDULE_GAME_CODE,
+                LotteryType.DAILY_539: T539_SCHEDULE_GAME_CODE,
+                LotteryType.POWER_LOTTO: P638_SCHEDULE_GAME_CODE,
+            }[lottery_type],
             observed_at=observed_utc,
             source=source,
             active_vetoes=active_vetoes,
         )
-        for lottery_type, game_code in (
-            (LotteryType.DAILY_539, T539_SCHEDULE_GAME_CODE),
-            (LotteryType.POWER_LOTTO, P638_SCHEDULE_GAME_CODE),
-        )
+        for lottery_type in selected_lotteries
     )
     return CanonicalScheduleAuthorityFetchResult(
         provider_id=OFFICIAL_SCHEDULE_SOURCE_ID,
@@ -476,6 +542,7 @@ def _parse_canonical_game_authority(
         )
 
     facts: list[CanonicalScheduleFact] = []
+    explicit_identity_material: dict[str, tuple[date, datetime]] = {}
     incomplete_dates: list[date] = []
     expired_dates: list[date] = []
     invalid_dates: list[date] = []
@@ -499,6 +566,20 @@ def _parse_canonical_game_authority(
             CANONICAL_NORMAL_DRAW_LOCAL_TIME,
             tzinfo=TAIPEI,
         ).astimezone(UTC)
+        previous_identity = explicit_identity_material.get(draw_number)
+        current_identity = (draw_date, scheduled_at)
+        if previous_identity is not None and previous_identity != current_identity:
+            return OfficialGameScheduleAuthority(
+                lottery_type=lottery_type,
+                official_game_code=game_code,
+                status=ScheduleAuthorityStatus.SOURCE_CONFLICT,
+                schedules=(),
+                detail_code="CONFLICTING_EXPLICIT_GAME_ROWS",
+                evidence_draw_dates=tuple(
+                    sorted({previous_identity[0], draw_date, *incomplete_dates, *expired_dates})
+                ),
+            )
+        explicit_identity_material[draw_number] = current_identity
         if observed_at >= scheduled_at:
             expired_dates.append(draw_date)
             continue
@@ -598,6 +679,24 @@ def _canonical_draw_term(value: object) -> str | None:
     else:
         return None
     return normalized if _DRAW_NUMBER.fullmatch(normalized) is not None else None
+
+
+def _validate_lottery_contract(
+    lottery_types: tuple[LotteryType, ...],
+) -> tuple[LotteryType, ...]:
+    if type(lottery_types) is not tuple or not lottery_types:
+        raise ValueError("lottery_types must be a non-empty tuple")
+    if any(type(item) is not LotteryType for item in lottery_types):
+        raise ValueError("lottery_types must contain LotteryType values")
+    if len(set(lottery_types)) != len(lottery_types):
+        raise ValueError("lottery_types must not contain duplicates")
+    if any(
+        item
+        not in {LotteryType.BIG_LOTTO, LotteryType.DAILY_539, LotteryType.POWER_LOTTO}
+        for item in lottery_types
+    ):
+        raise ValueError("lottery_types contains an unsupported canonical lottery")
+    return lottery_types
 
 
 def _canonical_fact_sort_key(
@@ -710,8 +809,11 @@ __all__ = [
     "SCHEDULE_MAX_RESPONSE_BYTES",
     "SCHEDULE_URL",
     "OfficialHttpsClient",
+    "TaiwanLotteryBigLottoCanonicalScheduleAuthorityProvider",
     "TaiwanLotteryCanonicalScheduleAuthorityProvider",
     "TaiwanLotteryScheduleProvider",
     "parse_official_b649_schedule",
+    "parse_official_biglotto_schedule_authority",
+    "parse_official_canonical_schedule_authority",
     "parse_official_t539_p638_schedule",
 ]

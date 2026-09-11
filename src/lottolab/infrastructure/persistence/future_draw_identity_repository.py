@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 import sqlite3
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, time
 from urllib.parse import urlsplit
@@ -36,7 +37,6 @@ from lottolab.application.schedule_sync import (
     CANONICAL_NORMAL_DRAW_LOCAL_TIME,
     CANONICAL_SCHEDULE_AUTHORITY_PARSER_VERSION,
     SCHEDULE_SYNC_PARSER_VERSION,
-    SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES,
     AuthoritativeScheduleVeto,
     CanonicalScheduleAuthorityFetchResult,
     CanonicalScheduleAuthorityGameSyncResult,
@@ -82,8 +82,11 @@ _OFFICIAL_SCHEDULE_HOSTS = frozenset({"www.taiwanlottery.com", "api.taiwanlotter
 class SQLiteFutureDrawIdentityReader:
     """Read immutable schedules and derive outcome state from completed draws."""
 
-    def __init__(self, paths: LocalDataPaths) -> None:
+    def __init__(self, paths: LocalDataPaths, *, require_active_authority: bool = False) -> None:
         self._paths = paths
+        if type(require_active_authority) is not bool:
+            raise ValueError("require_active_authority must be a boolean")
+        self._require_active_authority = require_active_authority
 
     def get_scheduled_draw(
         self,
@@ -99,7 +102,12 @@ class SQLiteFutureDrawIdentityReader:
                 _require_current_schema(connection)
                 connection.execute("BEGIN")
                 try:
-                    record = _get_scheduled_draw(connection, lottery_type, draw_number)
+                    record = _get_scheduled_draw(
+                        connection,
+                        lottery_type,
+                        draw_number,
+                        require_active_authority=self._require_active_authority,
+                    )
                 finally:
                     connection.rollback()
             return record
@@ -129,9 +137,11 @@ class SQLiteFutureDrawIdentityReader:
                 connection.execute("BEGIN")
                 try:
                     _reject_cross_table_date_mismatch(connection)
-                    row = connection.execute(
-                        """
+                    limit_clause = "" if self._require_active_authority else "LIMIT 1"
+                    rows = connection.execute(
+                        f"""
                         SELECT s.*, d.id AS outcome_draw_internal_id,
+                               d.draw_date AS outcome_draw_date,
                                f.official_game_code, f.scheduled_local_time,
                                f.source_period_identifier, f.immutable_schedule_hash,
                                f.authority_origin
@@ -178,13 +188,29 @@ class SQLiteFutureDrawIdentityReader:
                         ORDER BY s.scheduled_at ASC,
                                  CAST(s.draw_number AS INTEGER) ASC,
                                  s.draw_number ASC
-                        LIMIT 1
+                        {limit_clause}
                         """,
                         (lottery_type.value, _format_utc(as_of)),
-                    ).fetchone()
+                    ).fetchall()
+                    row = (
+                        next(
+                            (
+                                candidate
+                                for candidate in rows
+                                if _strict_schedule_authority_is_active(connection, candidate)
+                            ),
+                            None,
+                        )
+                        if self._require_active_authority
+                        else (None if not rows else rows[0])
+                    )
                 finally:
                     connection.rollback()
-            return None if row is None else _scheduled_record(row)
+            return (
+                None
+                if row is None
+                else _scheduled_record(row, require_fact=self._require_active_authority)
+            )
         except (
             LocalDataError,
             SchemaMigrationError,
@@ -213,9 +239,11 @@ class SQLiteFutureDrawIdentityReader:
                 connection.execute("BEGIN")
                 try:
                     _reject_cross_table_date_mismatch(connection)
-                    row = connection.execute(
-                        """
+                    limit_clause = "" if self._require_active_authority else "LIMIT 1"
+                    rows = connection.execute(
+                        f"""
                         SELECT s.*, d.id AS outcome_draw_internal_id,
+                               d.draw_date AS outcome_draw_date,
                                f.official_game_code, f.scheduled_local_time,
                                f.source_period_identifier, f.immutable_schedule_hash,
                                f.authority_origin
@@ -262,13 +290,29 @@ class SQLiteFutureDrawIdentityReader:
                         ORDER BY s.scheduled_at ASC,
                                  CAST(s.draw_number AS INTEGER) ASC,
                                  s.draw_number ASC
-                        LIMIT 1
+                        {limit_clause}
                         """,
                         (lottery_type.value, _format_utc(as_of)),
-                    ).fetchone()
+                    ).fetchall()
+                    row = (
+                        next(
+                            (
+                                candidate
+                                for candidate in rows
+                                if _strict_schedule_authority_is_active(connection, candidate)
+                            ),
+                            None,
+                        )
+                        if self._require_active_authority
+                        else (None if not rows else rows[0])
+                    )
                 finally:
                     connection.rollback()
-            return None if row is None else _scheduled_record(row)
+            return (
+                None
+                if row is None
+                else _scheduled_record(row, require_fact=self._require_active_authority)
+            )
         except (
             LocalDataError,
             SchemaMigrationError,
@@ -393,13 +437,27 @@ class _CanonicalAuthorityDecision:
     disposition: IngestionItemDisposition
     message: str
     existing_schedule_id: int | None
+    detail_code: str
+    evidence_event_kind: str | None = None
+    evidence_disposition: str | None = None
+    blocked_by_veto: bool = False
 
 
 class SQLiteCanonicalScheduleAuthorityRepository:
-    """Persist T539/P638 authority in independently committed game transactions."""
+    """Persist selected canonical authority in independently committed transactions."""
 
-    def __init__(self, paths: LocalDataPaths) -> None:
+    def __init__(
+        self,
+        paths: LocalDataPaths,
+        *,
+        initialize: bool = True,
+        clock: Callable[[], datetime] | None = None,
+    ) -> None:
         self._paths = paths
+        if type(initialize) is not bool:
+            raise ValueError("initialize must be a boolean")
+        self._initialize = initialize
+        self._clock = _default_runtime_clock if clock is None else clock
 
     def apply_canonical_schedule_authority(
         self,
@@ -407,15 +465,20 @@ class SQLiteCanonicalScheduleAuthorityRepository:
     ) -> CanonicalScheduleAuthoritySyncResult:
         try:
             _validate_canonical_authority_fetch(fetched)
-            initialize_schema(self._paths)
+            if self._initialize:
+                initialize_schema(self._paths)
+            elif not verify_schema_read_only(self._paths):
+                raise SchemaMigrationError("canonical draw database does not exist")
             results: list[CanonicalScheduleAuthorityGameSyncResult] = []
             with open_database(self._paths) as connection:
+                _require_current_schema(connection)
                 for game in fetched.games:
                     results.append(
                         _apply_canonical_game_authority(
                             connection,
                             fetched=fetched,
                             game=game,
+                            clock=self._clock,
                         )
                     )
             return CanonicalScheduleAuthoritySyncResult(
@@ -431,7 +494,7 @@ class SQLiteCanonicalScheduleAuthorityRepository:
             ValueError,
         ) as exc:
             raise FutureDrawIdentityUnavailableError(
-                "canonical T539/P638 schedule authority is unavailable"
+                "canonical schedule authority is unavailable"
             ) from exc
 
     def preview_owner_schedule_certificate(
@@ -1109,6 +1172,17 @@ def _validate_canonical_authority_fetch(
             if fact.announcement.scheduled_at <= fetched.observed_at:
                 raise ValueError("official authority was not observed before scheduled_at")
             _validate_official_schedule_material(fact.announcement)
+            normalized_hash = normalized_announcement_sha256(fact.announcement)
+            if len(
+                {
+                    fact.announcement.source.source_payload_sha256,
+                    normalized_hash,
+                    fact.immutable_schedule_sha256,
+                }
+            ) != 3:
+                raise ValueError(
+                    "source, normalized, and immutable schedule hashes must be distinct"
+                )
         for veto in game.vetoes:
             _validate_authoritative_veto(veto)
 
@@ -1126,10 +1200,12 @@ def _apply_canonical_game_authority(
     *,
     fetched: CanonicalScheduleAuthorityFetchResult,
     game: OfficialGameScheduleAuthority,
+    clock: Callable[[], datetime],
 ) -> CanonicalScheduleAuthorityGameSyncResult:
     run_id = str(uuid.uuid4())
     connection.execute("BEGIN IMMEDIATE")
     try:
+        final_observed_at = _clock_value(clock)
         if game.status is not ScheduleAuthorityStatus.COMPLETE:
             status = (
                 IngestionRunStatus.FAILED
@@ -1169,6 +1245,55 @@ def _apply_canonical_game_authority(
             )
 
         decisions = _plan_canonical_authority_decisions(connection, game)
+        deadline_expired = any(
+            fact.announcement.scheduled_at <= final_observed_at for fact in game.schedules
+        )
+        if deadline_expired:
+            rejected_decisions = tuple(
+                replace(
+                    decision,
+                    disposition=IngestionItemDisposition.FAILED,
+                    message="Trusted final observation time reached scheduled_at.",
+                    detail_code="OBSERVATION_DEADLINE_EXPIRED",
+                    evidence_event_kind="OFFICIAL_OBSERVATION",
+                    evidence_disposition="REJECTED_DEADLINE",
+                )
+                for decision in decisions
+            )
+            _insert_canonical_authority_ingestion_audit(
+                connection,
+                fetched=fetched,
+                game=game,
+                run_id=run_id,
+                decisions=rejected_decisions,
+                status=IngestionRunStatus.FAILED,
+            )
+            for decision in rejected_decisions:
+                _record_canonical_authority_decision(
+                    connection,
+                    fetched=fetched,
+                    decision=decision,
+                    run_id=run_id,
+                )
+            connection.commit()
+            return CanonicalScheduleAuthorityGameSyncResult(
+                run_id=run_id,
+                lottery_type=game.lottery_type,
+                official_game_code=game.official_game_code,
+                authority_status=ScheduleAuthorityStatus.OBSERVATION_DEADLINE_EXPIRED,
+                apply_status=ScheduleAuthorityApplyStatus.NO_AUTHORITY,
+                target_draw_numbers=tuple(
+                    decision.fact.announcement.target.draw_number
+                    for decision in rejected_decisions
+                ),
+                inserted_count=0,
+                reobserved_count=0,
+                conflict_count=0,
+                evidence_count=len(rejected_decisions),
+                immutable_schedule_hashes=tuple(
+                    decision.fact.immutable_schedule_sha256 for decision in rejected_decisions
+                ),
+            )
         has_conflict = any(
             decision.disposition is IngestionItemDisposition.CONFLICT for decision in decisions
         )
@@ -1185,6 +1310,11 @@ def _apply_canonical_game_authority(
                     if has_conflict and decision.disposition is IngestionItemDisposition.INSERTED
                     else decision.message
                 ),
+                detail_code=(
+                    "BATCH_REJECTED_BY_CANONICAL_CONFLICT"
+                    if has_conflict and decision.disposition is IngestionItemDisposition.INSERTED
+                    else decision.detail_code
+                ),
             )
             for decision in decisions
         )
@@ -1199,13 +1329,16 @@ def _apply_canonical_game_authority(
         if not has_conflict:
             for decision in audited_decisions:
                 if decision.disposition is IngestionItemDisposition.INSERTED:
-                    _insert_schedule(
-                        connection,
-                        announcement=decision.fact.announcement,
-                        normalized_hash=normalized_announcement_sha256(decision.fact.announcement),
-                        run_id=run_id,
-                        timestamp=fetched.observed_at,
-                    )
+                    if decision.existing_schedule_id is None:
+                        _insert_schedule(
+                            connection,
+                            announcement=decision.fact.announcement,
+                            normalized_hash=normalized_announcement_sha256(
+                                decision.fact.announcement
+                            ),
+                            run_id=run_id,
+                            timestamp=fetched.observed_at,
+                        )
                     _insert_canonical_schedule_fact(connection, decision.fact)
 
         for decision in audited_decisions:
@@ -1227,7 +1360,10 @@ def _apply_canonical_game_authority(
         official_game_code=game.official_game_code,
         authority_status=game.status,
         apply_status=(
-            ScheduleAuthorityApplyStatus.CONFLICT
+            ScheduleAuthorityApplyStatus.VETOED
+            if has_conflict
+            and all(decision.blocked_by_veto for decision in audited_decisions)
+            else ScheduleAuthorityApplyStatus.CONFLICT
             if has_conflict
             else ScheduleAuthorityApplyStatus.ACCEPTED
         ),
@@ -1251,6 +1387,9 @@ def _apply_canonical_game_authority(
             for decision in audited_decisions
         ),
         evidence_count=len(audited_decisions),
+        immutable_schedule_hashes=tuple(
+            decision.fact.immutable_schedule_sha256 for decision in audited_decisions
+        ),
     )
 
 
@@ -1262,10 +1401,28 @@ def _plan_canonical_authority_decisions(
     decisions: list[_CanonicalAuthorityDecision] = []
     for fact in sorted(game.schedules, key=lambda item: _schedule_sort_key(item.announcement)):
         target = fact.announcement.target
-        stored = _stored_canonical_authority_material(connection, target)
+        stored = _stored_canonical_schedule_material(connection, target)
+        blocking_event = _blocking_schedule_authority_event(connection, target)
         if stored is not None:
             schedule_id = _positive_integer(stored[0])
-            if _stored_authority_matches_fact(stored, fact):
+            if blocking_event is not None:
+                decisions.append(
+                    _CanonicalAuthorityDecision(
+                        fact=fact,
+                        disposition=IngestionItemDisposition.CONFLICT,
+                        message=(
+                            "A previously accepted schedule conflict or typed veto blocks "
+                            "the official re-observation."
+                        ),
+                        existing_schedule_id=schedule_id,
+                        detail_code="ACTIVE_AUTHORITY_VETO_BLOCKS_REOBSERVATION",
+                        evidence_event_kind="OFFICIAL_OBSERVATION",
+                        evidence_disposition="VETOED",
+                        blocked_by_veto=True,
+                    )
+                )
+                continue
+            elif _stored_canonical_schedule_matches_fact(stored, fact):
                 disposition = (
                     IngestionItemDisposition.SKIPPED_COMPLETED
                     if _completed_draw_exists(connection, target)
@@ -1276,15 +1433,54 @@ def _plan_canonical_authority_decisions(
                     if disposition is IngestionItemDisposition.SKIPPED_COMPLETED
                     else "Canonical schedule fact re-observed with append-only provenance."
                 )
+                detail_code = (
+                    "COMPLETED_CANONICAL_SCHEDULE_REOBSERVED"
+                    if disposition is IngestionItemDisposition.SKIPPED_COMPLETED
+                    else "EXACT_IMMUTABLE_SCHEDULE_REOBSERVED"
+                )
+            elif (
+                not _stored_canonical_schedule_has_fact(stored)
+                and _stored_schedule_matches_announcement(stored, fact.announcement)
+            ):
+                if _completed_draw_exists(connection, target):
+                    disposition = IngestionItemDisposition.SKIPPED_COMPLETED
+                    message = "Completed announcement cannot receive a late authority fact."
+                    detail_code = "COMPLETED_OUTCOME_BLOCKS_ANNOUNCEMENT_UPGRADE"
+                else:
+                    disposition = IngestionItemDisposition.INSERTED
+                    message = (
+                        "Existing official announcement upgraded with an immutable schedule fact."
+                    )
+                    detail_code = "ANNOUNCEMENT_UPGRADED_WITH_IMMUTABLE_FACT"
             else:
                 disposition = IngestionItemDisposition.CONFLICT
                 message = "Stored full immutable schedule fact differs."
+                detail_code = "IMMUTABLE_SCHEDULE_FACT_CONFLICT"
             decisions.append(
                 _CanonicalAuthorityDecision(
                     fact=fact,
                     disposition=disposition,
                     message=message,
                     existing_schedule_id=schedule_id,
+                    detail_code=detail_code,
+                )
+            )
+            continue
+
+        if blocking_event is not None:
+            decisions.append(
+                _CanonicalAuthorityDecision(
+                    fact=fact,
+                    disposition=IngestionItemDisposition.CONFLICT,
+                    message=(
+                        "A previously accepted schedule conflict or typed veto blocks "
+                        "new official authority."
+                    ),
+                    existing_schedule_id=None,
+                    detail_code="ACTIVE_AUTHORITY_VETO_BLOCKS_NEW_FACT",
+                    evidence_event_kind="OFFICIAL_OBSERVATION",
+                    evidence_disposition="VETOED",
+                    blocked_by_veto=True,
                 )
             )
             continue
@@ -1293,21 +1489,106 @@ def _plan_canonical_authority_decisions(
         if completed_date is None:
             disposition = IngestionItemDisposition.INSERTED
             message = "Inserted complete explicit canonical schedule authority."
+            detail_code = "COMPLETE_EXPLICIT_AUTHORITY_INSERTED"
         elif completed_date == target.draw_date:
             disposition = IngestionItemDisposition.SKIPPED_COMPLETED
             message = "Completed draw identity is not reintroduced as unresolved."
+            detail_code = "COMPLETED_OUTCOME_PRESENT"
         else:
             disposition = IngestionItemDisposition.CONFLICT
             message = "Completed draw date conflicts with canonical schedule authority."
+            detail_code = "COMPLETED_DRAW_DATE_CONFLICT"
         decisions.append(
             _CanonicalAuthorityDecision(
                 fact=fact,
                 disposition=disposition,
                 message=message,
                 existing_schedule_id=None,
+                detail_code=detail_code,
             )
         )
     return tuple(decisions)
+
+
+def _stored_canonical_schedule_material(
+    connection: sqlite3.Connection,
+    target: ObservationTarget,
+) -> tuple[object, ...] | None:
+    row = connection.execute(
+        """
+        SELECT s.id, s.lottery_type, s.draw_number, s.draw_date, s.scheduled_at,
+               s.schedule_timezone, s.source_id, s.source_version, s.source_locator,
+               s.source_payload_sha256, s.source_observed_at,
+               f.official_game_code, f.scheduled_local_time,
+               f.source_period_identifier, f.immutable_schedule_hash,
+               f.authority_origin
+        FROM draw_schedules AS s
+        LEFT JOIN draw_schedule_facts AS f ON f.schedule_id = s.id
+        WHERE s.lottery_type = ? AND s.draw_number = ?
+        """,
+        (target.lottery_type.value, target.draw_number),
+    ).fetchone()
+    return None if row is None else tuple(row)
+
+
+def _stored_schedule_matches_announcement(
+    stored: tuple[object, ...],
+    announcement: TargetAnnouncement,
+) -> bool:
+    if len(stored) != 16:
+        return False
+    return (
+        stored[1] == announcement.target.lottery_type.value
+        and stored[2] == announcement.target.draw_number
+        and stored[3] == announcement.target.draw_date.isoformat()
+        and stored[4] == _format_utc(announcement.scheduled_at)
+        and stored[5] == announcement.schedule_timezone
+        and stored[6] == announcement.source.source_id
+        and stored[7] == announcement.source.source_version
+        and stored[8] == announcement.source.source_locator
+    )
+
+
+def _stored_canonical_schedule_matches_fact(
+    stored: tuple[object, ...],
+    fact: CanonicalScheduleFact,
+) -> bool:
+    if not _stored_schedule_matches_announcement(stored, fact.announcement):
+        return False
+    return (
+        type(stored[11]) is int
+        and stored[11] == fact.official_game_code
+        and stored[12] == fact.scheduled_local_time.isoformat(timespec="seconds")
+        and stored[13] == fact.source_period_identifier
+        and stored[14] == fact.immutable_schedule_sha256
+        and stored[15] == "OFFICIAL"
+    )
+
+
+def _stored_canonical_schedule_has_fact(stored: tuple[object, ...]) -> bool:
+    if len(stored) != 16:
+        return True
+    fact_values = stored[11:]
+    return any(value is not None for value in fact_values)
+
+
+def _blocking_schedule_authority_event(
+    connection: sqlite3.Connection,
+    target: ObservationTarget,
+) -> str | None:
+    row = connection.execute(
+        """
+        SELECT event_kind
+        FROM draw_schedule_authority_evidence
+        WHERE lottery_type = ?
+          AND (draw_number IS NULL OR draw_number = ?)
+          AND event_kind IN ('SOURCE_CONFLICT', 'CANCELLATION', 'POSTPONEMENT', 'TIME_CHANGE')
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (target.lottery_type.value, target.draw_number),
+    ).fetchone()
+    return None if row is None else _required_text(row[0], "blocking authority event")
 
 
 def _stored_canonical_authority_material(
@@ -1561,7 +1842,10 @@ def _record_canonical_authority_decision(
 ) -> None:
     target = decision.fact.announcement.target
     schedule_id = decision.existing_schedule_id
-    if decision.disposition is IngestionItemDisposition.INSERTED:
+    if decision.evidence_disposition is not None:
+        event_kind = decision.evidence_event_kind or "OFFICIAL_OBSERVATION"
+        disposition = decision.evidence_disposition
+    elif decision.disposition is IngestionItemDisposition.INSERTED:
         schedule_id = _schedule_id_for_identity(
             connection,
             target.lottery_type,
@@ -1576,10 +1860,10 @@ def _record_canonical_authority_decision(
         event_kind = "OFFICIAL_OBSERVATION"
         disposition = "COMPLETED_OUTCOME"
     elif decision.disposition is IngestionItemDisposition.CONFLICT:
-        event_kind = "SOURCE_CONFLICT"
+        event_kind = decision.evidence_event_kind or "SOURCE_CONFLICT"
         disposition = "CONFLICT"
     else:
-        event_kind = "OFFICIAL_OBSERVATION"
+        event_kind = decision.evidence_event_kind or "OFFICIAL_OBSERVATION"
         disposition = "REJECTED_BATCH_CONFLICT"
     _insert_authority_evidence(
         connection,
@@ -1591,7 +1875,7 @@ def _record_canonical_authority_decision(
         fact=decision.fact,
         event_kind=event_kind,
         disposition=disposition,
-        detail_code=decision.message,
+        detail_code=decision.detail_code,
         source=decision.fact.announcement.source,
         run_id=run_id,
         created_at=fetched.observed_at,
@@ -1697,6 +1981,8 @@ def _get_scheduled_draw(
     connection: sqlite3.Connection,
     lottery_type: LotteryType,
     draw_number: str,
+    *,
+    require_active_authority: bool = False,
 ) -> ScheduledDrawIdentityRecord | None:
     row = connection.execute(
         """
@@ -1714,7 +2000,74 @@ def _get_scheduled_draw(
         """,
         (lottery_type.value, draw_number),
     ).fetchone()
-    return None if row is None else _scheduled_record(row)
+    if row is None:
+        return None
+    if require_active_authority and not _strict_schedule_authority_is_active(connection, row):
+        return None
+    return _scheduled_record(row, require_fact=require_active_authority)
+
+
+def _strict_schedule_authority_is_active(
+    connection: sqlite3.Connection,
+    row: sqlite3.Row | tuple[object, ...],
+) -> bool:
+    values = tuple(row)
+    if len(values) != 21 or values[16] is None or values[20] != "OFFICIAL":
+        return False
+    schedule_id = _positive_integer(values[0])
+    immutable_hash = _required_sha256(values[19], "immutable_schedule_hash")
+    accepted = connection.execute(
+        """
+        SELECT 1
+        FROM draw_schedule_authority_evidence
+        WHERE schedule_id = ?
+          AND event_kind = 'OFFICIAL_OBSERVATION'
+          AND disposition IN ('INSERTED', 'REOBSERVED')
+          AND immutable_schedule_hash = ?
+        LIMIT 1
+        """,
+        (schedule_id, immutable_hash),
+    ).fetchone()
+    if accepted is None:
+        return False
+
+    lottery_type = _required_text(values[1], "lottery_type")
+    draw_number = _required_text(values[2], "draw_number")
+    blocking = connection.execute(
+        """
+        SELECT 1
+        FROM draw_schedule_authority_evidence
+        WHERE lottery_type = ?
+          AND (draw_number IS NULL OR draw_number = ?)
+          AND event_kind IN ('SOURCE_CONFLICT', 'CANCELLATION', 'POSTPONEMENT', 'TIME_CHANGE')
+        LIMIT 1
+        """,
+        (lottery_type, draw_number),
+    ).fetchone()
+    if blocking is not None:
+        return False
+
+    unresolved = connection.execute(
+        """
+        SELECT 1
+        FROM draw_schedule_authority_evidence AS e
+        WHERE e.lottery_type = ?
+          AND (e.draw_number IS NULL OR e.draw_number = ?)
+          AND e.event_kind IN ('MISSING_SCHEDULE', 'INCOMPLETE_AUTHORITY')
+          AND e.source_observed_at > ?
+          AND NOT EXISTS (
+              SELECT 1
+              FROM draw_schedule_authority_evidence AS accepted
+              WHERE accepted.schedule_id = ?
+                AND accepted.event_kind IN ('OFFICIAL_OBSERVATION', 'MANUAL_CERTIFICATE')
+                AND accepted.disposition IN ('INSERTED', 'REOBSERVED', 'CONFIRMED')
+                AND accepted.id > e.id
+          )
+        LIMIT 1
+        """,
+        (lottery_type, draw_number, values[10], schedule_id),
+    ).fetchone()
+    return unresolved is None
 
 
 def _validate_official_schedule_fetch(fetched: OfficialScheduleFetchResult) -> None:
@@ -2064,7 +2417,11 @@ def _schedule_sync_result(
     )
 
 
-def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIdentityRecord:
+def _scheduled_record(
+    row: sqlite3.Row | tuple[object, ...],
+    *,
+    require_fact: bool = False,
+) -> ScheduledDrawIdentityRecord:
     values = tuple(row)
     if len(values) not in {15, 16, 20, 21}:
         raise ValueError("stored schedule row shape is invalid")
@@ -2102,6 +2459,7 @@ def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIde
     immutable_schedule_sha256 = _immutable_schedule_sha256(
         announcement,
         fact_values,
+        require_fact=require_fact,
     )
     return ScheduledDrawIdentityRecord(
         internal_id=_positive_integer(values[0]),
@@ -2122,11 +2480,12 @@ def _scheduled_record(row: sqlite3.Row | tuple[object, ...]) -> ScheduledDrawIde
 def _immutable_schedule_sha256(
     announcement: TargetAnnouncement,
     values: tuple[object, ...],
+    *,
+    require_fact: bool = False,
 ) -> str | None:
-    lottery_type = announcement.target.lottery_type
     if not values or all(value is None for value in values):
-        if lottery_type in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES:
-            raise ValueError("canonical T539/P638 schedule fact is missing")
+        if require_fact:
+            raise ValueError("required canonical schedule fact is missing")
         return None
     if len(values) != 5:
         raise ValueError("stored canonical schedule fact shape is invalid")
@@ -2322,6 +2681,16 @@ def _positive_integer(value: object) -> int:
 def _format_utc(value: datetime) -> str:
     _require_utc(value, "timestamp")
     return value.isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _default_runtime_clock() -> datetime:
+    return datetime.now(UTC)
+
+
+def _clock_value(clock: Callable[[], datetime]) -> datetime:
+    value = clock()
+    _require_utc(value, "runtime clock")
+    return value
 
 
 __all__ = [

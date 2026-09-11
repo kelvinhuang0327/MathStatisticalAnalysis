@@ -356,7 +356,7 @@ class CanonicalConsensusEligibilityGate:
             if schedule_reader is not None
             else None
             if draw_paths is None
-            else SQLiteFutureDrawIdentityReader(draw_paths)
+            else SQLiteFutureDrawIdentityReader(draw_paths, require_active_authority=True)
         )
         self._outcome_probe: _OutcomeProbe | None = (
             outcome_probe

@@ -16,20 +16,24 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path, PurePosixPath
 from typing import Any, Literal, cast
-from zoneinfo import ZoneInfo
 
 from lottolab.domain.b649_canonical_consensus import (
     AGGREGATION_CONTRACT_APPROVED_AT,
     AGGREGATION_CONTRACT_REVIEW_ID,
+    AGGREGATION_UNIT,
     CANONICAL_CONSENSUS_METHOD_ID,
     CANONICAL_CONSENSUS_METHOD_VERSION,
     CANONICAL_CONSENSUS_SCHEMA_VERSION,
+    CORRELATED_FAMILY_POLICY,
     DECISION_RANKING_FORMULA,
     EXPECTED_STREAM_COUNT,
     FINAL_TICKET_SIZE,
     MAX_NUMBER,
     MIN_NUMBER,
     PRE_DRAW,
+    SCORE_DENOMINATOR,
+    STREAM_WEIGHT_POLICY,
+    TIE_BREAK,
     CanonicalConsensusDecision,
     CanonicalConsensusInputError,
     StreamConsensusInput,
@@ -58,10 +62,6 @@ _IMPLEMENTATION_KEYS = frozenset(
 _NON_SEMANTIC_AUTHORITY_KEYS = _IMPLEMENTATION_KEYS | frozenset(
     {"task_id", "upstream_task_id"}
 )
-_SEMANTIC_TIMESTAMP_KEYS = frozenset(
-    {"scheduled_at", "aggregation_contract_approved_at"}
-)
-_TAIPEI = ZoneInfo("Asia/Taipei")
 
 Clock = Callable[[], datetime]
 
@@ -273,6 +273,20 @@ class CanonicalForecastMaterializationService:
                 "destination must be an absolute Path"
             )
 
+        try:
+            existing = self._authority.read_existing_bytes(destination)
+        except Exception as exc:
+            raise ForecastAuthorityStorageError("existing authority could not be read") from exc
+        if existing is not None:
+            payload = _validate_existing_payload(existing, request)
+            return CanonicalForecastMaterializationResult(
+                status="COMPLETE",
+                publication="ALREADY_PRESENT",
+                destination=destination,
+                payload=payload,
+                artifact_sha256=hashlib.sha256(existing).hexdigest(),
+            )
+
         streams = _select_stream_inputs(request)
         try:
             decision = build_canonical_consensus(streams)
@@ -290,19 +304,6 @@ class CanonicalForecastMaterializationService:
             )
 
         base = _base_payload(request, decision)
-        try:
-            existing = self._authority.read_existing_bytes(destination)
-        except Exception as exc:
-            raise ForecastAuthorityStorageError("existing authority could not be read") from exc
-        if existing is not None:
-            payload = _validate_existing_payload(existing, base, request, streams)
-            return CanonicalForecastMaterializationResult(
-                status="COMPLETE",
-                publication="ALREADY_PRESENT",
-                destination=destination,
-                payload=payload,
-                artifact_sha256=hashlib.sha256(existing).hexdigest(),
-            )
         if dry_run:
             preview = canonical_file_bytes(base)
             return CanonicalForecastMaterializationResult(
@@ -369,7 +370,7 @@ class CanonicalForecastMaterializationService:
                 raise ForecastAuthorityConflictError(
                     "atomic publication reported an authority that disappeared"
                 )
-            payload = _validate_existing_payload(observed, base, request, streams)
+            payload = _validate_existing_payload(observed, request)
             return CanonicalForecastMaterializationResult(
                 status="COMPLETE",
                 publication="ALREADY_PRESENT",
@@ -455,7 +456,7 @@ def _validate_request(request: CanonicalForecastMaterializationRequest) -> None:
         raise TargetIdentityMismatchError("target draw number is not decimal")
     _parse_date(target.draw_date, "target draw_date")
     scheduled = _parse_timestamp(target.scheduled_at, "target scheduled_at")
-    if scheduled.astimezone(_TAIPEI).date().isoformat() != target.draw_date:
+    if scheduled.date().isoformat() != target.draw_date:
         raise TargetIdentityMismatchError(
             "target scheduled_at local date conflicts with target draw_date"
         )
@@ -593,15 +594,7 @@ def _validate_prediction_record(
         ("draw_date", request.target.draw_date),
         ("scheduled_at", request.target.scheduled_at),
     ):
-        if key == "scheduled_at":
-            actual_identity = _timestamp_identity(
-                payload.get(key), f"{record.source_relative_path}.{key}"
-            )
-            expected_identity = _timestamp_identity(expected, f"target {key}")
-            matches = actual_identity is not None and actual_identity == expected_identity
-        else:
-            matches = payload.get(key) == expected
-        if not matches:
+        if payload.get(key) != expected:
             raise TargetIdentityMismatchError(
                 f"{record.source_relative_path}: {key} does not match target"
             )
@@ -813,9 +806,7 @@ def _base_payload(
 
 def _validate_existing_payload(
     raw: bytes,
-    base: Mapping[str, object],
     request: CanonicalForecastMaterializationRequest,
-    streams: Sequence[StreamConsensusInput],
 ) -> dict[str, object]:
     if not raw.endswith(b"\n"):
         raise ForecastAuthorityConflictError(
@@ -847,40 +838,260 @@ def _validate_existing_payload(
     try:
         _reject_forbidden_keys(payload, "existing authority")
         created_at = _parse_timestamp(created, "existing.created_at")
-        _require_creation_window(created_at, request, streams, context="existing.created_at")
+        _require_existing_creation_window(created_at, request)
     except ForecastAuthorityConflictError:
         raise
     except CanonicalForecastMaterializationError as exc:
         raise ForecastAuthorityConflictError(
             "existing authority temporal or outcome identity is invalid"
         ) from exc
-    actual_immutable = {key: value for key, value in payload.items() if key != "created_at"}
-    expected_immutable = {
-        key: value
-        for key, value in base.items()
-        if key not in _NON_SEMANTIC_AUTHORITY_KEYS
-    }
-    actual_comparable = {
-        key: value
-        for key, value in actual_immutable.items()
-        if key not in _NON_SEMANTIC_AUTHORITY_KEYS
-    }
-    try:
-        actual_comparable = _normalize_semantic_timestamps(
-            actual_comparable, context="existing authority"
-        )
-        expected_immutable = _normalize_semantic_timestamps(
-            expected_immutable, context="expected authority"
-        )
-    except CanonicalForecastMaterializationError as exc:
-        raise ForecastAuthorityConflictError(
-            "existing authority timestamp identity is invalid"
-        ) from exc
-    if actual_comparable != expected_immutable:
-        raise ForecastAuthorityConflictError(
-            "existing authority immutable fields differ from target/input/method authority"
-        )
+    _validate_existing_semantics(payload, request)
     return payload
+
+
+def _require_existing_creation_window(
+    created_at: datetime,
+    request: CanonicalForecastMaterializationRequest,
+) -> None:
+    """Validate an existing authority using only its persisted timestamps."""
+
+    created_utc = _as_utc(created_at, "existing.created_at")
+    approved_utc = _as_utc(
+        _parse_timestamp(AGGREGATION_CONTRACT_APPROVED_AT, "aggregation approval"),
+        "aggregation approval",
+    )
+    scheduled_utc = _as_utc(
+        _parse_timestamp(request.target.scheduled_at, "target scheduled_at"),
+        "target scheduled_at",
+    )
+    if approved_utc > created_utc:
+        raise PreOutcomeWindowClosedError(
+            "existing.created_at is earlier than aggregation_contract_approved_at"
+        )
+    if created_utc >= scheduled_utc:
+        raise PreOutcomeWindowClosedError(
+            "existing.created_at must be strictly before scheduled_at"
+        )
+
+
+def _validate_existing_semantics(
+    payload: Mapping[str, object],
+    request: CanonicalForecastMaterializationRequest,
+) -> None:
+    """Validate persisted authority bytes without selecting or aggregating inputs."""
+
+    expected_fields: dict[str, object] = {
+        "schema_version": CANONICAL_CONSENSUS_SCHEMA_VERSION,
+        "lottery_type": request.target.lottery_type,
+        "aggregation_method_id": CANONICAL_CONSENSUS_METHOD_ID,
+        "aggregation_method_version": CANONICAL_CONSENSUS_METHOD_VERSION,
+        "aggregation_unit": AGGREGATION_UNIT,
+        "weight_policy": STREAM_WEIGHT_POLICY,
+        "correlated_family_policy": CORRELATED_FAMILY_POLICY,
+        "tie_break": TIE_BREAK,
+        "score_denominator": SCORE_DENOMINATOR,
+        "decision_ranking_formula": DECISION_RANKING_FORMULA,
+        "stream_count": EXPECTED_STREAM_COUNT,
+        "scheduled_at": request.target.scheduled_at,
+        "history_sha256": request.history.history_sha256,
+        "history_draw_count": request.history.draw_count,
+        "history_caveat": request.history.history_caveat,
+        "target_result_used": False,
+        "aggregation_contract_review_id": AGGREGATION_CONTRACT_REVIEW_ID,
+        "aggregation_contract_approved_at": AGGREGATION_CONTRACT_APPROVED_AT,
+        "pre_outcome_temporal_integrity": "PASS",
+    }
+    target_draw = payload.get("target_draw")
+    expected_target_draw = {
+        "draw_number": request.target.draw_number,
+        "draw_date": request.target.draw_date,
+    }
+    if target_draw != expected_target_draw:
+        raise ForecastAuthorityConflictError(
+            "existing authority target identity differs from scheduler target"
+        )
+    cutoff = payload.get("max_data_cutoff")
+    expected_cutoff = {
+        "draw_number": request.max_data_cutoff.draw_number,
+        "draw_date": request.max_data_cutoff.draw_date,
+    }
+    if cutoff != expected_cutoff:
+        raise ForecastAuthorityConflictError(
+            "existing authority causal cutoff differs from scheduler cutoff"
+        )
+    for key, expected in expected_fields.items():
+        if payload.get(key) != expected:
+            raise ForecastAuthorityConflictError(
+                f"existing authority field differs from scheduler/method authority: {key}"
+            )
+
+    registered = {
+        stream.strategy_id: stream for stream in request.registered_streams
+    }
+    raw_ids = payload.get("exact_stream_ids")
+    if type(raw_ids) is not list:
+        raise ForecastAuthorityConflictError(
+            "existing authority exact stream identity differs from the registry"
+        )
+    raw_id_values = cast(list[object], raw_ids)
+    if any(type(value) is not str for value in raw_id_values):
+        raise ForecastAuthorityConflictError(
+            "existing authority exact stream identity differs from the registry"
+        )
+    stream_ids = cast(list[str], raw_id_values)
+    if stream_ids != sorted(registered):
+        raise ForecastAuthorityConflictError(
+            "existing authority exact stream identity differs from the registry"
+        )
+    raw_inputs = payload.get("stream_inputs")
+    if type(raw_inputs) is not list:
+        raise ForecastAuthorityConflictError("existing authority stream inputs are invalid")
+    input_rows = cast(list[object], raw_inputs)
+    if len(input_rows) != EXPECTED_STREAM_COUNT:
+        raise ForecastAuthorityConflictError("existing authority stream inputs are invalid")
+    manifest_rows: list[dict[str, object]] = []
+    for expected_id, raw_row in zip(stream_ids, input_rows, strict=True):
+        if type(raw_row) is not dict:
+            raise ForecastAuthorityConflictError("existing authority stream input row is invalid")
+        row = cast(dict[str, object], raw_row)
+        stream = registered[expected_id]
+        expected_row_keys = {
+            "native_ticket_count",
+            "prediction_run_id",
+            "source_relative_path",
+            "source_sha256",
+            "strategy_id",
+            "strategy_version",
+        }
+        if set(row) != expected_row_keys:
+            raise ForecastAuthorityConflictError(
+                "existing authority stream input row has unexpected fields"
+            )
+        if row.get("strategy_id") != stream.strategy_id:
+            raise ForecastAuthorityConflictError(
+                "existing authority stream input strategy differs from registry"
+            )
+        if row.get("strategy_version") != stream.strategy_version:
+            raise ForecastAuthorityConflictError(
+                "existing authority stream version differs from registry"
+            )
+        if row.get("native_ticket_count") != stream.native_ticket_count:
+            raise ForecastAuthorityConflictError(
+                "existing authority native ticket count differs from registry"
+            )
+        prediction_run_id = row.get("prediction_run_id")
+        source_relative_path = row.get("source_relative_path")
+        source_sha256 = row.get("source_sha256")
+        if type(prediction_run_id) is not str or not prediction_run_id.strip():
+            raise ForecastAuthorityConflictError(
+                "existing authority prediction run identity is invalid"
+            )
+        if type(source_relative_path) is not str:
+            raise ForecastAuthorityConflictError("existing authority source identity is invalid")
+        if type(source_sha256) is not str or _SHA256.fullmatch(source_sha256) is None:
+            raise ForecastAuthorityConflictError("existing authority source identity is invalid")
+        source_path = PurePosixPath(source_relative_path)
+        if (
+            source_path.is_absolute()
+            or "\\" in source_relative_path
+            or any(part in {"", ".", ".."} for part in source_path.parts)
+            or len(source_path.parts) < 3
+            or source_path.parts[0] != "predictions"
+            or source_path.parts[1] != request.target.draw_number
+            or source_path.suffix != ".json"
+            or source_path.stem != prediction_run_id
+        ):
+            raise ForecastAuthorityConflictError(
+                "existing authority source path identity is invalid"
+            )
+        manifest_rows.append(row)
+    manifest_bytes = json.dumps(
+        manifest_rows,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    manifest_sha256 = payload.get("stream_input_manifest_sha256")
+    if type(manifest_sha256) is not str or _SHA256.fullmatch(manifest_sha256) is None:
+        raise ForecastAuthorityConflictError("existing authority stream manifest is invalid")
+    if hashlib.sha256(manifest_bytes).hexdigest() != manifest_sha256:
+        raise ForecastAuthorityConflictError("existing authority stream manifest is inconsistent")
+    if (
+        request.expected_manifest_sha256 is not None
+        and manifest_sha256 != request.expected_manifest_sha256
+    ):
+        raise SourceIdentityMismatchError(
+            "existing authority stream input manifest differs from scheduler expectation"
+        )
+
+    ranking = payload.get("final_decision_ranking")
+    if type(ranking) is not list:
+        raise ForecastAuthorityConflictError("existing authority decision ranking is invalid")
+    ranking_rows = cast(list[object], ranking)
+    if len(ranking_rows) != MAX_NUMBER:
+        raise ForecastAuthorityConflictError("existing authority decision ranking is invalid")
+    ranking_values: list[tuple[int, int]] = []
+    for expected_rank, raw_entry in enumerate(ranking_rows, start=1):
+        if type(raw_entry) is not dict:
+            raise ForecastAuthorityConflictError("existing authority decision ranking is invalid")
+        entry = cast(dict[str, object], raw_entry)
+        if set(entry) != {"rank", "number", "support_units"}:
+            raise ForecastAuthorityConflictError("existing authority decision ranking is invalid")
+        rank = entry.get("rank")
+        number = entry.get("number")
+        support_units = entry.get("support_units")
+        if (
+            rank != expected_rank
+            or type(number) is not int
+            or not MIN_NUMBER <= number <= MAX_NUMBER
+            or type(support_units) is not int
+            or support_units < 0
+        ):
+            raise ForecastAuthorityConflictError("existing authority decision ranking is invalid")
+        ranking_values.append((number, support_units))
+    if {number for number, _ in ranking_values} != set(range(MIN_NUMBER, MAX_NUMBER + 1)):
+        raise ForecastAuthorityConflictError(
+            "existing authority decision ranking is not a permutation"
+        )
+    if sum(support for _, support in ranking_values) != (
+        EXPECTED_STREAM_COUNT * FINAL_TICKET_SIZE * FINAL_TICKET_SIZE
+    ):
+        raise ForecastAuthorityConflictError(
+            "existing authority support-unit conservation failed"
+        )
+    if ranking_values != sorted(ranking_values, key=lambda item: (-item[1], item[0])):
+        raise ForecastAuthorityConflictError(
+            "existing authority decision ranking is not deterministic"
+        )
+
+    final_output = payload.get("final_recommended_output")
+    if type(final_output) is not list:
+        raise ForecastAuthorityConflictError("existing authority final output is invalid")
+    final_rows = cast(list[object], final_output)
+    if len(final_rows) != 1:
+        raise ForecastAuthorityConflictError("existing authority final output is invalid")
+    if type(final_rows[0]) is not dict:
+        raise ForecastAuthorityConflictError("existing authority final output is invalid")
+    final_row = cast(dict[str, object], final_rows[0])
+    numbers = final_row.get("predicted_numbers")
+    if (
+        set(final_row) != {"ticket_position", "predicted_numbers"}
+        or final_row.get("ticket_position") != 1
+        or type(numbers) is not list
+    ):
+        raise ForecastAuthorityConflictError("existing authority final output is invalid")
+    number_values = cast(list[object], numbers)
+    if len(number_values) != FINAL_TICKET_SIZE or any(
+        type(number) is not int for number in number_values
+    ):
+        raise ForecastAuthorityConflictError("existing authority final output is invalid")
+    final_numbers = cast(list[int], number_values)
+    if (
+        len(set(final_numbers)) != FINAL_TICKET_SIZE
+        or any(number < MIN_NUMBER or number > MAX_NUMBER for number in final_numbers)
+        or final_numbers != sorted(number for number, _ in ranking_values[:FINAL_TICKET_SIZE])
+    ):
+        raise ForecastAuthorityConflictError("existing authority final output is invalid")
 
 
 def _require_creation_window(
@@ -977,22 +1188,6 @@ def _format_timestamp(value: datetime) -> str:
     return _as_utc(value, "created_at").isoformat(timespec="microseconds").replace(
         "+00:00", "Z"
     )
-
-
-def _timestamp_identity(value: object, label: str) -> str | None:
-    if type(value) is not str:
-        return None
-    return _format_timestamp(_parse_timestamp(value, label))
-
-
-def _normalize_semantic_timestamps(
-    value: Mapping[str, object], *, context: str
-) -> dict[str, object]:
-    normalized = dict(value)
-    for key in _SEMANTIC_TIMESTAMP_KEYS:
-        if key in normalized:
-            normalized[key] = _timestamp_identity(normalized[key], f"{context}.{key}")
-    return normalized
 
 
 def _reject_forbidden_keys(value: object, source: str) -> None:

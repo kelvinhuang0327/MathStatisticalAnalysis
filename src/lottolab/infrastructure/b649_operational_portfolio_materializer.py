@@ -13,7 +13,6 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import Final, Literal, cast
 from uuid import uuid4
-from zoneinfo import ZoneInfo
 
 from lottolab.application.b649_operational_portfolio_selector import (
     StrategyCandidate,
@@ -29,7 +28,6 @@ UPSTREAM_TASK_ID: Final = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
 TASK_ID: Final = "B649_OPERATIONAL_PORTFOLIO_AUTOMATION_R1"
 LOTTERY_TYPE: Final = "BIG_LOTTO"
 BUCKET_SIZES: Final = (5, 10, 20)
-_TAIPEI = ZoneInfo("Asia/Taipei")
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 _IDENTIFIER = re.compile(r"[A-Za-z0-9_.-]+", flags=re.ASCII)
 _FORBIDDEN_KEYS = frozenset(
@@ -141,10 +139,6 @@ def materialize_portfolios(
         raise PortfolioMaterializationError("expected strategy ids must be non-empty and unique")
 
     scheduled_at_value = _parse_aware_datetime(scheduled_at, "scheduled_at")
-    if scheduled_at_value.astimezone(_TAIPEI).date().isoformat() != target_draw_date:
-        raise PortfolioMaterializationError(
-            "scheduled_at local date conflicts with target_draw_date"
-        )
     seal_check = (
         pre_outcome_seal_check
         if pre_outcome_seal_check is not None
@@ -153,7 +147,7 @@ def materialize_portfolios(
 
     existing = _read_existing_bytes(destination)
     if existing is not None:
-        payload, _ = _build_payload(
+        payload, payload_bytes = _build_payload(
             candidate_paths=candidate_paths,
             expected_strategy_ids=expected,
             target_draw_number=target_draw_number,
@@ -163,7 +157,7 @@ def materialize_portfolios(
             destination=destination,
             quality_by_strategy=quality_by_strategy,
         )
-        if not _authority_matches_payload(existing, payload, destination):
+        if existing != payload_bytes:
             raise PortfolioAuthorityConflictError(
                 "existing portfolio authority differs from deterministic inputs"
             )
@@ -203,9 +197,7 @@ def materialize_portfolios(
             )
         if publish_status == "ALREADY_PRESENT":
             observed = _read_existing_bytes(destination)
-            if observed is None or not _authority_matches_payload(
-                observed, payload, destination
-            ):
+            if observed != payload_bytes:
                 raise PortfolioAuthorityConflictError(
                     "competing portfolio authority differs from deterministic inputs"
                 )
@@ -338,7 +330,6 @@ def _load_candidates(
 ) -> tuple[_CandidateRecord, ...]:
     records: dict[str, _CandidateRecord] = {}
     expected = frozenset(expected_strategy_ids)
-    expected_scheduled_at = _timestamp_identity(scheduled_at, "scheduled_at")
     for path in candidate_paths:
         raw, value = _read_json_object(path)
         _reject_forbidden_keys(value, path)
@@ -352,10 +343,7 @@ def _load_candidates(
             raise PortfolioMaterializationError(f"{path}: target draw conflicts")
         if value.get("draw_date") != target_draw_date:
             raise PortfolioMaterializationError(f"{path}: target draw date conflicts")
-        candidate_scheduled_at = _timestamp_identity(
-            value.get("scheduled_at"), f"{path}.scheduled_at"
-        )
-        if candidate_scheduled_at is None or candidate_scheduled_at != expected_scheduled_at:
+        if value.get("scheduled_at") != scheduled_at:
             raise PortfolioMaterializationError(f"{path}: target schedule conflicts")
         if value.get("prediction_temporal_class") != "PRE_DRAW":
             raise PortfolioMaterializationError(f"{path}: candidate is not PRE_DRAW")
@@ -580,74 +568,6 @@ def _read_json_object(path: Path) -> tuple[bytes, dict[str, object]]:
     return raw, cast(dict[str, object], parsed)
 
 
-def _authority_matches_payload(
-    raw: bytes, expected: Mapping[str, object], destination: Path
-) -> bool:
-    try:
-        expected_bytes = canonical_file_bytes(expected)
-    except ValueError as exc:
-        raise PortfolioAuthorityConflictError(
-            "expected portfolio authority is not canonical JSON"
-        ) from exc
-    if raw == expected_bytes:
-        return True
-    try:
-        actual = _read_canonical_payload(raw, destination)
-        return _normalize_authority_timestamps(
-            actual, context=str(destination)
-        ) == _normalize_authority_timestamps(expected, context="expected authority")
-    except PortfolioAuthorityConflictError:
-        raise
-    except (PortfolioMaterializationError, ValueError) as exc:
-        raise PortfolioAuthorityConflictError(
-            "existing portfolio authority is not canonical"
-        ) from exc
-
-
-def _read_canonical_payload(raw: bytes, destination: Path) -> dict[str, object]:
-    if not raw.endswith(b"\n"):
-        raise PortfolioMaterializationError(
-            f"{destination}: authority is missing its canonical trailing LF"
-        )
-    try:
-        parsed: object = json.loads(
-            raw[:-1].decode("utf-8"),
-            object_pairs_hook=_reject_duplicate_keys,
-            parse_constant=_reject_constant,
-        )
-    except (UnicodeDecodeError, ValueError) as exc:
-        raise PortfolioMaterializationError(
-            f"{destination}: authority is invalid JSON"
-        ) from exc
-    if not isinstance(parsed, dict):
-        raise PortfolioMaterializationError(
-            f"{destination}: authority is not one JSON object"
-        )
-    payload = cast(dict[str, object], parsed)
-    try:
-        canonical = canonical_file_bytes(payload)
-    except ValueError as exc:
-        raise PortfolioMaterializationError(
-            f"{destination}: authority is not canonical JSON"
-        ) from exc
-    if canonical != raw:
-        raise PortfolioMaterializationError(
-            f"{destination}: authority is not canonical JSON"
-        )
-    return payload
-
-
-def _normalize_authority_timestamps(
-    value: Mapping[str, object], *, context: str
-) -> dict[str, object]:
-    normalized = dict(value)
-    if "scheduled_at" in normalized:
-        normalized["scheduled_at"] = _timestamp_identity(
-            normalized["scheduled_at"], f"{context}.scheduled_at"
-        )
-    return normalized
-
-
 def _reject_forbidden_keys(value: object, path: Path) -> None:
     if isinstance(value, dict):
         for key, item in cast(Mapping[str, object], value).items():
@@ -705,17 +625,6 @@ def _parse_aware_datetime(value: str, label: str) -> datetime:
     if parsed.tzinfo is None or parsed.utcoffset() is None:
         raise PortfolioMaterializationError(f"{label} must be timezone-aware")
     return parsed
-
-
-def _timestamp_identity(value: object, label: str) -> str | None:
-    if type(value) is not str:
-        return None
-    return (
-        _parse_aware_datetime(value, label)
-        .astimezone(UTC)
-        .isoformat(timespec="microseconds")
-        .replace("+00:00", "Z")
-    )
 
 
 def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:

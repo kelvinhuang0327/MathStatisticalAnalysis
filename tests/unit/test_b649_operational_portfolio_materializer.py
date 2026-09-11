@@ -19,9 +19,7 @@ from lottolab.infrastructure.b649_operational_portfolio_materializer import (
 
 TARGET_DRAW = "209900001"
 TARGET_DATE = "2099-01-02"
-SCHEDULED_AT_Z = "2099-01-02T12:30:00Z"
-SCHEDULED_AT_TAIPEI = "2099-01-02T20:30:00+08:00"
-SCHEDULED_AT = SCHEDULED_AT_TAIPEI
+SCHEDULED_AT = "2099-01-02T12:30:00+00:00"
 CUTOFF = {"draw_number": "209900000", "draw_date": "2099-01-01"}
 STRATEGY_IDS = tuple(f"stream-{index:02d}" for index in range(11))
 
@@ -30,12 +28,7 @@ def _ticket(start: int) -> tuple[int, ...]:
     return tuple(range(start, start + 6))
 
 
-def _prediction(
-    strategy_id: str,
-    index: int,
-    *,
-    scheduled_at: str = SCHEDULED_AT,
-) -> dict[str, object]:
+def _prediction(strategy_id: str, index: int) -> dict[str, object]:
     tickets = (_ticket(index * 2 + 1), _ticket(index * 2 + 2), (40, 41, 42, 43, 44, 45))
     return {
         "schema_version": "b649-operational-prediction-v1",
@@ -44,7 +37,7 @@ def _prediction(
         "lottery_type": "BIG_LOTTO",
         "draw_number": TARGET_DRAW,
         "draw_date": TARGET_DATE,
-        "scheduled_at": scheduled_at,
+        "scheduled_at": SCHEDULED_AT,
         "prediction_created_at": f"2099-01-02T10:{index:02d}:00+00:00",
         "strategy_id": strategy_id,
         "strategy_version": "v1",
@@ -63,20 +56,12 @@ def _prediction(
     }
 
 
-def _write_candidates(
-    root: Path,
-    *,
-    scheduled_at: str = SCHEDULED_AT,
-) -> tuple[Path, ...]:
+def _write_candidates(root: Path) -> tuple[Path, ...]:
     paths: list[Path] = []
     for index, strategy_id in enumerate(STRATEGY_IDS):
         path = root / "predictions" / TARGET_DRAW / strategy_id / "prediction.json"
         path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-        path.write_bytes(
-            canonical_file_bytes(
-                _prediction(strategy_id, index, scheduled_at=scheduled_at)
-            )
-        )
+        path.write_bytes(canonical_file_bytes(_prediction(strategy_id, index)))
         path.chmod(0o600)
         paths.append(path)
     return tuple(paths)
@@ -87,15 +72,13 @@ def _materialize(
     destination: Path,
     upstream_locator: str,
     pre_outcome_seal_check: Callable[[], bool] | None = None,
-    *,
-    scheduled_at: str = SCHEDULED_AT,
 ) -> PortfolioMaterializationResult:
     return materialize_portfolios(
         candidate_paths=candidates,
         expected_strategy_ids=STRATEGY_IDS,
         target_draw_number=TARGET_DRAW,
         target_draw_date=TARGET_DATE,
-        scheduled_at=scheduled_at,
+        scheduled_at=SCHEDULED_AT,
         upstream_authority_locator=upstream_locator,
         destination=destination,
         pre_outcome_seal_check=pre_outcome_seal_check,
@@ -151,39 +134,6 @@ def test_materialization_is_deterministic_and_idempotent(tmp_path: Path) -> None
     assert first.payload["k20"] == second.payload["k20"]
     assert retry.status == "ALREADY_PRESENT"
     assert retry.payload == first.payload
-
-
-def test_equivalent_utc_scheduled_at_is_accepted_without_rewriting_portfolio(
-    tmp_path: Path,
-) -> None:
-    candidates = _write_candidates(tmp_path / "operation", scheduled_at=SCHEDULED_AT_Z)
-    destination = tmp_path / "authority" / "final.json"
-    upstream_locator = str(tmp_path / "upstream" / TARGET_DRAW)
-
-    first = _materialize(
-        candidates,
-        destination,
-        upstream_locator,
-        scheduled_at=SCHEDULED_AT_TAIPEI,
-    )
-    original = destination.read_bytes()
-    payload = json.loads(original.decode("utf-8"))
-    payload["scheduled_at"] = SCHEDULED_AT_Z
-    destination.write_bytes(canonical_file_bytes(payload))
-    stored = destination.read_bytes()
-
-    retry = _materialize(
-        candidates,
-        destination,
-        upstream_locator,
-        scheduled_at=SCHEDULED_AT_TAIPEI,
-        pre_outcome_seal_check=lambda: False,
-    )
-
-    assert first.status == "CREATED"
-    assert retry.status == "ALREADY_PRESENT"
-    assert retry.payload["scheduled_at"] == SCHEDULED_AT_TAIPEI
-    assert destination.read_bytes() == stored
 
 
 def test_outcome_or_scoring_input_is_rejected_without_writing_authority(

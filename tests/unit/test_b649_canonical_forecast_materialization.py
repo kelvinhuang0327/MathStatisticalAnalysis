@@ -6,11 +6,12 @@ import json
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import NoReturn, cast
 
 import pytest
 import tools.materialize_b649_canonical_forecast as historical_087
 
+import lottolab.application.b649_canonical_forecast_materialization as service_module
 from lottolab.application.b649_canonical_forecast_materialization import (
     AmbiguousStreamInputError,
     CanonicalForecastAuthorityPort,
@@ -222,6 +223,46 @@ def test_future_target_selects_exactly_one_stream_and_creates_immutable_authorit
     assert retry.status == "COMPLETE"
     assert retry.publication == "ALREADY_PRESENT"
     assert retry.payload["created_at"] == result.payload["created_at"]
+    assert destination.read_bytes() == original
+
+
+def test_existing_authority_is_read_before_selection_compute_or_publication(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _write_streams(tmp_path)
+    request = _request(tmp_path)
+    destination = _destination(tmp_path)
+    materialize_canonical_forecast(
+        request,
+        destination=destination,
+        authority=_authority(),
+        clock=lambda: CREATE_AT,
+    )
+    original = destination.read_bytes()
+
+    def fail(*_args: object, **_kwargs: object) -> NoReturn:
+        raise AssertionError("existing authority path performed forbidden work")
+
+    monkeypatch.setattr(service_module, "_select_stream_inputs", fail)
+    monkeypatch.setattr(service_module, "build_canonical_consensus", fail)
+    monkeypatch.setattr(service_module, "_clock_value", fail)
+    authority = CanonicalForecastAuthorityPort(
+        read_existing_bytes=read_existing_bytes,
+        ensure_output_parent=fail,
+        stage_payload=fail,
+        publish_staged=fail,
+        discard_staged=fail,
+    )
+
+    retry = materialize_canonical_forecast(
+        replace(request, predictions=()),
+        destination=destination,
+        authority=authority,
+        clock=fail,
+    )
+
+    assert retry.publication == "ALREADY_PRESENT"
+    assert retry.payload["created_at"]
     assert destination.read_bytes() == original
 
 

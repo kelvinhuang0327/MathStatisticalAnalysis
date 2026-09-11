@@ -66,6 +66,7 @@ def test_scheduler_consumes_immutable_authority_and_keeps_materializer_standalon
     assert "tools.materialize_b649_canonical_forecast" not in source
     assert "next_draw_rollover_status" in source
     assert "forecast_materialization" in source
+    assert "SKIPPED_POST_OUTCOME" in source
     forecast_source = source.split("def _forecast_command(", 1)[1].split(
         "def _status_command(", 1
     )[0]

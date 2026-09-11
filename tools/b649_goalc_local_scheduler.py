@@ -59,6 +59,10 @@ from lottolab.application.use_cases.draw_automation import ScheduledDrawSync
 from lottolab.domain.b649_canonical_consensus import (
     CANONICAL_CONSENSUS_METHOD_ID,
     CANONICAL_CONSENSUS_METHOD_VERSION,
+    STREAM_WEIGHT_POLICY,
+    CanonicalConsensusInputError,
+    StreamConsensusInput,
+    build_canonical_consensus,
 )
 from lottolab.domain.draw_data_integrity import DrawDataIntegrityStatus
 from lottolab.domain.draws import LotteryType
@@ -119,6 +123,7 @@ from tools.b649_operational_prediction_loop import (
     TAIPEI,
     PredictionTarget,
     StrategyStream,
+    _assert_causal_cutoff,  # pyright: ignore[reportPrivateUsage]
     iter_prediction_files,
     load_canonical_history,
     rescore_draw,
@@ -314,6 +319,17 @@ class ScheduleRefreshResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ValidatedPredictionRecord:
+    """One accepted prediction record read and validated by inventory inspection."""
+
+    strategy_id: str
+    path: Path
+    payload: dict[str, object]
+    raw_bytes: bytes
+    prediction_created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class PredictionInventory:
     """Validated prediction state for exactly one target."""
 
@@ -321,6 +337,7 @@ class PredictionInventory:
     available_stream_ids: tuple[str, ...]
     observed_stream_ids: tuple[str, ...]
     score_required_run_ids: tuple[str, ...]
+    available_records: tuple[ValidatedPredictionRecord, ...] = ()
 
     @property
     def missing_stream_ids(self) -> tuple[str, ...]:
@@ -374,11 +391,6 @@ class SchedulerBackend(Protocol):
         source_head: str,
     ) -> dict[str, object]: ...
 
-    def preview_forecast(
-        self,
-        target: PredictionTarget,
-    ) -> CanonicalForecastMaterializationResult: ...
-
     def generate_predraw(
         self,
         target: PredictionTarget,
@@ -392,6 +404,14 @@ class SchedulerBackend(Protocol):
         target: PredictionTarget,
         inventory: PredictionInventory,
     ) -> PostDrawResult: ...
+
+
+class ForecastBackend(Protocol):
+    """Read-only backend surface required by the ``forecast`` command."""
+
+    def resolve_target(self) -> PredictionTarget | None: ...
+
+    def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory: ...
 
 
 class AdvisoryProcessLock:
@@ -898,10 +918,11 @@ def inspect_prediction_inventory(
     expected_set = frozenset(expected)
     scheduled_at = _target_scheduled_at(target)
     available: dict[str, str] = {}
+    available_records: dict[str, ValidatedPredictionRecord] = {}
     observed: set[str] = set()
     score_required: list[str] = []
     for path in iter_prediction_files(root, target.draw_number):
-        prediction = _read_json_object(path)
+        prediction, raw_bytes = _read_json_object_with_bytes(path)
         if prediction.get("lottery_type") != LOTTERY_TYPE:
             raise SchedulerInvariantError(f"prediction lottery_type conflicts: {path}")
         if prediction.get("draw_number") != target.draw_number:
@@ -925,9 +946,11 @@ def inspect_prediction_inventory(
         if prediction_scheduled != scheduled_at:
             raise SchedulerInvariantError(f"prediction scheduled_at conflicts: {path}")
         if temporal_class == "PRE_DRAW":
-            if created_at >= scheduled_at:
-                raise SchedulerInvariantError(f"PRE_DRAW timestamp is not before deadline: {path}")
             if availability == "AVAILABLE":
+                if created_at >= scheduled_at:
+                    raise SchedulerInvariantError(
+                        f"PRE_DRAW timestamp is not before deadline: {path}"
+                    )
                 if strategy_id in available:
                     raise SchedulerInvariantError(
                         f"multiple AVAILABLE PRE_DRAW records exist for {strategy_id}"
@@ -937,6 +960,13 @@ def inspect_prediction_inventory(
                 if not isinstance(tickets, list) or not tickets:
                     raise SchedulerInvariantError(f"AVAILABLE prediction has no tickets: {path}")
                 available[strategy_id] = run_id
+                available_records[strategy_id] = ValidatedPredictionRecord(
+                    strategy_id=strategy_id,
+                    path=path,
+                    payload=prediction,
+                    raw_bytes=raw_bytes,
+                    prediction_created_at=created_at,
+                )
                 score_required.append(run_id)
             elif availability not in {"UNAVAILABLE", "TECHNICAL_FAILURE"}:
                 raise SchedulerInvariantError(f"prediction availability is invalid: {path}")
@@ -949,6 +979,7 @@ def inspect_prediction_inventory(
         available_stream_ids=available_ids,
         observed_stream_ids=observed_ids,
         score_required_run_ids=tuple(score_required),
+        available_records=tuple(available_records[value] for value in available_ids),
     )
 
 
@@ -1856,9 +1887,10 @@ def _read_optional_json_object(path: Path) -> dict[str, object] | None:
     return _read_json_object(path)
 
 
-def _read_json_object(path: Path) -> dict[str, object]:
+def _read_json_object_with_bytes(path: Path) -> tuple[dict[str, object], bytes]:
     try:
-        parsed: object = json.loads(path.read_text(encoding="utf-8"))
+        raw_bytes = path.read_bytes()
+        parsed: object = json.loads(raw_bytes.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise LocalSchedulerSafetyError(f"JSON file is invalid: {path}") from exc
     if not isinstance(parsed, dict):
@@ -1866,7 +1898,12 @@ def _read_json_object(path: Path) -> dict[str, object]:
     mapping = cast(dict[object, object], parsed)
     if any(type(key) is not str for key in mapping):
         raise LocalSchedulerSafetyError(f"JSON file must contain one object: {path}")
-    return cast(dict[str, object], mapping)
+    return cast(dict[str, object], mapping), raw_bytes
+
+
+def _read_json_object(path: Path) -> dict[str, object]:
+    parsed, _ = _read_json_object_with_bytes(path)
+    return parsed
 
 
 def _required_text(value: Mapping[str, object], key: str, path: Path) -> str:
@@ -1923,10 +1960,135 @@ def _resolve_source_head(worktree: Path) -> str:
     return value
 
 
+def _forecast_stream_record(
+    target: PredictionTarget,
+    record: ValidatedPredictionRecord,
+) -> dict[str, object]:
+    """Build one STREAMS entry from an inventory-validated prediction record.
+
+    ``inspect_prediction_inventory`` already proves temporal class, the
+    before-deadline timestamp, and ticket presence; this adds the one PRE_OUTCOME
+    check it does not make -- that the stored history cutoff is strictly before
+    the target draw -- by reusing the exact same authority prediction generation
+    itself is bound by (``_assert_causal_cutoff``), never a new comparison.
+    """
+
+    strategy_id = record.strategy_id
+    path = record.path
+    prediction = record.payload
+
+    strategy_version = _required_text(prediction, "strategy_version", path)
+    prediction_run_id = _required_text(prediction, "prediction_run_id", path)
+    prediction_created_at = _required_text(prediction, "prediction_created_at", path)
+    history_cutoff_value = prediction.get("history_cutoff")
+    if not isinstance(history_cutoff_value, dict):
+        raise SchedulerInvariantError(f"{strategy_id}: history_cutoff must be an object: {path}")
+    history_cutoff = cast(dict[str, object], history_cutoff_value)
+    cutoff_draw = history_cutoff.get("draw_number")
+    cutoff_date = history_cutoff.get("draw_date")
+    if type(cutoff_draw) is not str or not cutoff_draw:
+        raise SchedulerInvariantError(
+            f"{strategy_id}: history_cutoff.draw_number must be non-empty text: {path}"
+        )
+    if type(cutoff_date) is not str or not cutoff_date:
+        raise SchedulerInvariantError(
+            f"{strategy_id}: history_cutoff.draw_date must be non-empty text: {path}"
+        )
+    try:
+        _assert_causal_cutoff(
+            target_draw_number=target.draw_number,
+            target_draw_date=target.draw_date,
+            history_cutoff_draw=cutoff_draw,
+            history_cutoff_date=cutoff_date,
+            history_rows=(),
+        )
+    except ValueError as exc:
+        raise SchedulerInvariantError(f"{strategy_id}: {exc}: {path}") from exc
+    tickets = prediction.get("tickets")
+    if not isinstance(tickets, list) or not tickets:
+        raise SchedulerInvariantError(f"{strategy_id}: AVAILABLE prediction has no tickets: {path}")
+    return {
+        "strategy_id": strategy_id,
+        "strategy_version": strategy_version,
+        "prediction_run_id": prediction_run_id,
+        "prediction_created_at": prediction_created_at,
+        "history_cutoff_draw": cutoff_draw,
+        "tickets": tickets,
+    }
+
+
+def _build_canonical_stream_input(
+    config: SchedulerConfig,
+    stream: StrategyStream,
+    record: ValidatedPredictionRecord,
+) -> StreamConsensusInput:
+    """Bind one accepted record to the canonical domain input contract."""
+
+    try:
+        source_relative_path = record.path.relative_to(config.operation_root).as_posix()
+    except ValueError as exc:
+        raise CanonicalConsensusInputError(
+            f"{stream.strategy_id}: prediction path is outside operation_root"
+        ) from exc
+
+    strategy_version = _required_text(record.payload, "strategy_version", record.path)
+    prediction_run_id = _required_text(record.payload, "prediction_run_id", record.path)
+    tickets_value = record.payload.get("tickets")
+    if not isinstance(tickets_value, list):
+        raise CanonicalConsensusInputError(
+            f"{stream.strategy_id}: tickets must be a list"
+        )
+
+    tickets: list[tuple[int, ...]] = []
+    for position, raw_ticket in enumerate(cast(list[object], tickets_value), start=1):
+        if not isinstance(raw_ticket, Mapping):
+            raise CanonicalConsensusInputError(
+                f"{stream.strategy_id}: ticket {position} must be an object"
+            )
+        ticket_mapping = cast(Mapping[str, object], raw_ticket)
+        numbers = ticket_mapping.get("predicted_numbers")
+        if not isinstance(numbers, list):
+            raise CanonicalConsensusInputError(
+                f"{stream.strategy_id}: ticket {position} numbers are invalid"
+            )
+        number_values = cast(list[object], numbers)
+        if any(type(number) is not int for number in number_values):
+            raise CanonicalConsensusInputError(
+                f"{stream.strategy_id}: ticket {position} numbers are invalid"
+            )
+        tickets.append(tuple(cast(list[int], number_values)))
+
+    if len(tickets) != stream.native_ticket_count:
+        raise CanonicalConsensusInputError(
+            f"{stream.strategy_id}: observed {len(tickets)} tickets, expected "
+            f"{stream.native_ticket_count} from the frozen registry"
+        )
+
+    return StreamConsensusInput(
+        strategy_id=stream.strategy_id,
+        strategy_version=strategy_version,
+        native_ticket_count=stream.native_ticket_count,
+        prediction_run_id=prediction_run_id,
+        source_relative_path=source_relative_path,
+        source_sha256=hashlib.sha256(record.raw_bytes).hexdigest(),
+        prediction_created_at=record.prediction_created_at,
+        tickets=tuple(tickets),
+    )
+
+
 def _forecast_command(
-    config: SchedulerConfig, backend: SchedulerBackend
+    config: SchedulerConfig, backend: ForecastBackend
 ) -> tuple[dict[str, object], int]:
-    """Project the reusable service's read-only preview into CLI fields."""
+    """Deliver the currently available PRE_OUTCOME forecast without any write.
+
+    Reuses exactly the existing target resolution and prediction-inventory
+    authority ``run`` itself uses (``backend.resolve_target`` /
+    ``backend.inspect_predictions``); never refreshes the official schedule,
+    generates predictions, syncs an outcome, completes post-draw, or runs a
+    scheduler cycle. The canonical consensus is delegated directly to the
+    approved pure domain authority after all accepted stream records are bound
+    to their provenance and native ticket counts.
+    """
 
     target = backend.resolve_target()
     if target is None:
@@ -1946,6 +2108,28 @@ def _forecast_command(
             "VIOLATIONS": [str(exc)],
         }, 1
 
+    records = {record.strategy_id: record for record in inventory.available_records}
+    streams: list[dict[str, object]] = []
+    violations: list[str] = []
+    for strategy_id in inventory.available_stream_ids:
+        record = records.get(strategy_id)
+        if record is None:
+            violations.append(
+                f"{strategy_id}: AVAILABLE PRE_DRAW record vanished between inventory and read"
+            )
+            continue
+        try:
+            streams.append(_forecast_stream_record(target, record))
+        except SchedulerInvariantError as exc:
+            violations.append(str(exc))
+
+    if violations:
+        return {
+            "FORECAST_STATUS": "INVALID_TEMPORAL_AUTHORITY",
+            **target_fields,
+            "VIOLATIONS": violations,
+        }, 1
+
     missing = list(inventory.missing_stream_ids)
     if missing:
         return {
@@ -1956,70 +2140,48 @@ def _forecast_command(
             "MISSING_STREAM_IDS": missing,
         }, 0
 
+    analysis_max_data_cutoff = str(
+        max(int(cast(str, entry["history_cutoff_draw"])) for entry in streams)
+    )
+    registry = {stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled}
     try:
-        result = backend.preview_forecast(target)
-    except CanonicalForecastMaterializationError as exc:
-        return {
-            "FORECAST_STATUS": "INVALID_CANONICAL_FORECAST_AUTHORITY",
-            **target_fields,
-            "TARGET_RESULT_DEPENDENCY": "NONE",
-            "TARGET_RESULT_USED": "NO",
-            "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
-            "EXPECTED_STREAM_COUNT": config.expected_stream_count,
-            "AVAILABLE_STREAM_COUNT": len(inventory.available_stream_ids),
-            "MISSING_STREAM_IDS": [],
-            "CANONICAL_FORECAST_ERROR": {
-                "error_class": exc.code,
-                "reason": exc.reason,
-                "message": str(exc),
-            },
-        }, 1
+        canonical_inputs = tuple(
+            _build_canonical_stream_input(config, registry[strategy_id], records[strategy_id])
+            for strategy_id in inventory.available_stream_ids
+        )
+        canonical_decision = build_canonical_consensus(canonical_inputs)
     except Exception as exc:
         return {
-            "FORECAST_STATUS": "INVALID_CANONICAL_FORECAST_AUTHORITY",
+            "FORECAST_STATUS": "INVALID_CANONICAL_CONSENSUS_AUTHORITY",
             **target_fields,
+            "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
             "TARGET_RESULT_DEPENDENCY": "NONE",
             "TARGET_RESULT_USED": "NO",
             "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
             "EXPECTED_STREAM_COUNT": config.expected_stream_count,
-            "AVAILABLE_STREAM_COUNT": len(inventory.available_stream_ids),
+            "AVAILABLE_STREAM_COUNT": len(streams),
             "MISSING_STREAM_IDS": [],
-            "CANONICAL_FORECAST_ERROR": {
-                "error_class": type(exc).__name__,
-                "reason": "BLOCK_FORECAST_MATERIALIZATION",
-                "message": str(exc),
-            },
+            "CANONICAL_CONSENSUS_ERROR": f"{type(exc).__name__}: {exc}",
         }, 1
 
-    payload = result.payload
-    ranking = cast(list[dict[str, object]], payload["final_decision_ranking"])
-    recommended = cast(list[dict[str, object]], payload["final_recommended_output"])
-    final_ticket = cast(list[object], recommended[0]["predicted_numbers"])
-    cutoff = cast(dict[str, object], payload["max_data_cutoff"])
-    method_id = cast(str, payload["aggregation_method_id"])
-    method_version = cast(str, payload["aggregation_method_version"])
+    decision_fields = canonical_decision.decision_fields()
     return {
         "FORECAST_STATUS": "READY",
         **target_fields,
-        "ANALYSIS_MAX_DATA_CUTOFF": cutoff["draw_number"],
+        "ANALYSIS_MAX_DATA_CUTOFF": analysis_max_data_cutoff,
         "TARGET_RESULT_DEPENDENCY": "NONE",
         "TARGET_RESULT_USED": "NO",
         "PRE_OUTCOME_TEMPORAL_INTEGRITY": "PASS",
         "EXPECTED_STREAM_COUNT": config.expected_stream_count,
-        "AVAILABLE_STREAM_COUNT": len(inventory.available_stream_ids),
+        "AVAILABLE_STREAM_COUNT": len(streams),
         "MISSING_STREAM_IDS": [],
-        "RANKING_AUTHORITY": f"{method_id}@{method_version}",
-        "FINAL_DECISION_RANKING": {
-            "top6": final_ticket,
-            "top10": [entry["number"] for entry in ranking[:10]],
-            "ranked_numbers": [entry["number"] for entry in ranking],
-        },
-        "CANONICAL_FORECAST_PAYLOAD": payload,
-        "STREAMS": payload["stream_inputs"],
-        "PUBLICATION": result.publication,
-        "ARTIFACT_PATH": str(result.destination),
-        "ARTIFACT_SHA256": result.artifact_sha256,
-        "INPUT_MANIFEST_SHA256": result.input_manifest_sha256,
+        "RANKING_AUTHORITY": CANONICAL_CONSENSUS_METHOD_ID,
+        "RANKING_AUTHORITY_VERSION": CANONICAL_CONSENSUS_METHOD_VERSION,
+        "WEIGHT_POLICY": STREAM_WEIGHT_POLICY,
+        "FINAL_DECISION_RANKING": decision_fields["final_decision_ranking"],
+        "FINAL_RECOMMENDED_TICKET": list(canonical_decision.final_ticket),
+        "STREAM_INPUT_MANIFEST_SHA256": canonical_decision.stream_input_manifest_sha256,
+        "STREAMS": decision_fields["stream_inputs"],
     }, 0
 
 

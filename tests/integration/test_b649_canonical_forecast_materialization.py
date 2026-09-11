@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import cast
 
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
@@ -15,6 +16,145 @@ from lottolab.infrastructure.b649_canonical_forecast_writer import StagedCanonic
 
 FIXTURE_NUMBERS = (4, 12, 24, 25, 26, 29)
 FIXTURE_PREDICTION_CREATED_AT = "2026-09-10T13:00:00+00:00"
+HISTORICAL_087_TICKETS = {
+    "b649_new_horizon_minimax_disagreement_r1": (
+        (15, 16, 23, 26, 29, 35),
+        (4, 7, 12, 22, 29, 34),
+    ),
+    "biglotto_deviation_2bet": ((4, 12, 16, 25, 26, 29),),
+    "biglotto_social_wisdom_anti_popularity": ((42, 43, 44, 45, 47, 49),),
+    "legacy_biglotto__graph_predictor__cd70713a5709": ((16, 23, 24, 26, 29, 47),),
+    "legacy_biglotto__hpsb_optimizer__cf5cd7d971e8": ((12, 24, 25, 26, 29, 35),),
+    "legacy_biglotto__pure_cold_predict__9e89f2b41add": ((7, 22, 31, 38, 39, 42),),
+    "legacy_biglotto__test_asm__d39a233a4c75": (
+        (1, 4, 6, 9, 10, 25),
+        (1, 4, 34, 36, 45, 46),
+        (6, 8, 9, 10, 11, 18),
+    ),
+    "legacy_biglotto__test_ces__78d17c530ab8": (
+        (8, 9, 11, 26, 29, 43),
+        (1, 9, 18, 19, 26, 39),
+        (4, 9, 18, 24, 28, 29),
+    ),
+    "legacy_biglotto__test_ecp__c9d5ac6decdd": (
+        (8, 10, 11, 18, 19, 43),
+        (10, 25, 34, 36, 43, 45),
+        (1, 4, 6, 36, 45, 46),
+    ),
+    "legacy_biglotto__test_mwsc__ba37643d6a3b": (
+        (10, 12, 25, 26, 36, 38),
+        (10, 24, 36, 45, 46, 47),
+        (24, 32, 34, 39, 40, 47),
+    ),
+    "legacy_biglotto__test_tme__f3bb5106dfe3": (
+        (2, 8, 11, 18, 19, 43),
+        (1, 2, 3, 4, 6, 9),
+        (9, 26, 28, 29, 39, 44),
+    ),
+}
+HISTORICAL_087_RANKING = (
+    29,
+    26,
+    4,
+    24,
+    25,
+    12,
+    47,
+    16,
+    9,
+    43,
+    45,
+    10,
+    39,
+    42,
+    1,
+    18,
+    36,
+    7,
+    22,
+    23,
+    34,
+    35,
+    6,
+    8,
+    11,
+    38,
+    44,
+    19,
+    31,
+    46,
+    49,
+    2,
+    28,
+    15,
+    3,
+    32,
+    40,
+    5,
+    13,
+    14,
+    17,
+    20,
+    21,
+    27,
+    30,
+    33,
+    37,
+    41,
+    48,
+)
+HISTORICAL_087_SUPPORT_UNITS = (
+    30,
+    29,
+    19,
+    18,
+    18,
+    17,
+    16,
+    15,
+    14,
+    14,
+    14,
+    12,
+    12,
+    12,
+    10,
+    10,
+    10,
+    9,
+    9,
+    9,
+    9,
+    9,
+    8,
+    8,
+    8,
+    8,
+    8,
+    6,
+    6,
+    6,
+    6,
+    4,
+    4,
+    3,
+    2,
+    2,
+    2,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+)
+HISTORICAL_087_MANIFEST_SHA256 = "ce725dfdb2e162f1c68f9cb2dc75bc2fc073a0ba55ea6fa29a4fbc5cc647ded8"
 IDENTITY = materializer.ImplementationIdentity(
     commit="a" * 40,
     tree="b" * 40,
@@ -27,10 +167,19 @@ CREATED_AT = datetime(2026, 9, 10, 14, 0, 0, tzinfo=UTC)
 PRE_PUBLISH_AT = datetime(2026, 9, 10, 14, 0, 1, tzinfo=UTC)
 
 
-def _copy_inputs(destination: Path) -> None:
+def _copy_inputs(
+    destination: Path,
+    *,
+    tickets_by_strategy: dict[str, tuple[tuple[int, ...], ...]] | None = None,
+) -> None:
+    ticket_sets = {} if tickets_by_strategy is None else tickets_by_strategy
     for spec in materializer.FROZEN_STREAM_SPECS:
         target = destination / spec.source_relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
+        tickets = ticket_sets.get(spec.strategy_id)
+        if tickets is None:
+            tickets = tuple(FIXTURE_NUMBERS for _ in range(spec.native_ticket_count))
+        assert len(tickets) == spec.native_ticket_count
         payload = {
             "schema_version": "b649-operational-prediction-v1",
             "task_id": "B649_OPERATIONAL_PREDICTION_LOOP_R1",
@@ -52,9 +201,9 @@ def _copy_inputs(destination: Path) -> None:
             "tickets": [
                 {
                     "ticket_position": position,
-                    "predicted_numbers": list(FIXTURE_NUMBERS),
+                    "predicted_numbers": list(numbers),
                 }
-                for position in range(1, spec.native_ticket_count + 1)
+                for position, numbers in enumerate(tickets, start=1)
             ],
         }
         target.write_bytes(
@@ -62,6 +211,32 @@ def _copy_inputs(destination: Path) -> None:
                 "utf-8"
             )
         )
+
+
+def _write_historical_087_authority(destination: Path) -> None:
+    payload = {
+        "stream_input_manifest_sha256": HISTORICAL_087_MANIFEST_SHA256,
+        "final_decision_ranking": [
+            {
+                "rank": rank,
+                "number": number,
+                "support_units": support_units,
+            }
+            for rank, (number, support_units) in enumerate(
+                zip(
+                    HISTORICAL_087_RANKING,
+                    HISTORICAL_087_SUPPORT_UNITS,
+                    strict=True,
+                ),
+                start=1,
+            )
+        ],
+        "final_recommended_output": [
+            {"ticket_position": 1, "predicted_numbers": list(FIXTURE_NUMBERS)}
+        ],
+    }
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_bytes(canonical_file_bytes(payload))
 
 
 def _clock(*values: datetime):
@@ -259,33 +434,38 @@ def test_atomic_publish_race_preserves_competing_authority_and_blocks(
     assert destination.read_bytes() == b"{\"competing\":true}\n"
 
 
-def test_historical_087_authority_and_domain_parity_are_read_only() -> None:
-    """The approved 087 artifact is verified in place and never rematerialized."""
+def test_historical_087_authority_and_domain_parity_are_read_only(tmp_path: Path) -> None:
+    """Verify a committed characterization fixture without touching developer state."""
 
-    operation_root = materializer.OPERATION_ROOT
-    artifact = operation_root / materializer.FORECAST_RELATIVE_PATH
-    if not artifact.is_file():
-        pytest.fail(f"bounded compatibility artifact is absent: {artifact}")
+    operation_root = tmp_path / "operation"
+    _copy_inputs(operation_root, tickets_by_strategy=HISTORICAL_087_TICKETS)
+    artifact = tmp_path / "authority" / "final_forecast_payload.json"
+    _write_historical_087_authority(artifact)
     before = artifact.read_bytes()
     before_stat = artifact.stat()
     payload = json.loads(before.decode("utf-8"))
     bundle = materializer.load_frozen_stream_inputs(
         operation_root,
-        expected_manifest_sha256=materializer.EXPECTED_STREAM_INPUT_MANIFEST_SHA256,
+        expected_manifest_sha256=HISTORICAL_087_MANIFEST_SHA256,
     )
     decision = build_canonical_consensus(bundle.streams)
-    expected_ranking = tuple(
-        entry["number"] for entry in payload["final_decision_ranking"]
-    )
+    ranking_payload = cast(list[dict[str, object]], payload["final_decision_ranking"])
+    expected_ranking = tuple(cast(int, entry["number"]) for entry in ranking_payload)
 
     assert len(bundle.streams) == 11
     assert len(decision.deterministic_ranking) == 49
+    assert decision.stream_input_manifest_sha256 == payload["stream_input_manifest_sha256"]
+    assert expected_ranking == HISTORICAL_087_RANKING
     assert decision.deterministic_ranking == expected_ranking
+    assert tuple(
+        decision.support_units[number - 1] for number in expected_ranking
+    ) == HISTORICAL_087_SUPPORT_UNITS
     assert sum(decision.support_units) == 396
     assert decision.final_ticket == (4, 12, 24, 25, 26, 29)
     assert payload["final_recommended_output"] == [
         {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
     ]
+
     assert before == artifact.read_bytes()
     after_stat = artifact.stat()
     assert before_stat.st_ino == after_stat.st_ino

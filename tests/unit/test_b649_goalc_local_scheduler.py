@@ -48,36 +48,23 @@ from tools.b649_operational_prediction_loop import (
 )
 
 from lottolab.application.b649_canonical_forecast_materialization import (
-    CanonicalForecastAuthorityPort,
-    CanonicalForecastCutoff,
-    CanonicalForecastMaterializationRequest,
-    CanonicalForecastMaterializationResult,
-    CanonicalForecastTarget,
-    CanonicalHistoryIdentity,
     ForecastAuthorityConflictError,
-    ImplementationIdentity,
-    ImplementationSource,
-    PersistedForecastPrediction,
     PreOutcomeWindowClosedError,
-    RegisteredForecastStream,
-    materialize_canonical_forecast,
 )
 from lottolab.application.pre_outcome_target_operational import (
     TargetAnnouncementSourceStatus,
+)
+from lottolab.domain.b649_canonical_consensus import (
+    StreamConsensusInput,
+)
+from lottolab.domain.b649_canonical_consensus import (
+    build_canonical_consensus as domain_build_canonical_consensus,
 )
 from lottolab.domain.draw_data_integrity import (
     DrawDataIntegrityReport,
     DrawDataIntegrityStatus,
 )
 from lottolab.domain.draws import LotteryType
-from lottolab.infrastructure.b649_canonical_forecast_writer import (
-    discard_staged,
-    ensure_output_parent,
-    publish_staged,
-    read_existing_bytes,
-    read_persisted_prediction_records,
-    stage_payload,
-)
 from lottolab.infrastructure.pre_outcome_target_operational import (
     OFFICIAL_SCHEDULE_SOURCE_ID,
     OFFICIAL_SCHEDULE_SOURCE_VERSION,
@@ -88,6 +75,9 @@ from lottolab.infrastructure.pre_outcome_target_operational import (
 NOW = datetime(2099, 1, 2, 10, 0, tzinfo=UTC)
 SCHEDULED = datetime(2099, 1, 2, 12, 30, tzinfo=UTC)
 STREAM_IDS = tuple(stream.strategy_id for stream in STRATEGY_STREAMS if stream.enabled)
+STREAMS_BY_ID = {
+    stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled
+}
 SOURCE_HEAD = "f" * 40
 
 
@@ -263,20 +253,20 @@ def _write_prediction(
 
 _FORECAST_CUTOFF_DRAW = "209899999"
 _FORECAST_CUTOFF_DATE = "2099-01-01"
-_FORECAST_HISTORY_SHA256 = "a" * 64
 
 
 def _forecast_prediction(
     target: PredictionTarget,
     strategy_id: str,
     *,
-    strategy_version: str = "v-forecast-test",
+    strategy_version: str | None = None,
     run_suffix: str = "one",
     created_at: datetime,
     temporal_class: str = "PRE_DRAW",
     availability: str = "AVAILABLE",
     history_cutoff_draw: str,
     history_cutoff_date: str,
+    ticket_numbers: Sequence[int] = (1, 2, 3, 4, 5, 6),
 ) -> dict[str, object]:
     """A real 11-stream ``run_strategy_stream`` record shape, forecast-focused.
 
@@ -286,6 +276,21 @@ def _forecast_prediction(
     validates and ``forecast`` must independently re-verify.
     """
 
+    stream = STREAMS_BY_ID[strategy_id]
+    observed_strategy_version = (
+        stream.strategy_version if strategy_version is None else strategy_version
+    )
+    tickets = (
+        [
+            {
+                "ticket_position": position,
+                "predicted_numbers": list(ticket_numbers),
+            }
+            for position in range(1, stream.native_ticket_count + 1)
+        ]
+        if availability == "AVAILABLE"
+        else []
+    )
     return {
         "lottery_type": target.lottery_type,
         "draw_number": target.draw_number,
@@ -294,22 +299,15 @@ def _forecast_prediction(
         "prediction_created_at": created_at.isoformat(),
         "prediction_temporal_class": temporal_class,
         "strategy_id": strategy_id,
-        "strategy_version": strategy_version,
+        "strategy_version": observed_strategy_version,
         "prediction_run_id": f"{target.draw_number}-{strategy_id}-{run_suffix}",
         "availability": availability,
         "history_cutoff": {
             "draw_number": history_cutoff_draw,
             "draw_date": history_cutoff_date,
         },
-        "history_draw_count": 1,
-        "history_sha256": _FORECAST_HISTORY_SHA256,
-        "history_caveat": "YES",
-        "native_ticket_count": 1,
-        "tickets": (
-            [{"ticket_position": 1, "predicted_numbers": [1, 2, 3, 4, 5, 6]}]
-            if availability == "AVAILABLE"
-            else []
-        ),
+        "native_ticket_count": stream.native_ticket_count,
+        "tickets": tickets,
     }
 
 
@@ -318,14 +316,18 @@ def _write_forecast_prediction(
     target: PredictionTarget,
     strategy_id: str,
     *,
-    strategy_version: str = "v-forecast-test",
+    strategy_version: str | None = None,
     run_suffix: str = "one",
     created_at: datetime,
     temporal_class: str = "PRE_DRAW",
     availability: str = "AVAILABLE",
     history_cutoff_draw: str,
     history_cutoff_date: str,
+    filename: str = "prediction.json",
+    ticket_numbers: Sequence[int] = (1, 2, 3, 4, 5, 6),
 ) -> Path:
+    path = root / "predictions" / target.draw_number / strategy_id / filename
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     payload = _forecast_prediction(
         target,
         strategy_id,
@@ -336,24 +338,32 @@ def _write_forecast_prediction(
         availability=availability,
         history_cutoff_draw=history_cutoff_draw,
         history_cutoff_date=history_cutoff_date,
+        ticket_numbers=ticket_numbers,
     )
-    run_id = cast(str, payload["prediction_run_id"])
-    path = root / "predictions" / target.draw_number / strategy_id / f"{run_id}.json"
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)
     return path
 
 
-def _write_all_streams(root: Path, target: PredictionTarget, strategy_ids: Sequence[str]) -> None:
+def _write_all_streams(
+    root: Path,
+    target: PredictionTarget,
+    strategy_ids: Sequence[str],
+    *,
+    created_at: datetime = NOW,
+    history_cutoff_draw: str = _FORECAST_CUTOFF_DRAW,
+    history_cutoff_date: str = _FORECAST_CUTOFF_DATE,
+    ticket_numbers: Sequence[int] = (1, 2, 3, 4, 5, 6),
+) -> None:
     for strategy_id in strategy_ids:
         _write_forecast_prediction(
             root,
             target,
             strategy_id,
-            created_at=NOW,
-            history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
-            history_cutoff_date=_FORECAST_CUTOFF_DATE,
+            created_at=created_at,
+            history_cutoff_draw=history_cutoff_draw,
+            history_cutoff_date=history_cutoff_date,
+            ticket_numbers=ticket_numbers,
         )
 
 
@@ -377,96 +387,6 @@ class _ForecastOnlyBackend:
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
         return inspect_prediction_inventory(self.operation_root, target)
-
-    def materialize_forecast(
-        self,
-        target: PredictionTarget,
-        *,
-        source_head: str,
-    ) -> dict[str, object]:
-        del target, source_head
-        self.mutating_calls.append("materialize_forecast")
-        raise AssertionError("forecast must never publish a forecast")
-
-    def preview_forecast(
-        self,
-        target: PredictionTarget,
-    ) -> CanonicalForecastMaterializationResult:
-        records = read_persisted_prediction_records(self.operation_root, target.draw_number)
-        cutoff_draw = _FORECAST_CUTOFF_DRAW
-        cutoff_date = _FORECAST_CUTOFF_DATE
-        for record in records:
-            cutoff = record.payload.get("history_cutoff")
-            if type(cutoff) is dict:
-                cutoff_mapping = cast(dict[str, object], cutoff)
-                candidate_draw = cutoff_mapping.get("draw_number")
-                candidate_date = cutoff_mapping.get("draw_date")
-                if type(candidate_draw) is str and type(candidate_date) is str:
-                    cutoff_draw = candidate_draw
-                    cutoff_date = candidate_date
-                    break
-        predictions = tuple(
-            PersistedForecastPrediction(
-                source_relative_path=record.source_relative_path,
-                source_sha256=record.source_sha256,
-                raw_bytes=record.raw_bytes,
-                payload=record.payload,
-            )
-            for record in records
-        )
-        registered = tuple(
-            RegisteredForecastStream(strategy_id, "v-forecast-test", 1)
-            for strategy_id in STREAM_IDS
-        )
-        request = CanonicalForecastMaterializationRequest(
-            task_id="forecast-test",
-            upstream_task_id="prediction-test",
-            target=CanonicalForecastTarget(
-                lottery_type=target.lottery_type,
-                draw_number=target.draw_number,
-                draw_date=target.draw_date,
-                scheduled_at=target.scheduled_at,
-            ),
-            max_data_cutoff=CanonicalForecastCutoff(
-                cutoff_draw,
-                cutoff_date,
-            ),
-            history=CanonicalHistoryIdentity(
-                cutoff_draw,
-                cutoff_date,
-                1,
-                _FORECAST_HISTORY_SHA256,
-                "YES",
-            ),
-            registered_streams=registered,
-            predictions=predictions,
-            implementation_identity=ImplementationIdentity(
-                "a" * 40,
-                "b" * 40,
-                (ImplementationSource("tests", "c" * 64),),
-            ),
-        )
-        authority = CanonicalForecastAuthorityPort(
-            read_existing_bytes=read_existing_bytes,
-            ensure_output_parent=ensure_output_parent,
-            stage_payload=stage_payload,
-            publish_staged=publish_staged,
-            discard_staged=discard_staged,
-        )
-        return materialize_canonical_forecast(
-            request,
-            destination=(
-                self.operation_root
-                / "forecasts"
-                / target.draw_number
-                / scheduler_module.CANONICAL_CONSENSUS_METHOD_ID
-                / scheduler_module.CANONICAL_CONSENSUS_METHOD_VERSION
-                / "final_forecast_payload.json"
-            ),
-            authority=authority,
-            clock=lambda: NOW,
-            dry_run=True,
-        )
 
     def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
         self.mutating_calls.append("refresh_schedule")
@@ -535,13 +455,6 @@ class _FakeBackend:
         if len(self.inventories) > 1:
             return self.inventories.pop(0)
         return self.inventories[0]
-
-    def preview_forecast(
-        self,
-        target: PredictionTarget,
-    ) -> CanonicalForecastMaterializationResult:
-        del target
-        raise AssertionError("scheduler cycle must not preview a forecast")
 
     def generate_predraw(
         self,
@@ -1673,7 +1586,7 @@ def test_parser_accepts_all_four_subcommands() -> None:
 
 
 def test_forecast_ready_when_all_eleven_streams_are_available(tmp_path: Path) -> None:
-    """Acceptance 1: 11/11 valid PRE_DRAW records produce FORECAST_STATUS=READY."""
+    """Acceptance 1: READY exposes the approved full canonical decision."""
 
     config = _config(tmp_path)
     target = _target()
@@ -1693,9 +1606,29 @@ def test_forecast_ready_when_all_eleven_streams_are_available(tmp_path: Path) ->
     assert result["AVAILABLE_STREAM_COUNT"] == 11
     assert result["MISSING_STREAM_IDS"] == []
     assert result["ANALYSIS_MAX_DATA_CUTOFF"] == _FORECAST_CUTOFF_DRAW
-    assert result["RANKING_AUTHORITY"] == (
-        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS@1.0.0"
-    )
+    assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
+    assert result["RANKING_AUTHORITY"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    assert result["RANKING_AUTHORITY_VERSION"] == "1.0.0"
+    assert result["WEIGHT_POLICY"] == "EQUAL_STREAM_WEIGHT"
+    ranking = cast(list[dict[str, object]], result["FINAL_DECISION_RANKING"])
+    assert len(ranking) == 49
+    assert ranking[:6] == [
+        {"rank": rank, "number": rank, "support_units": 66} for rank in range(1, 7)
+    ]
+    assert ranking[6] == {"rank": 7, "number": 7, "support_units": 0}
+    assert result["FINAL_RECOMMENDED_TICKET"] == [1, 2, 3, 4, 5, 6]
+    manifest = cast(str, result["STREAM_INPUT_MANIFEST_SHA256"])
+    assert len(manifest) == 64
+    for obsolete_field in (
+        "TOP6",
+        "TOP10",
+        "WEIGHT_AUTHORITY_STATUS",
+        "AGGREGATION_WEIGHT_MODE",
+        "CANONICAL_PREDRAW_CONSENSUS",
+        "WEIGHTED_CONSENSUS",
+        "CONFIDENCE",
+    ):
+        assert obsolete_field not in result
     streams = cast(list[dict[str, object]], result["STREAMS"])
     assert len(streams) == 11
     assert {cast(str, entry["strategy_id"]) for entry in streams} == set(STREAM_IDS)
@@ -1712,11 +1645,65 @@ def test_forecast_ready_when_all_eleven_streams_are_available(tmp_path: Path) ->
     assert backend.mutating_calls == []
 
 
-def test_forecast_115000087_style_cutoff_passes_temporal_integrity(tmp_path: Path) -> None:
-    """Acceptance 2: a 115000087-style target with cutoff 115000086 passes."""
+def test_forecast_binds_exact_validated_records_to_canonical_inputs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    captured: list[tuple[StreamConsensusInput, ...]] = []
+
+    def capture_canonical_inputs(
+        inputs: Sequence[StreamConsensusInput],
+    ) -> object:
+        values = tuple(inputs)
+        captured.append(values)
+        return domain_build_canonical_consensus(values)
+
+    monkeypatch.setattr(
+        scheduler_module,
+        "build_canonical_consensus",
+        capture_canonical_inputs,
+    )
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert len(captured) == 1
+    assert len(captured[0]) == 11
+    by_strategy_id = {source.strategy_id: source for source in captured[0]}
+    for strategy_id in STREAM_IDS:
+        source = by_strategy_id[strategy_id]
+        path = (
+            config.operation_root
+            / "predictions"
+            / target.draw_number
+            / strategy_id
+            / "prediction.json"
+        )
+        stream = STREAMS_BY_ID[strategy_id]
+        assert source.strategy_version == stream.strategy_version
+        assert source.native_ticket_count == stream.native_ticket_count
+        assert source.prediction_run_id == f"{target.draw_number}-{strategy_id}-one"
+        assert source.source_relative_path == path.relative_to(config.operation_root).as_posix()
+        assert source.source_sha256 == hashlib.sha256(path.read_bytes()).hexdigest()
+        assert source.prediction_created_at.tzinfo is not None
+        assert source.prediction_created_at.utcoffset() is not None
+        assert source.tickets == tuple(
+            (1, 2, 3, 4, 5, 6) for _ in range(stream.native_ticket_count)
+        )
+    assert result["STREAM_INPUT_MANIFEST_SHA256"]
+
+
+def test_forecast_115000087_uses_approved_canonical_ticket(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Acceptance 2: 115000087 is delivered through the approved authority."""
 
     config = _config(tmp_path)
-    scheduled_at = datetime(2026, 9, 12, 12, 30, tzinfo=UTC)
+    scheduled_at = datetime(2026, 9, 11, 12, 30, tzinfo=UTC)
     target = PredictionTarget(
         lottery_type=LOTTERY_TYPE,
         draw_number="115000087",
@@ -1724,15 +1711,24 @@ def test_forecast_115000087_style_cutoff_passes_temporal_integrity(tmp_path: Pat
         scheduled_at=scheduled_at.astimezone(scheduler_module.TAIPEI).isoformat(),
     )
     created_at = datetime(2026, 9, 10, 12, 0, tzinfo=UTC)
-    for strategy_id in STREAM_IDS:
-        _write_forecast_prediction(
-            config.operation_root,
-            target,
-            strategy_id,
-            created_at=created_at,
-            history_cutoff_draw="115000086",
-            history_cutoff_date="2026-09-09",
-        )
+    _write_all_streams(
+        config.operation_root,
+        target,
+        STREAM_IDS,
+        created_at=created_at,
+        history_cutoff_draw="115000086",
+        history_cutoff_date="2026-09-08",
+        ticket_numbers=(4, 12, 24, 25, 26, 29),
+    )
+    def fail_legacy_builder(*_args: object, **_kwargs: object) -> object:
+        pytest.fail("PR283 builder must not be used by forecast")
+
+    monkeypatch.setattr(
+        scheduler_module,
+        "build_canonical_predraw_consensus",
+        fail_legacy_builder,
+        raising=False,
+    )
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
 
     result, exit_code = _forecast_command(config, backend)
@@ -1741,6 +1737,24 @@ def test_forecast_115000087_style_cutoff_passes_temporal_integrity(tmp_path: Pat
     assert result["FORECAST_STATUS"] == "READY"
     assert result["PRE_OUTCOME_TEMPORAL_INTEGRITY"] == "PASS"
     assert result["ANALYSIS_MAX_DATA_CUTOFF"] == "115000086"
+    assert result["RANKING_AUTHORITY"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    assert result["RANKING_AUTHORITY_VERSION"] == "1.0.0"
+    assert result["FINAL_RECOMMENDED_TICKET"] == [4, 12, 24, 25, 26, 29]
+    ranking = cast(list[dict[str, object]], result["FINAL_DECISION_RANKING"])
+    assert [entry["number"] for entry in ranking[:6]] == [4, 12, 24, 25, 26, 29]
+
+
+def test_forecast_is_repeatedly_deterministic_for_same_validated_inputs(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    first, first_exit_code = _forecast_command(config, backend)
+    second, second_exit_code = _forecast_command(config, backend)
+
+    assert first_exit_code == second_exit_code == 0
+    assert first == second
 
 
 def test_forecast_does_not_require_or_read_target_outcome(tmp_path: Path) -> None:
@@ -1778,7 +1792,38 @@ def test_forecast_incomplete_when_streams_are_missing(tmp_path: Path) -> None:
     assert result["AVAILABLE_STREAM_COUNT"] == 7
     assert result["MISSING_STREAM_IDS"] == list(STREAM_IDS[7:])
     assert "STREAMS" not in result
+    assert "FINAL_DECISION_RANKING" not in result
+    assert "FINAL_RECOMMENDED_TICKET" not in result
+    assert "STREAM_INPUT_MANIFEST_SHA256" not in result
     assert backend.mutating_calls == []
+
+
+def test_forecast_ignores_extra_technical_failure_record_when_inventory_is_ready(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    target = _target()
+    _write_all_streams(config.operation_root, target, STREAM_IDS)
+    _write_forecast_prediction(
+        config.operation_root,
+        target,
+        STREAM_IDS[0],
+        run_suffix="technical-failure",
+        filename="technical-failure.json",
+        created_at=SCHEDULED + timedelta(hours=1),
+        availability="TECHNICAL_FAILURE",
+        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+        history_cutoff_date=_FORECAST_CUTOFF_DATE,
+    )
+    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
+
+    result, exit_code = _forecast_command(config, backend)
+
+    assert exit_code == 0
+    assert result["FORECAST_STATUS"] == "READY"
+    assert result["AVAILABLE_STREAM_COUNT"] == 11
+    assert result["MISSING_STREAM_IDS"] == []
+    assert result["FINAL_RECOMMENDED_TICKET"] == [1, 2, 3, 4, 5, 6]
 
 
 def test_forecast_excludes_post_draw_predictions_from_availability(tmp_path: Path) -> None:
@@ -1857,9 +1902,12 @@ def test_forecast_treats_malformed_history_cutoff_as_invalid_temporal_authority(
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code != 0
-    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_FORECAST_AUTHORITY"
-    error = cast(dict[str, object], result["CANONICAL_FORECAST_ERROR"])
-    assert error["error_class"] == "CAUSAL_CUTOFF_MISMATCH"
+    assert result["FORECAST_STATUS"] == "INVALID_TEMPORAL_AUTHORITY"
+    violations = cast(list[str], result["VIOLATIONS"])
+    assert any(STREAM_IDS[0] in violation for violation in violations)
+    assert "FINAL_DECISION_RANKING" not in result
+    assert "FINAL_RECOMMENDED_TICKET" not in result
+    assert "STREAM_INPUT_MANIFEST_SHA256" not in result
 
 
 def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None:
@@ -1875,73 +1923,41 @@ def test_forecast_never_invokes_mutating_backend_methods(tmp_path: Path) -> None
     assert backend.mutating_calls == []
 
 
-def test_forecast_projects_canonical_service_payload_and_provenance(
-    tmp_path: Path,
+def test_forecast_fails_closed_when_canonical_consensus_construction_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """READY output projects the reusable service payload and method identity."""
+    def fail_canonical_consensus(*_args: object, **_kwargs: object) -> object:
+        raise ValueError("synthetic canonical construction failure")
+
+    monkeypatch.setattr(
+        scheduler_module,
+        "build_canonical_consensus",
+        fail_canonical_consensus,
+    )
 
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS)
     backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
-
-    result, exit_code = _forecast_command(config, backend)
-
-    assert exit_code == 0
-    assert result["FORECAST_STATUS"] == "READY"
-    assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
-    assert result["RANKING_AUTHORITY"] == (
-        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS@1.0.0"
-    )
-    payload = cast(dict[str, object], result["CANONICAL_FORECAST_PAYLOAD"])
-    assert payload["aggregation_method_id"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
-    assert payload["aggregation_method_version"] == "1.0.0"
-    assert payload["target_result_used"] is False
-    assert result["FINAL_DECISION_RANKING"] == {
-        "top6": [1, 2, 3, 4, 5, 6],
-        "top10": list(range(1, 11)),
-        "ranked_numbers": list(range(1, 50)),
-    }
-    assert "CANONICAL_PREDRAW_CONSENSUS" not in result
-    assert "WEIGHTED_CONSENSUS" not in result
-
-
-def test_forecast_fails_closed_when_canonical_service_rejects_input(tmp_path: Path) -> None:
-    config = _config(tmp_path)
-    target = _target()
-    _write_all_streams(config.operation_root, target, STREAM_IDS[1:])
-    _write_forecast_prediction(
-        config.operation_root,
-        target,
-        STREAM_IDS[0],
-        strategy_version="wrong-version",
-        created_at=NOW,
-        history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
-        history_cutoff_date=_FORECAST_CUTOFF_DATE,
-    )
-    backend = _ForecastOnlyBackend(target=target, operation_root=config.operation_root)
-
     result, exit_code = _forecast_command(config, backend)
 
     assert exit_code != 0
-    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_FORECAST_AUTHORITY"
-    error = cast(dict[str, object], result["CANONICAL_FORECAST_ERROR"])
-    assert error["error_class"] == "STREAM_VERSION_MISMATCH"
-    assert "FORECAST_RANKING_AUTHORITY_UNRESOLVED" not in json.dumps(result)
+    assert result["FORECAST_STATUS"] == "INVALID_CANONICAL_CONSENSUS_AUTHORITY"
+    assert result["TARGET_RESULT_DEPENDENCY"] == "NONE"
+    assert "ValueError" in cast(str, result["CANONICAL_CONSENSUS_ERROR"])
     assert "FINAL_DECISION_RANKING" not in result
-    assert "WEIGHTED_CONSENSUS" not in result
+    assert "FINAL_RECOMMENDED_TICKET" not in result
+    assert "STREAM_INPUT_MANIFEST_SHA256" not in result
 
 
-def test_forecast_does_not_duplicate_canonical_ranking_formula() -> None:
-    source = getsource(scheduler_module._forecast_command)  # pyright: ignore[reportPrivateUsage]
+def test_forecast_directly_calls_domain_authority_and_not_legacy_builder() -> None:
+    source = getsource(_forecast_command)
 
-    assert "preview_forecast" in source
+    assert "build_canonical_consensus" in source
     assert "build_canonical_predraw_consensus" not in source
+    assert "decision.to_payload" not in source
     assert "compute_number_consensus" not in source
-    assert "unique_stream_count" not in source
-    assert "ticket_count" not in source
     assert "pairwise_stream_overlap" not in source
-    assert "sorted(" not in source
 
 
 def test_forecast_reports_no_target_resolved_without_reading_predictions(tmp_path: Path) -> None:

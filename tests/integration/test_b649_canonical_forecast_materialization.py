@@ -2,15 +2,28 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
 
-from lottolab.domain.b649_canonical_consensus import build_canonical_consensus
+from lottolab.application.b649_canonical_forecast_materialization import (
+    CanonicalForecastCutoff,
+    CanonicalForecastMaterializationRequest,
+    CanonicalForecastTarget,
+    CanonicalHistoryIdentity,
+    PersistedForecastPrediction,
+    RegisteredForecastStream,
+)
+from lottolab.domain.b649_canonical_consensus import (
+    CanonicalConsensusContext,
+    StreamConsensusInput,
+    build_canonical_consensus,
+)
 from lottolab.evidence.canonical_json import canonical_file_bytes
 from lottolab.infrastructure.b649_canonical_forecast_writer import StagedCanonicalForecast
 
@@ -155,6 +168,9 @@ HISTORICAL_087_SUPPORT_UNITS = (
     0,
 )
 HISTORICAL_087_MANIFEST_SHA256 = "ce725dfdb2e162f1c68f9cb2dc75bc2fc073a0ba55ea6fa29a4fbc5cc647ded8"
+FIXTURE_STREAM_INPUT_MANIFEST_SHA256 = (
+    "b92fa0bdfac9032d10de8fb409466652ba4765578bbd07be038b7d0442d5e221"
+)
 IDENTITY = materializer.ImplementationIdentity(
     commit="a" * 40,
     tree="b" * 40,
@@ -247,9 +263,24 @@ def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path
     assert result.status == "CREATED"
     assert result.payload["target_result_used"] is False
     assert result.payload["stream_count"] == 11
+    ranking_value = result.payload["final_decision_ranking"]
+    assert isinstance(ranking_value, list)
+    ranking = cast(list[dict[str, object]], ranking_value)
+    assert len(ranking) == 49
+    assert [entry["number"] for entry in ranking[:10]] == [4, 12, 24, 25, 26, 29, 1, 2, 3, 5]
+    assert [entry["support_units"] for entry in ranking[:6]] == [66] * 6
+    assert all(entry["support_units"] == 0 for entry in ranking[6:])
     assert result.payload["final_recommended_output"] == [
         {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
     ]
+    assert (
+        result.payload["stream_input_manifest_sha256"]
+        == FIXTURE_STREAM_INPUT_MANIFEST_SHA256
+    )
+    assert result.payload["aggregation_method_id"] == (
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    )
+    assert result.payload["aggregation_method_version"] == "1.0.0"
     raw = destination.read_bytes()
     assert raw == canonical_file_bytes(result.payload)
     assert not list(destination.parent.glob("*.tmp"))
@@ -267,64 +298,6 @@ def test_materializes_exact_11_stream_authority_and_is_idempotent(tmp_path: Path
     )
     assert retry.status == "ALREADY_PRESENT"
     assert destination.read_bytes() == raw
-
-
-def test_canonical_authority_ignores_descriptive_diagnostics_and_limited_status(
-    tmp_path: Path,
-) -> None:
-    plain_root = tmp_path / "plain-operation"
-    diagnostic_root = tmp_path / "diagnostic-operation"
-    _copy_inputs(plain_root)
-    _copy_inputs(diagnostic_root)
-
-    first = materializer.FROZEN_STREAM_SPECS[0]
-    source = diagnostic_root / first.source_relative_path
-    payload = json.loads(source.read_text(encoding="utf-8"))
-    payload.update(
-        {
-            "authority_status": "NONCANONICAL_DESCRIPTIVE",
-            "descriptive_number_consensus": [{"number": 1, "rank": 1}],
-            "descriptive_stream_overlap": [],
-            "descriptive_top6": [1, 4, 18, 25, 26, 29],
-            "descriptive_top_k": [1, 4, 8, 18, 24, 25, 26, 29, 43, 45],
-            "weight_authority_status": "LIMITED",
-        }
-    )
-    source.write_bytes(
-        json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode()
-        + b"\n"
-    )
-
-    plain = materializer.materialize_canonical_forecast(
-        operation_root=plain_root,
-        destination=tmp_path / "plain-authority" / "final_forecast_payload.json",
-        implementation_identity=IDENTITY,
-        expected_manifest_sha256=None,
-        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
-    )
-    diagnostic = materializer.materialize_canonical_forecast(
-        operation_root=diagnostic_root,
-        destination=tmp_path / "diagnostic-authority" / "final_forecast_payload.json",
-        implementation_identity=IDENTITY,
-        expected_manifest_sha256=None,
-        clock=_clock(CREATED_AT, PRE_PUBLISH_AT),
-    )
-
-    expected_ticket = [{"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}]
-    assert plain.payload["final_recommended_output"] == expected_ticket
-    assert diagnostic.payload["final_recommended_output"] == expected_ticket
-    assert diagnostic.payload["target_result_used"] is False
-    assert not any(
-        key in diagnostic.payload
-        for key in (
-            "authority_status",
-            "descriptive_number_consensus",
-            "descriptive_stream_overlap",
-            "descriptive_top6",
-            "descriptive_top_k",
-            "weight_authority_status",
-        )
-    )
 
 
 def test_created_at_boundary_fails_closed_without_authority_file(tmp_path: Path) -> None:
@@ -545,3 +518,160 @@ def test_historical_087_authority_and_domain_parity_are_read_only(
     assert before_stat.st_ino == after_stat.st_ino
     assert before_stat.st_size == after_stat.st_size
     assert before_stat.st_mtime_ns == after_stat.st_mtime_ns
+def test_dynamic_materializer_binds_later_target_and_causal_history(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    created_at = datetime(2099, 1, 2, 10, 0, 0, tzinfo=UTC)
+    scheduled_at = datetime(2099, 1, 2, 12, 30, 0, tzinfo=UTC)
+    streams = tuple(
+        StreamConsensusInput(
+            strategy_id=f"synthetic_stream_{index:02d}",
+            strategy_version="v1.0",
+            native_ticket_count=1,
+            prediction_run_id=f"stream-{index:02d}",
+            source_relative_path=f"predictions/209900001/stream-{index:02d}.json",
+            source_sha256=f"{index + 1:064x}",
+            prediction_created_at=created_at,
+            tickets=(FIXTURE_NUMBERS,),
+        )
+        for index in range(11)
+    )
+    context = CanonicalConsensusContext(
+        lottery_type="BIG_LOTTO",
+        target_draw_number="209900001",
+        target_draw_date="2099-01-02",
+        scheduled_at=scheduled_at,
+        causal_cutoff_draw_number="209899999",
+        causal_cutoff_date="2099-01-01",
+        history_draw_count=42,
+        history_sha256="d" * 64,
+        streams=streams,
+    )
+
+    registered = tuple(
+        RegisteredForecastStream(
+            strategy_id=stream.strategy_id,
+            strategy_version=stream.strategy_version,
+            native_ticket_count=stream.native_ticket_count,
+        )
+        for stream in streams
+    )
+    predictions: list[PersistedForecastPrediction] = []
+    for stream in streams:
+        payload = {
+            "schema_version": "b649-operational-prediction-v1",
+            "task_id": "synthetic-prediction",
+            "prediction_run_id": stream.prediction_run_id,
+            "lottery_type": context.lottery_type,
+            "draw_number": context.target_draw_number,
+            "draw_date": context.target_draw_date,
+            "scheduled_at": context.scheduled_at.isoformat(),
+            "prediction_created_at": stream.prediction_created_at.isoformat(),
+            "strategy_id": stream.strategy_id,
+            "strategy_version": stream.strategy_version,
+            "prediction_temporal_class": "PRE_DRAW",
+            "availability": "AVAILABLE",
+            "history_cutoff": {
+                "draw_number": context.causal_cutoff_draw_number,
+                "draw_date": context.causal_cutoff_date,
+            },
+            "history_draw_count": context.history_draw_count,
+            "history_sha256": context.history_sha256,
+            "history_caveat": context.history_caveat,
+            "native_ticket_count": stream.native_ticket_count,
+            "tickets": [
+                {
+                    "ticket_position": position,
+                    "predicted_numbers": list(ticket),
+                }
+                for position, ticket in enumerate(stream.tickets, start=1)
+            ],
+        }
+        raw = canonical_file_bytes(payload)
+        predictions.append(
+            PersistedForecastPrediction(
+                source_relative_path=stream.source_relative_path,
+                source_sha256=hashlib.sha256(raw).hexdigest(),
+                raw_bytes=raw,
+                payload=payload,
+            )
+        )
+    request = CanonicalForecastMaterializationRequest(
+        task_id="synthetic-scheduler",
+        upstream_task_id="synthetic-prediction-loop",
+        target=CanonicalForecastTarget(
+            lottery_type=context.lottery_type,
+            draw_number=context.target_draw_number,
+            draw_date=context.target_draw_date,
+            scheduled_at=context.scheduled_at.isoformat(),
+        ),
+        max_data_cutoff=CanonicalForecastCutoff(
+            context.causal_cutoff_draw_number,
+            context.causal_cutoff_date,
+        ),
+        history=CanonicalHistoryIdentity(
+            cutoff_draw_number=context.causal_cutoff_draw_number,
+            cutoff_date=context.causal_cutoff_date,
+            draw_count=context.history_draw_count,
+            history_sha256=context.history_sha256,
+            history_caveat=context.history_caveat,
+        ),
+        registered_streams=registered,
+        predictions=tuple(predictions),
+        implementation_identity=IDENTITY,
+    )
+
+    result = materializer.materialize_dynamic_canonical_forecast(
+        request=request,
+        operation_root=tmp_path / "operation",
+        clock=_clock(created_at + timedelta(minutes=1), created_at + timedelta(minutes=2)),
+    )
+
+    expected_destination = materializer.canonical_forecast_path(
+        tmp_path / "operation", "209900001"
+    )
+    assert result.status == "CREATED"
+    assert result.destination == expected_destination
+    assert result.payload["target_result_used"] is False
+    assert result.payload["target_draw"] == {
+        "draw_number": "209900001",
+        "draw_date": "2099-01-02",
+    }
+    assert result.payload["scheduled_at"] == "2099-01-02T12:30:00+00:00"
+    assert result.payload["max_data_cutoff"] == {
+        "draw_number": "209899999",
+        "draw_date": "2099-01-01",
+    }
+    assert result.payload["history_draw_count"] == 42
+    assert result.payload["history_sha256"] == "d" * 64
+    assert result.payload["aggregation_method_id"] == (
+        "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
+    )
+    assert result.payload["aggregation_method_version"] == "1.0.0"
+    assert expected_destination.read_bytes() == canonical_file_bytes(result.payload)
+
+    def fail_clock(_provider: object = None) -> datetime:
+        raise AssertionError("existing authority retry sampled the publication clock")
+
+    def fail_write(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("existing authority retry attempted a write")
+
+    monkeypatch.setattr(materializer, "ensure_output_parent", fail_write)
+    monkeypatch.setattr(materializer, "stage_payload", fail_write)
+    monkeypatch.setattr(materializer, "publish_staged", fail_write)
+
+    retry = materializer.materialize_dynamic_canonical_forecast(
+        request=request,
+        operation_root=tmp_path / "operation",
+        clock=fail_clock,
+    )
+    assert retry.status == "ALREADY_PRESENT"
+    assert retry.payload == result.payload
+    assert expected_destination.read_bytes() == canonical_file_bytes(result.payload)
+
+    loaded = materializer.load_canonical_forecast_authority(
+        request=request,
+        operation_root=tmp_path / "operation",
+        destination=expected_destination,
+    )
+    assert loaded == result.payload

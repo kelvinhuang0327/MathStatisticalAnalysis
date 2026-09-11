@@ -26,6 +26,7 @@ from lottolab.application.b649_canonical_forecast_materialization import (
     CanonicalForecastCutoff,
     CanonicalForecastMaterializationError,
     CanonicalForecastMaterializationRequest,
+    CanonicalForecastMaterializationResult,
     CanonicalForecastTarget,
     CanonicalHistoryIdentity,
     ForecastAuthorityConflictError,
@@ -53,6 +54,7 @@ from lottolab.domain.b649_canonical_consensus import (
     FINAL_TICKET_SIZE,
     STREAM_WEIGHT_POLICY,
     TIE_BREAK,
+    CanonicalConsensusContext,
     StreamConsensusInput,
 )
 from lottolab.evidence.canonical_json import sha256_hex
@@ -101,6 +103,10 @@ _GIT_OBJECT = re.compile(r"[0-9a-f]{40,64}", flags=re.ASCII)
 # implementation lives in the application service.
 ForecastMaterializationError = CanonicalForecastMaterializationError
 FrozenInputError = CanonicalForecastMaterializationError
+
+
+class ForecastAuthorityMissingError(ForecastMaterializationError):
+    """The requested canonical forecast authority has not been published."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,8 +321,9 @@ def materialize_canonical_forecast(
     implementation_identity: ImplementationIdentity | None = None,
     dry_run: bool = False,
 ) -> MaterializationResult:
-    """Adapt the historical 087 inputs to the target-parameterized service."""
+    """Adapt the historical 087 inputs to the application-owned service."""
 
+    _require_absolute_path(operation_root, "operation_root")
     spec_tuple = tuple(specs)
     records = read_persisted_prediction_records(operation_root, TARGET_DRAW_NUMBER)
     by_path = {record.source_relative_path: record for record in records}
@@ -341,8 +348,10 @@ def materialize_canonical_forecast(
                 native_ticket_count=spec.native_ticket_count,
             )
         )
+    effective_repo = Path(__file__).resolve().parents[1] if repo_root is None else repo_root
+    _require_absolute_path(effective_repo, "repo_root")
     identity = (
-        resolve_implementation_identity(Path(__file__).resolve().parents[1])
+        resolve_implementation_identity(effective_repo)
         if implementation_identity is None
         else implementation_identity
     )
@@ -353,30 +362,14 @@ def materialize_canonical_forecast(
         expected_manifest_sha256=expected_manifest_sha256,
     )
     output = operation_root / FORECAST_RELATIVE_PATH if destination is None else destination
-    authority = CanonicalForecastAuthorityPort(
-        read_existing_bytes=read_existing_bytes,
-        ensure_output_parent=ensure_output_parent,
-        stage_payload=stage_payload,
-        publish_staged=publish_staged,
-        discard_staged=discard_staged,
-    )
     result = _materialize_service(
         request,
         destination=output,
-        authority=authority,
+        authority=_authority_port(),
         clock=(lambda: datetime.now(UTC)) if clock is None else clock,
         dry_run=dry_run,
     )
-    if result.status == "DRY_RUN":
-        status: Literal["CREATED", "ALREADY_PRESENT", "DRY_RUN"] = "DRY_RUN"
-    else:
-        assert result.publication is not None
-        status = result.publication
-    return MaterializationResult(
-        status=status,
-        destination=result.destination,
-        payload=result.payload,
-    )
+    return _materialization_result(result)
 
 
 def _request(
@@ -410,6 +403,221 @@ def _request(
     )
 
 
+def materialize_dynamic_canonical_forecast(
+    *,
+    context: CanonicalConsensusContext | None = None,
+    operation_root: Path,
+    repo_root: Path | None = None,
+    destination: Path | None = None,
+    clock: Clock | None = None,
+    implementation_identity: ImplementationIdentity | None = None,
+    request: CanonicalForecastMaterializationRequest | None = None,
+    predictions: Sequence[PersistedForecastPrediction] = (),
+    registered_streams: Sequence[RegisteredForecastStream] = (),
+    expected_manifest_sha256: str | None = None,
+    task_id: str = "B649_GOALC_LOCAL_LAUNCHD_R1",
+    upstream_task_id: str = UPSTREAM_TASK_ID,
+    dry_run: bool = False,
+) -> MaterializationResult:
+    """Adapt a dynamic request to the application-owned materialization service.
+
+    The production scheduler calls the application service directly.  This
+    compatibility adapter remains available for focused tooling/tests, but it
+    accepts the same raw prediction records and registered stream identities;
+    it never aggregates or writes an authority itself.
+    """
+
+    _require_absolute_path(operation_root, "operation_root")
+    if request is None:
+        if context is None:
+            raise ForecastMaterializationError(
+                "dynamic materialization requires a context or application request"
+            )
+        effective_identity = implementation_identity
+        if effective_identity is None:
+            root = Path(__file__).resolve().parents[1] if repo_root is None else repo_root
+            _require_absolute_path(root, "repo_root")
+            effective_identity = resolve_implementation_identity(root)
+        if not predictions or not registered_streams:
+            raise ForecastMaterializationError(
+                "dynamic materialization requires raw predictions and registered streams"
+            )
+        request = _request_from_context(
+            context,
+            predictions=predictions,
+            registered_streams=registered_streams,
+            identity=effective_identity,
+            expected_manifest_sha256=expected_manifest_sha256,
+            task_id=task_id,
+            upstream_task_id=upstream_task_id,
+        )
+    output = (
+        canonical_forecast_path(
+            operation_root,
+            request.target.draw_number,
+        )
+        if destination is None
+        else destination
+    )
+    result = _materialize_service(
+        request,
+        destination=output,
+        authority=_authority_port(),
+        clock=(lambda: datetime.now(UTC)) if clock is None else clock,
+        dry_run=dry_run,
+    )
+    return _materialization_result(result)
+
+
+def load_canonical_forecast_authority(
+    *,
+    operation_root: Path,
+    destination: Path | None = None,
+    request: CanonicalForecastMaterializationRequest | None = None,
+    context: CanonicalConsensusContext | None = None,
+    repo_root: Path | None = None,
+    predictions: Sequence[PersistedForecastPrediction] = (),
+    registered_streams: Sequence[RegisteredForecastStream] = (),
+    implementation_identity: ImplementationIdentity | None = None,
+    expected_manifest_sha256: str | None = None,
+    task_id: str = "B649_GOALC_LOCAL_LAUNCHD_R1",
+    upstream_task_id: str = UPSTREAM_TASK_ID,
+) -> dict[str, object]:
+    """Read and validate one existing authority without any write or clock read."""
+
+    _require_absolute_path(operation_root, "operation_root")
+    if request is None:
+        if context is None:
+            raise ForecastMaterializationError(
+                "authority validation requires a context or application request"
+            )
+        effective_identity = implementation_identity
+        if effective_identity is None:
+            root = Path(__file__).resolve().parents[1] if repo_root is None else repo_root
+            _require_absolute_path(root, "repo_root")
+            effective_identity = resolve_implementation_identity(root)
+        if not predictions or not registered_streams:
+            raise ForecastMaterializationError(
+                "authority validation requires raw predictions and registered streams"
+            )
+        request = _request_from_context(
+            context,
+            predictions=predictions,
+            registered_streams=registered_streams,
+            identity=effective_identity,
+            expected_manifest_sha256=expected_manifest_sha256,
+            task_id=task_id,
+            upstream_task_id=upstream_task_id,
+        )
+    output = (
+        canonical_forecast_path(operation_root, request.target.draw_number)
+        if destination is None
+        else destination
+    )
+    if read_existing_bytes(output) is None:
+        raise ForecastAuthorityMissingError(f"canonical forecast authority is absent: {output}")
+    result = _materialize_service(
+        request,
+        destination=output,
+        authority=_authority_port(),
+        clock=lambda: datetime.now(UTC),
+        dry_run=True,
+    )
+    if result.publication != "ALREADY_PRESENT":
+        raise ForecastAuthorityConflictError(
+            "existing authority was not validated as already present"
+        )
+    return result.payload
+
+
+def _request_from_context(
+    context: CanonicalConsensusContext,
+    *,
+    predictions: Sequence[PersistedForecastPrediction],
+    registered_streams: Sequence[RegisteredForecastStream],
+    identity: ImplementationIdentity,
+    expected_manifest_sha256: str | None,
+    task_id: str,
+    upstream_task_id: str,
+) -> CanonicalForecastMaterializationRequest:
+    return CanonicalForecastMaterializationRequest(
+        task_id=task_id,
+        upstream_task_id=upstream_task_id,
+        target=CanonicalForecastTarget(
+            lottery_type=context.lottery_type,
+            draw_number=context.target_draw_number,
+            draw_date=context.target_draw_date,
+            scheduled_at=context.scheduled_at.isoformat(),
+        ),
+        max_data_cutoff=CanonicalForecastCutoff(
+            context.causal_cutoff_draw_number,
+            context.causal_cutoff_date,
+        ),
+        history=CanonicalHistoryIdentity(
+            cutoff_draw_number=context.causal_cutoff_draw_number,
+            cutoff_date=context.causal_cutoff_date,
+            draw_count=context.history_draw_count,
+            history_sha256=context.history_sha256,
+            history_caveat=context.history_caveat,
+        ),
+        registered_streams=tuple(registered_streams),
+        predictions=tuple(predictions),
+        implementation_identity=identity,
+        expected_manifest_sha256=expected_manifest_sha256,
+    )
+
+
+def _authority_port() -> CanonicalForecastAuthorityPort:
+    return CanonicalForecastAuthorityPort(
+        read_existing_bytes=read_existing_bytes,
+        ensure_output_parent=ensure_output_parent,
+        stage_payload=stage_payload,
+        publish_staged=publish_staged,
+        discard_staged=discard_staged,
+    )
+
+
+def _materialization_result(
+    service_result: CanonicalForecastMaterializationResult,
+) -> MaterializationResult:
+    status_value = service_result.status
+    if status_value == "DRY_RUN":
+        status: Literal["CREATED", "ALREADY_PRESENT", "DRY_RUN"] = "DRY_RUN"
+    else:
+        publication = service_result.publication
+        if publication not in {"CREATED", "ALREADY_PRESENT"}:
+            raise ForecastMaterializationError("application service returned no publication")
+        status = publication
+    return MaterializationResult(
+        status=status,
+        destination=service_result.destination,
+        payload=service_result.payload,
+    )
+
+
+def canonical_forecast_path(operation_root: Path, target_draw_number: str) -> Path:
+    """Return the canonical forecast hierarchy for one validated target number."""
+
+    _require_absolute_path(operation_root, "operation_root")
+    if type(target_draw_number) is not str or not re.fullmatch(
+        r"[0-9]+", target_draw_number, flags=re.ASCII
+    ):
+        raise ForecastMaterializationError("target draw number is not numeric text")
+    return (
+        operation_root
+        / "forecasts"
+        / target_draw_number
+        / CANONICAL_CONSENSUS_METHOD_ID
+        / CANONICAL_CONSENSUS_METHOD_VERSION
+        / "final_forecast_payload.json"
+    )
+
+
+def _require_absolute_path(path: Path, label: str) -> None:
+    if not path.is_absolute():
+        raise ForecastMaterializationError(f"{label} must be an absolute Path")
+
+
 def _git(repo_root: Path, *args: str) -> str:
     try:
         result = subprocess.run(
@@ -419,7 +627,9 @@ def _git(repo_root: Path, *args: str) -> str:
             text=True,
         )
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise ImplementationIdentityError(f"git command failed: git {' '.join(args)}") from exc
+        raise ImplementationIdentityError(
+            f"git command failed: git {' '.join(args)}"
+        ) from exc
     return result.stdout
 
 
@@ -431,8 +641,12 @@ def _git_bytes(repo_root: Path, *args: str) -> bytes:
             capture_output=True,
         )
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise ImplementationIdentityError(f"git command failed: git {' '.join(args)}") from exc
+        raise ImplementationIdentityError(
+            f"git command failed: git {' '.join(args)}"
+        ) from exc
     return result.stdout
+
+
 
 
 def _default_destination(operation_root: Path) -> Path:
@@ -509,7 +723,9 @@ __all__ = [
     "TASK_ID",
     "TIE_BREAK",
     "UPSTREAM_TASK_ID",
+    "CanonicalConsensusContext",
     "ForecastAuthorityConflictError",
+    "ForecastAuthorityMissingError",
     "ForecastMaterializationError",
     "FrozenInputBundle",
     "FrozenInputError",
@@ -519,7 +735,10 @@ __all__ = [
     "ImplementationSource",
     "MaterializationResult",
     "PreOutcomeWindowClosedError",
+    "canonical_forecast_path",
+    "load_canonical_forecast_authority",
     "load_frozen_stream_inputs",
     "materialize_canonical_forecast",
+    "materialize_dynamic_canonical_forecast",
     "resolve_implementation_identity",
 ]

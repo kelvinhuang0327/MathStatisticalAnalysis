@@ -220,6 +220,7 @@ class CanonicalForecastMaterializationRequest:
     predictions: tuple[PersistedForecastPrediction, ...]
     implementation_identity: ImplementationIdentity
     expected_manifest_sha256: str | None = None
+    expected_authority_sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -278,6 +279,14 @@ class CanonicalForecastMaterializationService:
         except Exception as exc:
             raise ForecastAuthorityStorageError("existing authority could not be read") from exc
         if existing is not None:
+            if (
+                request.expected_authority_sha256 is not None
+                and hashlib.sha256(existing).hexdigest()
+                != request.expected_authority_sha256
+            ):
+                raise ForecastAuthorityConflictError(
+                    "existing authority digest differs from the pinned identity"
+                )
             payload = _validate_existing_payload(existing, request)
             return CanonicalForecastMaterializationResult(
                 status="COMPLETE",
@@ -318,6 +327,14 @@ class CanonicalForecastMaterializationService:
         _require_creation_window(now, request, streams, context="created_at")
         created_payload = {**base, "created_at": _format_timestamp(now)}
         payload_bytes = canonical_file_bytes(created_payload)
+        if (
+            request.expected_authority_sha256 is not None
+            and hashlib.sha256(payload_bytes).hexdigest()
+            != request.expected_authority_sha256
+        ):
+            raise ForecastAuthorityConflictError(
+                "new authority digest differs from the pinned identity"
+            )
         try:
             self._authority.ensure_output_parent(destination)
             staged = self._authority.stage_payload(destination, payload_bytes)
@@ -516,6 +533,10 @@ def _validate_request(request: CanonicalForecastMaterializationRequest) -> None:
         request.expected_manifest_sha256
     ) is None:
         raise SourceIdentityMismatchError("expected stream manifest SHA-256 is invalid")
+    if request.expected_authority_sha256 is not None and _SHA256.fullmatch(
+        request.expected_authority_sha256
+    ) is None:
+        raise ForecastAuthorityConflictError("expected authority SHA-256 is invalid")
     del scheduled
 
 
@@ -924,6 +945,21 @@ def _validate_existing_semantics(
             raise ForecastAuthorityConflictError(
                 f"existing authority field differs from scheduler/method authority: {key}"
             )
+    if any(
+        key in payload
+        for key in (
+            "number_consensus",
+            "top6",
+            "top_k",
+            "descriptive_number_consensus",
+            "descriptive_top6",
+            "descriptive_top_k",
+            "descriptive_stream_overlap",
+        )
+    ):
+        raise ForecastAuthorityConflictError(
+            "existing authority contains non-canonical descriptive diagnostics"
+        )
 
     registered = {
         stream.strategy_id: stream for stream in request.registered_streams

@@ -15,7 +15,7 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from inspect import getsource
 from pathlib import Path
-from typing import cast
+from typing import NoReturn, cast
 from urllib.error import URLError
 
 import pytest
@@ -44,9 +44,11 @@ from tools.b649_goalc_local_scheduler import (
 from tools.b649_operational_prediction_loop import (
     LOTTERY_TYPE,
     STRATEGY_STREAMS,
+    HistorySnapshot,
     PredictionTarget,
 )
 
+import lottolab.application.b649_canonical_forecast_materialization as service_module
 from lottolab.application.pre_outcome_target_operational import (
     TargetAnnouncementSourceStatus,
 )
@@ -296,6 +298,9 @@ def _forecast_prediction(
             "draw_number": history_cutoff_draw,
             "draw_date": history_cutoff_date,
         },
+        "history_draw_count": 3,
+        "history_sha256": "b" * 64,
+        "history_caveat": "YES",
         "native_ticket_count": stream.native_ticket_count,
         "tickets": tickets,
     }
@@ -313,11 +318,9 @@ def _write_forecast_prediction(
     availability: str = "AVAILABLE",
     history_cutoff_draw: str,
     history_cutoff_date: str,
-    filename: str = "prediction.json",
+    filename: str | None = None,
     ticket_numbers: Sequence[int] = (1, 2, 3, 4, 5, 6),
 ) -> Path:
-    path = root / "predictions" / target.draw_number / strategy_id / filename
-    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     payload = _forecast_prediction(
         target,
         strategy_id,
@@ -330,6 +333,10 @@ def _write_forecast_prediction(
         history_cutoff_date=history_cutoff_date,
         ticket_numbers=ticket_numbers,
     )
+    if filename is None:
+        filename = f"{payload['prediction_run_id']}.json"
+    path = root / "predictions" / target.draw_number / strategy_id / filename
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)
     return path
@@ -381,30 +388,131 @@ def _write_canonical_streams(root: Path, target: PredictionTarget) -> None:
 
 def _authority_payload(
     target: PredictionTarget,
+    *,
+    operation_root: Path | None = None,
     **overrides: object,
 ) -> dict[str, object]:
+    records: dict[str, tuple[Path, dict[str, object], bytes]] = {}
+    if operation_root is not None:
+        for strategy_id in STREAM_IDS:
+            paths = sorted(
+                (
+                    operation_root
+                    / "predictions"
+                    / target.draw_number
+                    / strategy_id
+                ).glob("*.json")
+            )
+            if not paths:
+                raise AssertionError(f"missing forecast fixture for {strategy_id}")
+            path = paths[0]
+            raw = path.read_bytes()
+            records[strategy_id] = (path, json.loads(raw), raw)
+
+    ordered_ids = tuple(sorted(STREAM_IDS))
+    manifest_rows = [
+        {
+            "native_ticket_count": STREAMS_BY_ID[strategy_id].native_ticket_count,
+            "prediction_run_id": (
+                records[strategy_id][1]["prediction_run_id"]
+                if strategy_id in records
+                else f"{target.draw_number}-{strategy_id}-one"
+            ),
+            "source_relative_path": (
+                str(records[strategy_id][0].relative_to(operation_root))
+                if strategy_id in records and operation_root is not None
+                else f"predictions/{target.draw_number}/{strategy_id}/prediction.json"
+            ),
+            "source_sha256": (
+                hashlib.sha256(records[strategy_id][2]).hexdigest()
+                if strategy_id in records
+                else "a" * 64
+            ),
+            "strategy_id": strategy_id,
+            "strategy_version": STREAMS_BY_ID[strategy_id].strategy_version,
+        }
+        for strategy_id in ordered_ids
+    ]
+    cutoff = (
+        records[ordered_ids[0]][1]["history_cutoff"]
+        if records
+        else {
+            "draw_number": _FORECAST_CUTOFF_DRAW,
+            "draw_date": _FORECAST_CUTOFF_DATE,
+        }
+    )
+    cutoff_fields = cast(dict[str, object], cutoff)
+    history_sha256 = (
+        records[ordered_ids[0]][1].get("history_sha256", "b" * 64)
+        if records
+        else "b" * 64
+    )
+    history_draw_count = (
+        records[ordered_ids[0]][1].get("history_draw_count", 3) if records else 3
+    )
+    history_caveat = (
+        records[ordered_ids[0]][1].get("history_caveat", "YES") if records else "YES"
+    )
+    supports = {4: 60, 12: 59, 24: 58, 25: 57, 26: 56, 29: 55}
+    remaining = [number for number in range(1, 50) if number not in supports]
+    supports.update(dict.fromkeys(remaining[:7], 7))
+    supports[remaining[7]] = 2
+    supports.update(dict.fromkeys(remaining[8:], 0))
+    ranking = [
+        {"rank": rank, "number": number, "support_units": supports[number]}
+        for rank, number in enumerate(
+            sorted(range(1, 50), key=lambda value: (-supports[value], value)),
+            start=1,
+        )
+    ]
+    scheduled = datetime.fromisoformat(target.scheduled_at).astimezone(UTC)
     payload: dict[str, object] = {
         "schema_version": "b649-canonical-forecast-v1",
+        "task_id": scheduler_module.CANONICAL_FORECAST_TASK_ID,
+        "upstream_task_id": scheduler_module.CANONICAL_FORECAST_UPSTREAM_TASK_ID,
         "aggregation_method_id": "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS",
         "aggregation_method_version": "1.0.0",
+        "aggregation_unit": service_module.AGGREGATION_UNIT,
+        "weight_policy": service_module.STREAM_WEIGHT_POLICY,
+        "correlated_family_policy": service_module.CORRELATED_FAMILY_POLICY,
+        "tie_break": service_module.TIE_BREAK,
+        "score_denominator": service_module.SCORE_DENOMINATOR,
+        "decision_ranking_formula": service_module.DECISION_RANKING_FORMULA,
+        "aggregation_contract_review_id": service_module.AGGREGATION_CONTRACT_REVIEW_ID,
+        "aggregation_contract_approved_at": service_module.AGGREGATION_CONTRACT_APPROVED_AT,
         "target_draw": {
             "draw_number": target.draw_number,
             "draw_date": target.draw_date,
         },
         "lottery_type": target.lottery_type,
+        "scheduled_at": target.scheduled_at,
+        "created_at": (scheduled - timedelta(hours=1))
+        .isoformat(timespec="microseconds")
+        .replace("+00:00", "Z"),
+        "max_data_cutoff": {
+            "draw_number": cutoff_fields["draw_number"],
+            "draw_date": cutoff_fields["draw_date"],
+        },
+        "history_sha256": history_sha256,
+        "history_draw_count": history_draw_count,
+        "history_caveat": history_caveat,
         "stream_count": 11,
+        "exact_stream_ids": list(ordered_ids),
+        "stream_inputs": manifest_rows,
         "target_result_used": False,
         "pre_outcome_temporal_integrity": "PASS",
-        "weight_policy": "EQUAL_STREAM_WEIGHT",
-        "stream_input_manifest_sha256": "d" * 64,
-        "final_decision_ranking": [
-            {"rank": 1, "number": 4, "support_units": 11},
-            {"rank": 2, "number": 12, "support_units": 10},
-            {"rank": 3, "number": 24, "support_units": 9},
-            {"rank": 4, "number": 25, "support_units": 8},
-            {"rank": 5, "number": 26, "support_units": 7},
-            {"rank": 6, "number": 29, "support_units": 6},
-        ],
+        "implementation_commit": "f" * 40,
+        "implementation_tree": "e" * 40,
+        "implementation_source_hashes": [],
+        "stream_input_manifest_sha256": hashlib.sha256(
+            json.dumps(
+                manifest_rows,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest(),
+        "final_decision_ranking": ranking,
         "final_recommended_output": [
             {"ticket_position": 1, "predicted_numbers": [4, 12, 24, 25, 26, 29]}
         ],
@@ -419,7 +527,11 @@ def _install_authority_fixture(
     target: PredictionTarget,
     **overrides: object,
 ) -> dict[str, object]:
-    payload = _authority_payload(target, **overrides)
+    payload = _authority_payload(
+        target,
+        operation_root=tmp_path / "goalc",
+        **overrides,
+    )
     raw = scheduler_module._canonical_json(payload).encode("utf-8") + b"\n"  # pyright: ignore[reportPrivateUsage]
     _install_authority_bytes_fixture(tmp_path, monkeypatch, raw)
     return payload
@@ -445,6 +557,72 @@ def _install_authority_bytes_fixture(
     return path
 
 
+def _forecast_service_request(
+    operation_root: Path,
+    target: PredictionTarget,
+    inventory: PredictionInventory,
+) -> scheduler_module.CanonicalForecastMaterializationRequest:
+    records = {record.strategy_id: record for record in inventory.available_records}
+    first = records[STREAM_IDS[0]].payload
+    cutoff = cast(dict[str, object], first["history_cutoff"])
+    destination = scheduler_module._forecast_authority_path(  # pyright: ignore[reportPrivateUsage]
+        operation_root,
+        target,
+    )
+    registered = tuple(
+        scheduler_module.RegisteredForecastStream(
+            strategy_id=stream.strategy_id,
+            strategy_version=stream.strategy_version,
+            native_ticket_count=stream.native_ticket_count,
+        )
+        for stream in STRATEGY_STREAMS
+        if stream.enabled
+    )
+    predictions = tuple(
+        scheduler_module.PersistedForecastPrediction(
+            source_relative_path=str(record.path.relative_to(operation_root)),
+            source_sha256=hashlib.sha256(record.raw_bytes).hexdigest(),
+            raw_bytes=record.raw_bytes,
+            payload=record.payload,
+        )
+        for record in inventory.available_records
+    )
+    identity = scheduler_module.ImplementationIdentity(
+        SOURCE_HEAD,
+        "e" * 40,
+        (scheduler_module.ImplementationSource("tools/scheduler.py", "a" * 64),),
+    )
+    return scheduler_module.CanonicalForecastMaterializationRequest(
+        task_id=scheduler_module.CANONICAL_FORECAST_TASK_ID,
+        upstream_task_id=scheduler_module.CANONICAL_FORECAST_UPSTREAM_TASK_ID,
+        target=scheduler_module.CanonicalForecastTarget(
+            lottery_type=target.lottery_type,
+            draw_number=target.draw_number,
+            draw_date=target.draw_date,
+            scheduled_at=target.scheduled_at,
+        ),
+        max_data_cutoff=scheduler_module.CanonicalForecastCutoff(
+            draw_number=cast(str, cutoff["draw_number"]),
+            draw_date=cast(str, cutoff["draw_date"]),
+        ),
+        history=scheduler_module.CanonicalHistoryIdentity(
+            cutoff_draw_number=cast(str, cutoff["draw_number"]),
+            cutoff_date=cast(str, cutoff["draw_date"]),
+            draw_count=cast(int, first["history_draw_count"]),
+            history_sha256=cast(str, first["history_sha256"]),
+            history_caveat=cast(str, first["history_caveat"]),
+        ),
+        registered_streams=registered,
+        predictions=predictions,
+        implementation_identity=identity,
+        expected_authority_sha256=(
+            scheduler_module.CANONICAL_FORECAST_SHA256
+            if destination == scheduler_module.CANONICAL_FORECAST_AUTHORITY_PATH
+            else None
+        ),
+    )
+
+
 class _ForecastOnlyBackend:
     """Delegate to the real inventory authority; hard-fail on any mutating call.
 
@@ -465,6 +643,31 @@ class _ForecastOnlyBackend:
 
     def inspect_predictions(self, target: PredictionTarget) -> PredictionInventory:
         return inspect_prediction_inventory(self.operation_root, target)
+
+    def preview_forecast(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> scheduler_module.CanonicalForecastMaterializationResult:
+        request = _forecast_service_request(self.operation_root, target, inventory)
+        return scheduler_module.materialize_canonical_forecast(
+            request,
+            destination=scheduler_module._forecast_authority_path(  # pyright: ignore[reportPrivateUsage]
+                self.operation_root,
+                target,
+            ),
+            authority=scheduler_module.CanonicalForecastAuthorityPort(
+                read_existing_bytes=scheduler_module.read_existing_bytes,
+                ensure_output_parent=scheduler_module.ensure_output_parent,
+                stage_payload=scheduler_module.stage_payload,
+                publish_staged=scheduler_module.publish_staged,
+                discard_staged=scheduler_module.discard_staged,
+            ),
+            clock=lambda: (_ for _ in ()).throw(
+                AssertionError("read-only forecast sampled the publication clock")
+            ),
+            dry_run=True,
+        )
 
     def refresh_schedule(self, observed_at: datetime) -> ScheduleRefreshResult:
         self.mutating_calls.append("refresh_schedule")
@@ -509,6 +712,7 @@ class _FakeBackend:
         self.fail_materialization = fail_materialization
         self.generation_calls: list[tuple[str, ...]] = []
         self.materialization_calls: list[tuple[str, str]] = []
+        self.materialization_inventories: list[PredictionInventory] = []
         self.sync_calls = 0
         self.complete_calls = 0
 
@@ -539,9 +743,12 @@ class _FakeBackend:
         target: PredictionTarget,
         *,
         source_head: str,
+        inventory: PredictionInventory,
     ) -> dict[str, object]:
         assert target == self.target
+        assert inventory.ready
         self.materialization_calls.append((target.draw_number, source_head))
+        self.materialization_inventories.append(inventory)
         if self.fail_materialization is not None:
             raise self.fail_materialization
         return {
@@ -666,13 +873,18 @@ class _LockAwareMaterializationBackend(_FakeBackend):
         target: PredictionTarget,
         *,
         source_head: str,
+        inventory: PredictionInventory,
     ) -> dict[str, object]:
         try:
             with AdvisoryProcessLock(self.lock_path):
                 pass
         except SchedulerAlreadyRunning:
             self.materialization_saw_lock = True
-        return super().materialize_forecast(target, source_head=source_head)
+        return super().materialize_forecast(
+            target,
+            source_head=source_head,
+            inventory=inventory,
+        )
 
 
 class _ShadowFailureBackend(_ShadowHookBackend):
@@ -858,6 +1070,107 @@ def test_production_scheduler_has_no_automatic_legacy_schedule_wiring() -> None:
     assert "refresh_official_schedule" not in source
     assert "FileSystemOperationalTargetAnnouncementSource" not in source
     assert "_resolve_latest_unrecorded_missed_target" not in source
+
+
+def test_materializer_receives_the_final_inventory_bytes_without_a_second_prediction_read(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    target = _target()
+    for strategy_id in STREAM_IDS:
+        _write_forecast_prediction(
+            config.operation_root,
+            target,
+            strategy_id,
+            filename=f"{target.draw_number}-{strategy_id}-one.json",
+            created_at=NOW,
+            history_cutoff_draw=_FORECAST_CUTOFF_DRAW,
+            history_cutoff_date=_FORECAST_CUTOFF_DATE,
+        )
+    inventory = inspect_prediction_inventory(config.operation_root, target)
+    captured: list[object] = []
+    identity = scheduler_module.ImplementationIdentity(
+        SOURCE_HEAD,
+        "e" * 40,
+        (scheduler_module.ImplementationSource("tools/scheduler.py", "a" * 64),),
+    )
+
+    def fake_history(
+        _database: Path,
+        *,
+        target_draw_number: str,
+        target_draw_date: str,
+    ) -> HistorySnapshot:
+        del target_draw_number, target_draw_date
+        return HistorySnapshot(
+            rows=(),
+            cutoff_draw=_FORECAST_CUTOFF_DRAW,
+            cutoff_date=_FORECAST_CUTOFF_DATE,
+            draw_count=1,
+            history_sha256="b" * 64,
+            history_caveat="YES",
+        )
+
+    def fake_identity(_source_head: str) -> scheduler_module.ImplementationIdentity:
+        return identity
+
+    def fail_persisted_reader(*_args: object, **_kwargs: object) -> NoReturn:
+        pytest.fail("prediction files were reopened")
+
+    monkeypatch.setattr(scheduler_module, "load_canonical_history", fake_history)
+    monkeypatch.setattr(
+        scheduler_module,
+        "_resolve_forecast_implementation_identity",
+        fake_identity,
+    )
+    monkeypatch.setattr(
+        scheduler_module,
+        "read_persisted_prediction_records",
+        fail_persisted_reader,
+        raising=False,
+    )
+
+    def fake_materialize(
+        request: object,
+        *,
+        destination: Path,
+        authority: object,
+        clock: object,
+        dry_run: bool,
+    ) -> scheduler_module.CanonicalForecastMaterializationResult:
+        del authority, clock, dry_run
+        captured.append(request)
+        return scheduler_module.CanonicalForecastMaterializationResult(
+            status="COMPLETE",
+            publication="ALREADY_PRESENT",
+            destination=destination,
+            payload={
+                "target_draw": {"draw_number": target.draw_number},
+                "stream_input_manifest_sha256": "c" * 64,
+            },
+            artifact_sha256="d" * 64,
+        )
+
+    monkeypatch.setattr(scheduler_module, "materialize_canonical_forecast", fake_materialize)
+    backend = ProductionSchedulerBackend(config, clock=lambda: NOW)
+
+    health = backend.materialize_forecast(
+        target,
+        source_head=SOURCE_HEAD,
+        inventory=inventory,
+    )
+
+    assert health["status"] == "COMPLETE"
+    assert len(captured) == 1
+    request = cast(scheduler_module.CanonicalForecastMaterializationRequest, captured[0])
+    assert tuple(prediction.raw_bytes for prediction in request.predictions) == tuple(
+        record.raw_bytes for record in inventory.available_records
+    )
+    assert tuple(prediction.source_relative_path for prediction in request.predictions) == tuple(
+        str(record.path.relative_to(config.operation_root))
+        for record in inventory.available_records
+    )
 
 
 def test_failed_schedule_validation_leaves_existing_authority_byte_identical(
@@ -1097,6 +1410,7 @@ def test_predraw_cycle_generates_only_missing_then_reports_exact_readiness(
     assert result["cycle_action"] == "PREDRAW_CREATED"
     assert backend.generation_calls == [(STREAM_IDS[-1],)]
     assert backend.materialization_calls == [(_target().draw_number, SOURCE_HEAD)]
+    assert backend.materialization_inventories == [backend.inventories[-1]]
     assert cast(dict[str, object], result["forecast_materialization"])["status"] == "COMPLETE"
     assert result["scoring_status"] == "NOT_DUE"
     assert result["next_draw_rollover_status"] == "NOT_DUE"
@@ -1721,7 +2035,7 @@ def test_forecast_ready_when_all_eleven_streams_are_available(
     assert result["RANKING_AUTHORITY"] == "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
     assert result["RANKING_AUTHORITY_VERSION"] == "1.0.0"
     assert result["WEIGHT_POLICY"] == "EQUAL_STREAM_WEIGHT"
-    assert result["STREAM_INPUT_MANIFEST_SHA256"] == "d" * 64
+    assert result["STREAM_INPUT_MANIFEST_SHA256"] == authority["stream_input_manifest_sha256"]
     assert result["FINAL_DECISION_RANKING"] == authority["final_decision_ranking"]
     assert result["FINAL_RECOMMENDED_TICKET"] == [4, 12, 24, 25, 26, 29]
     assert result["FINAL_RECOMMENDED_OUTPUT"] == [
@@ -1751,9 +2065,9 @@ def test_forecast_uses_dynamic_authority_path_for_later_target(
     config = _config(tmp_path)
     target = _target()
     _write_all_streams(config.operation_root, target, STREAM_IDS)
-    authority = _authority_payload(target)
-    authority_path = scheduler_module._forecast_destination(  # pyright: ignore[reportPrivateUsage]
-        config,
+    authority = _authority_payload(target, operation_root=config.operation_root)
+    authority_path = scheduler_module._forecast_authority_path(  # pyright: ignore[reportPrivateUsage]
+        config.operation_root,
         target,
     )
     authority_path.parent.mkdir(mode=0o700, parents=True)
@@ -1786,7 +2100,7 @@ def test_forecast_reuses_validated_prediction_snapshot_without_second_scan(
         / "predictions"
         / target.draw_number
         / strategy_id
-        / "prediction.json"
+        / f"{target.draw_number}-{strategy_id}-one.json"
         for strategy_id in STREAM_IDS
     }
     _install_authority_fixture(tmp_path, monkeypatch, target)
@@ -1815,7 +2129,8 @@ def test_forecast_reuses_validated_prediction_snapshot_without_second_scan(
     assert scan_count == 1
     assert len(read_paths) == 11
     assert set(read_paths) == prediction_paths
-    assert result["STREAM_INPUT_MANIFEST_SHA256"] == "d" * 64
+    authority = cast(dict[str, object], result["CANONICAL_FORECAST_AUTHORITY"])
+    assert result["STREAM_INPUT_MANIFEST_SHA256"] == authority["stream_input_manifest_sha256"]
 
 
 def test_forecast_115000087_uses_approved_canonical_ticket(
@@ -2082,7 +2397,7 @@ def test_forecast_projects_immutable_authority_b_payload_and_final_ticket(
     assert result["FINAL_RECOMMENDED_OUTPUT"] == canonical["final_recommended_output"]
     assert result["CANONICAL_FORECAST_AUTHORITY"] == canonical
     assert result["FINAL_RECOMMENDED_TICKET"] == [4, 12, 24, 25, 26, 29]
-    assert len(cast(list[dict[str, object]], result["FINAL_DECISION_RANKING"])) == 6
+    assert len(cast(list[dict[str, object]], result["FINAL_DECISION_RANKING"])) == 49
     assert "descriptive_top6" not in json.dumps(result)
     assert "descriptive_top_k" not in json.dumps(result)
     assert backend.mutating_calls == []
@@ -2102,7 +2417,9 @@ def test_forecast_fails_closed_when_authority_b_is_unavailable(
     assert exit_code != 0
     assert result["FORECAST_STATUS"] == "CANONICAL_AUTHORITY_UNAVAILABLE"
     assert result["AUTHORITY_STATUS"] == "NON_SUCCESS"
-    assert "AUTHORITY_B_RESULT_INVALID" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
+    assert "existing authority is not valid JSON" in cast(
+        str, result["CANONICAL_AUTHORITY_ERROR"]
+    )
     assert "FINAL_DECISION_RANKING" not in result
     assert "FINAL_RECOMMENDED_OUTPUT" not in result
 
@@ -2178,7 +2495,9 @@ def test_forecast_fails_closed_when_authority_sha_is_wrong(
     assert exit_code != 0
     assert result["FORECAST_STATUS"] == "CANONICAL_AUTHORITY_UNAVAILABLE"
     assert result["AUTHORITY_STATUS"] == "NON_SUCCESS"
-    assert "digest mismatch" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
+    assert "digest differs from the pinned identity" in cast(
+        str, result["CANONICAL_AUTHORITY_ERROR"]
+    )
     assert "FINAL_RECOMMENDED_TICKET" not in result
     assert "FINAL_DECISION_RANKING" not in result
     assert result.get("PRE_OUTCOME_TEMPORAL_INTEGRITY") != "PASS"
@@ -2202,7 +2521,7 @@ def test_forecast_fails_closed_when_authority_target_does_not_match(
 
     assert exit_code != 0
     assert result["FORECAST_STATUS"] == "CANONICAL_AUTHORITY_UNAVAILABLE"
-    assert "target does not match" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
+    assert "target identity differs" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
     assert "FINAL_RECOMMENDED_OUTPUT" not in result
     assert result.get("PRE_OUTCOME_TEMPORAL_INTEGRITY") != "PASS"
 
@@ -2234,7 +2553,7 @@ def test_forecast_rejects_descriptive_fields_in_canonical_authority(
 def test_forecast_directly_calls_domain_authority_and_not_legacy_builder() -> None:
     source = getsource(_forecast_command)
 
-    assert "_load_canonical_forecast_authority" in source
+    assert "backend.preview_forecast" in source
     assert "build_canonical_consensus" not in source
     assert "build_canonical_predraw_consensus" not in source
     assert "compute_number_consensus" not in source

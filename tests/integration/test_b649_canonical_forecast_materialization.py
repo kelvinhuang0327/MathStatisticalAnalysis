@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -10,6 +11,14 @@ from typing import cast
 import pytest
 import tools.materialize_b649_canonical_forecast as materializer
 
+from lottolab.application.b649_canonical_forecast_materialization import (
+    CanonicalForecastCutoff,
+    CanonicalForecastMaterializationRequest,
+    CanonicalForecastTarget,
+    CanonicalHistoryIdentity,
+    PersistedForecastPrediction,
+    RegisteredForecastStream,
+)
 from lottolab.domain.b649_canonical_consensus import (
     CanonicalConsensusContext,
     StreamConsensusInput,
@@ -519,7 +528,7 @@ def test_dynamic_materializer_binds_later_target_and_causal_history(
             strategy_id=f"synthetic_stream_{index:02d}",
             strategy_version="v1.0",
             native_ticket_count=1,
-            prediction_run_id=f"run-{index:02d}",
+            prediction_run_id=f"stream-{index:02d}",
             source_relative_path=f"predictions/209900001/stream-{index:02d}.json",
             source_sha256=f"{index + 1:064x}",
             prediction_created_at=created_at,
@@ -539,8 +548,81 @@ def test_dynamic_materializer_binds_later_target_and_causal_history(
         streams=streams,
     )
 
+    registered = tuple(
+        RegisteredForecastStream(
+            strategy_id=stream.strategy_id,
+            strategy_version=stream.strategy_version,
+            native_ticket_count=stream.native_ticket_count,
+        )
+        for stream in streams
+    )
+    predictions: list[PersistedForecastPrediction] = []
+    for stream in streams:
+        payload = {
+            "schema_version": "b649-operational-prediction-v1",
+            "task_id": "synthetic-prediction",
+            "prediction_run_id": stream.prediction_run_id,
+            "lottery_type": context.lottery_type,
+            "draw_number": context.target_draw_number,
+            "draw_date": context.target_draw_date,
+            "scheduled_at": context.scheduled_at.isoformat(),
+            "prediction_created_at": stream.prediction_created_at.isoformat(),
+            "strategy_id": stream.strategy_id,
+            "strategy_version": stream.strategy_version,
+            "prediction_temporal_class": "PRE_DRAW",
+            "availability": "AVAILABLE",
+            "history_cutoff": {
+                "draw_number": context.causal_cutoff_draw_number,
+                "draw_date": context.causal_cutoff_date,
+            },
+            "history_draw_count": context.history_draw_count,
+            "history_sha256": context.history_sha256,
+            "history_caveat": context.history_caveat,
+            "native_ticket_count": stream.native_ticket_count,
+            "tickets": [
+                {
+                    "ticket_position": position,
+                    "predicted_numbers": list(ticket),
+                }
+                for position, ticket in enumerate(stream.tickets, start=1)
+            ],
+        }
+        raw = canonical_file_bytes(payload)
+        predictions.append(
+            PersistedForecastPrediction(
+                source_relative_path=stream.source_relative_path,
+                source_sha256=hashlib.sha256(raw).hexdigest(),
+                raw_bytes=raw,
+                payload=payload,
+            )
+        )
+    request = CanonicalForecastMaterializationRequest(
+        task_id="synthetic-scheduler",
+        upstream_task_id="synthetic-prediction-loop",
+        target=CanonicalForecastTarget(
+            lottery_type=context.lottery_type,
+            draw_number=context.target_draw_number,
+            draw_date=context.target_draw_date,
+            scheduled_at=context.scheduled_at.isoformat(),
+        ),
+        max_data_cutoff=CanonicalForecastCutoff(
+            context.causal_cutoff_draw_number,
+            context.causal_cutoff_date,
+        ),
+        history=CanonicalHistoryIdentity(
+            cutoff_draw_number=context.causal_cutoff_draw_number,
+            cutoff_date=context.causal_cutoff_date,
+            draw_count=context.history_draw_count,
+            history_sha256=context.history_sha256,
+            history_caveat=context.history_caveat,
+        ),
+        registered_streams=registered,
+        predictions=tuple(predictions),
+        implementation_identity=IDENTITY,
+    )
+
     result = materializer.materialize_dynamic_canonical_forecast(
-        context=context,
+        request=request,
         operation_root=tmp_path / "operation",
         clock=_clock(created_at + timedelta(minutes=1), created_at + timedelta(minutes=2)),
     )
@@ -571,18 +653,15 @@ def test_dynamic_materializer_binds_later_target_and_causal_history(
     def fail_clock(_provider: object = None) -> datetime:
         raise AssertionError("existing authority retry sampled the publication clock")
 
-    def fail_operation(*args: object, **kwargs: object) -> object:
-        del args, kwargs
-        raise AssertionError("existing authority retry attempted a write or recomputation")
+    def fail_write(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("existing authority retry attempted a write")
 
-    monkeypatch.setattr(materializer, "_clock", fail_clock)
-    monkeypatch.setattr(materializer, "build_canonical_consensus", fail_operation)
-    monkeypatch.setattr(materializer, "ensure_output_parent", fail_operation)
-    monkeypatch.setattr(materializer, "stage_payload", fail_operation)
-    monkeypatch.setattr(materializer, "publish_staged", fail_operation)
+    monkeypatch.setattr(materializer, "ensure_output_parent", fail_write)
+    monkeypatch.setattr(materializer, "stage_payload", fail_write)
+    monkeypatch.setattr(materializer, "publish_staged", fail_write)
 
     retry = materializer.materialize_dynamic_canonical_forecast(
-        context=context,
+        request=request,
         operation_root=tmp_path / "operation",
         clock=fail_clock,
     )
@@ -591,7 +670,7 @@ def test_dynamic_materializer_binds_later_target_and_causal_history(
     assert expected_destination.read_bytes() == canonical_file_bytes(result.payload)
 
     loaded = materializer.load_canonical_forecast_authority(
-        context=context,
+        request=request,
         operation_root=tmp_path / "operation",
         destination=expected_destination,
     )

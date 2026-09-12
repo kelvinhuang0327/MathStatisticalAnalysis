@@ -189,10 +189,15 @@ def test_production_catalog_appends_powerlotto_batch01_before_wave2() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    pre_wave2 = all_ids[:92]
-    assert pre_wave2[-4] == ZONAL_ENTROPY_ID
-    assert pre_wave2[-3] == APRIORI_ID
-    assert pre_wave2[-2] == LEAD_LAG_ID
+    coldpool_idx = all_ids.index("legacy_biglotto__backtest_biglotto_coldpool_15__2a80423e3cf5")
+    wave2_start_idx = all_ids.index("biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs")
+    assert all_ids[coldpool_idx + 1] == ZONAL_ENTROPY_ID
+    assert all_ids[coldpool_idx + 2] == APRIORI_ID
+    assert all_ids[coldpool_idx + 3] == LEAD_LAG_ID
+    assert coldpool_idx < all_ids.index(ZONAL_ENTROPY_ID)
+    assert all_ids.index(ZONAL_ENTROPY_ID) < all_ids.index(APRIORI_ID)
+    assert all_ids.index(APRIORI_ID) < all_ids.index(LEAD_LAG_ID)
+    assert all_ids.index(LEAD_LAG_ID) < wave2_start_idx
     assert all_ids.count(ZONAL_ENTROPY_ID) == 1
     assert all_ids.count(APRIORI_ID) == 1
     assert all_ids.count(LEAD_LAG_ID) == 1

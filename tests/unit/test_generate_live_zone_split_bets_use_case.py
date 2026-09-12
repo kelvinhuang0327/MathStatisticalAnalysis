@@ -457,6 +457,7 @@ def test_production_catalog_has_exact_online_strategies_in_append_order() -> Non
         "power_c06_regime_cusum_1bet",
         "power_c07_borda_ensemble_1bet",
         "acb_markov_midfreq_3bet",
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
         "legacy_biglotto__backtest_apriori__2abb53765703",
         "legacy_biglotto__covering_strategy_research__214ecc206fc9",
         "legacy_biglotto__evolution_engine__3df019c31ce4",

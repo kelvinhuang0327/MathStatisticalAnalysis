@@ -810,6 +810,7 @@ def test_generate_portfolio_does_not_expose_single_ticket_adapters() -> None:
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
         "legacy_biglotto__minimal_dual_bet_strategy__3c9657df7ff4",
         "acb_markov_midfreq_3bet",
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
         "legacy_biglotto__backtest_apriori__2abb53765703",
         "legacy_biglotto__covering_strategy_research__214ecc206fc9",
         "legacy_biglotto__evolution_engine__3df019c31ce4",

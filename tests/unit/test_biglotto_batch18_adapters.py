@@ -304,9 +304,13 @@ def test_coldpool15_generate_portfolio_returns_golden() -> None:
 def test_production_catalog_appends_batch18_after_preceding_admitted_batches() -> None:
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    pre_wave2 = all_ids[:92]
-    assert pre_wave2[-6] == MARKOV_TRIPLE_ID
-    assert pre_wave2[-5] == COLDPOOL15_ID
-    assert pre_wave2[-7] == "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
+    preceding_id = "legacy_biglotto__backtest_biglotto_hot_stop_rebound__1794a8c507ae"
+    preceding_idx = all_ids.index(preceding_id)
+    wave2_start_idx = all_ids.index("biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs")
+    assert all_ids[preceding_idx + 1] == MARKOV_TRIPLE_ID
+    assert all_ids[preceding_idx + 2] == COLDPOOL15_ID
+    assert preceding_idx < all_ids.index(MARKOV_TRIPLE_ID)
+    assert all_ids.index(MARKOV_TRIPLE_ID) < all_ids.index(COLDPOOL15_ID)
+    assert all_ids.index(COLDPOOL15_ID) < wave2_start_idx
     assert all_ids.count(MARKOV_TRIPLE_ID) == 1
     assert all_ids.count(COLDPOOL15_ID) == 1

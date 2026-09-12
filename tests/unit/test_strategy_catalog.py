@@ -180,9 +180,9 @@ def test_production_catalog_invariants() -> None:
 def test_catalog_preserves_approved_strategy_append_order() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
-    assert len(catalog) == 136
-    assert len(ids) == 136
-    assert len(set(ids)) == 136
+    assert len(catalog) == 137
+    assert len(ids) == 137
+    assert len(set(ids)) == 137
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
@@ -264,6 +264,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "power_c06_regime_cusum_1bet",
         "power_c07_borda_ensemble_1bet",
         "acb_markov_midfreq_3bet",
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
         "legacy_biglotto__backtest_apriori__2abb53765703",
         "legacy_biglotto__covering_strategy_research__214ecc206fc9",
         "legacy_biglotto__evolution_engine__3df019c31ce4",

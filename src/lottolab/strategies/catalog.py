@@ -1770,6 +1770,33 @@ _PRODUCTION_DESCRIPTORS = (
         native_ticket_count=3,
     ),
     StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+        strategy_name="大樂透 進化型GUM前沿發現預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch16:"
+            "BigLottoPredictEvolutionaryGumAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_evolutionary_gum.py",
+            "legacy_source:tools/strategy_leaderboard.py",
+            "legacy_source_sha256:"
+            "b3e96cf483b05793f75811379ce284b98a0200767d5d5f35476b5bb47b1a52ab",
+            "legacy_symbol:EvolutionaryGUM.predict",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+            "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_LIVE_GAP_AND_BATCH02_RESELECTION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
         strategy_id="legacy_biglotto__backtest_apriori__2abb53765703",
         strategy_name="大樂透 Apriori 關聯規則回測預測器",
         version="v0.1",

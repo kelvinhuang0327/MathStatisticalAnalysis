@@ -350,6 +350,159 @@ class BigLottoTs3Markov4betAdapter(PortfolioBetAdapter):
         return _generate_ts3_markov4(history)
 
 
+_GUM_STRATEGY_ID = "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0"
+_GUM_WINDOW = 150
+_GUM_CONSENSUS_N_BETS = 4
+_GUM_NATIVE_TICKET_COUNT = 2
+
+
+def _gum_cluster_pivot_bets(
+    history: tuple[CausalDrawRow, ...], *, window: int, n_bets: int
+) -> list[list[int]]:
+    """Port of ``StrategyLeaderboard.strat_cluster_pivot``."""
+
+    recent = history[-window:]
+    cooccur: Counter[tuple[int, int]] = Counter()
+    for row in recent:
+        nums = sorted(row.numbers)
+        for pair in combinations(nums, 2):
+            cooccur[pair] += 1
+
+    num_scores: Counter[int] = Counter()
+    for (a, b), count in cooccur.items():
+        num_scores[a] += count
+        num_scores[b] += count
+    centers = [number for number, _count in num_scores.most_common(n_bets)]
+
+    bets: list[list[int]] = []
+    exclude: set[int] = set()
+    for center in centers:
+        candidates: Counter[int] = Counter()
+        for (a, b), count in cooccur.items():
+            if a == center and b not in exclude:
+                candidates[b] += count
+            elif b == center and a not in exclude:
+                candidates[a] += count
+
+        bet = [center]
+        for number, _count in candidates.most_common(5):
+            bet.append(number)
+
+        if len(bet) < 6:
+            for number in range(1, _MAX_NUM + 1):
+                if number not in bet and number not in exclude:
+                    bet.append(number)
+                if len(bet) == 6:
+                    break
+
+        bets.append(sorted(bet))
+        exclude.update(bet[:2])
+    return bets
+
+
+def _gum_consensus_scores(history: tuple[CausalDrawRow, ...]) -> dict[int, float]:
+    """Port of ``EvolutionaryGUM.get_consensus_scores`` for the sole
+    ``stable_recipe`` this port ever reaches (see module docstring)."""
+
+    bets = _gum_cluster_pivot_bets(history, window=_GUM_WINDOW, n_bets=_GUM_CONSENSUS_N_BETS)
+    scores: dict[int, float] = defaultdict(float)
+    for bet in bets:
+        for number in bet:
+            scores[number] += 1.0 / 4.0
+    return scores
+
+
+def _gum_validate_combination(numbers: list[int]) -> bool:
+    """Port of ``EvolutionaryGUM.validate_combination``'s BIG_LOTTO branch."""
+
+    total = sum(numbers)
+    if not (100 <= total <= 200):
+        return False
+    evens = len([number for number in numbers if number % 2 == 0])
+    if evens < 1 or evens > 5:
+        return False
+    ordered = sorted(numbers)
+    consecutive_groups = sum(
+        1 for i in range(len(ordered) - 1) if ordered[i + 1] - ordered[i] == 1
+    )
+    return consecutive_groups <= 2
+
+
+def _gum_select_bets(ranked_numbers: list[int], num_bets: int) -> list[list[int]]:
+    """Port of ``EvolutionaryGUM.predict``'s selection loop.
+
+    The donor wraps this in ``for offset in range(30): if found: break``,
+    but every iteration recomputes an identical ``base_ptr`` and
+    candidate/swap search (``offset`` itself is never read in the loop
+    body): the first iteration either succeeds or the following 29 repeat
+    the identical, already-failed computation. Reproduced as a single pass
+    -- the same final state, not a behavior change (matching wave 14's own
+    precedent for a donor-redundant loop).
+    """
+
+    bets: list[list[int]] = []
+    next_start_idx = 0
+    total = len(ranked_numbers)
+    for _ in range(num_bets):
+        found = False
+        base_ptr = next_start_idx
+        if base_ptr + 6 <= total:
+            candidate = sorted(ranked_numbers[base_ptr : base_ptr + 6])
+            if _gum_validate_combination(candidate):
+                bets.append(candidate)
+                next_start_idx += 6
+                found = True
+            else:
+                for swap_idx in range(base_ptr + 6, min(base_ptr + 50, total)):
+                    alt_candidate = sorted(
+                        (*ranked_numbers[base_ptr : base_ptr + 5], ranked_numbers[swap_idx])
+                    )
+                    if _gum_validate_combination(alt_candidate):
+                        bets.append(alt_candidate)
+                        next_start_idx = base_ptr + 6
+                        found = True
+                        break
+        if not found:
+            bets.append(sorted(ranked_numbers[next_start_idx : next_start_idx + 6]))
+            next_start_idx += 6
+    return bets
+
+
+class BigLottoPredictEvolutionaryGumAdapter(PortfolioBetAdapter):
+    """Evolutionary GUM Frontier/Adaptive-Stacking Predictor -- a
+    2-native-ticket portfolio. See module docstring for the frontier-library
+    dead-branch and ``strategy_leaderboard.py`` dependency notes.
+
+    Numeric tie-breaking: the donor ranks numbers via ``numpy.argsort(...)
+    [::-1]`` (ascending-stable, then reversed) -- reversing an
+    ascending-stable order also reverses tied keys' order, so for equal
+    scores the *larger* number ranks higher. Reproduced via
+    ``sorted(..., key=...)[::-1]``, not ``sorted(..., reverse=True)``.
+
+    ``min_history=150`` matches the recipe's own ``window=150`` -- the
+    natural scale at which ``strat_cluster_pivot``'s co-occurrence
+    statistics are meaningful.
+    """
+
+    strategy_id = _GUM_STRATEGY_ID
+    strategy_name = "大樂透 進化型GUM前沿發現預測器"
+    strategy_version = "v0.1"
+    min_history = _GUM_WINDOW
+    supported_lottery_types = (LotteryType.BIG_LOTTO,)
+    native_ticket_count = _GUM_NATIVE_TICKET_COUNT
+
+    def _predict_all(
+        self,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        scores = _gum_consensus_scores(history)
+        ranked_numbers = sorted(range(1, _MAX_NUM + 1), key=lambda number: scores.get(number, 0.0))
+        ranked_numbers.reverse()
+        bets = _gum_select_bets(ranked_numbers, _GUM_NATIVE_TICKET_COUNT)
+        return tuple(tuple(bet) for bet in bets)
+
+
 # ═════════════════════════════════════════════════════════════════════════
 # legacy_biglotto__backtest_apriori__2abb53765703
 # ═════════════════════════════════════════════════════════════════════════
@@ -1770,5 +1923,6 @@ __all__ = [
     "BigLottoBacktestAprioriAdapter",
     "BigLottoCoveringStrategyResearchAdapter",
     "BigLottoEvolutionEngineAdapter",
+    "BigLottoPredictEvolutionaryGumAdapter",
     "BigLottoTs3Markov4betAdapter",
 ]

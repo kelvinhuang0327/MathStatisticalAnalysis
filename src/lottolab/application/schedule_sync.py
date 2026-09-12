@@ -19,9 +19,12 @@ SCHEDULE_SYNC_PARSER_VERSION = "lottolab-b649-official-schedule-json-v1"
 CANONICAL_SCHEDULE_AUTHORITY_PARSER_VERSION = "lottolab-t539-p638-official-schedule-json-v1"
 CANONICAL_SCHEDULE_TIMEZONE = "Asia/Taipei"
 CANONICAL_NORMAL_DRAW_LOCAL_TIME = time(hour=20, minute=30)
+BIG_LOTTO_SCHEDULE_GAME_CODE = 5118
 T539_SCHEDULE_GAME_CODE = 5120
 P638_SCHEDULE_GAME_CODE = 5134
-SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES = frozenset({LotteryType.DAILY_539, LotteryType.POWER_LOTTO})
+SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES = frozenset(
+    {LotteryType.BIG_LOTTO, LotteryType.DAILY_539, LotteryType.POWER_LOTTO}
+)
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 _DRAW_NUMBER = re.compile(r"[0-9]{1,32}", flags=re.ASCII)
 
@@ -71,18 +74,20 @@ class ScheduleAuthorityApplyStatus(StrEnum):
 
 
 def expected_schedule_game_code(lottery_type: LotteryType) -> int:
-    """Return the frozen Taiwan Lottery schedule gameCode for T539/P638."""
+    """Return the frozen Taiwan Lottery schedule gameCode for canonical games."""
 
+    if lottery_type is LotteryType.BIG_LOTTO:
+        return BIG_LOTTO_SCHEDULE_GAME_CODE
     if lottery_type is LotteryType.DAILY_539:
         return T539_SCHEDULE_GAME_CODE
     if lottery_type is LotteryType.POWER_LOTTO:
         return P638_SCHEDULE_GAME_CODE
-    raise ValueError("canonical schedule authority supports DAILY_539 and POWER_LOTTO")
+    raise ValueError("canonical schedule authority supports BIG_LOTTO, DAILY_539, and POWER_LOTTO")
 
 
 @dataclass(frozen=True, slots=True)
 class CanonicalScheduleFact:
-    """One source-independent immutable T539/P638 schedule fact."""
+    """One source-independent immutable canonical schedule fact."""
 
     announcement: TargetAnnouncement
     official_game_code: int
@@ -94,7 +99,9 @@ class CanonicalScheduleFact:
             raise ValueError("announcement must be a TargetAnnouncement")
         target = self.announcement.target
         if target.lottery_type not in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES:
-            raise ValueError("canonical schedule fact supports DAILY_539 and POWER_LOTTO")
+            raise ValueError(
+                "canonical schedule fact supports BIG_LOTTO, DAILY_539, and POWER_LOTTO"
+            )
         if type(
             self.official_game_code
         ) is not int or self.official_game_code != expected_schedule_game_code(target.lottery_type):
@@ -161,7 +168,7 @@ class AuthoritativeScheduleVeto:
 
     def __post_init__(self) -> None:
         if self.lottery_type not in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES:
-            raise ValueError("schedule veto supports DAILY_539 and POWER_LOTTO")
+            raise ValueError("schedule veto supports BIG_LOTTO, DAILY_539, and POWER_LOTTO")
         if type(
             self.official_game_code
         ) is not int or self.official_game_code != expected_schedule_game_code(self.lottery_type):
@@ -178,7 +185,7 @@ class AuthoritativeScheduleVeto:
 
 @dataclass(frozen=True, slots=True)
 class OfficialGameScheduleAuthority:
-    """One game-local interpretation isolated from the other shared-envelope game."""
+    """One game-local interpretation isolated from the selected contract."""
 
     lottery_type: LotteryType
     official_game_code: int
@@ -190,7 +197,9 @@ class OfficialGameScheduleAuthority:
 
     def __post_init__(self) -> None:
         if self.lottery_type not in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES:
-            raise ValueError("game authority supports DAILY_539 and POWER_LOTTO")
+            raise ValueError(
+                "game authority supports BIG_LOTTO, DAILY_539, and POWER_LOTTO"
+            )
         if type(
             self.official_game_code
         ) is not int or self.official_game_code != expected_schedule_game_code(self.lottery_type):
@@ -236,7 +245,7 @@ class OfficialGameScheduleAuthority:
 
 @dataclass(frozen=True, slots=True)
 class CanonicalScheduleAuthorityFetchResult:
-    """One validated shared response with independently classified T539/P638 games."""
+    """One validated response with independently classified selected games."""
 
     provider_id: str
     provider_version: str
@@ -251,12 +260,16 @@ class CanonicalScheduleAuthorityFetchResult:
         _require_text(self.source_url, "source_url")
         _require_sha256(self.source_payload_sha256, "source_payload_sha256")
         _require_utc(self.observed_at, "observed_at")
-        if type(self.games) is not tuple or len(self.games) != 2:
-            raise ValueError("games must contain the two canonical game results")
-        if {game.lottery_type for game in self.games} != set(
-            SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES
+        if type(self.games) is not tuple or not self.games:
+            raise ValueError("games must contain at least one canonical game result")
+        lottery_types = tuple(game.lottery_type for game in self.games)
+        if len(set(lottery_types)) != len(lottery_types):
+            raise ValueError("games must not contain duplicate lottery contracts")
+        if any(
+            game.lottery_type not in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES
+            for game in self.games
         ):
-            raise ValueError("games must independently cover DAILY_539 and POWER_LOTTO")
+            raise ValueError("games contain an unsupported canonical lottery contract")
         for game in self.games:
             for fact in game.schedules:
                 source = fact.announcement.source
@@ -286,6 +299,7 @@ class CanonicalScheduleAuthorityGameSyncResult:
     reobserved_count: int
     conflict_count: int
     evidence_count: int
+    immutable_schedule_hashes: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_text(self.run_id, "run_id")
@@ -310,11 +324,16 @@ class CanonicalScheduleAuthorityGameSyncResult:
         )
         if any(type(item) is not int or item < 0 for item in counts):
             raise ValueError("sync result counts must be non-negative exact integers")
+        if type(self.immutable_schedule_hashes) is not tuple or any(
+            type(item) is not str or _SHA256.fullmatch(item) is None
+            for item in self.immutable_schedule_hashes
+        ):
+            raise ValueError("immutable_schedule_hashes must contain lowercase SHA-256 digests")
 
 
 @dataclass(frozen=True, slots=True)
 class CanonicalScheduleAuthoritySyncResult:
-    """Result of applying the two isolated game-local transactions."""
+    """Result of applying the selected game-local transactions."""
 
     source_payload_sha256: str
     observed_at: datetime
@@ -323,12 +342,16 @@ class CanonicalScheduleAuthoritySyncResult:
     def __post_init__(self) -> None:
         _require_sha256(self.source_payload_sha256, "source_payload_sha256")
         _require_utc(self.observed_at, "observed_at")
-        if type(self.game_results) is not tuple or len(self.game_results) != 2:
-            raise ValueError("game_results must contain two isolated results")
-        if {item.lottery_type for item in self.game_results} != set(
-            SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES
+        if type(self.game_results) is not tuple or not self.game_results:
+            raise ValueError("game_results must contain at least one isolated result")
+        lottery_types = tuple(item.lottery_type for item in self.game_results)
+        if len(set(lottery_types)) != len(lottery_types):
+            raise ValueError("game_results must not contain duplicate lottery contracts")
+        if any(
+            item.lottery_type not in SUPPORTED_CANONICAL_SCHEDULE_LOTTERIES
+            for item in self.game_results
         ):
-            raise ValueError("game_results must cover DAILY_539 and POWER_LOTTO")
+            raise ValueError("game_results contain an unsupported canonical lottery contract")
 
 
 @dataclass(frozen=True, slots=True)
@@ -442,7 +465,7 @@ class CanonicalScheduleSyncRepository(Protocol):
 
 
 class CanonicalScheduleAuthorityProvider(Protocol):
-    """Port for one shared, independently classified T539/P638 response."""
+    """Port for one shared, independently classified canonical response."""
 
     def fetch_authority(
         self,
@@ -452,7 +475,7 @@ class CanonicalScheduleAuthorityProvider(Protocol):
 
 
 class CanonicalScheduleAuthorityRepository(Protocol):
-    """Persistence port for isolated T539/P638 schedule-authority decisions."""
+    """Persistence port for isolated canonical schedule-authority decisions."""
 
     def apply_canonical_schedule_authority(
         self,
@@ -490,7 +513,7 @@ class SynchronizeOfficialSchedule:
 
 
 class SynchronizeCanonicalScheduleAuthority:
-    """Fetch and apply T539/P638 authority without coupling game-local outcomes."""
+    """Fetch and apply canonical authority without coupling game-local outcomes."""
 
     def __init__(
         self,
@@ -530,6 +553,7 @@ def _require_utc(value: object, label: str) -> None:
 
 
 __all__ = [
+    "BIG_LOTTO_SCHEDULE_GAME_CODE",
     "CANONICAL_NORMAL_DRAW_LOCAL_TIME",
     "CANONICAL_SCHEDULE_AUTHORITY_PARSER_VERSION",
     "CANONICAL_SCHEDULE_TIMEZONE",

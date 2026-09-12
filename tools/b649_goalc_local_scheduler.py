@@ -159,16 +159,14 @@ CANONICAL_FORECAST_AUTHORITY_PATH = Path(
     "B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000087/"
     "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/final_forecast_payload.json"
 )
-CANONICAL_FORECAST_SHA256 = (
-    "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
-)
+CANONICAL_FORECAST_SHA256 = "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c"
 _DEFAULT_CANONICAL_FORECAST_AUTHORITY_PATH = CANONICAL_FORECAST_AUTHORITY_PATH
 
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
 SOURCE_WORKTREE = Path(__file__).resolve().parents[1]
 PYTHON_EXECUTABLE = CANONICAL_REPOSITORY / ".venv/bin/python"
-SCRIPT_PATH = CANONICAL_REPOSITORY / "tools/b649_goalc_local_scheduler.py"
+SCRIPT_PATH = SOURCE_WORKTREE / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
 )
@@ -268,6 +266,10 @@ class SchedulerConfig:
             raise ValueError("stale_after_seconds must span at least two cycles")
         if self.expected_stream_count != EXPECTED_STREAM_COUNT:
             raise ValueError("the expected B649 stream count is fixed at 11")
+        if self.script_path != self.source_worktree / "tools/b649_goalc_local_scheduler.py":
+            raise ValueError(
+                "script_path must be tools/b649_goalc_local_scheduler.py inside source_worktree"
+            )
 
 
 def production_config() -> SchedulerConfig:
@@ -1063,9 +1065,7 @@ def _canonical_prediction_source_relative_path(root: Path, path: Path) -> str:
     try:
         relative = path.relative_to(root)
     except ValueError as exc:
-        raise SchedulerInvariantError(
-            f"prediction source escapes operation_root: {path}"
-        ) from exc
+        raise SchedulerInvariantError(f"prediction source escapes operation_root: {path}") from exc
     if not relative.parts or any(part in {"", ".", ".."} for part in relative.parts):
         raise SchedulerInvariantError(f"prediction source path is not safe: {path}")
 
@@ -1083,13 +1083,9 @@ def _canonical_prediction_source_relative_path(root: Path, path: Path) -> str:
         try:
             metadata = current.lstat()
         except OSError as exc:
-            raise SchedulerInvariantError(
-                f"cannot inspect prediction source: {current}"
-            ) from exc
+            raise SchedulerInvariantError(f"cannot inspect prediction source: {current}") from exc
         if stat.S_ISLNK(metadata.st_mode):
-            raise SchedulerInvariantError(
-                f"prediction source symlink is forbidden: {current}"
-            )
+            raise SchedulerInvariantError(f"prediction source symlink is forbidden: {current}")
     if metadata is None or not stat.S_ISREG(metadata.st_mode):
         raise SchedulerInvariantError(f"prediction source is not a regular file: {path}")
     return relative.as_posix()
@@ -1212,9 +1208,7 @@ def _build_forecast_materialization_request(
         predictions=predictions,
         implementation_identity=_resolve_forecast_implementation_identity(source_head),
         expected_authority_sha256=(
-            CANONICAL_FORECAST_SHA256
-            if destination == CANONICAL_FORECAST_AUTHORITY_PATH
-            else None
+            CANONICAL_FORECAST_SHA256 if destination == CANONICAL_FORECAST_AUTHORITY_PATH else None
         ),
     )
 
@@ -1247,9 +1241,7 @@ def _resolve_forecast_implementation_identity(source_head: str) -> Implementatio
     try:
         for relative_path in CANONICAL_FORECAST_SOURCE_PATHS:
             raw = (SOURCE_WORKTREE / relative_path).read_bytes()
-            sources.append(
-                ImplementationSource(relative_path, hashlib.sha256(raw).hexdigest())
-            )
+            sources.append(ImplementationSource(relative_path, hashlib.sha256(raw).hexdigest()))
     except OSError as exc:
         raise SchedulerInvariantError(
             "canonical forecast implementation source cannot be read"
@@ -1495,7 +1487,7 @@ def run_scheduler_cycle(
                 predraw_deadline_passed: bool | None = None
                 if not inventory.ready:
                     forecast_materialization = _forecast_waiting_health(config, target)
-                elif (predraw_deadline_passed := _as_utc(clock()) >= scheduled_at):
+                elif predraw_deadline_passed := _as_utc(clock()) >= scheduled_at:
                     forecast_materialization = _forecast_missed_deadline_health(config, target)
                 else:
                     try:
@@ -1728,6 +1720,11 @@ def evaluate_health_status(
 def build_launchd_plist(config: SchedulerConfig) -> bytes:
     """Build the exact user LaunchAgent property list."""
 
+    if config.script_path != config.source_worktree / "tools/b649_goalc_local_scheduler.py":
+        raise ValueError(
+            "scheduler script must reside at tools/b649_goalc_local_scheduler.py "
+            "inside source_worktree"
+        )
     payload: dict[str, object] = {
         "Label": config.label,
         "ProgramArguments": [
@@ -1738,12 +1735,13 @@ def build_launchd_plist(config: SchedulerConfig) -> bytes:
         "RunAtLoad": True,
         "StartInterval": config.start_interval_seconds,
         "KeepAlive": False,
-        "WorkingDirectory": str(config.canonical_repository),
+        "WorkingDirectory": str(config.source_worktree),
         "StandardOutPath": str(config.stdout_path),
         "StandardErrorPath": str(config.stderr_path),
         "EnvironmentVariables": {
             DRAW_PROVIDER_SOURCE_ENV: OFFICIAL_TAIWAN_LOTTERY_SOURCE,
             "LOTTOLAB_DATA_DIR": str(config.data_root),
+            "PYTHONPATH": str(config.source_worktree / "src"),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONUNBUFFERED": "1",
         },
@@ -2372,9 +2370,7 @@ def _forecast_command(
             "CANONICAL_AUTHORITY_ERROR": f"{type(exc).__name__}: {exc}",
         }, 1
 
-    final_recommended_output = cast(
-        list[object], canonical_forecast["final_recommended_output"]
-    )
+    final_recommended_output = cast(list[object], canonical_forecast["final_recommended_output"])
     final_recommended_row = cast(dict[str, object], final_recommended_output[0])
     return {
         "FORECAST_STATUS": "READY",
@@ -2434,9 +2430,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(_canonical_json(result))
         return exit_code
     if args.command == "forecast":
-        backend = ProductionSchedulerBackend(
-            config, clock=lambda: datetime.now(UTC)
-        )
+        backend = ProductionSchedulerBackend(config, clock=lambda: datetime.now(UTC))
         result, exit_code = _forecast_command(config, backend)
         print(_canonical_json(result))
         return exit_code

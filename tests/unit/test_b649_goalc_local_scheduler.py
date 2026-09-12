@@ -40,6 +40,7 @@ from tools.b649_goalc_local_scheduler import (
     production_config,
     refresh_official_schedule,
     run_scheduler_cycle,
+    write_launchd_plist,
 )
 from tools.b649_operational_prediction_loop import (
     LOTTERY_TYPE,
@@ -67,9 +68,7 @@ from lottolab.infrastructure.pre_outcome_target_operational import (
 NOW = datetime(2099, 1, 2, 10, 0, tzinfo=UTC)
 SCHEDULED = datetime(2099, 1, 2, 12, 30, tzinfo=UTC)
 STREAM_IDS = tuple(stream.strategy_id for stream in STRATEGY_STREAMS if stream.enabled)
-STREAMS_BY_ID = {
-    stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled
-}
+STREAMS_BY_ID = {stream.strategy_id: stream for stream in STRATEGY_STREAMS if stream.enabled}
 SOURCE_HEAD = "f" * 40
 
 
@@ -396,12 +395,7 @@ def _authority_payload(
     if operation_root is not None:
         for strategy_id in STREAM_IDS:
             paths = sorted(
-                (
-                    operation_root
-                    / "predictions"
-                    / target.draw_number
-                    / strategy_id
-                ).glob("*.json")
+                (operation_root / "predictions" / target.draw_number / strategy_id).glob("*.json")
             )
             if not paths:
                 raise AssertionError(f"missing forecast fixture for {strategy_id}")
@@ -443,16 +437,10 @@ def _authority_payload(
     )
     cutoff_fields = cast(dict[str, object], cutoff)
     history_sha256 = (
-        records[ordered_ids[0]][1].get("history_sha256", "b" * 64)
-        if records
-        else "b" * 64
+        records[ordered_ids[0]][1].get("history_sha256", "b" * 64) if records else "b" * 64
     )
-    history_draw_count = (
-        records[ordered_ids[0]][1].get("history_draw_count", 3) if records else 3
-    )
-    history_caveat = (
-        records[ordered_ids[0]][1].get("history_caveat", "YES") if records else "YES"
-    )
+    history_draw_count = records[ordered_ids[0]][1].get("history_draw_count", 3) if records else 3
+    history_caveat = records[ordered_ids[0]][1].get("history_caveat", "YES") if records else "YES"
     supports = {4: 60, 12: 59, 24: 58, 25: 57, 26: 56, 29: 55}
     remaining = [number for number in range(1, 50) if number not in supports]
     supports.update(dict.fromkeys(remaining[:7], 7))
@@ -939,22 +927,23 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
-    assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
+    assert config.script_path == (config.source_worktree / "tools/b649_goalc_local_scheduler.py")
     assert config.operation_root == Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
     )
     assert config.health_path == config.operation_root / "scheduler/health.json"
 
 
-def test_production_launchd_uses_only_canonical_scheduler_authority() -> None:
+def test_production_launchd_uses_executing_successor_topology_b_bindings() -> None:
     config = production_config()
-    canonical_script = config.canonical_repository / "tools/b649_goalc_local_scheduler.py"
+    successor_script = config.source_worktree / "tools/b649_goalc_local_scheduler.py"
 
     encoded = build_launchd_plist(config)
     parsed = plistlib.loads(encoded)
 
-    assert parsed["ProgramArguments"][1] == str(canonical_script)
-    assert parsed["WorkingDirectory"] == str(config.canonical_repository)
+    assert parsed["ProgramArguments"][1] == str(successor_script)
+    assert parsed["WorkingDirectory"] == str(config.source_worktree)
+    assert parsed["EnvironmentVariables"]["PYTHONPATH"] == str(config.source_worktree / "src")
     assert b"B649_GOALC_LOCAL_LAUNCHD_R1" not in encoded
 
 
@@ -1069,9 +1058,7 @@ def test_production_scheduler_syncs_canonical_schedule_and_ignores_legacy_file(
     backend = ProductionSchedulerBackend(
         config,
         clock=lambda: after_deadline,
-        https_client=OfficialHttpsClient(
-            transport=schedule_network
-        ),
+        https_client=OfficialHttpsClient(transport=schedule_network),
         environ={
             "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
             "LOTTOLAB_DATA_DIR": str(config.data_root),
@@ -2011,17 +1998,137 @@ def test_launchd_plist_has_exact_trigger_paths_environment_and_no_keepalive(
     assert parsed["RunAtLoad"] is True
     assert parsed["StartInterval"] == 300
     assert parsed["KeepAlive"] is False
-    assert parsed["WorkingDirectory"] == str(config.canonical_repository)
+    assert parsed["WorkingDirectory"] == str(config.source_worktree)
     assert parsed["StandardOutPath"] == str(config.stdout_path)
     assert parsed["StandardErrorPath"] == str(config.stderr_path)
     assert parsed["EnvironmentVariables"] == {
         "LOTTOLAB_DATA_DIR": str(config.data_root),
         "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
+        "PYTHONPATH": str(config.source_worktree / "src"),
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONUNBUFFERED": "1",
     }
     assert "Program" not in parsed
     assert "ShellPath" not in parsed
+
+
+def test_build_launchd_plist_distinct_primary_vs_successor(tmp_path: Path) -> None:
+    base = _config(tmp_path)
+    canonical = Path("/canonical-primary")
+    successor = Path("/immutable-successor")
+    config = replace(
+        base,
+        canonical_repository=canonical,
+        source_worktree=successor,
+        script_path=successor / "tools/b649_goalc_local_scheduler.py",
+    )
+
+    parsed = plistlib.loads(build_launchd_plist(config))
+
+    assert parsed["ProgramArguments"][1] == (
+        "/immutable-successor/tools/b649_goalc_local_scheduler.py"
+    )
+    assert parsed["WorkingDirectory"] == "/immutable-successor"
+    assert parsed["EnvironmentVariables"]["PYTHONPATH"] == "/immutable-successor/src"
+
+    assert "/canonical-primary" not in parsed["ProgramArguments"][1]
+    assert parsed["WorkingDirectory"] != "/canonical-primary"
+    assert "/canonical-primary" not in parsed["EnvironmentVariables"]["PYTHONPATH"]
+
+
+def test_build_launchd_plist_preserves_explicit_interpreter(tmp_path: Path) -> None:
+    base = _config(tmp_path)
+    custom_python = Path("/opt/custom-runtimes/python3.13/bin/python")
+    config = replace(base, python_executable=custom_python)
+
+    parsed = plistlib.loads(build_launchd_plist(config))
+
+    assert parsed["ProgramArguments"][0] == str(custom_python)
+    assert not parsed["ProgramArguments"][0].startswith(str(config.canonical_repository))
+    assert not parsed["ProgramArguments"][0].startswith(str(config.source_worktree))
+
+
+def test_build_launchd_plist_preserves_existing_environment_and_adds_pythonpath(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+
+    parsed = plistlib.loads(build_launchd_plist(config))
+    env = parsed["EnvironmentVariables"]
+
+    assert env == {
+        "LOTTOLAB_DATA_DIR": str(config.data_root),
+        "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
+        "PYTHONPATH": str(config.source_worktree / "src"),
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONUNBUFFERED": "1",
+    }
+
+
+def test_write_launchd_plist_atomic_round_trip(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    assert not config.plist_path.exists()
+    assert config.plist_path != scheduler_module.PLIST_PATH
+
+    written = write_launchd_plist(config)
+
+    assert written == config.plist_path
+    assert written.exists()
+
+    parsed = plistlib.loads(written.read_bytes())
+    assert parsed["ProgramArguments"][0] == str(config.python_executable)
+    assert parsed["ProgramArguments"][1] == str(config.script_path)
+    assert parsed["ProgramArguments"][2] == "run"
+    assert parsed["WorkingDirectory"] == str(config.source_worktree)
+    assert parsed["EnvironmentVariables"]["PYTHONPATH"] == str(config.source_worktree / "src")
+    assert "/canonical-primary" not in parsed["ProgramArguments"][1]
+
+
+def test_production_config_executing_worktree_binding(monkeypatch: pytest.MonkeyPatch) -> None:
+    current = production_config()
+    assert current.script_path == current.source_worktree / "tools/b649_goalc_local_scheduler.py"
+    assert current.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
+
+    mock_worktree = Path(
+        "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/MOCK_SUCCESSOR_R1"
+    )
+    monkeypatch.setattr(scheduler_module, "SOURCE_WORKTREE", mock_worktree)
+    monkeypatch.setattr(
+        scheduler_module,
+        "SCRIPT_PATH",
+        mock_worktree / "tools/b649_goalc_local_scheduler.py",
+    )
+
+    derived = production_config()
+    assert derived.source_worktree == mock_worktree
+    assert derived.script_path == mock_worktree / "tools/b649_goalc_local_scheduler.py"
+    assert derived.script_path != (
+        scheduler_module.CANONICAL_REPOSITORY / "tools/b649_goalc_local_scheduler.py"
+    )
+
+
+def test_scheduler_config_and_plist_fail_closed_on_source_binding_conflict(
+    tmp_path: Path,
+) -> None:
+    base = _config(tmp_path)
+    mismatched_script = tmp_path / "other_worktree/tools/b649_goalc_local_scheduler.py"
+
+    with pytest.raises(
+        ValueError,
+        match=r"script_path must be tools/b649_goalc_local_scheduler\.py inside source_worktree",
+    ):
+        replace(base, script_path=mismatched_script)
+
+    bypass_config = replace(base)
+    object.__setattr__(bypass_config, "script_path", mismatched_script)
+    with pytest.raises(
+        ValueError,
+        match=(
+            r"scheduler script must reside at tools/b649_goalc_local_scheduler\.py "
+            r"inside source_worktree"
+        ),
+    ):
+        build_launchd_plist(bypass_config)
 
 
 # ---------------------------------------------------------------------------
@@ -2111,9 +2218,10 @@ def test_forecast_uses_dynamic_authority_path_for_later_target(
     assert exit_code == 0
     assert result["FORECAST_STATUS"] == "READY"
     assert result["CANONICAL_AUTHORITY_PATH"] == str(authority_path)
-    assert result["CANONICAL_AUTHORITY_SHA256"] == hashlib.sha256(
-        authority_path.read_bytes()
-    ).hexdigest()
+    assert (
+        result["CANONICAL_AUTHORITY_SHA256"]
+        == hashlib.sha256(authority_path.read_bytes()).hexdigest()
+    )
     assert result["FINAL_RECOMMENDED_TICKET"] == [4, 12, 24, 25, 26, 29]
     assert backend.mutating_calls == []
 
@@ -2446,9 +2554,7 @@ def test_forecast_fails_closed_when_authority_b_is_unavailable(
     assert exit_code != 0
     assert result["FORECAST_STATUS"] == "CANONICAL_AUTHORITY_UNAVAILABLE"
     assert result["AUTHORITY_STATUS"] == "NON_SUCCESS"
-    assert "existing authority is not valid JSON" in cast(
-        str, result["CANONICAL_AUTHORITY_ERROR"]
-    )
+    assert "existing authority is not valid JSON" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
     assert "FINAL_DECISION_RANKING" not in result
     assert "FINAL_RECOMMENDED_OUTPUT" not in result
 
@@ -2470,9 +2576,7 @@ def test_forecast_fails_closed_when_authority_b_file_is_missing(
     assert exit_code != 0
     assert result["FORECAST_STATUS"] == "CANONICAL_AUTHORITY_UNAVAILABLE"
     assert result["AUTHORITY_STATUS"] == "NON_SUCCESS"
-    assert "AUTHORITY_B_RESULT_UNAVAILABLE" in cast(
-        str, result["CANONICAL_AUTHORITY_ERROR"]
-    )
+    assert "AUTHORITY_B_RESULT_UNAVAILABLE" in cast(str, result["CANONICAL_AUTHORITY_ERROR"])
     assert "FINAL_DECISION_RANKING" not in result
     assert "FINAL_RECOMMENDED_OUTPUT" not in result
 

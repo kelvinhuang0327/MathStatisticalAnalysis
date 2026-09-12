@@ -50,7 +50,7 @@ from lottolab.domain.research_live_forecast import (
 
 DATA_DIRECTORY_ENV = "LOTTOLAB_DATA_DIR"
 RESEARCH_DATABASE_FILENAME = "lottolab_research.db"
-CURRENT_SCHEMA_VERSION = 4
+CURRENT_SCHEMA_VERSION = 5
 MIGRATION_NAME = "create_canonical_research_store_with_legacy_provenance"
 BUSY_TIMEOUT_MS = 5_000
 
@@ -1332,6 +1332,9 @@ APPEND_ONLY_TRIGGER_NAMES = (
 V3_TABLE_NAMES = TABLE_NAMES
 V3_IMMUTABLE_TABLE_NAMES = IMMUTABLE_TABLE_NAMES
 V3_APPEND_ONLY_TRIGGER_NAMES = APPEND_ONLY_TRIGGER_NAMES
+V4_TABLE_NAMES = TABLE_NAMES
+V4_IMMUTABLE_TABLE_NAMES = IMMUTABLE_TABLE_NAMES
+V4_APPEND_ONLY_TRIGGER_NAMES = APPEND_ONLY_TRIGGER_NAMES
 _V3_EXPECTED_SCHEMA_SQL_BY_NAME = {
     **_V2_EXPECTED_SCHEMA,
     "research_runs": _V3_RUNS_SQL,
@@ -1342,7 +1345,328 @@ _V4_EXPECTED_SCHEMA_SQL_BY_NAME = {
     "research_runs": _V4_RUNS_SQL,
     **{_object_name(s): s for s in _V4_ADDED_STATEMENTS},
 }
-_EXPECTED_SCHEMA_SQL_BY_NAME = _V4_EXPECTED_SCHEMA_SQL_BY_NAME
+
+_CANDIDATE_AUTHORITIES_SQL = """
+CREATE TABLE research_consensus_candidate_authorities (
+    candidate_ref TEXT PRIMARY KEY CHECK (length(candidate_ref) > 0),
+    lottery_type TEXT NOT NULL CHECK (lottery_type = 'BIG_LOTTO'),
+    target_draw_number TEXT NOT NULL,
+    target_draw_date TEXT NOT NULL,
+    forecast_stream_id TEXT NOT NULL,
+    forecast_stream_version TEXT NOT NULL,
+    payload_bytes BLOB NOT NULL CHECK (typeof(payload_bytes) = 'blob'),
+    payload_sha256 TEXT NOT NULL CHECK (length(payload_sha256) = 64),
+    candidate_locator TEXT NOT NULL CHECK (length(candidate_locator) > 0),
+    candidate_created_at TEXT NOT NULL,
+    scheduled_at TEXT NOT NULL,
+    deadline TEXT NOT NULL,
+    data_cutoff_draw_number TEXT NOT NULL,
+    data_cutoff_draw_date TEXT NOT NULL,
+    history_draw_count INTEGER NOT NULL CHECK (history_draw_count > 0),
+    causal_history_sha256 TEXT NOT NULL CHECK (length(causal_history_sha256) = 64),
+    schedule_authority_sha256 TEXT NOT NULL CHECK (length(schedule_authority_sha256) = 64),
+    stream_input_manifest_sha256 TEXT NOT NULL CHECK (length(stream_input_manifest_sha256) = 64),
+    implementation_commit TEXT NOT NULL CHECK (length(implementation_commit) = 40),
+    implementation_tree TEXT NOT NULL CHECK (length(implementation_tree) = 40),
+    implementation_source_hashes_json TEXT NOT NULL
+        CHECK (json_valid(implementation_source_hashes_json)),
+    streams_json TEXT NOT NULL CHECK (json_valid(streams_json)),
+    admission_provenance_json TEXT NOT NULL CHECK (json_valid(admission_provenance_json)),
+    admitted_at TEXT NOT NULL,
+    CHECK (target_draw_number != '115000087'),
+    CHECK (deadline = scheduled_at),
+    CHECK (CAST(data_cutoff_draw_number AS INTEGER) < CAST(target_draw_number AS INTEGER)),
+    CHECK (data_cutoff_draw_date < target_draw_date),
+    UNIQUE (lottery_type, target_draw_number, forecast_stream_id, forecast_stream_version),
+    UNIQUE (payload_sha256)
+)
+"""
+
+_SUCCESSOR_LIVE_BRANCH_SQL = f"""    ) OR (
+        provenance_class = '{CANONICAL_CONSENSUS}'
+        AND candidate_ref IS NOT NULL AND length(candidate_ref) > 0
+        AND forecast_stream_id = '{CONSENSUS_STREAM}'
+        AND forecast_stream_version = '{CONSENSUS_STREAM_VERSION}'
+        AND original_execution_provenance_status = 'CONSENSUS_ADMISSION_BOUND'
+        AND {_CONSENSUS_NULL_SQL}
+        AND missing_provenance_json = '{canonical_json(CONSENSUS_MISSING)}'
+        AND import_execution_json IS NOT NULL AND json_valid(import_execution_json)
+        AND consensus_provenance_json IS NOT NULL
+        AND json_valid(consensus_provenance_json)
+        AND source_payload_sha256 = payload_sha256
+        AND bundle_id IS NULL
+        AND lottery_type = 'BIG_LOTTO'
+        AND target_draw_number != '115000087'
+        AND json_extract(target_json, '$.lottery_type') = lottery_type
+        AND json_extract(target_json, '$.target_draw_number') = target_draw_number
+        AND json_extract(target_json, '$.target_draw_date') = target_draw_date
+        AND json_extract(target_json, '$.forecast_horizon') = 1
+        AND json_extract(target_json, '$.history_draw_count') > 0
+        AND CAST(json_extract(target_json, '$.data_cutoff') AS INTEGER)
+            < CAST(target_draw_number AS INTEGER)
+        AND json_extract(target_json, '$.timezone') = 'Asia/Taipei'
+        AND julianday(json_extract(target_json, '$.scheduled_at')) IS NOT NULL
+        AND json_type(target_json, '$.causal_history_sha256') = 'text'
+        AND length(json_extract(target_json, '$.causal_history_sha256')) = 64
+        AND json_extract(target_json, '$.causal_history_sha256') NOT GLOB '*[^0-9a-f]*'
+        AND json_type(target_json, '$.schedule_authority_sha256') = 'text'
+        AND length(json_extract(target_json, '$.schedule_authority_sha256')) = 64
+        AND json_extract(target_json, '$.schedule_authority_sha256') NOT GLOB '*[^0-9a-f]*'
+        AND json_extract(consensus_provenance_json, '$.contract_version')
+            = 'b649-canonical-consensus-provenance-v2'
+        AND json_extract(consensus_provenance_json, '$.candidate.candidate_ref') = candidate_ref
+        AND json_extract(consensus_provenance_json, '$.candidate.sha256') = payload_sha256
+    ), 0)),"""
+
+_V5_LIVE_VERSION_SQL = (
+    _V4_LIVE_VERSION_SQL.replace(
+        "    consensus_provenance_json TEXT,\n",
+        "    consensus_provenance_json TEXT,\n    candidate_ref TEXT,\n",
+    )
+    .replace(
+        "        AND missing_provenance_json = '{}' AND import_execution_json IS NULL\n",
+        (
+            "        AND candidate_ref IS NULL\n"
+            "        AND missing_provenance_json = '{}' AND import_execution_json IS NULL\n"
+        ),
+    )
+    .replace(
+        "        AND consensus_provenance_json IS NULL\n",
+        (
+            "        AND candidate_ref IS NULL\n"
+            "        AND consensus_provenance_json IS NULL\n"
+        ),
+    )
+    .replace(
+        "        AND original_execution_provenance_status = 'CONSENSUS_SOURCE_BOUND'\n",
+        (
+            "        AND candidate_ref IS NULL\n"
+            "        AND original_execution_provenance_status = 'CONSENSUS_SOURCE_BOUND'\n"
+        ),
+    )
+    .replace(
+        "    ), 0)),",
+        _SUCCESSOR_LIVE_BRANCH_SQL,
+    )
+    .replace(
+        "    FOREIGN KEY (run_id) REFERENCES research_runs(id) ON DELETE RESTRICT\n)",
+        (
+            "    FOREIGN KEY (run_id) REFERENCES research_runs(id) ON DELETE RESTRICT,\n"
+            "    FOREIGN KEY (candidate_ref) REFERENCES "
+            "research_consensus_candidate_authorities(candidate_ref) ON DELETE RESTRICT\n)"
+        ),
+    )
+)
+
+_V5_CONSENSUS_STRUCTURE_TRIGGER = _CONSENSUS_STRUCTURE_TRIGGER.replace(
+    "WHEN NEW.provenance_class = 'CANONICAL_CONSENSUS'\n",
+    "WHEN NEW.provenance_class = 'CANONICAL_CONSENSUS' AND NEW.candidate_ref IS NULL\n",
+)
+
+_SUCCESSOR_STRUCTURE_TRIGGER = f"""
+CREATE TRIGGER trg_live_forecast_successor_structure
+BEFORE INSERT ON research_live_forecast_versions
+WHEN NEW.provenance_class = 'CANONICAL_CONSENSUS' AND NEW.candidate_ref IS NOT NULL
+BEGIN
+    SELECT CASE WHEN NOT EXISTS (
+        SELECT 1 FROM research_consensus_candidate_authorities
+        WHERE candidate_ref = NEW.candidate_ref
+          AND lottery_type = NEW.lottery_type
+          AND target_draw_number = NEW.target_draw_number
+          AND target_draw_date = NEW.target_draw_date
+          AND forecast_stream_id = NEW.forecast_stream_id
+          AND forecast_stream_version = NEW.forecast_stream_version
+          AND payload_sha256 = NEW.payload_sha256
+          AND payload_bytes = NEW.payload_bytes
+          AND schedule_authority_sha256 =
+              json_extract(NEW.target_json, '$.schedule_authority_sha256')
+    ) THEN RAISE(ABORT, 'successor promotion candidate authority mismatch') END;
+    SELECT CASE WHEN NOT COALESCE((
+        json_extract(NEW.consensus_provenance_json, '$.contract_version')
+            = 'b649-canonical-consensus-provenance-v2'
+        AND json_extract(NEW.consensus_provenance_json, '$.candidate.candidate_ref')
+            = NEW.candidate_ref
+        AND json_extract(NEW.consensus_provenance_json, '$.candidate.locator')
+            = NEW.source_locator
+        AND json_extract(NEW.consensus_provenance_json, '$.candidate.sha256')
+            = NEW.source_payload_sha256
+        AND json_extract(NEW.consensus_provenance_json, '$.source_provenance.locator')
+            = NEW.source_locator
+        AND json_extract(NEW.consensus_provenance_json, '$.source_provenance.sha256')
+            = NEW.source_payload_sha256
+        AND json_type(NEW.consensus_provenance_json, '$.source_provenance.document') = 'object'
+        AND json_extract(NEW.consensus_provenance_json, '$.source_provenance.document')
+            = json_extract(NEW.consensus_provenance_json, '$.production')
+        AND json_extract(NEW.consensus_provenance_json, '$.generated_at')
+            = json_extract(NEW.consensus_provenance_json, '$.production.created_at')
+        AND json_type(NEW.consensus_provenance_json, '$.production.task_id') = 'text'
+        AND length(json_extract(NEW.consensus_provenance_json, '$.production.task_id')) > 0
+        AND json_extract(NEW.consensus_provenance_json, '$.production.upstream_task_id')
+            = 'B649_OPERATIONAL_PREDICTION_LOOP_R1'
+        AND json_extract(
+            NEW.consensus_provenance_json,
+            '$.production.pre_outcome_temporal_integrity'
+        ) = 'PASS'
+        AND json_extract(
+            NEW.consensus_provenance_json,
+            '$.production.stream_input_manifest_sha256'
+        ) = json_extract(
+            CAST(NEW.payload_bytes AS TEXT), '$.stream_input_manifest_sha256'
+        )
+        AND json_extract(NEW.consensus_provenance_json, '$.implementation.commit')
+            = json_extract(NEW.consensus_provenance_json, '$.production.implementation.commit')
+        AND json_extract(NEW.consensus_provenance_json, '$.implementation.tree')
+            = json_extract(NEW.consensus_provenance_json, '$.production.implementation.tree')
+        AND json_type(NEW.consensus_provenance_json, '$.implementation.source_hashes') = 'array'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.algorithm_id')
+            = 'build_canonical_consensus'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.method_id')
+            = '{CONSENSUS_METHOD_ID}'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.method_version')
+            = '{CONSENSUS_METHOD_VERSION}'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.aggregation_unit')
+            = '{CONSENSUS_AGGREGATION_UNIT}'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.weight_policy')
+            = 'EQUAL_STREAM_WEIGHT'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.tie_break')
+            = 'SUPPORT_UNITS_DESC_NUMBER_ASC'
+        AND json_extract(NEW.consensus_provenance_json, '$.algorithm.score_denominator') = 66
+        AND json_extract(NEW.consensus_provenance_json, '$.target.lottery_type') = NEW.lottery_type
+        AND json_extract(NEW.consensus_provenance_json, '$.target.draw_number')
+            = NEW.target_draw_number
+        AND json_extract(NEW.consensus_provenance_json, '$.target.draw_date') = NEW.target_draw_date
+        AND json_extract(NEW.consensus_provenance_json, '$.target.scheduled_at')
+            = json_extract(NEW.target_json, '$.scheduled_at')
+        AND json_extract(NEW.consensus_provenance_json, '$.target.timezone') = 'Asia/Taipei'
+        AND json_extract(NEW.consensus_provenance_json, '$.target.cutoff')
+            = json_extract(NEW.target_json, '$.data_cutoff')
+        AND json_extract(NEW.consensus_provenance_json, '$.target.history_draw_count')
+            = json_extract(NEW.target_json, '$.history_draw_count')
+        AND json_extract(NEW.consensus_provenance_json, '$.target.causal_history_sha256')
+            = json_extract(NEW.target_json, '$.causal_history_sha256')
+        AND json_extract(NEW.consensus_provenance_json, '$.target.temporal_class') = 'PRE_DRAW'
+        AND json_extract(NEW.consensus_provenance_json, '$.target.target_result_used') = 0
+        AND json_extract(NEW.consensus_provenance_json, '$.target.schedule_authority_sha256')
+            = json_extract(NEW.target_json, '$.schedule_authority_sha256')
+        AND json_extract(NEW.consensus_provenance_json, '$.strategy_reexecution') = 'NO'
+        AND json_extract(NEW.consensus_provenance_json, '$.aggregation_reexecution') = 'NO'
+        AND json_type(NEW.consensus_provenance_json, '$.streams') = 'array'
+        AND json_type(NEW.consensus_provenance_json, '$.final_decision_ranking') = 'array'
+        AND json_type(NEW.consensus_provenance_json, '$.final_recommended_output') = 'array'
+    ), 0) THEN RAISE(ABORT, 'incomplete successor consensus provenance') END;
+    SELECT CASE WHEN COALESCE(
+            json_array_length(NEW.consensus_provenance_json, '$.streams'), -1
+        ) != 11
+        OR EXISTS (
+            SELECT 1 FROM json_each(NEW.consensus_provenance_json, '$.streams') AS item
+            WHERE item.type != 'object'
+               OR json_type(item.value, '$.strategy_id') != 'text'
+               OR json_type(item.value, '$.strategy_version') != 'text'
+               OR json_type(item.value, '$.prediction_run_id') != 'text'
+               OR json_type(item.value, '$.source_relative_path') != 'text'
+               OR json_type(item.value, '$.source_sha256') != 'text'
+               OR length(json_extract(item.value, '$.source_sha256')) != 64
+               OR json_extract(item.value, '$.source_sha256') GLOB '*[^0-9a-f]*'
+               OR json_type(item.value, '$.native_ticket_count') != 'integer'
+               OR json_extract(item.value, '$.native_ticket_count') < 1
+               OR 6 % json_extract(item.value, '$.native_ticket_count') != 0
+        ) THEN RAISE(ABORT, 'invalid successor consensus stream lineage') END;
+    SELECT CASE WHEN NOT COALESCE((
+        json_extract(NEW.import_execution_json, '$.activation_event')
+            = 'CANONICAL_CONSENSUS_PROMOTION_IMPORT'
+        AND json_extract(NEW.import_execution_json, '$.candidate_ref') = NEW.candidate_ref
+        AND json_extract(NEW.import_execution_json, '$.aggregation_execution') = 'NOT_PERFORMED'
+        AND json_extract(NEW.import_execution_json, '$.native_generation') = 'NOT_PERFORMED'
+        AND json_extract(NEW.import_execution_json, '$.schedule_authority_sha256')
+            = json_extract(NEW.target_json, '$.schedule_authority_sha256')
+        AND json_type(NEW.import_execution_json, '$.promotion_executor_identity') = 'text'
+        AND length(json_extract(NEW.import_execution_json, '$.promotion_executor_identity')) > 0
+        AND json_type(NEW.import_execution_json, '$.promotion_attempted_at') = 'text'
+        AND json_type(NEW.import_execution_json, '$.authorization_evidence_reference') = 'text'
+        AND length(
+            json_extract(NEW.import_execution_json, '$.authorization_evidence_reference')
+        ) > 0
+        AND json_type(NEW.import_execution_json, '$.execution_source.source_id') = 'text'
+        AND json_type(NEW.import_execution_json, '$.execution_source.source_version') = 'text'
+        AND json_type(NEW.import_execution_json, '$.command_runtime_identity.python') = 'text'
+        AND json_type(NEW.import_execution_json, '$.command_runtime_identity.executable') = 'text'
+        AND json_type(NEW.import_execution_json, '$.command_runtime_identity.command') = 'array'
+    ), 0) THEN RAISE(ABORT, 'incomplete successor consensus promotion execution') END;
+END
+"""
+
+_V5_LIVE_TRIGGER_SQL = (
+    _NATIVE_STRUCTURE_TRIGGER,
+    _V5_CONSENSUS_STRUCTURE_TRIGGER,
+    _SUCCESSOR_STRUCTURE_TRIGGER,
+    *_LIVE_TRIGGER_SQL[1:],
+)
+
+_V5_ADDED_STATEMENTS = (
+    _CANDIDATE_AUTHORITIES_SQL,
+    _V5_LIVE_VERSION_SQL,
+    _LIVE_POINTER_SQL,
+    "CREATE UNIQUE INDEX idx_live_legacy_once ON research_live_forecast_versions "
+    "(source_payload_sha256) WHERE provenance_class = 'LEGACY_MATERIALIZED'",
+    "CREATE UNIQUE INDEX idx_live_candidate_ref ON research_live_forecast_versions "
+    "(candidate_ref) WHERE candidate_ref IS NOT NULL",
+    *_append_only_trigger_statements("research_consensus_candidate_authorities"),
+    *_append_only_trigger_statements("research_live_forecast_versions"),
+    *_V5_LIVE_TRIGGER_SQL,
+)
+
+V5_MIGRATION_NAME = "append_target_parameterized_consensus_contract"
+_V4_LIVE_VERSION_COLUMNS = f"{_LIVE_VERSION_COLUMNS}, consensus_provenance_json"
+V5_MIGRATION_STATEMENTS = (
+    "CREATE TEMP TABLE research_v5_saved_live_versions AS "
+    "SELECT * FROM research_live_forecast_versions",
+    "CREATE TEMP TABLE research_v5_saved_pointer AS "
+    "SELECT * FROM research_live_forecast_current_pointer",
+    "DROP TABLE research_live_forecast_current_pointer",
+    "DROP TABLE research_live_forecast_versions",
+    _CANDIDATE_AUTHORITIES_SQL,
+    _V5_LIVE_VERSION_SQL,
+    f"INSERT INTO research_live_forecast_versions ({_V4_LIVE_VERSION_COLUMNS}, candidate_ref) "
+    f"SELECT {_V4_LIVE_VERSION_COLUMNS}, NULL FROM research_v5_saved_live_versions",
+    "DROP TABLE research_v5_saved_live_versions",
+    _LIVE_POINTER_SQL,
+    "INSERT INTO research_live_forecast_current_pointer SELECT * FROM research_v5_saved_pointer",
+    "DROP TABLE research_v5_saved_pointer",
+    "CREATE UNIQUE INDEX idx_live_legacy_once ON research_live_forecast_versions "
+    "(source_payload_sha256) WHERE provenance_class = 'LEGACY_MATERIALIZED'",
+    "CREATE UNIQUE INDEX idx_live_candidate_ref ON research_live_forecast_versions "
+    "(candidate_ref) WHERE candidate_ref IS NOT NULL",
+    *_append_only_trigger_statements("research_consensus_candidate_authorities"),
+    *_append_only_trigger_statements("research_live_forecast_versions"),
+    *_V5_LIVE_TRIGGER_SQL,
+)
+V5_MIGRATION_CHECKSUM = hashlib.sha256(
+    (";\n".join(s.strip() for s in V5_MIGRATION_STATEMENTS) + ";\n").encode()
+).hexdigest()
+
+V5_TABLE_NAMES = (
+    *TABLE_NAMES,
+    "research_consensus_candidate_authorities",
+)
+V5_IMMUTABLE_TABLE_NAMES = (
+    *IMMUTABLE_TABLE_NAMES,
+    "research_consensus_candidate_authorities",
+)
+V5_APPEND_ONLY_TRIGGER_NAMES = (
+    *APPEND_ONLY_TRIGGER_NAMES,
+    "trg_research_consensus_candidate_authorities_no_update",
+    "trg_research_consensus_candidate_authorities_no_delete",
+)
+TABLE_NAMES = V5_TABLE_NAMES  # pyright: ignore[reportConstantRedefinition]
+IMMUTABLE_TABLE_NAMES = V5_IMMUTABLE_TABLE_NAMES  # pyright: ignore[reportConstantRedefinition]
+APPEND_ONLY_TRIGGER_NAMES = V5_APPEND_ONLY_TRIGGER_NAMES  # pyright: ignore[reportConstantRedefinition]
+
+_V5_EXPECTED_SCHEMA_SQL_BY_NAME = {
+    **_V2_EXPECTED_SCHEMA,
+    "research_runs": _V4_RUNS_SQL,
+    **{_object_name(s): s for s in _V5_ADDED_STATEMENTS},
+}
+_EXPECTED_SCHEMA_SQL_BY_NAME = _V5_EXPECTED_SCHEMA_SQL_BY_NAME
 
 
 def resolve_research_data_paths(
@@ -1425,8 +1749,18 @@ def initialize_schema(paths: ResearchDataPaths) -> None:
                         "INSERT INTO research_schema_migrations VALUES (?, ?, ?, ?)",
                         (4, V4_MIGRATION_NAME, V4_MIGRATION_CHECKSUM, _utc_now()),
                     )
+                    version = 4
+                if version == 4:
+                    if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
+                        raise ResearchSchemaError("pre-v5-migration foreign-key violation")
+                    for statement in V5_MIGRATION_STATEMENTS:
+                        connection.execute(statement)
+                    connection.execute(
+                        "INSERT INTO research_schema_migrations VALUES (?, ?, ?, ?)",
+                        (5, V5_MIGRATION_NAME, V5_MIGRATION_CHECKSUM, _utc_now()),
+                    )
                 if not _verify_migration_state(connection):
-                    raise ResearchSchemaError("research schema migration did not reach version 4")
+                    raise ResearchSchemaError("research schema migration did not reach version 5")
                 if connection.execute("PRAGMA foreign_key_check").fetchone() is not None:
                     raise ResearchSchemaError("post-migration foreign-key violation")
             except BaseException:
@@ -1570,7 +1904,7 @@ def _verify_migration_state(connection: sqlite3.Connection, *, allow_v2: bool = 
         raise ResearchSchemaError("database migration versions are invalid") from exc
     if any(version > CURRENT_SCHEMA_VERSION for version in versions):
         raise NewerSchemaVersionError("database schema is newer than this LottoLab build")
-    if versions not in ([2], [2, 3], [2, 3, 4]):
+    if versions not in ([2], [2, 3], [2, 3, 4], [2, 3, 4, 5]):
         raise ResearchSchemaError("database migration history is incomplete")
     _, name, checksum = rows[0]
     if name != MIGRATION_NAME or checksum != MIGRATION_CHECKSUM:
@@ -1583,12 +1917,20 @@ def _verify_migration_state(connection: sqlite3.Connection, *, allow_v2: bool = 
         if rows[1][1:] != (V3_MIGRATION_NAME, V3_MIGRATION_CHECKSUM):
             raise MigrationChecksumError("database v3 migration checksum does not match")
         _verify_schema_semantics(connection, table_names, version=3)
-    else:
+    elif versions == [2, 3, 4]:
         if rows[1][1:] != (V3_MIGRATION_NAME, V3_MIGRATION_CHECKSUM):
             raise MigrationChecksumError("database v3 migration checksum does not match")
         if rows[2][1:] != (V4_MIGRATION_NAME, V4_MIGRATION_CHECKSUM):
             raise MigrationChecksumError("database v4 migration checksum does not match")
         _verify_schema_semantics(connection, table_names, version=4)
+    else:
+        if rows[1][1:] != (V3_MIGRATION_NAME, V3_MIGRATION_CHECKSUM):
+            raise MigrationChecksumError("database v3 migration checksum does not match")
+        if rows[2][1:] != (V4_MIGRATION_NAME, V4_MIGRATION_CHECKSUM):
+            raise MigrationChecksumError("database v4 migration checksum does not match")
+        if rows[3][1:] != (V5_MIGRATION_NAME, V5_MIGRATION_CHECKSUM):
+            raise MigrationChecksumError("database v5 migration checksum does not match")
+        _verify_schema_semantics(connection, table_names, version=5)
     return True
 
 
@@ -1605,8 +1947,11 @@ def _verify_schema_semantics(
         expected_tables = V3_TABLE_NAMES
         expected_schema = _V3_EXPECTED_SCHEMA_SQL_BY_NAME
     elif version == 4:
-        expected_tables = TABLE_NAMES
+        expected_tables = V4_TABLE_NAMES
         expected_schema = _V4_EXPECTED_SCHEMA_SQL_BY_NAME
+    elif version == 5:
+        expected_tables = V5_TABLE_NAMES
+        expected_schema = _V5_EXPECTED_SCHEMA_SQL_BY_NAME
     else:
         raise ResearchSchemaError(f"unsupported schema verification version: {version}")
     if table_names != set(expected_tables):
@@ -1791,6 +2136,9 @@ __all__ = [
     "V4_MIGRATION_CHECKSUM",
     "V4_MIGRATION_NAME",
     "V4_MIGRATION_STATEMENTS",
+    "V5_MIGRATION_CHECKSUM",
+    "V5_MIGRATION_NAME",
+    "V5_MIGRATION_STATEMENTS",
     "MigrationChecksumError",
     "NewerSchemaVersionError",
     "ResearchDataError",

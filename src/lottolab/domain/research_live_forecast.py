@@ -196,6 +196,7 @@ CONSENSUS_DECISION_RANKING = (
 )
 CANONICAL_CONSENSUS = "CANONICAL_CONSENSUS"
 CONSENSUS_PROVENANCE_SCHEMA_VERSION = "b649-canonical-consensus-provenance-v1"
+SUCCESSOR_CONSENSUS_PROVENANCE_SCHEMA_VERSION = "b649-canonical-consensus-provenance-v2"
 LEGACY_SOURCE_TASK = "B649_NEXT_DRAW_115000087_CURRENT_INFORMATION_FORECAST_R1"
 LEGACY_MATERIALIZATION_TASK = "B649_NEXT_DRAW_115000087_FORECAST_PAYLOAD_MATERIALIZATION_R1"
 LEGACY_SHA256 = "71b0071eff43e789d5b96c0a29c7ff1130b03645317d68f4012b5ef5b8060867"
@@ -414,6 +415,7 @@ class LiveForecastInput:
     missing_provenance_json: str
     import_execution_json: str | None = None
     consensus_provenance_json: str | None = None
+    candidate_ref: str | None = None
 
     @property
     def payload_sha256(self) -> str:
@@ -470,11 +472,15 @@ class LiveForecastInput:
             type(t.get("history_draw_count")) is not int or cast(int, t["history_draw_count"]) < 1
         ):
             raise ValueError("invalid causal target")
-        if self.provenance_class == CANONICAL_CONSENSUS and (
-            type(t.get("history_draw_count")) is not int
-            or t["history_draw_count"] != CONSENSUS_TARGET_HISTORY_DRAW_COUNT
-        ):
-            raise ValueError("invalid consensus history count")
+        if self.provenance_class == CANONICAL_CONSENSUS:
+            if type(t.get("history_draw_count")) is not int:
+                raise ValueError("invalid consensus history count")
+            if t["target_draw_number"] == CONSENSUS_TARGET_DRAW_NUMBER:
+                if t["history_draw_count"] != CONSENSUS_TARGET_HISTORY_DRAW_COUNT:
+                    raise ValueError("invalid consensus history count")
+            else:
+                if cast(int, t["history_draw_count"]) <= 0:
+                    raise ValueError("invalid consensus history count")
         require_sha(t["causal_history_sha256"])
         scheduled = datetime.fromisoformat(str(t["scheduled_at"]).replace("Z", "+00:00"))
         if scheduled.tzinfo is None:
@@ -544,43 +550,79 @@ class LiveForecastInput:
                 or self.forecast_stream_version != CONSENSUS_STREAM_VERSION
             ):
                 raise ValueError("invalid canonical consensus stream")
-            if (
-                t["lottery_type"] != CONSENSUS_TARGET_LOTTERY_TYPE
-                or t["target_draw_number"] != CONSENSUS_TARGET_DRAW_NUMBER
-                or t["target_draw_date"] != CONSENSUS_TARGET_DRAW_DATE
-                or t["scheduled_at"] != CONSENSUS_TARGET_SCHEDULED_AT
-                or t["timezone"] != CONSENSUS_TARGET_TIMEZONE
-                or t["data_cutoff"] != CONSENSUS_TARGET_DATA_CUTOFF
-                or t["causal_history_sha256"] != CONSENSUS_TARGET_HISTORY_SHA256
-                or t.get("forecast_horizon") != 1
-                or type(t.get("schedule_authority_sha256")) is not str
-                or self.import_execution_json is None
-                or self.consensus_provenance_json is None
-                or any(value is not None for value in original.values())
-                or missing != CONSENSUS_MISSING
-            ):
-                raise ValueError("invalid canonical consensus provenance class")
-            if (
-                self.scope == CONSENSUS_AUTHORITY_B_SCOPE
-                and self.payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
-            ):
-                raise ValueError("canonical consensus payload is not Authority B")
-            require_sha(t["schedule_authority_sha256"])
-            payload = json.loads(self.payload_bytes)
-            if not isinstance(payload, dict):
-                raise ValueError("canonical consensus payload must be an object")
-            _validate_consensus_payload(cast(dict[str, object], payload))
-            _validate_consensus_provenance(
-                self.consensus_provenance_json,
-                cast(dict[str, object], payload),
-                t,
-                self.source_locator,
-                self.payload_sha256,
-            )
-            _validate_consensus_import_execution(
-                self.import_execution_json,
-                cast(str, t["schedule_authority_sha256"]),
-            )
+            if t["target_draw_number"] == CONSENSUS_TARGET_DRAW_NUMBER:
+                if self.candidate_ref is not None:
+                    raise ValueError("frozen 087 target cannot have candidate_ref")
+                if (
+                    t["lottery_type"] != CONSENSUS_TARGET_LOTTERY_TYPE
+                    or t["target_draw_date"] != CONSENSUS_TARGET_DRAW_DATE
+                    or t["scheduled_at"] != CONSENSUS_TARGET_SCHEDULED_AT
+                    or t["timezone"] != CONSENSUS_TARGET_TIMEZONE
+                    or t["data_cutoff"] != CONSENSUS_TARGET_DATA_CUTOFF
+                    or t["causal_history_sha256"] != CONSENSUS_TARGET_HISTORY_SHA256
+                    or t.get("forecast_horizon") != 1
+                    or type(t.get("schedule_authority_sha256")) is not str
+                    or self.import_execution_json is None
+                    or self.consensus_provenance_json is None
+                    or any(value is not None for value in original.values())
+                    or missing != CONSENSUS_MISSING
+                ):
+                    raise ValueError("invalid canonical consensus provenance class")
+                if (
+                    self.scope == CONSENSUS_AUTHORITY_B_SCOPE
+                    and self.payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
+                ):
+                    raise ValueError("canonical consensus payload is not Authority B")
+                require_sha(t["schedule_authority_sha256"])
+                payload = json.loads(self.payload_bytes)
+                if not isinstance(payload, dict):
+                    raise ValueError("canonical consensus payload must be an object")
+                _validate_consensus_payload(cast(dict[str, object], payload))
+                _validate_consensus_provenance(
+                    self.consensus_provenance_json,
+                    cast(dict[str, object], payload),
+                    t,
+                    self.source_locator,
+                    self.payload_sha256,
+                )
+                _validate_consensus_import_execution(
+                    self.import_execution_json,
+                    cast(str, t["schedule_authority_sha256"]),
+                )
+            else:
+                if self.candidate_ref is None or not self.candidate_ref.strip():
+                    raise ValueError("successor consensus target requires candidate_ref")
+                if (
+                    t["lottery_type"] != "BIG_LOTTO"
+                    or t.get("forecast_horizon") != 1
+                    or int(str(t["data_cutoff"])) >= int(str(t["target_draw_number"]))
+                    or t.get("timezone") != "Asia/Taipei"
+                    or type(t.get("schedule_authority_sha256")) is not str
+                    or self.import_execution_json is None
+                    or self.consensus_provenance_json is None
+                    or any(value is not None for value in original.values())
+                    or missing != CONSENSUS_MISSING
+                ):
+                    raise ValueError("invalid successor consensus provenance class")
+                require_sha(t["schedule_authority_sha256"])
+                require_sha(t["causal_history_sha256"])
+                payload = json.loads(self.payload_bytes)
+                if not isinstance(payload, dict):
+                    raise ValueError("successor consensus payload must be an object")
+                _validate_successor_consensus_payload(cast(dict[str, object], payload), t)
+                _validate_successor_consensus_provenance(
+                    self.consensus_provenance_json,
+                    cast(dict[str, object], payload),
+                    t,
+                    self.source_locator,
+                    self.payload_sha256,
+                    self.candidate_ref,
+                )
+                _validate_successor_consensus_import_execution(
+                    self.import_execution_json,
+                    cast(str, t["schedule_authority_sha256"]),
+                    self.candidate_ref,
+                )
         else:
             raise ValueError("unknown provenance class")
 
@@ -994,6 +1036,358 @@ def _reject_consensus_outcome_keys(value: object) -> None:
         items = cast(list[object], value)
         for item in items:
             _reject_consensus_outcome_keys(item)
+
+
+def _validate_successor_consensus_streams(
+    value: object, label: str, target_draw_number: str
+) -> list[dict[str, object]]:
+    if not isinstance(value, list):
+        raise ValueError(f"{label} must contain exactly 11 streams")
+    items = cast(list[object], value)
+    if len(items) != len(CONSENSUS_STREAM_SPECS):
+        raise ValueError(f"{label} must contain exactly 11 streams")
+    expected = {spec[0]: spec for spec in CONSENSUS_STREAM_SPECS}
+    streams: list[dict[str, object]] = []
+    identities: set[tuple[str, str, str]] = set()
+    for index, item in enumerate(items):
+        stream = _consensus_mapping(item, f"{label}[{index}]")
+        if set(stream) != {
+            "native_ticket_count",
+            "prediction_run_id",
+            "source_relative_path",
+            "source_sha256",
+            "strategy_id",
+            "strategy_version",
+        }:
+            raise ValueError(f"{label}[{index}] field inventory mismatch")
+        strategy_id = _consensus_text(stream.get("strategy_id"), f"{label}[{index}].strategy_id")
+        strategy_version = _consensus_text(
+            stream.get("strategy_version"), f"{label}[{index}].strategy_version"
+        )
+        prediction_run_id = _consensus_text(
+            stream.get("prediction_run_id"), f"{label}[{index}].prediction_run_id"
+        )
+        source_path = _consensus_text(
+            stream.get("source_relative_path"), f"{label}[{index}].source_relative_path"
+        )
+        if (
+            source_path.startswith("/")
+            or "\\" in source_path
+            or any(part in {"", ".", ".."} for part in source_path.split("/"))
+        ):
+            raise ValueError(f"{label}[{index}].source_relative_path is unsafe")
+        _consensus_sha(stream.get("source_sha256"), f"{label}[{index}].source_sha256")
+        count = stream.get("native_ticket_count")
+        if type(count) is not int or count < 1 or 6 % count != 0:
+            raise ValueError(f"{label}[{index}].native_ticket_count is invalid")
+        identity = (strategy_id, strategy_version, prediction_run_id)
+        if identity in identities:
+            raise ValueError(f"{label} contains duplicate stream identities")
+        identities.add(identity)
+        expected_spec = expected.get(strategy_id)
+        if expected_spec is None:
+            raise ValueError(f"{label}[{index}] strategy_id is unknown")
+        if (strategy_id, strategy_version, count) != (
+            expected_spec[0],
+            expected_spec[1],
+            expected_spec[2],
+        ):
+            raise ValueError(f"{label}[{index}] strategy specification mismatch")
+        streams.append(stream)
+    return streams
+
+
+def _validate_successor_consensus_payload(
+    payload: dict[str, object], target: dict[str, object]
+) -> None:
+    expected_keys = {
+        "aggregation_contract_approved_at",
+        "aggregation_contract_review_id",
+        "aggregation_method_id",
+        "aggregation_method_version",
+        "aggregation_unit",
+        "correlated_family_policy",
+        "created_at",
+        "decision_ranking_formula",
+        "exact_stream_ids",
+        "final_decision_ranking",
+        "final_recommended_output",
+        "history_caveat",
+        "history_draw_count",
+        "history_sha256",
+        "implementation_commit",
+        "implementation_source_hashes",
+        "implementation_tree",
+        "lottery_type",
+        "max_data_cutoff",
+        "pre_outcome_temporal_integrity",
+        "scheduled_at",
+        "schema_version",
+        "score_denominator",
+        "stream_count",
+        "stream_input_manifest_sha256",
+        "stream_inputs",
+        "target_draw",
+        "target_result_used",
+        "task_id",
+        "tie_break",
+        "upstream_task_id",
+        "weight_policy",
+    }
+    if set(payload) != expected_keys:
+        raise ValueError("canonical consensus payload field inventory mismatch")
+    expected_scalars = {
+        "schema_version": CONSENSUS_SCHEMA_VERSION,
+        "aggregation_method_id": CONSENSUS_METHOD_ID,
+        "aggregation_method_version": CONSENSUS_METHOD_VERSION,
+        "aggregation_unit": CONSENSUS_AGGREGATION_UNIT,
+        "weight_policy": CONSENSUS_WEIGHT_POLICY,
+        "correlated_family_policy": CONSENSUS_CORRELATED_FAMILY_POLICY,
+        "tie_break": CONSENSUS_TIE_BREAK,
+        "score_denominator": CONSENSUS_SCORE_DENOMINATOR,
+        "lottery_type": target["lottery_type"],
+        "history_draw_count": target["history_draw_count"],
+        "history_sha256": target["causal_history_sha256"],
+        "history_caveat": "YES",
+        "pre_outcome_temporal_integrity": "PASS",
+        "target_result_used": False,
+        "stream_count": len(CONSENSUS_STREAM_SPECS),
+        "upstream_task_id": CONSENSUS_UPSTREAM_TASK_ID,
+        "aggregation_contract_review_id": "B649_11_STREAM_CANONICAL_AGGREGATION_CTO_REVIEW_R1",
+        "aggregation_contract_approved_at": "2026-09-10T05:50:29Z",
+        "decision_ranking_formula": (
+            "U(n)=sum_i((6/k_i)*c_i(n)); rank by U(n) descending, then number ascending; "
+            "each stream has equal weight and c_i(n) counts native ticket positions containing n"
+        ),
+    }
+    for key, expected in expected_scalars.items():
+        if payload.get(key) != expected:
+            raise ValueError(f"canonical consensus payload {key} mismatch")
+    _consensus_text(payload.get("task_id"), "payload.task_id")
+    target_draw = _consensus_mapping(payload.get("target_draw"), "payload.target_draw")
+    if target_draw != {
+        "draw_date": target["target_draw_date"],
+        "draw_number": target["target_draw_number"],
+    }:
+        raise ValueError("canonical consensus target mismatch")
+    cutoff = _consensus_mapping(payload.get("max_data_cutoff"), "payload.max_data_cutoff")
+    if (
+        cutoff.get("draw_number") != target["data_cutoff"]
+        or not isinstance(cutoff.get("draw_date"), str)
+        or cast(str, cutoff["draw_date"]) >= str(target["target_draw_date"])
+        or int(str(cutoff["draw_number"])) >= int(str(target["target_draw_number"]))
+    ):
+        raise ValueError("canonical consensus cutoff mismatch")
+    _consensus_datetime(payload.get("created_at"), "payload.created_at")
+    _consensus_text(payload.get("scheduled_at"), "payload.scheduled_at")
+    if payload["scheduled_at"] != target["scheduled_at"]:
+        raise ValueError("canonical consensus schedule mismatch")
+    _consensus_sha(
+        payload.get("stream_input_manifest_sha256"),
+        "payload.stream_input_manifest_sha256",
+    )
+    streams = _validate_successor_consensus_streams(
+        payload.get("stream_inputs"), "payload.stream_inputs", str(target["target_draw_number"])
+    )
+    if payload.get("exact_stream_ids") != [spec[0] for spec in CONSENSUS_STREAM_SPECS]:
+        raise ValueError("canonical consensus stream id inventory mismatch")
+    if payload.get("stream_input_manifest_sha256") != digest(streams):
+        raise ValueError("canonical consensus stream manifest hash mismatch")
+    source_hashes = payload.get("implementation_source_hashes")
+    if not isinstance(source_hashes, list) or not source_hashes:
+        raise ValueError("canonical consensus implementation source lineage missing")
+    for item in cast(list[object], source_hashes):
+        sh = _consensus_mapping(item, "source_hashes[]")
+        _consensus_text(sh.get("path"), "source_hashes[].path")
+        _consensus_sha(sh.get("sha256"), "source_hashes[].sha256")
+    commit = _consensus_text(payload.get("implementation_commit"), "payload.implementation_commit")
+    if re.fullmatch(r"[0-9a-f]{40}", commit) is None:
+        raise ValueError("implementation_commit must be a full Git commit hash")
+    tree = _consensus_text(payload.get("implementation_tree"), "payload.implementation_tree")
+    if re.fullmatch(r"[0-9a-f]{40}", tree) is None:
+        raise ValueError("implementation_tree must be a full Git tree hash")
+    ranking = payload.get("final_decision_ranking")
+    if not isinstance(ranking, list) or len(cast(list[object], ranking)) != 49:
+        raise ValueError("canonical consensus final decision ranking must contain 49 numbers")
+    rec = payload.get("final_recommended_output")
+    if not isinstance(rec, list) or len(cast(list[object], rec)) != 1:
+        raise ValueError("canonical consensus final recommended output must contain 1 ticket")
+    rec_ticket = _consensus_mapping(cast(list[object], rec)[0], "final_recommended_output[0]")
+    if (
+        rec_ticket.get("ticket_position") != 1
+        or not isinstance(rec_ticket.get("predicted_numbers"), list)
+        or len(cast(list[object], rec_ticket["predicted_numbers"])) != 6
+    ):
+        raise ValueError("canonical consensus final recommendation format mismatch")
+    _reject_consensus_outcome_keys(payload)
+
+
+validate_successor_consensus_payload = _validate_successor_consensus_payload
+
+
+def _validate_successor_consensus_provenance(
+    raw: str,
+    payload: dict[str, object],
+    target: dict[str, object],
+    source_locator: str,
+    payload_sha256: str,
+    candidate_ref: str,
+) -> None:
+    provenance = object_json(raw)
+    expected_keys = {
+        "algorithm",
+        "aggregation_reexecution",
+        "candidate",
+        "contract_version",
+        "final_decision_ranking",
+        "final_recommended_output",
+        "generated_at",
+        "implementation",
+        "production",
+        "source_provenance",
+        "strategy_reexecution",
+        "streams",
+        "target",
+    }
+    if set(provenance) != expected_keys:
+        raise ValueError("canonical consensus provenance field inventory mismatch")
+    if provenance.get("contract_version") != SUCCESSOR_CONSENSUS_PROVENANCE_SCHEMA_VERSION:
+        raise ValueError("canonical consensus provenance schema mismatch")
+    candidate = _consensus_mapping(provenance.get("candidate"), "candidate")
+    if candidate != {
+        "candidate_ref": candidate_ref,
+        "locator": source_locator,
+        "sha256": payload_sha256,
+    }:
+        raise ValueError("canonical consensus candidate binding mismatch")
+    implementation = _consensus_mapping(provenance.get("implementation"), "implementation")
+    expected_implementation = {
+        "commit": payload["implementation_commit"],
+        "tree": payload["implementation_tree"],
+        "source_hashes": payload["implementation_source_hashes"],
+    }
+    if implementation != expected_implementation:
+        raise ValueError("canonical consensus implementation binding mismatch")
+    source_provenance = _consensus_mapping(
+        provenance.get("source_provenance"), "source_provenance"
+    )
+    if source_provenance != {
+        "locator": source_locator,
+        "sha256": payload_sha256,
+        "document": provenance.get("production"),
+    }:
+        raise ValueError("canonical consensus source provenance mismatch")
+    production = _consensus_mapping(provenance.get("production"), "production")
+    expected_production = {
+        "task_id": payload["task_id"],
+        "upstream_task_id": payload["upstream_task_id"],
+        "created_at": payload["created_at"],
+        "pre_outcome_temporal_integrity": payload["pre_outcome_temporal_integrity"],
+        "stream_input_manifest_sha256": payload["stream_input_manifest_sha256"],
+        "implementation": expected_implementation,
+    }
+    if production != expected_production:
+        raise ValueError("canonical consensus production lineage mismatch")
+    algorithm = _consensus_mapping(provenance.get("algorithm"), "algorithm")
+    expected_algorithm = {
+        "algorithm_id": "build_canonical_consensus",
+        "method_id": payload["aggregation_method_id"],
+        "method_version": payload["aggregation_method_version"],
+        "aggregation_unit": payload["aggregation_unit"],
+        "weight_policy": payload["weight_policy"],
+        "correlated_family_policy": payload["correlated_family_policy"],
+        "tie_break": payload["tie_break"],
+        "score_denominator": payload["score_denominator"],
+        "decision_ranking_formula": payload["decision_ranking_formula"],
+    }
+    if algorithm != expected_algorithm:
+        raise ValueError("canonical consensus algorithm identity mismatch")
+    if provenance.get("generated_at") != payload["created_at"]:
+        raise ValueError("canonical consensus generated_at mismatch")
+    _consensus_datetime(provenance.get("generated_at"), "generated_at")
+    expected_target = {
+        "lottery_type": target["lottery_type"],
+        "draw_number": target["target_draw_number"],
+        "draw_date": target["target_draw_date"],
+        "scheduled_at": target["scheduled_at"],
+        "timezone": target["timezone"],
+        "cutoff": target["data_cutoff"],
+        "history_draw_count": target["history_draw_count"],
+        "causal_history_sha256": target["causal_history_sha256"],
+        "temporal_class": "PRE_DRAW",
+        "target_result_used": False,
+        "schedule_authority_sha256": target["schedule_authority_sha256"],
+    }
+    if _consensus_mapping(provenance.get("target"), "target") != expected_target:
+        raise ValueError("canonical consensus target binding mismatch")
+    if provenance.get("strategy_reexecution") != "NO":
+        raise ValueError("canonical consensus provenance re-executed strategy")
+    if provenance.get("aggregation_reexecution") != "NO":
+        raise ValueError("canonical consensus provenance re-executed aggregation")
+    if provenance.get("streams") != payload.get("stream_inputs"):
+        raise ValueError("canonical consensus stream lineage mismatch")
+    if provenance.get("final_decision_ranking") != payload.get("final_decision_ranking"):
+        raise ValueError("canonical consensus ranking lineage mismatch")
+    if provenance.get("final_recommended_output") != payload.get("final_recommended_output"):
+        raise ValueError("canonical consensus recommendation lineage mismatch")
+
+
+def _validate_successor_consensus_import_execution(
+    raw: str, schedule_hash: str, candidate_ref: str
+) -> None:
+    imported = object_json(raw)
+    expected_keys = {
+        "activation_event",
+        "aggregation_execution",
+        "authorization_evidence_reference",
+        "candidate_ref",
+        "command_runtime_identity",
+        "execution_source",
+        "native_generation",
+        "promotion_attempted_at",
+        "promotion_executor_identity",
+        "schedule_authority_sha256",
+    }
+    if set(imported) != expected_keys:
+        raise ValueError("canonical consensus import execution field inventory mismatch")
+    if imported.get("candidate_ref") != candidate_ref:
+        raise ValueError("canonical consensus import candidate_ref mismatch")
+    for name in (
+        "promotion_executor_identity",
+        "authorization_evidence_reference",
+        "activation_event",
+        "aggregation_execution",
+        "native_generation",
+    ):
+        _consensus_text(imported.get(name), f"import_execution.{name}")
+    if imported["activation_event"] != "CANONICAL_CONSENSUS_PROMOTION_IMPORT":
+        raise ValueError("invalid canonical consensus activation event")
+    if imported["aggregation_execution"] != "NOT_PERFORMED":
+        raise ValueError("canonical consensus aggregation was re-executed")
+    if imported["native_generation"] != "NOT_PERFORMED":
+        raise ValueError("canonical consensus native generation was re-executed")
+    if imported.get("schedule_authority_sha256") != schedule_hash:
+        raise ValueError("canonical consensus schedule hash binding mismatch")
+    _consensus_sha(
+        imported.get("schedule_authority_sha256"),
+        "import_execution.schedule_authority_sha256",
+    )
+    _consensus_datetime(imported.get("promotion_attempted_at"), "promotion_attempted_at")
+    execution_source = _consensus_mapping(imported.get("execution_source"), "execution_source")
+    _consensus_text(execution_source.get("source_id"), "execution_source.source_id")
+    _consensus_text(execution_source.get("source_version"), "execution_source.source_version")
+    runtime = _consensus_mapping(
+        imported.get("command_runtime_identity"), "command_runtime_identity"
+    )
+    _consensus_text(runtime.get("python"), "command_runtime_identity.python")
+    _consensus_text(runtime.get("executable"), "command_runtime_identity.executable")
+    command = runtime.get("command")
+    if (
+        not isinstance(command, list)
+        or not command
+        or any(not isinstance(part, str) or not part for part in cast(list[object], command))
+    ):
+        raise ValueError("command_runtime_identity.command must be a non-empty argv")
 
 
 def _json_leaf(value: object, path: str) -> object:

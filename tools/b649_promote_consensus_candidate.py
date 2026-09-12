@@ -11,21 +11,33 @@ from pathlib import Path
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from lottolab.domain.draws import LotteryType
+from lottolab.infrastructure.b649_consensus_candidate_authority import (
+    AdmittedConsensusCandidate,
+    admit_consensus_candidate,
+    load_admitted_candidate,
+)
 from lottolab.infrastructure.b649_consensus_promotion import (
     BLOCKER_SCHEDULE_AUTHORITY_MISSING,
     CONSENSUS_SCOPE,
+    CONSENSUS_STREAM,
+    CONSENSUS_STREAM_VERSION,
     CanonicalConsensusCandidate,
     CanonicalConsensusEligibilityGate,
     CanonicalEligibilityError,
     ConsensusCandidateError,
     PromotionRequest,
     load_consensus_candidate,
+    promote_admitted_candidate,
     promote_consensus_candidate,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataError,
     LocalDataPaths,
     resolve_local_data_paths,
+)
+from lottolab.infrastructure.persistence.future_draw_identity_repository import (
+    SQLiteFutureDrawIdentityReader,
 )
 from lottolab.infrastructure.persistence.research_repository import (
     LiveForecastCurrentResult,
@@ -34,10 +46,11 @@ from lottolab.infrastructure.persistence.research_repository import (
 )
 from lottolab.infrastructure.persistence.research_schema import (
     CURRENT_SCHEMA_VERSION,
-    V4_MIGRATION_CHECKSUM,
+    V5_MIGRATION_CHECKSUM,
     ResearchDataError,
     ResearchDataPaths,
     ResearchSchemaError,
+    open_database,
     verify_schema_read_only,
 )
 
@@ -46,7 +59,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
-        if args.command == "preflight":
+        if args.command == "admit":
+            result = _admit(args)
+        elif args.command == "preflight":
             result = _preflight(args)
         elif args.command == "promote":
             result = _promote(args)
@@ -72,6 +87,30 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if result.get("status") in {"READY", "CURRENT", "EMPTY"} else 1
 
 
+def _admit(args: argparse.Namespace) -> dict[str, object]:
+    draw_db = Path(args.draw_database) if getattr(args, "draw_database", None) else None
+    admitted = admit_consensus_candidate(
+        research_paths=Path(args.database),
+        draw_paths=draw_db,
+        target_draw_number=args.target_draw,
+        publication_root=(
+            Path(args.publication_root) if getattr(args, "publication_root", None) else None
+        ),
+        admitter_identity=args.executor_identity,
+        notes=getattr(args, "notes", None),
+    )
+    return {
+        "command": "admit",
+        "status": "READY",
+        "blockers": [],
+        "candidate_ref": admitted.candidate_ref,
+        "target_draw_number": admitted.target_draw_number,
+        "payload_sha256": admitted.payload_sha256,
+        "schedule_authority_sha256": admitted.schedule_authority_sha256,
+        "admitted_at": admitted.admitted_at,
+    }
+
+
 def _preflight(args: argparse.Namespace) -> dict[str, object]:
     candidate, candidate_blockers = _load_candidate_for_cli(args)
     database, database_blockers = _database_report(Path(args.database))
@@ -81,11 +120,16 @@ def _preflight(args: argparse.Namespace) -> dict[str, object]:
         "eligible": False,
         "blockers": [BLOCKER_SCHEDULE_AUTHORITY_MISSING],
     }
+    scope = CONSENSUS_SCOPE if candidate is None else candidate.scope
     if candidate is not None:
         target = candidate.target
         if args.schedule_authority_sha256 is not None:
             target["schedule_authority_sha256"] = args.schedule_authority_sha256
-        gate = CanonicalConsensusEligibilityGate(_draw_paths(args.draw_database))
+        target_draw_num = str(getattr(candidate, "target_draw_number", "115000087"))
+        gate = CanonicalConsensusEligibilityGate(
+            _draw_paths(args.draw_database),
+            target_draw_number=target_draw_num,
+        )
         eligibility_result = gate.check(target)
         eligibility = eligibility_result.as_dict()
         blockers.extend(eligibility_result.blockers)
@@ -94,7 +138,7 @@ def _preflight(args: argparse.Namespace) -> dict[str, object]:
             repository = SQLiteResearchRepository(
                 _research_paths(Path(args.database)), initialize=False
             )
-            selected = repository.read_current_consensus()
+            selected = repository.read_current_consensus(scope=scope)
             if selected is not None:
                 current = _current_dict(selected)
             expected = int(args.expected_current_version)
@@ -112,11 +156,51 @@ def _preflight(args: argparse.Namespace) -> dict[str, object]:
         "candidate": None if candidate is None else _candidate_dict(candidate),
         "current": current,
         "eligibility": eligibility,
-        "scope": list(CONSENSUS_SCOPE),
+        "scope": list(scope),
     }
 
 
 def _promote(args: argparse.Namespace) -> dict[str, object]:
+    candidate_ref = getattr(args, "candidate_ref", None)
+    has_candidate_args = bool(
+        getattr(args, "candidate", None)
+        or getattr(args, "candidate_sha256", None)
+        or getattr(args, "source_root", None)
+    )
+    if candidate_ref is not None:
+        if has_candidate_args:
+            raise ValueError("CALLER_SUPPLIED_PAYLOAD_BYPASS_FORBIDDEN")
+        admitted = load_admitted_candidate(Path(args.database), candidate_ref)
+        request = _request(args)
+        draw_paths = _draw_paths(args.draw_database)
+        gate = CanonicalConsensusEligibilityGate(
+            draw_paths, target_draw_number=admitted.target_draw_number
+        )
+        result = promote_admitted_candidate(
+            Path(args.database),
+            admitted,
+            request,
+            eligibility_gate=gate,
+        )
+        return {
+            "command": "promote",
+            "status": "READY",
+            "blockers": [],
+            "result": {
+                "idempotent": result.idempotent,
+                "payload_sha256": result.payload_sha256,
+                "pointer_advanced": result.pointer_advanced,
+                "provenance_envelope_sha256": result.provenance_envelope_sha256,
+                "run_id": result.run_id,
+                "version": result.version,
+            },
+            "scope": list(admitted.scope),
+        }
+    target_draw = getattr(args, "target_draw", None)
+    if target_draw is not None and target_draw != "115000087":
+        raise ValueError("CANDIDATE_REF_REQUIRED_FOR_SUCCESSOR_TARGET")
+    if not getattr(args, "candidate", None) or not getattr(args, "candidate_sha256", None):
+        raise ValueError("CANDIDATE_AND_SHA256_REQUIRED")
     candidate = load_consensus_candidate(
         args.candidate,
         candidate_sha256=args.candidate_sha256,
@@ -158,11 +242,40 @@ def _current(args: argparse.Namespace) -> dict[str, object]:
             "database": database,
             "current": None,
         }
+    target_draw = getattr(args, "target_draw", None) or "115000087"
+    draw_paths = _draw_paths(args.draw_database) if getattr(args, "draw_database", None) else None
+    scope: tuple[str, str, str, str, str] = CONSENSUS_SCOPE
+    if target_draw != "115000087":
+        with open_database(_research_paths(database_path), read_only=True) as conn:
+            ptr = conn.execute(
+                "SELECT target_draw_date FROM research_live_forecast_current_pointer "
+                "WHERE lottery_type='BIG_LOTTO' AND target_draw_number=? "
+                "AND forecast_stream_id=? AND forecast_stream_version=?",
+                (target_draw, CONSENSUS_STREAM, CONSENSUS_STREAM_VERSION),
+            ).fetchone()
+        if ptr is not None:
+            scope = (
+                "BIG_LOTTO",
+                target_draw,
+                str(ptr[0]),
+                CONSENSUS_STREAM,
+                CONSENSUS_STREAM_VERSION,
+            )
+        elif draw_paths is not None:
+            reader = SQLiteFutureDrawIdentityReader(draw_paths, require_active_authority=True)
+            rec = reader.get_scheduled_draw(LotteryType.BIG_LOTTO, target_draw)
+            if rec is not None:
+                scope = (
+                    "BIG_LOTTO",
+                    target_draw,
+                    rec.announcement.target.draw_date.isoformat(),
+                    CONSENSUS_STREAM,
+                    CONSENSUS_STREAM_VERSION,
+                )
     repository = SQLiteResearchRepository(_research_paths(database_path), initialize=False)
-    selected = repository.read_current_consensus()
-    eligibility = CanonicalConsensusEligibilityGate(_draw_paths(args.draw_database)).check(
-        None if selected is None else selected.forecast.target
-    )
+    selected = repository.read_current_consensus(scope=scope)
+    gate = CanonicalConsensusEligibilityGate(draw_paths, target_draw_number=target_draw)
+    eligibility = gate.check(None if selected is None else selected.forecast.target)
     if selected is None:
         return {
             "command": "current",
@@ -171,7 +284,7 @@ def _current(args: argparse.Namespace) -> dict[str, object]:
             "database": database,
             "current": None,
             "eligibility": eligibility.as_dict(),
-            "scope": list(CONSENSUS_SCOPE),
+            "scope": list(scope),
         }
     return {
         "command": "current",
@@ -180,13 +293,31 @@ def _current(args: argparse.Namespace) -> dict[str, object]:
         "database": database,
         "current": _current_dict(selected),
         "eligibility": eligibility.as_dict(),
-        "scope": list(CONSENSUS_SCOPE),
+        "scope": list(scope),
     }
 
 
 def _load_candidate_for_cli(
     args: argparse.Namespace,
-) -> tuple[CanonicalConsensusCandidate | None, list[str]]:
+) -> tuple[CanonicalConsensusCandidate | AdmittedConsensusCandidate | None, list[str]]:
+    candidate_ref = getattr(args, "candidate_ref", None)
+    has_candidate_args = bool(
+        getattr(args, "candidate", None)
+        or getattr(args, "candidate_sha256", None)
+        or getattr(args, "source_root", None)
+    )
+    if candidate_ref is not None:
+        if has_candidate_args:
+            return None, ["CALLER_SUPPLIED_PAYLOAD_BYPASS_FORBIDDEN"]
+        try:
+            return load_admitted_candidate(Path(args.database), candidate_ref), []
+        except Exception as exc:
+            return None, [str(exc)]
+    target_draw = getattr(args, "target_draw", None)
+    if target_draw is not None and target_draw != "115000087":
+        return None, ["CANDIDATE_REF_REQUIRED_FOR_SUCCESSOR_TARGET"]
+    if not getattr(args, "candidate", None) or not getattr(args, "candidate_sha256", None):
+        return None, ["CANDIDATE_AND_SHA256_REQUIRED"]
     try:
         return (
             load_consensus_candidate(
@@ -208,7 +339,7 @@ def _database_report(path: Path) -> tuple[dict[str, object] | None, list[str]]:
         report = SQLiteResearchRepository(paths, initialize=False).verify_store()
         if report.schema_version != CURRENT_SCHEMA_VERSION:
             return report.as_dict(), ["RESEARCH_SCHEMA_VERSION_MISMATCH"]
-        if report.migration_checksum != V4_MIGRATION_CHECKSUM:
+        if report.migration_checksum != V5_MIGRATION_CHECKSUM:
             return report.as_dict(), ["RESEARCH_SCHEMA_CHECKSUM_MISMATCH"]
         if not report.healthy:
             return report.as_dict(), ["RESEARCH_STORE_UNHEALTHY"]
@@ -230,6 +361,7 @@ def _request(args: argparse.Namespace) -> PromotionRequest:
         promotion_executor_identity=args.executor_identity,
         execution_source_id=args.execution_source_id,
         execution_source_version=args.execution_source_version,
+        candidate_ref=getattr(args, "candidate_ref", None),
     )
 
 
@@ -280,20 +412,30 @@ def _draw_paths(value: str | None) -> LocalDataPaths:
     return LocalDataPaths(path.parent, path)
 
 
-def _candidate_dict(candidate: CanonicalConsensusCandidate) -> dict[str, object]:
+def _candidate_dict(
+    candidate: CanonicalConsensusCandidate | AdmittedConsensusCandidate,
+) -> dict[str, object]:
     payload = candidate.payload
+    if isinstance(candidate, CanonicalConsensusCandidate):
+        stream_count = len(candidate.stream_inputs)
+        source_root = str(candidate.source_root)
+        candidate_sha256 = candidate.candidate_sha256
+    else:
+        stream_count = len(candidate.streams)
+        source_root = str(candidate.candidate_locator.parent)
+        candidate_sha256 = candidate.payload_sha256
     return {
         "candidate_locator": str(candidate.candidate_locator),
-        "candidate_sha256": candidate.candidate_sha256,
-        "source_root": str(candidate.source_root),
-        "schema_version": payload["schema_version"],
-        "method_id": payload["aggregation_method_id"],
-        "method_version": payload["aggregation_method_version"],
+        "candidate_sha256": candidate_sha256,
+        "source_root": source_root,
+        "schema_version": payload.get("schema_version"),
+        "method_id": payload.get("aggregation_method_id"),
+        "method_version": payload.get("aggregation_method_version"),
         "target": candidate.target,
-        "stream_count": len(candidate.stream_inputs),
-        "stream_input_manifest_sha256": payload["stream_input_manifest_sha256"],
-        "implementation_commit": payload["implementation_commit"],
-        "implementation_tree": payload["implementation_tree"],
+        "stream_count": stream_count,
+        "stream_input_manifest_sha256": payload.get("stream_input_manifest_sha256"),
+        "implementation_commit": payload.get("implementation_commit"),
+        "implementation_tree": payload.get("implementation_tree"),
     }
 
 
@@ -324,6 +466,14 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    admit = subparsers.add_parser("admit")
+    _add_database(admit)
+    admit.add_argument("--target-draw", required=True)
+    admit.add_argument("--publication-root", required=True)
+    admit.add_argument("--executor-identity", required=True)
+    admit.add_argument("--notes")
+    admit.set_defaults(command="admit")
+
     preflight = subparsers.add_parser("preflight")
     _add_database(preflight)
     _add_candidate(preflight)
@@ -344,6 +494,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     current = subparsers.add_parser("current")
     _add_database(current)
+    current.add_argument("--target-draw")
     current.set_defaults(command="current")
     return parser
 
@@ -354,8 +505,10 @@ def _add_database(parser: argparse.ArgumentParser) -> None:
 
 
 def _add_candidate(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--candidate", required=True)
-    parser.add_argument("--candidate-sha256", required=True)
+    parser.add_argument("--candidate")
+    parser.add_argument("--candidate-sha256")
+    parser.add_argument("--candidate-ref")
+    parser.add_argument("--target-draw")
     parser.add_argument("--source-root")
 
 

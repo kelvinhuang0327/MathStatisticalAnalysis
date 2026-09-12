@@ -88,7 +88,7 @@ def _config(tmp_path: Path) -> SchedulerConfig:
         version="B649_GOALC_LOCAL_LAUNCHD_R1",
         canonical_repository=repository,
         source_worktree=source,
-        python_executable=repository / ".venv/bin/python",
+        python_executable=source / ".venv/bin/python",
         script_path=source / "tools/b649_goalc_local_scheduler.py",
         operation_root=operation,
         data_root=data,
@@ -939,22 +939,70 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
-    assert config.script_path == (canonical_repository / "tools/b649_goalc_local_scheduler.py")
+    assert config.python_executable == (config.source_worktree / ".venv/bin/python")
+    assert config.script_path == (config.source_worktree / "tools/b649_goalc_local_scheduler.py")
     assert config.operation_root == Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
     )
     assert config.health_path == config.operation_root / "scheduler/health.json"
 
 
-def test_production_launchd_uses_only_canonical_scheduler_authority() -> None:
+def test_production_runtime_tuple_is_single_source_root() -> None:
     config = production_config()
-    canonical_script = config.canonical_repository / "tools/b649_goalc_local_scheduler.py"
+    source_worktree = config.source_worktree
+
+    assert config.python_executable == source_worktree / ".venv/bin/python"
+    assert config.script_path == source_worktree / "tools/b649_goalc_local_scheduler.py"
+    assert config.source_worktree == scheduler_module.SOURCE_WORKTREE
 
     encoded = build_launchd_plist(config)
     parsed = plistlib.loads(encoded)
 
-    assert parsed["ProgramArguments"][1] == str(canonical_script)
-    assert parsed["WorkingDirectory"] == str(config.canonical_repository)
+    assert parsed["ProgramArguments"] == [
+        str(source_worktree / ".venv/bin/python"),
+        str(source_worktree / "tools/b649_goalc_local_scheduler.py"),
+        "run",
+    ]
+    assert parsed["ProgramArguments"][0] == str(source_worktree / ".venv/bin/python")
+    assert parsed["ProgramArguments"][1] == str(
+        source_worktree / "tools/b649_goalc_local_scheduler.py"
+    )
+    assert parsed["WorkingDirectory"] == str(source_worktree)
+    assert parsed["EnvironmentVariables"]["PYTHONPATH"] == str(source_worktree / "src")
+
+    if source_worktree != config.canonical_repository:
+        assert parsed["ProgramArguments"][0] != str(
+            config.canonical_repository / ".venv/bin/python"
+        )
+        assert parsed["ProgramArguments"][1] != str(
+            config.canonical_repository / "tools/b649_goalc_local_scheduler.py"
+        )
+        assert parsed["WorkingDirectory"] != str(config.canonical_repository)
+        assert parsed["EnvironmentVariables"]["PYTHONPATH"] != str(
+            config.canonical_repository / "src"
+        )
+        assert str(config.canonical_repository) not in parsed["ProgramArguments"]
+
+    isolated_source = Path("/tmp/isolated_worktree_w")
+    isolated_canonical = Path("/tmp/canonical_repository_c")
+    isolated_config = replace(
+        config,
+        source_worktree=isolated_source,
+        canonical_repository=isolated_canonical,
+        python_executable=isolated_source / ".venv/bin/python",
+        script_path=isolated_source / "tools/b649_goalc_local_scheduler.py",
+    )
+    isolated_parsed = plistlib.loads(build_launchd_plist(isolated_config))
+    assert isolated_parsed["ProgramArguments"][0] == str(isolated_source / ".venv/bin/python")
+    assert isolated_parsed["ProgramArguments"][1] == str(
+        isolated_source / "tools/b649_goalc_local_scheduler.py"
+    )
+    assert isolated_parsed["WorkingDirectory"] == str(isolated_source)
+    assert isolated_parsed["EnvironmentVariables"]["PYTHONPATH"] == str(isolated_source / "src")
+    assert str(isolated_canonical) not in isolated_parsed["ProgramArguments"]
+    assert isolated_parsed["WorkingDirectory"] != str(isolated_canonical)
+    assert isolated_parsed["EnvironmentVariables"]["PYTHONPATH"] != str(isolated_canonical / "src")
+
     assert b"B649_GOALC_LOCAL_LAUNCHD_R1" not in encoded
 
 
@@ -2004,22 +2052,30 @@ def test_launchd_plist_has_exact_trigger_paths_environment_and_no_keepalive(
 
     assert parsed["Label"] == config.label
     assert parsed["ProgramArguments"] == [
-        str(config.python_executable),
-        str(config.script_path),
+        str(config.source_worktree / ".venv/bin/python"),
+        str(config.source_worktree / "tools/b649_goalc_local_scheduler.py"),
         "run",
     ]
+    assert parsed["ProgramArguments"][0] == str(config.source_worktree / ".venv/bin/python")
+    assert parsed["ProgramArguments"][1] == str(
+        config.source_worktree / "tools/b649_goalc_local_scheduler.py"
+    )
+    assert parsed["ProgramArguments"][0] == str(config.python_executable)
+    assert parsed["ProgramArguments"][1] == str(config.script_path)
     assert parsed["RunAtLoad"] is True
     assert parsed["StartInterval"] == 300
     assert parsed["KeepAlive"] is False
-    assert parsed["WorkingDirectory"] == str(config.canonical_repository)
+    assert parsed["WorkingDirectory"] == str(config.source_worktree)
     assert parsed["StandardOutPath"] == str(config.stdout_path)
     assert parsed["StandardErrorPath"] == str(config.stderr_path)
     assert parsed["EnvironmentVariables"] == {
         "LOTTOLAB_DATA_DIR": str(config.data_root),
         "LOTTOLAB_DRAW_PROVIDER_SOURCE": "OFFICIAL_TAIWAN_LOTTERY",
+        "PYTHONPATH": str(config.source_worktree / "src"),
         "PYTHONDONTWRITEBYTECODE": "1",
         "PYTHONUNBUFFERED": "1",
     }
+    assert parsed["EnvironmentVariables"]["PYTHONPATH"] == str(config.source_worktree / "src")
     assert "Program" not in parsed
     assert "ShellPath" not in parsed
 

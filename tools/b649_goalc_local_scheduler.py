@@ -167,8 +167,8 @@ _DEFAULT_CANONICAL_FORECAST_AUTHORITY_PATH = CANONICAL_FORECAST_AUTHORITY_PATH
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
 SOURCE_WORKTREE = Path(__file__).resolve().parents[1]
-PYTHON_EXECUTABLE = CANONICAL_REPOSITORY / ".venv/bin/python"
-SCRIPT_PATH = CANONICAL_REPOSITORY / "tools/b649_goalc_local_scheduler.py"
+PYTHON_EXECUTABLE = SOURCE_WORKTREE / ".venv/bin/python"
+SCRIPT_PATH = SOURCE_WORKTREE / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
 )
@@ -1738,12 +1738,13 @@ def build_launchd_plist(config: SchedulerConfig) -> bytes:
         "RunAtLoad": True,
         "StartInterval": config.start_interval_seconds,
         "KeepAlive": False,
-        "WorkingDirectory": str(config.canonical_repository),
+        "WorkingDirectory": str(config.source_worktree),
         "StandardOutPath": str(config.stdout_path),
         "StandardErrorPath": str(config.stderr_path),
         "EnvironmentVariables": {
             DRAW_PROVIDER_SOURCE_ENV: OFFICIAL_TAIWAN_LOTTERY_SOURCE,
             "LOTTOLAB_DATA_DIR": str(config.data_root),
+            "PYTHONPATH": str(config.source_worktree / "src"),
             "PYTHONDONTWRITEBYTECODE": "1",
             "PYTHONUNBUFFERED": "1",
         },

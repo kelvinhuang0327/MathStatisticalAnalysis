@@ -699,6 +699,7 @@ class _FakeBackend:
         postdraw: PostDrawResult | None = None,
         fail_refresh: Exception | None = None,
         fail_materialization: Exception | None = None,
+        fail_portfolio_materialization: Exception | None = None,
     ) -> None:
         self.target = target
         self.inventories = list(inventories)
@@ -710,9 +711,11 @@ class _FakeBackend:
         )
         self.fail_refresh = fail_refresh
         self.fail_materialization = fail_materialization
+        self.fail_portfolio_materialization = fail_portfolio_materialization
         self.generation_calls: list[tuple[str, ...]] = []
         self.materialization_calls: list[tuple[str, str]] = []
         self.materialization_inventories: list[PredictionInventory] = []
+        self.portfolio_materialization_calls: list[str] = []
         self.sync_calls = 0
         self.complete_calls = 0
 
@@ -755,6 +758,32 @@ class _FakeBackend:
             "status": "COMPLETE",
             "publication": "ALREADY_PRESENT",
             "target_draw": target.draw_number,
+        }
+
+    def materialize_predraw_portfolios(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> dict[str, object]:
+        assert target == self.target
+        assert inventory.ready
+        self.portfolio_materialization_calls.append(target.draw_number)
+        if self.fail_portfolio_materialization is not None:
+            raise self.fail_portfolio_materialization
+        return {
+            "status": "CREATED",
+            "target_draw": {"draw_number": target.draw_number, "draw_date": target.draw_date},
+            "cutoff_draw": {"draw_number": "0", "draw_date": "2000-01-01"},
+            "portfolio_status": "COMPLETE",
+            "k5_status": "COMPLETE",
+            "k10_status": "COMPLETE",
+            "k20_status": "COMPLETE",
+            "portfolio_authority_locator": "fixture-portfolio.json",
+            "outcome_used": "NO",
+            "candidate_count": len(inventory.available_stream_ids),
+            "k5": [],
+            "k10": [],
+            "k20": [],
         }
 
     def generate_predraw(
@@ -2613,3 +2642,225 @@ def test_forecast_writes_nothing_under_operation_root_or_scheduler_paths(
     assert not config.health_path.exists()
     assert not config.lock_path.exists()
     assert not config.plist_path.exists()
+
+
+def test_ready_predraw_cycle_calls_portfolio_materializer_and_nests_health(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(11),))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: "a" * 40,
+    )
+
+    portfolio = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio["status"] == "CREATED"
+    assert backend.portfolio_materialization_calls == [backend.target.draw_number]
+    assert "k5_status" not in result
+    assert "portfolio_status" not in result
+    assert "k5" not in result
+
+
+def test_waiting_for_predraw_cycle_reports_portfolio_waiting_without_calling_backend(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(10),))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: "a" * 40,
+    )
+
+    portfolio = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio["status"] == "WAITING_FOR_PREDICTIONS"
+    assert backend.portfolio_materialization_calls == []
+
+
+def test_deadline_cycle_never_calls_portfolio_materializer_and_never_blocks_postdraw(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(target=_target(), inventories=(_inventory(11),))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: SCHEDULED,
+        source_head_resolver=lambda _path: "a" * 40,
+    )
+
+    portfolio = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio["status"] == "SKIPPED_POST_DRAW"
+    assert backend.portfolio_materialization_calls == []
+    assert backend.sync_calls == 1
+    assert backend.complete_calls == 1
+
+
+def test_generation_crossing_deadline_does_not_call_portfolio_materializer(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(10), _inventory(11)),
+    )
+    clock_values = iter((NOW, NOW, SCHEDULED, SCHEDULED))
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: next(clock_values),
+        source_head_resolver=lambda _path: SOURCE_HEAD,
+    )
+
+    assert cast(dict[str, object], result["forecast_materialization"])["status"] == (
+        "MISSED_PRE_OUTCOME_WINDOW"
+    )
+    portfolio = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio["status"] == "MISSED_PRE_OUTCOME_WINDOW"
+    assert backend.portfolio_materialization_calls == []
+
+
+def test_portfolio_materialization_failure_does_not_affect_forecast_or_terminal_status(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    succeeding = _FakeBackend(target=_target(), inventories=(_inventory(11),))
+    failing = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        fail_portfolio_materialization=RuntimeError("boom"),
+    )
+
+    baseline = run_scheduler_cycle(
+        config,
+        succeeding,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: "a" * 40,
+    )
+    failing_root = tmp_path / "failing"
+    failing_root.mkdir()
+    result = run_scheduler_cycle(
+        _config(failing_root),
+        failing,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: "a" * 40,
+    )
+
+    portfolio = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio["status"] == "ERROR"
+    assert portfolio["error_class"] == "RuntimeError"
+    assert result["forecast_materialization"] == baseline["forecast_materialization"]
+    assert result["current_status"] == baseline["current_status"] == "PREDRAW_READY"
+    assert result["cycle_action"] == baseline["cycle_action"]
+    assert result[SHADOW_HEALTH_NAMESPACE] == baseline[SHADOW_HEALTH_NAMESPACE]
+
+
+def test_portfolio_materialization_authority_conflict_reports_conflict_status(
+    tmp_path: Path,
+) -> None:
+    config = _config(tmp_path)
+    backend = _FakeBackend(
+        target=_target(),
+        inventories=(_inventory(11),),
+        fail_portfolio_materialization=scheduler_module.PortfolioAuthorityConflictError(
+            "existing portfolio authority differs"
+        ),
+    )
+
+    result = run_scheduler_cycle(
+        config,
+        backend,
+        clock=lambda: NOW,
+        source_head_resolver=lambda _path: "a" * 40,
+    )
+
+    portfolio = cast(dict[str, object], result["portfolio_materialization"])
+    assert portfolio["status"] == "CONFLICT"
+    assert portfolio["error_class"] == "PortfolioAuthorityConflictError"
+
+
+def _portfolio_ready_prediction(
+    target: PredictionTarget,
+    strategy_id: str,
+    *,
+    index: int,
+) -> dict[str, object]:
+    stream = STREAMS_BY_ID[strategy_id]
+    tickets = [
+        list(range(index * 2 + 1, index * 2 + 7)),
+        list(range(index * 2 + 2, index * 2 + 8)),
+    ]
+    return {
+        "schema_version": "b649-operational-prediction-v1",
+        "task_id": "B649_OPERATIONAL_PREDICTION_LOOP_R1",
+        "lottery_type": target.lottery_type,
+        "draw_number": target.draw_number,
+        "draw_date": target.draw_date,
+        "scheduled_at": target.scheduled_at,
+        "prediction_created_at": datetime(2026, 9, 10, 12, 0, tzinfo=UTC).isoformat(),
+        "prediction_temporal_class": "PRE_DRAW",
+        "strategy_id": strategy_id,
+        "strategy_version": stream.strategy_version,
+        "prediction_run_id": f"{target.draw_number}-{strategy_id}-portfolio-test",
+        "availability": "AVAILABLE",
+        "history_cutoff": {"draw_number": "115000086", "draw_date": "2026-09-08"},
+        "history_draw_count": 3,
+        "history_sha256": "b" * 64,
+        "history_caveat": "YES",
+        "native_ticket_count": len(tickets),
+        "tickets": [
+            {"ticket_position": position, "predicted_numbers": ticket}
+            for position, ticket in enumerate(tickets, start=1)
+        ],
+    }
+
+
+def test_production_backend_materializes_portfolio_from_real_inventory_records(
+    tmp_path: Path,
+) -> None:
+    """End-to-end proof of the adapter between real inventory records and the
+    materializer: real files on disk, a real ``PredictionInventory``, and the
+    real ``ProductionSchedulerBackend`` -- not the orchestration fake.
+    """
+
+    config = _config(tmp_path)
+    target = _canonical_target()
+    for index, strategy_id in enumerate(STREAM_IDS):
+        payload = _portfolio_ready_prediction(target, strategy_id, index=index)
+        path = (
+            config.operation_root
+            / "predictions"
+            / target.draw_number
+            / strategy_id
+            / f"{payload['prediction_run_id']}.json"
+        )
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        path.write_text(json.dumps(payload), encoding="utf-8")
+        path.chmod(0o600)
+    inventory = inspect_prediction_inventory(config.operation_root, target)
+    assert inventory.ready
+    early_clock = datetime(2026, 9, 11, 3, 0, tzinfo=UTC)
+    backend = ProductionSchedulerBackend(config, clock=lambda: early_clock)
+
+    result = backend.materialize_predraw_portfolios(target, inventory)
+
+    assert result["status"] == "CREATED"
+    assert len(cast(list[object], result["k5"])) == 5
+    assert len(cast(list[object], result["k10"])) == 10
+    assert len(cast(list[object], result["k20"])) == 20
+    destination = scheduler_module.default_portfolio_destination(
+        config.operation_root, target.draw_number
+    )
+    assert destination.exists()
+
+    retry = backend.materialize_predraw_portfolios(target, inventory)
+    assert retry["status"] == "ALREADY_PRESENT"
+    assert {**retry, "status": "CREATED"} == result

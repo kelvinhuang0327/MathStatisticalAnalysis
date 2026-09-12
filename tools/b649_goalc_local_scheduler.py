@@ -71,6 +71,15 @@ from lottolab.infrastructure.b649_canonical_forecast_writer import (
     read_existing_bytes,
     stage_payload,
 )
+from lottolab.infrastructure.b649_operational_portfolio_materializer import (
+    PORTFOLIO_METHOD_ID,
+    PORTFOLIO_METHOD_VERSION,
+    PersistedPortfolioCandidate,
+    PortfolioAuthorityConflictError,
+    PortfolioMaterializationError,
+    default_portfolio_destination,
+    materialize_portfolios,
+)
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
     CURRENT_SCHEMA_VERSION,
@@ -396,6 +405,12 @@ class SchedulerBackend(Protocol):
         inventory: PredictionInventory,
     ) -> dict[str, object]: ...
 
+    def materialize_predraw_portfolios(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> dict[str, object]: ...
+
     def generate_predraw(
         self,
         target: PredictionTarget,
@@ -611,6 +626,47 @@ class ProductionSchedulerBackend:
             clock=self._clock,
             dry_run=dry_run,
         )
+
+    def materialize_predraw_portfolios(
+        self,
+        target: PredictionTarget,
+        inventory: PredictionInventory,
+    ) -> dict[str, object]:
+        """Materialize (or idempotently reuse) the nested K5/K10/K20 portfolio.
+
+        Distinct authority and distinct lifecycle from ``materialize_forecast``:
+        this is the only call site capable of a first portfolio creation, and
+        it is reached only from the locked PRE_DRAW branch of
+        ``run_scheduler_cycle``, never after the target's deadline.
+        """
+
+        if not inventory.ready or len(inventory.available_records) != EXPECTED_STREAM_COUNT:
+            raise SchedulerInvariantError(
+                "portfolio materialization requires exactly eleven ready inventory records"
+            )
+        candidates = tuple(
+            PersistedPortfolioCandidate(
+                strategy_id=record.strategy_id,
+                source_relative_path=_canonical_prediction_source_relative_path(
+                    self._config.operation_root, record.path
+                ),
+                raw_bytes=record.raw_bytes,
+                payload=record.payload,
+            )
+            for record in inventory.available_records
+        )
+        result = materialize_portfolios(
+            candidates=candidates,
+            expected_strategy_ids=inventory.expected_stream_ids,
+            target_draw_number=target.draw_number,
+            target_draw_date=target.draw_date,
+            scheduled_at=target.scheduled_at,
+            destination=default_portfolio_destination(
+                self._config.operation_root, target.draw_number
+            ),
+            pre_outcome_seal_check=lambda: _as_utc(self._clock()) < _target_scheduled_at(target),
+        )
+        return result.health_dict()
 
     def run_shadow_predraw(
         self,
@@ -1283,6 +1339,77 @@ def _forecast_failure_health(
     )
 
 
+def _portfolio_health_template(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    *,
+    status: str,
+    error_class: str | None = None,
+    reason: str | None = None,
+) -> dict[str, object]:
+    return {
+        "status": status,
+        "target_draw": target.draw_number,
+        "method_id": PORTFOLIO_METHOD_ID,
+        "method_version": PORTFOLIO_METHOD_VERSION,
+        "portfolio_authority_locator": str(
+            default_portfolio_destination(config.operation_root, target.draw_number)
+        ),
+        "error_class": error_class,
+        "reason": reason,
+    }
+
+
+def _portfolio_waiting_health(
+    config: SchedulerConfig, target: PredictionTarget
+) -> dict[str, object]:
+    return _portfolio_health_template(
+        config,
+        target,
+        status="WAITING_FOR_PREDICTIONS",
+        error_class="MISSING_STREAM_INPUT",
+        reason="BLOCK_MISSING_STREAM_INPUT",
+    )
+
+
+def _portfolio_skipped_postdraw_health(
+    config: SchedulerConfig, target: PredictionTarget
+) -> dict[str, object]:
+    return _portfolio_health_template(
+        config,
+        target,
+        status="SKIPPED_POST_DRAW",
+        reason="NO_MATERIALIZATION_AFTER_SCHEDULED_AT",
+    )
+
+
+def _portfolio_missed_deadline_health(
+    config: SchedulerConfig, target: PredictionTarget
+) -> dict[str, object]:
+    return _portfolio_health_template(
+        config,
+        target,
+        status="MISSED_PRE_OUTCOME_WINDOW",
+        error_class="PRE_OUTCOME_WINDOW_MISSED",
+        reason="BLOCKED_PRE_OUTCOME_WINDOW_CLOSED",
+    )
+
+
+def _portfolio_failure_health(
+    config: SchedulerConfig,
+    target: PredictionTarget,
+    exc: PortfolioMaterializationError,
+) -> dict[str, object]:
+    status = "CONFLICT" if isinstance(exc, PortfolioAuthorityConflictError) else "ERROR"
+    return _portfolio_health_template(
+        config,
+        target,
+        status=status,
+        error_class=type(exc).__name__,
+        reason=str(exc),
+    )
+
+
 def run_scheduler_cycle(
     config: SchedulerConfig,
     backend: SchedulerBackend,
@@ -1354,6 +1481,7 @@ def run_scheduler_cycle(
                 "failures": [],
             }
             official_sync: dict[str, object] = {"status": "NOT_DUE"}
+            portfolio_materialization: dict[str, object] = {"status": "NOT_DUE"}
             if decision_at < scheduled_at:
                 if inventory.missing_stream_ids:
                     generation = backend.generate_predraw(
@@ -1364,9 +1492,10 @@ def run_scheduler_cycle(
                     inventory = backend.inspect_predictions(target)
                 else:
                     generation = {**generation, "status": "NO_OP"}
+                predraw_deadline_passed: bool | None = None
                 if not inventory.ready:
                     forecast_materialization = _forecast_waiting_health(config, target)
-                elif _as_utc(clock()) >= scheduled_at:
+                elif (predraw_deadline_passed := _as_utc(clock()) >= scheduled_at):
                     forecast_materialization = _forecast_missed_deadline_health(config, target)
                 else:
                     try:
@@ -1398,6 +1527,35 @@ def run_scheduler_cycle(
                                 error_class="FORECAST_HEALTH_INVALID",
                                 reason="BLOCK_FORECAST_HEALTH_INVALID",
                             )
+                # Portfolio readiness is a distinct lifecycle from Authority B: it is
+                # computed independently and never reads or influences
+                # forecast_complete/terminal_status/the shadow hook below. It reuses
+                # the same clock reading forecast's deadline check just made rather
+                # than reading the clock again.
+                if not inventory.ready:
+                    portfolio_materialization = _portfolio_waiting_health(config, target)
+                elif predraw_deadline_passed:
+                    portfolio_materialization = _portfolio_missed_deadline_health(config, target)
+                else:
+                    try:
+                        portfolio_materialization = backend.materialize_predraw_portfolios(
+                            target,
+                            inventory,
+                        )
+                    except PortfolioMaterializationError as exc:
+                        portfolio_materialization = _portfolio_failure_health(
+                            config,
+                            target,
+                            exc,
+                        )
+                    except Exception as exc:
+                        portfolio_materialization = _portfolio_health_template(
+                            config,
+                            target,
+                            status="ERROR",
+                            error_class=type(exc).__name__,
+                            reason="BLOCK_PORTFOLIO_MATERIALIZATION",
+                        )
                 forecast_complete = forecast_materialization.get("status") == "COMPLETE"
                 postdraw = PostDrawResult(
                     outcome_status="NOT_DUE",
@@ -1434,6 +1592,7 @@ def run_scheduler_cycle(
                     )
             else:
                 forecast_materialization = _forecast_skipped_postdraw_health(config, target)
+                portfolio_materialization = _portfolio_skipped_postdraw_health(config, target)
                 official_sync = backend.sync_official_outcome(target)
                 postdraw = backend.complete_postdraw(target, inventory)
                 terminal_status = (
@@ -1480,6 +1639,7 @@ def run_scheduler_cycle(
                 "prediction_inventory": inventory.health_dict(),
                 "prediction_generation": generation,
                 "forecast_materialization": forecast_materialization,
+                "portfolio_materialization": portfolio_materialization,
                 "announcement": announcement.health_dict(),
                 "official_sync": official_sync,
                 "outcome_status": postdraw.outcome_status,
@@ -1643,6 +1803,15 @@ def _base_health(
             "artifact_path": None,
             "artifact_sha256": None,
             "input_manifest_sha256": None,
+            "error_class": None,
+            "reason": None,
+        },
+        "portfolio_materialization": {
+            "status": "NOT_DUE",
+            "target_draw": None,
+            "method_id": PORTFOLIO_METHOD_ID,
+            "method_version": PORTFOLIO_METHOD_VERSION,
+            "portfolio_authority_locator": None,
             "error_class": None,
             "reason": None,
         },

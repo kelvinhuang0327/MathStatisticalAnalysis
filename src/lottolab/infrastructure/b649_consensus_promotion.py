@@ -18,9 +18,19 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol, cast
+from typing import TYPE_CHECKING, Protocol, cast
+
+if TYPE_CHECKING:
+    from lottolab.infrastructure.b649_consensus_candidate_authority import (
+        AdmittedConsensusCandidate,
+    )
 
 from lottolab.application.future_draw_identity import ScheduledDrawIdentityRecord
+
+# INTENT: Add outcome probe fallback dependencies for successor consensus eligibility checking
+from lottolab.application.pre_outcome_target_operational import (
+    OutcomePresenceEvidenceUnavailableError,
+)
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.pre_outcome_target import OutcomePresenceAttestation
 from lottolab.domain.prospective_observer import (
@@ -57,7 +67,12 @@ from lottolab.domain.research_live_forecast import (
     digest,
     utc_text,
 )
-from lottolab.infrastructure.persistence.draw_schema import LocalDataPaths
+from lottolab.infrastructure.persistence.draw_schema import (
+    LocalDataPaths,
+)
+from lottolab.infrastructure.persistence.draw_schema import (
+    open_database as open_draw_database,
+)
 from lottolab.infrastructure.persistence.future_draw_identity_repository import (
     SQLiteFutureDrawIdentityReader,
 )
@@ -277,6 +292,7 @@ class PromotionRequest:
     execution_source_version: str
     promotion_attempted_at: datetime | None = None
     command_runtime_identity: Mapping[str, object] | None = None
+    candidate_ref: str | None = None
 
     def __post_init__(self) -> None:
         _require_text(self.request_id, "request_id")
@@ -295,30 +311,34 @@ class PromotionRequest:
             _require_aware(self.promotion_attempted_at, "promotion_attempted_at")
         if self.command_runtime_identity is not None:
             _validate_runtime_identity(self.command_runtime_identity)
+        if self.candidate_ref is not None:
+            _require_text(self.candidate_ref, "candidate_ref")
 
-    def import_execution_json(self) -> str:
+    def import_execution_json(self, *, candidate_ref: str | None = None) -> str:
         attempted_at = self.promotion_attempted_at or datetime.now(UTC)
         runtime = self.command_runtime_identity or {
             "python": platform.python_version(),
             "executable": sys.executable,
             "command": list(sys.argv),
         }
-        return canonical_json(
-            {
-                "activation_event": "CANONICAL_CONSENSUS_PROMOTION_IMPORT",
-                "aggregation_execution": "NOT_PERFORMED",
-                "authorization_evidence_reference": self.authorization_evidence_reference,
-                "command_runtime_identity": runtime,
-                "execution_source": {
-                    "source_id": self.execution_source_id,
-                    "source_version": self.execution_source_version,
-                },
-                "native_generation": "NOT_PERFORMED",
-                "promotion_attempted_at": utc_text(_as_utc(attempted_at)),
-                "promotion_executor_identity": self.promotion_executor_identity,
-                "schedule_authority_sha256": self.schedule_authority_sha256,
-            }
-        )
+        selected_candidate_ref = candidate_ref or self.candidate_ref
+        data = {
+            "activation_event": "CANONICAL_CONSENSUS_PROMOTION_IMPORT",
+            "aggregation_execution": "NOT_PERFORMED",
+            "authorization_evidence_reference": self.authorization_evidence_reference,
+            "command_runtime_identity": runtime,
+            "execution_source": {
+                "source_id": self.execution_source_id,
+                "source_version": self.execution_source_version,
+            },
+            "native_generation": "NOT_PERFORMED",
+            "promotion_attempted_at": utc_text(_as_utc(attempted_at)),
+            "promotion_executor_identity": self.promotion_executor_identity,
+            "schedule_authority_sha256": self.schedule_authority_sha256,
+        }
+        if selected_candidate_ref is not None:
+            data["candidate_ref"] = selected_candidate_ref
+        return canonical_json(data)
 
 
 @dataclass(frozen=True, slots=True)
@@ -350,7 +370,11 @@ class CanonicalConsensusEligibilityGate:
         *,
         schedule_reader: _ScheduleReader | None = None,
         outcome_probe: _OutcomeProbe | None = None,
+        target_draw_number: str = TARGET_DRAW_NUMBER,
     ) -> None:
+        # INTENT: Retain draw_paths for successor outcome presence verification
+        self._draw_paths = draw_paths
+        self._target_draw_number = target_draw_number
         self._schedule_reader: _ScheduleReader | None = (
             schedule_reader
             if schedule_reader is not None
@@ -377,16 +401,26 @@ class CanonicalConsensusEligibilityGate:
         checked_at = _as_utc(checked_at)
         blockers: list[str] = []
         target = _target_for_gate(candidate_target)
-        for key, expected, blocker in (
-            ("lottery_type", TARGET_LOTTERY_TYPE, BLOCKER_TARGET_CHANGED),
-            ("target_draw_number", TARGET_DRAW_NUMBER, BLOCKER_TARGET_CHANGED),
-            ("target_draw_date", TARGET_DRAW_DATE, BLOCKER_TARGET_CHANGED),
-            ("scheduled_at", TARGET_SCHEDULED_AT, BLOCKER_SCHEDULED_TIME_CHANGED),
-            ("timezone", TARGET_TIMEZONE, BLOCKER_SCHEDULED_TIME_CHANGED),
-            ("data_cutoff", TARGET_DATA_CUTOFF, BLOCKER_TARGET_CHANGED),
-        ):
-            if target.get(key) != expected:
-                blockers.append(blocker)
+        target_draw_number = str(target.get("target_draw_number", ""))
+        is_frozen_087 = self._target_draw_number == TARGET_DRAW_NUMBER
+
+        if is_frozen_087:
+            for key, expected, blocker in (
+                ("lottery_type", TARGET_LOTTERY_TYPE, BLOCKER_TARGET_CHANGED),
+                ("target_draw_number", TARGET_DRAW_NUMBER, BLOCKER_TARGET_CHANGED),
+                ("target_draw_date", TARGET_DRAW_DATE, BLOCKER_TARGET_CHANGED),
+                ("scheduled_at", TARGET_SCHEDULED_AT, BLOCKER_SCHEDULED_TIME_CHANGED),
+                ("timezone", TARGET_TIMEZONE, BLOCKER_SCHEDULED_TIME_CHANGED),
+                ("data_cutoff", TARGET_DATA_CUTOFF, BLOCKER_TARGET_CHANGED),
+            ):
+                if target.get(key) != expected:
+                    blockers.append(blocker)
+        else:
+            if target.get("lottery_type") != TARGET_LOTTERY_TYPE:
+                blockers.append(BLOCKER_TARGET_CHANGED)
+            if target_draw_number != self._target_draw_number:
+                blockers.append(BLOCKER_TARGET_CHANGED)
+
         if target.get("temporal_class") is not None and target.get("temporal_class") != "PRE_DRAW":
             blockers.append(BLOCKER_PRE_DRAW_REQUIRED)
         if (
@@ -418,7 +452,7 @@ class CanonicalConsensusEligibilityGate:
             try:
                 record = self._schedule_reader.get_scheduled_draw(
                     LotteryType.BIG_LOTTO,
-                    TARGET_DRAW_NUMBER,
+                    self._target_draw_number,
                 )
             except Exception:
                 blockers.append(BLOCKER_SCHEDULE_AUTHORITY_MISSING)
@@ -426,17 +460,43 @@ class CanonicalConsensusEligibilityGate:
                 blockers.append(BLOCKER_SCHEDULE_AUTHORITY_MISSING)
             else:
                 announcement = record.announcement
-                if (
-                    announcement.target.lottery_type.value != TARGET_LOTTERY_TYPE
-                    or announcement.target.draw_number != TARGET_DRAW_NUMBER
-                    or announcement.target.draw_date.isoformat() != TARGET_DRAW_DATE
-                ):
-                    blockers.append(BLOCKER_TARGET_CHANGED)
-                if (
-                    announcement.scheduled_at != PROMOTION_DEADLINE
-                    or announcement.schedule_timezone != TARGET_TIMEZONE
-                ):
-                    blockers.append(BLOCKER_SCHEDULED_TIME_CHANGED)
+                if is_frozen_087:
+                    if (
+                        announcement.target.lottery_type.value != TARGET_LOTTERY_TYPE
+                        or announcement.target.draw_number != TARGET_DRAW_NUMBER
+                        or announcement.target.draw_date.isoformat() != TARGET_DRAW_DATE
+                    ):
+                        blockers.append(BLOCKER_TARGET_CHANGED)
+                    if (
+                        announcement.scheduled_at != PROMOTION_DEADLINE
+                        or announcement.schedule_timezone != TARGET_TIMEZONE
+                    ):
+                        blockers.append(BLOCKER_SCHEDULED_TIME_CHANGED)
+                else:
+                    if (
+                        announcement.target.lottery_type.value != target.get("lottery_type")
+                        or announcement.target.draw_number != target_draw_number
+                        or (
+                            announcement.target.draw_date.isoformat()
+                            != target.get("target_draw_date")
+                        )
+                    ):
+                        blockers.append(BLOCKER_TARGET_CHANGED)
+                    target_scheduled_at_raw = target.get("scheduled_at")
+                    try:
+                        target_scheduled_at = (
+                            datetime.fromisoformat(str(target_scheduled_at_raw))
+                            if target_scheduled_at_raw
+                            else None
+                        )
+                    except ValueError:
+                        target_scheduled_at = None
+                    if (
+                        target_scheduled_at is None
+                        or announcement.scheduled_at != target_scheduled_at
+                        or announcement.schedule_timezone != target.get("timezone", TARGET_TIMEZONE)
+                    ):
+                        blockers.append(BLOCKER_SCHEDULED_TIME_CHANGED)
                 schedule_hash = record.immutable_schedule_sha256
                 if schedule_hash is None:
                     blockers.append(BLOCKER_SCHEDULE_AUTHORITY_MISSING)
@@ -463,10 +523,38 @@ class CanonicalConsensusEligibilityGate:
                         elif presence_value != OutcomePresenceAtPrediction.ABSENT.value:
                             blockers.append(BLOCKER_OFFICIAL_OUTCOME_UNKNOWN)
                         outcome_presence = cast(str, presence_value)
+                    # INTENT: For successor targets without sync coverage, check draws directly
+                    except OutcomePresenceEvidenceUnavailableError:
+                        if not is_frozen_087 and self._draw_paths is not None:
+                            try:
+                                with open_draw_database(self._draw_paths, read_only=True) as conn:
+                                    target_ref = announcement.target
+                                    draw_row = conn.execute(
+                                        "SELECT draw_number FROM draws "
+                                        "WHERE lottery_type = ? AND draw_number = ?",
+                                        (target_ref.lottery_type.value, target_ref.draw_number),
+                                    ).fetchone()
+                                    if draw_row is not None:
+                                        blockers.append(BLOCKER_OFFICIAL_OUTCOME_PRESENT)
+                                        outcome_presence = OutcomePresenceAtPrediction.PRESENT.value
+                                    else:
+                                        outcome_presence = OutcomePresenceAtPrediction.ABSENT.value
+                            except Exception:
+                                blockers.append(BLOCKER_OFFICIAL_OUTCOME_UNKNOWN)
+                        else:
+                            blockers.append(BLOCKER_OFFICIAL_OUTCOME_UNKNOWN)
                     except Exception:
                         blockers.append(BLOCKER_OFFICIAL_OUTCOME_UNKNOWN)
 
-        deadline = _as_utc(PROMOTION_DEADLINE)
+        if is_frozen_087:
+            deadline = _as_utc(PROMOTION_DEADLINE)
+        elif record is not None:
+            deadline = _as_utc(record.announcement.scheduled_at)
+        else:
+            try:
+                deadline = _as_utc(datetime.fromisoformat(str(target.get("scheduled_at"))))
+            except (ValueError, TypeError):
+                deadline = _as_utc(PROMOTION_DEADLINE)
         if checked_at == deadline:
             blockers.append(BLOCKER_DEADLINE_REACHED)
         elif checked_at > deadline:
@@ -577,11 +665,61 @@ def promote_consensus_candidate(
     )
 
 
-def read_current_consensus(database_path: Path) -> LiveForecastCurrentResult | None:
+def promote_admitted_candidate(
+    database_path: Path,
+    admitted_candidate: AdmittedConsensusCandidate,
+    request: PromotionRequest,
+    *,
+    eligibility_gate: CanonicalConsensusEligibilityGate | None = None,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
+) -> LiveForecastResult:
+    """Promote an admitted candidate through the repository's strict writer."""
+
+    paths = _research_paths(database_path)
+    forecast = admitted_candidate.build_forecast(request)
+
+    def current_eligible() -> bool:
+        if eligibility_gate is None:
+            return True
+        result = eligibility_gate.check(forecast.target, now=_as_utc(clock()))
+        return result.eligible and result.schedule_hash == request.schedule_authority_sha256
+
+    repository = SQLiteResearchRepository(paths, initialize=False)
+    return repository.commit_consensus_promotion(
+        forecast,
+        expected_current_version=request.expected_current_version,
+        current_eligible=current_eligible,
+        clock=clock,
+        idempotency_key=request.request_id,
+    )
+
+
+def read_current_consensus(
+    database_path: Path,
+    *,
+    scope: tuple[str, str, str, str, str] = CONSENSUS_SCOPE,
+) -> LiveForecastCurrentResult | None:
     """Read the exact current consensus pointer; never infer from history."""
 
     repository = SQLiteResearchRepository(_research_paths(database_path), initialize=False)
-    return repository.read_current_consensus()
+    return repository.read_current_consensus(scope=scope)
+
+
+def compute_successor_request_hash(
+    request_id: str,
+    candidate_ref: str,
+    schedule_authority_sha256: str,
+    expected_current_version: int,
+) -> str:
+    """Compute a deterministic, canonical request hash for successor consensus promotion."""
+
+    payload = {
+        "candidate_ref": candidate_ref,
+        "expected_current_version": expected_current_version,
+        "request_id": request_id,
+        "schedule_authority_sha256": schedule_authority_sha256,
+    }
+    return digest(payload)
 
 
 _EXPECTED_PAYLOAD_KEYS = frozenset(
@@ -1050,7 +1188,9 @@ __all__ = [
     "CanonicalEligibilityResult",
     "ConsensusCandidateError",
     "PromotionRequest",
+    "compute_successor_request_hash",
     "load_consensus_candidate",
+    "promote_admitted_candidate",
     "promote_consensus_candidate",
     "read_current_consensus",
 ]

@@ -281,7 +281,6 @@ function isCompared(strategyId: string): boolean {
 <style scoped>
 .replay-table-view {
   width: 100%;
-  min-width: 0;
 }
 
 .th--sortable {
@@ -290,7 +289,7 @@ function isCompared(strategyId: string): boolean {
 }
 
 .th--sortable:hover {
-  color: var(--text-accent, #c084fc);
+  color: var(--color-cyan-300, #67e8f9);
 }
 
 .sort-arrow {
@@ -314,24 +313,24 @@ function isCompared(strategyId: string): boolean {
   align-items: center;
   justify-content: center;
   padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--text-secondary, #e2e8f0);
+  color: var(--color-gray-200, #e2e8f0);
 }
 
 .rank-badge--top {
-  background: rgba(168, 85, 247, 0.2);
-  color: #ddd6fe;
-  border: 1px solid rgba(168, 85, 247, 0.4);
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--color-indigo-300, #a5b4fc);
+  border: 1px solid rgba(99, 102, 241, 0.4);
 }
 
 .strategy-link {
   background: none;
   border: none;
   padding: 0;
-  color: var(--text-accent, #c084fc);
+  color: var(--color-cyan-400, #38bdf8);
   font-size: 0.9rem;
   text-align: left;
   cursor: pointer;
@@ -341,7 +340,7 @@ function isCompared(strategyId: string): boolean {
 }
 
 .strategy-link:hover {
-  text-decoration-color: var(--accent-color, #ec4899);
+  text-decoration-color: var(--color-cyan-400, #38bdf8);
 }
 
 .strategy-family {
@@ -352,25 +351,25 @@ function isCompared(strategyId: string): boolean {
 .ticket-tag {
   display: inline-block;
   padding: 0.1rem 0.4rem;
-  border-radius: var(--radius-sm, 6px);
-  background: rgba(59, 130, 246, 0.18);
-  color: #bfdbfe;
+  border-radius: 4px;
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--color-cyan-300, #67e8f9);
   font-size: 0.8rem;
   font-weight: 600;
 }
 
 .ticket-tag--unavailable {
   background: rgba(148, 163, 184, 0.1);
-  color: var(--text-secondary, #94a3b8);
+  color: var(--color-gray-400, #94a3b8);
 }
 
 .period-badge {
   font-size: 0.8rem;
-  color: var(--text-secondary, #cbd5e1);
+  color: var(--color-gray-300, #cbd5e1);
 }
 
 .hit-rate-val {
-  color: #c4b5fd;
+  color: var(--color-cyan-300, #67e8f9);
   font-size: 0.95rem;
 }
 
@@ -393,16 +392,16 @@ function isCompared(strategyId: string): boolean {
 }
 
 .delta--zero {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--color-gray-400, #94a3b8);
 }
 
 .best-hit-pill {
   display: inline-block;
   padding: 0.15rem 0.45rem;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: 4px;
   background: rgba(255, 255, 255, 0.05);
   font-size: 0.8rem;
-  color: var(--text-secondary, #e2e8f0);
+  color: var(--color-gray-200, #e2e8f0);
 }
 
 .action-buttons {
@@ -416,7 +415,7 @@ function isCompared(strategyId: string): boolean {
 }
 
 .row--compared {
-  background: rgba(168, 85, 247, 0.1);
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .pagination-controls {
@@ -436,10 +435,10 @@ function isCompared(strategyId: string): boolean {
 
 .page-indicator {
   font-size: 0.85rem;
-  color: var(--text-secondary, #cbd5e1);
+  color: var(--color-gray-300, #cbd5e1);
 }
 
 .text-muted {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--color-gray-400, #94a3b8);
 }
 </style>

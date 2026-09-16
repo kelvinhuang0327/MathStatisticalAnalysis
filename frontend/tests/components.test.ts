@@ -7,12 +7,65 @@ import DataTable from '../src/components/DataTable.vue'
 import EmptyState from '../src/components/EmptyState.vue'
 import ErrorState from '../src/components/ErrorState.vue'
 import FilterBar from '../src/components/FilterBar.vue'
+import LotteryNumberBall from '../src/components/LotteryNumberBall.vue'
 import MetricCard from '../src/components/MetricCard.vue'
 import SectionHeader from '../src/components/SectionHeader.vue'
 import SkeletonLoader from '../src/components/SkeletonLoader.vue'
 import StatusBadge from '../src/components/StatusBadge.vue'
 
 describe('Reusable UI Components', () => {
+  it.each(['MAIN', 'SPECIAL', 'HIT', 'MISS', 'SELECTED', 'DISABLED'] as const)(
+    'renders the %s LotteryNumberBall state with stable semantics',
+    (variant) => {
+      const wrapper = mount(LotteryNumberBall, {
+        props: { value: 7, variant },
+      })
+
+      expect(wrapper.classes()).toContain(`ball--${variant.toLowerCase()}`)
+      expect(wrapper.attributes('data-state')).toBe(variant.toLowerCase())
+      expect(wrapper.attributes('role')).toBe('img')
+      expect(wrapper.find('.ball__value').text()).toBe('7')
+    },
+  )
+
+  it('identifies special numbers explicitly and exposes an accessible name', () => {
+    const wrapper = mount(LotteryNumberBall, {
+      props: { value: 8, variant: 'SPECIAL' },
+    })
+
+    expect(wrapper.classes()).toContain('ball--special')
+    expect(wrapper.classes()).toContain('ball--special-base')
+    expect(wrapper.attributes('aria-label')).toBe('Special Number 8')
+  })
+
+  it('keeps HIT and MISS states distinguishable without color alone', () => {
+    const hit = mount(LotteryNumberBall, { props: { value: 9, variant: 'HIT' } })
+    const miss = mount(LotteryNumberBall, { props: { value: 10, variant: 'MISS' } })
+
+    expect(hit.find('.ball__hit-badge').text()).toBe('★')
+    expect(hit.find('.ball__hit-badge').attributes('aria-hidden')).toBe('true')
+    expect(hit.attributes('aria-label')).toBe('Number 9 (Hit)')
+    expect(miss.find('.ball__miss-badge').text()).toBe('×')
+    expect(miss.find('.ball__miss-badge').attributes('aria-hidden')).toBe('true')
+    expect(miss.attributes('aria-label')).toBe('Number 10 (Miss)')
+  })
+
+  it('exposes selected and disabled semantics and preserves reduced-motion-compatible markup', () => {
+    const selected = mount(LotteryNumberBall, {
+      props: { value: 11, variant: 'SELECTED' },
+    })
+    const disabled = mount(LotteryNumberBall, {
+      props: { value: 12, variant: 'DISABLED' },
+    })
+
+    expect(selected.attributes('aria-label')).toBe('Number 11 (Selected)')
+    expect(selected.attributes('data-state')).toBe('selected')
+    expect(disabled.attributes('aria-disabled')).toBe('true')
+    expect(disabled.attributes('aria-label')).toBe('Number 12 (Unavailable)')
+    expect(disabled.classes()).toContain('ball--disabled')
+    expect(disabled.find('.ball__value').text()).toBe('12')
+  })
+
   it('renders MetricCard with labels, value, subvalue, and badge', () => {
     const wrapper = mount(MetricCard, {
       props: {

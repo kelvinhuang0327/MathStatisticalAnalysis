@@ -176,13 +176,12 @@ const comparedItems = computed(() => {
 <style scoped>
 .replay-compare-view {
   width: 100%;
-  min-width: 0;
 }
 
 .compare-grid-container {
-  background: var(--bg-card, rgba(22, 18, 40, 0.78));
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: var(--radius-xl, 20px);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   padding: 1.5rem;
 }
 
@@ -194,7 +193,7 @@ const comparedItems = computed(() => {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--color-gray-100, #f1f5f9);
 }
 
 .compare-subtitle {
@@ -209,9 +208,9 @@ const comparedItems = computed(() => {
 }
 
 .compare-card {
-  background: rgba(25, 20, 50, 0.78);
-  border: 1px solid var(--border-color, rgba(255, 255, 255, 0.1));
-  border-radius: var(--radius-lg, 14px);
+  background: rgba(30, 41, 59, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
@@ -220,7 +219,7 @@ const comparedItems = computed(() => {
 }
 
 .compare-card:hover {
-  border-color: var(--border-hover, rgba(192, 132, 252, 0.35));
+  border-color: rgba(99, 102, 241, 0.4);
 }
 
 .card--unavailable {
@@ -244,35 +243,35 @@ const comparedItems = computed(() => {
   display: inline-block;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #c4b5fd;
+  color: var(--color-indigo-300, #a5b4fc);
 }
 
 .card-strat-name {
   margin: 0;
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary, #f1f5f9);
+  color: var(--color-gray-100, #f1f5f9);
   word-break: break-word;
 }
 
 .card-strat-version {
   font-size: 0.75rem;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--color-gray-400, #94a3b8);
 }
 
 .remove-btn {
   background: none;
   border: none;
-  color: var(--text-secondary, #94a3b8);
+  color: var(--color-gray-400, #94a3b8);
   font-size: 0.9rem;
   cursor: pointer;
   padding: 0.2rem 0.4rem;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: 4px;
 }
 
 .remove-btn:hover {
-  color: #fda4af;
-  background: rgba(244, 63, 94, 0.14);
+  color: var(--color-rose-400, #fb7185);
+  background: rgba(244, 63, 94, 0.1);
 }
 
 .card-status-row {
@@ -283,19 +282,19 @@ const comparedItems = computed(() => {
 
 .card-ticket-tag {
   font-size: 0.8rem;
-  color: #bfdbfe;
-  background: rgba(59, 130, 246, 0.16);
+  color: var(--color-cyan-300, #67e8f9);
+  background: rgba(6, 182, 212, 0.1);
   padding: 0.1rem 0.4rem;
-  border-radius: var(--radius-sm, 6px);
+  border-radius: 4px;
 }
 
 .card-metrics-list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  background: rgba(9, 7, 20, 0.52);
+  background: rgba(15, 23, 42, 0.5);
   padding: 0.75rem;
-  border-radius: var(--radius-md, 10px);
+  border-radius: 6px;
   font-size: 0.85rem;
 }
 
@@ -306,7 +305,7 @@ const comparedItems = computed(() => {
 }
 
 .metric-value--highlight {
-  color: #c4b5fd;
+  color: var(--color-cyan-300, #67e8f9);
   font-size: 0.95rem;
 }
 
@@ -339,8 +338,8 @@ const comparedItems = computed(() => {
 .prize-pill {
   background: rgba(255, 255, 255, 0.05);
   padding: 0.1rem 0.35rem;
-  border-radius: var(--radius-sm, 6px);
-  color: var(--text-secondary, #cbd5e1);
+  border-radius: 3px;
+  color: var(--color-gray-300, #cbd5e1);
 }
 
 .card-notes {
@@ -358,6 +357,6 @@ const comparedItems = computed(() => {
 }
 
 .text-muted {
-  color: var(--text-secondary, #94a3b8);
+  color: var(--color-gray-400, #94a3b8);
 }
 </style>

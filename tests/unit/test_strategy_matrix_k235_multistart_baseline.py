@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from fractions import Fraction
 from pathlib import Path
 from typing import Any, cast
@@ -49,7 +50,39 @@ def _portfolio(value: object) -> baseline.Portfolio:
     return tuple(tickets)
 
 
-def test_scope_and_locked_semantics() -> None:
+def _patch_git_provenance(monkeypatch: pytest.MonkeyPatch) -> None:
+    def fake_git_value(*arguments: str) -> str:
+        if arguments == ("rev-parse", f"{baseline.PINNED_BASE_COMMIT}^{{commit}}"):
+            return baseline.PINNED_BASE_COMMIT
+        if arguments == ("rev-parse", f"{baseline.PINNED_BASE_COMMIT}^{{tree}}"):
+            return baseline.PINNED_BASE_TREE
+        raise AssertionError(f"unexpected git lookup: {arguments}")
+
+    def fake_run(
+        arguments: list[str],
+        *,
+        check: bool,
+        capture_output: bool,
+        text: bool,
+    ) -> subprocess.CompletedProcess[str]:
+        assert arguments == [
+            "git",
+            "merge-base",
+            "--is-ancestor",
+            baseline.PINNED_BASE_COMMIT,
+            "HEAD",
+        ]
+        assert check is False
+        assert capture_output is True
+        assert text is True
+        return subprocess.CompletedProcess(arguments, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(baseline, "_git_value", fake_git_value)
+    monkeypatch.setattr(baseline.subprocess, "run", fake_run)
+
+
+def test_scope_and_locked_semantics(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_git_provenance(monkeypatch)
     assert baseline.REQUESTED_K_SCOPE == (2, 3, 5)
     assert baseline.SUPPORTED_K_SCOPE == (2, 3, 5)
     assert baseline.START_IDS == (
@@ -73,6 +106,8 @@ def test_scope_and_locked_semantics() -> None:
 
 
 def test_start_freeze_never_invokes_objective(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_git_provenance(monkeypatch)
+
     def forbidden_objective(*_arguments: object, **_keywords: object) -> object:
         raise AssertionError("objective evaluator was called during seed freeze")
 

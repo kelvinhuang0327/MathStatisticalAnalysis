@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
@@ -55,6 +55,7 @@ from lottolab.domain.research_live_forecast import (
     digest,
     sha256,
 )
+from lottolab.domain.strategies import StrategyDescriptor
 from lottolab.infrastructure import b649_live_forecast as live
 from lottolab.infrastructure.imports.csv_draws import parse_draw_csv
 from lottolab.infrastructure.persistence.draw_schema import (
@@ -71,7 +72,10 @@ from lottolab.infrastructure.persistence.future_draw_identity_repository import 
     SQLiteManualFutureDrawIdentitySupplementRepository,
 )
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
-from lottolab.infrastructure.persistence.research_repository import SQLiteResearchRepository
+from lottolab.infrastructure.persistence.research_repository import (
+    ResearchRepositoryError,
+    SQLiteResearchRepository,
+)
 from lottolab.infrastructure.persistence.research_schema import ResearchDataPaths
 from lottolab.infrastructure.pre_outcome_target_operational import (
     OPERATIONAL_ANNOUNCEMENT_SCHEMA_VERSION,
@@ -215,6 +219,144 @@ def native(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> NativeFixture:
         ),
         captured,
     )
+
+
+def _patch_k3_catalog(monkeypatch: pytest.MonkeyPatch) -> StrategyDescriptor:
+    descriptor = next(
+        descriptor
+        for descriptor in production_catalog().list(lottery_type=LotteryType.BIG_LOTTO)
+        if descriptor.native_ticket_count == 3
+        and descriptor.min_history == 1
+        and descriptor.strategy_id.endswith("test_tme__f3bb5106dfe3")
+    )
+    catalog = StrategyCatalog((descriptor,))
+    monkeypatch.setattr(live, "production_catalog", lambda: catalog)
+    monkeypatch.setattr(app, "production_catalog", lambda: catalog)
+    return descriptor
+
+
+def test_native_current_composition_reuses_observer_and_reaches_k3(
+    native: NativeFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, _generate, captured = native
+    descriptor = _patch_k3_catalog(monkeypatch)
+    seeds = {descriptor.strategy_id: 41}
+
+    events: list[str] = []
+    original_iterator = live.iter_native_replay_observations
+    original_repredict = live.B649LiveForecastService.repredict
+
+    def observe_call(
+        *,
+        target: ObservationTarget,
+        history: tuple[Draw, ...],
+        catalog: tuple[StrategyDescriptor, ...],
+        producer: ProducerFingerprint,
+        generator: app.NativeTicketGenerator,
+        seeds: Mapping[str, int] | None = None,
+    ) -> Iterator[ReplayObservation]:
+        events.append("iter_native_replay_observations")
+        return original_iterator(
+            target=target,
+            history=history,
+            catalog=catalog,
+            producer=producer,
+            generator=generator,
+            seeds=seeds,
+        )
+
+    def repredict_call(
+        current: live.B649LiveForecastService,
+        *,
+        request_id: str,
+        observations: tuple[ReplayObservation, ...],
+        seeds: Mapping[str, int],
+    ) -> LiveForecastResult:
+        events.append("repredict")
+        return original_repredict(
+            current, request_id=request_id, observations=observations, seeds=seeds
+        )
+
+    monkeypatch.setattr(live, "iter_native_replay_observations", observe_call)
+    monkeypatch.setattr(live.B649LiveForecastService, "repredict", repredict_call)
+
+    result = live.run_native_current_forecast(service, request_id="composed", seeds=seeds)
+
+    assert events == ["iter_native_replay_observations", "repredict"]
+    assert result.pointer_advanced
+    forecast = captured["composed"]
+    assert forecast.provenance_class == "NATIVE_GENERATED"
+    assert forecast.candidate_ref is None
+    assert forecast.forecast_stream_id == forecast_domain.NATIVE_STREAM
+    assert forecast.forecast_stream_version == forecast_domain.NATIVE_STREAM_VERSION
+    assert forecast.missing_provenance_json == "{}"
+    assert forecast.import_execution_json is None
+    assert forecast.consensus_provenance_json is None
+
+    payload = json.loads(forecast.payload_bytes)
+    k3 = next(bucket for bucket in payload["buckets"] if bucket["native_k"] == 3)
+    assert k3["status"] == "AVAILABLE"
+    assert k3["selected"]["strategy_id"] == descriptor.strategy_id
+    assert len(k3["tickets"]) == 3
+    observations = json.loads(cast(str, forecast.original["ranking_evidence_json"]))["observations"]
+    assert observations
+    assert {row["strategy_id"] for row in observations} == {descriptor.strategy_id}
+
+
+def test_native_current_composition_preserves_retry_and_pointer_cas(
+    native: NativeFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, _generate, captured = native
+    descriptor = _patch_k3_catalog(monkeypatch)
+    seeds = {descriptor.strategy_id: 41}
+
+    first = live.run_native_current_forecast(service, request_id="first", seeds=seeds)
+    retry = live.run_native_current_forecast(service, request_id="first", seeds=seeds)
+    assert retry.idempotent
+    assert retry.run_id == first.run_id
+
+    newer = live.run_native_current_forecast(service, request_id="newer", seeds=seeds)
+
+    def stale_live_current_version(_scope: object) -> int:
+        return 0
+
+    with monkeypatch.context() as stale_reader:
+        stale_reader.setattr(
+            service.repository, "live_current_version", stale_live_current_version
+        )
+        stale = live.run_native_current_forecast(service, request_id="stale", seeds=seeds)
+
+    assert newer.version > first.version
+    assert stale.version > newer.version
+    assert not stale.pointer_advanced
+    assert service.repository.live_current_version(captured["newer"].scope) == newer.version
+    assert service.repository.find_live_request("stale", captured["stale"].request_sha256)
+
+
+def test_native_current_composition_candidate_ref_stays_null_at_v5_boundary(
+    native: NativeFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    service, _generate, captured = native
+    descriptor = _patch_k3_catalog(monkeypatch)
+    live.run_native_current_forecast(
+        service, request_id="native", seeds={descriptor.strategy_id: 41}
+    )
+    forecast = captured["native"]
+    assert forecast.candidate_ref is None
+
+    malformed = replace(
+        forecast,
+        request_id="native-malformed-candidate-ref",
+        request_sha256=digest("native-malformed-candidate-ref"),
+        candidate_ref="not-a-native-candidate",
+    )
+    with pytest.raises(ResearchRepositoryError, match="store contract"):
+        service.repository.commit_live_forecast(
+            malformed,
+            expected_current_version=1,
+            current_eligible=lambda: True,
+            clock=service.clock,
+        )
 
 
 def test_different_requests_append_same_content_and_retry_does_not_reset_current(

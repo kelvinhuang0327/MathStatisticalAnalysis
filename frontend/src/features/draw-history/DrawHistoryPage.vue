@@ -28,6 +28,16 @@ const dateFiltersValid = computed(
     isOptionalIsoCalendarDate(query.dateFrom) &&
     isOptionalIsoCalendarDate(query.dateTo),
 )
+const dateFromError = computed(() =>
+  query.dateFrom && !isOptionalIsoCalendarDate(query.dateFrom)
+    ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
+    : '',
+)
+const dateToError = computed(() =>
+  query.dateTo && !isOptionalIsoCalendarDate(query.dateTo)
+    ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
+    : '',
+)
 let requestController: AbortController | undefined
 
 async function loadHistory(): Promise<void> {
@@ -124,11 +134,13 @@ onBeforeUnmount(() => requestController?.abort())
         </label>
         <label>
           <span>Date from</span>
-          <input v-model="query.dateFrom" name="date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
+          <input v-model="query.dateFrom" name="date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="dateFromError ? 'true' : undefined" :aria-describedby="dateFromError ? 'draw-date-from-error' : undefined" />
+          <small v-if="dateFromError" id="draw-date-from-error" class="date-validation-error" role="alert">{{ dateFromError }}</small>
         </label>
         <label>
           <span>Date to</span>
-          <input v-model="query.dateTo" name="date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
+          <input v-model="query.dateTo" name="date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="dateToError ? 'true' : undefined" :aria-describedby="dateToError ? 'draw-date-to-error' : undefined" />
+          <small v-if="dateToError" id="draw-date-to-error" class="date-validation-error" role="alert">{{ dateToError }}</small>
         </label>
       </div>
       <div class="filter-actions">

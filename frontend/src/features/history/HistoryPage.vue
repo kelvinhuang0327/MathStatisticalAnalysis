@@ -39,6 +39,16 @@ const runDateFiltersValid = computed(
     isOptionalIsoCalendarDate(runFilters.dateFrom) &&
     isOptionalIsoCalendarDate(runFilters.dateTo),
 )
+const runDateFromError = computed(() =>
+  runFilters.dateFrom && !isOptionalIsoCalendarDate(runFilters.dateFrom)
+    ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
+    : '',
+)
+const runDateToError = computed(() =>
+  runFilters.dateTo && !isOptionalIsoCalendarDate(runFilters.dateTo)
+    ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
+    : '',
+)
 let ingestionController: AbortController | undefined
 let detailController: AbortController | undefined
 let importsController: AbortController | undefined
@@ -199,8 +209,8 @@ onBeforeUnmount(() => {
           <label><span>Status</span><select v-model="runFilters.status"><option value="">All</option><option>RUNNING</option><option>SUCCESS</option><option>FAILED</option></select></label>
           <label><span>Trigger</span><select v-model="runFilters.operationType"><option value="">All</option><option>DRAW_CSV_IMPORT</option><option>MANUAL_SYNC</option><option>MISSING_DRAW_SCAN</option><option>BOUNDED_BACKFILL</option><option>SCHEDULED_SYNC</option></select></label>
           <label><span>Provider or filename</span><input v-model="runFilters.source" maxlength="255" /></label>
-          <label><span>Date from</span><input v-model="runFilters.dateFrom" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
-          <label><span>Date to</span><input v-model="runFilters.dateTo" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+          <label><span>Date from</span><input v-model="runFilters.dateFrom" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="runDateFromError ? 'true' : undefined" :aria-describedby="runDateFromError ? 'run-date-from-error' : undefined" /><small v-if="runDateFromError" id="run-date-from-error" class="date-validation-error" role="alert">{{ runDateFromError }}</small></label>
+          <label><span>Date to</span><input v-model="runFilters.dateTo" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="runDateToError ? 'true' : undefined" :aria-describedby="runDateToError ? 'run-date-to-error' : undefined" /><small v-if="runDateToError" id="run-date-to-error" class="date-validation-error" role="alert">{{ runDateToError }}</small></label>
         </div>
         <div class="filter-actions">
           <button class="button button--primary" type="submit" :disabled="!runDateFiltersValid">Apply filters</button>

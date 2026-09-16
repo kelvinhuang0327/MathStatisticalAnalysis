@@ -256,6 +256,9 @@ describe('Data Operations date-gated sync', () => {
     const scheduledSync = wrapper.get('[data-testid="scheduled-sync"]')
     expect(manualSync.attributes('disabled')).toBeDefined()
     expect(scheduledSync.attributes('disabled')).toBeDefined()
+    expect(dateInputs[0]?.attributes('aria-invalid')).toBe('true')
+    expect(dateInputs[0]?.attributes('aria-describedby')).toBe('sync-date-from-error')
+    expect(wrapper.get('#sync-date-from-error').text()).toBe('Date is required.')
     expect(fetchMock).toHaveBeenCalledTimes(1)
 
     await dateInputs[0]?.setValue('2026-08-25')
@@ -264,6 +267,10 @@ describe('Data Operations date-gated sync', () => {
       await dateInputs[1]?.setValue('2026-08-25')
       expect(manualSync.attributes('disabled')).toBeDefined()
       expect(scheduledSync.attributes('disabled')).toBeDefined()
+      expect(dateInputs[0]?.attributes('aria-invalid')).toBe('true')
+      expect(wrapper.get('#sync-date-from-error').text()).toBe(
+        'Enter a valid Gregorian date in YYYY-MM-DD format.',
+      )
 
       await manualSync.trigger('click')
       await scheduledSync.trigger('click')
@@ -323,6 +330,13 @@ describe('P638 Historical Replay date-gated query', () => {
       await dateInputs[index]?.setValue(invalidDate)
       await dateInputs[index === 0 ? 1 : 0]?.setValue('2026-08-25')
       expect(apply?.attributes('disabled')).toBeDefined()
+      expect(dateInputs[index]?.attributes('aria-invalid')).toBe('true')
+      expect(dateInputs[index]?.attributes('aria-describedby')).toBe(
+        index === 0 ? 'p638-date-from-error' : 'p638-date-to-error',
+      )
+      expect(wrapper.find('.date-validation-error').text()).toBe(
+        'Enter a valid Gregorian date in YYYY-MM-DD format.',
+      )
       const requestCount = fetchMock.mock.calls.length
       await apply?.trigger('click')
       await flushPromises()
@@ -371,6 +385,13 @@ describe('History date-gated ingestion query', () => {
       await dateInputs[index]?.setValue(invalidDate)
       await dateInputs[index === 0 ? 1 : 0]?.setValue('2026-08-25')
       expect(apply?.attributes('disabled')).toBeDefined()
+      expect(dateInputs[index]?.attributes('aria-invalid')).toBe('true')
+      expect(dateInputs[index]?.attributes('aria-describedby')).toBe(
+        index === 0 ? 'run-date-from-error' : 'run-date-to-error',
+      )
+      expect(section.find('.date-validation-error').text()).toBe(
+        'Enter a valid Gregorian date in YYYY-MM-DD format.',
+      )
       const requestCount = fetchMock.mock.calls.length
       await section.get('form').trigger('submit')
       await flushPromises()
@@ -409,6 +430,11 @@ describe('Draw History date-gated query', () => {
     for (const invalidDate of ['2026-99-99', '2026-02-30', 'not-a-date']) {
       await dateFrom.setValue(invalidDate)
       expect(apply?.attributes('disabled')).toBeDefined()
+      expect(dateFrom.attributes('aria-invalid')).toBe('true')
+      expect(dateFrom.attributes('aria-describedby')).toBe('draw-date-from-error')
+      expect(wrapper.get('#draw-date-from-error').text()).toBe(
+        'Enter a valid Gregorian date in YYYY-MM-DD format.',
+      )
       const requestCount = fetchMock.mock.calls.length
       await wrapper.get('form').trigger('submit')
       await flushPromises()

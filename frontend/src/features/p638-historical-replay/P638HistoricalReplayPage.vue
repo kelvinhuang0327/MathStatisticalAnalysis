@@ -60,6 +60,16 @@ const dateFiltersValid = computed(
     isOptionalIsoCalendarDate(filters.dateFrom) &&
     isOptionalIsoCalendarDate(filters.dateTo),
 )
+const dateFromError = computed(() =>
+  filters.dateFrom && !isOptionalIsoCalendarDate(filters.dateFrom)
+    ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
+    : '',
+)
+const dateToError = computed(() =>
+  filters.dateTo && !isOptionalIsoCalendarDate(filters.dateTo)
+    ? 'Enter a valid Gregorian date in YYYY-MM-DD format.'
+    : '',
+)
 
 async function loadRuns(): Promise<void> {
   runsController?.abort()
@@ -277,7 +287,7 @@ onBeforeUnmount(() => {
           <div class="filter-grid filter-grid--p638">
             <label class="filter-field"><span>Strategy identity</span><select v-model="filters.strategyId"><option value="">All current identities</option><option v-for="strategy in strategiesPage?.items ?? []" :key="strategy.strategy_id" :value="strategy.strategy_id">{{ strategy.strategy_id }} · {{ strategy.replay_status }}</option></select></label>
             <label class="filter-field"><span>Status</span><select v-model="filters.status"><option value="">All statuses</option><option value="COMPLETE">COMPLETE</option><option value="EXCLUDED_INSUFFICIENT_HISTORY">EXCLUDED_INSUFFICIENT_HISTORY</option><option value="FAILED">FAILED</option></select></label>
-            <label class="filter-field"><span>Draw date from</span><input v-model="filters.dateFrom" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label><label class="filter-field"><span>Draw date to</span><input v-model="filters.dateTo" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" /></label>
+            <label class="filter-field"><span>Draw date from</span><input v-model="filters.dateFrom" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="dateFromError ? 'true' : undefined" :aria-describedby="dateFromError ? 'p638-date-from-error' : undefined" /><small v-if="dateFromError" id="p638-date-from-error" class="date-validation-error" role="alert">{{ dateFromError }}</small></label><label class="filter-field"><span>Draw date to</span><input v-model="filters.dateTo" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="dateToError ? 'true' : undefined" :aria-describedby="dateToError ? 'p638-date-to-error' : undefined" /><small v-if="dateToError" id="p638-date-to-error" class="date-validation-error" role="alert">{{ dateToError }}</small></label>
           </div>
           <button class="button button--primary" type="button" :disabled="!dateFiltersValid" @click="applyFilters">Apply server-side filters</button>
         </article>

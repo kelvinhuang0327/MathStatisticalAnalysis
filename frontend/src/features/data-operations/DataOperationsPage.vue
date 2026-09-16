@@ -72,6 +72,20 @@ const runsState = ref<LoadState>('loading')
 const runsMessage = ref('')
 const syncLotteryType = ref<IngestionRunLotteryType>('BIG_LOTTO')
 const syncForm = reactive({ dateFrom: '', dateTo: '' })
+const syncDateFromError = computed(() =>
+  syncForm.dateFrom === ''
+    ? 'Date is required.'
+    : isValidIsoCalendarDate(syncForm.dateFrom)
+      ? ''
+      : 'Enter a valid Gregorian date in YYYY-MM-DD format.',
+)
+const syncDateToError = computed(() =>
+  syncForm.dateTo === ''
+    ? 'Date is required.'
+    : isValidIsoCalendarDate(syncForm.dateTo)
+      ? ''
+      : 'Enter a valid Gregorian date in YYYY-MM-DD format.',
+)
 const syncDatesValid = computed(() =>
   isValidIsoCalendarDate(syncForm.dateFrom) && isValidIsoCalendarDate(syncForm.dateTo),
 )
@@ -854,11 +868,13 @@ onBeforeUnmount(() => {
       <div class="filter-grid" style="margin-top: 14px">
         <label>
           <span>Date from</span>
-          <input v-model="syncForm.dateFrom" data-testid="sync-date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
+          <input v-model="syncForm.dateFrom" data-testid="sync-date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="syncDateFromError ? 'true' : undefined" :aria-describedby="syncDateFromError ? 'sync-date-from-error' : undefined" />
+          <small v-if="syncDateFromError" id="sync-date-from-error" class="date-validation-error" role="alert">{{ syncDateFromError }}</small>
         </label>
         <label>
           <span>Date to</span>
-          <input v-model="syncForm.dateTo" data-testid="sync-date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" />
+          <input v-model="syncForm.dateTo" data-testid="sync-date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="syncDateToError ? 'true' : undefined" :aria-describedby="syncDateToError ? 'sync-date-to-error' : undefined" />
+          <small v-if="syncDateToError" id="sync-date-to-error" class="date-validation-error" role="alert">{{ syncDateToError }}</small>
         </label>
       </div>
 

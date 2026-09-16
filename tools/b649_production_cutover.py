@@ -519,6 +519,28 @@ def _validate_runtime_tuple(config: CutoverConfig) -> bool:
         return False
 
 
+def _validate_real_runtime_paths(
+    source: Path,
+    role: str,
+    paths: Mapping[str, Path],
+) -> None:
+    try:
+        source_root = source.resolve(strict=True)
+    except OSError as exc:
+        raise CutoverSafetyError(f"{role} source worktree cannot be resolved") from exc
+    if source_root != source:
+        raise CutoverSafetyError(f"{role} source worktree path is not canonical")
+    for name, path in paths.items():
+        try:
+            resolved = path.resolve(strict=True)
+        except OSError as exc:
+            raise CutoverSafetyError(f"{role} {name} cannot be resolved") from exc
+        try:
+            resolved.relative_to(source_root)
+        except ValueError as exc:
+            raise CutoverSafetyError(f"{role} {name} resolves outside the source worktree") from exc
+
+
 def _validate_source(
     config: CutoverConfig,
     runner: Runner,
@@ -586,6 +608,11 @@ def _validate_source(
     interpreter = config.python_executable if role == "new" else source / ".venv/bin/python"
     script = config.script_path if role == "new" else source / "tools/b649_goalc_local_scheduler.py"
     pythonpath = config.pythonpath if role == "new" else source / "src"
+    _validate_real_runtime_paths(
+        source,
+        role,
+        {"interpreter": interpreter, "scheduler script": script, "PYTHONPATH": pythonpath},
+    )
     if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
         raise CutoverSafetyError(
             f"{role} worktree-owned venv interpreter is unavailable: {interpreter}"
@@ -1340,6 +1367,40 @@ def _run_launch_mutation(
     raise MutationError(f"{name} failed with exit {result.returncode}")
 
 
+def _replace_plist(
+    path: Path,
+    data: bytes,
+    *,
+    expected: FileIdentity,
+    before: FileIdentity,
+    name: str,
+    recorder: ActionRecorder,
+) -> FileIdentity:
+    """Replace a plist while conservatively accounting for ambiguous writes."""
+
+    recorder.mutation_count += 1
+    try:
+        identity = _atomic_write(path, data, expected=expected)
+    except Exception as exc:
+        recorder.event(
+            name,
+            status="EXCEPTION",
+            before=before.to_dict(),
+            error=f"{type(exc).__name__}: {exc}",
+            mutation=True,
+        )
+        raise MutationError(f"{name} failed: {type(exc).__name__}: {exc}") from exc
+    recorder.event(
+        name,
+        status="PASS",
+        before=before.to_dict(),
+        after=identity.to_dict(),
+        sha256=identity.sha256,
+        mutation=True,
+    )
+    return identity
+
+
 def _decode_bytes(value: object, label: str) -> bytes:
     encoded = _text(value, label)
     try:
@@ -1463,29 +1524,27 @@ def _apply_or_restore(
         stable_identity,
         expected_bytes=expected_current_bytes,
     )
+    current_launch = _assert_runtime_binding(config, runner, current_source, current_runtime)
     if current_launch.get("state") != "UNLOADED":
         raise MutationError("LaunchAgent was rebound during the mutation boundary")
+    _assert_quiescent(config, runner, current_source)
     if restoring:
-        restored = _atomic_write(config.plist_path, old_bytes, expected=stable_identity)
-        recorder.mutation_count += 1
-        recorder.event(
-            "restore-plist",
-            status="PASS",
-            before=stable_identity.to_dict(),
-            after=restored.to_dict(),
-            sha256=restored.sha256,
-            mutation=True,
+        _replace_plist(
+            config.plist_path,
+            old_bytes,
+            expected=stable_identity,
+            before=stable_identity,
+            name="restore-plist",
+            recorder=recorder,
         )
     else:
-        new_identity = _atomic_write(config.plist_path, new_bytes, expected=stable_identity)
-        recorder.mutation_count += 1
-        recorder.event(
-            "install-plist",
-            status="PASS",
-            before=stable_identity.to_dict(),
-            after=new_identity.to_dict(),
-            sha256=new_identity.sha256,
-            mutation=True,
+        _replace_plist(
+            config.plist_path,
+            new_bytes,
+            expected=stable_identity,
+            before=stable_identity,
+            name="install-plist",
+            recorder=recorder,
         )
     installed_identity, installed_bytes = _file_identity(
         config.plist_path,
@@ -1578,12 +1637,53 @@ def _receipt_status(path: Path) -> Record | None:
     return value
 
 
+def _validate_bound_source(
+    config: CutoverConfig,
+    source: Record,
+    runner: Runner,
+    *,
+    role: str,
+) -> Record:
+    source_path = Path(_text(source.get("source_worktree"), f"{role} source worktree"))
+    bound_config = replace(config, source_worktree=source_path)
+    return _validate_source(
+        bound_config,
+        runner,
+        role=role,
+        expected_head=_text(source.get("head"), f"{role} head"),
+        expected_tree=_text(source.get("tree"), f"{role} tree"),
+        expected_ref=_text(source.get("durable_ref"), f"{role} durable ref"),
+        strict_release_layout=config.strict_release_layout,
+    )
+
+
 def _save_receipt(
     config: CutoverConfig, receipt: Record, *, expected: FileIdentity | None
 ) -> FileIdentity:
     receipt["updated_at"] = _utc_text(_now())
     identity = _write_json(config.receipt_path, receipt, expected=expected)
     return identity
+
+
+def _append_failure(receipt: Record, message: str) -> None:
+    cast(list[str], receipt.setdefault("failures", [])).append(message)
+
+
+def _best_effort_recovery_receipt(
+    config: CutoverConfig,
+    receipt: Record,
+    *,
+    expected: FileIdentity,
+) -> None:
+    """Persist recovery provenance only if the receipt identity is unchanged."""
+
+    try:
+        current, _ = _file_identity(config.receipt_path, missing_ok=False, require_mode=0o600)
+        if current is None or current.key() != expected.key():
+            raise CutoverSafetyError("receipt identity changed before recovery write")
+        _save_receipt(config, receipt, expected=current)
+    except Exception as exc:
+        _append_failure(receipt, f"receipt recovery write: {type(exc).__name__}: {exc}")
 
 
 def _apply_existing_receipt(
@@ -1603,10 +1703,11 @@ def _apply_existing_receipt(
         "NOT_STARTED",
     }:
         raise CutoverSafetyError("existing receipt status is invalid")
+    plan = _record(receipt, "receipt")
+    prestate = _record(plan.get("prestate"), "receipt prestate")
+    source = _prestate_runtime(prestate, "new_source")
+    _validate_bound_source(config, source, runner, role="existing-new")
     if status == "SUCCESS":
-        plan = _record(receipt, "receipt")
-        prestate = _record(plan.get("prestate"), "receipt prestate")
-        source = _prestate_runtime(prestate, "new_source")
         current_identity, current_bytes = _file_identity(
             config.plist_path,
             missing_ok=True,
@@ -1739,9 +1840,10 @@ def apply(
                     _save_receipt(config, receipt, expected=receipt_identity)
                 except Exception as receipt_exc:
                     receipt["status"] = "RECOVERY_REQUIRED"
-                    cast(list[str], receipt["failures"]).append(
-                        f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
+                    _append_failure(
+                        receipt, f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
                     )
+                    _best_effort_recovery_receipt(config, receipt, expected=receipt_identity)
                 return {
                     "command": "apply",
                     "task": TASK_ID,
@@ -1763,9 +1865,10 @@ def apply(
                 _save_receipt(config, receipt, expected=receipt_identity)
             except Exception as receipt_exc:
                 receipt["status"] = "RECOVERY_REQUIRED"
-                cast(list[str], receipt["failures"]).append(
-                    f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
+                _append_failure(
+                    receipt, f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
                 )
+                _best_effort_recovery_receipt(config, receipt, expected=receipt_identity)
                 return {
                     "command": "apply",
                     "task": TASK_ID,
@@ -1953,8 +2056,14 @@ def rollback(
                         expected=receipt_identity,
                     )
                 except Exception as receipt_exc:
-                    cast(list[str], loaded_receipt["failures"]).append(
-                        f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
+                    _append_failure(
+                        loaded_receipt,
+                        f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}",
+                    )
+                    _best_effort_recovery_receipt(
+                        config,
+                        loaded_receipt,
+                        expected=receipt_identity,
                     )
                 return {
                     "command": "rollback",
@@ -1980,8 +2089,14 @@ def rollback(
                 )
             except Exception as receipt_exc:
                 loaded_receipt["status"] = "RECOVERY_REQUIRED"
-                cast(list[str], loaded_receipt["failures"]).append(
-                    f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
+                _append_failure(
+                    loaded_receipt,
+                    f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}",
+                )
+                _best_effort_recovery_receipt(
+                    config,
+                    loaded_receipt,
+                    expected=receipt_identity,
                 )
                 return {
                     "command": "rollback",

@@ -929,6 +929,12 @@ td code {
   text-transform: uppercase;
 }
 
+.date-validation-error {
+  color: var(--color-danger);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .filter-actions {
   display: flex;
   align-items: center;

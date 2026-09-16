@@ -40,6 +40,15 @@ let requestController: AbortController | undefined
 let requestGeneration = 0
 let isMounted = false
 
+function englishDisplayName(value: string, strategyId: string): string {
+  const normalized = value
+    .replace(/[（）]/g, ' ')
+    .replace(/[\u3400-\u9fff]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return normalized || strategyId
+}
+
 const currentGameCode = computed(() => lotteryTypeDisplayLabel(selectedLotteryType.value))
 
 const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
@@ -58,7 +67,7 @@ const combinedStrategies = computed<StrategyCombinedItem[]>(() => {
 
     return {
       strategyId: item.strategy_id,
-      displayName: item.display_name,
+      displayName: englishDisplayName(item.display_name, item.strategy_id),
       version: item.version,
       supportedLotteryTypes: item.supported_lottery_types,
       gameLabels: item.supported_lottery_types.map(lotteryTypeDisplayLabel),

@@ -23,6 +23,7 @@ import {
   type T539Run,
   type T539Strategy,
 } from '../../api/t539Historical'
+import LotteryNumberBall from '../../components/LotteryNumberBall.vue'
 
 type Lottery = 'DAILY_539' | 'POWER_LOTTO'
 type State =
@@ -590,6 +591,10 @@ function formatNumbers(numbers: number[]): string {
   return numbers.length ? numbers.join(', ') : '—'
 }
 
+function isNumberHit(value: number, actualNumbers: number[]): boolean {
+  return actualNumbers.includes(value)
+}
+
 function prizeText(ticket: TicketRow): string {
   if (!ticket.prizeTier && ticket.prizeAmount === null) return 'No prize result'
   const tier = ticket.prizeTier ?? 'Prize recorded'
@@ -765,8 +770,26 @@ onBeforeUnmount(() => {
                     <td><code>{{ draw.id }}</code></td>
                     <td>{{ draw.date }}</td>
                     <td>
-                      {{ formatNumbers(draw.firstZoneNumbers) }}
-                      <small v-if="draw.secondZoneNumber !== null">Second zone: {{ draw.secondZoneNumber }}</small>
+                      <span class="number-chips" :aria-label="`Winning numbers: ${formatNumbers(draw.firstZoneNumbers)}`">
+                        <LotteryNumberBall
+                          v-for="number in draw.firstZoneNumbers"
+                          :key="`draw-main-${draw.id}-${number}`"
+                          :value="number"
+                          variant="main"
+                          size="sm"
+                        />
+                        <span class="sr-only">{{ formatNumbers(draw.firstZoneNumbers) }}</span>
+                      </span>
+                      <small v-if="draw.secondZoneNumber !== null" class="historical-secondary-zone">
+                        Second zone:
+                        <LotteryNumberBall
+                          :value="draw.secondZoneNumber"
+                          variant="special"
+                          :is-special="true"
+                          subtext="Z2"
+                          size="sm"
+                        />
+                      </small>
                     </td>
                     <td>
                       <button
@@ -878,8 +901,26 @@ onBeforeUnmount(() => {
           </p>
           <div class="historical-official-result">
             <span>Official draw result</span>
-            <strong>{{ formatNumbers(targetView.actualFirstZoneNumbers) }}</strong>
-            <strong v-if="targetView.actualSecondZoneNumber !== null">+ second zone {{ targetView.actualSecondZoneNumber }}</strong>
+            <strong class="number-chips" :aria-label="`Official numbers: ${formatNumbers(targetView.actualFirstZoneNumbers)}`">
+              <LotteryNumberBall
+                v-for="number in targetView.actualFirstZoneNumbers"
+                :key="`target-main-${targetView.targetId}-${number}`"
+                :value="number"
+                variant="main"
+                size="sm"
+              />
+              <span class="sr-only">{{ formatNumbers(targetView.actualFirstZoneNumbers) }}</span>
+            </strong>
+            <strong v-if="targetView.actualSecondZoneNumber !== null" class="number-chips">
+              <span class="historical-zone-label">Second zone</span>
+              <LotteryNumberBall
+                :value="targetView.actualSecondZoneNumber"
+                variant="special"
+                :is-special="true"
+                subtext="Z2"
+                size="sm"
+              />
+            </strong>
           </div>
 
           <template v-if="isCompleteStatus(targetView.status)">
@@ -906,12 +947,54 @@ onBeforeUnmount(() => {
                 <tbody>
                   <tr v-for="ticket in targetView.tickets" :key="ticket.position">
                     <td><strong>#{{ ticket.position }}</strong></td>
-                    <td>{{ formatNumbers(ticket.firstZoneNumbers) }}</td>
-                    <td v-if="lottery === 'POWER_LOTTO'">{{ ticket.secondZoneNumber ?? '—' }}</td>
+                    <td>
+                      <span class="number-chips" :aria-label="`Generated numbers: ${formatNumbers(ticket.firstZoneNumbers)}`">
+                        <LotteryNumberBall
+                          v-for="number in ticket.firstZoneNumbers"
+                          :key="`ticket-main-${ticket.position}-${number}`"
+                          :value="number"
+                          :variant="isNumberHit(number, ticket.actualFirstZoneNumbers) ? 'hit' : 'miss'"
+                          size="sm"
+                        />
+                        <span class="sr-only">{{ formatNumbers(ticket.firstZoneNumbers) }}</span>
+                      </span>
+                    </td>
+                    <td v-if="lottery === 'POWER_LOTTO'">
+                      <LotteryNumberBall
+                        v-if="ticket.secondZoneNumber !== null"
+                        :value="ticket.secondZoneNumber"
+                        :variant="ticket.secondZoneNumber === ticket.actualSecondZoneNumber ? 'hit' : 'miss'"
+                        :is-special="true"
+                        subtext="Z2"
+                        size="sm"
+                      />
+                      <span v-else>—</span>
+                    </td>
                     <td>
                       {{ ticket.hitSummary }}
-                      <small v-if="ticket.actualFirstZoneNumbers.length">Official: {{ formatNumbers(ticket.actualFirstZoneNumbers) }}</small>
-                      <small v-if="ticket.actualSecondZoneNumber !== null">Official second zone: {{ ticket.actualSecondZoneNumber }}</small>
+                      <small v-if="ticket.actualFirstZoneNumbers.length">
+                        Official:
+                        <span class="number-chips">
+                          <LotteryNumberBall
+                            v-for="number in ticket.actualFirstZoneNumbers"
+                            :key="`official-ticket-${ticket.position}-${number}`"
+                            :value="number"
+                            variant="main"
+                            size="sm"
+                          />
+                          <span class="sr-only">{{ formatNumbers(ticket.actualFirstZoneNumbers) }}</span>
+                        </span>
+                      </small>
+                      <small v-if="ticket.actualSecondZoneNumber !== null">
+                        Official second zone:
+                        <LotteryNumberBall
+                          :value="ticket.actualSecondZoneNumber"
+                          variant="special"
+                          :is-special="true"
+                          subtext="Z2"
+                          size="sm"
+                        />
+                      </small>
                     </td>
                     <td>
                       {{ prizeText(ticket) }}

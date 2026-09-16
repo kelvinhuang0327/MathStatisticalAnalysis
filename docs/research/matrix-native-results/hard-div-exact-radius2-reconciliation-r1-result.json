@@ -1,0 +1,843 @@
+{
+  "baseline_certificate": "EXACT_RADIUS_1_LOCAL_OPTIMUM",
+  "baseline_method_id": "HARD_DIV_PAIRWISE_OVERLAP_R1",
+  "five_k_classification": "CROSS_K_MIXED",
+  "global_optimum_status": "UNKNOWN",
+  "hard_pairwise_max_intersection": 1,
+  "k_results": [
+    {
+      "classification": "NO_STRICT_IMPROVEMENT",
+      "delta": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 2,
+      "max_pairwise_intersection": 0,
+      "neighborhood": {
+        "accepted_move": false,
+        "complete_endpoint_count": 94170,
+        "exact_evaluated_endpoint_count": 92820,
+        "hard_feasible_endpoint_count": 92820
+      },
+      "radius1_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          6,
+          9,
+          14,
+          22
+        ]
+      ],
+      "radius1_portfolio_sha256": "74f912d40045be7fde0bdac0e921883716123f46d2fb62d33c308d48abd7e3ae",
+      "radius1_q": {
+        "denominator": 582659,
+        "exact": "21702/582659",
+        "numerator": 21702
+      },
+      "radius2_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          6,
+          9,
+          14,
+          22
+        ]
+      ],
+      "radius2_portfolio_sha256": "2588a64fddeef6b7a66c35cfa7407f7df185daff9678d8a7632a627de7c5b3cd",
+      "radius2_q": {
+        "denominator": 582659,
+        "exact": "21702/582659",
+        "numerator": 21702
+      },
+      "radius2_terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "status": "MEASURED",
+      "status_reason": null
+    },
+    {
+      "classification": "NO_STRICT_IMPROVEMENT",
+      "delta": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 3,
+      "max_pairwise_intersection": 0,
+      "neighborhood": {
+        "accepted_move": false,
+        "complete_endpoint_count": 241101,
+        "exact_evaluated_endpoint_count": 237051,
+        "hard_feasible_endpoint_count": 237051
+      },
+      "radius1_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          12,
+          14,
+          22
+        ],
+        [
+          6,
+          7,
+          10,
+          11,
+          15,
+          23
+        ]
+      ],
+      "radius1_portfolio_sha256": "0244c201efd0b2645a0413be2cbd03ef79e68f44cef34439cda160f37e791b02",
+      "radius1_q": {
+        "denominator": 582659,
+        "exact": "32528/582659",
+        "numerator": 32528
+      },
+      "radius2_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          12,
+          14,
+          22
+        ],
+        [
+          6,
+          7,
+          10,
+          11,
+          15,
+          23
+        ]
+      ],
+      "radius2_portfolio_sha256": "f3f8026685d58c60ddba7eb4155edbb6c05e545ba5bf693f0d57b44ddd45dadf",
+      "radius2_q": {
+        "denominator": 582659,
+        "exact": "32528/582659",
+        "numerator": 32528
+      },
+      "radius2_terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "status": "MEASURED",
+      "status_reason": null
+    },
+    {
+      "classification": "NO_STRICT_IMPROVEMENT",
+      "delta": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 5,
+      "max_pairwise_intersection": 0,
+      "neighborhood": {
+        "accepted_move": false,
+        "complete_endpoint_count": 734655,
+        "exact_evaluated_endpoint_count": 721155,
+        "hard_feasible_endpoint_count": 721155
+      },
+      "radius1_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          14,
+          22,
+          30
+        ],
+        [
+          6,
+          10,
+          15,
+          23,
+          28,
+          29
+        ],
+        [
+          7,
+          11,
+          16,
+          19,
+          20,
+          24
+        ],
+        [
+          12,
+          17,
+          18,
+          25,
+          26,
+          27
+        ]
+      ],
+      "radius1_portfolio_sha256": "cbd4c4721a4b83b05127806eafdfe0325a4f3692033686c5e1a6639da122d3e4",
+      "radius1_q": {
+        "denominator": 582659,
+        "exact": "54130/582659",
+        "numerator": 54130
+      },
+      "radius2_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          5,
+          9,
+          14,
+          22,
+          30
+        ],
+        [
+          6,
+          10,
+          15,
+          23,
+          28,
+          29
+        ],
+        [
+          7,
+          11,
+          16,
+          19,
+          20,
+          24
+        ],
+        [
+          12,
+          17,
+          18,
+          25,
+          26,
+          27
+        ]
+      ],
+      "radius2_portfolio_sha256": "985ceea1c7790da4b4b47b01585e1ca41cdcd927a2c63f50462de2c75edce009",
+      "radius2_q": {
+        "denominator": 582659,
+        "exact": "54130/582659",
+        "numerator": 54130
+      },
+      "radius2_terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "status": "MEASURED",
+      "status_reason": null
+    },
+    {
+      "classification": "NO_STRICT_IMPROVEMENT",
+      "delta": {
+        "denominator": 1,
+        "exact": "0/1",
+        "numerator": 0
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 10,
+      "max_pairwise_intersection": 1,
+      "neighborhood": {
+        "accepted_move": false,
+        "complete_endpoint_count": 3133410,
+        "exact_evaluated_endpoint_count": 2141860,
+        "hard_feasible_endpoint_count": 2141860
+      },
+      "radius1_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          6,
+          10,
+          15,
+          23,
+          42
+        ],
+        [
+          4,
+          5,
+          7,
+          11,
+          16,
+          24
+        ],
+        [
+          5,
+          8,
+          12,
+          17,
+          18,
+          25
+        ],
+        [
+          7,
+          13,
+          18,
+          26,
+          29,
+          41
+        ],
+        [
+          9,
+          11,
+          20,
+          28,
+          40,
+          44
+        ],
+        [
+          12,
+          16,
+          21,
+          29,
+          32,
+          36
+        ],
+        [
+          14,
+          22,
+          31,
+          37,
+          45,
+          47
+        ],
+        [
+          19,
+          27,
+          33,
+          34,
+          35,
+          43
+        ],
+        [
+          30,
+          38,
+          39,
+          46,
+          48,
+          49
+        ]
+      ],
+      "radius1_portfolio_sha256": "363a087f9b3f1294291c98f4353115be1031606946d25f6c56774b14261b5f49",
+      "radius1_q": {
+        "denominator": 1997688,
+        "exact": "364025/1997688",
+        "numerator": 364025
+      },
+      "radius2_portfolio": [
+        [
+          1,
+          2,
+          4,
+          8,
+          13,
+          21
+        ],
+        [
+          3,
+          6,
+          10,
+          15,
+          23,
+          42
+        ],
+        [
+          4,
+          5,
+          7,
+          11,
+          16,
+          24
+        ],
+        [
+          5,
+          8,
+          12,
+          17,
+          18,
+          25
+        ],
+        [
+          7,
+          13,
+          18,
+          26,
+          29,
+          41
+        ],
+        [
+          9,
+          11,
+          20,
+          28,
+          40,
+          44
+        ],
+        [
+          12,
+          16,
+          21,
+          29,
+          32,
+          36
+        ],
+        [
+          14,
+          22,
+          31,
+          37,
+          45,
+          47
+        ],
+        [
+          19,
+          27,
+          33,
+          34,
+          35,
+          43
+        ],
+        [
+          30,
+          38,
+          39,
+          46,
+          48,
+          49
+        ]
+      ],
+      "radius2_portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+      "radius2_q": {
+        "denominator": 1997688,
+        "exact": "364025/1997688",
+        "numerator": 364025
+      },
+      "radius2_terminal_certificate": "CERTIFIED_RADIUS2_LOCAL_OPTIMUM",
+      "status": "MEASURED",
+      "status_reason": null
+    },
+    {
+      "classification": "STRICT_IMPROVEMENT",
+      "delta": {
+        "denominator": 6991908,
+        "exact": "215/6991908",
+        "numerator": 215
+      },
+      "global_optimum_status": "UNKNOWN",
+      "k": 20,
+      "max_pairwise_intersection": 1,
+      "neighborhood": {
+        "accepted_move": true,
+        "complete_endpoint_count": 12923220,
+        "exact_evaluated_endpoint_count": 3004689,
+        "hard_feasible_endpoint_count": 3004689
+      },
+      "radius1_portfolio": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          6,
+          10,
+          15,
+          23
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          4,
+          7,
+          11,
+          16,
+          24,
+          47
+        ],
+        [
+          4,
+          8,
+          26,
+          31,
+          37,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          27,
+          36,
+          41
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          28
+        ],
+        [
+          11,
+          12,
+          14,
+          18,
+          23,
+          31
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          32
+        ],
+        [
+          13,
+          14,
+          16,
+          20,
+          36,
+          44
+        ],
+        [
+          17,
+          21,
+          34,
+          40,
+          44,
+          49
+        ],
+        [
+          18,
+          20,
+          24,
+          29,
+          37,
+          46
+        ],
+        [
+          19,
+          23,
+          26,
+          28,
+          46,
+          47
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          27,
+          35,
+          45,
+          47,
+          49
+        ],
+        [
+          27,
+          32,
+          38,
+          40,
+          42,
+          43
+        ]
+      ],
+      "radius1_portfolio_sha256": "36d1cd6e226b9e8b982d881854b8cf1c4c3aa90dfce22fe75ba5d8f161385ac0",
+      "radius1_q": {
+        "denominator": 13983816,
+        "exact": "4805093/13983816",
+        "numerator": 4805093
+      },
+      "radius2_portfolio": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          6,
+          10,
+          15,
+          23
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          3,
+          13,
+          14,
+          20,
+          36,
+          44
+        ],
+        [
+          4,
+          7,
+          11,
+          16,
+          24,
+          47
+        ],
+        [
+          4,
+          8,
+          26,
+          31,
+          37,
+          39
+        ],
+        [
+          5,
+          17,
+          25,
+          27,
+          36,
+          41
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          28
+        ],
+        [
+          11,
+          12,
+          14,
+          18,
+          23,
+          31
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          32
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          17,
+          21,
+          34,
+          40,
+          44,
+          49
+        ],
+        [
+          18,
+          20,
+          24,
+          29,
+          37,
+          46
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          22,
+          27,
+          35,
+          45,
+          47,
+          49
+        ],
+        [
+          27,
+          32,
+          38,
+          40,
+          42,
+          43
+        ]
+      ],
+      "radius2_portfolio_sha256": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+      "radius2_q": {
+        "denominator": 4661272,
+        "exact": "1601841/4661272",
+        "numerator": 1601841
+      },
+      "radius2_terminal_certificate": "STRICT_IMPROVEMENT_BEST_HARD_FEASIBLE_RADIUS2_NEIGHBOR",
+      "status": "MEASURED",
+      "status_reason": null
+    }
+  ],
+  "lottery": "BIG_LOTTO",
+  "minimum_matches": 3,
+  "neighborhood_unit": "TWO_LEGAL_ONE_NUMBER_EXCHANGES",
+  "pool_size": 49,
+  "proof_status": "EXACT_RADIUS_2_WITHIN_HARD_FEASIBLE_SET_NO_GLOBAL_PROOF",
+  "supported_k": [
+    2,
+    3,
+    5,
+    10,
+    20
+  ],
+  "task_id": "BIG_LOTTO_HARD_DIV_EXACT_RADIUS2_RECONCILIATION_R1",
+  "total_draw_count": 13983816
+}

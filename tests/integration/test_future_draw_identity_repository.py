@@ -220,16 +220,17 @@ def _official_fetch(
     body: bytes,
     *,
     observed_at: datetime = datetime(2099, 1, 1, tzinfo=UTC),
+    source_url: str = SCHEDULE_URL,
 ) -> OfficialScheduleFetchResult:
     announcements = parse_official_b649_schedule(
         body,
         observed_at=observed_at,
-        source_url=SCHEDULE_URL,
+        source_url=source_url,
     )
     return OfficialScheduleFetchResult(
         provider_id="TAIWAN_LOTTERY_OFFICIAL_SCHEDULE",
         provider_version="taiwan-lottery-official-schedule-v1",
-        source_url=SCHEDULE_URL,
+        source_url=source_url,
         source_payload_sha256=hashlib.sha256(body).hexdigest(),
         observed_at=observed_at,
         announcements=announcements,
@@ -322,6 +323,102 @@ def test_official_schedule_sync_repeat_is_exact_audited_no_op_even_at_later_obse
         ).fetchall()
     assert runs == [("SUCCESS", 1, 0), ("SUCCESS", 0, 1)]
     assert first.run_id != second.run_id
+
+
+def test_official_schedule_sync_same_identity_different_envelope_is_audited_no_op(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    first_body = _official_schedule_body(("209900110", "20990102"))
+    repository = SQLiteOfficialScheduleSyncRepository(paths)
+    first = repository.apply_official_schedule_sync(_official_fetch(first_body))
+    original = _schedule_row(paths, "209900110")
+
+    second_body = _official_schedule_body(
+        ("209900110", "20990102"),
+        ("209900111", "20990106"),
+    )
+    assert hashlib.sha256(first_body).hexdigest() != hashlib.sha256(second_body).hexdigest()
+
+    second = repository.apply_official_schedule_sync(
+        _official_fetch(second_body, observed_at=datetime(2099, 1, 1, 1, tzinfo=UTC))
+    )
+
+    assert second.status is IngestionRunStatus.SUCCESS
+    assert second.total_count == 2
+    assert second.inserted_count == 1
+    assert second.skipped_count == 1
+    assert second.exact_duplicate_count == 1
+    assert second.conflict_count == 0
+    assert _schedule_row(paths, "209900110") == original
+
+    with open_database(paths, read_only=True) as connection:
+        rows = connection.execute(
+            "SELECT draw_number FROM draw_schedules ORDER BY draw_number"
+        ).fetchall()
+        assert rows == [("209900110",), ("209900111",)]
+        runs = connection.execute(
+            """
+            SELECT id, source_sha256, inserted_count, skipped_count, conflict_count
+            FROM ingestion_runs
+            WHERE operation_type = 'OFFICIAL_SCHEDULE_SYNC'
+            ORDER BY started_at, id
+            """
+        ).fetchall()
+        items = connection.execute(
+            """
+            SELECT draw_number, disposition
+            FROM ingestion_items
+            WHERE ingestion_run_id = ?
+            ORDER BY source_row_number
+            """,
+            (second.run_id,),
+        ).fetchall()
+    assert runs == [
+        (first.run_id, hashlib.sha256(first_body).hexdigest(), 1, 0, 0),
+        (second.run_id, hashlib.sha256(second_body).hexdigest(), 1, 1, 0),
+    ]
+    assert items == [("209900110", "SKIPPED_DUPLICATE"), ("209900111", "INSERTED")]
+
+
+def test_official_schedule_sync_source_identity_mutation_conflicts(
+    tmp_path: Path,
+) -> None:
+    paths = _paths(tmp_path)
+    repository = SQLiteOfficialScheduleSyncRepository(paths)
+    body = _official_schedule_body(("209900125", "20990102"))
+    first_url = "https://api.taiwanlottery.com/TLCAPIWeB/Lottery/NextDrawDate"
+    second_url = "https://www.taiwanlottery.com/TLCAPIWeB/Lottery/NextDrawDate"
+    repository.apply_official_schedule_sync(_official_fetch(body, source_url=first_url))
+    original = _schedule_row(paths, "209900125")
+
+    conflicting = _official_fetch(body, source_url=second_url)
+    with pytest.raises(CanonicalScheduleSyncConflictError) as raised:
+        repository.apply_official_schedule_sync(conflicting)
+
+    assert raised.value.result.status is IngestionRunStatus.FAILED
+    assert raised.value.result.conflict_count == 1
+    assert raised.value.result.failed_count == 0
+    assert _schedule_row(paths, "209900125") == original
+    with open_database(paths, read_only=True) as connection:
+        audit = connection.execute(
+            """
+            SELECT status, inserted_count, skipped_count, conflict_count, failed_count
+            FROM ingestion_runs
+            WHERE id = ?
+            """,
+            (raised.value.result.run_id,),
+        ).fetchone()
+        item = connection.execute(
+            """
+            SELECT disposition
+            FROM ingestion_items
+            WHERE ingestion_run_id = ?
+            """,
+            (raised.value.result.run_id,),
+        ).fetchone()
+    assert audit == ("FAILED", 0, 0, 1, 0)
+    assert item == ("CONFLICT",)
 
 
 def test_official_schedule_sync_conflict_is_audited_without_mutating_schedule(

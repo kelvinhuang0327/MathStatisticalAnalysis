@@ -15,6 +15,7 @@ import {
   type IngestionRunQuery,
 } from '../../api/drawData'
 import { lotteryTypeDisplayLabel } from '../../utils/lotteryDisplayLabel'
+import { isValidIsoCalendarDate } from '../../utils/isoDate'
 import MetricCard from '../../components/MetricCard.vue'
 import StatusBadge from '../../components/StatusBadge.vue'
 import SectionHeader from '../../components/SectionHeader.vue'
@@ -71,6 +72,23 @@ const runsState = ref<LoadState>('loading')
 const runsMessage = ref('')
 const syncLotteryType = ref<IngestionRunLotteryType>('BIG_LOTTO')
 const syncForm = reactive({ dateFrom: '', dateTo: '' })
+const syncDateFromError = computed(() =>
+  syncForm.dateFrom === ''
+    ? 'Date is required.'
+    : isValidIsoCalendarDate(syncForm.dateFrom)
+      ? ''
+      : 'Enter a valid Gregorian date in YYYY-MM-DD format.',
+)
+const syncDateToError = computed(() =>
+  syncForm.dateTo === ''
+    ? 'Date is required.'
+    : isValidIsoCalendarDate(syncForm.dateTo)
+      ? ''
+      : 'Enter a valid Gregorian date in YYYY-MM-DD format.',
+)
+const syncDatesValid = computed(() =>
+  isValidIsoCalendarDate(syncForm.dateFrom) && isValidIsoCalendarDate(syncForm.dateTo),
+)
 const syncPending = ref<DrawSyncOperation | null>(null)
 const syncResult = ref<DrawSyncResponse | null>(null)
 const syncMessage = ref('')
@@ -122,9 +140,27 @@ const totalAcceptedRows = computed(() =>
 const totalDuplicateRows = computed(() =>
   files.value.reduce((acc, f) => acc + entryDuplicateRows(f), 0),
 )
+const totalConflictRows = computed(() =>
+  files.value.reduce((acc, f) => acc + entryConflictRows(f), 0),
+)
 const totalFailedRows = computed(() =>
   files.value.reduce((acc, f) => acc + entryFailedRows(f), 0),
 )
+
+// A batch total is authoritative only when every selected file has results.
+const metricUnavailable = computed(() => {
+  const missing = files.value.filter((entry) => entry.fileResults.length === 0)
+  if (missing.some((entry) => entry.previewStatus === 'ERROR' || entry.commitStatus === 'FAILED')) {
+    return { value: 'Unavailable', subvalue: 'Preview or file processing failed', variant: 'danger' } as const
+  }
+  if (missing.some((entry) => ['READING', 'PREVIEWING'].includes(entry.previewStatus))) {
+    return { value: 'Loading…', subvalue: 'Awaiting preview results', variant: 'info' } as const
+  }
+  if (files.value.length === 0 || missing.length > 0) {
+    return { value: 'Not previewed', subvalue: 'Preview results required', variant: 'default' } as const
+  }
+  return null
+})
 
 const filteredIngestionRuns = computed(() => {
   let list = ingestionRuns.value
@@ -327,7 +363,7 @@ function cancelBatch(clearInput = true): void {
 }
 
 async function runSync(operation: DrawSyncOperation): Promise<void> {
-  if (!syncForm.dateFrom || !syncForm.dateTo || syncPending.value) return
+  if (!syncDatesValid.value || syncPending.value) return
   syncController?.abort()
   const controller = new AbortController()
   syncController = controller
@@ -529,7 +565,7 @@ function displayText(value: unknown): string {
 function formatTimestamp(value: unknown): string {
   if (typeof value !== 'string' || !value) return '—'
   const parsed = new Date(value)
-  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString()
+  return Number.isNaN(parsed.valueOf()) ? value : parsed.toLocaleString('en-US')
 }
 
 function isAbort(error: unknown): boolean {
@@ -572,20 +608,22 @@ onBeforeUnmount(() => {
       />
       <MetricCard
         label="Discovered Rows"
-        :value="totalDiscoveredRows"
-        :subvalue="`${totalAcceptedRows} accepted`"
+        :value="metricUnavailable?.value ?? totalDiscoveredRows"
+        :subvalue="metricUnavailable?.subvalue ?? `${totalAcceptedRows} accepted`"
+        :variant="metricUnavailable?.variant"
       />
       <MetricCard
+        data-testid="metric-duplicates-conflicts"
         label="Duplicates / Conflicts"
-        :value="totalDuplicateRows"
-        :subvalue="`${totalDuplicateRows} duplicate · 0 conflict`"
-        :variant="totalDuplicateRows > 0 ? 'warning' : 'default'"
+        :value="metricUnavailable?.value ?? totalDuplicateRows + totalConflictRows"
+        :subvalue="metricUnavailable?.subvalue ?? `${totalDuplicateRows} duplicate · ${totalConflictRows} conflict`"
+        :variant="totalConflictRows > 0 ? 'danger' : metricUnavailable?.variant ?? (totalDuplicateRows > 0 ? 'warning' : 'default')"
       />
       <MetricCard
         label="Failed / Invalid"
-        :value="totalFailedRows"
-        :subvalue="totalFailedRows ? 'Review issue details below' : 'None'"
-        :variant="totalFailedRows > 0 ? 'danger' : 'success'"
+        :value="metricUnavailable?.value ?? totalFailedRows"
+        :subvalue="metricUnavailable?.subvalue ?? (totalFailedRows ? 'Review issue details below' : 'None')"
+        :variant="totalFailedRows > 0 ? 'danger' : metricUnavailable?.variant ?? 'success'"
       />
     </div>
 
@@ -618,9 +656,16 @@ onBeforeUnmount(() => {
         <div class="file-dropzone__content">
           <label class="file-picker">
             <span>Select or drag & drop one or more import files</span>
+            <span class="file-picker__control">
+              <span class="button button--secondary file-picker__button" aria-hidden="true">Choose files</span>
+              <span class="file-picker__selection" aria-live="polite">
+                {{ files.length ? `${files.length} file${files.length === 1 ? '' : 's'} selected` : 'No files selected' }}
+              </span>
+            </span>
             <input
               ref="fileInput"
               data-testid="csv-file"
+              aria-label="Select import files"
               type="file"
               accept=".csv,.txt,.zip,text/csv,text/plain,application/zip"
               multiple
@@ -823,11 +868,13 @@ onBeforeUnmount(() => {
       <div class="filter-grid" style="margin-top: 14px">
         <label>
           <span>Date from</span>
-          <input v-model="syncForm.dateFrom" data-testid="sync-date-from" type="date" />
+          <input v-model="syncForm.dateFrom" data-testid="sync-date-from" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="syncDateFromError ? 'true' : undefined" :aria-describedby="syncDateFromError ? 'sync-date-from-error' : undefined" />
+          <small v-if="syncDateFromError" id="sync-date-from-error" class="date-validation-error" role="alert">{{ syncDateFromError }}</small>
         </label>
         <label>
           <span>Date to</span>
-          <input v-model="syncForm.dateTo" data-testid="sync-date-to" type="date" />
+          <input v-model="syncForm.dateTo" data-testid="sync-date-to" type="text" inputmode="numeric" pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}" maxlength="10" placeholder="YYYY-MM-DD" autocomplete="off" :aria-invalid="syncDateToError ? 'true' : undefined" :aria-describedby="syncDateToError ? 'sync-date-to-error' : undefined" />
+          <small v-if="syncDateToError" id="sync-date-to-error" class="date-validation-error" role="alert">{{ syncDateToError }}</small>
         </label>
       </div>
 
@@ -836,7 +883,7 @@ onBeforeUnmount(() => {
           class="button button--primary"
           data-testid="manual-sync"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('manual')"
         >
           Manual sync
@@ -844,7 +891,7 @@ onBeforeUnmount(() => {
         <button
           class="button button--quiet"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('missing-scan')"
         >
           Scan missing draws
@@ -852,7 +899,7 @@ onBeforeUnmount(() => {
         <button
           class="button button--quiet"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('backfill')"
         >
           Bounded backfill
@@ -861,7 +908,7 @@ onBeforeUnmount(() => {
           class="button button--quiet"
           data-testid="scheduled-sync"
           type="button"
-          :disabled="!!syncPending || !syncForm.dateFrom || !syncForm.dateTo"
+          :disabled="!!syncPending || !syncDatesValid"
           @click="runSync('scheduled')"
         >
           Run scheduled trigger

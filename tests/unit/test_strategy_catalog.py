@@ -18,6 +18,7 @@ from lottolab.strategies.adapters import (
     BigLottoZoneSplit3BetBet2Adapter,
     BigLottoZoneSplit3BetBet3Adapter,
 )
+from lottolab.strategies.adapters.biglotto_batch16 import BigLottoEvolutionEngineAdapter
 from lottolab.strategies.adapters.biglotto_horizon_minimax import (
     BigLottoHorizonMinimaxDisagreementAdapter,
 )
@@ -179,9 +180,9 @@ def test_production_catalog_invariants() -> None:
 def test_catalog_preserves_approved_strategy_append_order() -> None:
     catalog = production_catalog()
     ids = [descriptor.strategy_id for descriptor in catalog]
-    assert len(catalog) == 135
-    assert len(ids) == 135
-    assert len(set(ids)) == 135
+    assert len(catalog) == 137
+    assert len(ids) == 137
+    assert len(set(ids)) == 137
     assert ids == [
         "biglotto_social_wisdom_anti_popularity",
         "biglotto_zone_split_3bet_bet1",
@@ -263,6 +264,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "power_c06_regime_cusum_1bet",
         "power_c07_borda_ensemble_1bet",
         "acb_markov_midfreq_3bet",
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
         "legacy_biglotto__backtest_apriori__2abb53765703",
         "legacy_biglotto__covering_strategy_research__214ecc206fc9",
         "legacy_biglotto__evolution_engine__3df019c31ce4",
@@ -318,6 +320,7 @@ def test_catalog_preserves_approved_strategy_append_order() -> None:
         "legacy_biglotto__frontend_ml_genetic__3a4324bc2aa9",
         "legacy_biglotto__frontend_collaborative_hybrid__97d79db161ba",
         "legacy_biglotto__frontend_auto_optimize_strategy__a121d28125c6",
+        "power_graph_synergy_seed42_2bet",
     ]
     online_ids = {
         descriptor.strategy_id
@@ -567,3 +570,36 @@ def test_p0_bet2_descriptor_and_adapter_identity_match_exactly() -> None:
         "current_significance:NOT_ESTABLISHED",
         "migration_task:MATHSTATISTICALANALYSIS_BIGLOTTO_P0_2BET_BET2_ADAPTER_MIGRATION_R1",
     )
+
+
+# ─── evolution engine: variable native-cardinality contract ────────────────
+
+
+def test_evolution_engine_descriptor_declares_variable_native_bounds() -> None:
+    descriptor = production_catalog().get(BigLottoEvolutionEngineAdapter.strategy_id)
+    assert descriptor.native_ticket_count == 10
+    assert descriptor.minimum_native_ticket_count == 1
+    assert descriptor.maximum_native_ticket_count == 10
+    assert descriptor.native_ticket_count_bounds == (1, 10)
+
+
+def test_evolution_engine_excluded_from_exact_native_k5_k10_k20_universe() -> None:
+    """The existing exact-native eligibility rule is bounds equality: a
+    strategy is exact-native at N only when native_ticket_count_bounds ==
+    (N, N) (see StrategyDescriptor.native_ticket_count_bounds). Evolution
+    Engine's declared (1, 10) bounds must exclude it from each of the
+    K5/K10/K20 exact-native universes -- this would fail if either
+    declaration were reverted to a strict (10, 10)."""
+
+    portfolio_descriptors = tuple(
+        descriptor
+        for descriptor in production_catalog().list(lottery_type=LotteryType.BIG_LOTTO)
+        if descriptor.response_shape is ResponseShape.PORTFOLIO
+    )
+    for exact_count in (5, 10, 20):
+        exact_ids = {
+            descriptor.strategy_id
+            for descriptor in portfolio_descriptors
+            if descriptor.native_ticket_count_bounds == (exact_count, exact_count)
+        }
+        assert BigLottoEvolutionEngineAdapter.strategy_id not in exact_ids

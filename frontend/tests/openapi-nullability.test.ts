@@ -40,3 +40,19 @@ describe('OpenAPI nullable TypeScript generation', () => {
     expect(declarations).not.toContain('| unknown')
   })
 })
+
+
+it('keeps K5 separate with nullable enrichment, integer position and shared source scopes', () => {
+  const contract = JSON.parse(readFileSync('../contracts/openapi.json', 'utf8'))
+  const schemas = contract.components.schemas
+  expect(schemas.B649ExactNativeTicketCount.enum).toEqual([2, 3, 5, 10])
+  const k5 = schemaType(schemas.B649K5Record)
+  for (const field of ['catalog_strategy_version', 'legacy_method_id', 'source_path', 'method_family', 'metric_unavailable_reason']) {
+    expect(k5).toContain(`"${field}": string | null`)
+  }
+  expect(k5).toContain('"position": number | null')
+  expect(k5).toContain('"official_rank": number | null')
+  expect(schemaType(schemas.B649K5RecordPageResponse)).toContain('"ties": Array<')
+  expect(schemaType(schemas.B649K10Record)).toContain('"position": null')
+  expect(schemaType(schemas.B649ExactNativeRecordView)).toContain('"official_rank"?: null')
+})

@@ -52,7 +52,29 @@ function isStrategyEvidenceResponse(value: unknown): value is StrategyEvidenceRe
     value.strategy_combination_hit_rate.owner === 'ACTIVE_MULTITICKET_AGENT' &&
     isRecord(value.d3) &&
     typeof value.d3.status === 'string' &&
-    value.d3.value === 'NOT_AVAILABLE'
+    value.d3.value === 'NOT_AVAILABLE' &&
+    isD3Definition(value.d3.definition)
+  )
+}
+
+function isD3Definition(
+  value: unknown,
+): value is StrategyEvidenceResponse['d3']['definition'] {
+  return (
+    isRecord(value) &&
+    typeof value.metric_id === 'string' &&
+    typeof value.metric_version === 'string' &&
+    typeof value.schema_id === 'string' &&
+    typeof value.schema_version === 'string' &&
+    typeof value.formula_status === 'string' &&
+    typeof value.direction === 'string' &&
+    typeof value.aggregation === 'string' &&
+    typeof value.sample_unit === 'string' &&
+    typeof value.decimal_scale === 'number' &&
+    typeof value.rounding_mode === 'string' &&
+    typeof value.unit === 'string' &&
+    typeof value.definition_prose === 'string' &&
+    typeof value.authority_path === 'string'
   )
 }
 

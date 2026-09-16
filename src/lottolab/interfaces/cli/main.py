@@ -23,10 +23,17 @@ from lottolab.application.use_cases.generate_bet import (
     run_cli_generate_portfolio,
 )
 from lottolab.infrastructure.local_runtime import LocalRuntimeSupervisor
+from lottolab.interfaces.cli.b649_canonical_schedule_authority_sync import (
+    b649_canonical_schedule_authority_sync_command,
+)
 from lottolab.interfaces.cli.biglotto_multi_ticket_backtest import (
     multi_ticket_backtest_command,
 )
 from lottolab.interfaces.cli.draw_data_integrity import draw_data_integrity_command
+from lottolab.interfaces.cli.exact_native_replay import (
+    replay_biglotto_exact_native_command,
+    replay_biglotto_exact_native_shard_command,
+)
 from lottolab.interfaces.cli.full_strategy_research import (
     export_full_strategy_research_catalog_command,
 )
@@ -214,6 +221,9 @@ from lottolab.interfaces.cli.research_backtest_runner import (
     run_biglotto_research_backtest_command,
 )
 from lottolab.interfaces.cli.research_store import research_store_command
+from lottolab.interfaces.cli.t539_p638_schedule_certificate import (
+    t539_p638_schedule_certificate_command,
+)
 from lottolab.interfaces.cli.taiwan_lottery_metadata_backfill import (
     taiwan_lottery_metadata_backfill_command,
 )
@@ -227,6 +237,10 @@ app.command("forward-p638-historical")(forward_p638_historical_command)
 app.command("replay-predictions")(replay_predictions_command)
 app.command("register-pre-outcome-target")(register_pre_outcome_target_command)
 app.command("supplement-future-draw-identity")(supplement_future_draw_identity_command)
+app.command("t539-p638-schedule-certificate")(t539_p638_schedule_certificate_command)
+app.command("b649-canonical-schedule-authority-sync")(
+    b649_canonical_schedule_authority_sync_command
+)
 app.command("research-store")(research_store_command)
 app.command("run-biglotto-research-backtest")(run_biglotto_research_backtest_command)
 app.command("import-biglotto-legacy-reference")(import_biglotto_legacy_reference_command)
@@ -239,6 +253,8 @@ app.command("materialize-ordered-candidate-emissions")(
 app.command("export-biglotto-strategy-universe")(export_full_strategy_research_catalog_command)
 app.command("backtest-biglotto-portfolios")(multi_ticket_backtest_command)
 app.command("historical-replay-biglotto")(historical_replay_biglotto_command)
+app.command("replay-biglotto-exact-native")(replay_biglotto_exact_native_command)
+app.command("replay-biglotto-exact-native-shard")(replay_biglotto_exact_native_shard_command)
 app.command("materialize-biglotto-replay-batch")(materialize_exact_replay_batch_command)
 app.command("materialize-biglotto-random-native-batch")(
     materialize_legacy_random_native_batch_command

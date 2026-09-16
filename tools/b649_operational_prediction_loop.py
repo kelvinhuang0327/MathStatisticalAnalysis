@@ -13,10 +13,12 @@ import json
 import os
 import re
 import sys
+from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from functools import partial
+from itertools import combinations
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
@@ -84,6 +86,15 @@ _TEMPORAL_CLASSES = ("PRE_DRAW", "POST_DRAW")
 _M_KEYS = ("M1+", "M2+", "M3+", "M4+", "M5+", "M6")
 _AVAILABILITY_VALUES = ("AVAILABLE", "UNAVAILABLE", "TECHNICAL_FAILURE")
 _HEAD_TO_HEAD_METRICS = ("M2+", "official_any_prize")
+_WEIGHT_AUTHORITY_VALUES = ("LIMITED", "READY", "NOT_AVAILABLE")
+_WEIGHT_MODE_VALUES = ("UNWEIGHTED", "CANONICAL_WEIGHTED")
+DESCRIPTIVE_PREDRAW_CONSENSUS_METHOD = "b649-descriptive-predraw-consensus-v1"
+DESCRIPTIVE_AUTHORITY_STATUS = "NONCANONICAL_DESCRIPTIVE"
+LEGACY_CANONICAL_PREDRAW_CONSENSUS_ERROR = (
+    "CANONICAL_PREDRAW_CONSENSUS_RETIRED: production canonical consensus is "
+    "owned by Authority B; use build_descriptive_predraw_consensus for PR #283 diagnostics"
+)
+DEFAULT_CONSENSUS_TOP_K = 10
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +107,7 @@ class HistorySnapshot:
     draw_count: int
     history_sha256: str
     history_caveat: str = "YES"
+    normalized_record_hashes: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,7 +319,7 @@ def load_canonical_history(
     with open_database(paths, read_only=True) as connection:
         raw_rows = connection.execute(
             """
-            SELECT draw_number, draw_date, main_numbers_json
+            SELECT draw_number, draw_date, main_numbers_json, normalized_record_hash
             FROM draws
             WHERE lottery_type = ?
               AND (
@@ -344,7 +356,43 @@ def load_canonical_history(
         cutoff_date=cutoff_date.isoformat(),
         draw_count=history_ref.draw_count,
         history_sha256=history_ref.history_sha256,
+        normalized_record_hashes=tuple(str(raw[3]) for raw in raw_rows),
     )
+
+
+def _assert_causal_cutoff(
+    *,
+    target_draw_number: str,
+    target_draw_date: str,
+    history_cutoff_draw: str,
+    history_cutoff_date: str,
+    history_rows: tuple[CausalDrawRow, ...],
+) -> None:
+    """Reject any history cutoff or row at or after the target draw.
+
+    Defense-in-depth: ``load_canonical_history`` already restricts ``rows`` to
+    strictly-prior draws via its own SQL predicate, but ``HistorySnapshot`` is
+    a plain public dataclass any caller can construct directly, so prediction
+    generation re-verifies the invariant itself rather than trusting how its
+    ``history`` argument happened to be built.
+    """
+
+    target_key = (date.fromisoformat(target_draw_date), int(target_draw_number))
+
+    cutoff_key = (date.fromisoformat(history_cutoff_date), int(history_cutoff_draw))
+    if cutoff_key >= target_key:
+        raise ValueError(
+            "CAUSAL_CUTOFF_VIOLATION: history cutoff "
+            f"{history_cutoff_draw} ({history_cutoff_date}) >= target "
+            f"{target_draw_number} ({target_draw_date})"
+        )
+    for row in history_rows:
+        row_key = (date.fromisoformat(row.date), int(row.draw))
+        if row_key >= target_key:
+            raise ValueError(
+                f"CAUSAL_CUTOFF_VIOLATION: history row {row.draw} ({row.date}) "
+                f">= target {target_draw_number} ({target_draw_date})"
+            )
 
 
 def create_prediction_payload(
@@ -360,6 +408,13 @@ def create_prediction_payload(
     scheduled_at = datetime.fromisoformat(TARGET_SCHEDULED_AT)
     run_id = _new_prediction_run_id(observed_at) if prediction_run_id is None else prediction_run_id
     _require_identifier(run_id, "prediction_run_id")
+    _assert_causal_cutoff(
+        target_draw_number=TARGET_DRAW_NUMBER,
+        target_draw_date=TARGET_DRAW_DATE,
+        history_cutoff_draw=history.cutoff_draw,
+        history_cutoff_date=history.cutoff_date,
+        history_rows=history.rows,
+    )
 
     adapter = BigLottoHorizonMinimaxDisagreementAdapter()
     if (
@@ -457,6 +512,13 @@ def run_strategy_stream(
 
     _require_aware_datetime(created_at, "created_at")
     _require_identifier(prediction_run_id, "prediction_run_id")
+    _assert_causal_cutoff(
+        target_draw_number=target.draw_number,
+        target_draw_date=target.draw_date,
+        history_cutoff_draw=history.cutoff_draw,
+        history_cutoff_date=history.cutoff_date,
+        history_rows=history.rows,
+    )
     scheduled_at = datetime.fromisoformat(target.scheduled_at)
     record: dict[str, object] = {
         "schema_version": "b649-operational-prediction-v1",
@@ -838,6 +900,229 @@ def build_head_to_head_summary(root: Path) -> Path:
     path = root / "head_to_head.jsonl"
     _write_text_atomic(path, text)
     return path
+
+
+def compute_number_consensus(
+    predictions: Sequence[dict[str, object]],
+) -> tuple[dict[str, int], ...]:
+    """Rank predicted numbers for the descriptive PR #283 diagnostic only.
+
+    The retained ranking uses unique-stream endorsement count descending, then
+    total ticket appearance count descending, then ascending natural number as
+    the deterministic tie-break.  It is not production authority.
+    """
+
+    unique_streams: dict[int, set[str]] = defaultdict(set)
+    ticket_counts: dict[int, int] = defaultdict(int)
+    for prediction in predictions:
+        strategy_id = _required_identifier(prediction, "strategy_id")
+        stream_numbers: set[int] = set()
+        for ticket in _required_object_list(prediction, "tickets"):
+            numbers = _numbers_from_object(ticket, "predicted_numbers")
+            stream_numbers.update(numbers)
+            for number in numbers:
+                ticket_counts[number] += 1
+        for number in stream_numbers:
+            unique_streams[number].add(strategy_id)
+
+    numbers = set(unique_streams) | set(ticket_counts)
+    ranking = sorted(
+        numbers,
+        key=lambda number: (-len(unique_streams[number]), -ticket_counts[number], number),
+    )
+    return tuple(
+        {
+            "rank": rank,
+            "number": number,
+            "unique_stream_count": len(unique_streams[number]),
+            "ticket_count": ticket_counts[number],
+        }
+        for rank, number in enumerate(ranking, start=1)
+    )
+
+
+def compute_pairwise_stream_overlap(
+    predictions: Sequence[dict[str, object]],
+) -> tuple[dict[str, object], ...]:
+    """Descriptive-only shared-number counts between every stream pair.
+
+    Never consumed by ranking, Top-K selection, or aggregation weighting, so
+    it can never become the arbitrary correlation penalty a canonical
+    aggregator must avoid; it exists purely so a correlation signal already
+    present in the current stream set is not silently discarded.
+    """
+
+    stream_numbers: dict[str, set[int]] = {}
+    for prediction in predictions:
+        strategy_id = _required_identifier(prediction, "strategy_id")
+        numbers: set[int] = set()
+        for ticket in _required_object_list(prediction, "tickets"):
+            numbers.update(_numbers_from_object(ticket, "predicted_numbers"))
+        stream_numbers[strategy_id] = numbers
+
+    return tuple(
+        {
+            "stream_a": stream_a,
+            "stream_b": stream_b,
+            "shared_number_count": len(stream_numbers[stream_a] & stream_numbers[stream_b]),
+        }
+        for stream_a, stream_b in combinations(sorted(stream_numbers), 2)
+    )
+
+
+def _load_predraw_consensus_predictions(directory: Path) -> tuple[dict[str, object], ...]:
+    if not directory.is_dir():
+        raise FileNotFoundError(f"prediction directory does not exist: {directory}")
+    files = sorted((*directory.glob("*.json"), *directory.glob("*/*.json")), key=str)
+    if not files:
+        raise FileNotFoundError(f"no persisted prediction files under {directory}")
+    return tuple(_read_json_object(path) for path in files)
+
+
+def build_descriptive_predraw_consensus(
+    prediction_directory: Path,
+    *,
+    expected_target_draw: str,
+    expected_history_cutoff: str,
+    expected_stream_count: int | None = None,
+    top_k: int = DEFAULT_CONSENSUS_TOP_K,
+    weight_authority_status: str = "LIMITED",
+    aggregation_weight_mode: str = "UNWEIGHTED",
+    generated_at: datetime | None = None,
+) -> dict[str, object]:
+    """Build the noncanonical descriptive PRE_DRAW consensus diagnostic.
+
+    This retains PR #283's number ranking, Top-K, and pairwise overlap
+    diagnostics without producing a production final recommendation.  It
+    never reads or requires the target's own outcome.
+
+    ``expected_history_cutoff`` is the target's allowed cutoff ceiling: every
+    stream's own history cutoff must be at or before it, but streams are not
+    required to share one exact cutoff. The returned ``history_cutoff`` is
+    that validated ceiling, not an arbitrary pick among per-stream values.
+
+    ``CANONICAL_WEIGHTED`` always fails closed for this diagnostic interface:
+    no production stream weight source exists here, so weighted aggregation is
+    never silently substituted for the descriptive unweighted ranking.
+    """
+
+    if weight_authority_status not in _WEIGHT_AUTHORITY_VALUES:
+        raise ValueError(f"unsupported weight_authority_status: {weight_authority_status!r}")
+    if aggregation_weight_mode not in _WEIGHT_MODE_VALUES:
+        raise ValueError(f"unsupported aggregation_weight_mode: {aggregation_weight_mode!r}")
+    if aggregation_weight_mode == "CANONICAL_WEIGHTED":
+        if weight_authority_status != "READY":
+            raise ValueError(
+                "WEIGHTED_MODE_REQUIRES_READY_AUTHORITY: aggregation_weight_mode "
+                "CANONICAL_WEIGHTED requires weight_authority_status READY, got "
+                f"{weight_authority_status!r}"
+            )
+        raise ValueError(
+            "CANONICAL_WEIGHTED_NOT_IMPLEMENTED: no canonical stream weight "
+            "source is available in this codebase; only UNWEIGHTED aggregation "
+            "is implemented"
+        )
+    if top_k < 1:
+        raise ValueError("top_k must be a positive integer")
+
+    directory = Path(prediction_directory).resolve()
+    predictions = _load_predraw_consensus_predictions(directory)
+
+    if expected_stream_count is not None and len(predictions) != expected_stream_count:
+        raise ValueError(
+            f"STREAM_COUNT_MISMATCH: expected {expected_stream_count} streams, "
+            f"found {len(predictions)} under {directory}"
+        )
+
+    allowed_cutoff = int(expected_history_cutoff)
+    stream_identities: list[dict[str, object]] = []
+    for prediction in predictions:
+        strategy_id = _required_identifier(prediction, "strategy_id")
+        draw_number = _required_identifier(prediction, "draw_number")
+        if draw_number != expected_target_draw:
+            raise ValueError(
+                f"TARGET_DRAW_MISMATCH: expected {expected_target_draw!r}, found "
+                f"{draw_number!r} in stream {strategy_id!r}"
+            )
+        availability = _required_str(prediction, "availability")
+        if availability != "AVAILABLE":
+            raise ValueError(
+                f"PREDICTION_NOT_AVAILABLE: stream {strategy_id!r} has "
+                f"availability {availability!r}, expected AVAILABLE"
+            )
+        temporal_class = _required_str(prediction, "prediction_temporal_class")
+        if temporal_class != "PRE_DRAW":
+            raise ValueError(
+                f"PREDICTION_NOT_PRE_DRAW: stream {strategy_id!r} has "
+                f"prediction_temporal_class {temporal_class!r}, expected PRE_DRAW"
+            )
+        cutoff_draw = _required_str(_required_object(prediction, "history_cutoff"), "draw_number")
+        if int(cutoff_draw) > allowed_cutoff:
+            raise ValueError(
+                f"HISTORY_CUTOFF_EXCEEDS_ALLOWED: stream {strategy_id!r} has "
+                f"cutoff {cutoff_draw!r}, allowed ceiling is "
+                f"{expected_history_cutoff!r}"
+            )
+        stream_identities.append(
+            {
+                "strategy_id": strategy_id,
+                "strategy_version": _required_identifier(prediction, "strategy_version"),
+                "prediction_run_id": _required_identifier(prediction, "prediction_run_id"),
+            }
+        )
+    stream_identities.sort(key=lambda identity: cast(str, identity["strategy_id"]))
+
+    ticket_count = sum(
+        len(_required_object_list(prediction, "tickets")) for prediction in predictions
+    )
+    number_consensus = compute_number_consensus(predictions)
+    top6 = sorted(entry["number"] for entry in number_consensus[:6])
+    top_k_numbers = sorted(entry["number"] for entry in number_consensus[:top_k])
+
+    observed_at = datetime.now(TAIPEI) if generated_at is None else generated_at
+    _require_aware_datetime(observed_at, "generated_at")
+
+    result: dict[str, object] = {
+        "schema_version": DESCRIPTIVE_PREDRAW_CONSENSUS_METHOD,
+        "target_draw": expected_target_draw,
+        "history_cutoff": expected_history_cutoff,
+        "prediction_temporal_class": "PRE_DRAW",
+        "upstream_prediction_locator": str(directory),
+        "stream_count": len(predictions),
+        "stream_identities": stream_identities,
+        "ticket_count": ticket_count,
+        "descriptive_number_consensus": list(number_consensus),
+        "descriptive_top6": top6,
+        "descriptive_top_k": top_k_numbers,
+        "descriptive_stream_overlap": list(compute_pairwise_stream_overlap(predictions)),
+        "aggregation_method": DESCRIPTIVE_PREDRAW_CONSENSUS_METHOD,
+        "authority_status": DESCRIPTIVE_AUTHORITY_STATUS,
+        "weight_authority_status": weight_authority_status,
+        "aggregation_weight_mode": aggregation_weight_mode,
+        "target_result_used": False,
+        "generated_at": observed_at.isoformat(timespec="microseconds"),
+    }
+    return result
+
+
+def build_canonical_predraw_consensus(
+    prediction_directory: Path,
+    *,
+    expected_target_draw: str,
+    expected_history_cutoff: str,
+    expected_stream_count: int | None = None,
+    top_k: int = DEFAULT_CONSENSUS_TOP_K,
+    weight_authority_status: str = "LIMITED",
+    aggregation_weight_mode: str = "UNWEIGHTED",
+    generated_at: datetime | None = None,
+) -> dict[str, object]:
+    """Reject the retired PR #283 canonical compatibility entrypoint.
+
+    The rejection is intentionally the first operation so this historical
+    name can never read prediction inputs or return a recommendation.
+    """
+
+    raise ValueError(LEGACY_CANONICAL_PREDRAW_CONSENSUS_ERROR)
 
 
 def _read_ingested_draws(database: Path) -> tuple[tuple[str, datetime], ...]:
@@ -1228,7 +1513,15 @@ def _iter_prediction_files(root: Path, draw_number: str) -> tuple[Path, ...]:
     base = root / "predictions" / draw_number
     if not base.is_dir():
         return ()
-    return tuple(sorted((*base.glob("*.json"), *base.glob("*/*.json")), key=str))
+    return tuple(
+        sorted(
+            (
+                path
+                for path in (*base.glob("*.json"), *base.glob("*/*.json"))
+            ),
+            key=str,
+        )
+    )
 
 
 def _iter_all_prediction_files(root: Path) -> tuple[Path, ...]:
@@ -1239,7 +1532,13 @@ def _iter_all_prediction_files(root: Path) -> tuple[Path, ...]:
         return ()
     return tuple(
         sorted(
-            (*predictions_root.glob("*/*.json"), *predictions_root.glob("*/*/*.json")),
+            (
+                path
+                for path in (
+                    *predictions_root.glob("*/*.json"),
+                    *predictions_root.glob("*/*/*.json"),
+                )
+            ),
             key=str,
         )
     )
@@ -1607,7 +1906,11 @@ def main(argv: list[str] | None = None) -> int:
                 target_draw_number=target.draw_number,
                 target_draw_date=target.draw_date,
             )
-            results = run_all_enabled_streams(root, target=target, history=history)
+            results = run_all_enabled_streams(
+                root,
+                target=target,
+                history=history,
+            )
             print(_canonical_json({"results": results}))
             return 0
         prediction = create_prediction_payload(load_canonical_history(database))

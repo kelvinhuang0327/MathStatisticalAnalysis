@@ -1,0 +1,158 @@
+{
+  "artifact_schema_version": "1.0.0",
+  "claim_boundary": {
+    "db_access": false,
+    "global_optimum": "NOT_CLAIMED",
+    "historical_replay": "NOT_RUN",
+    "matrix_registration": "NOT_RUN",
+    "merge": "NOT_RUN",
+    "pr": "NOT_CREATED",
+    "push": "NOT_RUN",
+    "ranking": "NOT_RUN"
+  },
+  "delta_seed_to_terminal": {
+    "denominator": 1,
+    "exact": "0",
+    "numerator": 0
+  },
+  "draw_size": 5,
+  "frozen_semantics": {
+    "move_acceptance": "STRICT_BEST_IMPROVEMENT_ONLY",
+    "neighborhood": "COMPLETE_EXACT_ONE_NUMBER_EXCHANGE",
+    "objective_authority": "exact Fraction",
+    "rng": "NONE",
+    "tie_break": "LEXICOGRAPHICALLY_SMALLEST_CANONICAL_PORTFOLIO"
+  },
+  "iteration_count": 1,
+  "iterations": [
+    {
+      "accepted_move": false,
+      "best_neighbor_expected_max": {
+        "denominator": 575757,
+        "exact": "597050/575757",
+        "numerator": 597050
+      },
+      "best_neighbor_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          11
+        ]
+      ],
+      "best_neighbor_portfolio_sha256": "2af7ddbdb653559d399bb27e694690f40106d746bcf797a060b6fec71c5beed4",
+      "delta": {
+        "denominator": 1,
+        "exact": "0",
+        "numerator": 0
+      },
+      "input_expected_max": {
+        "denominator": 575757,
+        "exact": "597050/575757",
+        "numerator": 597050
+      },
+      "input_portfolio": [
+        [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        [
+          6,
+          7,
+          8,
+          9,
+          10
+        ]
+      ],
+      "input_portfolio_sha256": "79739c0f788046ea2b632df223346075d00ba541bee9c410d92a479461f76fbd",
+      "iteration_index": 0,
+      "unique_legal_neighbor_count": 340
+    }
+  ],
+  "k": 2,
+  "lottery": "DAILY_539",
+  "method_id": "ITERATIVE_EXACT_1EXCHANGE_EXPECTED_MAX_V1",
+  "move_count": 0,
+  "objective": "EXPECTED_MAX_MAIN_MATCHES_V1",
+  "pool_size": 39,
+  "proof_status": "COMPLETE_RADIUS_1_LOCAL_OPTIMUM",
+  "provenance": {
+    "base_head": "da807537ad5694ea390d65895a263a0e1fed8956",
+    "base_tree": "57747b8046f5136c4ed38e06030fc9d12e5d36e1",
+    "execution_mode": "EXISTING_IMPLEMENTATION",
+    "rule_contract_sha256": "85c9433220abd26ae6744cca75cac705c8d49e770984dc000da97f06effab9c5",
+    "rule_contract_version": "2026-08-04.legacy-import-r1",
+    "rule_source": "src/lottolab/domain/lottery_rules.py:DAILY_539_RULE_CONTRACT"
+  },
+  "seed_expected_max": {
+    "denominator": 575757,
+    "exact": "597050/575757",
+    "numerator": 597050
+  },
+  "seed_method_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+  "seed_portfolio": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    [
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  ],
+  "seed_portfolio_sha256": "79739c0f788046ea2b632df223346075d00ba541bee9c410d92a479461f76fbd",
+  "seed_score_parity": {
+    "expected_max_main_matches": {
+      "denominator": 575757,
+      "exact": "597050/575757",
+      "numerator": 597050
+    },
+    "expected_max_main_matches_exact": {
+      "denominator": 575757,
+      "exact": "597050/575757",
+      "numerator": 597050
+    },
+    "status": "PASS"
+  },
+  "terminal_expected_max": {
+    "denominator": 575757,
+    "exact": "597050/575757",
+    "numerator": 597050
+  },
+  "terminal_portfolio": [
+    [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    [
+      6,
+      7,
+      8,
+      9,
+      10
+    ]
+  ],
+  "terminal_portfolio_sha256": "79739c0f788046ea2b632df223346075d00ba541bee9c410d92a479461f76fbd",
+  "terminal_unique_neighbor_count": 340,
+  "total_neighbor_evaluations": 340
+}

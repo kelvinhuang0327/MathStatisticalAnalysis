@@ -139,11 +139,30 @@ class StrategyCombinationHitRateBlock(BaseModel):
     owner: Literal["ACTIVE_MULTITICKET_AGENT"]
 
 
+class D3DefinitionView(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    metric_id: str
+    metric_version: str
+    schema_id: str
+    schema_version: str
+    formula_status: str
+    direction: str
+    aggregation: str
+    sample_unit: str
+    decimal_scale: int = Field(ge=0)
+    rounding_mode: str
+    unit: str
+    definition_prose: str
+    authority_path: str
+
+
 class D3AvailabilityBlock(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     status: D3AvailabilityStatus
     value: Literal["NOT_AVAILABLE"] | str
+    definition: D3DefinitionView
 
 
 class StrategyEvidenceResponse(BaseModel):

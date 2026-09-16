@@ -193,7 +193,25 @@ beforeEach(() => {
             value: 'NOT_AVAILABLE',
             owner: 'ACTIVE_MULTITICKET_AGENT',
           },
-          d3: { status: 'RESERVED_UNAVAILABLE', value: 'NOT_AVAILABLE' },
+          d3: {
+            status: 'RESERVED_UNAVAILABLE',
+            value: 'NOT_AVAILABLE',
+            definition: {
+              metric_id: 'D3',
+              metric_version: 'v1',
+              schema_id: 'lottolab.evidence.metric_definition',
+              schema_version: '1.0.0',
+              formula_status: 'RESERVED_UNAVAILABLE',
+              direction: 'DESCRIPTIVE_ONLY',
+              aggregation: 'NONE',
+              sample_unit: 'DRAWS',
+              decimal_scale: 4,
+              rounding_mode: 'ROUND_HALF_EVEN',
+              unit: 'UNITLESS',
+              definition_prose: 'fixture prose',
+              authority_path: 'contracts/evidence/metric_definitions/d3.json',
+            },
+          },
         }),
       )
     }
@@ -301,6 +319,7 @@ describe('App navigation', () => {
       'Data Operations',
       'History',
       'Best Replay',
+      'Replay Overview',
       'Strategy Intelligence',
       'B649 Replay',
       'P638 Replay',
@@ -308,6 +327,16 @@ describe('App navigation', () => {
       'Future Modules',
     ])
     expect(wrapper.find('#data-center-title').exists()).toBe(true)
+
+    window.location.hash = '#/replay-overview'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('#replay-overview-title').exists()).toBe(true)
+    expect(
+      navigation
+        .find('a[href="#/replay-overview"]')
+        .attributes('aria-current'),
+    ).toBe('page')
 
     window.location.hash = '#/historical-success-windows'
     window.dispatchEvent(new HashChangeEvent('hashchange'))
@@ -376,6 +405,11 @@ describe('App navigation', () => {
     window.dispatchEvent(new HashChangeEvent('hashchange'))
     await flushPromises()
     expect(wrapper.find('#strategy-catalog-title').exists()).toBe(true)
+
+    window.location.hash = '#/ranking-matrix'
+    window.dispatchEvent(new HashChangeEvent('hashchange'))
+    await flushPromises()
+    expect(wrapper.find('[data-testid="ranking-matrix-page"]').exists()).toBe(true)
     wrapper.unmount()
   })
 

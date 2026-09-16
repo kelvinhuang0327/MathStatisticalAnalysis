@@ -421,7 +421,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "legacy_biglotto__test_dm_dms_biglotto__bad71858012d",
         "legacy_biglotto__test_dms_biglotto__10e39919c3a1",
     )
-    assert all_ids[68:113] == (
+    assert all_ids[68:114] == (
         "b649_new_horizon_minimax_disagreement_r1",
         "legacy_composite__quick_predict_5bet_ts3_markov_freqort",
         "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b",
@@ -434,6 +434,7 @@ def test_wave1_through_wave14_descriptors_are_unaffected_by_batch15() -> None:
         "power_c06_regime_cusum_1bet",
         "power_c07_borda_ensemble_1bet",
         "acb_markov_midfreq_3bet",
+        "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
         "legacy_biglotto__backtest_apriori__2abb53765703",
         "legacy_biglotto__covering_strategy_research__214ecc206fc9",
         "legacy_biglotto__evolution_engine__3df019c31ce4",

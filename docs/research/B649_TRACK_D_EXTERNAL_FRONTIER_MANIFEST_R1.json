@@ -1,0 +1,150 @@
+{
+  "schema_version": "B649_TRACK_D_EXTERNAL_FRONTIER_MANIFEST_R1",
+  "task_id": "B649_TRACK_D_EXTERNAL_RESEARCH_FRONTIER_EXPANSION_R1",
+  "status": "COMPLETE_DISCOVERY_AND_SPECIFICATION_ONLY",
+  "generated_at": "2026-08-13T11:23:52+08:00",
+  "owner_research_policy": "WIDE_IN_STRICT_OUT",
+  "intent": "current Track D authority contains 28 internally audited hypotheses and no external frontier artifacts; the task expects a provenance-preserving external discovery frontier with targeted 28/133 collision checks and fast-falsification specs; the opened Packet says create exactly ten repo-external artifacts without repo, DB, sealed-root, H01, or other Track D mutation.",
+  "workspace_identity": {
+    "repository": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "branch_observed_at_preflight": "codex/b649-horizon-minimax-target-native-migration-r1",
+    "head_observed_at_preflight": "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3",
+    "tree_observed_at_preflight": "64474415e7c4a34abd190b32d7a2e8a2a47d02f3",
+    "initial_status": "CLEAN",
+    "final_head_expected": "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3",
+    "final_tree_expected": "64474415e7c4a34abd190b32d7a2e8a2a47d02f3",
+    "repo_mutation": "NONE"
+  },
+  "internal_authority_inputs": [
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RESEARCH_SURFACE_R1.md",
+      "sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_R1.md",
+      "sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DEEP_AUDIT_R1.md",
+      "sha256": "03f7b603ebd700beef05a035608dc61f40ba64db2f6daba345ec0cbe4099fe7e"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_WHAT_WE_HAVE_NOT_TRIED_R1.md",
+      "sha256": "73107eded714e3bb28bfec21b73494923c0f94735ff581d30112a73eb2acfc05"
+    }
+  ],
+  "historical_authority": {
+    "commit": "2db4da27aee716805c393eb9c7dd41aff8e9527e",
+    "tree": "cb6b9c3685739c381d6a5f7a92fa7668ed93cc9c",
+    "catalog_path": "src/lottolab/strategies/data/biglotto_full_strategy_catalog_v1.json",
+    "catalog_git_blob": "fe93150e002bd7217be54501fdc9d390f81f79db",
+    "catalog_raw_blob_sha256": "e604a038622fa9476aa86b33cd8068287664ec49cd5a27c81996ecb59a88dfbf",
+    "catalog_declared_sha256": "9e2d9f6c3cffbfe9867d4aaafbf8c9315922503fc0b806dfc84627699e0d82e3",
+    "audited_historical_identity_count": 133,
+    "inspection": "READ_ONLY_GIT_OBJECT_AND_SEALED_AUDIT"
+  },
+  "source_counts": {
+    "external_sources_reviewed": 40,
+    "github_repositories_reviewed": 17,
+    "papers_preprints_reviewed": 19,
+    "other_primary_technical_sources_reviewed": 4,
+    "counting_policy": "GitHub URLs count as repositories; S06 S07 S11 S14 count as official technical documentation; remaining opened sources count as papers or preprints. Counts are mutually exclusive."
+  },
+  "discovery_counts": {
+    "raw_external_ideas_identified": 43,
+    "canonical_external_hypotheses_after_dedup": 27,
+    "exact_match_existing28": 1,
+    "subcases_of_existing28": 5,
+    "extensions_of_existing28": 4,
+    "combinations_of_existing28": 5,
+    "genuinely_new_hypotheses": 12,
+    "new_external_survivors": 21,
+    "existing_open_preserved": 28,
+    "total_proposed_research_frontier_v2": 49,
+    "survivor_133_top5_comparisons": 105,
+    "fast_falsification_specs_created": 21
+  },
+  "claim_safety": {
+    "external_claims_locally_validated": 0,
+    "local_validation_status": "NOT_RUN",
+    "external_performance_claim_status": "EXTERNAL_UNVERIFIED_CLAIM",
+    "external_code_executed": false,
+    "external_packages_installed": false,
+    "historical_backtests_run": 0,
+    "models_trained": 0
+  },
+  "mutation_ledger": {
+    "repo_mutation": "NONE",
+    "db_mutation": "NONE",
+    "sealed_task_data_mutation": "NONE",
+    "track_b_h01_interference": "NONE",
+    "other_track_d_interference": "NONE",
+    "shared_worktree_switch_or_move": "NONE",
+    "authorized_repo_external_outputs_created": 10
+  },
+  "validation": {
+    "source_minimum": "PASS",
+    "families_a_through_n": "PASS",
+    "lottery_specific_sources": "PASS",
+    "source_provenance": "PASS",
+    "performance_claim_marking": "PASS",
+    "existing_28_preserved": "PASS",
+    "full_28_column_semantic_matrix": "PASS",
+    "survivor_top5_from_actual_133": "PASS",
+    "false_family_only_exact_match": "NONE",
+    "survivor_canonical_definitions": "PASS_21_OF_21",
+    "fast_falsification_specs": "PASS_21_OF_21",
+    "future_information_in_specs": "NONE_BY_SPECIFICATION",
+    "checksum_replay": "PASS"
+  },
+  "artifacts": [
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_RESEARCH_FRONTIER_R1.md",
+      "bytes": 18452,
+      "sha256": "bbdaa28bce429c7fa4604525f7c3c9847dab2071ec986bec1a927ae0dfa5a98f"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_SOURCE_REGISTRY_R1.csv",
+      "bytes": 19815,
+      "sha256": "7f9e6a11d084ff8f56aa73cf1dc6f210af47bff49b29707eaace28debd34cdac"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_HYPOTHESIS_INVENTORY_R1.csv",
+      "bytes": 18445,
+      "sha256": "bef1220fd80e601325ed9eb9efcf53cd2dd9088c3ee3bc9924d8552f71126519"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_VS_EXISTING28_MATRIX_R1.csv",
+      "bytes": 24808,
+      "sha256": "b7b830312bfd3fdf1aaab64128d084bcfa998abd455665ba3df6a3f4c8eeb5de"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_SURVIVOR_133_COLLISION_R1.csv",
+      "bytes": 23062,
+      "sha256": "f75b67817291002d057d9eb09f57352c46871d2555a43e6486f8634da061d3e4"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_FAST_FALSIFICATION_SPECS_R1.md",
+      "bytes": 33916,
+      "sha256": "79f1adbf006a0f3b24279d57010d0a6c45a5cad606c95798e983dd2133e9ad31"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_PROPOSED_RESEARCH_FRONTIER_V2_R1.csv",
+      "bytes": 13117,
+      "sha256": "8b349deab9e21cf22e73c233a6e5e90a12f2bf0709254604e9d2a86b622b6fe6"
+    },
+    {
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_EXTERNAL_PRIORITY_RANKING_R1.csv",
+      "bytes": 4830,
+      "sha256": "81508e7f61ebbe22ef635c233c6162a993faa61fe6456e4ab8863868311d4c39"
+    }
+  ],
+  "checksum_policy": {
+    "manifest_self_hash": "RECORDED_EXTERNALLY_IN_CHECKSUM_FILE_TO_AVOID_SELF_REFERENCE",
+    "checksum_file_self_hash": "OMITTED_TO_AVOID_SELF_REFERENCE",
+    "checksum_file_entries": 9,
+    "replay_command": "cd /Users/kelvin/VibeCoding-WorkSpace && shasum -a 256 -c B649_TRACK_D_EXTERNAL_FRONTIER_SHA256SUMS_R1.txt"
+  },
+  "blockers": [],
+  "next": "Merge surviving external hypotheses with the 28-item research frontier only as a proposed discovery queue; execute later through Track B."
+}

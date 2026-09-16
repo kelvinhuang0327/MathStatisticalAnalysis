@@ -1,0 +1,358 @@
+{
+  "artifacts": [
+    {
+      "bytes": 22122,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_COHORT_V2_FORWARD_READINESS_R1.md",
+      "sha256": "58f142f7f04fe57be015416751bf80cafbb3f4fba21ce34d989792bc7842e2d3"
+    },
+    {
+      "bytes": 1091087,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_28_HYPOTHESIS_FORWARD_MATRIX_R1.csv",
+      "sha256": "97493cb6230c6630a24ec4e962789e171743bb9b4f71685212ad78780513d784"
+    },
+    {
+      "bytes": 67790,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_51_EXECUTABLE_CAPABILITY_MATRIX_R1.csv",
+      "sha256": "3ffc856f2e8f9e5597ad30e3372a1102c785a5852c23b230a55a0bf383087223"
+    },
+    {
+      "bytes": 24852,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RUNTIME_CAPABILITY_REGISTRY_R1.csv",
+      "sha256": "9e26316fb337bc29ddbb415fbe8cb8dcff9d2c0a2588350fbb17589012450de0"
+    },
+    {
+      "bytes": 7979,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_NEW_OUTPUT_CONTRACT_GAPS_R1.md",
+      "sha256": "ffea0d3106ca65d2e4ae457545c9be3385c8a05fce407d86e77ea2b8b57d2d20"
+    },
+    {
+      "bytes": 11391,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_SHARED_CAPABILITY_UNLOCK_RANKING_R1.csv",
+      "sha256": "b5939f9e59fcbceae1cc71cbce6f83ba2bc08ccd20c8586a291e0a5d77036e65"
+    },
+    {
+      "bytes": 5912,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_COHORT_V2_CONCEPTUAL_ENTRY_CONTRACT_R1.md",
+      "sha256": "357ec51425b31de05533f838a78d747d395bfa45b4e24c3aa2a6680d6a268806"
+    }
+  ],
+  "blockers": [],
+  "coverage": {
+    "capabilities_identified": 44,
+    "capability_entries_with_authority_and_limitation": "44/44",
+    "current_executable_mapped": "51/51",
+    "hypotheses_mapped": "28/28",
+    "hypothesis_capability_cells": 1232
+  },
+  "filesystem_ledger": {
+    "bootstrap_write": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FORWARD_READINESS_MANIFEST_R1.json temporarily contained the generator and is overwritten by this final JSON manifest",
+    "database_files_modified": [],
+    "repository_files_modified": [],
+    "sealed_predecessor_files_modified": [],
+    "task_created_files_deleted": [],
+    "task_created_files_retained": [
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_COHORT_V2_FORWARD_READINESS_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_28_HYPOTHESIS_FORWARD_MATRIX_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_51_EXECUTABLE_CAPABILITY_MATRIX_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RUNTIME_CAPABILITY_REGISTRY_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_NEW_OUTPUT_CONTRACT_GAPS_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_SHARED_CAPABILITY_UNLOCK_RANKING_R1.csv",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_COHORT_V2_CONCEPTUAL_ENTRY_CONTRACT_R1.md",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FORWARD_READINESS_MANIFEST_R1.json",
+      "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_FORWARD_READINESS_SHA256SUMS_R1.txt"
+    ]
+  },
+  "forward_readiness_counts": {
+    "HISTORICAL_ONLY_CURRENTLY": 1,
+    "READY_NOW": 1,
+    "READY_WITH_DERIVED_FEATURES": 1,
+    "READY_WITH_MEDIUM_ENGINEERING": 5,
+    "READY_WITH_SMALL_ENGINEERING": 6,
+    "REQUIRES_NEW_MODEL_OUTPUT": 9,
+    "REQUIRES_NEW_RUNTIME_ARCHITECTURE": 5
+  },
+  "generated_at": "2026-08-13T11:14:44+08:00",
+  "id_namespace": {
+    "canonical_primary": "H01-H28",
+    "top10_alias_mapping": {
+      "H01": {
+        "title": "CROSS_STRATEGY_RESIDUAL_GATED_META_SELECTOR",
+        "top10_program_id": "H01"
+      },
+      "H04": {
+        "title": "MULTI_WINDOW_SLOPE_ACCELERATION_DISAGREEMENT",
+        "top10_program_id": "H03"
+      },
+      "H07": {
+        "title": "CALIBRATED_PER_NUMBER_PROBABILITIES",
+        "top10_program_id": "H04"
+      },
+      "H10": {
+        "title": "DIRECT_TICKET_LEVEL_RESIDUAL_SCORING",
+        "top10_program_id": "H05"
+      },
+      "H12": {
+        "title": "TEMPORAL_HYPERGRAPH_MOTIF_RESIDUALS",
+        "top10_program_id": "H08"
+      },
+      "H14": {
+        "title": "DPP_SUBMODULAR_PORTFOLIO_SELECTION",
+        "top10_program_id": "H06"
+      },
+      "H17": {
+        "title": "DYNAMIC_BAYESIAN_STATE_SPACE_MODELING",
+        "top10_program_id": "H10"
+      },
+      "H19": {
+        "title": "CHANGE_POINT_TRIGGERED_ALLOCATION",
+        "top10_program_id": "H07"
+      },
+      "H21": {
+        "title": "CONDITIONAL_NEGATIVE_INFORMATION_SUPPRESSION",
+        "top10_program_id": "H09"
+      },
+      "H27": {
+        "title": "HORIZON_MINIMAX_DISAGREEMENT_CONFIRMATION",
+        "top10_program_id": "H02"
+      }
+    }
+  },
+  "input_authorities": [
+    {
+      "actual_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859",
+      "expected_sha256": "26add8e34cb259cffdd54c6cd8f91373980ffe7c2277b17b2afaca8c936c8859",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_RESEARCH_SURFACE_R1.md",
+      "status": "PASS"
+    },
+    {
+      "actual_sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b",
+      "expected_sha256": "6758482663fd46f14f86a293f0eef1a2bc77ff3186931267c5197f8cac87287b",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_HYPOTHESIS_COLLISION_AUDIT_R1.md",
+      "status": "PASS"
+    },
+    {
+      "actual_sha256": "335c5921978fd167658dd14c3bdac539edfdf2b405609d9e275fcbe024e4959d",
+      "expected_sha256": "335c5921978fd167658dd14c3bdac539edfdf2b405609d9e275fcbe024e4959d",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_TOP10_TRACK_B_EXPERIMENT_SPECS_R1.md",
+      "status": "PASS"
+    },
+    {
+      "actual_sha256": "03f7b603ebd700beef05a035608dc61f40ba64db2f6daba345ec0cbe4099fe7e",
+      "expected_sha256": "03f7b603ebd700beef05a035608dc61f40ba64db2f6daba345ec0cbe4099fe7e",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DEEP_AUDIT_R1.md",
+      "status": "PASS"
+    },
+    {
+      "actual_sha256": "44136e413386f312b36f55743a8eb45904d456365e6738117d4755e04803c9cc",
+      "expected_sha256": "44136e413386f312b36f55743a8eb45904d456365e6738117d4755e04803c9cc",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_FAST_FALSIFICATION_SPECS_R1.md",
+      "status": "PASS"
+    },
+    {
+      "actual_sha256": "809f738c851c678221722c99d5bedb8048d97e8a3c95d464c885da8dfb22eca7",
+      "expected_sha256": "809f738c851c678221722c99d5bedb8048d97e8a3c95d464c885da8dfb22eca7",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_REMAINING18_DATA_SUFFICIENCY_R1.csv",
+      "status": "PASS"
+    },
+    {
+      "actual_sha256": "14ccf28477e2fd3756731ab1ca7c5bb6ff629df1a42789006d6ff06795ba7728",
+      "expected_sha256": "14ccf28477e2fd3756731ab1ca7c5bb6ff629df1a42789006d6ff06795ba7728",
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/B649_TRACK_D_SECOND_WAVE_PRIORITY_R1.csv",
+      "status": "PASS"
+    }
+  ],
+  "live_repository_observation": {
+    "after_primary_payloads": {
+      "branch": "codex/b649-horizon-minimax-target-native-migration-r1",
+      "head": "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3",
+      "status_porcelain_v2": "# branch.oid fc720ea8965faf95021a59d3fe3dae61ae3ef6c3\n# branch.head codex/b649-horizon-minimax-target-native-migration-r1\n",
+      "tree": "64474415e7c4a34abd190b32d7a2e8a2a47d02f3"
+    },
+    "before": {
+      "branch": "codex/b649-horizon-minimax-target-native-migration-r1",
+      "head": "fc720ea8965faf95021a59d3fe3dae61ae3ef6c3",
+      "status_porcelain_v2": "# branch.oid fc720ea8965faf95021a59d3fe3dae61ae3ef6c3\n# branch.head codex/b649-horizon-minimax-target-native-migration-r1\n",
+      "tree": "64474415e7c4a34abd190b32d7a2e8a2a47d02f3"
+    },
+    "mutation": "NONE"
+  },
+  "manifest_scope": "Seven primary payloads are hashed here. The manifest is added to the separate SHA256SUMS file; the SHA256SUMS file excludes itself.",
+  "mode": "READ_ONLY_DESIGN_RESEARCH_WITH_ALLOWLISTED_OFF_REPOSITORY_ARTIFACTS",
+  "pinned_historical_authority": {
+    "base_adapter": {
+      "blob": "a4e5571491c7358d8624acb8fe53f99c3bba9611",
+      "path": "src/lottolab/strategies/adapters/base.py",
+      "sha256": "39161a069851421c5014185086b43771f3e0f90d06e4cd80f4b1a8e3e3062448"
+    },
+    "catalog": {
+      "blob": "099f2a8c9ccbacc8306b2397c560bef413b24217",
+      "path": "src/lottolab/strategies/catalog.py",
+      "sha256": "f69adde6d71390e716cfd4d6967932adb94b22b3dfb1bd451a87c9bf11257a4f"
+    },
+    "full_catalog": {
+      "blob": "fe93150e002bd7217be54501fdc9d390f81f79db",
+      "path": "src/lottolab/strategies/data/biglotto_full_strategy_catalog_v1.json",
+      "sha256": "e604a038622fa9476aa86b33cd8068287664ec49cd5a27c81996ecb59a88dfbf"
+    },
+    "head": "2db4da27aee716805c393eb9c7dd41aff8e9527e",
+    "repository": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "tree": "cb6b9c3685739c381d6a5f7a92fa7668ed93cc9c"
+  },
+  "population": {
+    "candidate_k_direct_available": 7,
+    "cohort_v1_forward_generatable": 3,
+    "cohort_v1_frozen": 40,
+    "cohort_v1_unavailable": 37,
+    "complete_current_executable_big_lotto_catalog": 68,
+    "current_51_catalog_order_id_list_sha256_with_trailing_lf": "2cd735bb6a7114aa395d376a6eee0483b6fd4312abfed7d67f7aa8a80a62b764",
+    "current_executable_within_historical": 51,
+    "current_portfolio_without_canonical_number_aggregation": 44,
+    "family_counts": {
+      "ML_like": 7,
+      "deviation": 6,
+      "folklore": 1,
+      "frequency": 6,
+      "hot_cold": 4,
+      "markov": 1,
+      "report": 1,
+      "unknown": 2,
+      "utility": 18,
+      "zone": 5
+    },
+    "historical_analyzable": 133,
+    "historical_only_raw_only": 82,
+    "min_history_distribution": {
+      "1": 42,
+      "100": 2,
+      "20": 2,
+      "200": 1,
+      "50": 4
+    },
+    "native_ticket_count_distribution": {
+      "1": 7,
+      "10": 1,
+      "11": 1,
+      "12": 1,
+      "2": 10,
+      "25": 1,
+      "3": 17,
+      "4": 2,
+      "5": 3,
+      "54": 1,
+      "6": 1,
+      "7": 4,
+      "8": 2
+    },
+    "response_shape_counts": {
+      "PORTFOLIO": 44,
+      "SINGLE_TICKET": 7
+    }
+  },
+  "rankings": {
+    "capability_unlock_priority_basis": "LEXICOGRAPHIC:DEDICATED_SHARED_BUNDLE_C33_C44_FIRST;DIRECT_BLOCKER_REDUCTION;NEAR_TERM_FORWARD_GAIN;REUSE;DEPENDENCY_BREADTH;IMPLEMENTATION_SCOPE;FOUNDATIONAL_LEAF_C01_C32_FOLLOW",
+    "raw_coverage_leverage_score_is_ranking_key": false,
+    "C33_dependency_paths_served_count": 16,
+    "C33_dependency_paths_served": [
+      "H01",
+      "H02",
+      "H03",
+      "H04",
+      "H05",
+      "H06",
+      "H09",
+      "H12",
+      "H13",
+      "H17",
+      "H18",
+      "H19",
+      "H20",
+      "H21",
+      "H25",
+      "H28"
+    ],
+    "C33_hypotheses_fully_unlocked_alone": 0,
+    "single_highest_value_shared_capability": "C33",
+    "top_5_cheapest_to_enable": [
+      "H28",
+      "H04",
+      "H05",
+      "H06",
+      "H20"
+    ],
+    "top_5_forward_ready_hypotheses": [
+      "H28",
+      "H04",
+      "H20",
+      "H05",
+      "H06"
+    ],
+    "top_5_highest_capability_unlock_value": [
+      "C33",
+      "C39",
+      "C40",
+      "C38",
+      "C37"
+    ],
+    "top_5_highest_discovery_value_but_forward_hard": [
+      "H10",
+      "H11",
+      "H12",
+      "H16",
+      "H24"
+    ]
+  },
+  "schema_version": "B649_TRACK_D_FORWARD_READINESS_MANIFEST_V1",
+  "sealed_runtime_authorities": [
+    {
+      "mtime_ns": 1786512183451629678,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_STRATEGY_K_HISTORICAL_MATRIX_AUTHORITY_R1/authority_contract.json",
+      "sha256": "be18464d1ccae701b49e0c399854c9a11997be05adbd1b2b9591218d96668d2c",
+      "status": "UNCHANGED"
+    },
+    {
+      "mtime_ns": 1786512183452319625,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_STRATEGY_K_HISTORICAL_MATRIX_AUTHORITY_R1/strategy_universe.json",
+      "sha256": "e645900ba8f6822af4be8851f1fb29807e181a21542de4ab5f2560a8f13cffc8",
+      "status": "UNCHANGED"
+    },
+    {
+      "mtime_ns": 1786534400600253422,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_COMBINATION_PROSPECTIVE_FORWARD_OBSERVER_R4/observer_contract.json",
+      "sha256": "123ac9abf6eceb751a52374fd40d455f09bdd86497ab62ef08a273085edf3b91",
+      "status": "UNCHANGED"
+    },
+    {
+      "mtime_ns": 1786271172289680807,
+      "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_EWMA_PROSPECTIVE_SHADOW_PROTOCOL_R4/prospective_protocol.json",
+      "sha256": "0beb0f5dd5bab357c1658966c2c56e192aa84d1fb176c8b6c2554d1376b90b12",
+      "status": "UNCHANGED"
+    }
+  ],
+  "special_case_findings": {
+    "H01_not_blocked_by_candidate_k_7_of_133_limit": true,
+    "H01_requires_internal_rank": false,
+    "H01_requires_number_probability": false,
+    "H04_features_fully_derivable_but_adapter_required": true,
+    "H14_post_prediction_operator_possible": true,
+    "H19_H20_shared_state_engine_but_distinct_hypotheses": true,
+    "H28_protocol_ready_post_freeze_observation_count": 0
+  },
+  "status": "PASS",
+  "task_id": "B649_TRACK_D_COHORT_V2_FORWARD_READINESS_AND_CAPABILITY_GAP_MAP_R1",
+  "validation": {
+    "cohort_v1_untouched": "PASS",
+    "database_mutation": "NONE",
+    "hypothesis_mapping": "PASS_28_OF_28",
+    "input_checksums": "PASS",
+    "matrix_cells": "PASS_1232",
+    "no_internal_rank_inferred_from_tickets": "PASS",
+    "no_probability_inferred_from_scores": "PASS",
+    "output_checksum_verification": "PASS",
+    "pinned_source_readable": "PASS",
+    "readiness_partition_sum": "PASS_28",
+    "repository_mutation": "NONE",
+    "sealed_predecessor_mutation": "NONE",
+    "strategy_mapping": "PASS_51_OF_51",
+    "track_b_h01_untouched": "PASS"
+  }
+}

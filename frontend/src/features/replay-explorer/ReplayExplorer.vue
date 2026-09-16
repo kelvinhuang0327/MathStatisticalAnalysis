@@ -356,22 +356,22 @@ onBeforeUnmount(() => {
       <MetricCard
         label="Strategies Evaluated"
         :value="summaryMetrics.totalLoaded"
-        :detail="`${summaryMetrics.availableCount} with valid backtest evidence`"
+        :subvalue="`${summaryMetrics.availableCount} with valid backtest evidence`"
       />
       <MetricCard
         label="Ticket Configuration"
         :value="`${selectedTicketCounts.join(', ')} Tickets`"
-        :detail="isMultiTicketMode ? 'Multi-ticket mode active' : 'Single ticket slice'"
+        :subvalue="isMultiTicketMode ? 'Multi-ticket mode active' : 'Single ticket slice'"
       />
       <MetricCard
         label="Active Horizon / Period"
         :value="activePeriodLabel"
-        :detail="currentPeriodOption?.dateRange || 'Canonical historical window'"
+        :subvalue="currentPeriodOption?.dateRange || 'Canonical historical window'"
       />
       <MetricCard
         label="Top Hit Rate (Observed)"
         :value="summaryMetrics.bestRateFormatted"
-        :detail="summaryMetrics.bestRateLabel"
+        :subvalue="summaryMetrics.bestRateLabel"
       />
     </div>
 
@@ -591,7 +591,7 @@ onBeforeUnmount(() => {
     <div class="explorer-content-area">
       <!-- Loading Skeleton -->
       <div v-if="state === 'loading'" class="loading-state-wrapper">
-        <SkeletonLoader :lines="8" />
+        <SkeletonLoader :rows="8" />
       </div>
 
       <!-- Error State -->
@@ -670,31 +670,41 @@ onBeforeUnmount(() => {
   gap: 1.5rem;
   width: 100%;
   max-width: 100%;
+  min-width: 0;
 }
 
 .game-switcher {
   display: inline-flex;
   gap: 0.35rem;
-  background: rgba(15, 23, 42, 0.6);
-  padding: 0.25rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(18, 14, 36, 0.92);
+  padding: 0.3rem;
+  border-radius: var(--radius-lg, 14px);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.game-switcher .button--primary {
+  background: var(--gradient-amber);
+  box-shadow: var(--shadow-glow-amber);
 }
 
 .metrics-overview {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
+  min-width: 0;
 }
 
 .query-panel {
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl, 20px);
   padding: 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  min-width: 0;
+  box-shadow: var(--shadow-md);
 }
 
 .filter-row {
@@ -702,18 +712,19 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   gap: 1rem;
   align-items: flex-end;
+  min-width: 0;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
-  min-width: 180px;
+  min-width: 0;
 }
 
 .filter-group--search {
-  flex-grow: 1;
-  min-width: 260px;
+  flex: 1 1 320px;
+  min-width: min(260px, 100%);
   position: relative;
 }
 
@@ -726,13 +737,13 @@ onBeforeUnmount(() => {
 .filter-label {
   font-size: 0.8rem;
   font-weight: 600;
-  color: var(--color-gray-300, #cbd5e1);
+  color: var(--text-secondary);
 }
 
 .text-link-btn {
   background: none;
   border: none;
-  color: var(--color-cyan-400, #38bdf8);
+  color: var(--text-accent);
   font-size: 0.75rem;
   cursor: pointer;
   padding: 0;
@@ -759,7 +770,7 @@ onBeforeUnmount(() => {
   transform: translateY(-50%);
   background: none;
   border: none;
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -768,10 +779,10 @@ onBeforeUnmount(() => {
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: #1e293b;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-hover);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
   z-index: 100;
   padding: 0.75rem;
   display: flex;
@@ -799,7 +810,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.5rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 6px);
   font-size: 0.85rem;
   cursor: pointer;
   transition: background 0.15s ease;
@@ -810,11 +821,12 @@ onBeforeUnmount(() => {
 }
 
 .strategy-checkbox-item--selected {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(168, 85, 247, 0.18);
+  box-shadow: inset 3px 0 0 var(--primary-color);
 }
 
 .strategy-opt-label {
-  color: var(--color-gray-100, #f1f5f9);
+  color: var(--text-primary);
   flex-grow: 1;
 }
 
@@ -827,7 +839,7 @@ onBeforeUnmount(() => {
   align-items: flex-start;
   gap: 0.5rem;
   padding-top: 0.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border-subtle);
 }
 
 .ticket-selector-label-group {
@@ -842,7 +854,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 0.35rem;
   font-size: 0.8rem;
-  color: var(--color-gray-300, #cbd5e1);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
@@ -859,10 +871,10 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
-  background: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-gray-200, #e2e8f0);
+  border-radius: var(--radius-sm, 6px);
+  background: rgba(25, 20, 50, 0.78);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
@@ -870,22 +882,24 @@ onBeforeUnmount(() => {
 }
 
 .ticket-btn:hover:not(:disabled) {
-  background: rgba(6, 182, 212, 0.2);
-  border-color: rgba(6, 182, 212, 0.4);
+  background: rgba(168, 85, 247, 0.2);
+  border-color: var(--border-hover);
+  color: var(--text-primary);
 }
 
 .ticket-btn--selected {
-  background: var(--color-cyan-500, #06b6d4) !important;
-  color: #0f172a !important;
-  border-color: var(--color-cyan-400, #22d3ee) !important;
+  background: var(--gradient-primary) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 0 14px rgba(168, 85, 247, 0.42);
   font-weight: 700;
 }
 
 .ticket-btn--unavailable {
   opacity: 0.3;
   cursor: not-allowed;
-  background: rgba(15, 23, 42, 0.4);
-  border-color: rgba(255, 255, 255, 0.04);
+  background: rgba(9, 7, 20, 0.45);
+  border-color: var(--border-subtle);
 }
 
 .preset-btn {
@@ -897,7 +911,7 @@ onBeforeUnmount(() => {
   justify-content: space-between;
   align-items: center;
   padding-top: 0.75rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--border-subtle);
   flex-wrap: wrap;
   gap: 0.75rem;
 }
@@ -920,23 +934,23 @@ onBeforeUnmount(() => {
   gap: 0.3rem;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  border-radius: var(--radius-sm, 6px);
   padding: 0.15rem 0.5rem;
   font-size: 0.75rem;
-  color: var(--color-gray-300, #cbd5e1);
+  color: var(--text-secondary);
 }
 
 .chip-remove-btn {
   background: none;
   border: none;
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 0;
   margin-left: 0.2rem;
 }
 
 .chip-remove-btn:hover {
-  color: var(--color-rose-400, #fb7185);
+  color: var(--accent-color);
 }
 
 .view-mode-bar {
@@ -946,6 +960,7 @@ onBeforeUnmount(() => {
 
 .explorer-content-area {
   width: 100%;
+  min-width: 0;
 }
 
 .loading-state-wrapper {
@@ -953,6 +968,6 @@ onBeforeUnmount(() => {
 }
 
 .text-muted {
-  color: var(--color-gray-400, #94a3b8);
+  color: var(--text-secondary);
 }
 </style>

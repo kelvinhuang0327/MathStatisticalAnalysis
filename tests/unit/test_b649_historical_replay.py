@@ -118,11 +118,11 @@ def test_b649_identity_accounting_covers_all_221_identities(tmp_path: Path) -> N
     assert len(use_case.identity_accounts) == 221
     assert counts == Counter(
         {
-            # The prior catalog made 68 identities replayable. Native Quad
-            # Strike moves one more identity from HISTORICAL_RAW_ONLY to
-            # CURRENTLY_REPLAYABLE: 68->69, 65->64.
-            B649IdentityStatus.CURRENTLY_REPLAYABLE: 69,
-            B649IdentityStatus.HISTORICAL_RAW_ONLY: 64,
+            # The prior catalog made 69 identities replayable. Evolutionary
+            # GUM moves one more identity from HISTORICAL_RAW_ONLY to
+            # CURRENTLY_REPLAYABLE: 69->70, 64->63.
+            B649IdentityStatus.CURRENTLY_REPLAYABLE: 70,
+            B649IdentityStatus.HISTORICAL_RAW_ONLY: 63,
             B649IdentityStatus.TERMINAL_UNAVAILABLE: 76,
             B649IdentityStatus.RESOLVED_ALIAS: 9,
             B649IdentityStatus.KEEP_UNRESOLVED_ALIAS: 3,

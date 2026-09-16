@@ -212,9 +212,12 @@ export function createUnavailableItem(
   methodFamily: string,
   ticketCount: TicketCount,
   horizon: HorizonKey,
+  reasonCode = 'NO_CANONICAL_REPLAY_EVIDENCE',
+  customNote?: string,
 ): BestReplayItem {
   const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
   const horizonLabel = horizonDef?.label ?? horizon
+  const notes = customNote ?? `No canonical multi-ticket backtest evidence is recorded for ticket count ${ticketCount}.`
   return {
     id: `${game}-${strategyId}-${ticketCount}-${horizon}`,
     rank: null,
@@ -236,8 +239,9 @@ export function createUnavailableItem(
     bestHit: 'Unavailable',
     prizeCounts: null,
     evidenceStatus: 'EVIDENCE UNAVAILABLE',
-    notes: `No canonical multi-ticket backtest evidence is recorded for ticket count ${ticketCount}.`,
+    notes,
     isAvailable: false,
+    unavailableReasonCode: reasonCode,
   }
 }
 
@@ -296,6 +300,65 @@ export async function loadP638BestReplayData(
   signal?: AbortSignal,
 ): Promise<BestReplayItem[]> {
   if (!ticketCounts.includes(1)) return []
+
+  const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
+  const horizonLabel = horizonDef?.label ?? horizon
+
+  if (horizon !== 'FULL') {
+    const unavailableNote = `P638 canonical evidence does not publish an exact ${horizon} ranking window. Descriptive historical evidence only; does not infer future performance.`
+    try {
+      const runsPage = await listP638Runs({ limit: 5, offset: 0 }, signal)
+      if (runsPage.items.length > 0) {
+        const latestRun = runsPage.items[0]
+        if (latestRun) {
+          const rankingPage = await getP638Rankings(latestRun.run_id, signal)
+          if (rankingPage.items.length > 0) {
+            return rankingPage.items.map((r: P638Ranking): BestReplayItem => ({
+              id: `P638-${r.strategy_id}-1-${horizon}`,
+              rank: null,
+              strategyId: r.strategy_id,
+              strategyVersion: 'v1.0',
+              methodFamily: 'p638_native',
+              game: 'P638',
+              ticketCount: 1,
+              horizon,
+              horizonLabel,
+              evaluatedTargets: 0,
+              winningTargets: null,
+              hitRate: null,
+              hitRateFormatted: 'Unavailable',
+              baselineProbability: null,
+              baselineDelta: null,
+              baselineDeltaFormatted: 'Unavailable',
+              coverage: null,
+              bestHit: 'Unavailable',
+              prizeCounts: null,
+              evidenceStatus: 'EVIDENCE UNAVAILABLE',
+              notes: unavailableNote,
+              isAvailable: false,
+              unavailableReasonCode: 'NO_CANONICAL_WINDOW_EVIDENCE',
+            }))
+          }
+        }
+      }
+    } catch {
+      // return fallback item below
+    }
+
+    return [
+      createUnavailableItem(
+        'P638',
+        'no_canonical_data_p638_t1',
+        'v1.0',
+        'p638_native',
+        1,
+        horizon,
+        'NO_CANONICAL_WINDOW_EVIDENCE',
+        unavailableNote,
+      ),
+    ]
+  }
+
   try {
     const runsPage = await listP638Runs({ limit: 5, offset: 0 }, signal)
     if (!runsPage.items.length) return []
@@ -303,8 +366,6 @@ export async function loadP638BestReplayData(
     if (!latestRun) return []
 
     const rankingPage = await getP638Rankings(latestRun.run_id, signal)
-    const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
-    const horizonLabel = horizonDef?.label ?? horizon
 
     return rankingPage.items.map((r: P638Ranking): BestReplayItem => {
       const evaluatedTargets = latestRun.complete_target_count || 1000
@@ -373,6 +434,65 @@ export async function loadT539BestReplayData(
   signal?: AbortSignal,
 ): Promise<BestReplayItem[]> {
   if (!ticketCounts.includes(1)) return []
+
+  const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
+  const horizonLabel = horizonDef?.label ?? horizon
+
+  if (horizon !== 'FULL') {
+    const unavailableNote = `T539 canonical evidence does not publish an exact ${horizon} ranking window. Descriptive historical evidence only; does not infer future performance.`
+    try {
+      const runsPage = await listT539Runs({ limit: 5, offset: 0 }, signal)
+      if (runsPage.items.length > 0) {
+        const latestRun = runsPage.items[0]
+        if (latestRun) {
+          const rankingPage = await getT539Rankings(latestRun.run_id, signal)
+          if (rankingPage.items.length > 0) {
+            return rankingPage.items.map((r: T539Ranking): BestReplayItem => ({
+              id: `T539-${r.strategy_id}-1-${horizon}`,
+              rank: null,
+              strategyId: r.strategy_id,
+              strategyVersion: 'v1.0',
+              methodFamily: 't539_native',
+              game: 'T539',
+              ticketCount: 1,
+              horizon,
+              horizonLabel,
+              evaluatedTargets: 0,
+              winningTargets: null,
+              hitRate: null,
+              hitRateFormatted: 'Unavailable',
+              baselineProbability: null,
+              baselineDelta: null,
+              baselineDeltaFormatted: 'Unavailable',
+              coverage: null,
+              bestHit: 'Unavailable',
+              prizeCounts: null,
+              evidenceStatus: 'EVIDENCE UNAVAILABLE',
+              notes: unavailableNote,
+              isAvailable: false,
+              unavailableReasonCode: 'NO_CANONICAL_WINDOW_EVIDENCE',
+            }))
+          }
+        }
+      }
+    } catch {
+      // return fallback item below
+    }
+
+    return [
+      createUnavailableItem(
+        'T539',
+        'no_canonical_data_t539_t1',
+        'v1.0',
+        't539_native',
+        1,
+        horizon,
+        'NO_CANONICAL_WINDOW_EVIDENCE',
+        unavailableNote,
+      ),
+    ]
+  }
+
   try {
     const runsPage = await listT539Runs({ limit: 5, offset: 0 }, signal)
     if (!runsPage.items.length) return []
@@ -380,11 +500,9 @@ export async function loadT539BestReplayData(
     if (!latestRun) return []
 
     const rankingPage = await getT539Rankings(latestRun.run_id, signal)
-    const horizonDef = CANONICAL_HORIZONS.find((h) => h.key === horizon)
-    const horizonLabel = horizonDef?.label ?? horizon
 
     return rankingPage.items.map((r: T539Ranking): BestReplayItem => {
-      const evaluatedTargets = 1000
+      const evaluatedTargets = latestRun.eligible_target_count || 1000
       const hitRate = r.winning_target_rate
       const winningTargets = Math.round(hitRate * evaluatedTargets)
       const rank = r.rank

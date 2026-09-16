@@ -316,8 +316,14 @@ def test_native_current_composition_preserves_retry_and_pointer_cas(
     assert retry.run_id == first.run_id
 
     newer = live.run_native_current_forecast(service, request_id="newer", seeds=seeds)
+
+    def stale_live_current_version(_scope: object) -> int:
+        return 0
+
     with monkeypatch.context() as stale_reader:
-        stale_reader.setattr(service.repository, "live_current_version", lambda _scope: 0)
+        stale_reader.setattr(
+            service.repository, "live_current_version", stale_live_current_version
+        )
         stale = live.run_native_current_forecast(service, request_id="stale", seeds=seeds)
 
     assert newer.version > first.version

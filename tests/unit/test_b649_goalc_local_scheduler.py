@@ -2138,6 +2138,77 @@ def test_scheduler_config_and_plist_fail_closed_on_source_binding_conflict(
         build_launchd_plist(bypass_config)
 
 
+def test_write_plist_source_worktree_override_ignores_stale_primary_checkout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Regression: generated runtime bindings must follow an explicit override,
+    never the (possibly stale) checkout this module happened to load from."""
+
+    stale_primary = tmp_path / "stale-primary-checkout"
+    (stale_primary / "tools").mkdir(parents=True)
+    (stale_primary / "tools/b649_goalc_local_scheduler.py").write_text("stale")
+
+    intended = tmp_path / "intended-runtime-worktree"
+    (intended / "tools").mkdir(parents=True)
+    (intended / "tools/b649_goalc_local_scheduler.py").write_text("intended")
+
+    monkeypatch.setattr(scheduler_module, "SOURCE_WORKTREE", stale_primary)
+    monkeypatch.setattr(
+        scheduler_module, "PYTHON_EXECUTABLE", stale_primary / ".venv/bin/python"
+    )
+    monkeypatch.setattr(
+        scheduler_module, "SCRIPT_PATH", stale_primary / "tools/b649_goalc_local_scheduler.py"
+    )
+
+    # Without an override, resolution still follows wherever the module loaded
+    # from -- here, deliberately, the stale primary checkout.
+    assert production_config().source_worktree == stale_primary
+
+    first = production_config(source_worktree_override=intended)
+    second = production_config(source_worktree_override=intended)
+    assert first == second
+
+    assert first.source_worktree == intended.resolve()
+    assert first.python_executable == intended.resolve() / ".venv/bin/python"
+    assert first.script_path == intended.resolve() / "tools/b649_goalc_local_scheduler.py"
+
+    parsed = plistlib.loads(build_launchd_plist(first))
+
+    assert parsed["ProgramArguments"][0] == str(intended.resolve() / ".venv/bin/python")
+    assert parsed["ProgramArguments"][1] == str(
+        intended.resolve() / "tools/b649_goalc_local_scheduler.py"
+    )
+    assert parsed["WorkingDirectory"] == str(intended.resolve())
+    assert parsed["EnvironmentVariables"]["PYTHONPATH"] == str(intended.resolve() / "src")
+    assert str(stale_primary) not in plistlib.dumps(parsed).decode("utf-8")
+
+
+def test_production_config_source_worktree_override_fails_closed_when_script_absent(
+    tmp_path: Path,
+) -> None:
+    incomplete_worktree = tmp_path / "not-a-real-checkout"
+    incomplete_worktree.mkdir()
+
+    with pytest.raises(
+        scheduler_module.LocalSchedulerSafetyError,
+        match=r"b649_goalc_local_scheduler\.py",
+    ):
+        production_config(source_worktree_override=incomplete_worktree)
+
+
+def test_write_plist_parser_accepts_source_worktree_override(tmp_path: Path) -> None:
+    parser = scheduler_module._parser()  # pyright: ignore[reportPrivateUsage]
+    args = parser.parse_args(["write-plist", "--source-worktree", str(tmp_path)])
+    assert args.source_worktree == tmp_path
+
+
+def test_source_worktree_override_is_scoped_to_write_plist_only() -> None:
+    parser = scheduler_module._parser()  # pyright: ignore[reportPrivateUsage]
+    for command in ("run", "status", "forecast"):
+        args = parser.parse_args([command])
+        assert getattr(args, "source_worktree", None) is None
+
+
 # ---------------------------------------------------------------------------
 # `forecast` (B649_PRE_OUTCOME_FORECAST_CLI_DELIVERY_R1)
 # ---------------------------------------------------------------------------

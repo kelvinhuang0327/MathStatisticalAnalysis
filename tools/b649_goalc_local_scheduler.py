@@ -272,16 +272,46 @@ class SchedulerConfig:
             )
 
 
-def production_config() -> SchedulerConfig:
-    """Return the exact authorized local runtime definition."""
+def _resolved_runtime_worktree_binding(source_worktree: Path) -> tuple[Path, Path, Path]:
+    """Derive the coherent (worktree, interpreter, script) triple for ``source_worktree``."""
+
+    resolved = source_worktree.resolve()
+    script_path = resolved / "tools/b649_goalc_local_scheduler.py"
+    if not script_path.is_file():
+        raise LocalSchedulerSafetyError(
+            f"source worktree override {resolved} has no {script_path.name}; "
+            "refusing to bind runtime identity to an incomplete checkout"
+        )
+    return resolved, resolved / ".venv/bin/python", script_path
+
+
+def production_config(*, source_worktree_override: Path | None = None) -> SchedulerConfig:
+    """Return the exact authorized local runtime definition.
+
+    ``source_worktree_override`` binds the generated runtime identity to an
+    explicitly resolved worktree instead of trusting wherever this module
+    happened to be imported from, which is otherwise an accident of import
+    machinery rather than a deliberate operator choice.
+    """
+
+    if source_worktree_override is None:
+        source_worktree, python_executable, script_path = (
+            SOURCE_WORKTREE,
+            PYTHON_EXECUTABLE,
+            SCRIPT_PATH,
+        )
+    else:
+        source_worktree, python_executable, script_path = _resolved_runtime_worktree_binding(
+            source_worktree_override
+        )
 
     return SchedulerConfig(
         label=SCHEDULER_LABEL,
         version=TASK_VERSION,
         canonical_repository=CANONICAL_REPOSITORY,
-        source_worktree=SOURCE_WORKTREE,
-        python_executable=PYTHON_EXECUTABLE,
-        script_path=SCRIPT_PATH,
+        source_worktree=source_worktree,
+        python_executable=python_executable,
+        script_path=script_path,
         operation_root=GOALC_ROOT,
         data_root=DATA_ROOT,
         database=DATABASE_PATH,
@@ -2410,7 +2440,18 @@ def _parser() -> argparse.ArgumentParser:
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("run", help="Run one locked scheduler cycle.")
     commands.add_parser("status", help="Report live health, including stale detection.")
-    commands.add_parser("write-plist", help="Atomically emit the exact user LaunchAgent plist.")
+    write_plist_parser = commands.add_parser(
+        "write-plist", help="Atomically emit the exact user LaunchAgent plist."
+    )
+    write_plist_parser.add_argument(
+        "--source-worktree",
+        type=Path,
+        default=None,
+        help=(
+            "Explicit runtime worktree root to bind the generated plist to, "
+            "overriding the checkout this module happened to load from."
+        ),
+    )
     commands.add_parser(
         "forecast",
         help="Read-only: deliver the currently available PRE_OUTCOME forecast.",
@@ -2420,7 +2461,9 @@ def _parser() -> argparse.ArgumentParser:
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
-    config = production_config()
+    config = production_config(
+        source_worktree_override=getattr(args, "source_worktree", None)
+    )
     if args.command == "write-plist":
         path = write_launchd_plist(config)
         print(_canonical_json({"status": "WRITTEN", "plist_path": str(path)}))

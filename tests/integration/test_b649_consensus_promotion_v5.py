@@ -22,13 +22,15 @@ import sqlite3
 
 # INTENT: Import dataclass replace and candidate authority error classes
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from pathlib import Path
 from typing import cast
 
 import pytest
 from tools import b649_promote_consensus_candidate as cli_module
 
+import lottolab.infrastructure.b649_consensus_candidate_authority as candidate_authority_module
+import lottolab.infrastructure.b649_consensus_promotion as promotion_module
 from lottolab.domain.draws import LotteryType
 from lottolab.domain.research_live_forecast import (
     canonical_json,
@@ -85,6 +87,24 @@ _FIXTURE_PATH = (
     / "b649_consensus_promotion"
     / "scheduler_115000088_bundle.json"
 )
+_PRE_DRAW_NOW = datetime(2026, 9, 12, 12, 0, tzinfo=UTC)
+
+
+class _FrozenDateTime:
+    @classmethod
+    def now(cls, tz: tzinfo | None = None) -> datetime:
+        if tz is None:
+            return _PRE_DRAW_NOW.replace(tzinfo=None)
+        return _PRE_DRAW_NOW.astimezone(tz)
+
+    @classmethod
+    def fromisoformat(cls, value: str) -> datetime:
+        return datetime.fromisoformat(value)
+
+
+def _freeze_internal_trusted_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(candidate_authority_module, "datetime", _FrozenDateTime)
+    monkeypatch.setattr(promotion_module, "datetime", _FrozenDateTime)
 
 
 def _setup_draw_database(
@@ -427,6 +447,7 @@ def test_v5_requirement_c_f1_bypass_rejected_at_all_5_points(tmp_path: Path) -> 
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=tmp_path / "untrusted-caller-store",
+            now=_PRE_DRAW_NOW,
             admitter_identity="attacker",
         )
 
@@ -558,6 +579,7 @@ def test_v5_requirement_d_frozen_087_invariants(tmp_path: Path) -> None:
             research_paths=res_paths,
             target_draw_number="115000087",
             publication_root=tmp_path / "pub",
+            now=_PRE_DRAW_NOW,
             admitter_identity="unit-test",
         )
 
@@ -708,6 +730,7 @@ def test_v5_requirement_g_admission_security(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_PRE_DRAW_NOW,
         )
     symlink.unlink()
 
@@ -720,6 +743,7 @@ def test_v5_requirement_g_admission_security(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_PRE_DRAW_NOW,
         )
 
 
@@ -793,6 +817,8 @@ def test_v5_requirement_h_temporal_and_outcome_gates(tmp_path: Path) -> None:
 # TEST I: CLI End-to-End (admit, preflight, promote, current)
 # ==============================================================================
 def test_v5_requirement_i_cli_lifecycle(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    _freeze_internal_trusted_clock(monkeypatch)
+
     res_db = (tmp_path / "research" / "lottolab_research.db").resolve()
     res_paths = ResearchDataPaths(res_db.parent, res_db)
     initialize_research_schema(res_paths)

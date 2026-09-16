@@ -45,6 +45,7 @@ _FIXTURE_PATH = (
     / "b649_consensus_promotion"
     / "scheduler_115000088_bundle.json"
 )
+_PRE_DRAW_NOW = datetime(2026, 9, 12, 12, 0, tzinfo=UTC)
 
 
 def _setup_publication_tree(root: Path, fixture: dict[str, object]) -> Path:
@@ -109,6 +110,7 @@ def test_admit_rejects_frozen_087(tmp_path: Path) -> None:
             research_paths=res_paths,
             target_draw_number="115000087",
             publication_root=(tmp_path / "pub").resolve(),
+            now=_PRE_DRAW_NOW,
             admitter_identity="unit-test",
         )
 
@@ -126,6 +128,7 @@ def test_admit_rejects_missing_publication_root(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=tmp_path / "nonexistent",
+            now=_PRE_DRAW_NOW,
             admitter_identity="unit-test",
         )
 
@@ -150,6 +153,7 @@ def test_admit_rejects_symlink_in_publication_root(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_PRE_DRAW_NOW,
             admitter_identity="unit-test",
         )
 
@@ -173,6 +177,7 @@ def test_admit_rejects_missing_schedule_authority(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_PRE_DRAW_NOW,
             admitter_identity="unit-test",
         )
 

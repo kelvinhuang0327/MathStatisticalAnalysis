@@ -165,7 +165,7 @@ _DEFAULT_CANONICAL_FORECAST_AUTHORITY_PATH = CANONICAL_FORECAST_AUTHORITY_PATH
 CANONICAL_REPOSITORY = Path("/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis")
 # Runtime provenance follows the loaded module, independently of launch configuration.
 SOURCE_WORKTREE = Path(__file__).resolve().parents[1]
-PYTHON_EXECUTABLE = CANONICAL_REPOSITORY / ".venv/bin/python"
+PYTHON_EXECUTABLE = SOURCE_WORKTREE / ".venv/bin/python"
 SCRIPT_PATH = SOURCE_WORKTREE / "tools/b649_goalc_local_scheduler.py"
 GOALC_ROOT = Path(
     "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"

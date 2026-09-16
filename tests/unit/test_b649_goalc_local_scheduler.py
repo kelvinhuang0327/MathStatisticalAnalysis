@@ -927,6 +927,8 @@ def test_production_config_is_the_exact_authorized_runtime() -> None:
     assert config.expected_stream_count == len(STREAM_IDS) == 11
     assert config.canonical_repository == canonical_repository
     assert config.source_worktree == Path(scheduler_module.__file__).resolve().parents[1]
+    assert config.python_executable == config.source_worktree / ".venv/bin/python"
+    assert config.python_executable != canonical_repository / ".venv/bin/python"
     assert config.script_path == (config.source_worktree / "tools/b649_goalc_local_scheduler.py")
     assert config.operation_root == Path(
         "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1"
@@ -941,6 +943,11 @@ def test_production_launchd_uses_executing_successor_topology_b_bindings() -> No
     encoded = build_launchd_plist(config)
     parsed = plistlib.loads(encoded)
 
+    assert parsed["ProgramArguments"] == [
+        str(config.source_worktree / ".venv/bin/python"),
+        str(successor_script),
+        "run",
+    ]
     assert parsed["ProgramArguments"][1] == str(successor_script)
     assert parsed["WorkingDirectory"] == str(config.source_worktree)
     assert parsed["EnvironmentVariables"]["PYTHONPATH"] == str(config.source_worktree / "src")

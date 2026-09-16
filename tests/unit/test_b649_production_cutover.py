@@ -11,7 +11,7 @@ import plistlib
 import stat
 import subprocess
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import cast
 
@@ -518,10 +518,86 @@ def test_apply_rejects_a_plan_that_differs_from_the_existing_receipt(
     different_plan["plan_digest"] = plan_digest
     mutation_count = len(runner.mutation_calls)
 
-    with pytest.raises(cutover.CutoverSafetyError, match="different plan"):
+    with pytest.raises(cutover.CutoverSafetyError, match="plan prestate drifted"):
         cutover.apply(fixture.config, plan=different_plan, runner=runner)
 
     assert len(runner.mutation_calls) == mutation_count
+
+
+def test_apply_reconciles_a_completed_receipt_for_the_next_cutover(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    first_plan = cutover.build_plan(fixture.config, runner=runner)
+    first = cutover.apply(fixture.config, plan=first_plan, runner=runner)
+    assert first["status"] == "SUCCESS"
+
+    next_config = replace(
+        fixture.config,
+        source_worktree=fixture.old,
+        expected_head=OLD_HEAD,
+        expected_tree=OLD_TREE,
+        durable_ref=f"refs/heads/runtime/b649/{OLD_HEAD}",
+    )
+    next_plan = cutover.build_plan(next_config, runner=runner)
+    assert next_plan["status"] == "PASS"
+
+    second = cutover.apply(next_config, plan=next_plan, runner=runner)
+
+    assert second["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.old
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["plan_digest"] == next_plan["plan_digest"]
+
+
+def test_apply_recovery_is_not_reported_as_cli_success(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def fake_config(
+        _args: argparse.Namespace, *, source_worktree: Path | None = None
+    ) -> cutover.CutoverConfig:
+        del source_worktree
+        return fixture.config
+
+    def recovered_apply(*_args: object, **_kwargs: object) -> dict[str, object]:
+        return {"status": "RECOVERED"}
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+    monkeypatch.setattr(cutover, "apply", recovered_apply)
+
+    exit_code = cutover.main(
+        ["apply", "--source-worktree", str(fixture.new)], runner=FakeLaunchd(fixture)
+    )
+
+    assert exit_code == 1
+    assert '"status":"RECOVERED"' in capsys.readouterr().out
+
+
+def test_cli_receipt_file_is_compared_to_the_canonical_receipt(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    forged = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    forged["operation_id"] = "forged-receipt"
+    alternate = fixture.root / "forged-receipt.json"
+    alternate.write_text(json.dumps(forged), encoding="utf-8")
+    alternate.chmod(0o600)
+
+    def fake_config(
+        _args: argparse.Namespace, *, source_worktree: Path | None = None
+    ) -> cutover.CutoverConfig:
+        del source_worktree
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(["rollback", "--receipt-file", str(alternate)], runner=runner)
+
+    assert exit_code == 1
+    assert "supplied receipt differs from the durable receipt" in capsys.readouterr().out
+    assert len(runner.mutation_calls) == 4
 
 
 def test_apply_isolated_to_the_exact_b649_launchagent_target(fixture: Fixture) -> None:
@@ -642,6 +718,13 @@ def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     assert receipt["status"] == "RECOVERY_REQUIRED"
     assert receipt["mutation_summary"]["launchd"] is True
 
+    runner.process_rows = [f"424242 1 {UID} /usr/bin/fixture-shell"]
+    recovered = cutover.rollback(fixture.config, runner=runner)
+
+    assert recovered["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded_source == fixture.old
+    assert runner.enabled is True
+
 
 def test_apply_unloaded_enabled_race_is_detected_before_plist_replacement(
     fixture: Fixture,
@@ -686,18 +769,20 @@ def test_apply_interruption_after_launchd_mutation_leaves_started_receipt(
     runner.after_mutation = interrupt_after_disable
     result = cutover.apply(fixture.config, plan=plan, runner=runner)
 
-    assert result["status"] == "RECOVERY_REQUIRED"
+    assert result["status"] == "RECOVERED"
     assert staged_statuses == ["IN_PROGRESS"]
     receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
-    assert receipt["status"] == "RECOVERY_REQUIRED"
-    assert receipt["phase"] == "RECOVERY_REQUIRED"
+    assert receipt["status"] == "RECOVERED"
+    assert receipt["phase"] == "COMPLETED"
     interrupted = next(
         action for action in _objects(result["actions"]) if action["name"] == "disable-before-apply"
     )
     assert interrupted["status"] == "INTERRUPTED"
     assert interrupted["interrupted"] is True
     assert interrupted["mutation"] is True
-    assert runner.enabled is False
+    assert runner.enabled is True
+    assert runner.loaded_source == fixture.old
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
     _assert_business_state_unchanged(fixture)
 
 
@@ -712,7 +797,7 @@ def test_apply_launchd_mutation_boundary_failures_are_explicit(fixture: Fixture,
 
     result = cutover.apply(fixture.config, plan=plan, runner=runner)
 
-    expected_status = "RECOVERED" if verb == "enable" else "RECOVERY_REQUIRED"
+    expected_status = "RECOVERED"
     assert result["status"] == expected_status
     receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
     assert receipt["status"] == expected_status

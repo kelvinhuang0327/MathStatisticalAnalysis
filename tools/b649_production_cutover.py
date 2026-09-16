@@ -1458,6 +1458,7 @@ def _apply_or_restore(
     runner: Runner,
     recorder: ActionRecorder,
     restoring: bool,
+    allow_old_prestate: bool = False,
 ) -> Record:
     prestate = _record(plan.get("prestate"), "plan prestate")
     old_identity = _identity_from_record(prestate.get("old_plist_identity"), "old plist identity")
@@ -1485,16 +1486,22 @@ def _apply_or_restore(
     )
     if current_identity is None or current_bytes is None:
         raise CutoverSafetyError("current plist disappeared before restore")
+    restoring_old_prestate = False
     if restoring:
         new_sha = _text(prestate.get("new_plist_sha256"), "new plist sha256")
-        if current_identity.sha256 != new_sha or current_bytes != new_bytes:
+        if current_identity.sha256 == old_identity.sha256 and current_bytes == old_bytes:
+            restoring_old_prestate = allow_old_prestate
+        if not restoring_old_prestate and (
+            current_identity.sha256 != new_sha or current_bytes != new_bytes
+        ):
             raise CutoverSafetyError("rollback receipt is not bound to current plist identity")
     else:
         if current_identity.key() != old_identity.key() or current_bytes != old_bytes:
             raise CutoverSafetyError("apply prestate plist drifted")
-    current_source = new_source if restoring else old_source
-    current_runtime = new_runtime if restoring else old_runtime
-    expected_current_bytes = new_bytes if restoring else old_bytes
+    restoring_new = restoring and not restoring_old_prestate
+    current_source = new_source if restoring_new else old_source
+    current_runtime = new_runtime if restoring_new else old_runtime
+    expected_current_bytes = new_bytes if restoring_new else old_bytes
     current_launch = _assert_runtime_binding(config, runner, current_source, current_runtime)
     current_enabled = _enabled_snapshot(config, runner)
     if not restoring:
@@ -1665,15 +1672,15 @@ def _receipt_base(config: CutoverConfig, plan: Record, operation_id: str) -> Rec
     }
 
 
-def _receipt_status(path: Path) -> Record | None:
+def _receipt_status(path: Path) -> tuple[Record, FileIdentity] | None:
     if not path.exists():
         return None
-    value, _, _ = _load_json(path)
+    value, identity, _ = _load_json(path)
     if value.get("schema_version") != RECEIPT_SCHEMA_VERSION:
         raise CutoverSafetyError("existing receipt schema differs")
     if value.get("task") != TASK_ID:
         raise CutoverSafetyError("existing receipt task differs")
-    return value
+    return value, identity
 
 
 def _validate_bound_source(
@@ -1800,6 +1807,49 @@ def _apply_existing_receipt(
     return None
 
 
+def _reconcile_completed_receipt(
+    config: CutoverConfig,
+    receipt: Record,
+    *,
+    runner: Runner,
+) -> None:
+    """Prove a completed receipt still describes the live state before reuse."""
+
+    after = _record(receipt.get("after"), "receipt after")
+    source = _record(after.get("source"), "receipt after source")
+    runtime = _record(after.get("runtime"), "receipt after runtime")
+    plist = _record(after.get("plist"), "receipt after plist")
+    identity = _identity_from_record(plist.get("identity"), "receipt after plist identity")
+    if identity.path != str(config.plist_path):
+        raise CutoverSafetyError("completed receipt is bound to a different plist")
+    current_identity, current_bytes = _file_identity(
+        config.plist_path,
+        missing_ok=False,
+        require_mode=0o600,
+    )
+    if (
+        current_identity is None
+        or current_bytes is None
+        or current_identity.sha256 != identity.sha256
+        or current_identity.size != identity.size
+    ):
+        raise CutoverSafetyError("completed receipt does not match the current plist")
+    _validate_bound_source(config, source, runner, role="existing-after")
+    _, current_runtime = _parse_plist(current_bytes, "existing-after")
+    if current_runtime != runtime:
+        raise CutoverSafetyError("completed receipt runtime differs from the current plist")
+    expected_launchd = _record(after.get("launchd"), "receipt after launchd")
+    expected_state = _text(expected_launchd.get("state"), "receipt after launchd state")
+    current_launch = _launch_snapshot(config, runner, source)
+    if current_launch.get("state") != expected_state:
+        raise CutoverSafetyError("completed receipt LaunchAgent state differs from live state")
+    if expected_state == "LOADED" and _loaded_runtime(current_launch) != runtime:
+        raise CutoverSafetyError("completed receipt loaded runtime differs from live state")
+    enabled = after.get("enabled")
+    if type(enabled) is not bool or _enabled_snapshot(config, runner) is not enabled:
+        raise CutoverSafetyError("completed receipt enabled state differs from live state")
+
+
 def apply(
     config: CutoverConfig,
     *,
@@ -1816,13 +1866,24 @@ def apply(
     try:
         with CutoverLock(config.cutover_lock_path):
             recorder.event("cutover-lock-acquired", path=str(config.cutover_lock_path))
-            existing = _receipt_status(config.receipt_path)
-            if existing is not None:
+            receipt_expected: FileIdentity | None = None
+            existing_record = _receipt_status(config.receipt_path)
+            if existing_record is not None:
+                existing, existing_identity = existing_record
                 existing_plan = _receipt_to_plan(config, existing)
                 _plan_target_matches(config, existing_plan)
                 if existing_plan.get("plan_digest") != selected_plan.get("plan_digest"):
-                    raise CutoverSafetyError("existing receipt is bound to a different plan")
-                already = _apply_existing_receipt(config, existing, runner=runner)
+                    if existing.get("status") not in {
+                        "SUCCESS",
+                        "RECOVERED",
+                        "ROLLBACK_SUCCESS",
+                    }:
+                        raise CutoverSafetyError("existing receipt is not safely reusable")
+                    _reconcile_completed_receipt(config, existing, runner=runner)
+                    receipt_expected = existing_identity
+                    already = None
+                else:
+                    already = _apply_existing_receipt(config, existing, runner=runner)
                 if already is not None:
                     already["actions"] = recorder.actions
                     return already
@@ -1830,7 +1891,7 @@ def apply(
             fresh = _fresh_plan_matches(config, selected_plan, runner=runner)
             receipt = _receipt_base(config, fresh, uuid4().hex)
             try:
-                receipt_identity = _save_receipt(config, receipt, expected=None)
+                receipt_identity = _save_receipt(config, receipt, expected=receipt_expected)
             except BaseException as exc:
                 return {
                     "command": "apply",
@@ -1871,8 +1932,10 @@ def apply(
                             runner=runner,
                             recorder=recovery_recorder,
                             restoring=True,
+                            allow_old_prestate=True,
                         )
                         receipt["status"] = "RECOVERED"
+                        receipt["phase"] = "COMPLETED"
                         receipt["after"] = recovered_after
                     except BaseException as recovery_exc:
                         receipt["status"] = "RECOVERY_REQUIRED"
@@ -2036,8 +2099,6 @@ def rollback(
                 expected_ref=_text(old_source.get("durable_ref"), "old durable ref"),
                 strict_release_layout=False,
             )
-            current_ownership = _ownership_snapshot(config, runner, new_source)
-            _assert_idle(current_ownership)
             current_identity, current_bytes = _file_identity(
                 config.plist_path,
                 missing_ok=False,
@@ -2046,22 +2107,32 @@ def rollback(
             if current_identity is None or current_bytes is None:
                 raise CutoverSafetyError("current plist is missing for rollback")
             new_bytes = _decode_bytes(prestate.get("new_plist_bytes_b64"), "new plist bytes")
-            if current_bytes != new_bytes:
+            old_bytes = _decode_bytes(prestate.get("old_plist_bytes_b64"), "old plist bytes")
+            current_is_new = current_bytes == new_bytes
+            current_is_old = current_bytes == old_bytes
+            if not current_is_new and not current_is_old:
                 raise CutoverSafetyError("current plist differs from receipt-bound new plist")
             new_runtime = _record(
                 _record(plan.get("runtime"), "receipt runtime").get("new"),
                 "receipt new runtime",
             )
+            old_runtime = _prestate_runtime(prestate, "old_runtime")
+            rollback_source = new_source if current_is_new else old_source
+            rollback_runtime = new_runtime if current_is_new else old_runtime
+            current_ownership = _ownership_snapshot(config, runner, rollback_source)
+            _assert_idle(current_ownership)
             current_binding, current_runtime = _parse_plist(current_bytes, "rollback-current")
-            if current_runtime != new_runtime:
+            if current_runtime != rollback_runtime:
                 raise CutoverSafetyError(
-                    "current plist runtime differs from receipt-bound new runtime"
+                    "current plist runtime differs from receipt-bound recovery runtime"
                 )
-            current_launch = _assert_runtime_binding(config, runner, new_source, new_runtime)
+            current_launch = _assert_runtime_binding(
+                config, runner, rollback_source, rollback_runtime
+            )
             current_enabled = _enabled_snapshot(config, runner)
             rollback_before: Record = {
                 "observed_at": _utc_text(_now()),
-                "source": new_source,
+                "source": rollback_source,
                 "runtime": current_runtime,
                 "plist": {
                     "identity": current_identity.to_dict(),
@@ -2115,6 +2186,7 @@ def rollback(
                     runner=runner,
                     recorder=recorder,
                     restoring=True,
+                    allow_old_prestate=current_is_old,
                 )
             except BaseException as exc:
                 loaded_receipt["status"] = "RECOVERY_REQUIRED"
@@ -2310,7 +2382,7 @@ def main(
                 selected_plan, _, _ = _load_json(Path(args.plan_file))
             result = apply(config, plan=selected_plan, runner=runner, now=now)
             print(_canonical_json(result))
-            return 0 if result.get("status") in {"SUCCESS", "ALREADY_APPLIED", "RECOVERED"} else 1
+            return 0 if result.get("status") in {"SUCCESS", "ALREADY_APPLIED"} else 1
         receipt_file = Path(args.receipt_file) if args.receipt_file else Path(args.receipt_path)
         receipt, _, _ = _load_json(receipt_file)
         new_source = Path(
@@ -2323,7 +2395,6 @@ def main(
             )
         )
         config = _config_from_args(args, source_worktree=new_source)
-        config = replace(config, receipt_path=receipt_file)
         result = rollback(config, receipt=receipt, runner=runner, now=now)
         print(_canonical_json(result))
         return 0 if result.get("status") in {"ROLLBACK_SUCCESS", "ALREADY_ROLLED_BACK"} else 1

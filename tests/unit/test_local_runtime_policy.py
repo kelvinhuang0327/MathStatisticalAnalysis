@@ -358,6 +358,7 @@ def test_smoke_accepts_exact_authorized_openapi_surface_with_path_metadata() -> 
 def authorized_openapi_paths() -> dict[str, dict[str, object]]:
     return {
         "/api/health": {"get": {}},
+        "/api/b649/canonical-forecast/current": {"get": {}},
         "/api/v1/strategies": {"get": {}},
         "/api/v1/strategy-overview": {"get": {}},
         "/api/v1/strategy-evidence": {"get": {}},

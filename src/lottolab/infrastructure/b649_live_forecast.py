@@ -25,6 +25,7 @@ from lottolab.application.b649_next_undrawn_forecast import (
     CanonicalNativeTicketGenerator,
     ForecastRequest,
     ForecastTimingError,
+    iter_native_replay_observations,
     native_generation_config,
     prepare_forecast,
 )
@@ -605,3 +606,34 @@ class B649LiveForecastService:
             current_eligible=lambda: False,
             clock=self.clock,
         )
+
+
+def run_native_current_forecast(
+    service: B649LiveForecastService,
+    *,
+    request_id: str,
+    seeds: Mapping[str, int],
+) -> LiveForecastResult:
+    """Compose canonical replay observations into the native-current service."""
+
+    record = service._schedule()  # pyright: ignore[reportPrivateUsage]
+    target = record.announcement.target
+    history = service._history(target)  # pyright: ignore[reportPrivateUsage]
+    catalog = production_catalog()
+    descriptors = catalog.list(lottery_type=LotteryType.BIG_LOTTO)
+    producer = source_producer_fingerprint(service.source_repository, descriptors)
+    observations = tuple(
+        iter_native_replay_observations(
+            target=target,
+            history=history,
+            catalog=descriptors,
+            producer=producer,
+            generator=CanonicalNativeTicketGenerator(catalog),
+            seeds=seeds,
+        )
+    )
+    return service.repredict(
+        request_id=request_id,
+        observations=observations,
+        seeds=seeds,
+    )

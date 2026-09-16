@@ -14,6 +14,23 @@ export interface paths {
                 }
         }
     }
+  "/api/b649/canonical-forecast/current": {
+      get: {
+          parameters: Record<string, never>
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["B649CanonicalForecastCurrentResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["B649CanonicalForecastApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
   "/api/v1/strategies": {
       get: {
           parameters: Record<string, never>
@@ -2176,6 +2193,35 @@ export interface components {
           "message": string
           "preview"?: components['schemas']["DrawImportPreviewResponse"] | null
           "fields"?: Array<components['schemas']["RequestValidationIssueView"]>
+        }
+    "B649CanonicalForecastApiErrorResponse": {
+          "error_code": string
+          "message": string
+        }
+    "B649CanonicalForecastCurrentResponse": {
+          "status": string
+          "authority": string
+          "current_target": components['schemas']["B649CanonicalForecastTarget"]
+          "consensus_numbers": Array<number>
+          "source_stream_count": number
+          "k5_tickets": Array<components['schemas']["B649CanonicalForecastTicket"]>
+          "k10_tickets": Array<components['schemas']["B649CanonicalForecastTicket"]>
+          "k20_tickets": Array<components['schemas']["B649CanonicalForecastTicket"]>
+          "forecast_actual_sha256": string
+          "forecast_method_id": string
+          "forecast_method_version": string
+          "portfolio_actual_sha256": string
+          "portfolio_method_id": string
+          "portfolio_method_version": string
+        }
+    "B649CanonicalForecastTarget": {
+          "draw_number": string
+          "draw_date": string
+          "scheduled_at": string
+        }
+    "B649CanonicalForecastTicket": {
+          "ticket_position": number
+          "predicted_numbers": Array<number>
         }
     "B649ExactNativeApiErrorResponse": {
           "error_code": string

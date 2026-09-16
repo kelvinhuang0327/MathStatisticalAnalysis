@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 from typing import cast
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
@@ -152,9 +153,9 @@ def _write_bundle(
     return health_path, forecast_path, portfolio_path
 
 
-def _client(monkeypatch: MonkeyPatch, health_path: Path) -> TestClient:
+def _client(monkeypatch: MonkeyPatch, health_path: Path) -> httpx.Client:
     monkeypatch.setenv(HEALTH_PATH_ENV, str(health_path))
-    return TestClient(create_app())
+    return cast(httpx.Client, TestClient(create_app()))
 
 
 def test_success_projects_scheduler_artifacts_and_ignores_caller_paths(
@@ -194,7 +195,7 @@ def test_success_projects_scheduler_artifacts_and_ignores_caller_paths(
 def test_missing_server_health_configuration_is_sanitized_503(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.delenv(HEALTH_PATH_ENV, raising=False)
 
-    response = TestClient(create_app()).get(PATH)
+    response = cast(httpx.Client, TestClient(create_app())).get(PATH)
 
     assert response.status_code == 503
     assert response.json() == {

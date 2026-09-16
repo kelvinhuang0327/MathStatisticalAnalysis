@@ -19,10 +19,12 @@ import copy
 import hashlib
 import json
 import sqlite3
+from collections.abc import Mapping
 
 # INTENT: Import dataclass replace and candidate authority error classes
 from dataclasses import replace
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import cast
 
@@ -41,6 +43,7 @@ from lottolab.infrastructure.b649_consensus_candidate_authority import (
     load_admitted_candidate,
 )
 from lottolab.infrastructure.b649_consensus_promotion import (
+    CanonicalEligibilityResult,
     PromotionRequest,
     compute_successor_request_hash,
     promote_admitted_candidate,
@@ -85,12 +88,13 @@ _FIXTURE_PATH = (
     / "b649_consensus_promotion"
     / "scheduler_115000088_bundle.json"
 )
+_B649_PRE_DEADLINE_088 = datetime(2026, 9, 12, 12, 0, tzinfo=UTC)
 
 
 def _setup_draw_database(
     db_path: Path,
     *draws: tuple[str, str],  # (draw_number, draw_date_str)
-    observed_at: datetime = datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+    observed_at: datetime = _B649_PRE_DEADLINE_088,
 ) -> tuple[LocalDataPaths, dict[str, str]]:
     db_resolved = db_path.resolve()
     draw_paths = LocalDataPaths(db_resolved.parent, db_resolved)
@@ -247,7 +251,7 @@ def test_v5_requirement_a_088_roundtrip(tmp_path: Path) -> None:
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
         admitter_identity="agent-consensus-admitter",
         notes="admitted for test a",
     )
@@ -416,7 +420,7 @@ def test_v5_requirement_c_f1_bypass_rejected_at_all_5_points(tmp_path: Path) -> 
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
         admitter_identity="agent-c",
     )
 
@@ -427,6 +431,7 @@ def test_v5_requirement_c_f1_bypass_rejected_at_all_5_points(tmp_path: Path) -> 
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=tmp_path / "untrusted-caller-store",
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="attacker",
         )
 
@@ -498,8 +503,8 @@ def test_v5_requirement_c_f1_bypass_rejected_at_all_5_points(tmp_path: Path) -> 
         open_research_database(res_paths, read_only=False) as conn,
         pytest.raises(sqlite3.IntegrityError),
     ):
-            conn.execute(
-                """
+        conn.execute(
+            """
                 INSERT INTO research_live_forecast_versions (
                     version, run_id, request_id, request_sha256, lottery_type,
                     target_draw_number, target_draw_date, forecast_stream_id,
@@ -522,23 +527,34 @@ def test_v5_requirement_c_f1_bypass_rejected_at_all_5_points(tmp_path: Path) -> 
                     '{}', 'a' * 64
                 )
                 """
-            )
+        )
 
     # Point 5: CLI layer rejects F1 caller bypass arguments
     code = cli_module.main(
         [
             "promote",
-            "--database", str(res_db),
-            "--candidate-ref", admitted.candidate_ref,
-            "--candidate", "/tmp/untrusted/candidate.json",  # Illegal bypass argument
-            "--request-id", "req-f1",
-            "--request-sha256", "a" * 64,
-            "--expected-current-version", "0",
-            "--schedule-authority-sha256", sched_sha_088,
-            "--authorization-reference", "auth://test",
-            "--executor-identity", "tester",
-            "--execution-source-id", "cli://test",
-            "--execution-source-version", "v5",
+            "--database",
+            str(res_db),
+            "--candidate-ref",
+            admitted.candidate_ref,
+            "--candidate",
+            "/tmp/untrusted/candidate.json",  # Illegal bypass argument
+            "--request-id",
+            "req-f1",
+            "--request-sha256",
+            "a" * 64,
+            "--expected-current-version",
+            "0",
+            "--schedule-authority-sha256",
+            sched_sha_088,
+            "--authorization-reference",
+            "auth://test",
+            "--executor-identity",
+            "tester",
+            "--execution-source-id",
+            "cli://test",
+            "--execution-source-version",
+            "v5",
         ]
     )
     assert code != 0  # CLI rejected bypass attempt
@@ -595,7 +611,7 @@ def test_v5_requirement_e_duplicate_candidate_conflict(tmp_path: Path) -> None:
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
     )
 
     req1_hash = compute_successor_request_hash(
@@ -635,9 +651,7 @@ def test_v5_requirement_e_duplicate_candidate_conflict(tmp_path: Path) -> None:
         expected_current_version=1,
     )
     with pytest.raises(ResearchConflictError, match="DUPLICATE_CANDIDATE_CONFLICT"):
-        promote_admitted_candidate(
-            database_path=res_db, admitted_candidate=admitted, request=req2
-        )
+        promote_admitted_candidate(database_path=res_db, admitted_candidate=admitted, request=req2)
 
 
 # ==============================================================================
@@ -663,7 +677,7 @@ def test_v5_requirement_f_cas_stale_parent_conflict(tmp_path: Path) -> None:
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
     )
 
     req = PromotionRequest(
@@ -708,6 +722,7 @@ def test_v5_requirement_g_admission_security(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_B649_PRE_DEADLINE_088,
         )
     symlink.unlink()
 
@@ -720,6 +735,7 @@ def test_v5_requirement_g_admission_security(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_B649_PRE_DEADLINE_088,
         )
 
 
@@ -785,7 +801,7 @@ def test_v5_requirement_h_temporal_and_outcome_gates(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
-            now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+            now=_B649_PRE_DEADLINE_088,
         )
 
 
@@ -807,16 +823,44 @@ def test_v5_requirement_i_cli_lifecycle(tmp_path: Path, monkeypatch: pytest.Monk
     )
     sched_sha_088 = sched_hashes["115000088"]
 
+    monkeypatch.setattr(
+        cli_module,
+        "admit_consensus_candidate",
+        partial(admit_consensus_candidate, now=_B649_PRE_DEADLINE_088),
+    )
+    production_gate = cli_module.CanonicalConsensusEligibilityGate
+
+    class DeterministicEligibilityGate(production_gate):
+        def check(
+            self,
+            candidate_target: Mapping[str, object] | None = None,
+            *,
+            now: datetime | None = None,
+        ) -> CanonicalEligibilityResult:
+            return super().check(candidate_target, now=_B649_PRE_DEADLINE_088)
+
+    monkeypatch.setattr(
+        cli_module,
+        "CanonicalConsensusEligibilityGate",
+        DeterministicEligibilityGate,
+    )
+
     # 1. CLI admit
     exit_code = cli_module.main(
         [
             "admit",
-            "--database", str(res_db),
-            "--draw-database", str(draw_paths.database),
-            "--target-draw", "115000088",
-            "--publication-root", str(pub_root),
-            "--executor-identity", "cli-test-agent",
-            "--notes", "admitted via CLI",
+            "--database",
+            str(res_db),
+            "--draw-database",
+            str(draw_paths.database),
+            "--target-draw",
+            "115000088",
+            "--publication-root",
+            str(pub_root),
+            "--executor-identity",
+            "cli-test-agent",
+            "--notes",
+            "admitted via CLI",
         ]
     )
     assert exit_code == 0
@@ -834,15 +878,24 @@ def test_v5_requirement_i_cli_lifecycle(tmp_path: Path, monkeypatch: pytest.Monk
     exit_code = cli_module.main(
         [
             "preflight",
-            "--database", str(res_db),
-            "--draw-database", str(draw_paths.database),
-            "--candidate-ref", candidate_ref,
-            "--request-id", "req-cli-1",
-            "--request-sha256", req_hash,
-            "--expected-current-version", "0",
-            "--schedule-authority-sha256", sched_sha_088,
-            "--execution-source-id", "cli://test",
-            "--execution-source-version", "v5",
+            "--database",
+            str(res_db),
+            "--draw-database",
+            str(draw_paths.database),
+            "--candidate-ref",
+            candidate_ref,
+            "--request-id",
+            "req-cli-1",
+            "--request-sha256",
+            req_hash,
+            "--expected-current-version",
+            "0",
+            "--schedule-authority-sha256",
+            sched_sha_088,
+            "--execution-source-id",
+            "cli://test",
+            "--execution-source-version",
+            "v5",
         ]
     )
     assert exit_code == 0
@@ -851,17 +904,28 @@ def test_v5_requirement_i_cli_lifecycle(tmp_path: Path, monkeypatch: pytest.Monk
     exit_code = cli_module.main(
         [
             "promote",
-            "--database", str(res_db),
-            "--draw-database", str(draw_paths.database),
-            "--candidate-ref", candidate_ref,
-            "--request-id", "req-cli-1",
-            "--request-sha256", req_hash,
-            "--expected-current-version", "0",
-            "--schedule-authority-sha256", sched_sha_088,
-            "--authorization-reference", "auth://cli",
-            "--executor-identity", "cli-executor",
-            "--execution-source-id", "cli://test",
-            "--execution-source-version", "v5",
+            "--database",
+            str(res_db),
+            "--draw-database",
+            str(draw_paths.database),
+            "--candidate-ref",
+            candidate_ref,
+            "--request-id",
+            "req-cli-1",
+            "--request-sha256",
+            req_hash,
+            "--expected-current-version",
+            "0",
+            "--schedule-authority-sha256",
+            sched_sha_088,
+            "--authorization-reference",
+            "auth://cli",
+            "--executor-identity",
+            "cli-executor",
+            "--execution-source-id",
+            "cli://test",
+            "--execution-source-version",
+            "v5",
         ]
     )
     assert exit_code == 0
@@ -870,8 +934,10 @@ def test_v5_requirement_i_cli_lifecycle(tmp_path: Path, monkeypatch: pytest.Monk
     exit_code = cli_module.main(
         [
             "current",
-            "--database", str(res_db),
-            "--target-draw", "115000088",
+            "--database",
+            str(res_db),
+            "--target-draw",
+            "115000088",
         ]
     )
     assert exit_code == 0
@@ -900,7 +966,7 @@ def test_v5_requirement_j_verify_store(tmp_path: Path) -> None:
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
     )
 
     req_hash = compute_successor_request_hash(

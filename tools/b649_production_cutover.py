@@ -1173,7 +1173,7 @@ class ActionRecorder:
         started = _now()
         try:
             result = runner(argv)
-        except Exception as exc:
+        except BaseException as exc:
             self.mutation_count += 1
             self.actions.append(
                 {
@@ -1181,8 +1181,11 @@ class ActionRecorder:
                     "argv": list(argv),
                     "started_at": _utc_text(started),
                     "finished_at": _utc_text(_now()),
-                    "status": "EXCEPTION",
+                    "status": "INTERRUPTED"
+                    if isinstance(exc, (KeyboardInterrupt, SystemExit))
+                    else "EXCEPTION",
                     "error": f"{type(exc).__name__}: {exc}",
+                    "interrupted": isinstance(exc, (KeyboardInterrupt, SystemExit)),
                     "mutation": True,
                 }
             )
@@ -1367,9 +1370,25 @@ def _run_launch_mutation(
             if observe_satisfied():
                 recorder.event(name + "-postattempt-satisfied", returncode=result.returncode)
                 return
-        except Exception as exc:
+        except BaseException as exc:
             recorder.event(name + "-postattempt-unverifiable", error=f"{type(exc).__name__}: {exc}")
     raise MutationError(f"{name} failed with exit {result.returncode}")
+
+
+def _observe_after_identity(path: Path) -> tuple[Record, str]:
+    """Observe the destination after an ambiguous replacement attempt."""
+
+    try:
+        identity, _ = _file_identity(path, missing_ok=True, require_mode=0o600)
+        if identity is None:
+            return {"state": "ABSENT", "path": str(path)}, "ABSENT"
+        return identity.to_dict(), "OBSERVED"
+    except BaseException as exc:
+        return {
+            "state": "UNVERIFIABLE",
+            "path": str(path),
+            "error": f"{type(exc).__name__}: {exc}",
+        }, "UNVERIFIABLE"
 
 
 def _replace_plist(
@@ -1386,11 +1405,14 @@ def _replace_plist(
     recorder.mutation_count += 1
     try:
         identity = _atomic_write(path, data, expected=expected)
-    except Exception as exc:
+    except BaseException as exc:
+        after, after_observation = _observe_after_identity(path)
         recorder.event(
             name,
             status="EXCEPTION",
             before=before.to_dict(),
+            after=after,
+            after_observation=after_observation,
             error=f"{type(exc).__name__}: {exc}",
             mutation=True,
         )
@@ -1624,7 +1646,11 @@ def _receipt_base(config: CutoverConfig, plan: Record, operation_id: str) -> Rec
         "schema_version": RECEIPT_SCHEMA_VERSION,
         "task": TASK_ID,
         "operation_id": operation_id,
-        "status": "NOT_STARTED",
+        # This receipt is durably staged before any launchd or plist mutation.
+        # An interrupted process therefore cannot leave an authoritative
+        # NOT_STARTED receipt after entering the state-changing operation.
+        "status": "IN_PROGRESS",
+        "phase": "IN_PROGRESS",
         "created_at": _utc_text(_now()),
         "updated_at": _utc_text(_now()),
         "target": plan["target"],
@@ -1695,7 +1721,7 @@ def _best_effort_recovery_receipt(
         if current is None or current.key() != expected.key():
             raise CutoverSafetyError("receipt identity changed before recovery write")
         _save_receipt(config, receipt, expected=current)
-    except Exception as exc:
+    except BaseException as exc:
         _append_failure(receipt, f"receipt recovery write: {type(exc).__name__}: {exc}")
 
 
@@ -1713,6 +1739,7 @@ def _apply_existing_receipt(
         "RECOVERED",
         "RECOVERY_REQUIRED",
         "PARTIAL",
+        "IN_PROGRESS",
         "NOT_STARTED",
     }:
         raise CutoverSafetyError("existing receipt status is invalid")
@@ -1753,6 +1780,7 @@ def _apply_existing_receipt(
     if status in {
         "RECOVERY_REQUIRED",
         "PARTIAL",
+        "IN_PROGRESS",
         "NOT_STARTED",
         "RECOVERED",
         "ROLLBACK_SUCCESS",
@@ -1762,7 +1790,7 @@ def _apply_existing_receipt(
             "command": "apply",
             "task": TASK_ID,
             "status": "RECOVERY_REQUIRED"
-            if status in {"RECOVERY_REQUIRED", "PARTIAL"}
+            if status in {"RECOVERY_REQUIRED", "PARTIAL", "IN_PROGRESS"}
             else "NOT_STARTED",
             "receipt_status": status,
             "operation_id": receipt.get("operation_id"),
@@ -1803,7 +1831,7 @@ def apply(
             receipt = _receipt_base(config, fresh, uuid4().hex)
             try:
                 receipt_identity = _save_receipt(config, receipt, expected=None)
-            except Exception as exc:
+            except BaseException as exc:
                 return {
                     "command": "apply",
                     "task": TASK_ID,
@@ -1825,8 +1853,9 @@ def apply(
                     recorder=recorder,
                     restoring=False,
                 )
-            except Exception as exc:
+            except BaseException as exc:
                 receipt["status"] = "PARTIAL" if recorder.mutation_count else "NOT_STARTED"
+                receipt["phase"] = "RECOVERY_REQUIRED" if recorder.mutation_count else "NOT_STARTED"
                 cast(list[str], receipt["failures"]).append(f"{type(exc).__name__}: {exc}")
                 receipt["actions"] = recorder.actions
                 receipt["mutation_summary"] = _mutation_summary(recorder.actions)
@@ -1845,8 +1874,9 @@ def apply(
                         )
                         receipt["status"] = "RECOVERED"
                         receipt["after"] = recovered_after
-                    except Exception as recovery_exc:
+                    except BaseException as recovery_exc:
                         receipt["status"] = "RECOVERY_REQUIRED"
+                        receipt["phase"] = "RECOVERY_REQUIRED"
                         cast(list[str], receipt["failures"]).append(
                             f"recovery: {type(recovery_exc).__name__}: {recovery_exc}"
                         )
@@ -1854,8 +1884,9 @@ def apply(
                     receipt["mutation_summary"] = _mutation_summary(recovery_recorder.actions)
                 try:
                     _save_receipt(config, receipt, expected=receipt_identity)
-                except Exception as receipt_exc:
+                except BaseException as receipt_exc:
                     receipt["status"] = "RECOVERY_REQUIRED"
+                    receipt["phase"] = "RECOVERY_REQUIRED"
                     _append_failure(
                         receipt, f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
                     )
@@ -1874,13 +1905,15 @@ def apply(
                 }
 
             receipt["status"] = "SUCCESS"
+            receipt["phase"] = "COMPLETED"
             receipt["after"] = after
             receipt["actions"] = recorder.actions
             receipt["mutation_summary"] = _mutation_summary(recorder.actions)
             try:
                 _save_receipt(config, receipt, expected=receipt_identity)
-            except Exception as receipt_exc:
+            except BaseException as receipt_exc:
                 receipt["status"] = "RECOVERY_REQUIRED"
+                receipt["phase"] = "RECOVERY_REQUIRED"
                 _append_failure(
                     receipt, f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
                 )
@@ -1978,6 +2011,7 @@ def rollback(
         "RECOVERY_REQUIRED",
         "RECOVERED",
         "ROLLBACK_IN_PROGRESS",
+        "IN_PROGRESS",
     }:
         raise CutoverSafetyError("receipt is not eligible for explicit rollback")
     plan = _receipt_to_plan(config, loaded_receipt)
@@ -2051,7 +2085,7 @@ def rollback(
                     loaded_receipt,
                     expected=receipt_identity,
                 )
-            except Exception as receipt_exc:
+            except BaseException as receipt_exc:
                 loaded_receipt["status"] = "RECOVERY_REQUIRED"
                 _append_failure(
                     loaded_receipt,
@@ -2082,7 +2116,7 @@ def rollback(
                     recorder=recorder,
                     restoring=True,
                 )
-            except Exception as exc:
+            except BaseException as exc:
                 loaded_receipt["status"] = "RECOVERY_REQUIRED"
                 cast(list[str], loaded_receipt.setdefault("failures", [])).append(
                     f"rollback: {type(exc).__name__}: {exc}"
@@ -2095,7 +2129,7 @@ def rollback(
                         loaded_receipt,
                         expected=receipt_identity,
                     )
-                except Exception as receipt_exc:
+                except BaseException as receipt_exc:
                     _append_failure(
                         loaded_receipt,
                         f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}",
@@ -2117,6 +2151,7 @@ def rollback(
                     "actions": recorder.actions,
                 }
             loaded_receipt["status"] = "ROLLBACK_SUCCESS"
+            loaded_receipt["phase"] = "COMPLETED"
             loaded_receipt["after"] = after
             loaded_receipt["actions"] = recorder.actions
             loaded_receipt["mutation_summary"] = _mutation_summary(recorder.actions)
@@ -2127,8 +2162,9 @@ def rollback(
                     loaded_receipt,
                     expected=receipt_identity,
                 )
-            except Exception as receipt_exc:
+            except BaseException as receipt_exc:
                 loaded_receipt["status"] = "RECOVERY_REQUIRED"
+                loaded_receipt["phase"] = "RECOVERY_REQUIRED"
                 _append_failure(
                     loaded_receipt,
                     f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}",

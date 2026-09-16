@@ -65,6 +65,9 @@ class Fixture:
     receipt_path: Path = field(init=False)
     config: cutover.CutoverConfig = field(init=False)
     old_plist_bytes: bytes = field(init=False)
+    business_state_paths: tuple[Path, ...] = field(init=False)
+    business_state_before: dict[Path, bytes] = field(init=False)
+    business_state_before_hashes: dict[Path, str] = field(init=False)
 
     def __post_init__(self) -> None:
         self.canonical = self.root / "MathStatisticalAnalysis"
@@ -129,6 +132,27 @@ class Fixture:
         self.old_plist_bytes = scheduler.build_launchd_plist(old_scheduler_config)
         self.plist_path.write_bytes(self.old_plist_bytes)
         self.plist_path.chmod(0o600)
+        self.business_state_paths = (
+            self.config.database,
+            self.operation_root / "scheduler-health-state.json",
+            self.operation_root / "predictions" / "forecast.json",
+            self.operation_root / "reports" / "score-report.json",
+        )
+        business_state_bytes = (
+            b"SQLite format 3\x00B649 fixture business state\n",
+            b'{"scheduler":"healthy","last_run":"fixture"}\n',
+            b'{"prediction_id":"fixture","forecast":[1,2,3]}\n',
+            b'{"report_id":"fixture","score":42,"task_data":{"case":"B649"}}\n',
+        )
+        for path, data in zip(self.business_state_paths, business_state_bytes, strict=True):
+            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            path.write_bytes(data)
+            path.chmod(0o600)
+        self.business_state_before = {path: path.read_bytes() for path in self.business_state_paths}
+        self.business_state_before_hashes = {
+            path: hashlib.sha256(data).hexdigest()
+            for path, data in self.business_state_before.items()
+        }
 
     @staticmethod
     def _make_source(path: Path) -> None:
@@ -287,6 +311,13 @@ def fixture(tmp_path: Path) -> Fixture:
     return Fixture(tmp_path)
 
 
+def _assert_business_state_unchanged(fixture: Fixture) -> None:
+    for path in fixture.business_state_paths:
+        current = path.read_bytes()
+        assert current == fixture.business_state_before[path]
+        assert hashlib.sha256(current).hexdigest() == fixture.business_state_before_hashes[path]
+
+
 def test_plan_is_read_only_and_reports_exact_runtime(fixture: Fixture) -> None:
     runner = FakeLaunchd(fixture)
     before_paths = {
@@ -401,6 +432,7 @@ def test_apply_duplicate_and_receipt_bound_rollback_are_hermetic(fixture: Fixtur
     assert runner.loaded is True
     assert runner.loaded_source == fixture.new
     assert runner.enabled is True
+    _assert_business_state_unchanged(fixture)
     after = _object(applied["after"])
     plist = _object(after["plist"])
     assert plist["sha256"] == hashlib.sha256(fixture.plist_path.read_bytes()).hexdigest()
@@ -431,6 +463,7 @@ def test_apply_duplicate_and_receipt_bound_rollback_are_hermetic(fixture: Fixtur
     assert runner.enabled is True
     assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
     assert rolled_back["business_state"] == "UNCHANGED"
+    _assert_business_state_unchanged(fixture)
     rollback_after = _object(rolled_back["after"])
     assert (
         _object(rollback_after["plist"])["sha256"]
@@ -634,6 +667,40 @@ def test_apply_unloaded_enabled_race_is_detected_before_plist_replacement(
     assert not any(action["name"] == "install-plist" for action in _objects(result["actions"]))
 
 
+def test_apply_interruption_after_launchd_mutation_leaves_started_receipt(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    staged_statuses: list[object] = []
+
+    def interrupt_after_disable(args: tuple[str, ...]) -> None:
+        if args[1] == "disable":
+            staged_statuses.append(
+                json.loads(fixture.receipt_path.read_text(encoding="utf-8"))["status"]
+            )
+            runner.after_mutation = None
+            raise KeyboardInterrupt("synthetic interruption after disable")
+
+    runner.after_mutation = interrupt_after_disable
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert staged_statuses == ["IN_PROGRESS"]
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == "RECOVERY_REQUIRED"
+    assert receipt["phase"] == "RECOVERY_REQUIRED"
+    interrupted = next(
+        action for action in _objects(result["actions"]) if action["name"] == "disable-before-apply"
+    )
+    assert interrupted["status"] == "INTERRUPTED"
+    assert interrupted["interrupted"] is True
+    assert interrupted["mutation"] is True
+    assert runner.enabled is False
+    _assert_business_state_unchanged(fixture)
+
+
 @pytest.mark.parametrize("verb", ["disable", "bootout", "enable"])
 def test_apply_launchd_mutation_boundary_failures_are_explicit(fixture: Fixture, verb: str) -> None:
     runner = FakeLaunchd(
@@ -697,6 +764,12 @@ def test_apply_post_replace_failure_is_counted_and_recovered(
     names = [action["name"] for action in _objects(result["actions"])]
     assert "install-plist" in names
     assert "restore-plist" in names
+    install = next(
+        action for action in _objects(result["actions"]) if action["name"] == "install-plist"
+    )
+    assert install["after_observation"] == "OBSERVED"
+    assert _object(install["after"])["sha256"] == _object(plan["prestate"])["new_plist_sha256"]
+    _assert_business_state_unchanged(fixture)
     assert result["mutation_summary"] == {
         "launchd": True,
         "plist": True,
@@ -866,6 +939,7 @@ def test_apply_bootstrap_failure_has_explicit_recovery(fixture: Fixture) -> None
     assert runner.loaded_source == fixture.old
     assert runner.enabled is True
     assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
     names = [action["name"] for action in _objects(result["actions"])]
     assert "bootstrap-new" in names
     assert "restore-plist" in names

@@ -63,7 +63,7 @@ from lottolab.infrastructure.persistence.research_schema import (
     BUSY_TIMEOUT_MS,
     IMMUTABLE_TABLE_NAMES,
     TABLE_NAMES,
-    V4_MIGRATION_CHECKSUM,
+    V5_MIGRATION_CHECKSUM,
     ResearchDataPaths,
     initialize_schema,
     open_database,
@@ -230,6 +230,7 @@ class SQLiteResearchRepository:
                     v.missing_provenance_json,
                     v.import_execution_json,
                     v.consensus_provenance_json,
+                    v.candidate_ref,
                     v.pointer_advanced,
                     v.provenance_envelope_json,
                     v.provenance_envelope_sha256,
@@ -348,6 +349,7 @@ class SQLiteResearchRepository:
             missing_provenance_json=str(row["missing_provenance_json"]),
             import_execution_json=str(row["import_execution_json"]),
             consensus_provenance_json=str(row["consensus_provenance_json"]),
+            candidate_ref=None if row["candidate_ref"] is None else str(row["candidate_ref"]),
         )
         try:
             forecast.validate()
@@ -369,7 +371,7 @@ class SQLiteResearchRepository:
             "provenance_envelope_sha256, request_sha256, source_locator, "
             "provenance_class, forecast_stream_id, forecast_stream_version, "
             "lottery_type, target_draw_number, target_draw_date, target_json, "
-            "import_execution_json, consensus_provenance_json "
+            "import_execution_json, consensus_provenance_json, candidate_ref "
             "FROM research_live_forecast_versions WHERE request_id=?",
             (request_id,),
         ).fetchone()
@@ -395,6 +397,7 @@ class SQLiteResearchRepository:
                 or stored_scope != expected_scope
                 or row[13] != forecast.target_json
                 or row[15] != forecast.consensus_provenance_json
+                or (str(row[16]) if row[16] is not None else None) != forecast.candidate_ref
             ):
                 raise ResearchConflictError("live request id was reused for different content")
         pointer_advanced = bool(row[2])
@@ -515,6 +518,52 @@ class SQLiteResearchRepository:
                 ),
             )
             target = forecast.target
+            if consensus:
+                if forecast.scope[1] == "115000087":
+                    if forecast.candidate_ref is not None:
+                        raise ResearchConflictError("frozen target 115000087 forbids candidate_ref")
+                else:
+                    if forecast.candidate_ref is None:
+                        raise ResearchConflictError(
+                            "successor canonical consensus requires candidate_ref"
+                        )
+            if consensus and forecast.candidate_ref is not None:
+                cand_row = connection.execute(
+                    "SELECT lottery_type, target_draw_number, "
+                    "target_draw_date, forecast_stream_id, forecast_stream_version, "
+                    "payload_sha256, payload_bytes, schedule_authority_sha256 "
+                    "FROM research_consensus_candidate_authorities WHERE candidate_ref = ?",
+                    (forecast.candidate_ref,),
+                ).fetchone()
+                if cand_row is None:
+                    raise ResearchConflictError(
+                        f"candidate_ref {forecast.candidate_ref} not found in candidate authorities"
+                    )
+                cand_scope = (
+                    str(cand_row[0]),
+                    str(cand_row[1]),
+                    str(cand_row[2]),
+                    str(cand_row[3]),
+                    str(cand_row[4]),
+                )
+                if cand_scope != forecast.scope:
+                    raise ResearchConflictError("candidate authority scope mismatch")
+                if str(cand_row[5]) != forecast.payload_sha256:
+                    raise ResearchConflictError("candidate authority payload sha256 mismatch")
+                cand_bytes = cand_row[6]
+                if isinstance(cand_bytes, memoryview):
+                    cand_bytes = cand_bytes.tobytes()
+                if cand_bytes != forecast.payload_bytes:
+                    raise ResearchConflictError("candidate authority payload bytes mismatch")
+                if str(cand_row[7]) != target.get("schedule_authority_sha256"):
+                    raise ResearchConflictError("candidate authority schedule mismatch")
+                dup_row = connection.execute(
+                    "SELECT request_id FROM research_live_forecast_versions "
+                    "WHERE candidate_ref = ?",
+                    (forecast.candidate_ref,),
+                ).fetchone()
+                if dup_row is not None and str(dup_row[0]) != forecast.request_id:
+                    raise ResearchConflictError("DUPLICATE_CANDIDATE_CONFLICT")
             connection.execute(
                 "INSERT INTO research_runs (id, run_kind, rule_contract_id, "
                 "input_dataset_identity, input_dataset_sha256, status, expected_target_count, "
@@ -583,6 +632,8 @@ class SQLiteResearchRepository:
                 "expected_current_version": expected_current_version,
                 "pointer_advanced": advanced,
             }
+            if forecast.candidate_ref is not None:
+                envelope["candidate_ref"] = forecast.candidate_ref
             envelope_json = canonical_json(envelope)
             envelope_sha = digest(envelope)
             columns = (
@@ -607,6 +658,7 @@ class SQLiteResearchRepository:
                 "missing_provenance_json",
                 "import_execution_json",
                 "consensus_provenance_json",
+                "candidate_ref",
                 "committed_at",
                 "expected_current_version",
                 "pointer_advanced",
@@ -625,6 +677,8 @@ class SQLiteResearchRepository:
                 (
                     "UNKNOWN_LEGACY_PROVENANCE"
                     if legacy
+                    else "CONSENSUS_ADMISSION_BOUND"
+                    if (consensus and forecast.candidate_ref is not None)
                     else "CONSENSUS_SOURCE_BOUND"
                     if consensus
                     else "COMPLETE"
@@ -638,6 +692,7 @@ class SQLiteResearchRepository:
                 forecast.missing_provenance_json,
                 forecast.import_execution_json,
                 forecast.consensus_provenance_json,
+                forecast.candidate_ref,
                 committed_at,
                 expected_current_version,
                 int(advanced),
@@ -702,6 +757,203 @@ class SQLiteResearchRepository:
             strict_consensus=True,
             idempotency_key=idempotency_key,
         )
+
+    # INTENT: Provide canonical research repository reader for consensus candidate authorities
+    def get_consensus_candidate_authority(
+        self, candidate_ref: str
+    ) -> dict[str, object] | None:
+        """Fetch an admitted consensus candidate record by candidate_ref."""
+        with open_database(self._paths, read_only=True) as connection:
+            row = connection.execute(
+                """
+                SELECT
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    target_draw_date,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                    payload_bytes,
+                    payload_sha256,
+                    candidate_locator,
+                    candidate_created_at,
+                    scheduled_at,
+                    deadline,
+                    data_cutoff_draw_number,
+                    data_cutoff_draw_date,
+                    history_draw_count,
+                    causal_history_sha256,
+                    schedule_authority_sha256,
+                    stream_input_manifest_sha256,
+                    implementation_commit,
+                    implementation_tree,
+                    implementation_source_hashes_json,
+                    streams_json,
+                    admission_provenance_json,
+                    admitted_at
+                FROM research_consensus_candidate_authorities
+                WHERE candidate_ref = ?
+                """,
+                (candidate_ref,),
+            ).fetchone()
+            if row is None:
+                return None
+            payload_bytes = row[6]
+            if isinstance(payload_bytes, memoryview):
+                payload_bytes = payload_bytes.tobytes()
+            return {
+                "candidate_ref": str(row[0]),
+                "lottery_type": str(row[1]),
+                "target_draw_number": str(row[2]),
+                "target_draw_date": str(row[3]),
+                "forecast_stream_id": str(row[4]),
+                "forecast_stream_version": str(row[5]),
+                "payload_bytes": bytes(payload_bytes),
+                "payload_sha256": str(row[7]),
+                "candidate_locator": str(row[8]),
+                "candidate_created_at": str(row[9]),
+                "scheduled_at": str(row[10]),
+                "deadline": str(row[11]),
+                "data_cutoff_draw_number": str(row[12]),
+                "data_cutoff_draw_date": str(row[13]),
+                "history_draw_count": int(row[14]),
+                "causal_history_sha256": str(row[15]),
+                "schedule_authority_sha256": str(row[16]),
+                "stream_input_manifest_sha256": str(row[17]),
+                "implementation_commit": str(row[18]),
+                "implementation_tree": str(row[19]),
+                "implementation_source_hashes_json": str(row[20]),
+                "streams_json": str(row[21]),
+                "admission_provenance_json": str(row[22]),
+                "admitted_at": str(row[23]),
+            }
+
+    # INTENT: Provide canonical write transaction to record an admitted consensus candidate
+    def persist_consensus_candidate_authority(
+        self,
+        *,
+        candidate_ref: str,
+        lottery_type: str,
+        target_draw_number: str,
+        target_draw_date: str,
+        forecast_stream_id: str,
+        forecast_stream_version: str,
+        payload_bytes: bytes,
+        payload_sha256: str,
+        candidate_locator: str,
+        candidate_created_at: str,
+        scheduled_at: str,
+        deadline: str,
+        data_cutoff_draw_number: str,
+        data_cutoff_draw_date: str,
+        history_draw_count: int,
+        causal_history_sha256: str,
+        schedule_authority_sha256: str,
+        stream_input_manifest_sha256: str,
+        implementation_commit: str,
+        implementation_tree: str,
+        implementation_source_hashes_json: str,
+        streams_json: str,
+        admission_provenance_json: str,
+        admitted_at: str,
+    ) -> None:
+        """Persist an admitted candidate row into research_consensus_candidate_authorities."""
+
+        def operation(connection: sqlite3.Connection) -> None:
+            existing = connection.execute(
+                """
+                SELECT candidate_ref, payload_sha256, payload_bytes, schedule_authority_sha256
+                FROM research_consensus_candidate_authorities
+                WHERE candidate_ref = ?
+                   OR (
+                       lottery_type = ?
+                       AND target_draw_number = ?
+                       AND forecast_stream_id = ?
+                       AND forecast_stream_version = ?
+                   )
+                """,
+                (
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                ),
+            ).fetchone()
+            if existing is not None:
+                exist_ref, exist_sha, exist_bytes, exist_sched = existing
+                if isinstance(exist_bytes, memoryview):
+                    exist_bytes = exist_bytes.tobytes()
+                if (
+                    exist_ref == candidate_ref
+                    and exist_sha == payload_sha256
+                    and exist_bytes == payload_bytes
+                    and exist_sched == schedule_authority_sha256
+                ):
+                    return
+                raise ResearchConflictError(
+                    f"conflicting candidate authority exists for target {target_draw_number}"
+                )
+            connection.execute(
+                """
+                INSERT INTO research_consensus_candidate_authorities (
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    target_draw_date,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                    payload_bytes,
+                    payload_sha256,
+                    candidate_locator,
+                    candidate_created_at,
+                    scheduled_at,
+                    deadline,
+                    data_cutoff_draw_number,
+                    data_cutoff_draw_date,
+                    history_draw_count,
+                    causal_history_sha256,
+                    schedule_authority_sha256,
+                    stream_input_manifest_sha256,
+                    implementation_commit,
+                    implementation_tree,
+                    implementation_source_hashes_json,
+                    streams_json,
+                    admission_provenance_json,
+                    admitted_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                )
+                """,
+                (
+                    candidate_ref,
+                    lottery_type,
+                    target_draw_number,
+                    target_draw_date,
+                    forecast_stream_id,
+                    forecast_stream_version,
+                    payload_bytes,
+                    payload_sha256,
+                    candidate_locator,
+                    candidate_created_at,
+                    scheduled_at,
+                    deadline,
+                    data_cutoff_draw_number,
+                    data_cutoff_draw_date,
+                    history_draw_count,
+                    causal_history_sha256,
+                    schedule_authority_sha256,
+                    stream_input_manifest_sha256,
+                    implementation_commit,
+                    implementation_tree,
+                    implementation_source_hashes_json,
+                    streams_json,
+                    admission_provenance_json,
+                    admitted_at,
+                ),
+            )
+
+        self._write_transaction(operation)
 
     def register_rule_contract(
         self,
@@ -1800,7 +2052,7 @@ class SQLiteResearchRepository:
             resolved_path=str(self._paths.database),
             schema_version=int(migration_row[0]),
             migration_checksum=str(migration_row[1]),
-            migration_checksum_match=str(migration_row[1]) == V4_MIGRATION_CHECKSUM,
+            migration_checksum_match=str(migration_row[1]) == V5_MIGRATION_CHECKSUM,
             table_inventory=inventory,
             row_counts=counts,
             append_only_triggers=tuple(
@@ -1849,6 +2101,12 @@ def _require_canonical_consensus_authority(forecast: LiveForecastInput) -> None:
         and forecast.payload_sha256 != CONSENSUS_AUTHORITY_B_PAYLOAD_SHA256
     ):
         raise ResearchRepositoryError("canonical consensus payload is not Authority B")
+    if forecast.scope[1] == "115000087":
+        if forecast.candidate_ref is not None:
+            raise ResearchConflictError("frozen target 115000087 forbids candidate_ref")
+    else:
+        if forecast.candidate_ref is None:
+            raise ResearchConflictError("successor canonical consensus requires candidate_ref")
 
 
 def _verify_canonical_consensus_payload_rows(connection: sqlite3.Connection) -> None:
@@ -1878,6 +2136,74 @@ def _verify_canonical_consensus_payload_rows(connection: sqlite3.Connection) -> 
             raise ResearchRepositoryError(
                 f"canonical consensus row {version} is not bound to Authority B"
             )
+
+    successor_rows = connection.execute(
+        """
+        SELECT v.version, v.candidate_ref, v.payload_bytes, v.payload_sha256,
+               v.source_payload_sha256, a.payload_bytes, a.payload_sha256, a.candidate_ref
+        FROM research_live_forecast_versions AS v
+        LEFT JOIN research_consensus_candidate_authorities AS a
+          ON a.candidate_ref = v.candidate_ref
+        WHERE v.provenance_class = ?
+          AND v.candidate_ref IS NOT NULL
+        ORDER BY v.version
+        """,
+        (CANONICAL_CONSENSUS,),
+    ).fetchall()
+    for (
+        ver,
+        cand_ref,
+        v_bytes,
+        v_sha,
+        v_source_sha,
+        a_bytes,
+        a_sha,
+        a_ref,
+    ) in successor_rows:
+        if isinstance(v_bytes, memoryview):
+            v_bytes = v_bytes.tobytes()
+        if isinstance(a_bytes, memoryview):
+            a_bytes = a_bytes.tobytes()
+        if (
+            cand_ref is None
+            or a_ref is None
+            or not isinstance(v_bytes, bytes)
+            or v_sha != a_sha
+            or v_source_sha != a_sha
+            or v_bytes != a_bytes
+            or hashlib.sha256(v_bytes).hexdigest() != a_sha
+        ):
+            raise ResearchRepositoryError(
+                f"canonical consensus row {ver} is not bound to candidate authority {cand_ref}"
+            )
+
+    invalid_null_ref = connection.execute(
+        """
+        SELECT version FROM research_live_forecast_versions
+        WHERE provenance_class = ?
+          AND target_draw_number != '115000087'
+          AND candidate_ref IS NULL
+        """,
+        (CANONICAL_CONSENSUS,),
+    ).fetchall()
+    if invalid_null_ref:
+        raise ResearchRepositoryError(
+            f"successor canonical consensus row {invalid_null_ref[0][0]} missing candidate_ref"
+        )
+
+    invalid_087_ref = connection.execute(
+        """
+        SELECT version FROM research_live_forecast_versions
+        WHERE provenance_class = ?
+          AND target_draw_number = '115000087'
+          AND candidate_ref IS NOT NULL
+        """,
+        (CANONICAL_CONSENSUS,),
+    ).fetchall()
+    if invalid_087_ref:
+        raise ResearchRepositoryError(
+            f"frozen canonical consensus row {invalid_087_ref[0][0]} has illegal candidate_ref"
+        )
 
 
 @dataclass(frozen=True, slots=True)

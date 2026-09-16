@@ -14,7 +14,7 @@ from lottolab.infrastructure.persistence.research_schema import (
     DATA_DIRECTORY_ENV,
     RESEARCH_DATABASE_FILENAME,
     TABLE_NAMES,
-    V4_MIGRATION_CHECKSUM,
+    V5_MIGRATION_CHECKSUM,
 )
 from lottolab.interfaces.cli.main import app
 
@@ -53,7 +53,7 @@ def test_create_then_verify_reports_full_store_health(
     assert report["healthy"] is True
     assert report["resolved_path"] == str(data_directory / RESEARCH_DATABASE_FILENAME)
     assert report["schema_version"] == CURRENT_SCHEMA_VERSION
-    assert report["migration_checksum"] == V4_MIGRATION_CHECKSUM
+    assert report["migration_checksum"] == V5_MIGRATION_CHECKSUM
     assert report["migration_checksum_match"] is True
     assert report["table_inventory"] == sorted(TABLE_NAMES)
     assert report["append_only_trigger_count"] == len(APPEND_ONLY_TRIGGER_NAMES)

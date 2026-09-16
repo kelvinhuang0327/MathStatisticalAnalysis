@@ -593,6 +593,7 @@ def test_schema_v3_to_v4_preserves_live_payload_and_current_pointer(tmp_path: Pa
             (2, schema.MIGRATION_NAME, schema.MIGRATION_CHECKSUM),
             (3, schema.V3_MIGRATION_NAME, schema.V3_MIGRATION_CHECKSUM),
             (4, schema.V4_MIGRATION_NAME, schema.V4_MIGRATION_CHECKSUM),
+            (5, schema.V5_MIGRATION_NAME, schema.V5_MIGRATION_CHECKSUM),
         ]
 
 

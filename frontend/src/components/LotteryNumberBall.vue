@@ -95,10 +95,6 @@ const formattedValue = computed(() => {
     <!-- Soft 3D lighting reflection -->
     <span class="ball__shine" aria-hidden="true" />
 
-    <!-- State markers keep special and selected identities legible without color -->
-    <span v-if="isSpecialBase" class="ball__special-badge" aria-hidden="true">S</span>
-    <span v-if="normalizedVariant === 'selected'" class="ball__selected-badge" aria-hidden="true">✓</span>
-
     <!-- Hit / Win indicator dot / badge if hit -->
     <span v-if="normalizedVariant === 'hit'" class="ball__hit-badge" aria-hidden="true">★</span>
 
@@ -242,8 +238,8 @@ const formattedValue = computed(() => {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
 }
 
-.ball__special-badge,
-.ball__selected-badge {
+.ball--special-base::before,
+.ball--selected::after {
   position: absolute;
   left: 3px;
   z-index: 2;
@@ -253,12 +249,14 @@ const formattedValue = computed(() => {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-.ball__special-badge {
+.ball--special-base::before {
+  content: 'S';
   top: 3px;
   color: #fef08a;
 }
 
-.ball__selected-badge {
+.ball--selected::after {
+  content: '✓';
   bottom: 3px;
   color: #ffffff;
 }

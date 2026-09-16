@@ -20,6 +20,7 @@
 | Legacy single-/multi-file import full vertical migration R1 | [migration/legacy-single-multifile-import-full-vertical-migration-r1.md](migration/legacy-single-multifile-import-full-vertical-migration-r1.md) | OWNER-AUTHORIZED · IMPLEMENTATION |
 | BIGLOTTO68 → T539/P638 cross-lottery closure R1 | [migration/biglotto68-to-t539-p638-cross-lottery-closure-r1.md](migration/biglotto68-to-t539-p638-cross-lottery-closure-r1.md) | LOCAL IMPLEMENTATION · DETERMINISTIC FIXTURE VERIFIED |
 | Strategy Matrix Phase 11 T539/P638 Zone-1 iterative exact 1-exchange replication R1 | [research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-report.md](research/matrix-native-results/strategy-matrix-phase11-t539-p638-zone1-iterative-exact-1exchange-replication-v1-report.md) | COMPLETE · DRAFT PR OPEN |
+| 第三方套件授權與 attribution | [provenance/third-party-notices.md](provenance/third-party-notices.md) | CURRENT |
 | API 契約 | [../contracts/](../contracts/) | CURRENT |
 | AI agent context（repo-local Worker context、安全邊界、runbook） | [../.ai/ai-context/PROJECT_PROFILE.md](../.ai/ai-context/PROJECT_PROFILE.md) | CURRENT |
 

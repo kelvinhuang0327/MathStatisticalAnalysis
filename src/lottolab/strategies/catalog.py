@@ -1770,6 +1770,33 @@ _PRODUCTION_DESCRIPTORS = (
         native_ticket_count=3,
     ),
     StrategyDescriptor(
+        strategy_id="legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+        strategy_name="大樂透 進化型GUM前沿發現預測器",
+        version="v0.1",
+        lottery_types=(LotteryType.BIG_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.biglotto_batch16:"
+            "BigLottoPredictEvolutionaryGumAdapter"
+        ),
+        min_history=150,
+        provenance=(
+            "legacy_commit:49a25effa62fc24f40789c16be6f11bdfb41a4a9",
+            "legacy_source:tools/predict_evolutionary_gum.py",
+            "legacy_source:tools/strategy_leaderboard.py",
+            "legacy_source_sha256:"
+            "b3e96cf483b05793f75811379ce284b98a0200767d5d5f35476b5bb47b1a52ab",
+            "legacy_symbol:EvolutionaryGUM.predict",
+            "full_strategy_catalog_id:"
+            "legacy_biglotto__predict_evolutionary_gum__b3e96cf483b0",
+            "migration_task:BIGLOTTO_BATCH16_R1_BASE_METHOD_BATCH02_INTAKE",
+            "selection_task:B_BASE_METHOD_UNIVERSE_LIVE_GAP_AND_BATCH02_RESELECTION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
+    ),
+    StrategyDescriptor(
         strategy_id="legacy_biglotto__backtest_apriori__2abb53765703",
         strategy_name="大樂透 Apriori 關聯規則回測預測器",
         version="v0.1",
@@ -1846,6 +1873,8 @@ _PRODUCTION_DESCRIPTORS = (
         ),
         response_shape=ResponseShape.PORTFOLIO,
         native_ticket_count=10,
+        minimum_native_ticket_count=1,
+        maximum_native_ticket_count=10,
     ),
     StrategyDescriptor(
         strategy_id="legacy_biglotto__predict_biglotto_triple_strike__dad1c50d1504",
@@ -3585,6 +3614,39 @@ _PRODUCTION_DESCRIPTORS = (
         ),
         response_shape=ResponseShape.SINGLE_TICKET,
         native_ticket_count=1,
+    ),
+    StrategyDescriptor(
+        strategy_id="power_graph_synergy_seed42_2bet",
+        strategy_name="威力彩 Graph Synergy Louvain (固定種子42)",
+        version="v0.1-seed42",
+        lottery_types=(LotteryType.POWER_LOTTO,),
+        lifecycle_status=LifecycleStatus.ONLINE,
+        executable=True,
+        adapter_path=(
+            "lottolab.strategies.adapters.powerlotto_graph_synergy:"
+            "PowerLottoGraphSynergySeed42Adapter"
+        ),
+        min_history=1,
+        provenance=(
+            "legacy_source:tools/power_graph_synergy.py",
+            "legacy_source_sha256:"
+            "48701cd6854d442ced2b1ca63956d0928be23b715aaa880a116a86a8d905b581",
+            "legacy_symbol:graph_clancy_predict",
+            "historical_donor_strategy_id:power_graph_synergy",
+            "historical_donor_status:STOCHASTIC_BLOCKED_AUTHORITY_RETAINED",
+            "authorized_variant:CALL_LOCAL_DETERMINISTIC_LOUVAIN_SEED_42",
+            "louvain_reference:PYTHON_LOUVAIN_0_16_NETWORKX_3_2_1_RESOLUTION_1_0",
+            "graph_semantics:POWER_LOTTO_1_TO_38_TRAILING_500_ALL_PAIR_INTEGER_WEIGHTS",
+            "portfolio_cardinality:EXACTLY_2",
+            "second_zone:not_populated_first_zone_donor_only",
+            "runtime_boundary:CALLER_SUPPLIED_CAUSAL_HISTORY_NO_DB",
+            "live_db_required:NO",
+            "db_write:NONE",
+            "predictive_advantage_claimed:NO",
+            "migration_task:ANALYSIS_LOUVAIN_LEGACY_NATIVE_MIGRATION_R1",
+        ),
+        response_shape=ResponseShape.PORTFOLIO,
+        native_ticket_count=2,
     ),
 )
 

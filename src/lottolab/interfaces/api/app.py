@@ -16,6 +16,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from lottolab.application.ports import (
+    B649ExactNativeRecordReaderFactory,
+    B649K5RecordReaderFactory,
+    B649K10RecordReaderFactory,
     B649MultiTicketRecordReaderFactory,
     DrawDataProviderFactory,
     HistoricalPrefixSuccessWindowSourceReaderFactory,
@@ -27,6 +30,7 @@ from lottolab.application.ports import (
     P638HistoricalQueryRepositoryFactory,
     ReplayScoringProjectionReaderFactory,
     StrategyEvidenceRegistryReader,
+    StrategyMatrixStructuralReaderFactory,
     T539HistoricalQueryRepositoryFactory,
 )
 from lottolab.application.use_cases.generate_bet import (
@@ -39,6 +43,9 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
 )
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
+    PackagedB649ExactNativeRecordReader,
+    PackagedB649K5RecordReader,
+    PackagedB649K10RecordReader,
     PackagedB649MultiTicketRecordReader,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
@@ -48,6 +55,9 @@ from lottolab.infrastructure.persistence.draw_schema import (
 from lottolab.infrastructure.persistence.repositories import SQLiteDrawDataRepository
 from lottolab.infrastructure.strategy_evidence_registry import (
     CommittedStrategyEvidenceRegistry,
+)
+from lottolab.infrastructure.strategy_matrix_structural_reader import (
+    PackagedStrategyMatrixStructuralReader,
 )
 from lottolab.interfaces.api.b649_multi_ticket_records import (
     create_b649_multi_ticket_records_router,
@@ -86,6 +96,9 @@ from lottolab.interfaces.api.strategy_catalog import (
     create_strategy_catalog_router,
 )
 from lottolab.interfaces.api.strategy_evidence import create_strategy_evidence_router
+from lottolab.interfaces.api.strategy_matrix_structural import (
+    create_strategy_matrix_structural_router,
+)
 from lottolab.interfaces.api.t539_historical import create_t539_historical_router
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
@@ -118,10 +131,14 @@ def create_app(
     ) = None,
     draw_data_provider_factory: DrawDataProviderFactory | None = None,
     strategy_evidence_registry_reader: StrategyEvidenceRegistryReader | None = None,
-    b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
-    t539_historical_query_repository_factory: (
-        T539HistoricalQueryRepositoryFactory | None
+    strategy_matrix_structural_reader_factory: (
+        StrategyMatrixStructuralReaderFactory | None
     ) = None,
+    b649_multi_ticket_record_reader_factory: (B649MultiTicketRecordReaderFactory | None) = None,
+    b649_exact_native_record_reader_factory: (B649ExactNativeRecordReaderFactory | None) = None,
+    b649_k10_record_reader_factory: B649K10RecordReaderFactory | None = None,
+    b649_k5_record_reader_factory: B649K5RecordReaderFactory | None = None,
+    t539_historical_query_repository_factory: (T539HistoricalQueryRepositoryFactory | None) = None,
     t539_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
     ) = None,
@@ -151,6 +168,16 @@ def create_app(
         b649_multi_ticket_record_reader_factory
         if b649_multi_ticket_record_reader_factory is not None
         else PackagedB649MultiTicketRecordReader
+    )
+    resolved_b649_exact_native_reader_factory = (
+        b649_exact_native_record_reader_factory
+        if b649_exact_native_record_reader_factory is not None
+        else PackagedB649ExactNativeRecordReader
+    )
+    resolved_strategy_matrix_structural_reader_factory = (
+        strategy_matrix_structural_reader_factory
+        if strategy_matrix_structural_reader_factory is not None
+        else PackagedStrategyMatrixStructuralReader
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -187,6 +214,9 @@ def create_app(
         create_b649_multi_ticket_records_router(
             load_full_strategy_catalog(),
             resolved_b649_reader_factory,
+            exact_native_reader_factory=resolved_b649_exact_native_reader_factory,
+            k10_reader_factory=b649_k10_record_reader_factory or PackagedB649K10RecordReader,
+            k5_reader_factory=b649_k5_record_reader_factory or PackagedB649K5RecordReader,
         )
     )
     app.include_router(
@@ -194,6 +224,9 @@ def create_app(
             resolved_catalog,
             resolved_strategy_evidence_registry,
         )
+    )
+    app.include_router(
+        create_strategy_matrix_structural_router(resolved_strategy_matrix_structural_reader_factory)
     )
     app.include_router(
         create_draw_data_router(

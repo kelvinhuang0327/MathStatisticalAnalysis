@@ -8,6 +8,10 @@ from pathlib import Path
 from typing import Protocol, runtime_checkable
 
 from lottolab.application.biglotto_multi_ticket_records import (
+    B649ExactNativeRecordDataset,
+    B649HistoryWindow,
+    B649K5RecordDataset,
+    B649K10RecordDataset,
     B649MultiTicketRecordDataset,
 )
 from lottolab.application.draw_automation import (
@@ -53,6 +57,7 @@ from lottolab.application.p638_historical import (
     P638TargetDetail,
 )
 from lottolab.application.strategy_evidence import StrategyEvidenceRegistrySnapshot
+from lottolab.application.strategy_matrix_structural import StrategyMatrixStructuralDataset
 from lottolab.application.t539_historical import (
     T539CoverageLedger,
     T539DrawPage,
@@ -224,6 +229,32 @@ class B649MultiTicketRecordReader(Protocol):
 
 
 type B649MultiTicketRecordReaderFactory = Callable[[], B649MultiTicketRecordReader]
+
+
+@runtime_checkable
+class B649ExactNativeRecordReader(Protocol):
+    """Load the one checksum-pinned exact-native K2/K3 projection without side effects."""
+
+    def read(self) -> B649ExactNativeRecordDataset:
+        """Return the complete validated exact-native projection."""
+        ...
+
+
+type B649ExactNativeRecordReaderFactory = Callable[[], B649ExactNativeRecordReader]
+
+
+class B649K5RecordReader(Protocol):
+    def read(self, window: B649HistoryWindow | None = None) -> B649K5RecordDataset: ...
+
+
+type B649K5RecordReaderFactory = Callable[[], B649K5RecordReader]
+
+
+class B649K10RecordReader(Protocol):
+    def read(self, window: B649HistoryWindow | None = None) -> B649K10RecordDataset: ...
+
+
+type B649K10RecordReaderFactory = Callable[[], B649K10RecordReader]
 
 
 @runtime_checkable
@@ -638,3 +669,15 @@ class LotteryPrizeEvaluator(Protocol):
     ) -> PrizeEvaluationResult:
         """Score one ticket against one draw under that lottery's official rules."""
         ...
+
+
+@runtime_checkable
+class StrategyMatrixStructuralReader(Protocol):
+    """Load the one checksum-pinned structural Matrix projection without side effects."""
+
+    def read(self) -> StrategyMatrixStructuralDataset:
+        """Return the complete validated 210-cell structural projection."""
+        ...
+
+
+type StrategyMatrixStructuralReaderFactory = Callable[[], StrategyMatrixStructuralReader]

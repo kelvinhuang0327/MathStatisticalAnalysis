@@ -42,6 +42,9 @@ export const CANONICAL_HORIZONS: readonly HorizonDefinition[] = [
   },
 ] as const
 
+export const PRIMARY_TICKET_COUNTS = [1, 2, 3, 4, 5] as const
+export type PrimaryTicketCount = (typeof PRIMARY_TICKET_COUNTS)[number]
+
 export const ALL_TICKET_COUNTS = [
   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
 ] as const
@@ -99,6 +102,7 @@ export interface BestReplayItem {
   isAvailable: boolean
   reproductionStatus?: string
   unrankedReason?: string | null
+  unavailableReasonCode?: string
 }
 
 export interface BestReplaySummary {

@@ -3,7 +3,11 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { StrategyEvidenceResponse } from '../src/api/strategyEvidence'
+import {
+  queryStrategyEvidence,
+  StrategyEvidenceRequestError,
+  type StrategyEvidenceResponse,
+} from '../src/api/strategyEvidence'
 import StrategyEvidencePage from '../src/features/strategy-evidence/StrategyEvidencePage.vue'
 
 type StrategyEvidenceItem = StrategyEvidenceResponse['items'][number]
@@ -42,6 +46,21 @@ function makeEvidence(
     d3: {
       status: 'UNAVAILABLE',
       value: 'NOT_AVAILABLE',
+      definition: {
+        metric_id: 'D3',
+        metric_version: 'v1',
+        schema_id: 'lottolab.evidence.metric_definition',
+        schema_version: '1.0.0',
+        formula_status: 'RESERVED_UNAVAILABLE',
+        direction: 'DESCRIPTIVE_ONLY',
+        aggregation: 'NONE',
+        sample_unit: 'DRAWS',
+        decimal_scale: 4,
+        rounding_mode: 'ROUND_HALF_EVEN',
+        unit: 'UNITLESS',
+        definition_prose: 'fixture prose',
+        authority_path: 'contracts/evidence/metric_definitions/d3.json',
+      },
     },
   }
 }
@@ -79,5 +98,43 @@ describe('StrategyEvidencePage', () => {
     expect(text).not.toContain('BIG_LOTTO')
     expect(text).not.toContain('POWER_LOTTO')
     wrapper.unmount()
+  })
+})
+
+describe('queryStrategyEvidence canonical D3 definition validation', () => {
+  it('accepts a response carrying a well-formed canonical D3 definition', async () => {
+    fetchMock.mockResolvedValue(apiResponse(makeEvidence()))
+
+    const result = await queryStrategyEvidence()
+
+    expect(result.d3.definition.metric_id).toBe('D3')
+    expect(result.d3.definition.authority_path).toBe(
+      'contracts/evidence/metric_definitions/d3.json',
+    )
+  })
+
+  it('fails closed when the canonical D3 definition block is missing', async () => {
+    const evidence = makeEvidence()
+    const { definition: _definition, ...d3WithoutDefinition } = evidence.d3
+    fetchMock.mockResolvedValue(
+      apiResponse({ ...evidence, d3: d3WithoutDefinition }),
+    )
+
+    await expect(queryStrategyEvidence()).rejects.toBeInstanceOf(StrategyEvidenceRequestError)
+  })
+
+  it('fails closed when a required canonical D3 definition field is malformed', async () => {
+    const evidence = makeEvidence()
+    fetchMock.mockResolvedValue(
+      apiResponse({
+        ...evidence,
+        d3: {
+          ...evidence.d3,
+          definition: { ...evidence.d3.definition, decimal_scale: 'not-a-number' },
+        },
+      }),
+    )
+
+    await expect(queryStrategyEvidence()).rejects.toBeInstanceOf(StrategyEvidenceRequestError)
   })
 })

@@ -212,6 +212,7 @@ describe('B649OwnerRankingPage', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(17)
     expect(wrapper.text()).toContain('B649 Owner Ranking')
+    expect(wrapper.text()).toContain('CANONICAL RECORDS · R2 RESEARCH ANNOTATIONS')
     expect(wrapper.text()).toContain('HIGH_RANK_LOW_COVERAGE')
     expect(wrapper.text()).toContain('quick_ml_predict')
     expect(wrapper.text()).toContain('4 Obs.')
@@ -242,7 +243,7 @@ describe('B649OwnerRankingPage', () => {
     wrapper.unmount()
   })
 
-  it('uses the R2 portfolio snapshot instead of a mismatched API strategy id', async () => {
+  it('displays unavailable current metrics without synthetic rank/rate when portfolio_optimizer is missing from API', async () => {
     const wrapper = mount(B649OwnerRankingPage)
     await flushPromises()
 
@@ -252,16 +253,142 @@ describe('B649OwnerRankingPage', () => {
       .get('[aria-label="B649 Owner Decision Matrix table"]')
       .findAll('tbody tr')
       .find((row) => row.text().includes('portfolio_optimizer'))
-    expect(row15?.text()).toContain('#14/#6/#3/#9')
-    expect(row15?.text()).toContain('90.69% / 100.00% / 100.00% / 100.00%')
+    expect(row15).toBeDefined()
+    expect(row15?.text()).not.toContain('#14')
+    expect(row15?.text()).not.toContain('#6')
+    expect(row15?.text()).not.toContain('90.69%')
+    expect(row15?.text()).toContain('—/—/—/—')
+    expect(row15?.text()).toContain('— / — / — / —')
+    expect(row15?.text()).toContain('R2 research annotation; canonical record unavailable.')
 
     await ticketTabs[3]?.trigger('click')
     const row20 = wrapper
       .get('[aria-label="B649 Owner Decision Matrix table"]')
       .findAll('tbody tr')
       .find((row) => row.text().includes('portfolio_optimizer'))
-    expect(row20?.text()).toContain('#17/#6/#2/#9')
-    expect(row20?.text()).toContain('90.69% / 100.00% / 100.00% / 100.00%')
+    expect(row20).toBeDefined()
+    expect(row20?.text()).not.toContain('#17')
+    expect(row20?.text()).not.toContain('90.69%')
+    expect(row20?.text()).toContain('—/—/—/—')
+    expect(row20?.text()).toContain('— / — / — / —')
+    expect(row20?.text()).toContain('R2 research annotation; canonical record unavailable.')
+    wrapper.unmount()
+  })
+
+  it('displays API values for an annotation with a backing canonical record', async () => {
+    const wrapper = mount(B649OwnerRankingPage)
+    await flushPromises()
+
+    // Under 5 tickets, backtest_biglotto_6bet_ewma has FULL record with rank: 23, rate: 0.15136, obs: 1949, delta: 0.02065
+    expect(wrapper.text()).toContain('#23')
+    expect(wrapper.text()).toContain('15.14%')
+    expect(wrapper.text()).toContain('+2.07 pp')
+    wrapper.unmount()
+  })
+
+  it('displays unavailable when an annotated strategy has no backing canonical record', async () => {
+    const wrapper = mount(B649OwnerRankingPage)
+    await flushPromises()
+
+    const ticketTabs = wrapper.get('[role="tablist"]').findAll('button')
+    await ticketTabs[2]?.trigger('click') // 15 tickets
+
+    const coreList = wrapper.find('.owner-panel:nth-of-type(2) .compact-list')
+    expect(coreList.exists()).toBe(true)
+    const portfolioItem = coreList
+      .findAll('li')
+      .find((li) => li.text().includes('portfolio_optimizer'))
+    expect(portfolioItem?.text()).toContain('R2 research annotation; canonical record unavailable.')
+    expect(portfolioItem?.text()).toContain('—')
+    wrapper.unmount()
+  })
+
+  it('updates displayed values when canonical record changes, proving UI is not pinned to static R2 snapshots', async () => {
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('/summary')) return Promise.resolve(apiResponse(summary()))
+      const base = rowsFor(url)
+      const prefixCount = Number(url.searchParams.get('prefix_count'))
+      const window = url.searchParams.get('window') ?? 'FULL'
+      if (prefixCount === 15 && window === 'FULL') {
+        base.items.push(
+          record(15, 'FULL', 'portfolio_optimizer', {
+            rank: 5,
+            rate: '0.250000000000000000',
+            coverage: '0.800000000000000000',
+            observations: 400,
+            delta: '0.050000000000000000',
+          }),
+        )
+      }
+      return Promise.resolve(apiResponse(base))
+    })
+
+    const wrapper1 = mount(B649OwnerRankingPage)
+    await flushPromises()
+    const ticketTabs1 = wrapper1.get('[role="tablist"]').findAll('button')
+    await ticketTabs1[2]?.trigger('click')
+    const row1 = wrapper1
+      .get('[aria-label="B649 Owner Decision Matrix table"]')
+      .findAll('tbody tr')
+      .find((row) => row.text().includes('portfolio_optimizer'))
+    expect(row1?.text()).toContain('#5/—/—/—')
+    expect(row1?.text()).toContain('80.00% / — / — / —')
+    expect(row1?.text()).toContain('400')
+    expect(row1?.text()).toContain('+5.00 pp')
+    wrapper1.unmount()
+
+    fetchMock.mockImplementation((input) => {
+      const url = new URL(String(input), 'http://localhost')
+      if (url.pathname.endsWith('/summary')) return Promise.resolve(apiResponse(summary()))
+      const base = rowsFor(url)
+      const prefixCount = Number(url.searchParams.get('prefix_count'))
+      const window = url.searchParams.get('window') ?? 'FULL'
+      if (prefixCount === 15 && window === 'FULL') {
+        base.items.push(
+          record(15, 'FULL', 'portfolio_optimizer', {
+            rank: 2,
+            rate: '0.420000000000000000',
+            coverage: '0.950000000000000000',
+            observations: 1200,
+            delta: '0.120000000000000000',
+          }),
+        )
+      }
+      return Promise.resolve(apiResponse(base))
+    })
+
+    const wrapper2 = mount(B649OwnerRankingPage)
+    await flushPromises()
+    const ticketTabs2 = wrapper2.get('[role="tablist"]').findAll('button')
+    await ticketTabs2[2]?.trigger('click')
+    const row2 = wrapper2
+      .get('[aria-label="B649 Owner Decision Matrix table"]')
+      .findAll('tbody tr')
+      .find((row) => row.text().includes('portfolio_optimizer'))
+    expect(row2?.text()).toContain('#2/—/—/—')
+    expect(row2?.text()).toContain('95.00% / — / — / —')
+    expect(row2?.text()).toContain('1200')
+    expect(row2?.text()).toContain('+12.00 pp')
+    wrapper2.unmount()
+  })
+
+  it('maintains official rank order strictly from canonical records', async () => {
+    const wrapper = mount(B649OwnerRankingPage)
+    await flushPromises()
+
+    const windowTabs = wrapper.get('.window-tabs').findAll('button')
+    await windowTabs[3]?.trigger('click') // RECENT_50
+
+    const detailTableRows = wrapper
+      .get('[aria-label="B649 ranking detail table"]')
+      .findAll('tbody tr')
+    expect(detailTableRows[0]?.text()).toContain('#1')
+    expect(detailTableRows[0]?.text()).toContain('big_lotto_exhaustive_audit')
+    expect(detailTableRows[1]?.text()).toContain('#99')
+    expect(detailTableRows[1]?.text()).toContain('fixture_5_RECENT_50')
+    expect(detailTableRows[2]?.text()).toContain('—')
+    expect(detailTableRows[2]?.text()).toContain('quick_ml_predict')
     wrapper.unmount()
   })
 

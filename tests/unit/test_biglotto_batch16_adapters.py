@@ -31,7 +31,10 @@ from lottolab.strategies.adapters.base import (
     InsufficientHistory,
     UnsupportedLotteryType,
 )
-from lottolab.strategies.adapters.biglotto_batch16 import BigLottoTs3Markov4betAdapter
+from lottolab.strategies.adapters.biglotto_batch16 import (
+    BigLottoEvolutionEngineAdapter,
+    BigLottoTs3Markov4betAdapter,
+)
 from lottolab.strategies.catalog import production_catalog
 
 STRATEGY_ID = "legacy_biglotto__backtest_biglotto_markov_4bet__aefb54eb345b"
@@ -264,3 +267,38 @@ def test_generate_portfolio_returns_complete_native_ticket_set() -> None:
     )
     assert result.status is GeneratePortfolioStatus.OK
     assert result.numbers == TS3_MARKOV4_GOLDENS[200]
+
+
+# ─── evolution engine: variable native-cardinality contract ────────────────
+
+
+def test_evolution_engine_declares_variable_native_bounds() -> None:
+    assert BigLottoEvolutionEngineAdapter.native_ticket_count_bounds() == (1, 10)
+
+
+def test_evolution_engine_accepts_legal_short_portfolio(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A legal short (<10) portfolio must be accepted now that the adapter
+    declares its true (1, 10) bounds. Exercised via a monkeypatched
+    ``_predict_all`` -- cheap and deterministic, instead of running a real
+    (and non-deterministic-length) Evolution Engine pass merely to produce
+    a short fixture."""
+
+    short_portfolio = (
+        (1, 2, 3, 4, 5, 6),
+        (7, 8, 9, 10, 11, 12),
+        (13, 14, 15, 16, 17, 18),
+    )
+
+    def _short_predict_all(
+        self: BigLottoEvolutionEngineAdapter,
+        history: tuple[CausalDrawRow, ...],
+        lottery_type: LotteryType,
+    ) -> tuple[tuple[int, ...], ...]:
+        return short_portfolio
+
+    monkeypatch.setattr(BigLottoEvolutionEngineAdapter, "_predict_all", _short_predict_all)
+    history = _batch16_history(BigLottoEvolutionEngineAdapter.min_history)
+    tickets = BigLottoEvolutionEngineAdapter().get_bets(history, LotteryType.BIG_LOTTO)
+    assert tickets == short_portfolio

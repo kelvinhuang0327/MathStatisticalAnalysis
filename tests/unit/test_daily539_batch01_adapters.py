@@ -118,9 +118,10 @@ def test_production_catalog_appends_daily539_batch01_before_wave2() -> None:
 
     catalog = production_catalog()
     all_ids = tuple(descriptor.strategy_id for descriptor in catalog)
-    pre_wave2 = all_ids[:92]
-    assert pre_wave2[-1] == STRATEGY_ID
-    assert pre_wave2[-2] == "power_lead_lag_2bet"
+    lead_lag_idx = all_ids.index("power_lead_lag_2bet")
+    wave2_start_idx = all_ids.index("biglotto_wave2_neighbor_ad_cooccurrence_anti_pairs")
+    assert all_ids[lead_lag_idx + 1] == STRATEGY_ID
+    assert lead_lag_idx < all_ids.index(STRATEGY_ID) < wave2_start_idx
     assert all_ids.count(STRATEGY_ID) == 1
 
 

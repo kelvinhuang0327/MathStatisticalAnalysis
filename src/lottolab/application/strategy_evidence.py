@@ -42,9 +42,27 @@ class CanonicalEvidenceIdentity:
 
 
 @dataclass(frozen=True, slots=True)
+class D3DefinitionSnapshot:
+    metric_id: str
+    metric_version: str
+    schema_id: str
+    schema_version: str
+    formula_status: str
+    direction: str
+    aggregation: str
+    sample_unit: str
+    decimal_scale: int
+    rounding_mode: str
+    unit: str
+    definition_prose: str
+    authority_path: str
+
+
+@dataclass(frozen=True, slots=True)
 class StrategyEvidenceRegistrySnapshot:
     identities: frozenset[CanonicalEvidenceIdentity]
     d3_status: D3AvailabilityStatus
+    d3_definition: D3DefinitionSnapshot
 
 
 class StrategyEvidenceRegistryUnavailableError(RuntimeError):

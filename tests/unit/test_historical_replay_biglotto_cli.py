@@ -149,11 +149,11 @@ def test_all_identity_summary_uses_live_accounting_and_does_not_iterate_results(
     assert result.exit_code == 0, result.stderr
     assert result.stderr == ""
     summary = json.loads(result.stdout)
-    # Quad Strike makes one previously historical-raw-only BIG_LOTTO identity
+    # Evolutionary GUM makes one previously historical-raw-only BIG_LOTTO identity
     # replayable while total identity accounting remains unchanged.
     assert summary == {
-        "currently_replayable_identity_count": 69,
-        "historical_raw_only_identity_count": 64,
+        "currently_replayable_identity_count": 70,
+        "historical_raw_only_identity_count": 63,
         "keep_unresolved_alias_count": 3,
         "lottery_type": "BIG_LOTTO",
         "mode": "FULL_REPLAY",

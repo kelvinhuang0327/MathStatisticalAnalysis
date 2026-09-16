@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import os
@@ -456,6 +457,40 @@ def test_duplicate_apply_revalidates_the_receipt_bound_source(fixture: Fixture) 
     assert len(runner.mutation_calls) == mutation_count
 
 
+def test_apply_rejects_a_plan_that_differs_from_the_existing_receipt(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    different_plan = copy.deepcopy(plan)
+    different_prestate = _object(different_plan["prestate"])
+    different_prestate["old_enabled"] = False
+    prestate_digest = cast(Callable[[dict[str, object]], str], vars(cutover)["_prestate_digest"])(
+        different_prestate
+    )
+    different_plan["prestate_digest"] = prestate_digest
+    target = _object(different_plan["target"])
+    new_source = _object(_object(different_plan["source"])["new"])
+    plan_digest = cast(Callable[[object], str], vars(cutover)["_sha256_json"])(
+        {
+            "schema_version": cutover.PLAN_SCHEMA_VERSION,
+            "target": target,
+            "prestate_digest": prestate_digest,
+            "new_source": new_source,
+            "new_plist_sha256": different_prestate["new_plist_sha256"],
+        }
+    )
+    different_plan["plan_digest"] = plan_digest
+    mutation_count = len(runner.mutation_calls)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="different plan"):
+        cutover.apply(fixture.config, plan=different_plan, runner=runner)
+
+    assert len(runner.mutation_calls) == mutation_count
+
+
 def test_apply_isolated_to_the_exact_b649_launchagent_target(fixture: Fixture) -> None:
     runner = FakeLaunchd(fixture)
     allowed_mutations = {
@@ -669,6 +704,73 @@ def test_apply_post_replace_failure_is_counted_and_recovered(
     }
 
 
+def test_apply_source_drift_after_plist_install_blocks_new_bootstrap(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    original_atomic_write = cast(
+        Callable[..., cutover.FileIdentity], vars(cutover)["_atomic_write"]
+    )
+
+    def install_then_drift(
+        path: Path,
+        data: bytes,
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        identity = original_atomic_write(path, data, expected=expected)
+        if path == fixture.plist_path and data != fixture.old_plist_bytes:
+            runner.status_by_path[fixture.new] = " M drifted-before-bootstrap.py\n"
+        return identity
+
+    monkeypatch.setattr(cutover, "_atomic_write", install_then_drift)
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert runner.loaded_source == fixture.old
+    assert not any(action["name"] == "bootstrap-new" for action in _objects(result["actions"]))
+
+
+def test_apply_race_after_bootstrap_is_detected_before_enable(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+
+    def make_scheduler_active(args: tuple[str, ...]) -> None:
+        if args[1] == "bootstrap":
+            runner.process_rows = [
+                f"424242 1 {UID} {fixture.new}/tools/b649_goalc_local_scheduler.py"
+            ]
+
+    runner.after_mutation = make_scheduler_active
+    result = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert not any(call[1] == "enable" for call in runner.mutation_calls)
+    assert not any(call[1] == "kill" for call in runner.mutation_calls)
+
+
+def test_same_root_resolves_parent_escape_paths(fixture: Fixture) -> None:
+    same_root = cast(
+        Callable[[dict[str, object], dict[str, object]], bool], vars(cutover)["_same_root"]
+    )
+    runtime: dict[str, object] = {
+        "working_directory": str(fixture.old),
+        "interpreter": str(fixture.old / ".venv/bin/python"),
+        "script": str(fixture.old / "tools/b649_goalc_local_scheduler.py"),
+        "pythonpath": str(fixture.old / "src"),
+    }
+    escaped = dict(runtime)
+    escaped["script"] = str(fixture.old / "../outside-scheduler.py")
+    source: dict[str, object] = {"source_worktree": str(fixture.old)}
+
+    assert same_root(runtime, source) is True
+    assert same_root(escaped, source) is False
+
+
 def test_apply_receipt_prestage_write_failure_has_no_runtime_mutation(
     fixture: Fixture, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -723,6 +825,33 @@ def test_apply_final_receipt_write_failure_persists_recovery_provenance(
     durable_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
     assert durable_receipt["status"] == "RECOVERY_REQUIRED"
     assert durable_receipt["after"] == result["after"]
+
+
+def test_rollback_receipt_prestage_failure_is_structured(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    mutation_count = len(runner.mutation_calls)
+
+    def fail_save(
+        _config: cutover.CutoverConfig,
+        _receipt: dict[str, object],
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        del expected
+        raise OSError("rollback receipt unavailable")
+
+    monkeypatch.setattr(cutover, "_save_receipt", fail_save)
+    result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    assert len(runner.mutation_calls) == mutation_count
+    assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
 
 
 def test_apply_bootstrap_failure_has_explicit_recovery(fixture: Fixture) -> None:

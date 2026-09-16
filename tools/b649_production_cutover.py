@@ -843,16 +843,21 @@ def _assert_idle(ownership: Record, *, include_runtime: bool = True) -> None:
 
 
 def _same_root(runtime: Record, source: Record) -> bool:
-    root = Path(_text(source.get("source_worktree"), "source worktree"))
-    paths = (
-        Path(_text(runtime.get("working_directory"), "working directory")),
-        Path(_text(runtime.get("interpreter"), "interpreter")),
-        Path(_text(runtime.get("script"), "script")),
-        Path(_text(runtime.get("pythonpath"), "PYTHONPATH")),
-    )
     try:
+        root = Path(_text(source.get("source_worktree"), "source worktree")).resolve(strict=False)
+        paths = tuple(
+            Path(value).resolve(strict=False)
+            for value in (
+                _text(runtime.get("working_directory"), "working directory"),
+                _text(runtime.get("interpreter"), "interpreter"),
+                _text(runtime.get("script"), "script"),
+                _text(runtime.get("pythonpath"), "PYTHONPATH"),
+            )
+        )
         for path in paths:
             path.relative_to(root)
+    except OSError as exc:
+        raise CutoverSafetyError("runtime tuple cannot be resolved") from exc
     except ValueError:
         return False
     return paths[0] == root
@@ -1569,6 +1574,13 @@ def _apply_or_restore(
     for source in (current_source, expected_source):
         _assert_quiescent(config, runner, source)
     if desired_loaded:
+        _validate_bound_source(
+            config,
+            expected_source,
+            runner,
+            role="bootstrap-old" if restoring else "bootstrap-new",
+        )
+        _assert_quiescent(config, runner, expected_source)
         _run_launch_mutation(
             recorder,
             runner,
@@ -1582,6 +1594,7 @@ def _apply_or_restore(
     else:
         recorder.event("bootstrap-skip", reason="prestate was unloaded")
     if old_enabled:
+        _assert_quiescent(config, runner, expected_source)
         _run_launch_mutation(
             recorder,
             runner,
@@ -1777,7 +1790,10 @@ def apply(
             recorder.event("cutover-lock-acquired", path=str(config.cutover_lock_path))
             existing = _receipt_status(config.receipt_path)
             if existing is not None:
-                _plan_target_matches(config, _receipt_to_plan(config, existing))
+                existing_plan = _receipt_to_plan(config, existing)
+                _plan_target_matches(config, existing_plan)
+                if existing_plan.get("plan_digest") != selected_plan.get("plan_digest"):
+                    raise CutoverSafetyError("existing receipt is bound to a different plan")
                 already = _apply_existing_receipt(config, existing, runner=runner)
                 if already is not None:
                     already["actions"] = recorder.actions
@@ -2029,11 +2045,35 @@ def rollback(
             loaded_receipt["status"] = "ROLLBACK_IN_PROGRESS"
             loaded_receipt["before"] = rollback_before
             loaded_receipt["actions"] = recorder.actions
-            receipt_identity = _save_receipt(
-                config,
-                loaded_receipt,
-                expected=receipt_identity,
-            )
+            try:
+                receipt_identity = _save_receipt(
+                    config,
+                    loaded_receipt,
+                    expected=receipt_identity,
+                )
+            except Exception as receipt_exc:
+                loaded_receipt["status"] = "RECOVERY_REQUIRED"
+                _append_failure(
+                    loaded_receipt,
+                    f"rollback prestage receipt write: {type(receipt_exc).__name__}: {receipt_exc}",
+                )
+                loaded_receipt["mutation_summary"] = _mutation_summary(recorder.actions)
+                _best_effort_recovery_receipt(
+                    config,
+                    loaded_receipt,
+                    expected=receipt_identity,
+                )
+                return {
+                    "command": "rollback",
+                    "task": TASK_ID,
+                    "status": "RECOVERY_REQUIRED",
+                    "receipt_path": str(config.receipt_path),
+                    "operation_id": loaded_receipt.get("operation_id"),
+                    "before": rollback_before,
+                    "failures": loaded_receipt["failures"],
+                    "actions": recorder.actions,
+                    "mutation_summary": loaded_receipt["mutation_summary"],
+                }
             try:
                 after = _apply_or_restore(
                     config,

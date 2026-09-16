@@ -45,6 +45,7 @@ _FIXTURE_PATH = (
     / "b649_consensus_promotion"
     / "scheduler_115000088_bundle.json"
 )
+_B649_PRE_DEADLINE_088 = datetime(2026, 9, 12, 12, 0, tzinfo=UTC)
 
 
 def _setup_publication_tree(root: Path, fixture: dict[str, object]) -> Path:
@@ -66,7 +67,7 @@ def _setup_draw_database(
     *,
     target_draw: str = "115000088",
     draw_date: str = "20260915",
-    observed_at: datetime = datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+    observed_at: datetime = _B649_PRE_DEADLINE_088,
 ) -> tuple[LocalDataPaths, str]:
     db_resolved = db_path.resolve()
     draw_paths = LocalDataPaths(db_resolved.parent, db_resolved)
@@ -126,6 +127,7 @@ def test_admit_rejects_missing_publication_root(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=tmp_path / "nonexistent",
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -150,6 +152,7 @@ def test_admit_rejects_symlink_in_publication_root(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -173,6 +176,7 @@ def test_admit_rejects_missing_schedule_authority(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -246,7 +250,7 @@ def test_admit_rejects_outcome_already_present(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
-            now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -275,7 +279,7 @@ def test_admit_rejects_tampered_payload_sha(tmp_path: Path) -> None:
             target_draw_number="115000088",
             publication_root=pub_root,
             expected_payload_sha256=fixture["payload_sha256"],
-            now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -300,7 +304,7 @@ def test_admit_rejects_corrupted_payload_bytes(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
-            now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -327,7 +331,7 @@ def test_admit_rejects_tampered_stream_sha(tmp_path: Path) -> None:
             draw_paths=draw_paths,
             target_draw_number="115000088",
             publication_root=pub_root,
-            now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+            now=_B649_PRE_DEADLINE_088,
             admitter_identity="unit-test",
         )
 
@@ -348,7 +352,7 @@ def test_admit_and_load_roundtrip_088(tmp_path: Path) -> None:
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
         admitter_identity="test-agent",
         notes="admitted via test",
     )
@@ -364,7 +368,7 @@ def test_admit_and_load_roundtrip_088(tmp_path: Path) -> None:
         draw_paths=draw_paths,
         target_draw_number="115000088",
         publication_root=pub_root,
-        now=datetime(2026, 9, 12, 12, 0, tzinfo=UTC),
+        now=_B649_PRE_DEADLINE_088,
         admitter_identity="test-agent",
         notes="admitted via test",
     )

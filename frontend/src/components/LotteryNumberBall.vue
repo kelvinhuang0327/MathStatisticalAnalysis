@@ -95,6 +95,10 @@ const formattedValue = computed(() => {
     <!-- Soft 3D lighting reflection -->
     <span class="ball__shine" aria-hidden="true" />
 
+    <!-- State markers keep special and selected identities legible without color -->
+    <span v-if="isSpecialBase" class="ball__special-badge" aria-hidden="true">S</span>
+    <span v-if="normalizedVariant === 'selected'" class="ball__selected-badge" aria-hidden="true">✓</span>
+
     <!-- Hit / Win indicator dot / badge if hit -->
     <span v-if="normalizedVariant === 'hit'" class="ball__hit-badge" aria-hidden="true">★</span>
 
@@ -168,7 +172,7 @@ const formattedValue = computed(() => {
 
 /* MAIN Style: Blue / Periwinkle → Violet Gradient with blue-violet glow */
 .ball--main {
-  background: var(--gradient-secondary, linear-gradient(135deg, #3b82f6 0%, #7c3aed 100%));
+  background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.4),
     0 0 12px rgba(59, 130, 246, 0.35),
@@ -188,7 +192,7 @@ const formattedValue = computed(() => {
 /* SPECIAL Style: Violet → Magenta / Pink Gradient with pink-purple glow */
 .ball--special,
 .ball--special-base {
-  background: var(--gradient-accent, linear-gradient(135deg, #9333ea 0%, #db2777 100%));
+  background: linear-gradient(135deg, #7e22ce 0%, #be185d 100%);
   box-shadow:
     0 4px 12px rgba(0, 0, 0, 0.4),
     0 0 14px rgba(219, 39, 119, 0.45),
@@ -217,7 +221,7 @@ const formattedValue = computed(() => {
 }
 
 .ball--hit:not(.ball--special-base) {
-  background: var(--gradient-secondary, linear-gradient(135deg, #2563eb 0%, #7c3aed 100%));
+  background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
 }
 
 .ball--hit.ball--special-base {
@@ -236,6 +240,27 @@ const formattedValue = computed(() => {
   font-size: 10px;
   color: #fef08a;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+
+.ball__special-badge,
+.ball__selected-badge {
+  position: absolute;
+  left: 3px;
+  z-index: 2;
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.ball__special-badge {
+  top: 3px;
+  color: #fef08a;
+}
+
+.ball__selected-badge {
+  bottom: 3px;
+  color: #ffffff;
 }
 
 .ball__miss-badge {
@@ -264,11 +289,11 @@ const formattedValue = computed(() => {
 
 /* MISS Style: Retains shape, lower saturation and opacity */
 .ball--miss {
-  background: linear-gradient(135deg, rgba(71, 85, 105, 0.6) 0%, rgba(51, 65, 85, 0.6) 100%);
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  opacity: 0.45;
+  opacity: 0.6;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-  color: #94a3b8;
+  color: #f8fafc;
 }
 
 .ball--miss:hover {
@@ -286,12 +311,13 @@ const formattedValue = computed(() => {
 }
 
 .ball--selected:not(.ball--special-base) {
-  background: var(--gradient-secondary, linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%));
+  background: linear-gradient(135deg, #1d4ed8 0%, #6d28d9 100%);
 }
 
 /* DISABLED Style: Low opacity and grayscale */
 .ball--disabled {
-  opacity: 0.35;
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  opacity: 0.65;
   filter: grayscale(80%);
   cursor: not-allowed;
   box-shadow: none;

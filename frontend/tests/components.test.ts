@@ -36,6 +36,8 @@ describe('Reusable UI Components', () => {
     expect(wrapper.classes()).toContain('ball--special')
     expect(wrapper.classes()).toContain('ball--special-base')
     expect(wrapper.attributes('aria-label')).toBe('Special Number 8')
+    expect(wrapper.find('.ball__special-badge').text()).toBe('S')
+    expect(wrapper.find('.ball__special-badge').attributes('aria-hidden')).toBe('true')
   })
 
   it('keeps HIT and MISS states distinguishable without color alone', () => {
@@ -60,6 +62,8 @@ describe('Reusable UI Components', () => {
 
     expect(selected.attributes('aria-label')).toBe('Number 11 (Selected)')
     expect(selected.attributes('data-state')).toBe('selected')
+    expect(selected.find('.ball__selected-badge').text()).toBe('✓')
+    expect(selected.find('.ball__selected-badge').attributes('aria-hidden')).toBe('true')
     expect(disabled.attributes('aria-disabled')).toBe('true')
     expect(disabled.attributes('aria-label')).toBe('Number 12 (Unavailable)')
     expect(disabled.classes()).toContain('ball--disabled')

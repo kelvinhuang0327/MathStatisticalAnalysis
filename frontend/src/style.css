@@ -1092,6 +1092,22 @@ td code {
   font-size: 11.5px;
 }
 
+/* --- Sync Games Bar --- */
+.sync-games-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  flex-wrap: wrap;
+}
+
+.sync-games-label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 4px;
+}
+
 /* Number Chips / Containers in Tables & Cards */
 .number-chips {
   display: inline-flex;
@@ -1210,6 +1226,17 @@ td code {
   border-color: var(--color-warning-border);
   background: var(--color-warning-bg);
   color: var(--color-warning);
+}
+
+.notice-row {
+  display: flex;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  font-size: 13px;
 }
 
 /* --- Tab List --- */

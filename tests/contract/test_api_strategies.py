@@ -294,6 +294,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
     }
     assert operations == {
         ("get", "/api/health"),
+        ("get", "/api/b649/canonical-forecast/current"),
         ("get", "/api/v1/strategies"),
             ("get", "/api/v1/strategy-overview"),
             ("get", "/api/v1/strategy-evidence"),
@@ -436,7 +437,7 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
     }
-    assert len(operations) == 70
+    assert len(operations) == 71
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

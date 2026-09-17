@@ -36,6 +36,7 @@ _FORBIDDEN_ROUTE_WORDS = (
 )
 _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/health": frozenset({"get"}),
+    "/api/b649/canonical-forecast/current": frozenset({"get"}),
     "/api/v1/strategies": frozenset({"get"}),
     "/api/v1/strategy-overview": frozenset({"get"}),
     "/api/v1/strategy-evidence": frozenset({"get"}),

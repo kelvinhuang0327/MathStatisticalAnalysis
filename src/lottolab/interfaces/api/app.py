@@ -59,6 +59,9 @@ from lottolab.infrastructure.strategy_evidence_registry import (
 from lottolab.infrastructure.strategy_matrix_structural_reader import (
     PackagedStrategyMatrixStructuralReader,
 )
+from lottolab.interfaces.api.b649_canonical_forecast import (
+    create_b649_canonical_forecast_router,
+)
 from lottolab.interfaces.api.b649_multi_ticket_records import (
     create_b649_multi_ticket_records_router,
 )
@@ -209,6 +212,7 @@ def create_app(
     def health() -> dict[str, str]:
         return {"status": "ok", "api_version": API_VERSION}
 
+    app.include_router(create_b649_canonical_forecast_router())
     app.include_router(create_strategy_catalog_router(resolved_catalog))
     app.include_router(
         create_b649_multi_ticket_records_router(

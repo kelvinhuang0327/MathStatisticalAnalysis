@@ -27,6 +27,37 @@
         }
       }
     },
+    "/api/b649/canonical-forecast/current": {
+      "get": {
+        "tags": [
+          "b649-canonical-forecast"
+        ],
+        "summary": "Current",
+        "operationId": "getB649CanonicalForecastCurrent",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649CanonicalForecastCurrentResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service Unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/B649CanonicalForecastApiErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/strategies": {
       "get": {
         "tags": [
@@ -5987,6 +6018,167 @@
           "message"
         ],
         "title": "ApiValidationErrorResponse"
+      },
+      "B649CanonicalForecastApiErrorResponse": {
+        "properties": {
+          "error_code": {
+            "type": "string",
+            "title": "Error Code"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error_code",
+          "message"
+        ],
+        "title": "B649CanonicalForecastApiErrorResponse",
+        "description": "Sanitized error returned when scheduler authority is unavailable."
+      },
+      "B649CanonicalForecastCurrentResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "AVAILABLE",
+            "title": "Status"
+          },
+          "authority": {
+            "type": "string",
+            "const": "SCHEDULER_ARTIFACT",
+            "title": "Authority"
+          },
+          "current_target": {
+            "$ref": "#/components/schemas/B649CanonicalForecastTarget"
+          },
+          "consensus_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Consensus Numbers"
+          },
+          "source_stream_count": {
+            "type": "integer",
+            "title": "Source Stream Count"
+          },
+          "k5_tickets": {
+            "items": {
+              "$ref": "#/components/schemas/B649CanonicalForecastTicket"
+            },
+            "type": "array",
+            "title": "K5 Tickets"
+          },
+          "k10_tickets": {
+            "items": {
+              "$ref": "#/components/schemas/B649CanonicalForecastTicket"
+            },
+            "type": "array",
+            "title": "K10 Tickets"
+          },
+          "k20_tickets": {
+            "items": {
+              "$ref": "#/components/schemas/B649CanonicalForecastTicket"
+            },
+            "type": "array",
+            "title": "K20 Tickets"
+          },
+          "forecast_actual_sha256": {
+            "type": "string",
+            "title": "Forecast Actual Sha256"
+          },
+          "forecast_method_id": {
+            "type": "string",
+            "title": "Forecast Method Id"
+          },
+          "forecast_method_version": {
+            "type": "string",
+            "title": "Forecast Method Version"
+          },
+          "portfolio_actual_sha256": {
+            "type": "string",
+            "title": "Portfolio Actual Sha256"
+          },
+          "portfolio_method_id": {
+            "type": "string",
+            "title": "Portfolio Method Id"
+          },
+          "portfolio_method_version": {
+            "type": "string",
+            "title": "Portfolio Method Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "authority",
+          "current_target",
+          "consensus_numbers",
+          "source_stream_count",
+          "k5_tickets",
+          "k10_tickets",
+          "k20_tickets",
+          "forecast_actual_sha256",
+          "forecast_method_id",
+          "forecast_method_version",
+          "portfolio_actual_sha256",
+          "portfolio_method_id",
+          "portfolio_method_version"
+        ],
+        "title": "B649CanonicalForecastCurrentResponse",
+        "description": "The complete read-only current B649 forecast projection."
+      },
+      "B649CanonicalForecastTarget": {
+        "properties": {
+          "draw_number": {
+            "type": "string",
+            "title": "Draw Number"
+          },
+          "draw_date": {
+            "type": "string",
+            "title": "Draw Date"
+          },
+          "scheduled_at": {
+            "type": "string",
+            "title": "Scheduled At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "draw_number",
+          "draw_date",
+          "scheduled_at"
+        ],
+        "title": "B649CanonicalForecastTarget",
+        "description": "The scheduler-owned target currently exposed by the API."
+      },
+      "B649CanonicalForecastTicket": {
+        "properties": {
+          "ticket_position": {
+            "type": "integer",
+            "title": "Ticket Position"
+          },
+          "predicted_numbers": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Predicted Numbers"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "ticket_position",
+          "predicted_numbers"
+        ],
+        "title": "B649CanonicalForecastTicket",
+        "description": "One scheduler-selected operational ticket."
       },
       "B649ExactNativeApiErrorResponse": {
         "properties": {

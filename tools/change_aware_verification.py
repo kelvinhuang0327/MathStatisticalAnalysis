@@ -27,6 +27,22 @@ STRUCTURAL_VERIFICATION_COMMAND = (
     "tests/unit/test_strategy_matrix_structural_reader.py"
 )
 
+API_SURFACE_AUTHORITY_EXACT_PATHS: frozenset[str] = frozenset(
+    {
+        "contracts/openapi.json",
+        "src/lottolab/application/local_runtime.py",
+        "frontend/src/api/generated/openapi.d.ts",
+    }
+)
+API_SURFACE_AUTHORITY_DIR_PREFIX = "src/lottolab/interfaces/api/"
+API_SURFACE_BACKEND_TEST_COMMAND = (
+    "uv run pytest -q tests/contract/test_api_strategies.py "
+    "tests/contract/test_live_zone_split_api.py "
+    "tests/unit/test_local_runtime_policy.py "
+    "tests/unit/test_local_runtime_supervisor.py"
+)
+API_SURFACE_FRONTEND_CHECK_COMMAND = "cd frontend && npm run api:check"
+
 READ_METHODS: set[str] = {
     "read_bytes",
     "read_text",
@@ -792,6 +808,13 @@ def _collect_pinned_source_consumers(
     return hits, extra_commands
 
 
+def _is_api_surface_authority_path(path: str) -> bool:
+    """Return True when path is a known API-surface authority (contract, types, or handler)."""
+    if path in API_SURFACE_AUTHORITY_EXACT_PATHS:
+        return True
+    return path.startswith(API_SURFACE_AUTHORITY_DIR_PREFIX) and path.endswith(".py")
+
+
 def generate_verification_plan(
     changed_paths: list[str],
     repo_root: Path | None = None,
@@ -878,6 +901,12 @@ def generate_verification_plan(
     if pyright_targets:
         rules_triggered.add("V004")
         recommended_commands.append(f"uv run pyright {' '.join(sorted(pyright_targets))}")
+
+    # Rule V006: API surface authority (contract, generated types, handlers, local runtime)
+    if any(_is_api_surface_authority_path(p) for p in sorted_changed_paths):
+        rules_triggered.add("V006")
+        recommended_commands.append(API_SURFACE_BACKEND_TEST_COMMAND)
+        recommended_commands.append(API_SURFACE_FRONTEND_CHECK_COMMAND)
 
     # Hermeticity scanner on changed unit tests
     for p in sorted_changed_paths:

@@ -10,6 +10,8 @@ from typing import Any, cast
 
 import pytest
 from tools.change_aware_verification import (
+    API_SURFACE_BACKEND_TEST_COMMAND,
+    API_SURFACE_FRONTEND_CHECK_COMMAND,
     CANONICAL_CURRENT_AUTHORITY_PATH,
     PINNED_SOURCE_REFRESH_RULE,
     REPO_ROOT,
@@ -156,6 +158,64 @@ def test_v005_adjacent_exact_unit_test_mapping_works_only_when_file_exists(
     )
     assert "V005" not in plan2.rules_triggered
     assert not any("tests/unit/test_lacks_test.py" in cmd for cmd in plan2.recommended_commands)
+
+
+def test_v006_openapi_contract_change_triggers_api_surface_bundle() -> None:
+    plan = generate_verification_plan(["contracts/openapi.json"])
+    assert "V006" in plan.rules_triggered
+    assert API_SURFACE_BACKEND_TEST_COMMAND in plan.recommended_commands
+    assert API_SURFACE_FRONTEND_CHECK_COMMAND in plan.recommended_commands
+
+
+def test_v006_api_implementation_path_triggers_api_surface_bundle() -> None:
+    plan = generate_verification_plan(["src/lottolab/interfaces/api/app.py"])
+    assert "V006" in plan.rules_triggered
+    assert API_SURFACE_BACKEND_TEST_COMMAND in plan.recommended_commands
+    assert API_SURFACE_FRONTEND_CHECK_COMMAND in plan.recommended_commands
+
+
+def test_v006_multiple_api_surface_paths_emit_commands_once() -> None:
+    plan = generate_verification_plan(
+        [
+            "contracts/openapi.json",
+            "src/lottolab/interfaces/api/app.py",
+            "src/lottolab/application/local_runtime.py",
+            "frontend/src/api/generated/openapi.d.ts",
+        ]
+    )
+    assert "V006" in plan.rules_triggered
+    backend_cmds = [
+        cmd for cmd in plan.recommended_commands if cmd == API_SURFACE_BACKEND_TEST_COMMAND
+    ]
+    frontend_cmds = [
+        cmd for cmd in plan.recommended_commands if cmd == API_SURFACE_FRONTEND_CHECK_COMMAND
+    ]
+    assert len(backend_cmds) == 1
+    assert len(frontend_cmds) == 1
+
+
+def test_v006_unrelated_change_does_not_trigger_api_surface_bundle() -> None:
+    plan = generate_verification_plan(["src/lottolab/domain/rules.py"])
+    assert "V006" not in plan.rules_triggered
+    assert API_SURFACE_BACKEND_TEST_COMMAND not in plan.recommended_commands
+    assert API_SURFACE_FRONTEND_CHECK_COMMAND not in plan.recommended_commands
+
+
+def test_v006_coexists_with_application_architecture_rule_without_suppression() -> None:
+    plan = generate_verification_plan(
+        [
+            "src/lottolab/application/local_runtime.py",
+            "src/lottolab/application/b649_seal.py",
+        ]
+    )
+    assert "V001" in plan.rules_triggered
+    assert "V006" in plan.rules_triggered
+    assert (
+        "uv run pytest -q tests/architecture/test_dependency_rules.py"
+        in plan.recommended_commands
+    )
+    assert API_SURFACE_BACKEND_TEST_COMMAND in plan.recommended_commands
+    assert API_SURFACE_FRONTEND_CHECK_COMMAND in plan.recommended_commands
 
 
 def test_h001_direct_task_data_path_read() -> None:

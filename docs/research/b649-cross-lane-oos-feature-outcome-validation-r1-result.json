@@ -1,0 +1,398 @@
+{
+  "artifact_schema_id": "lottolab.research.b649_cross_lane_oos_feature_outcome_validation.result",
+  "artifact_schema_version": "1.0.0",
+  "study_id": "b649-cross-lane-oos-feature-outcome-validation-r1",
+  "overall_classification": "INSUFFICIENT_POWER",
+  "decision": "NO_SUPPORTED_OR_REFUTED_LIFT_CLAIM",
+  "authority": {
+    "repository": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis",
+    "pinned_base_ref": "bc9d5b4dac571bf361cd82c25213513ecbf191d1",
+    "pinned_base_tree": "1759aa35a681599f7452170299bf4bf76240a3db",
+    "operation_root": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1",
+    "forecast_artifacts": [
+      {
+        "draw_number": "115000087",
+        "target_draw_date": "2026-09-11",
+        "cutoff_draw_number": "115000086",
+        "cutoff_draw_date": "2026-09-08",
+        "method_id": "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS",
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000087/B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/final_forecast_payload.json",
+        "sha256": "6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c",
+        "pre_outcome_temporal_integrity": "PASS",
+        "target_result_used": false,
+        "final_ticket": [4, 12, 24, 25, 26, 29]
+      },
+      {
+        "draw_number": "115000088",
+        "target_draw_date": "2026-09-15",
+        "cutoff_draw_number": "115000087",
+        "cutoff_draw_date": "2026-09-11",
+        "method_id": "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS",
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000088/B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/final_forecast_payload.json",
+        "sha256": "8b1cb0157afbdcd0428b245597a53f8298b7817ea6177de15caaf8f3220c4d64",
+        "pre_outcome_temporal_integrity": "PASS",
+        "target_result_used": false,
+        "final_ticket": [4, 12, 23, 24, 26, 29]
+      },
+      {
+        "draw_number": "115000088",
+        "target_draw_date": "2026-09-15",
+        "cutoff_draw_number": "115000087",
+        "cutoff_draw_date": "2026-09-11",
+        "method_id": "B649_OPERATIONAL_PORTFOLIO_SELECTOR",
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000088/B649_OPERATIONAL_PORTFOLIO_SELECTOR/1.0.0/final_portfolio_payload.json",
+        "sha256": "ba9305cc68f8c70f5a95587b9e201da86b9dd9c2e7ca3ae5fc33ad973b5325b4",
+        "outcome_used": "NO",
+        "target_result_used": false,
+        "published_budget_counts": {"K5": 5, "K10": 10, "K20": 20},
+        "first_ticket_by_budget": {
+          "K5": [1, 2, 3, 4, 6, 9],
+          "K10": [1, 2, 3, 4, 6, 9],
+          "K20": [1, 2, 3, 4, 6, 9]
+        }
+      }
+    ],
+    "outcome_artifacts": [
+      {
+        "draw_number": "115000087",
+        "draw_date": "2026-09-11",
+        "main_numbers": [12, 15, 19, 27, 43, 48],
+        "source": "official:TAIWAN_LOTTERY_OFFICIAL_API",
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/outcomes/115000087.json",
+        "sha256": "dbf00ccc2b86a67366ac43803ec9af1f433872da69af0ff5d84e21b012f7adaf"
+      },
+      {
+        "draw_number": "115000088",
+        "draw_date": "2026-09-15",
+        "main_numbers": [2, 3, 18, 21, 22, 39],
+        "source": "official:TAIWAN_LOTTERY_OFFICIAL_API",
+        "path": "/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/outcomes/115000088.json",
+        "sha256": "d2eac9aaa12b49a5b2f4d4c25908b9f5be7f395eb1adaa808ab733588101bff3"
+      }
+    ],
+    "method_family_catalog": {
+      "path": "src/lottolab/strategies/data/biglotto_full_strategy_catalog_v1.json",
+      "sha256": "e604a038622fa9476aa86b33cd8068287664ec49cd5a27c81996ecb59a88dfbf",
+      "resolved_stream_count": 7,
+      "total_stream_count": 11,
+      "resolved_families": ["ML_like", "utility"]
+    },
+    "evaluator": {
+      "path": "src/lottolab/research/base_method_evaluation.py",
+      "sha256": "0d6228c364489e2d66164c27d7646cbab1c36a0c39d590cc91f8f620729abd3b",
+      "semantic_version": "base_method_evaluation/1.0.0"
+    }
+  },
+  "periods": {
+    "period_type": "EXPLORATORY_FORWARD_OOS",
+    "consensus_paired_draws": ["115000087", "115000088"],
+    "portfolio_paired_draws": ["115000088"],
+    "consensus_target_date_range": ["2026-09-11", "2026-09-15"],
+    "portfolio_target_date_range": ["2026-09-15", "2026-09-15"],
+    "untouched_confirmatory_period": "NONE_AVAILABLE",
+    "excluded_pre_draw_forecast": {
+      "draw_number": "115000089",
+      "reason": "forecast exists but no official outcome artifact was available; not evaluated"
+    }
+  },
+  "analysis_contract": {
+    "primary_metric": {
+      "id": "M2_PLUS",
+      "definition": "at least one published ticket has at least two main-number hits",
+      "same_shape_baseline": "exact base_method_evaluation random reference on identical draw, cutoff, and K"
+    },
+    "auxiliary_outcomes": [
+      "MAX_HIT_COUNT",
+      "P_MAX_GE_3",
+      "P_MAX_GE_4",
+      "EXPECTED_MAX_MAIN_MATCHES"
+    ],
+    "minimum_supported_draws": 30,
+    "minimum_expected_null_successes": 5,
+    "uncertainty_interval": "Wilson score 95% interval for observed M2+ rate, shifted by fixed exact baseline",
+    "multiple_testing": {
+      "method": "NOT_APPLIED",
+      "reason": "No feature or lift hypothesis is selected for inferential promotion; all outcome rows are INSUFFICIENT_POWER"
+    },
+    "selection_bias_controls": [
+      "paired/matched same-draw evaluation",
+      "same-K comparison only",
+      "pre-draw-only inputs",
+      "no winner search",
+      "no adaptive feature expansion",
+      "no outcome feedback"
+    ],
+    "unavailable_handling": "UNAVAILABLE is reported explicitly; no missing producer is synthesized"
+  },
+  "feature_availability": {
+    "raw_vote_support": "AVAILABLE",
+    "t1_t2_weighted_support": "UNAVAILABLE",
+    "cross_budget_persistence": "AVAILABLE",
+    "loo_robustness": "UNAVAILABLE",
+    "rank_entropy_cross_stream_disagreement": "UNAVAILABLE",
+    "pair_consensus": "UNAVAILABLE",
+    "portfolio_diversity": "AVAILABLE",
+    "rank6_rank7_margin": "AVAILABLE",
+    "recent_window_vs_full_history_stability": "AVAILABLE",
+    "forecast_freshness_time_to_draw": "AVAILABLE",
+    "method_family_diversity": "AVAILABLE_PARTIAL"
+  },
+  "input_pairing": {
+    "consensus_forecast_count": 2,
+    "portfolio_forecast_count": 1,
+    "outcome_count": 2,
+    "consensus_pair_count": 2,
+    "portfolio_pair_count": 1,
+    "same_draw_pairing": true,
+    "same_cutoff_pairing": true,
+    "pre_draw_invariants_pass": true
+  },
+  "decision_rows": [
+    {
+      "row_id": "t1_t2_weighted_support",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "t1_t2_weighted_support",
+      "classification": "UNAVAILABLE",
+      "sample_count": 0,
+      "baseline_definition": "NOT_APPLICABLE",
+      "candidate_result": {"status": "NOT_APPLICABLE"},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": null,
+      "stability_note": "NOT_APPLICABLE",
+      "notes": "No T1/T2 producer exists under the frozen equal-stream-weight canonical policy."
+    },
+    {
+      "row_id": "loo_robustness",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "loo_robustness",
+      "classification": "UNAVAILABLE",
+      "sample_count": 0,
+      "baseline_definition": "NOT_APPLICABLE",
+      "candidate_result": {"status": "NOT_APPLICABLE"},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": null,
+      "stability_note": "NOT_APPLICABLE",
+      "notes": "No leave-one-stream-out consensus ranking is published."
+    },
+    {
+      "row_id": "rank_entropy_cross_stream_disagreement",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "rank_entropy_cross_stream_disagreement",
+      "classification": "UNAVAILABLE",
+      "sample_count": 0,
+      "baseline_definition": "NOT_APPLICABLE",
+      "candidate_result": {"status": "NOT_APPLICABLE"},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": null,
+      "stability_note": "NOT_APPLICABLE",
+      "notes": "No frozen cross-stream entropy/disagreement producer exists."
+    },
+    {
+      "row_id": "pair_consensus",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "pair_consensus",
+      "classification": "UNAVAILABLE",
+      "sample_count": 0,
+      "baseline_definition": "NOT_APPLICABLE",
+      "candidate_result": {"status": "NOT_APPLICABLE"},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": null,
+      "stability_note": "NOT_APPLICABLE",
+      "notes": "Number-level aggregation is not aliased to pair-level consensus."
+    },
+    {
+      "row_id": "raw_vote_support__drawn_vs_field_mean",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "raw_vote_support",
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 2,
+      "baseline_definition": "mean support_units across all 49 numbers in the same forecast",
+      "candidate_result": {
+        "mean_drawn_support_units": 6.416666666666667,
+        "mean_field_support_units": 8.081632653061224,
+        "per_draw": {
+          "115000087": {"drawn_mean_support_units": 6.666666666666667, "field_mean_support_units": 8.081632653061224},
+          "115000088": {"drawn_mean_support_units": 6.166666666666667, "field_mean_support_units": 8.081632653061224}
+        }
+      },
+      "absolute_delta": -1.6649659863945578,
+      "relative_lift": -0.20601851851851852,
+      "uncertainty_interval": {"status": "NOT_ESTIMABLE", "reason": "continuous feature association is not interval-estimated at n=2"},
+      "stability_note": "n=2 < MINIMUM_ASSOCIATION_DRAW_COUNT=30",
+      "notes": "Exploratory association only; no outcome-conditioned support reweighting."
+    },
+    {
+      "row_id": "rank6_rank7_margin__vs_rank6_hit",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "rank6_rank7_margin",
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 2,
+      "baseline_definition": "descriptive rank-6/rank-7 support margin; no margin-conditioned baseline",
+      "candidate_result": {
+        "margin_by_draw": {"115000087": 1, "115000088": 1},
+        "rank6_hit_by_draw": {"115000087": true, "115000088": false},
+        "rank6_hit_count": 1,
+        "rank6_hit_rate": 0.5
+      },
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": {"status": "NOT_ESTIMABLE", "reason": "no predeclared margin-conditioned inferential test"},
+      "stability_note": "n=2 < MINIMUM_ASSOCIATION_DRAW_COUNT=30",
+      "notes": "Exploratory descriptive pairing only; no boundary-number winner search."
+    },
+    {
+      "row_id": "cross_budget_persistence__k1_vs_k5_k10_k20_first_ticket",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "cross_budget_persistence",
+      "classification": "INCONCLUSIVE",
+      "sample_count": 1,
+      "baseline_definition": "structural equality of K=1 final_ticket and ticket_position=1 at K=5/10/20 on the same draw/cutoff",
+      "candidate_result": {"persistence_by_draw": {"115000088": {"5": false, "10": false, "20": false}}, "all_budgets_persist": false},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": null,
+      "stability_note": "structural_n=1; not an inferential outcome association",
+      "notes": "Descriptive cross-lane consistency check over outcome-matched artifacts only."
+    },
+    {
+      "row_id": "portfolio_diversity__mean_pairwise_jaccard_by_budget",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "portfolio_diversity",
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 1,
+      "baseline_definition": "portfolio_internal_jaccard_mean within each published K portfolio",
+      "candidate_result": {"mean_pairwise_jaccard_by_draw_and_budget": {"115000088": {"5": 0.3271861471861472, "10": 0.17742183742183743, "20": 0.13539758487126907}}},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": {"status": "NOT_ESTIMABLE", "reason": "continuous diversity/outcome association is not interval-estimated at n=1"},
+      "stability_note": "n=1 < MINIMUM_ASSOCIATION_DRAW_COUNT=30",
+      "notes": "No portfolio geometry is reoptimized and no diversity-conditioned selection is performed."
+    },
+    {
+      "row_id": "forecast_freshness__lead_days_vs_outcome",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "forecast_freshness_time_to_draw",
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 2,
+      "baseline_definition": "whole-day target_draw_date minus scheduled_at_date",
+      "candidate_result": {"lead_days_by_draw": {"115000087": 0, "115000088": 0}},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": {"status": "NOT_ESTIMABLE", "reason": "continuous freshness/outcome association is not interval-estimated at n=2"},
+      "stability_note": "n=2 < MINIMUM_ASSOCIATION_DRAW_COUNT=30",
+      "notes": "Day-granularity only; no intraday draw-closing time was introduced."
+    },
+    {
+      "row_id": "method_family_diversity__distinct_families_among_11_streams",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "method_family_diversity",
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 2,
+      "baseline_definition": "distinct method_family among resolved FullStrategyCatalog stream_ids; unresolved streams not imputed",
+      "candidate_result": {"coverage_by_draw": {"115000087": {"distinct_family_count": 2, "resolved_stream_count": 7, "total_stream_count": 11, "resolved_families": ["ML_like", "utility"]}, "115000088": {"distinct_family_count": 2, "resolved_stream_count": 7, "total_stream_count": 11, "resolved_families": ["ML_like", "utility"]}}},
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": {"status": "NOT_ESTIMABLE", "reason": "partial categorical feature/outcome association is not interval-estimated at n=2"},
+      "stability_note": "n=2 < MINIMUM_ASSOCIATION_DRAW_COUNT=30",
+      "notes": "AVAILABLE_PARTIAL; coverage is explicit and unresolved families remain missing."
+    },
+    {
+      "row_id": "recent_window_vs_full_history__m2_plus_and_avg_match",
+      "row_kind": "FEATURE_ASSOCIATION",
+      "feature_family_id": "recent_window_vs_full_history_stability",
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 2,
+      "baseline_definition": "existing WINDOW_50/WINDOW_300/WINDOW_750 versus FULL_HISTORY evaluator output; FULL_HISTORY descriptive",
+      "candidate_result": {
+        "full_history": {
+          "consensus_k1": {"M2_PLUS": 0.0, "AVG_MATCH": 0.5, "n": 2},
+          "portfolio_k5": {"M2_PLUS": 1.0, "AVG_MATCH": 0.8, "n": 1},
+          "portfolio_k10": {"M2_PLUS": 1.0, "AVG_MATCH": 0.9, "n": 1},
+          "portfolio_k20": {"M2_PLUS": 1.0, "AVG_MATCH": 0.7, "n": 1}
+        },
+        "recent_window_status": "WINDOW_50/WINDOW_300/WINDOW_750 all INSUFFICIENT_WINDOW_HISTORY"
+      },
+      "absolute_delta": null,
+      "relative_lift": null,
+      "uncertainty_interval": {"status": "NOT_ESTIMABLE", "reason": "window stability is descriptive at the available paired sample count"},
+      "stability_note": "n=2 < MINIMUM_ASSOCIATION_DRAW_COUNT=30",
+      "notes": "No window winner is selected and no post-outcome window is constructed."
+    },
+    {
+      "row_id": "method_lift__consensus_k1_vs_random_baseline",
+      "row_kind": "METHOD_LIFT",
+      "feature_family_id": null,
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 2,
+      "baseline_definition": "PRIMARY M2_PLUS exact same-draw/same-cutoff/same-K random reference; one-ticket exact expected max equals AVG_MATCH",
+      "candidate_result": {"primary_metric_id": "M2_PLUS", "primary_success_count": 0, "primary_observed_rate": 0.0, "primary_random_reference_rate": 0.1510155740035481, "avg_match_observed": 0.5, "avg_match_random_reference": 0.7346938775510204},
+      "absolute_delta": -0.1510155740035481,
+      "relative_lift": -1.0,
+      "uncertainty_interval": {"method": "WILSON_SCORE_95_OBSERVED_RATE_SHIFTED_BY_FIXED_BASELINE", "observed_rate": {"lower": 0.0, "upper": 0.6576197724933469}, "delta_vs_baseline": {"lower": -0.1510155740035481, "upper": 0.5066041984897989}, "baseline_treated_as_fixed": true},
+      "auxiliary_outcomes": {"max_hit_count_by_draw": {"115000087": 1, "115000088": 0}, "max_ge_3_success_count": 0, "p_max_ge_3": 0.0, "p_max_ge_3_random_reference": 0.01863754500202234, "delta_p_max_ge_3": -0.01863754500202234, "max_ge_4_success_count": 0, "p_max_ge_4": 0.0, "p_max_ge_4_random_reference": 0.000987141135152236, "delta_p_max_ge_4": -0.000987141135152236, "expected_max_main_matches_observed": 0.5, "expected_max_main_matches_random_reference": 0.7346938775510204},
+      "stability_note": "FULL_HISTORY n=2; n=2 < MINIMUM_SUPPORTED_DRAWS=30; recent windows descriptive",
+      "notes": "Paired/matched only; target outcomes never enter forecast construction; no confirmatory period."
+    },
+    {
+      "row_id": "method_lift__portfolio_k5_vs_random_baseline",
+      "row_kind": "METHOD_LIFT",
+      "feature_family_id": null,
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 1,
+      "baseline_definition": "PRIMARY M2_PLUS exact same-draw/same-cutoff/K=5 random reference; expected max observed only",
+      "candidate_result": {"primary_metric_id": "M2_PLUS", "primary_success_count": 1, "primary_observed_rate": 1.0, "primary_random_reference_rate": 0.5589390409220231, "avg_match_observed": 0.8, "avg_match_random_reference": 0.7346938775510204},
+      "absolute_delta": 0.44106095907797693,
+      "relative_lift": 0.7891038678393353,
+      "uncertainty_interval": {"method": "WILSON_SCORE_95_OBSERVED_RATE_SHIFTED_BY_FIXED_BASELINE", "observed_rate": {"lower": 0.20654931437723745, "upper": 1.0}, "delta_vs_baseline": {"lower": -0.3523897265447856, "upper": 0.44106095907797693}, "baseline_treated_as_fixed": true},
+      "auxiliary_outcomes": {"max_hit_count_by_draw": {"115000088": 2}, "max_ge_3_success_count": 0, "p_max_ge_3": 0.0, "p_max_ge_3_random_reference": 0.0897782821528264, "delta_p_max_ge_3": -0.0897782821528264, "max_ge_4_success_count": 0, "p_max_ge_4": 0.0, "p_max_ge_4_random_reference": 0.004925970813980584, "delta_p_max_ge_4": -0.004925970813980584, "expected_max_main_matches_observed": 2.0, "expected_max_reference_status": "NOT_RUN_BOUNDED_COMPUTATION"},
+      "stability_note": "FULL_HISTORY n=1; n=1 < MINIMUM_SUPPORTED_DRAWS=30; recent windows descriptive",
+      "notes": "n=1 is sparse and cannot support a lift claim."
+    },
+    {
+      "row_id": "method_lift__portfolio_k10_vs_random_baseline",
+      "row_kind": "METHOD_LIFT",
+      "feature_family_id": null,
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 1,
+      "baseline_definition": "PRIMARY M2_PLUS exact same-draw/same-cutoff/K=10 random reference; expected max observed only",
+      "candidate_result": {"primary_metric_id": "M2_PLUS", "primary_success_count": 1, "primary_observed_rate": 1.0, "primary_random_reference_rate": 0.8054652303772152, "avg_match_observed": 0.9, "avg_match_random_reference": 0.7346938775510204},
+      "absolute_delta": 0.19453476962278482,
+      "relative_lift": 0.24151851909446218,
+      "uncertainty_interval": {"method": "WILSON_SCORE_95_OBSERVED_RATE_SHIFTED_BY_FIXED_BASELINE", "observed_rate": {"lower": 0.20654931437723745, "upper": 1.0}, "delta_vs_baseline": {"lower": -0.5989159159999777, "upper": 0.19453476962278482}, "baseline_treated_as_fixed": true},
+      "auxiliary_outcomes": {"max_hit_count_by_draw": {"115000088": 2}, "max_ge_3_success_count": 0, "p_max_ge_3": 0.0, "p_max_ge_3_random_reference": 0.17149642435934032, "delta_p_max_ge_3": -0.17149642435934032, "max_ge_4_success_count": 0, "p_max_ge_4": 0.0, "p_max_ge_4_random_reference": 0.009827676439500981, "delta_p_max_ge_4": -0.009827676439500981, "expected_max_main_matches_observed": 2.0, "expected_max_reference_status": "NOT_RUN_BOUNDED_COMPUTATION"},
+      "stability_note": "FULL_HISTORY n=1; n=1 < MINIMUM_SUPPORTED_DRAWS=30; recent windows descriptive",
+      "notes": "n=1 is sparse and cannot support a lift claim."
+    },
+    {
+      "row_id": "method_lift__portfolio_k20_vs_random_baseline",
+      "row_kind": "METHOD_LIFT",
+      "feature_family_id": null,
+      "classification": "INSUFFICIENT_POWER",
+      "sample_count": 1,
+      "baseline_definition": "PRIMARY M2_PLUS exact same-draw/same-cutoff/K=20 random reference; expected max observed only",
+      "candidate_result": {"primary_metric_id": "M2_PLUS", "primary_success_count": 1, "primary_observed_rate": 1.0, "primary_random_reference_rate": 0.96215622340781, "avg_match_observed": 0.7, "avg_match_random_reference": 0.7346938775510204},
+      "absolute_delta": 0.03784377659218996,
+      "relative_lift": 0.039332257768029705,
+      "uncertainty_interval": {"method": "WILSON_SCORE_95_OBSERVED_RATE_SHIFTED_BY_FIXED_BASELINE", "observed_rate": {"lower": 0.20654931437723745, "upper": 1.0}, "delta_vs_baseline": {"lower": -0.7556069090305726, "upper": 0.03784377659218996}, "baseline_treated_as_fixed": true},
+      "auxiliary_outcomes": {"max_hit_count_by_draw": {"115000088": 2}, "max_ge_3_success_count": 0, "p_max_ge_3": 0.0, "p_max_ge_3_random_reference": 0.3135818251506417, "delta_p_max_ge_3": -0.3135818251506417, "max_ge_4_success_count": 0, "p_max_ge_4": 0.0, "p_max_ge_4_random_reference": 0.019558769654802438, "delta_p_max_ge_4": -0.019558769654802438, "expected_max_main_matches_observed": 2.0, "expected_max_reference_status": "NOT_RUN_BOUNDED_COMPUTATION"},
+      "stability_note": "FULL_HISTORY n=1; n=1 < MINIMUM_SUPPORTED_DRAWS=30; recent windows descriptive",
+      "notes": "n=1 is sparse and cannot support a lift claim."
+    }
+  ],
+  "verification": {
+    "module_path": "src/lottolab/research/b649_cross_lane_oos_feature_outcome_validation.py",
+    "module_sha256": "83675312e13ca8d7821f284da78a2ee5515afc31d50673084b86466bcebe3d60",
+    "focused_test_path": "tests/unit/test_b649_cross_lane_oos_feature_outcome_validation.py",
+    "focused_test_sha256": "a001712de1edd0a37bc9776ab8f26ee6f7bc820f05e8d54e62284b242d35faed",
+    "contract_tests": "6 passed in 0.04s",
+    "ruff": "All checks passed",
+    "pyright": "0 errors, 0 warnings, 0 informations",
+    "production_mutation": "NONE",
+    "live_forecast_regeneration": "NONE",
+    "database_scheduler_mutation": "NONE"
+  }
+}

@@ -23,6 +23,45 @@ DEFAULT_BUDGETS: tuple[int, ...] = (2, 3, 5, 10, 20)
 DEFAULT_WINDOWS: tuple[str, ...] = ("FULL", "RECENT_750", "RECENT_300")
 
 
+def _ordered_budgets(budgets: Sequence[int]) -> tuple[int, ...]:
+    return tuple(sorted(set(budgets)))
+
+
+def _ordered_windows(windows: Sequence[str]) -> tuple[str, ...]:
+    requested = set(windows)
+    known = [window for window in DEFAULT_WINDOWS if window in requested]
+    extras = sorted(requested.difference(DEFAULT_WINDOWS))
+    return tuple(known + extras)
+
+
+def _transitions[KeyT](
+    ordered_keys: Sequence[KeyT],
+    available_keys: set[KeyT],
+    present_keys: set[KeyT],
+) -> tuple[tuple[KeyT, ...], tuple[KeyT, ...]]:
+    entries: list[KeyT] = []
+    exits: list[KeyT] = []
+    previous_key: KeyT | None = None
+    previous_present: bool | None = None
+
+    for key in ordered_keys:
+        if key not in available_keys:
+            previous_key = None
+            previous_present = None
+            continue
+
+        present = key in present_keys
+        if previous_key is not None and previous_present is not None:
+            if present and not previous_present:
+                entries.append(key)
+            elif previous_present and not present:
+                exits.append(key)
+        previous_key = key
+        previous_present = present
+
+    return tuple(entries), tuple(exits)
+
+
 def normalize_ticket(raw: Sequence[int]) -> Ticket:
     ticket = tuple(sorted(raw))
     if len(ticket) != 6 or len(set(ticket)) != 6:
@@ -154,8 +193,9 @@ def compute_cross_budget_persistence(
     budget absent from ``rankings_by_budget`` or mapped to ``None`` is
     reported unavailable, never synthesized.
     """
-    available = tuple(b for b in budgets if rankings_by_budget.get(b) is not None)
-    unavailable = tuple(b for b in budgets if rankings_by_budget.get(b) is None)
+    ordered_budgets = _ordered_budgets(budgets)
+    available = tuple(b for b in ordered_budgets if rankings_by_budget.get(b) is not None)
+    unavailable = tuple(b for b in ordered_budgets if rankings_by_budget.get(b) is None)
 
     rank_by_ticket: dict[Ticket, dict[int, int]] = {}
     for budget in available:
@@ -170,17 +210,11 @@ def compute_cross_budget_persistence(
     for ticket in sorted(rank_by_ticket):
         per_budget = rank_by_ticket[ticket]
         ranks = [per_budget[b] for b in available if b in per_budget]
-        entries: list[int] = []
-        exits: list[int] = []
-        previously_present: bool | None = None
-        for budget in available:
-            present = budget in per_budget
-            if previously_present is not None:
-                if present and not previously_present:
-                    entries.append(budget)
-                elif previously_present and not present:
-                    exits.append(budget)
-            previously_present = present
+        entries, exits = _transitions(
+            ordered_budgets,
+            set(available),
+            set(per_budget),
+        )
         rows.append(
             BudgetPersistenceRow(
                 ticket=ticket,
@@ -189,8 +223,8 @@ def compute_cross_budget_persistence(
                 min_rank=min(ranks) if ranks else None,
                 max_rank=max(ranks) if ranks else None,
                 median_rank=median(ranks) if ranks else None,
-                entry_budgets=tuple(entries),
-                exit_budgets=tuple(exits),
+                entry_budgets=entries,
+                exit_budgets=exits,
             )
         )
 
@@ -249,7 +283,8 @@ def compute_loo_stability(
     outcomes.
     """
     quality = quality_by_strategy or {}
-    baseline_buckets = _feasible_buckets(candidates, quality, budgets)
+    ordered_budgets = _ordered_budgets(budgets)
+    baseline_buckets = _feasible_buckets(candidates, quality, ordered_budgets)
     baseline_feasible = tuple(sorted(baseline_buckets))
 
     stream_ids = tuple(sorted({c.strategy_id for c in candidates}))
@@ -260,10 +295,10 @@ def compute_loo_stability(
 
     for stream_id in stream_ids:
         reduced = [c for c in candidates if c.strategy_id != stream_id]
-        reduced_buckets = _feasible_buckets(reduced, quality, budgets)
+        reduced_buckets = _feasible_buckets(reduced, quality, ordered_budgets)
 
         budget_results: list[LooBudgetResult] = []
-        for budget in budgets:
+        for budget in ordered_budgets:
             if budget not in baseline_buckets or budget not in reduced_buckets:
                 budget_results.append(
                     LooBudgetResult(
@@ -368,8 +403,9 @@ def compute_window_stability(
     never constructs outcome windows. A window absent from
     ``rankings_by_window`` or mapped to ``None`` is reported unavailable.
     """
-    available = tuple(w for w in windows if rankings_by_window.get(w) is not None)
-    unavailable = tuple(w for w in windows if rankings_by_window.get(w) is None)
+    ordered_windows = _ordered_windows(windows)
+    available = tuple(w for w in ordered_windows if rankings_by_window.get(w) is not None)
+    unavailable = tuple(w for w in ordered_windows if rankings_by_window.get(w) is None)
 
     rank_by_ticket: dict[Ticket, dict[str, int]] = {}
     for window in available:
@@ -384,17 +420,11 @@ def compute_window_stability(
     for ticket in sorted(rank_by_ticket):
         per_window = rank_by_ticket[ticket]
         ranks = [per_window[w] for w in available if w in per_window]
-        entries: list[str] = []
-        exits: list[str] = []
-        previously_present: bool | None = None
-        for window in available:
-            present = window in per_window
-            if previously_present is not None:
-                if present and not previously_present:
-                    entries.append(window)
-                elif previously_present and not present:
-                    exits.append(window)
-            previously_present = present
+        entries, exits = _transitions(
+            ordered_windows,
+            set(available),
+            set(per_window),
+        )
         rows.append(
             WindowPersistenceRow(
                 ticket=ticket,
@@ -404,8 +434,8 @@ def compute_window_stability(
                 max_rank=max(ranks) if ranks else None,
                 median_rank=median(ranks) if ranks else None,
                 rank_range=(max(ranks) - min(ranks)) if ranks else None,
-                entry_windows=tuple(entries),
-                exit_windows=tuple(exits),
+                entry_windows=entries,
+                exit_windows=exits,
             )
         )
 
@@ -455,7 +485,7 @@ def compute_selection_boundary(
     supporting = _supporters(candidates)
     quality = quality_by_strategy or {}
     quality_supplied = quality_by_strategy is not None
-    ordered_budgets = sorted(set(budgets))
+    ordered_budgets = _ordered_budgets(budgets)
     buckets = _feasible_buckets(candidates, quality, ordered_budgets)
 
     def support_count(ticket: Ticket) -> int:

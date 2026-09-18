@@ -108,6 +108,21 @@ def test_missing_budget_is_reported_unavailable() -> None:
     assert report.unavailable_budgets == (3, 5)
 
 
+def test_cross_budget_order_is_canonical_and_missing_budget_blocks_transition() -> None:
+    a: Ticket = (1, 2, 3, 4, 5, 6)
+    b: Ticket = (7, 8, 9, 10, 11, 12)
+    report = compute_cross_budget_persistence(
+        {5: [b], 3: None, 2: [a]},
+        budgets=(5, 3, 2),
+    )
+
+    assert report.available_budgets == (2, 5)
+    assert report.unavailable_budgets == (3,)
+    rows = {row.ticket: row for row in report.ticket_rows}
+    assert rows[a].entry_budgets == ()
+    assert rows[b].entry_budgets == ()
+
+
 # ---------------------------------------------------------------------------
 # C. Leave-one-stream-out stability
 # ---------------------------------------------------------------------------
@@ -198,6 +213,21 @@ def test_window_stability_missing_window_is_unavailable() -> None:
     report = compute_window_stability(rankings)
     assert report.available_windows == ("FULL", "RECENT_750")
     assert report.unavailable_windows == ("RECENT_300",)
+
+
+def test_window_order_is_canonical_and_missing_window_blocks_transition() -> None:
+    a: Ticket = (1, 2, 3, 4, 5, 6)
+    b: Ticket = (7, 8, 9, 10, 11, 12)
+    report = compute_window_stability(
+        {"RECENT_300": [b], "RECENT_750": None, "FULL": [a]},
+        windows=("RECENT_300", "RECENT_750", "FULL"),
+    )
+
+    assert report.available_windows == ("FULL", "RECENT_300")
+    assert report.unavailable_windows == ("RECENT_750",)
+    rows = {row.ticket: row for row in report.ticket_rows}
+    assert rows[a].entry_windows == ()
+    assert rows[b].entry_windows == ()
 
 
 # ---------------------------------------------------------------------------

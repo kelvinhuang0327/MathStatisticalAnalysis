@@ -91,17 +91,12 @@ def _committed_json(locator: str, expected_sha256: str) -> dict[str, object]:
     return cast(dict[str, object], json.loads(raw))
 
 
-def test_k20_is_the_committed_phase10_terminal_optimum() -> None:
-    entry = SEALED_GEOMETRY_PORTFOLIOS[20]
-    result = _committed_json(entry.source_locator, entry.source_sha256)
+@pytest.mark.parametrize("size", sorted(P0C_OFFICIAL_ANY_PRIZE_FLOOR))
+def test_k10_and_k20_are_the_commissioned_p0c_portfolios(size: int) -> None:
+    entry = SEALED_GEOMETRY_PORTFOLIOS[size]
 
-    per_k = cast(dict[str, dict[str, object]], result["per_k"])["20"]
-
-    assert per_k["terminal_classification"] == "TERMINAL_1EXCHANGE_LOCAL_OPTIMUM_CERTIFIED"
-    assert per_k["terminal_portfolio_sha256"] == entry.portfolio_sha256
-    assert [tuple(ticket) for ticket in cast(list[list[int]], per_k["terminal_portfolio"])] == list(
-        entry.tickets
-    )
+    assert entry.source_id == f"B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K{size}"
+    assert entry.official_any_prize_probability == P0C_OFFICIAL_ANY_PRIZE_FLOOR[size]
 
 
 def test_k5_reaches_the_committed_frontier_best_found_with_disjoint_tickets() -> None:

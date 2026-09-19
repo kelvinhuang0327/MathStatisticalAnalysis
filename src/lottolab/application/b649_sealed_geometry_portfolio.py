@@ -1,13 +1,14 @@
-"""Sealed best-known uniform-geometry portfolios for the B649 operational K-buckets.
+"""Sealed uniform-geometry portfolios for the B649 operational K-buckets.
 
 Under a fair BIG_LOTTO draw every single ticket has the same OFFICIAL_ANY_PRIZE
 probability (``7729/249711``), so no ticket beats another one-for-one. What a
 K-ticket set does change is how much its tickets overlap, and with it
-P(at least one ticket wins). These portfolios are the best-known exact
-constructions for each operational K. They carry no predictive signal: they do
-not depend on the target draw, the prediction streams, or any historical
-outcome. Their probabilities are exact counts over the full outcome space,
-verified by ``lottolab.research.b649_official_any_prize_exact`` in
+P(at least one ticket wins). K10 and K20 are the P0c capture-gap solutions
+authorized for production; K5 is the best-known disjoint construction. They
+carry no predictive signal: they do not depend on the target draw, the
+prediction streams, or any historical outcome. Their probabilities are exact
+counts over the full outcome space, verified by
+``lottolab.research.b649_official_any_prize_exact`` in
 ``tests/unit/test_b649_sealed_geometry_portfolio.py``.
 
 Buckets are independently optimal per K, so they are deliberately NOT nested:
@@ -118,41 +119,39 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(1095245, 3734808),
 )
 
-# Phase-10 terminal one-exchange local optimum from Reference E: the best K20 found;
-# it beats the P0c K20 (44615213/85900584) on exact OFFICIAL_ANY_PRIZE.
+# P0c capture-gap search, K20: the portfolio authorized for production. The Phase-10
+# terminal one-exchange optimum scores slightly higher (7439615/14316764) but is a
+# research reference comparator that is not authorized for production promotion.
 _K20 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
-        (1, 2, 3, 11, 12, 18),
-        (1, 7, 13, 31, 37, 43),
-        (1, 8, 15, 23, 38, 44),
-        (2, 8, 14, 20, 31, 47),
-        (2, 9, 19, 36, 43, 49),
-        (3, 7, 14, 23, 39, 45),
-        (3, 9, 15, 27, 31, 46),
-        (4, 10, 16, 22, 28, 33),
-        (4, 13, 14, 15, 17, 18),
-        (5, 6, 22, 29, 34, 49),
-        (5, 16, 19, 26, 32, 47),
-        (6, 10, 12, 24, 30, 35),
-        (6, 16, 21, 25, 42, 48),
-        (7, 8, 9, 11, 17, 41),
-        (11, 13, 20, 23, 40, 46),
-        (17, 20, 21, 24, 39, 44),
-        (18, 41, 44, 45, 46, 48),
-        (25, 26, 27, 28, 29, 30),
-        (25, 32, 33, 34, 35, 36),
-        (37, 38, 39, 40, 41, 42),
+        (8, 16, 19, 29, 38, 40),
+        (5, 17, 23, 25, 42, 44),
+        (1, 5, 30, 33, 39, 49),
+        (7, 13, 15, 40, 43, 46),
+        (9, 12, 20, 23, 30, 31),
+        (8, 26, 27, 43, 45, 48),
+        (8, 11, 14, 15, 36, 41),
+        (3, 20, 27, 28, 37, 42),
+        (14, 25, 34, 35, 39, 45),
+        (11, 13, 24, 29, 45, 47),
+        (18, 28, 29, 35, 41, 48),
+        (1, 10, 12, 21, 24, 42),
+        (6, 21, 22, 23, 37, 49),
+        (11, 17, 19, 33, 34, 48),
+        (16, 26, 34, 41, 46, 47),
+        (3, 18, 22, 24, 32, 38),
+        (1, 4, 6, 20, 32, 44),
+        (2, 7, 25, 31, 33, 36),
+        (2, 3, 4, 5, 9, 21),
+        (10, 13, 19, 26, 35, 36),
     ),
-    portfolio_sha256="bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
-    source_id="STRATEGY_MATRIX_PHASE10_B649_ITERATIVE_EXACT_1EXCHANGE_TERMINAL_K20",
-    source_locator=(
-        "docs/research/matrix-native-results/"
-        "reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json"
-    ),
-    source_sha256="099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c",
-    m3_plus_probability=Fraction(1200781, 3495954),
-    official_any_prize_probability=Fraction(7439615, 14316764),
+    portfolio_sha256="a0126d34589f82945f5f8895b8812818293a2c04a957ab0a940eaff09fd70332",
+    source_id="B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K20",
+    source_locator=".task-data/B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1/p0c_capture_gap.json",
+    source_sha256="8ae997ec1ed504b93fd80e5113660973774cd5d9fe6054d0989312940b942211",
+    m3_plus_probability=Fraction(2401225, 6991908),
+    official_any_prize_probability=Fraction(44615213, 85900584),
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(

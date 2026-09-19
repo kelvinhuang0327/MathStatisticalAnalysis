@@ -191,3 +191,39 @@ decisions are *better* is not established and was not investigated here.
 - The Fable protected-run launcher was unavailable in this environment
   (`scripts/` is absent from the installed skill), so the replay was launched
   directly and received no duplicate-execution protection.
+
+## 7. Three greedy min-overlap rules now exist — do not conflate them
+
+The reuse-first search selected `B649_CANDIDATE_SET_LOW_OVERLAP_V1`. It is not the
+only greedy min-overlap rule in play, and the three are **not** equivalent. Whoever
+runs the OOS freeze review must state which one is under test.
+
+| Rule | Location | Priority order | Greedy key |
+| --- | --- | --- | --- |
+| `B649_CANDIDATE_SET_LOW_OVERLAP_V1` v1 (**used here**) | `research/biglotto_multi_ticket_constructors_r1.py` | caller-supplied ordered pool (`ORIGINAL_RANK`) | `MAX_OVERLAP`, then `TOTAL_OVERLAP`, then `ORIGINAL_RANK` |
+| `build_low_overlap_portfolio` | `research/low_overlap_portfolio_constructor.py` | lexicographic, or descending `optional_scores` | `MAX_OVERLAP` only, ties by priority position |
+| `select_deterministic_min_overlap` | `application/b649_k_dpp_portfolio_selector.py` — uncommitted in the `BRANCH2_PORTFOLIO_GEOMETRY_FOUR_ARM_OOS_R1` worktree | not assessed here | not assessed here |
+
+Why this candidate uses the first: its `SUPPORTED_TICKET_COUNTS` are exactly the
+comparison budgets `(5, 10, 20)`, it carries a frozen `SELECTION_OBJECTIVE` in
+`ConstructorMetadata`, and its `ORIGINAL_RANK` slot is the natural place for the
+incumbent's own total order to enter as a tie-break. `build_low_overlap_portfolio`
+has no `TOTAL_OVERLAP` term and would need the incumbent order encoded through
+`optional_scores` to express the same intent.
+
+This is a disclosed choice, not a claim of superiority. Neither alternative was run,
+so no comparison between the three rules is asserted.
+
+### Scope boundary versus Branch 2
+
+`BRANCH2_PORTFOLIO_GEOMETRY_FOUR_ARM_OOS_R1` owns the B649 production
+selector-integration frontier and is mid-flight with uncommitted changes, including a
+modification to `application/b649_operational_portfolio_selector.py` and a four-arm
+adapter whose arms include `MIN_OVERLAP`. Its state is invisible to `git log` and
+`origin/main`.
+
+This task did not enter that scope. It writes only new `research/` modules, tests and
+artifacts; `application/` is untouched, and the incumbent selector is blob-identical to
+`origin/main` at `a3fec31b`. There is no shared write scope. The conceptual overlap
+with Branch 2's `MIN_OVERLAP` arm is real, and the two greedy implementations should be
+reconciled before either is proposed for production.

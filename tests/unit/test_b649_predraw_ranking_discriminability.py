@@ -267,3 +267,58 @@ def test_crosscheck_flags_a_different_pool(tmp_path: Path) -> None:
 def test_digest_matches_the_operational_replay_encoding() -> None:
     # Byte-identical canonical JSON, so pool hashes join across artifacts.
     assert digest([("a", ((1, 2),))]) == module.hashlib.sha256(b'[["a",[[1,2]]]]\n').hexdigest()
+
+
+def test_pool_size_breakdown_separates_forced_from_free_budgets() -> None:
+    forced = SelectionPair(
+        target_draw="1",
+        target_date="2024-01-06",
+        cutoff_draw="0",
+        history_count=5,
+        pool_sha256="p",
+        distinct_pool_size=2,
+        k=2,
+        incumbent=(A, B),
+        candidate=(B, A),
+    )
+    free = SelectionPair(
+        target_draw="2",
+        target_date="2024-01-07",
+        cutoff_draw="1",
+        history_count=6,
+        pool_sha256="p",
+        distinct_pool_size=3,
+        k=2,
+        incumbent=(A, B),
+        candidate=(A, C),
+    )
+    summary = summarize([forced, free])
+    assert summary["DRAWS_WITH_NO_SELECTION_FREEDOM"] == 1
+    split = cast("dict[str, dict[str, object]]", summary["BY_DISTINCT_POOL_SIZE"])
+    assert split["2"]["SURPLUS_TICKETS_OVER_K"] == 0
+    assert split["2"]["SELECTION_DISAGREEMENT_RATE"] == 0.0
+    assert split["3"]["SURPLUS_TICKETS_OVER_K"] == 1
+    assert split["3"]["SELECTION_DISAGREEMENT_RATE"] == 1.0
+
+
+def test_persisted_row_is_outcome_free_and_self_describing() -> None:
+    row = pair(2, (A, B), (A, C)).row()
+    assert frozenset(row) == {
+        "target_draw",
+        "target_date",
+        "cutoff_draw",
+        "history_count",
+        "pool_sha256",
+        "distinct_pool_size",
+        "k",
+        "incumbent_tickets",
+        "candidate_tickets",
+        "ticket_set_overlap",
+        "same_selection",
+        "order_only_difference",
+        "top_rank_changed",
+        "selection_sha256",
+    }
+    assert row["ticket_set_overlap"] == 1
+    assert row["same_selection"] is False
+    assert row["selection_sha256"] == digest([(A, B), (A, C)])

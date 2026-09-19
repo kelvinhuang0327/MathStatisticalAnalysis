@@ -187,6 +187,26 @@ class SelectionPair:
     def top_rank_changed(self) -> bool:
         return self.incumbent[0] != self.candidate[0]
 
+    def row(self) -> dict[str, object]:
+        """One outcome-free per-draw record, retained so a later freeze review
+        can reuse these exact selections without re-running the replay."""
+        return {
+            "target_draw": self.target_draw,
+            "target_date": self.target_date,
+            "cutoff_draw": self.cutoff_draw,
+            "history_count": self.history_count,
+            "pool_sha256": self.pool_sha256,
+            "distinct_pool_size": self.distinct_pool_size,
+            "k": self.k,
+            "incumbent_tickets": self.incumbent,
+            "candidate_tickets": self.candidate,
+            "ticket_set_overlap": self.overlap,
+            "same_selection": self.same_set,
+            "order_only_difference": self.order_only_difference,
+            "top_rank_changed": self.top_rank_changed,
+            "selection_sha256": digest([self.incumbent, self.candidate]),
+        }
+
 
 def compare_target(
     history: Sequence[CausalDrawRow],
@@ -252,6 +272,26 @@ def summarize(pairs: Sequence[SelectionPair]) -> dict[str, object]:
         "TOP_RANK_CHANGE_RATE": (
             sum(pair.top_rank_changed for pair in pairs) / comparable if comparable else None
         ),
+        # A budget can only differ when the distinct pool exceeds it, so K20's
+        # rate is uninterpretable without this split.
+        "BY_DISTINCT_POOL_SIZE": by_distinct_pool_size(pairs),
+        "DRAWS_WITH_NO_SELECTION_FREEDOM": sum(pair.distinct_pool_size <= k for pair in pairs),
+    }
+
+
+def by_distinct_pool_size(pairs: Sequence[SelectionPair]) -> dict[str, dict[str, object]]:
+    """Disagreement split by how many distinct tickets the pool actually offered."""
+    grouped: dict[int, list[SelectionPair]] = {}
+    for pair in pairs:
+        grouped.setdefault(pair.distinct_pool_size, []).append(pair)
+    return {
+        str(size): {
+            "COMPARABLE_DRAWS": len(group),
+            "DIFFERENT_SELECTION_DRAWS": sum(not pair.same_set for pair in group),
+            "SELECTION_DISAGREEMENT_RATE": sum(not pair.same_set for pair in group) / len(group),
+            "SURPLUS_TICKETS_OVER_K": size - group[0].k,
+        }
+        for size, group in sorted(grouped.items())
     }
 
 
@@ -348,7 +388,13 @@ def run(
     if digest([asdict(row) for row in load_history(database)]) != source_hash:
         raise ValueError("SOURCE_MUTATED_DURING_REPLAY")
 
-    by_k = {str(k): summarize([p for p in pairs if p.k == k]) for k in SUPPORTED_K}
+    by_k: dict[str, object] = {}
+    for k in SUPPORTED_K:
+        bucket = [pair for pair in pairs if pair.k == k]
+        by_k[str(k)] = {
+            **summarize(bucket),
+            "paired_draws": [pair.row() for pair in bucket],
+        }
     result: dict[str, object] = {
         "task": TASK,
         "candidate": candidate_identity(),

@@ -19,14 +19,20 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict
 
+from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_METHOD_ID,
+    SEALED_GEOMETRY_METHOD_VERSION,
+    SEALED_GEOMETRY_PORTFOLIOS,
+)
+
 HEALTH_PATH_ENV: Final = "LOTTOLAB_B649_GOALC_HEALTH_PATH"
 HEALTH_SCHEMA_VERSION: Final = "b649-goalc-local-scheduler-health-v1"
 FORECAST_SCHEMA_VERSION: Final = "b649-canonical-forecast-v1"
 FORECAST_METHOD_ID: Final = "B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS"
 FORECAST_METHOD_VERSION: Final = "1.0.0"
-PORTFOLIO_SCHEMA_VERSION: Final = "b649-operational-portfolio-v1"
-PORTFOLIO_METHOD_ID: Final = "B649_OPERATIONAL_PORTFOLIO_SELECTOR"
-PORTFOLIO_METHOD_VERSION: Final = "1.0.0"
+PORTFOLIO_SCHEMA_VERSION: Final = "b649-operational-portfolio-v2"
+PORTFOLIO_METHOD_ID: Final = SEALED_GEOMETRY_METHOD_ID
+PORTFOLIO_METHOD_VERSION: Final = SEALED_GEOMETRY_METHOD_VERSION
 EXPECTED_STREAM_COUNT: Final = 11
 _SHA256 = re.compile(r"[0-9a-f]{64}", flags=re.ASCII)
 _DRAW_NUMBER = re.compile(r"[0-9]+", flags=re.ASCII)
@@ -317,17 +323,13 @@ def _validate_portfolio(target: _Target, portfolio: Mapping[str, object]) -> Non
     for key in ("portfolio_status", "k5_status", "k10_status", "k20_status"):
         if portfolio.get(key) != "COMPLETE":
             raise _UnavailableError("portfolio bucket is not complete")
-    k5 = _tickets(portfolio.get("k5"), 5, "portfolio k5")
-    k10 = _tickets(portfolio.get("k10"), 10, "portfolio k10")
-    k20 = _tickets(portfolio.get("k20"), 20, "portfolio k20")
-    if [ticket.predicted_numbers for ticket in k10[:5]] != [
-        ticket.predicted_numbers for ticket in k5
-    ]:
-        raise _UnavailableError("portfolio buckets are not nested")
-    if [ticket.predicted_numbers for ticket in k20[:10]] != [
-        ticket.predicted_numbers for ticket in k10
-    ]:
-        raise _UnavailableError("portfolio buckets are not nested")
+    # Buckets are independently optimal per K (not nested); serve them only if
+    # they are exactly the sealed geometry the method id promises.
+    for size in (5, 10, 20):
+        served = _tickets(portfolio.get(f"k{size}"), size, f"portfolio k{size}")
+        sealed = SEALED_GEOMETRY_PORTFOLIOS[size].tickets
+        if [tuple(ticket.predicted_numbers) for ticket in served] != list(sealed):
+            raise _UnavailableError(f"portfolio k{size} is not the sealed geometry")
 
 
 def _target(value: object, label: str) -> _Target:

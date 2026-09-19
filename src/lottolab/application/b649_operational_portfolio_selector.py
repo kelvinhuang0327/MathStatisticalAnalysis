@@ -14,14 +14,29 @@ class StrategyCandidate:
     tickets: Sequence[Ticket]
 
 
-def build_portfolio(
+@dataclass(frozen=True)
+class CandidatePoolEntry:
+    """One deduplicated candidate ticket at its canonical candidate-pool position.
+
+    ``supporters`` are the distinct emitting strategy IDs, sorted;
+    ``quality_sum`` is the supplied strategy quality summed over them; and
+    ``candidate_pool_index`` is the 0-based position in pool order.
+    """
+
+    ticket: Ticket
+    supporters: tuple[str, ...]
+    support_count: int
+    quality_sum: float
+    candidate_pool_index: int
+
+
+def build_candidate_pool(
     candidates: Sequence[StrategyCandidate],
     quality_by_strategy: Mapping[str, float],
-    bucket_sizes: Sequence[int] = (5, 10, 20),
-) -> dict[int, list[Ticket]]:
-    """Rank deduplicated candidate tickets by cross-strategy consensus, then
-    summed strategy quality, then the ticket itself; slice nested K-buckets
-    from the resulting order.
+) -> tuple[CandidatePoolEntry, ...]:
+    """Deduplicate candidate tickets across strategies and order them by
+    cross-strategy consensus DESC, then summed strategy quality DESC, then the
+    ticket itself ASC -- the order ``build_portfolio`` slices its buckets from.
     """
     supporters: dict[Ticket, set[str]] = {}
     for candidate in candidates:
@@ -34,10 +49,33 @@ def build_portfolio(
     def quality(ticket: Ticket) -> float:
         return sum(quality_by_strategy.get(s, 0.0) for s in supporters[ticket])
 
+    quality_sums = {ticket: quality(ticket) for ticket in supporters}
     ranked = sorted(
         supporters,
-        key=lambda t: (-len(supporters[t]), -quality(t), t),
+        key=lambda t: (-len(supporters[t]), -quality_sums[t], t),
     )
+    return tuple(
+        CandidatePoolEntry(
+            ticket=ticket,
+            supporters=tuple(sorted(supporters[ticket])),
+            support_count=len(supporters[ticket]),
+            quality_sum=quality_sums[ticket],
+            candidate_pool_index=index,
+        )
+        for index, ticket in enumerate(ranked)
+    )
+
+
+def build_portfolio(
+    candidates: Sequence[StrategyCandidate],
+    quality_by_strategy: Mapping[str, float],
+    bucket_sizes: Sequence[int] = (5, 10, 20),
+) -> dict[int, list[Ticket]]:
+    """Rank deduplicated candidate tickets by cross-strategy consensus, then
+    summed strategy quality, then the ticket itself; slice nested K-buckets
+    from the resulting order.
+    """
+    ranked = [entry.ticket for entry in build_candidate_pool(candidates, quality_by_strategy)]
 
     buckets: dict[int, list[Ticket]] = {}
     for k in bucket_sizes:

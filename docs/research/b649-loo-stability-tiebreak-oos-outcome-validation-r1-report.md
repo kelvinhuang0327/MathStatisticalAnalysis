@@ -53,3 +53,57 @@ Authority and validation:
 - Local commit is the commit containing this report; exact final HEAD/tree are returned in the task handoff. `PUSH: NOT RUN`; `PR: NOT CREATED`; `PRODUCTION_MUTATION: NONE`.
 
 INTENT: code does frozen same-draw, same-cutoff, same-K outcome replay; the check/task expects verified out-of-sample success lift; the opened spec says the principal success metric controls advancement and no positive lift is required for completion.
+
+## Continuation acceptance addendum (2026-09-19)
+
+Added at handoff continuation to make the continuation-acceptance fields explicit. The result JSON and `b649_loo_oos_validation.py` are byte-identical to `4b55d72`: result SHA-256 as above, module SHA-256 `788e736bda18778e136e3c14b4c7c792e2610f39d8c16f64c5541800f611bbc1` equal to the result's `evaluation_module_sha256`. Nothing was re-scored; protocol and candidate are unchanged.
+
+Evaluation contract, all fixed in the hash-bound module before the only outcome-scoring run:
+
+- `PRIMARY_SUCCESS_METRIC`: `OFFICIAL_ANY_PRIZE`: at least one of the draw's K tickets wins any official prize.
+- `METRIC_AUTHORITY`: `b649_multi_ticket_records.primary_ranking_criterion` (`Literal["OFFICIAL_ANY_PRIZE"]`). Every secondary metric is also non-positive at every K, so no competing success definition changes the conclusion.
+- `INCUMBENT_BASELINE`: `build_portfolio(pool, {}, bucket_sizes=(5, 10, 20))`, i.e. `B649_OPERATIONAL_PORTFOLIO_SELECTOR` v1.0.0.
+- `BASELINE_AUTHORITY`: `b649_goalc_local_scheduler.materialize_predraw_portfolios` → `materialize_portfolios` with no quality mapping. Selector, materializer, scheduler and stream registry are unchanged from `bc9d5b4` to `origin/main` `947baf9` (checked 2026-09-19).
+- `TARGET_DRAW_SET`: all 2,170 canonical BIG_LOTTO draws, 96000001 (2007-01-02) through 115000088 (2026-09-15).
+- `PRE_DRAW_CUTOFF_RULE`: each target sees exactly the canonical rows strictly before it in (draw date, draw number) order, carrying only draw number, date and main numbers; enforced by `PRE_DRAW_CUTOFF_VIOLATION`. Production `load_canonical_history` uses the same strict-prefix rule.
+- `POOL_IDENTITY`: the eleven enabled `STRATEGY_STREAMS` (JSON `streams`); one pool object feeds both arms.
+- `K_VALUES`: 5, 10, 20. K2/K3 have no operational incumbent.
+- `OPPORTUNITY_DENOMINATOR`: one paired draw per K; tickets are never independent samples.
+- `ELIGIBILITY_RULE`: ≥200 prior draws, all eleven streams available, ≥20 distinct tickets (the incumbent's joint K5/K10/K20 availability).
+- `EXCLUSION_RULE`: 200 `WARMUP_REQUIRES_200_PRIOR_DRAWS` + 191 `INCUMBENT_JOINT_K5_K10_K20_UNAVAILABLE_LT20_DISTINCT_TICKETS`; no stream-unavailable exclusions.
+- `FULL_WINDOW_ROLE`: PRIMARY evaluation. `RECENT750_WINDOW_ROLE`: STABILITY VIEW only; it overlaps FULL and is not independent evidence. RECENT_300/50 are descriptive.
+- `INDEPENDENT_CONFIRMATION_STATUS`: `NOT_AVAILABLE` (below).
+
+Per-K result. Every K has 2,170 opportunities, 1,779 eligible (= paired n) and 391 excluded: 81.98% coverage, 90.30% after warmup. Uncertainty is the paired-draw bootstrap 95% interval, then the family 98.33% interval, in pp.
+
+| K | Incumbent wins | LOO wins | Abs. delta (pp) | Uncertainty | Exact McNemar p / Holm p | Primary discordant | Changed ticket-set draws | Verdict |
+|---|---:|---:|---:|---|---|---:|---:|---|
+| 5 | 248 | 248 | +0.0000 | [0, 0] / [0, 0] | 1.0 / 1.0 | 0 | 41 | `INSUFFICIENT_POWER` |
+| 10 | 432 | 431 | −0.0562 | [−0.1686, 0] / [−0.2248, 0] | 1.0 / 1.0 | 1 | 37 | `INSUFFICIENT_POWER` |
+| 20 | 711 | 711 | +0.0000 | [0, 0] / [0, 0] | 1.0 / 1.0 | 0 | 0 | `NO_LIFT_SUPPORTED` |
+
+Per-K verdicts apply the module's pre-declared `verdict()` to each K alone: `INSUFFICIENT_EVIDENCE` for K5 and K10 (below `MIN_DISCORDANT_DRAWS` = 10), and `NO_LIFT` for K20, whose LOO ticket set equals the incumbent's in all 1,779 paired draws (order differs in 445; no set-based metric depends on order). The recomputed family verdict is the stored `INSUFFICIENT_EVIDENCE`. Continuation vocabulary: `INSUFFICIENT_EVIDENCE` → `INSUFFICIENT_POWER`, `NO_LIFT` → `NO_LIFT_SUPPORTED`. **`OVERALL_VERDICT: INSUFFICIENT_POWER`.** The one K10 discordant draw is 109000031, where the incumbent won and LOO did not. It also falls in RECENT_750, so the −0.1466 pp there is the same event, not a second observation.
+
+Leakage/cutoff, re-checked at continuation. `LEAKAGE_STATUS` stays `PASS_STRICT_PREFIX_AND_OUTCOME_ISOLATED_SELECTION`:
+
+- The replay calls stream adapters exactly as production `run_strategy_stream` does: the same `get_bets`/`get_one_bet` on the same strict-prefix `CausalDrawRow` history.
+- The adapter modules behind the eleven streams, and their `lottolab` imports, do no file, DB, network or clock access. Any randomness is seeded from the history prefix.
+- Target outcomes enter only `score()`, after both selections are fixed. The candidate has no tunable argument and was frozen at `fd5cabd`, 2026-09-18T03:38Z.
+- The only outcome-scoring run was 2026-09-18T10:51–11:02Z, with the committed module. The earlier feasibility probe scored no outcomes.
+- Caveat: prefixes are rebuilt from current canonical data, not a vintage ingestion archive.
+
+Selection and independence:
+
+- Historical discovery: the eleven-stream pool and the incumbent were developed on this same 2007–2026 history, so none of it is untouched.
+- Candidate-frozen OOS validation: this FULL replay. LOO was specified from outcome-free diagnostics tested on synthetic fixtures only. The cross-lane OOS task recorded `loo_robustness: UNAVAILABLE`. No in-repo record shows LOO scored against outcomes before this replay.
+- Untouched independent confirmation: `NOT_AVAILABLE`. The protocol fixed `prospective_confirmation_draws: 0`. Draw 115000089 (2026-09-18) is the first post-freeze draw; it lies outside the pinned result, and one draw cannot confirm anything.
+
+Reproducibility: at continuation the canonical DB held 2,171 draws. The pinned 2,170-draw prefix still hashes to logical SHA-256 `4b77c2abb1974a24e7eee2356e7bbd856203a790ceb86a3744d4f1de95156f8f`; only 115000089 was appended.
+
+Handoff flags: `READY_FOR_BRANCH6_ADOPTION_VALIDATION: NO`; `BRANCH1_INTERACTION_HANDOFF_NEEDED: NO`. No stable interaction or mechanism emerged: the tie-break changes the ticket set in about 2% of draws at K5/K10 and never at K20.
+
+Continuation checks, run on `4b55d72` tree `df24c1c79329d174de9b81c0564ca6e9659d678d` with imports resolved from this worktree (module `__file__` checked). This addendum changes only this report.
+
+- Focused: 59 PASS (`test_b649_loo_oos_validation.py`, `test_b649_loo_stability_tiebreak.py`, `test_b649_rank_stability.py`).
+- Dependency regression: 165 PASS (portfolio selector, materializer, prediction loop, temporal cutoff guard, exact statistics, prize evaluation).
+- Ruff check and format: PASS. Pyright strict: 0 errors, 0 warnings. `git diff --check`: PASS.

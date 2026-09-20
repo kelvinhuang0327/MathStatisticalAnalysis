@@ -1,10 +1,16 @@
 """Materialize deterministic pre-outcome B649 K5/K10/K20 portfolios.
 
-A portfolio pools the same eleven PRE_DRAW strategy predictions the canonical
-forecast (Authority B) consumes, but is a distinct authority with its own
-lifecycle: Authority B publishes one consensus ticket, this module publishes
-three nested bettable ticket sets. The two must never gate each other -- see
+The portfolio is a distinct authority from the canonical forecast (Authority B),
+with its own lifecycle: Authority B publishes one consensus ticket, this module
+publishes three bettable ticket sets. The two must never gate each other -- see
 ``materialize_predraw_portfolios`` in ``tools/b649_goalc_local_scheduler.py``.
+
+The tickets are the sealed best-known uniform-geometry portfolios
+(``lottolab.application.b649_sealed_geometry_portfolio``), one independently
+optimal set per K, so the buckets are not nested. The eleven PRE_DRAW strategy
+predictions are still validated and recorded as pre-outcome provenance, but they
+do not choose tickets: under a fair draw no ticket choice beats another, and only
+the overlap structure of the set moves P(at least one ticket wins).
 """
 
 from __future__ import annotations
@@ -19,9 +25,14 @@ from pathlib import Path
 from typing import Final, Literal, cast
 from uuid import uuid4
 
-from lottolab.application.b649_operational_portfolio_selector import (
-    StrategyCandidate,
-    build_portfolio,
+from lottolab.application.b649_sealed_geometry_portfolio import (
+    PRIZE_EVENT,
+    PROBABILITY_MODEL,
+    SEALED_GEOMETRY_METHOD_ID,
+    SEALED_GEOMETRY_METHOD_VERSION,
+    SEALED_GEOMETRY_PORTFOLIOS,
+    SealedGeometryIntegrityError,
+    sealed_geometry_buckets,
 )
 from lottolab.evidence.canonical_json import (
     canonical_file_bytes,
@@ -29,9 +40,9 @@ from lottolab.evidence.canonical_json import (
     sha256_hex,
 )
 
-PORTFOLIO_SCHEMA_VERSION: Final = "b649-operational-portfolio-v1"
-PORTFOLIO_METHOD_ID: Final = "B649_OPERATIONAL_PORTFOLIO_SELECTOR"
-PORTFOLIO_METHOD_VERSION: Final = "1.0.0"
+PORTFOLIO_SCHEMA_VERSION: Final = "b649-operational-portfolio-v2"
+PORTFOLIO_METHOD_ID: Final = SEALED_GEOMETRY_METHOD_ID
+PORTFOLIO_METHOD_VERSION: Final = SEALED_GEOMETRY_METHOD_VERSION
 PORTFOLIO_FILENAME: Final = "final_portfolio_payload.json"
 UPSTREAM_TASK_ID: Final = "B649_OPERATIONAL_PREDICTION_LOOP_R1"
 TASK_ID: Final = "B649_OPERATIONAL_PORTFOLIO_AUTOMATION_R1"
@@ -86,7 +97,6 @@ class _CandidateRecord:
     history_caveat: str
     source_relative_path: str
     source_sha256: str
-    candidate: StrategyCandidate
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +111,9 @@ class PortfolioMaterializationResult:
         payload = self.payload
         return {
             "status": self.status,
+            # The canonical-forecast read API gates on these two fields.
+            "method_id": payload["portfolio_method_id"],
+            "method_version": payload["portfolio_method_version"],
             "target_draw": payload["target_draw"],
             "cutoff_draw": payload["cutoff_draw"],
             "portfolio_status": payload["portfolio_status"],
@@ -151,7 +164,6 @@ def materialize_portfolios(
     target_draw_date: str,
     scheduled_at: str,
     destination: Path,
-    quality_by_strategy: Mapping[str, float] | None = None,
     pre_outcome_seal_check: Callable[[], bool] | None = None,
 ) -> PortfolioMaterializationResult:
     """Read already-validated PRE_DRAW candidates and publish one immutable portfolio.
@@ -203,7 +215,6 @@ def materialize_portfolios(
         target_draw_date=target_draw_date,
         scheduled_at=scheduled_at,
         destination=destination,
-        quality_by_strategy=quality_by_strategy,
     )
 
     staged: _StagedPayload | None = None
@@ -238,7 +249,6 @@ def _build_payload(
     target_draw_date: str,
     scheduled_at: str,
     destination: Path,
-    quality_by_strategy: Mapping[str, float] | None,
 ) -> tuple[dict[str, object], bytes]:
     records = _load_candidates(
         candidates,
@@ -264,12 +274,8 @@ def _build_payload(
         raise PortfolioMaterializationError("candidate pre-outcome provenance disagrees")
 
     try:
-        buckets = build_portfolio(
-            tuple(record.candidate for record in records),
-            {} if quality_by_strategy is None else quality_by_strategy,
-            bucket_sizes=BUCKET_SIZES,
-        )
-    except ValueError as exc:
+        buckets = sealed_geometry_buckets(BUCKET_SIZES)
+    except SealedGeometryIntegrityError as exc:
         raise PortfolioMaterializationError(str(exc)) from exc
     _validate_buckets(buckets)
     payload = _payload(
@@ -404,7 +410,8 @@ def _load_candidates(
         if created_at_value >= scheduled_at_value:
             raise PortfolioMaterializationError(f"{label}: prediction was not created before draw")
         native_count = _required_int(value, "native_ticket_count", label)
-        tickets = _read_tickets(value, label, native_count)
+        # Validated as pre-outcome provenance only; the sealed geometry picks the tickets.
+        _read_tickets(value, label, native_count)
         cutoff = _read_cutoff(value, label)
         _validate_cutoff(cutoff, target_draw_number, target_draw_date, label)
         history_draw_count = _required_int(value, "history_draw_count", label)
@@ -422,7 +429,6 @@ def _load_candidates(
             history_caveat=history_caveat,
             source_relative_path=label,
             source_sha256=sha256_hex(candidate.raw_bytes),
-            candidate=StrategyCandidate(strategy_id, tickets),
         )
 
     missing = [strategy_id for strategy_id in expected_strategy_ids if strategy_id not in records]
@@ -451,6 +457,15 @@ def _payload(
         "lottery_type": LOTTERY_TYPE,
         "portfolio_method_id": PORTFOLIO_METHOD_ID,
         "portfolio_method_version": PORTFOLIO_METHOD_VERSION,
+        "ticket_source": "SEALED_UNIFORM_GEOMETRY",
+        "bucket_semantics": "INDEPENDENT_PER_K",
+        "candidate_tickets_used": False,
+        "predictive_signal_claim": False,
+        "probability_model": PROBABILITY_MODEL,
+        "prize_event": PRIZE_EVENT,
+        "geometry_provenance": {
+            f"k{size}": SEALED_GEOMETRY_PORTFOLIOS[size].provenance() for size in BUCKET_SIZES
+        },
         "target_draw": {
             "draw_number": target_draw_number,
             "draw_date": target_draw_date,
@@ -495,15 +510,13 @@ def _tickets_payload(tickets: Sequence[tuple[int, ...]]) -> list[dict[str, objec
 
 def _validate_buckets(buckets: Mapping[int, Sequence[tuple[int, ...]]]) -> None:
     if tuple(sorted(buckets)) != BUCKET_SIZES:
-        raise PortfolioMaterializationError("selector did not return exactly K5/K10/K20")
-    prior: tuple[tuple[int, ...], ...] = ()
+        raise PortfolioMaterializationError("portfolio does not hold exactly K5/K10/K20")
     for size in BUCKET_SIZES:
-        current = tuple(buckets[size])
+        current = tuple(tuple(ticket) for ticket in buckets[size])
         if len(current) != size or len(set(current)) != size:
             raise PortfolioMaterializationError(f"K{size} has invalid cardinality or duplicates")
-        if prior and current[: len(prior)] != prior:
-            raise PortfolioMaterializationError("K-buckets are not nested prefixes")
-        prior = current
+        if current != SEALED_GEOMETRY_PORTFOLIOS[size].tickets:
+            raise PortfolioMaterializationError(f"K{size} is not the sealed geometry portfolio")
 
 
 def _validate_ticket_rows(rows: object, label: str) -> None:

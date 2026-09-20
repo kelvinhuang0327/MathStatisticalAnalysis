@@ -15,6 +15,12 @@ from fastapi.testclient import TestClient
 from pytest import MonkeyPatch
 
 import lottolab.interfaces.api.b649_canonical_forecast as api_module
+from lottolab.application.b649_sealed_geometry_portfolio import SEALED_GEOMETRY_PORTFOLIOS
+from lottolab.evidence.canonical_json import canonical_file_bytes
+from lottolab.infrastructure.b649_operational_portfolio_materializer import (
+    PersistedPortfolioCandidate,
+    materialize_portfolios,
+)
 from lottolab.interfaces.api.app import create_app
 from lottolab.interfaces.api.b649_canonical_forecast import (
     FORECAST_METHOD_ID,
@@ -60,11 +66,8 @@ def _forecast(draw_number: str = TARGET["draw_number"]) -> dict[str, object]:
 
 def _ticket_rows(count: int) -> list[dict[str, object]]:
     return [
-        {
-            "ticket_position": position,
-            "predicted_numbers": list(range(position, position + 6)),
-        }
-        for position in range(1, count + 1)
+        {"ticket_position": position, "predicted_numbers": list(ticket)}
+        for position, ticket in enumerate(SEALED_GEOMETRY_PORTFOLIOS[count].tickets, start=1)
     ]
 
 
@@ -294,3 +297,93 @@ def test_production_app_composition_exposes_only_the_get_route() -> None:
     assert document["paths"][PATH]["get"]["operationId"] == (
         "getB649CanonicalForecastCurrent"
     )
+
+
+@pytest.mark.parametrize(
+    "k10_numbers",
+    [
+        # The retired selector's nested layout: legal tickets, not the sealed geometry.
+        [list(range(position, position + 6)) for position in range(1, 11)],
+        # One number off in one ticket.
+        [[1, 2, 3, 4, 5, 6], *[list(t) for t in SEALED_GEOMETRY_PORTFOLIOS[10].tickets[1:]]],
+    ],
+)
+def test_non_sealed_portfolio_tickets_fail_closed(
+    tmp_path: Path, monkeypatch: MonkeyPatch, k10_numbers: list[list[int]]
+) -> None:
+    portfolio = _portfolio()
+    portfolio["k10"] = [
+        {"ticket_position": position, "predicted_numbers": numbers}
+        for position, numbers in enumerate(k10_numbers, start=1)
+    ]
+    health_path, _, _ = _write_bundle(tmp_path, portfolio=portfolio)
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 503
+
+
+def _scheduler_candidates() -> tuple[PersistedPortfolioCandidate, ...]:
+    candidates: list[PersistedPortfolioCandidate] = []
+    for index in range(11):
+        strategy_id = f"stream-{index:02d}"
+        payload: dict[str, object] = {
+            "schema_version": "b649-operational-prediction-v1",
+            "task_id": "B649_OPERATIONAL_PREDICTION_LOOP_R1",
+            "prediction_run_id": f"run-{index}",
+            "lottery_type": "BIG_LOTTO",
+            "draw_number": TARGET["draw_number"],
+            "draw_date": TARGET["draw_date"],
+            "scheduled_at": ARTIFACT_SCHEDULED_AT,
+            "prediction_created_at": f"2026-09-18T10:{index:02d}:00+08:00",
+            "strategy_id": strategy_id,
+            "strategy_version": "v1",
+            "history_cutoff": {"draw_number": "115000088", "draw_date": "2026-09-15"},
+            "history_draw_count": 100,
+            "history_sha256": "a" * 64,
+            "history_caveat": "YES",
+            "prediction_temporal_class": "PRE_DRAW",
+            "native_ticket_count": 1,
+            "tickets": [{"ticket_position": 1, "predicted_numbers": [1, 2, 3, 4, 5, 6]}],
+        }
+        candidates.append(
+            PersistedPortfolioCandidate(
+                strategy_id=strategy_id,
+                source_relative_path=f"predictions/{strategy_id}.json",
+                raw_bytes=canonical_file_bytes(payload),
+                payload=payload,
+            )
+        )
+    return tuple(candidates)
+
+
+def test_real_materializer_health_is_servable_end_to_end(
+    tmp_path: Path, monkeypatch: MonkeyPatch
+) -> None:
+    """The scheduler writes ``health_dict()`` verbatim as portfolio health; the
+    route must accept exactly that shape, not only hand-written fixtures.
+    """
+
+    candidates = _scheduler_candidates()
+    result = materialize_portfolios(
+        candidates=candidates,
+        expected_strategy_ids=tuple(candidate.strategy_id for candidate in candidates),
+        target_draw_number=TARGET["draw_number"],
+        target_draw_date=TARGET["draw_date"],
+        scheduled_at=ARTIFACT_SCHEDULED_AT,
+        destination=tmp_path / "portfolio" / "final_portfolio_payload.json",
+        pre_outcome_seal_check=lambda: True,
+    )
+    health_path, _, _ = _write_bundle(tmp_path)
+    health = json.loads(health_path.read_text(encoding="utf-8"))
+    health["portfolio_materialization"] = result.health_dict()
+    health_path.write_bytes(_json_bytes(health))
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["portfolio_method_id"] == "B649_SEALED_GEOMETRY_PORTFOLIO"
+    for size in (5, 10, 20):
+        served = [tuple(row["predicted_numbers"]) for row in payload[f"k{size}_tickets"]]
+        assert served == list(SEALED_GEOMETRY_PORTFOLIOS[size].tickets)

@@ -664,7 +664,7 @@ class ProductionSchedulerBackend:
         target: PredictionTarget,
         inventory: PredictionInventory,
     ) -> dict[str, object]:
-        """Materialize (or idempotently reuse) the nested K5/K10/K20 portfolio.
+        """Materialize (or idempotently reuse) the sealed-geometry K5/K10/K20 portfolio.
 
         Distinct authority and distinct lifecycle from ``materialize_forecast``:
         this is the only call site capable of a first portfolio creation, and

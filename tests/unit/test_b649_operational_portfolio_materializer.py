@@ -8,8 +8,12 @@ from typing import cast
 
 import pytest
 
+from lottolab.application.b649_sealed_geometry_portfolio import SEALED_GEOMETRY_PORTFOLIOS
 from lottolab.evidence.canonical_json import canonical_file_bytes, sha256_hex
 from lottolab.infrastructure.b649_operational_portfolio_materializer import (
+    PORTFOLIO_METHOD_ID,
+    PORTFOLIO_METHOD_VERSION,
+    PORTFOLIO_SCHEMA_VERSION,
     PersistedPortfolioCandidate,
     PortfolioAuthorityConflictError,
     PortfolioMaterializationError,
@@ -102,7 +106,13 @@ def _bucket(payload: dict[str, object], name: str) -> list[dict[str, object]]:
 LIFECYCLE_OWNED_KEYS = ("post_outcome_scoring_status", "next_draw_rollover_status")
 
 
-def test_materializes_exact_nested_buckets_and_preserves_pre_outcome_provenance(
+def _bucket_tickets(payload: dict[str, object], name: str) -> tuple[tuple[int, ...], ...]:
+    return tuple(
+        tuple(cast(list[int], row["predicted_numbers"])) for row in _bucket(payload, name)
+    )
+
+
+def test_materializes_sealed_geometry_buckets_and_preserves_pre_outcome_provenance(
     tmp_path: Path,
 ) -> None:
     destination = tmp_path / "authority" / "final_portfolio_payload.json"
@@ -111,20 +121,17 @@ def test_materializes_exact_nested_buckets_and_preserves_pre_outcome_provenance(
     payload = result.payload
 
     assert result.status == "CREATED"
-    assert len(_bucket(payload, "k5")) == 5
-    assert len(_bucket(payload, "k10")) == 10
-    assert len(_bucket(payload, "k20")) == 20
-    assert _bucket(payload, "k5") == _bucket(payload, "k10")[:5]
-    assert _bucket(payload, "k10") == _bucket(payload, "k20")[:10]
-    assert (
-        len(
-            {
-                tuple(cast(list[int], row["predicted_numbers"]))
-                for row in _bucket(payload, "k20")
-            }
-        )
-        == 20
-    )
+    assert payload["schema_version"] == PORTFOLIO_SCHEMA_VERSION
+    assert payload["portfolio_method_id"] == "B649_SEALED_GEOMETRY_PORTFOLIO"
+    provenance = cast(dict[str, dict[str, object]], payload["geometry_provenance"])
+    for size in (5, 10, 20):
+        entry = SEALED_GEOMETRY_PORTFOLIOS[size]
+        assert _bucket_tickets(payload, f"k{size}") == entry.tickets
+        assert provenance[f"k{size}"] == entry.provenance()
+    assert payload["bucket_semantics"] == "INDEPENDENT_PER_K"
+    assert _bucket_tickets(payload, "k10") != _bucket_tickets(payload, "k20")[:10]
+    assert payload["candidate_tickets_used"] is False
+    assert payload["predictive_signal_claim"] is False
     assert payload["candidate_count"] == 11
     assert payload["outcome_used"] == "NO"
     assert payload["target_result_used"] is False
@@ -155,6 +162,8 @@ def test_health_dict_nests_under_no_extra_wrapper_and_matches_payload(
     health = result.health_dict()
 
     assert health["status"] == "CREATED"
+    assert health["method_id"] == PORTFOLIO_METHOD_ID
+    assert health["method_version"] == PORTFOLIO_METHOD_VERSION
     assert health["portfolio_status"] == "COMPLETE"
     assert health["k5"] == result.payload["k5"]
     assert health["k10"] == result.payload["k10"]
@@ -333,9 +342,10 @@ def test_read_portfolio_if_present_is_read_only(tmp_path: Path) -> None:
     assert destination.read_bytes() == canonical_file_bytes(created.payload)
 
 
-def test_insufficient_distinct_tickets_raises_portfolio_error(tmp_path: Path) -> None:
-    """The selector's own ValueError (too few distinct tickets for K5/K10/K20)
-    must surface as this module's own error type, not a raw ValueError.
+def test_candidate_tickets_do_not_choose_the_portfolio(tmp_path: Path) -> None:
+    """A pool whose eleven streams all predict the same single ticket -- which
+    the retired pool selector could not even fill K5 from -- yields exactly the
+    same sealed buckets as a diverse pool.
     """
 
     sparse: list[PersistedPortfolioCandidate] = []
@@ -352,12 +362,45 @@ def test_insufficient_distinct_tickets_raises_portfolio_error(tmp_path: Path) ->
                 payload=payload,
             )
         )
+
+    diverse = _materialize(_candidates(), tmp_path / "diverse" / "final.json")
+    uniform = _materialize(tuple(sparse), tmp_path / "sparse" / "final.json")
+
+    for name in ("k5", "k10", "k20"):
+        assert uniform.payload[name] == diverse.payload[name]
+
+
+def test_malformed_candidate_tickets_still_fail_closed(tmp_path: Path) -> None:
+    candidates = _candidates(
+        overrides={
+            "native_ticket_count": 1,
+            "tickets": [{"ticket_position": 1, "predicted_numbers": [1, 2, 3, 4, 5, 50]}],
+        }
+    )
     destination = tmp_path / "authority" / "final.json"
 
-    with pytest.raises(PortfolioMaterializationError, match="distinct candidate tickets"):
-        _materialize(tuple(sparse), destination)
+    with pytest.raises(PortfolioMaterializationError, match="illegal numbers"):
+        _materialize(candidates, destination)
 
     assert not destination.exists()
+
+
+def test_existing_authority_with_non_sealed_tickets_is_rejected(tmp_path: Path) -> None:
+    destination = tmp_path / "authority" / "final.json"
+    created = _materialize(_candidates(), destination)
+    tampered = dict(created.payload)
+    rows = [dict(row) for row in _bucket(tampered, "k10")]
+    rows[0]["predicted_numbers"] = [1, 2, 3, 4, 5, 6]
+    tampered["k10"] = rows
+    destination.write_bytes(canonical_file_bytes(tampered))
+    original = destination.read_bytes()
+
+    with pytest.raises(PortfolioAuthorityConflictError, match="sealed geometry"):
+        _materialize(_candidates(), destination)
+    with pytest.raises(PortfolioAuthorityConflictError, match="sealed geometry"):
+        read_portfolio_if_present(destination)
+
+    assert destination.read_bytes() == original
 
 
 def test_candidate_manifest_records_exact_source_and_digest(tmp_path: Path) -> None:

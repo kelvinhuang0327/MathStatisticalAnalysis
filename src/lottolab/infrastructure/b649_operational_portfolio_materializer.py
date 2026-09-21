@@ -631,6 +631,13 @@ def _parse_and_validate_existing(raw: bytes, destination: Path) -> dict[str, obj
         )
     if payload.get("task_id") != TASK_ID:
         raise PortfolioAuthorityConflictError(f"{label}: existing authority task is not canonical")
+    if (
+        payload.get("portfolio_method_id") != PORTFOLIO_METHOD_ID
+        or payload.get("portfolio_method_version") != PORTFOLIO_METHOD_VERSION
+    ):
+        raise PortfolioAuthorityConflictError(
+            f"{label}: existing authority method provenance is not current"
+        )
     if payload.get("portfolio_authority_locator") != label:
         raise PortfolioAuthorityConflictError(f"{label}: existing authority locator conflicts")
     if payload.get("portfolio_status") != "COMPLETE":

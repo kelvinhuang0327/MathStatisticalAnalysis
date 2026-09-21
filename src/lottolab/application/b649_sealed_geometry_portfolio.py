@@ -3,8 +3,9 @@
 Under a fair BIG_LOTTO draw every single ticket has the same OFFICIAL_ANY_PRIZE
 probability (``7729/249711``), so no ticket beats another one-for-one. What a
 K-ticket set does change is how much its tickets overlap, and with it
-P(at least one ticket wins). K10 and K20 are the P0c capture-gap solutions
-authorized for production; K5 is the best-known disjoint construction. They
+P(at least one ticket wins). K10 and K20 are the frozen HARD_DIV pairwise-overlap
+radius2 authorities for sealed-geometry v2; K5 is the best-known disjoint
+construction. They
 carry no predictive signal: they do not depend on the target draw, the
 prediction streams, or any historical outcome. Their probabilities are exact
 counts over the full outcome space, verified by
@@ -28,7 +29,7 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
-SEALED_GEOMETRY_METHOD_VERSION: Final = "1.0.0"
+SEALED_GEOMETRY_METHOD_VERSION: Final = "2.0.0"
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -95,63 +96,68 @@ _K5 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(547495, 3579191),
 )
 
-# P0c capture-gap search (B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1, 2026-09-19): the best
-# K10 found; it beats the Phase-10 terminal K10 on exact OFFICIAL_ANY_PRIZE.
+# Frozen HARD_DIV pairwise-overlap radius2 authority selected by the canonical
+# OFFICIAL_ANY_PRIZE frontier for sealed-geometry v2.
 _K10 = SealedGeometryPortfolio(
     ticket_count=10,
     tickets=(
-        (10, 17, 19, 23, 39, 48),
-        (3, 6, 9, 13, 14, 49),
-        (17, 26, 29, 34, 38, 40),
-        (1, 11, 12, 18, 23, 40),
-        (7, 37, 41, 42, 44, 45),
-        (10, 11, 25, 29, 33, 47),
-        (5, 8, 15, 24, 30, 31),
-        (2, 18, 33, 35, 38, 39),
-        (16, 20, 27, 28, 42, 46),
-        (4, 21, 22, 32, 36, 43),
+        (1, 2, 4, 8, 13, 21),
+        (3, 6, 10, 15, 23, 42),
+        (4, 5, 7, 11, 16, 24),
+        (5, 8, 12, 17, 18, 25),
+        (7, 13, 18, 26, 29, 41),
+        (9, 11, 20, 28, 40, 44),
+        (12, 16, 21, 29, 32, 36),
+        (14, 22, 31, 37, 45, 47),
+        (19, 27, 33, 34, 35, 43),
+        (30, 38, 39, 46, 48, 49),
     ),
-    portfolio_sha256="d73f37721e3378deb024e4b762a915dbfa125d462605c293bc764fef7ea487c2",
-    source_id="B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K10",
-    source_locator=".task-data/B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1/p0c_capture_gap.json",
-    source_sha256="8ae997ec1ed504b93fd80e5113660973774cd5d9fe6054d0989312940b942211",
+    portfolio_sha256="13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+    source_id="HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2",
+    source_locator=(
+        "docs/research/matrix-native-results/"
+        "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
+    ),
+    source_sha256="5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e",
     m3_plus_probability=Fraction(364025, 1997688),
-    official_any_prize_probability=Fraction(1095245, 3734808),
+    official_any_prize_probability=Fraction(536005, 1827672),
 )
 
-# P0c capture-gap search, K20: the portfolio authorized for production. The Phase-10
-# terminal one-exchange optimum scores slightly higher (7439615/14316764) but is a
-# research reference comparator that is not authorized for production promotion.
+# Frozen HARD_DIV pairwise-overlap radius2 authority selected by the canonical
+# OFFICIAL_ANY_PRIZE frontier for sealed-geometry v2.
 _K20 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
-        (8, 16, 19, 29, 38, 40),
-        (5, 17, 23, 25, 42, 44),
-        (1, 5, 30, 33, 39, 49),
-        (7, 13, 15, 40, 43, 46),
-        (9, 12, 20, 23, 30, 31),
-        (8, 26, 27, 43, 45, 48),
-        (8, 11, 14, 15, 36, 41),
-        (3, 20, 27, 28, 37, 42),
-        (14, 25, 34, 35, 39, 45),
-        (11, 13, 24, 29, 45, 47),
-        (18, 28, 29, 35, 41, 48),
-        (1, 10, 12, 21, 24, 42),
-        (6, 21, 22, 23, 37, 49),
-        (11, 17, 19, 33, 34, 48),
-        (16, 26, 34, 41, 46, 47),
-        (3, 18, 22, 24, 32, 38),
-        (1, 4, 6, 20, 32, 44),
-        (2, 7, 25, 31, 33, 36),
-        (2, 3, 4, 5, 9, 21),
-        (10, 13, 19, 26, 35, 36),
+        (1, 2, 34, 41, 42, 45),
+        (1, 17, 22, 30, 33, 43),
+        (2, 5, 33, 35, 40, 48),
+        (3, 4, 6, 10, 15, 23),
+        (3, 9, 12, 16, 29, 39),
+        (3, 13, 14, 20, 36, 44),
+        (4, 7, 11, 16, 24, 47),
+        (4, 8, 26, 31, 37, 39),
+        (5, 17, 25, 27, 36, 41),
+        (6, 7, 9, 13, 18, 26),
+        (7, 8, 10, 14, 19, 29),
+        (8, 9, 11, 15, 20, 28),
+        (11, 12, 14, 18, 23, 31),
+        (12, 13, 15, 19, 24, 32),
+        (16, 19, 23, 26, 28, 46),
+        (17, 21, 34, 40, 44, 49),
+        (18, 20, 24, 29, 37, 46),
+        (21, 25, 30, 38, 45, 48),
+        (22, 27, 35, 45, 47, 49),
+        (27, 32, 38, 40, 42, 43),
     ),
-    portfolio_sha256="a0126d34589f82945f5f8895b8812818293a2c04a957ab0a940eaff09fd70332",
-    source_id="B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K20",
-    source_locator=".task-data/B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1/p0c_capture_gap.json",
-    source_sha256="8ae997ec1ed504b93fd80e5113660973774cd5d9fe6054d0989312940b942211",
-    m3_plus_probability=Fraction(2401225, 6991908),
-    official_any_prize_probability=Fraction(44615213, 85900584),
+    portfolio_sha256="9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+    source_id="HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2",
+    source_locator=(
+        "docs/research/matrix-native-results/"
+        "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
+    ),
+    source_sha256="5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e",
+    m3_plus_probability=Fraction(1601841, 4661272),
+    official_any_prize_probability=Fraction(22345625, 42950292),
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(

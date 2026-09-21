@@ -268,6 +268,35 @@ def test_missing_or_conflicting_method_provenance_fails_closed(
     assert response.status_code == 503
 
 
+@pytest.mark.parametrize(
+    "portfolio_health",
+    [
+        {"method_id": "wrong-method"},
+        {"method_version": "1.0.0"},
+    ],
+)
+def test_conflicting_current_portfolio_method_provenance_fails_closed(
+    tmp_path: Path,
+    monkeypatch: MonkeyPatch,
+    portfolio_health: dict[str, object],
+) -> None:
+    health_path, _, _ = _write_bundle(tmp_path, portfolio_health=portfolio_health)
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 503
+
+
+def test_v1_portfolio_artifact_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
+    portfolio = _portfolio()
+    portfolio["portfolio_method_version"] = "1.0.0"
+    health_path, _, _ = _write_bundle(tmp_path, portfolio=portfolio)
+
+    response = _client(monkeypatch, health_path).get(PATH)
+
+    assert response.status_code == 503
+
+
 def test_health_rollover_race_fails_closed(tmp_path: Path, monkeypatch: MonkeyPatch) -> None:
     health_path, _, _ = _write_bundle(tmp_path)
     original_reader = api_module._read_regular_bytes

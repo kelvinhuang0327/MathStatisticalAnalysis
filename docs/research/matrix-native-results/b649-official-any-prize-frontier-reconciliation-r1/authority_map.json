@@ -1,0 +1,43 @@
+{
+  "base_head": "741280b609ee4ee0e3d4ca5e03131e8c92968ebc",
+  "base_tree": "bbe7eb2f23a9914f998d1ae39bf4b9fd198e19c7",
+  "canonical_frontier_metric": "OFFICIAL_ANY_PRIZE",
+  "canonical_frontier_path": "docs/research/matrix-native-results/b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json",
+  "canonical_frontier_sha256": "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e",
+  "cto_decision": "CANONICALIZE_FRONTIER_THEN_UPDATE_K10_K20",
+  "evaluator": "src/lottolab/research/b649_official_any_prize_exact.py",
+  "expected_payout_claim": "NO",
+  "frontier_scope": "BEST_KNOWN_AMONG_TESTED_SEALED_CANDIDATES_ONLY",
+  "future_method_id": "B649_SEALED_GEOMETRY_PORTFOLIO",
+  "future_method_version": "2.0.0",
+  "global_optimum_status": "UNKNOWN",
+  "hard_div_source_path": "docs/research/matrix-native-results/hard-div-exact-radius2-reconciliation-r1-result.json",
+  "hard_div_source_scope": "M3_PLUS_ONLY",
+  "hard_div_source_sha256": "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82",
+  "k10": {
+    "frontier_selector": "/CANDIDATE_IDENTITIES/4",
+    "original_hard_div_json_pointer": "/k_results/3/radius2_portfolio",
+    "portfolio_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+    "source_id": "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2"
+  },
+  "k15": {
+    "disposition": "NO_PRODUCTION_BUCKET"
+  },
+  "k20": {
+    "frontier_selector": "/CANDIDATE_IDENTITIES/8",
+    "original_hard_div_json_pointer": "/k_results/4/radius2_portfolio",
+    "portfolio_sha256": "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+    "source_id": "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2"
+  },
+  "k5": {
+    "disposition": "KEEP"
+  },
+  "predictive_signal_claim": "NO",
+  "probability_model": "MAIN_DRAW_COLLAPSED_EXACT_SPECIAL_UNION",
+  "production_code_update": "NOT_IN_THIS_TASK",
+  "runtime_cutover": "SEPARATE_OWNER_AUTHORIZATION_REQUIRED",
+  "task_id": "B649_OFFICIAL_ANY_PRIZE_FRONTIER_CANONICALIZATION_R1",
+  "total_outcome_count": 601304088,
+  "upstream_original_locator": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.task-data/worktrees/B649_OFFICIAL_ANY_PRIZE_FRONTIER_RECONCILIATION_R1/.task-data/B649_OFFICIAL_ANY_PRIZE_FRONTIER_RECONCILIATION_R1/frontier_reconciliation.json",
+  "upstream_original_locator_role": "HISTORICAL_PROVENANCE_ONLY"
+}

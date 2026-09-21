@@ -44,8 +44,9 @@ from tools import task_execution_claim as claims
 class Harness:
     fixture: Fixture
     monkeypatch: pytest.MonkeyPatch
+    action: str = "apply"
     launchd: FakeLaunchd = field(init=False)
-    request: protected.Request = field(init=False)
+    request: protected.Request | protected.RollbackRequest = field(init=False)
     owner: int = field(default_factory=os.getpid)
     child: int = 900071
     elapsed: float = 0
@@ -62,22 +63,57 @@ class Harness:
 
     def __post_init__(self) -> None:
         self.launchd = FakeLaunchd(self.fixture)
-        plan = cutover.build_plan(self.fixture.config, runner=self.launchd)
-        assert plan["status"] == "PASS"
-        path = self.fixture.root / "plan.json"
-        path.write_text(protected.canonical(plan))
-        path.chmod(0o600)
-        self.fixture.scheduler_root.mkdir(mode=0o700)
-        self.request = protected.make_request(
-            self.fixture.config,
-            self.fixture.old,
-            OLD_HEAD,
-            OLD_TREE,
-            path,
-            self.fixture.root / "claims",
-        )
+        if self.action == "rollback":
+            setup_runner = FakeLaunchd(self.fixture)
+            plan = cutover.build_plan(self.fixture.config, runner=setup_runner)
+            assert plan["status"] == "PASS"
+            applied = cutover.apply(self.fixture.config, plan=plan, runner=setup_runner)
+            assert applied["status"] == "SUCCESS"
+            managed = json.loads(self.fixture.receipt_path.read_text(encoding="utf-8"))
+            managed["status"] = "RECOVERY_REQUIRED"
+            managed["phase"] = "RECOVERY_REQUIRED"
+            self.fixture.receipt_path.write_text(protected.canonical(managed), encoding="utf-8")
+            self.fixture.receipt_path.chmod(0o600)
+            self.fixture.plist_path.write_bytes(self.fixture.old_plist_bytes)
+            self.launchd.loaded = False
+            self.launchd.loaded_source = self.fixture.old
+            self.launchd.enabled = False
+            path = None
+        else:
+            plan = cutover.build_plan(self.fixture.config, runner=self.launchd)
+            assert plan["status"] == "PASS"
+            path = self.fixture.root / "plan.json"
+            path.write_text(protected.canonical(plan))
+            path.chmod(0o600)
+        self.fixture.scheduler_root.mkdir(mode=0o700, exist_ok=True)
+        if self.action == "rollback":
+            self.request = protected.make_rollback_request(
+                self.fixture.config,
+                self.fixture.old,
+                OLD_HEAD,
+                OLD_TREE,
+                self.fixture.root / "claims",
+            )
+        else:
+            assert path is not None
+            self.request = protected.make_request(
+                self.fixture.config,
+                self.fixture.old,
+                OLD_HEAD,
+                OLD_TREE,
+                path,
+                self.fixture.root / "claims",
+            )
         self.monkeypatch.setattr(
             protected, "repository_claim_root", lambda: self.request.claim_root
+        )
+        self.monkeypatch.setattr(
+            protected,
+            "control_identity",
+            lambda: (
+                cast(str, self.request.identity["control_head"]),
+                cast(str, self.request.identity["control_tree"]),
+            ),
         )
 
         def config(_args: argparse.Namespace) -> cutover.CutoverConfig:
@@ -115,7 +151,12 @@ class Harness:
                 self.observed_started = protected.ReceiptFile(self.request.receipt_path).read()
                 assert self.observed_started is not None
                 assert self.observed_started["phase"] == "STARTED"
-                assert self.observed_started["status"] == "INCOMPLETE_OR_AMBIGUOUS"
+                expected_status = (
+                    protected.ROLLBACK_INCOMPLETE
+                    if self.request.action == "rollback"
+                    else "INCOMPLETE_OR_AMBIGUOUS"
+                )
+                assert self.observed_started["status"] == expected_status
                 assert (
                     claims.ClaimStore(self.request.claim_root).inspect(protected.TASK_KEY)[
                         "child_pid"
@@ -199,6 +240,242 @@ class FakeChild:
 @pytest.fixture
 def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
     return Harness(Fixture(tmp_path), monkeypatch)
+
+
+@pytest.fixture
+def rollback_harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
+    return Harness(Fixture(tmp_path, old_name="legacy-receipt-bound-old"), monkeypatch, "rollback")
+
+
+def test_protected_rollback_restores_old_loaded_enabled_state_and_reuses_success(
+    rollback_harness: Harness,
+) -> None:
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_SUCCESS
+    assert result["result_status"] == protected.ROLLBACK_SUCCESS
+    assert result["phase"] == "COMPLETED" and result["exit_code"] == 0
+    assert rollback_harness.duplicates == [claims.REFUSED]
+    assert (
+        rollback_harness.fixture.plist_path.read_bytes()
+        == rollback_harness.fixture.old_plist_bytes
+    )
+    assert rollback_harness.launchd.loaded is True
+    assert rollback_harness.launchd.loaded_source == rollback_harness.fixture.old
+    assert rollback_harness.launchd.enabled is True
+    assert rollback_harness.sleeps == [5.0]
+    assert rollback_harness.stops == [
+        str(rollback_harness.fixture.old),
+        str(rollback_harness.fixture.new),
+    ]
+    assert len(cast(list[object], result["quiescence"])) == 2
+    assert rollback_harness.request.identity["action"] == "rollback"
+    for identity_field in (
+        "managed_receipt_sha256",
+        "operation_id",
+        "plan_digest",
+        "prestate_digest",
+        "old_durable_ref",
+        "new_worktree",
+        "new_head",
+        "new_tree",
+        "plist_path",
+        "label",
+        "control_worktree",
+        "control_head",
+        "control_tree",
+        "protected_wrapper_schema",
+    ):
+        assert identity_field in rollback_harness.request.identity
+    protected_receipt = protected.ReceiptFile(rollback_harness.request.receipt_path).read()
+    assert protected_receipt is not None
+    assert protected_receipt["status"] == protected.ROLLBACK_SUCCESS
+    assert protected.record(protected_receipt["managed_receipt"])["status"] == "ROLLBACK_SUCCESS"
+    assert rollback_harness.fixture.receipt_path.read_bytes() != b""
+    assert all(
+        path.read_bytes() == before
+        for path, before in rollback_harness.fixture.business_state_before.items()
+    )
+
+    mutation_calls = list(rollback_harness.launchd.mutation_calls)
+    reused = rollback_harness.launch()
+
+    assert reused["status"] == protected.ROLLBACK_SUCCESS
+    assert reused["reused"] is True
+    assert rollback_harness.launches == 1
+    assert rollback_harness.launchd.mutation_calls == mutation_calls
+
+
+def test_protected_rollback_accepts_receipt_bound_old_layout_but_new_stays_strict(
+    rollback_harness: Harness,
+) -> None:
+    strict_config = replace(rollback_harness.fixture.config, strict_release_layout=True)
+    plan = cutover._receipt_to_plan(
+        rollback_harness.fixture.config,
+        json.loads(rollback_harness.fixture.receipt_path.read_text(encoding="utf-8")),
+    )
+    old_source = protected.record(protected.record(plan["source"])["old"])
+    new_source = protected.record(protected.record(plan["source"])["new"])
+
+    accepted = cutover._validate_bound_source(
+        strict_config,
+        old_source,
+        rollback_harness.launchd,
+        role="protected-old",
+    )
+    assert accepted["source_worktree"] == str(rollback_harness.fixture.old)
+    with pytest.raises(cutover.CutoverSafetyError, match="production source directory"):
+        cutover._validate_bound_source(
+            strict_config,
+            old_source,
+            rollback_harness.launchd,
+            role="protected-new",
+        )
+    accepted_new = cutover._validate_bound_source(
+        strict_config,
+        new_source,
+        rollback_harness.launchd,
+        role="protected-new",
+    )
+    assert accepted_new["source_worktree"] == str(rollback_harness.fixture.new)
+
+
+def test_protected_rollback_receipt_sha_drift_blocks_before_mutation(
+    rollback_harness: Harness,
+) -> None:
+    original = rollback_harness.fixture.receipt_path.read_bytes()
+    rollback_harness.fixture.receipt_path.write_bytes(original + b"\n")
+    rollback_harness.fixture.receipt_path.chmod(0o600)
+
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_INCOMPLETE
+    assert rollback_harness.launchd.mutation_calls == []
+    assert (
+        rollback_harness.fixture.plist_path.read_bytes()
+        == rollback_harness.fixture.old_plist_bytes
+    )
+
+
+def test_protected_rollback_current_plist_must_be_receipt_bound_old_or_new(
+    rollback_harness: Harness,
+) -> None:
+    rollback_harness.fixture.plist_path.write_bytes(b"not-a-receipt-bound-plist")
+    rollback_harness.fixture.plist_path.chmod(0o600)
+
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_FAILED
+    assert rollback_harness.launchd.mutation_calls == []
+    assert result["managed_receipt"] is not None
+
+
+@pytest.mark.parametrize("field", ["plan_digest", "prestate_digest"])
+def test_protected_rollback_plan_identity_drift_blocks_before_mutation(
+    rollback_harness: Harness, field: str
+) -> None:
+    managed = json.loads(rollback_harness.fixture.receipt_path.read_text(encoding="utf-8"))
+    managed[field] = "f" * 64
+    rollback_harness.fixture.receipt_path.write_text(
+        protected.canonical(managed), encoding="utf-8"
+    )
+    rollback_harness.fixture.receipt_path.chmod(0o600)
+
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_INCOMPLETE
+    assert rollback_harness.launchd.mutation_calls == []
+
+
+def test_protected_rollback_missing_managed_receipt_blocks_before_mutation(
+    rollback_harness: Harness,
+) -> None:
+    rollback_harness.fixture.receipt_path.unlink()
+
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_INCOMPLETE
+    assert result["managed_receipt"] is None
+    assert rollback_harness.launchd.mutation_calls == []
+
+
+def test_protected_rollback_ambiguous_result_blocks_explicit_takeover(
+    rollback_harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original = protected.ReceiptFile.write
+
+    def fail_started(
+        self: protected.ReceiptFile, value: protected.Record, *, expected: protected.Record | None
+    ) -> protected.Record:
+        if value.get("phase") == "STARTED" and expected is not None:
+            raise OSError("rollback start receipt interrupted")
+        return original(self, value, expected=expected)
+
+    monkeypatch.setattr(protected.ReceiptFile, "write", fail_started)
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_INCOMPLETE
+    rollback_harness.request = replace(rollback_harness.request, takeover_stale=True)
+    with pytest.raises(protected.ProtectedError, match="blocks automatic rerun"):
+        rollback_harness.launch()
+    assert rollback_harness.launches == 1
+
+
+def test_protected_rollback_failure_preserves_existing_managed_linkage(
+    rollback_harness: Harness,
+) -> None:
+    rollback_harness.exec_failed = True
+
+    result = rollback_harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_INCOMPLETE
+    assert result["result_status"] == protected.ROLLBACK_INCOMPLETE
+    assert protected.record(result["managed_receipt"])["status"] == "RECOVERY_REQUIRED"
+    assert rollback_harness.launchd.mutation_calls == []
+
+
+def test_protected_rollback_preserves_prior_ambiguous_apply_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    control_head, control_tree = protected.control_identity()
+    fixture = Fixture(tmp_path, old_name="legacy-receipt-bound-old")
+    harness = Harness(fixture, monkeypatch)
+    assert harness.launch()["status"] == "SUCCESS"
+    apply_receipt_path = harness.request.receipt_path
+    apply_receipt_before = apply_receipt_path.read_bytes()
+    managed = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    managed["status"] = "RECOVERY_REQUIRED"
+    managed["phase"] = "RECOVERY_REQUIRED"
+    fixture.receipt_path.write_text(protected.canonical(managed), encoding="utf-8")
+    fixture.receipt_path.chmod(0o600)
+    fixture.plist_path.write_bytes(fixture.old_plist_bytes)
+    harness.launchd.loaded = False
+    harness.launchd.loaded_source = fixture.old
+    harness.launchd.enabled = False
+    harness.launchd.calls.clear()
+    monkeypatch.setattr(protected, "control_identity", lambda: (control_head, control_tree))
+    harness.request = protected.make_rollback_request(
+        fixture.config,
+        fixture.old,
+        OLD_HEAD,
+        OLD_TREE,
+        tmp_path / "claims",
+    )
+    harness.action = "rollback"
+    harness.launches = 0
+    harness.duplicates.clear()
+    harness.sleeps.clear()
+    harness.stops.clear()
+    harness.elapsed = 0
+    harness.chain()
+
+    result = harness.launch()
+
+    assert result["status"] == protected.ROLLBACK_SUCCESS
+    assert apply_receipt_path.read_bytes() == apply_receipt_before
+    prior_apply_receipt = protected.ReceiptFile(apply_receipt_path).read()
+    assert prior_apply_receipt is not None
+    assert protected.record(prior_apply_receipt["identity"])["action"] == "apply"
 
 
 def test_once_gated_direct_child_durable_success_and_no_second_execution(harness: Harness) -> None:
@@ -455,12 +732,13 @@ def test_managed_receipt_change_blocks_success_reuse(harness: Harness) -> None:
 )
 def test_unsafe_execution_receipt_is_fail_closed(harness: Harness, defect: str) -> None:
     path = harness.request.receipt_path
+    apply_request = cast(protected.Request, harness.request)
     if defect == "symlink":
-        path.symlink_to(harness.request.plan_file)
+        path.symlink_to(apply_request.plan_file)
     elif defect == "dangling":
         path.symlink_to(harness.fixture.root / "missing")
     elif defect == "hardlink":
-        os.link(harness.request.plan_file, path)
+        os.link(apply_request.plan_file, path)
     elif defect == "fifo":
         os.mkfifo(path, 0o600)
     else:
@@ -520,6 +798,20 @@ def test_cli_offers_no_pid_exemption_or_arbitrary_action() -> None:
         assert option not in protected.parser().format_help()
     with pytest.raises(SystemExit):
         protected.parser().parse_args(["rollback"])
+    parsed = protected.parser().parse_args(
+        [
+            "rollback",
+            "--receipt-file",
+            "/tmp/managed-receipt.json",
+            "--legacy-worktree",
+            "/tmp/legacy",
+            "--legacy-head",
+            "3" * 40,
+            "--legacy-tree",
+            "4" * 40,
+        ]
+    )
+    assert parsed.action == "rollback"
 
 
 def test_managed_cli_routes_exact_request_to_protected_child(

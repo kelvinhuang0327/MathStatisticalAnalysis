@@ -1426,7 +1426,13 @@ def validate_protected_plan(config: CutoverConfig, plan: Record) -> None:
         raise CutoverSafetyError("protected plan source identity differs")
 
 
-def protected_snapshot(config: CutoverConfig, plan: Record, runner: Runner) -> Record:
+def protected_snapshot(
+    config: CutoverConfig,
+    plan: Record,
+    runner: Runner,
+    *,
+    rollback: bool = False,
+) -> Record:
     """Revalidate both scoped sources and ownership without touching business state."""
     if config.protected_execution is None:
         raise CutoverSafetyError("protected snapshot requires a verified execution chain")
@@ -1436,7 +1442,7 @@ def protected_snapshot(config: CutoverConfig, plan: Record, runner: Runner) -> R
         source = _record(_record(plan.get("source"))[role])
         sources.append(
             _validate_bound_source(
-                replace(config, strict_release_layout=False),
+                config,
                 source,
                 runner,
                 role="protected-" + role,
@@ -1460,10 +1466,43 @@ def protected_snapshot(config: CutoverConfig, plan: Record, runner: Runner) -> R
             }
         )
     prestate = _record(plan.get("prestate"))
+    old_bytes = _decode_bytes(prestate["old_plist_bytes_b64"], "old plist")
+    new_bytes = _decode_bytes(prestate["new_plist_bytes_b64"], "new plist")
+    if rollback:
+        identity, current_bytes = _file_identity(
+            config.plist_path,
+            missing_ok=False,
+            require_mode=0o600,
+        )
+        if identity is None or current_bytes is None:
+            raise CutoverSafetyError("protected rollback plist is unavailable")
+        if current_bytes == old_bytes:
+            current_source = _record(_record(plan["source"])["old"])
+            current_runtime = _record(prestate["old_runtime"])
+        elif current_bytes == new_bytes:
+            current_source = _record(_record(plan["source"])["new"])
+            current_runtime = _record(_record(plan["runtime"])["new"])
+        else:
+            raise CutoverSafetyError("current plist differs from receipt-bound old/new bytes")
+        binding, parsed_runtime = _parse_plist(current_bytes, "protected-rollback-current")
+        if parsed_runtime != current_runtime:
+            raise CutoverSafetyError("protected rollback plist runtime differs from receipt")
+        launch = _assert_runtime_binding(config, runner, current_source, current_runtime)
+        enabled = _enabled_snapshot(config, runner)
+        return {
+            "sources": sources,
+            "ownership": ownership,
+            "plist": identity.to_dict(),
+            "plist_binding": binding,
+            "launch_state": launch["state"],
+            "enabled": enabled,
+            "current_source": current_source,
+            "current_runtime": current_runtime,
+        }
     identity, _ = _assert_expected_plist(
         config.plist_path,
         FileIdentity.from_value(prestate["old_plist_identity"]),
-        expected_bytes=_decode_bytes(prestate["old_plist_bytes_b64"], "old plist"),
+        expected_bytes=old_bytes,
     )
     launch = _assert_runtime_binding(
         config,
@@ -1800,6 +1839,10 @@ def _validate_bound_source(
 ) -> Record:
     source_path = Path(_text(source.get("source_worktree"), f"{role} source worktree"))
     bound_config = replace(config, source_worktree=source_path)
+    # The receipt is the authority for the legacy OLD source.  Its directory
+    # name is not a release authority, while the NEW successor remains bound
+    # to the strict production layout.
+    strict_release_layout = config.strict_release_layout and not role.endswith("-old")
     return _validate_source(
         bound_config,
         runner,
@@ -1807,7 +1850,7 @@ def _validate_bound_source(
         expected_head=_text(source.get("head"), f"{role} head"),
         expected_tree=_text(source.get("tree"), f"{role} tree"),
         expected_ref=_text(source.get("durable_ref"), f"{role} durable ref"),
-        strict_release_layout=config.strict_release_layout,
+        strict_release_layout=strict_release_layout,
     )
 
 
@@ -2147,6 +2190,12 @@ def _receipt_to_plan(config: CutoverConfig, receipt: Record) -> Record:
     }
 
 
+def receipt_to_plan(config: CutoverConfig, receipt: Record) -> Record:
+    """Render a validated managed receipt as the plan shape used by rollback."""
+
+    return _receipt_to_plan(config, receipt)
+
+
 def rollback(
     config: CutoverConfig,
     *,
@@ -2158,8 +2207,8 @@ def rollback(
 
     del now
     _validate_config(config)
-    if config.strict_release_layout:
-        raise CutoverSafetyError("protected production rollback is not yet supported")
+    if config.strict_release_layout and config.protected_execution is None:
+        raise CutoverSafetyError("production rollback requires b649_protected_cutover.py")
     stored_receipt, receipt_identity, _ = _load_json(config.receipt_path)
     loaded_receipt = stored_receipt if receipt is None else receipt
     if receipt is not None and _canonical_json(receipt) != _canonical_json(stored_receipt):
@@ -2437,11 +2486,16 @@ def parser() -> JsonParser:
     )
     _add_common(rollback_parser, source_required=False)
     rollback_parser.add_argument("--receipt-file")
+    rollback_parser.add_argument("--protected-request")
+    rollback_parser.add_argument("--protected-execution")
     return cli
 
 
 def _config_from_args(
-    args: argparse.Namespace, *, source_worktree: Path | None = None
+    args: argparse.Namespace,
+    *,
+    source_worktree: Path | None = None,
+    receipt_path: Path | None = None,
 ) -> CutoverConfig:
     source_value = source_worktree or (
         None if args.source_worktree is None else Path(args.source_worktree)
@@ -2454,7 +2508,7 @@ def _config_from_args(
         source_worktree=source_value,
         launch_domain=args.launch_domain,
         plist_path=Path(args.plist_path),
-        receipt_path=Path(args.receipt_path),
+        receipt_path=receipt_path or Path(args.receipt_path),
         cutover_lock_path=Path(args.cutover_lock_path),
         primary_lock_path=Path(args.primary_lock_path),
         shadow_lock_path=Path(args.shadow_lock_path),
@@ -2476,6 +2530,26 @@ def _error_result(command_name: str, status: str, exc: Exception) -> Record:
 
 
 def protected_config(args: argparse.Namespace) -> CutoverConfig:
+    if args.command == "rollback":
+        receipt_path = Path(args.receipt_file) if args.receipt_file else Path(args.receipt_path)
+        receipt, _, _ = _load_json(receipt_path)
+        new_source_record = _record(
+            _record(receipt.get("prestate"), "receipt prestate").get("new_source"),
+            "new source",
+        )
+        config = _config_from_args(
+            args,
+            source_worktree=Path(
+                _text(new_source_record.get("source_worktree"), "new source worktree")
+            ),
+            receipt_path=receipt_path,
+        )
+        return replace(
+            config,
+            expected_head=_text(new_source_record.get("head"), "new source head"),
+            expected_tree=_text(new_source_record.get("tree"), "new source tree"),
+            durable_ref=_text(new_source_record.get("durable_ref"), "new source durable ref"),
+        )
     return _config_from_args(args)
 
 
@@ -2489,15 +2563,18 @@ def main(
     try:
         args = parser().parse_args(argv)
         command_name = args.command
+        if (
+            args.command in {"apply", "rollback"}
+            and (args.protected_request is not None or args.protected_execution is not None)
+        ):
+            from tools.b649_protected_cutover import run_managed_child
+
+            return run_managed_child(args, runner=runner)
         if args.command == "plan":
             result = build_plan(_config_from_args(args), runner=runner, now=now)
             print(_canonical_json(result))
             return 0 if result.get("status") == "PASS" else 1
         if args.command == "apply":
-            if args.protected_request is not None or args.protected_execution is not None:
-                from tools.b649_protected_cutover import run_managed_child
-
-                return run_managed_child(args, runner=runner)
             config = _config_from_args(args)
             selected_plan: Record | None = None
             if args.plan_file:
@@ -2547,6 +2624,7 @@ __all__ = [
     "build_plan",
     "main",
     "parser",
+    "receipt_to_plan",
     "rollback",
     "run_command",
 ]

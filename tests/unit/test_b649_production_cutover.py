@@ -51,6 +51,7 @@ def _completed(
 @dataclass
 class Fixture:
     root: Path
+    old_name: str = field(default=f"B649_PRODUCTION_{OLD_HEAD}")
     canonical: Path = field(init=False)
     worktree_parent: Path = field(init=False)
     new: Path = field(init=False)
@@ -74,7 +75,7 @@ class Fixture:
         self.canonical.mkdir()
         self.worktree_parent = self.root / ".worktrees" / self.canonical.name
         self.new = self.worktree_parent / f"B649_PRODUCTION_{NEW_HEAD}"
-        self.old = self.worktree_parent / f"B649_PRODUCTION_{OLD_HEAD}"
+        self.old = self.worktree_parent / self.old_name
         self._make_source(self.new)
         self._make_source(self.old)
 
@@ -312,6 +313,50 @@ class FakeLaunchd:
 @pytest.fixture
 def fixture(tmp_path: Path) -> Fixture:
     return Fixture(tmp_path)
+
+
+def test_protected_rollback_config_binds_expected_new_identity_from_receipt(
+    fixture: Fixture,
+) -> None:
+    fixture.scheduler_root.mkdir(mode=0o700)
+    fixture.receipt_path.write_text(
+        json.dumps(
+            {
+                "prestate": {
+                    "new_source": {
+                        "source_worktree": str(fixture.new),
+                        "head": NEW_HEAD,
+                        "tree": NEW_TREE,
+                        "durable_ref": f"refs/heads/runtime/b649/{NEW_HEAD}",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    fixture.receipt_path.chmod(0o600)
+    args = argparse.Namespace(
+        command="rollback",
+        receipt_file=str(fixture.receipt_path),
+        receipt_path=str(cutover.DEFAULT_RECEIPT_PATH),
+        source_worktree=None,
+        expected_head=None,
+        expected_tree=None,
+        durable_ref=None,
+        launch_domain=fixture.config.launch_domain,
+        plist_path=str(fixture.config.plist_path),
+        cutover_lock_path=str(fixture.config.cutover_lock_path),
+        primary_lock_path=str(fixture.config.primary_lock_path),
+        shadow_lock_path=str(fixture.config.shadow_lock_path),
+    )
+
+    config = cutover.protected_config(args)
+
+    assert config.source_worktree == fixture.new
+    assert config.expected_head == NEW_HEAD
+    assert config.expected_tree == NEW_TREE
+    assert config.durable_ref == f"refs/heads/runtime/b649/{NEW_HEAD}"
+    assert config.receipt_path == fixture.receipt_path
 
 
 def _assert_business_state_unchanged(fixture: Fixture) -> None:

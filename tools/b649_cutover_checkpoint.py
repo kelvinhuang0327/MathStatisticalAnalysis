@@ -28,11 +28,12 @@ import json
 import os
 import plistlib
 import re
+import shlex
 import sqlite3
 import stat
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -349,6 +350,59 @@ class Process:
     cwd: str | None = None
 
 
+def is_git_fsmonitor_command(command: str, old_worktree: str | None = None) -> bool:
+    """Narrowly recognize genuine git fsmonitor daemon executions."""
+    try:
+        tokens = shlex.split(command)
+    except Exception:
+        return False
+    if not tokens:
+        return False
+    executable = tokens[0]
+    if old_worktree:
+        path_pattern = re.escape(old_worktree) + r"(?=/|[\s\"']|$)"
+        if re.search(path_pattern, executable):
+            return False
+    binary = Path(executable).name.lower()
+    if binary in {"git", "git.exe"}:
+        idx = 1
+        while idx < len(tokens):
+            tok = tokens[idx]
+            if tok == "fsmonitor--daemon":
+                sub_tokens = [t for t in tokens[idx + 1 :] if not t.startswith("-")]
+                return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+            elif tok in {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}:
+                idx += 2
+            elif tok.startswith("-"):
+                idx += 1
+            else:
+                return False
+        return False
+    elif binary in {"git-fsmonitor--daemon", "git-fsmonitor--daemon.exe"}:
+        sub_tokens = [t for t in tokens[1:] if not t.startswith("-")]
+        return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+    return False
+
+
+def is_passive_git_fsmonitor(
+    process: Process,
+    *,
+    roles: set[str],
+    locks: Mapping[str, str],
+    head: str,
+    evidence: str,
+    old_worktree: str,
+) -> bool:
+    """Return True only if process is a legitimate git fsmonitor without B649 ownership."""
+    if roles:
+        return False
+    if any(lock in process.files for lock in locks.values()):
+        return False
+    if head and head in evidence.replace(old_worktree, ""):
+        return False
+    return is_git_fsmonitor_command(process.command, old_worktree=old_worktree)
+
+
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     uid = int(args.launch_domain.split("/")[1])
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,command="])
@@ -418,7 +472,15 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             if lock in process.files:
                 roles.add(role)
                 bound = True
-        if bound:
+        is_passive_fsmonitor = bound and is_passive_git_fsmonitor(
+            process,
+            roles=roles,
+            locks=locks,
+            head=head,
+            evidence=evidence,
+            old_worktree=old,
+        )
+        if bound and not is_passive_fsmonitor:
             runtime.add(process.pid)
             for role in roles:
                 members[role].add(process.pid)

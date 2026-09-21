@@ -404,6 +404,146 @@ def test_checkpoint_own_argv_is_excluded(
     assert code == 0, result
 
 
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        (
+            "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+            "fsmonitor--daemon run --detach --ipc-threads=8"
+        ),
+        "git fsmonitor--daemon run",
+        "/usr/bin/git fsmonitor--daemon start --detach",
+        "/usr/libexec/git-core/git-fsmonitor--daemon run",
+        "git -C /Users/kelvin fsmonitor--daemon run",
+    ],
+)
+def test_passive_git_fsmonitor_is_excluded_from_runtime_ownership(
+    harness: Harness, capsys: pytest.CaptureFixture[str], cmd: str
+) -> None:
+    harness.loaded = False
+    harness.add_process(cmd, files=[str(harness.rollback)])
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    obs = observation(result, "old_runtime_ownership")
+    assert obs["classification"] == "ABSENT"
+    assert obs["pids"] == []
+
+
+def test_real_scheduler_owner_process_is_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+
+
+def test_primary_owner_process_is_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(f"python {harness.rollback}/tools/b649_operational_prediction_loop.py")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_primary_ownership")["classification"] == "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+
+
+def test_shadow_owner_process_is_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(f"python {harness.rollback}/tools/b649_pair_rule_forward_shadow.py")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_shadow_ownership")["classification"] == "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+
+
+def test_lock_holder_process_is_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(
+        "git fsmonitor--daemon run",
+        files=[str(harness.rollback), str(harness.root / "primary.lock")],
+    )
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_primary_ownership")["classification"] == "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+
+
+@pytest.mark.parametrize(
+    "cmd",
+    [
+        "python worker.py --fsmonitor",
+        "python tools/custom_runner.py fsmonitor--daemon run",
+        "fake-git fsmonitor--daemon run",
+        "sh -c 'git fsmonitor--daemon run'",
+    ],
+)
+def test_argv_spoof_with_fsmonitor_string_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str], cmd: str
+) -> None:
+    harness.loaded = False
+    harness.add_process(cmd, cwd=str(harness.rollback))
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+
+
+def test_descendant_of_runtime_owner_remains_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    parent = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+    )
+    child = harness.add_process("git fsmonitor--daemon run", ppid=parent)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert parent in pids
+    assert child in pids
+
+
+def test_unverifiable_fail_closed_remains_unverifiable(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.file_rows = []
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    entry = checkpoint.object_record(
+        checkpoint.object_record(result["checks"])["old_runtime_ownership"]
+    )
+    assert entry["status"] == "FAIL"
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
+def test_is_git_fsmonitor_command_boundaries() -> None:
+    assert checkpoint.is_git_fsmonitor_command(
+        "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+        "fsmonitor--daemon run --detach --ipc-threads=8"
+    )
+    assert checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon run")
+    assert checkpoint.is_git_fsmonitor_command("/usr/bin/git fsmonitor--daemon start")
+    assert checkpoint.is_git_fsmonitor_command("/usr/libexec/git-core/git-fsmonitor--daemon run")
+    assert checkpoint.is_git_fsmonitor_command("git -C /some/path fsmonitor--daemon run")
+    assert not checkpoint.is_git_fsmonitor_command("git status")
+    assert not checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon status")
+    assert not checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon stop")
+    assert not checkpoint.is_git_fsmonitor_command("python worker.py --fsmonitor")
+    assert not checkpoint.is_git_fsmonitor_command("fake-git fsmonitor--daemon run")
+    assert not checkpoint.is_git_fsmonitor_command("sh -c 'git fsmonitor--daemon run'")
+    assert not checkpoint.is_git_fsmonitor_command(
+        "/Users/kelvin/old/git fsmonitor--daemon run", old_worktree="/Users/kelvin/old"
+    )
+
+
 @pytest.mark.parametrize("failed_job", [False, True])
 def test_job_failure_does_not_skip_process_snapshot(
     harness: Harness, capsys: pytest.CaptureFixture[str], failed_job: bool

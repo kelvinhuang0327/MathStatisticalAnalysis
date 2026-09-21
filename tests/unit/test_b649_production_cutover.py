@@ -688,6 +688,36 @@ def test_plan_rejects_active_shadow_before_any_mutation(fixture: Fixture) -> Non
     assert runner.mutation_calls == []
 
 
+def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows = [
+        (
+            f"10793 1 {UID} /Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+            "fsmonitor--daemon run --detach --ipc-threads=8"
+        )
+    ]
+    runner.file_rows = [
+        "p10793",
+        "fcwd",
+        "n/Users/kelvin",
+        "f4",
+        f"n{fixture.old}",
+    ]
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "PASS", result.get("failures")
+    assert result["failures"] == []
+    ownership = _object(result["ownership"])
+    assert _object(ownership["runtime"])["classification"] == "ABSENT"
+    assert _object(ownership["primary"])["classification"] == "ABSENT"
+    assert _object(ownership["scheduler"])["classification"] == "ABSENT"
+    assert _object(ownership["shadow"])["classification"] == "ABSENT"
+    assert runner.mutation_calls == []
+
+
 def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     fixture: Fixture,
 ) -> None:

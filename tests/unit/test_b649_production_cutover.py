@@ -1436,3 +1436,275 @@ def test_reconcile_completed_receipt_fails_closed_when_after_source_matches_neit
 
     with pytest.raises(cutover.CutoverSafetyError, match="matches neither prestate side"):
         reconcile(config, receipt, runner=runner)
+
+
+# --- reconcile-restored: already-restored receipt finalization ------------
+#
+# reconcile-restored finalizes a RECOVERY_REQUIRED receipt when live state has
+# already independently returned to the receipt-bound OLD prestate, without
+# ever calling launchctl or replacing the plist. Its cases below mirror the
+# fixture's default (never-mutated) state, which already *is* exactly the OLD
+# prestate -- new/loaded_source default to `fixture.old`/`fixture.old_plist_
+# bytes` -- so most cases need no extra FakeLaunchd setup for the OLD side.
+
+RECONCILE_OPERATION_ID = "b649-reconcile-fixture-operation-id-0001"
+
+
+def _recovery_required_receipt(
+    fixture: Fixture, plan: dict[str, object], *, operation_id: str = RECONCILE_OPERATION_ID
+) -> dict[str, object]:
+    """Build a RECOVERY_REQUIRED receipt the way a failed apply() would leave one."""
+
+    receipt_base = cast(Callable[..., dict[str, object]], vars(cutover)["_receipt_base"])
+    receipt = receipt_base(fixture.config, plan, operation_id)
+    receipt["status"] = "RECOVERY_REQUIRED"
+    receipt["phase"] = "RECOVERY_REQUIRED"
+    receipt["failures"] = ["simulated: prior apply attempt left the target mid-recovery"]
+    return receipt
+
+
+def _write_receipt(fixture: Fixture, receipt: dict[str, object]) -> str:
+    """Persist a receipt exactly like the tool would and return its sha256."""
+
+    fixture.receipt_path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(fixture.receipt_path, receipt, expected=None)
+    return hashlib.sha256(fixture.receipt_path.read_bytes()).hexdigest()
+
+
+def test_reconcile_restored_finalizes_an_already_restored_recovery_required_receipt(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    result = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+
+    assert result["status"] == "ROLLBACK_SUCCESS"
+    assert result["operation_id"] == RECONCILE_OPERATION_ID
+    assert result["business_state"] == "UNCHANGED"
+    assert runner.mutation_calls == []
+    assert runner.loaded is True
+    assert runner.loaded_source == fixture.old
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
+    mutation_summary = _object(result["mutation_summary"])
+    assert mutation_summary == {"launchd": False, "plist": False, "control_files": True}
+    stored = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert stored["status"] == "ROLLBACK_SUCCESS"
+    assert stored["phase"] == "COMPLETED"
+    assert stored["operation_id"] == RECONCILE_OPERATION_ID
+    assert stored["prestate"] == receipt["prestate"]
+    assert stat.S_IMODE(fixture.receipt_path.stat().st_mode) == 0o600
+    after = _object(stored["after"])
+    assert (
+        _object(after["plist"])["sha256"]
+        == hashlib.sha256(fixture.old_plist_bytes).hexdigest()
+    )
+
+
+def test_reconcile_restored_preserves_an_unloaded_disabled_old_prestate(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture, loaded=False, enabled=False)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    assert _object(plan["launchd"])["old_state"] == "UNLOADED"
+    assert _object(plan["launchd"])["old_enabled"] is False
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    result = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+
+    assert result["status"] == "ROLLBACK_SUCCESS"
+    assert runner.mutation_calls == []
+    assert runner.loaded is False
+    assert runner.enabled is False
+
+
+@pytest.mark.parametrize("drift", ["plist", "enabled", "loaded"])
+def test_reconcile_restored_fails_closed_on_state_drift(fixture: Fixture, drift: str) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    before_receipt_bytes = fixture.receipt_path.read_bytes()
+
+    if drift == "plist":
+        binding = plistlib.loads(fixture.old_plist_bytes)
+        binding["ProgramArguments"][0] = str(fixture.new / ".venv/bin/python")
+        fixture.plist_path.write_bytes(plistlib.dumps(binding))
+        fixture.plist_path.chmod(0o600)
+    elif drift == "enabled":
+        runner.enabled = False
+    else:
+        runner.loaded = False
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=RECONCILE_OPERATION_ID,
+            expected_receipt_sha256=receipt_sha256,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == before_receipt_bytes
+
+
+@pytest.mark.parametrize("mismatch", ["operation_id", "sha256"])
+def test_reconcile_restored_fails_closed_on_receipt_identity_mismatch(
+    fixture: Fixture, mismatch: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    before_receipt_bytes = fixture.receipt_path.read_bytes()
+    expected_operation_id = (
+        "wrong-operation-id" if mismatch == "operation_id" else RECONCILE_OPERATION_ID
+    )
+    expected_receipt_sha256 = "0" * 64 if mismatch == "sha256" else receipt_sha256
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=expected_operation_id,
+            expected_receipt_sha256=expected_receipt_sha256,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == before_receipt_bytes
+
+
+def test_reconcile_restored_fails_closed_when_ownership_is_not_idle(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    before_receipt_bytes = fixture.receipt_path.read_bytes()
+    runner.process_rows = [f"424242 1 {UID} {fixture.old}/tools/b649_goalc_local_scheduler.py"]
+
+    with pytest.raises(cutover.ActiveCycleError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=RECONCILE_OPERATION_ID,
+            expected_receipt_sha256=receipt_sha256,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == before_receipt_bytes
+
+
+def test_reconcile_restored_is_idempotent_when_already_reconciled(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    first = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+    assert first["status"] == "ROLLBACK_SUCCESS"
+    mutation_count_after_first = len(runner.mutation_calls)
+    stored_bytes = fixture.receipt_path.read_bytes()
+
+    second = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=hashlib.sha256(stored_bytes).hexdigest(),
+        runner=runner,
+    )
+
+    assert second["status"] == "ALREADY_RECONCILED"
+    assert len(runner.mutation_calls) == mutation_count_after_first
+    assert fixture.receipt_path.read_bytes() == stored_bytes
+
+
+def test_reconcile_restored_fails_closed_when_completed_receipt_no_longer_matches_live_state(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+    first = cutover.reconcile_restored(
+        fixture.config,
+        expected_operation_id=RECONCILE_OPERATION_ID,
+        expected_receipt_sha256=receipt_sha256,
+        runner=runner,
+    )
+    assert first["status"] == "ROLLBACK_SUCCESS"
+    stored_bytes = fixture.receipt_path.read_bytes()
+    runner.enabled = False
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.reconcile_restored(
+            fixture.config,
+            expected_operation_id=RECONCILE_OPERATION_ID,
+            expected_receipt_sha256=hashlib.sha256(stored_bytes).hexdigest(),
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert fixture.receipt_path.read_bytes() == stored_bytes
+
+
+def test_cli_reconcile_restored_finalizes_and_reports_success(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    receipt = _recovery_required_receipt(fixture, plan)
+    receipt_sha256 = _write_receipt(fixture, receipt)
+
+    def fake_config(
+        _args: argparse.Namespace, *, source_worktree: Path | None = None
+    ) -> cutover.CutoverConfig:
+        del source_worktree
+        return fixture.config
+
+    monkeypatch.setattr(cutover, "_config_from_args", fake_config)
+
+    exit_code = cutover.main(
+        [
+            "reconcile-restored",
+            "--receipt-file",
+            str(fixture.receipt_path),
+            "--expected-operation-id",
+            RECONCILE_OPERATION_ID,
+            "--expected-receipt-sha256",
+            receipt_sha256,
+        ],
+        runner=runner,
+    )
+
+    assert exit_code == 0
+    out = json.loads(capsys.readouterr().out)
+    assert out["status"] == "ROLLBACK_SUCCESS"
+    assert runner.mutation_calls == []

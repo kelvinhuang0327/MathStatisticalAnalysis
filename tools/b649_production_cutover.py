@@ -2322,6 +2322,134 @@ def rollback(
         }
 
 
+def reconcile_restored(
+    config: CutoverConfig,
+    *,
+    expected_operation_id: str,
+    expected_receipt_sha256: str,
+    receipt: Record | None = None,
+    runner: Runner = run_command,
+    now: datetime | None = None,
+) -> Record:
+    """Finalize a RECOVERY_REQUIRED receipt whose OLD prestate is already live.
+
+    Receipt-only: proves the live plist, runtime tuple, LaunchAgent state, and
+    ownership already equal the receipt-bound OLD prestate, then transitions
+    the receipt to ROLLBACK_SUCCESS. Never mutates launchd or the plist, and
+    never routes through ``_apply_or_restore`` -- this is a receipt-
+    finalization path, not a state-restoration path.
+    """
+
+    del now
+    _validate_config(config)
+    stored_receipt, receipt_identity, raw_bytes = _load_json(config.receipt_path)
+    loaded_receipt = stored_receipt if receipt is None else receipt
+    if receipt is not None and _canonical_json(receipt) != _canonical_json(stored_receipt):
+        raise CutoverSafetyError("supplied receipt differs from the durable receipt")
+    if (
+        loaded_receipt.get("schema_version") != RECEIPT_SCHEMA_VERSION
+        or loaded_receipt.get("task") != TASK_ID
+    ):
+        raise CutoverSafetyError("receipt schema or task differs")
+    if _sha256_bytes(raw_bytes) != expected_receipt_sha256:
+        raise CutoverSafetyError("receipt sha256 does not match the expected identity")
+    if loaded_receipt.get("operation_id") != expected_operation_id:
+        raise CutoverSafetyError("receipt operation_id does not match the expected identity")
+
+    recorder = ActionRecorder([])
+    try:
+        with CutoverLock(config.cutover_lock_path):
+            plan = _receipt_to_plan(config, loaded_receipt)
+            _plan_target_matches(config, plan)
+            status = loaded_receipt.get("status")
+            if status == "ROLLBACK_SUCCESS":
+                _reconcile_completed_receipt(config, loaded_receipt, runner=runner)
+                return {
+                    "command": "reconcile-restored",
+                    "task": TASK_ID,
+                    "status": "ALREADY_RECONCILED",
+                    "receipt_path": str(config.receipt_path),
+                    "operation_id": loaded_receipt.get("operation_id"),
+                    "actions": [],
+                }
+            if status != "RECOVERY_REQUIRED":
+                raise CutoverSafetyError(
+                    f"receipt status is not eligible for reconcile-restored: {status}"
+                )
+
+            prestate = _record(plan.get("prestate"), "receipt prestate")
+            old_source = _prestate_runtime(prestate, "old_source")
+            old_runtime = _prestate_runtime(prestate, "old_runtime")
+            old_bytes = _decode_bytes(prestate.get("old_plist_bytes_b64"), "old plist bytes")
+            old_loaded = prestate.get("old_launch_state") == "LOADED"
+            old_enabled = prestate.get("old_enabled")
+            if type(old_enabled) is not bool:
+                raise CutoverSafetyError("old enabled state is invalid")
+
+            _validate_bound_source(
+                config, old_source, runner, role="reconcile-old", legacy_prestate=True
+            )
+
+            current_identity, current_bytes = _file_identity(
+                config.plist_path, missing_ok=False, require_mode=0o600
+            )
+            if current_identity is None or current_bytes is None:
+                raise CutoverSafetyError("current plist is unavailable for reconcile-restored")
+            if current_bytes != old_bytes:
+                raise CutoverSafetyError(
+                    "current plist bytes differ from the receipt-bound OLD prestate"
+                )
+            _, current_runtime = _parse_plist(current_bytes, "reconcile-current")
+            if current_runtime != old_runtime:
+                raise CutoverSafetyError(
+                    "current plist runtime tuple differs from the receipt-bound OLD prestate"
+                )
+
+            current_launch = _assert_runtime_binding(config, runner, old_source, old_runtime)
+            expected_state = "LOADED" if old_loaded else "UNLOADED"
+            if current_launch.get("state") != expected_state:
+                raise CutoverSafetyError(
+                    "current LaunchAgent state differs from the receipt-bound OLD prestate"
+                )
+            current_enabled = _enabled_snapshot(config, runner)
+            if current_enabled is not old_enabled:
+                raise CutoverSafetyError(
+                    "current LaunchAgent enabled state differs from the receipt-bound OLD prestate"
+                )
+            _assert_quiescent(config, runner, old_source)
+
+            after = _after_state(config, runner, old_source, old_runtime)
+
+            recorder.event("reconcile-restored-verified", target=config.target)
+            loaded_receipt["status"] = "ROLLBACK_SUCCESS"
+            loaded_receipt["phase"] = "COMPLETED"
+            loaded_receipt["after"] = after
+            loaded_receipt["actions"] = recorder.actions
+            loaded_receipt["mutation_summary"] = _mutation_summary(recorder.actions)
+            loaded_receipt["rollback_completed_at"] = _utc_text(_now())
+            _save_receipt(config, loaded_receipt, expected=receipt_identity)
+            return {
+                "command": "reconcile-restored",
+                "task": TASK_ID,
+                "status": "ROLLBACK_SUCCESS",
+                "receipt_path": str(config.receipt_path),
+                "operation_id": loaded_receipt.get("operation_id"),
+                "before": prestate,
+                "after": after,
+                "actions": recorder.actions,
+                "mutation_summary": loaded_receipt["mutation_summary"],
+                "business_state": "UNCHANGED",
+            }
+    except CutoverAlreadyRunning as exc:
+        return {
+            "command": "reconcile-restored",
+            "task": TASK_ID,
+            "status": "NOT_STARTED",
+            "failures": [f"CONCURRENT_APPLY: {exc}"],
+            "actions": recorder.actions,
+        }
+
+
 class JsonParser(argparse.ArgumentParser):
     def error(self, message: str) -> NoReturn:
         raise ValueError(message)
@@ -2355,6 +2483,15 @@ def parser() -> JsonParser:
     )
     _add_common(rollback_parser, source_required=False)
     rollback_parser.add_argument("--receipt-file")
+    reconcile_parser = commands.add_parser(
+        "reconcile-restored",
+        allow_abbrev=False,
+        help="Finalize a receipt whose OLD prestate is already live.",
+    )
+    _add_common(reconcile_parser, source_required=False)
+    reconcile_parser.add_argument("--receipt-file")
+    reconcile_parser.add_argument("--expected-operation-id", required=True)
+    reconcile_parser.add_argument("--expected-receipt-sha256", required=True)
     return cli
 
 
@@ -2415,6 +2552,29 @@ def main(
             result = apply(config, plan=selected_plan, runner=runner, now=now)
             print(_canonical_json(result))
             return 0 if result.get("status") in {"SUCCESS", "ALREADY_APPLIED"} else 1
+        if args.command == "reconcile-restored":
+            receipt_file = Path(args.receipt_file) if args.receipt_file else Path(args.receipt_path)
+            receipt, _, _ = _load_json(receipt_file)
+            new_source = Path(
+                _text(
+                    _record(
+                        _record(receipt.get("prestate"), "receipt prestate").get("new_source"),
+                        "new source",
+                    ).get("source_worktree"),
+                    "new source worktree",
+                )
+            )
+            config = _config_from_args(args, source_worktree=new_source)
+            result = reconcile_restored(
+                config,
+                expected_operation_id=args.expected_operation_id,
+                expected_receipt_sha256=args.expected_receipt_sha256,
+                receipt=receipt,
+                runner=runner,
+                now=now,
+            )
+            print(_canonical_json(result))
+            return 0 if result.get("status") in {"ROLLBACK_SUCCESS", "ALREADY_RECONCILED"} else 1
         receipt_file = Path(args.receipt_file) if args.receipt_file else Path(args.receipt_path)
         receipt, _, _ = _load_json(receipt_file)
         new_source = Path(
@@ -2457,6 +2617,7 @@ __all__ = [
     "build_plan",
     "main",
     "parser",
+    "reconcile_restored",
     "rollback",
     "run_command",
 ]

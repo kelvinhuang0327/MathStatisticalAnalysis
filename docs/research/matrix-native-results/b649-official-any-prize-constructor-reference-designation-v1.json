@@ -1,0 +1,210 @@
+{
+  "authority": {
+    "base_head": "947baf9da42a5656a6e6e9577b33cc5e33213347",
+    "base_tree": "109f6ca34db4363f11b378f2ad3cbeb730e6ce99",
+    "phase10_result": {
+      "path": "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json",
+      "sha256": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c"
+    },
+    "phase9_result": {
+      "path": "docs/research/matrix-native-results/reference-e-exact-one-exchange-b649-v1-result.json",
+      "sha256": "5c45204d227cc3750b9efe68ec9afeb3d83d6bd72104acbe319897fc94013e00"
+    },
+    "repository_artifacts": {
+      "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-k20-r1-result.json": "413c4af57cc38b282b4f03ae6c12961f4c91984d7f94c54c74fabfd2da8e2a89",
+      "docs/research/matrix-native-results/reference-e-exact-one-exchange-b649-v1-result.json": "5c45204d227cc3750b9efe68ec9afeb3d83d6bd72104acbe319897fc94013e00",
+      "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c",
+      "src/lottolab/research/greedy_minmax_then_sum_overlap_constructor.py": "26780ad1db8e9814a518a4d0d534d0925859a70f3ace580b8a4ebbc86b1d1c62",
+      "src/lottolab/research/reference_e_exact_one_exchange_refinement.py": "83a69b45e622aedaf5e3e98552fa10b1cda75e21d5ee40aac4938b893b82e63e",
+      "src/lottolab/research/reference_e_iterative_exact_one_exchange_ascent.py": "01e634924797355d4f19487a7abfaeed8910bc3b0c5ee8a6d95ebe617a368577"
+    },
+    "seed_source": {
+      "constructor_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+      "constructor_order_portfolio_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+      "path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-k20-r1-result.json"
+    }
+  },
+  "caveats": [
+    "This is a reference comparator, not a known frontier or global optimum.",
+    "Radius-1 local optimality does not establish global optimality.",
+    "The designation is fixed-budget portfolio geometry only; it makes no predictive, OOS, bias, or payout claim.",
+    "K10/K15/K20 supersession does not regrade K1/K2/K3/K5, T539, P638, or prior Matrix result cells."
+  ],
+  "designation_id": "B649_OFFICIAL_ANY_PRIZE_CONSTRUCTOR_REFERENCE_DESIGNATION_R1",
+  "evidence": {
+    "canonical_directory": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1",
+    "logical_to_stored": {
+      "inputs.json": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/inputs.json",
+      "official_any_prize_postcheck.json": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/official_any_prize_postcheck.json",
+      "verifier.py": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/verifier-source.txt"
+    },
+    "manifest_entries": {
+      "inputs.json": "a62ea73a422b7f9a3169ca039e00acb421fc0d9a4af1aafda8007b8891ea20c8",
+      "official_any_prize_postcheck.json": "f49405c245020a0328e79c0a7194e840075a156539143a717757a864f787ed1f",
+      "verifier.py": "4e8cafdcb855be68797342b5a1154b84a327482e889d71db379f94f3e3a7796e"
+    },
+    "manifest_path": "docs/research/matrix-native-results/b649-reference-e-improved-portfolio-official-any-prize-postcheck-r1/SHA256SUMS",
+    "manifest_sha256": "b0a9a6cbe08b9d14d987fc04ca8605d5c4743a01d51fbcd7dd2658219a74ad70",
+    "stored_sha256": {
+      "inputs.json": "a62ea73a422b7f9a3169ca039e00acb421fc0d9a4af1aafda8007b8891ea20c8",
+      "official_any_prize_postcheck.json": "f49405c245020a0328e79c0a7194e840075a156539143a717757a864f787ed1f",
+      "verifier.py": "4e8cafdcb855be68797342b5a1154b84a327482e889d71db379f94f3e3a7796e"
+    },
+    "verifier_bytes": "PRESERVED_EXACTLY"
+  },
+  "expected_payout_claim": "NO",
+  "global_optimum_status": "UNKNOWN",
+  "hash_conventions": {
+    "phase9_seed": "sorted compact JSON",
+    "reference_e_seed": "constructor-order compact JSON",
+    "sealed_manifest": "SHA-256 of exact bytes; logical verifier.py is mapped to the stored non-Python evidence filename",
+    "terminal_portfolio": "sorted compact JSON"
+  },
+  "historical_oos_claim": "NO",
+  "known_frontier": "NO",
+  "objective_split": {
+    "decision_metric": "OFFICIAL_ANY_PRIZE",
+    "official_any_prize_postcheck_reconciled": true,
+    "optimization_did_not_optimize_official_any_prize_directly": true,
+    "optimization_metric": "M3_PLUS",
+    "optimization_objective": "M3_PLUS_EXACT_COVERAGE",
+    "postcheck_objective": "OFFICIAL_ANY_PRIZE_EXACT"
+  },
+  "optimization_objective": "M3_PLUS_EXACT_COVERAGE",
+  "per_k": {
+    "10": {
+      "combined_accepted_moves_from_reference_e": 1,
+      "first_step_max_ties": 1,
+      "k": 10,
+      "official_any_prize": {
+        "classification": "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE",
+        "official_absolute_delta": "10/83237",
+        "official_outcome_count_delta": 72240,
+        "official_relative_lift": "129/314677",
+        "reference_m3_q": "212295/1165318",
+        "reference_official_any_prize_count": 176219120,
+        "reference_official_any_prize_q": "286070/976143",
+        "reference_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+        "terminal_m3_q": "90995/499422",
+        "terminal_official_any_prize_count": 176291360,
+        "terminal_official_any_prize_q": "66980/228459",
+        "terminal_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5"
+      },
+      "phase10_accepted_moves": 0,
+      "phase10_terminal_certificate": {
+        "accepted_moves_strict_exact_improvements": true,
+        "move_count_consistent": true,
+        "status": "PASS",
+        "terminal_best_q_lte_terminal_q": true,
+        "terminal_iteration_accepted_move": false
+      },
+      "phase9_first_exchange_count": 1,
+      "phase9_seed_hash_convention": "sorted compact JSON",
+      "phase9_seed_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+      "reference_e_seed_hash_convention": "constructor-order compact JSON",
+      "reference_e_seed_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+      "terminal_portfolio_hash_convention": "sorted compact JSON",
+      "terminal_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5"
+    },
+    "15": {
+      "combined_accepted_moves_from_reference_e": 22,
+      "first_step_max_ties": 40,
+      "k": 15,
+      "official_any_prize": {
+        "classification": "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE",
+        "official_absolute_delta": "17915/7158382",
+        "official_outcome_count_delta": 1504860,
+        "official_relative_lift": "3583/591722",
+        "reference_m3_q": "927161/3495954",
+        "reference_official_any_prize_count": 248523240,
+        "reference_official_any_prize_q": "1479305/3579191",
+        "reference_portfolio_sha256": "a4400d0f1d50f096b74bfb72f8eb10f42bb31bfc6d3d180d6781a867ad1b1d62",
+        "terminal_m3_q": "14090/52969",
+        "terminal_official_any_prize_count": 250028100,
+        "terminal_official_any_prize_q": "2976525/7158382",
+        "terminal_portfolio_sha256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83"
+      },
+      "phase10_accepted_moves": 21,
+      "phase10_terminal_certificate": {
+        "accepted_moves_strict_exact_improvements": true,
+        "move_count_consistent": true,
+        "status": "PASS",
+        "terminal_best_q_lte_terminal_q": true,
+        "terminal_iteration_accepted_move": false
+      },
+      "phase9_first_exchange_count": 1,
+      "phase9_seed_hash_convention": "sorted compact JSON",
+      "phase9_seed_sha256": "ba6f516af65c31246550827ddcdcff2fcbf3f588be336e6de959a59dc898d1c8",
+      "reference_e_seed_hash_convention": "constructor-order compact JSON",
+      "reference_e_seed_sha256": "a4400d0f1d50f096b74bfb72f8eb10f42bb31bfc6d3d180d6781a867ad1b1d62",
+      "terminal_portfolio_hash_convention": "sorted compact JSON",
+      "terminal_portfolio_sha256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83"
+    },
+    "20": {
+      "combined_accepted_moves_from_reference_e": 28,
+      "first_step_max_ties": 1,
+      "k": 20,
+      "official_any_prize": {
+        "classification": "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE",
+        "official_absolute_delta": "77897/42950292",
+        "official_outcome_count_delta": 1090558,
+        "official_relative_lift": "77897/22240948",
+        "reference_m3_q": "17379/50666",
+        "reference_official_any_prize_count": 311373272,
+        "reference_official_any_prize_q": "5560237/10737573",
+        "reference_portfolio_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+        "terminal_m3_q": "1200781/3495954",
+        "terminal_official_any_prize_count": 312463830,
+        "terminal_official_any_prize_q": "7439615/14316764",
+        "terminal_portfolio_sha256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710"
+      },
+      "phase10_accepted_moves": 27,
+      "phase10_terminal_certificate": {
+        "accepted_moves_strict_exact_improvements": true,
+        "move_count_consistent": true,
+        "status": "PASS",
+        "terminal_best_q_lte_terminal_q": true,
+        "terminal_iteration_accepted_move": false
+      },
+      "phase9_first_exchange_count": 1,
+      "phase9_seed_hash_convention": "sorted compact JSON",
+      "phase9_seed_sha256": "a107d9cb5c7e0def7b19ccf2a6d02306b25bc0efe3443ea9899f3a4755429a4a",
+      "reference_e_seed_hash_convention": "constructor-order compact JSON",
+      "reference_e_seed_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+      "terminal_portfolio_hash_convention": "sorted compact JSON",
+      "terminal_portfolio_sha256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710"
+    }
+  },
+  "postcheck_objective": "OFFICIAL_ANY_PRIZE_EXACT",
+  "predictive_signal_claim": "NO",
+  "production_promotion": "NOT_AUTHORIZED",
+  "reference_comparator": "YES",
+  "reference_method_id": "ITERATIVE_EXACT_1EXCHANGE_REFINEMENT_V1",
+  "reference_method_version": "V1",
+  "reference_primary_decision_metric": "OFFICIAL_ANY_PRIZE",
+  "reference_update": "REFERENCE_UPDATE_RECOMMENDED",
+  "runtime_promotion": "NOT_AUTHORIZED",
+  "scope": "BIG_LOTTO K10/K15/K20 only",
+  "scope_detail": {
+    "lottery": "BIG_LOTTO",
+    "not_superseded_k": [
+      1,
+      2,
+      3,
+      5
+    ],
+    "other_lotteries_not_superseded": [
+      "T539",
+      "P638"
+    ],
+    "superseded_k": [
+      10,
+      15,
+      20
+    ],
+    "supersession_rule": "Reference E is superseded only for BIG_LOTTO K10/K15/K20."
+  },
+  "seed_policy": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+  "source_type": "BIG_LOTTO_REFERENCE_DESIGNATION",
+  "strategy_id_created": "NO"
+}

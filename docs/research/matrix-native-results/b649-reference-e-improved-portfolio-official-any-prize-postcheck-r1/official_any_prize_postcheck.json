@@ -1,0 +1,555 @@
+{
+  "authority": {
+    "base_head": "947baf9da42a5656a6e6e9577b33cc5e33213347",
+    "base_tree": "109f6ca34db4363f11b378f2ad3cbeb730e6ce99",
+    "phase10_authority": {
+      "file_sha256": "099ca254ff9143c00953bde62329b2b8ae298a1f8e2bcfb757ca1c263119aa2c",
+      "global_optimum_status": "UNKNOWN",
+      "path": "docs/research/matrix-native-results/reference-e-iterative-exact-one-exchange-ascent-b649-v1-result.json",
+      "per_k_terminal_certificate": {
+        "10": "PASS",
+        "15": "PASS",
+        "20": "PASS"
+      },
+      "phase10_execution_gate": "PASS",
+      "primary_event": "M3_PLUS",
+      "study_id": "STRATEGY_MATRIX_PHASE10_B649_ITERATIVE_EXACT_1EXCHANGE_LOCAL_ASCENT_V1",
+      "task_id": "STRATEGY_MATRIX_PHASE10_B649_ITERATIVE_EXACT_1EXCHANGE_LOCAL_ASCENT_R1"
+    },
+    "prize_rule_authority": "src/lottolab/domain/lottery_rules.py (BIG_LOTTO_RULE_CONTRACT.prize_rule)",
+    "reference_e_authority": {
+      "file_sha256": "5c45204d227cc3750b9efe68ec9afeb3d83d6bd72104acbe319897fc94013e00",
+      "matches_sealed_phase7_authority": true,
+      "method_e_20_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+      "method_e_20_source_file_sha256": "413c4af57cc38b282b4f03ae6c12961f4c91984d7f94c54c74fabfd2da8e2a89",
+      "method_e_20_source_path": "docs/research/matrix-native-results/expected-max-exact-1exchange-ascent-k20-r1-result.json",
+      "path": "docs/research/matrix-native-results/reference-e-exact-one-exchange-b649-v1-result.json",
+      "reference_constructor_id": "GREEDY_MINMAX_THEN_SUM_OVERLAP_V1",
+      "reference_k_derivation": "method_e_20[:k]  (tools/run_strategy_matrix_phase9_reference_e_exact_one_exchange_discovery.py)",
+      "study_id": "STRATEGY_MATRIX_PHASE9_REFERENCE_E_EXACT_1EXCHANGE_DISCOVERY_V1"
+    }
+  },
+  "counting_method": "MAIN_DRAW_COLLAPSED_EXACT_SPECIAL_UNION",
+  "invariants": {
+    "candidate_generation": "NONE",
+    "db_access": false,
+    "exact_arithmetic": "FRACTION",
+    "global_optimum_status": "UNKNOWN",
+    "historical_outcome_data_used": false,
+    "monte_carlo": false,
+    "portfolio_mutation": "NONE",
+    "predictive_signal_claim": false,
+    "production_mutation": "NONE",
+    "repo_source_writes": "NONE"
+  },
+  "lottery_type": "BIG_LOTTO",
+  "official_any_prize_contract": {
+    "canonical_source": "src/lottolab/domain/lottery_rules.py BIG_LOTTO_RULE_CONTRACT.prize_rule",
+    "portfolio_event": "at least one selected ticket receives any official prize",
+    "rule": "main_matches >= 3 OR (main_matches == 2 AND official special number is one of the ticket's remaining selected numbers)"
+  },
+  "overall_classification": "OFFICIAL_ANY_PRIZE_LIFT_REPLICATED_K10_K15_K20",
+  "per_k": {
+    "10": {
+      "classification": "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE",
+      "decomposition": {
+        "m3_outcome_mass_delta": 13760,
+        "note": "the union term is net of draws promoted out of the sub-threshold bucket by the M3+ gain",
+        "reference_m3_outcome_mass": 109544220,
+        "reference_two_plus_special_union_mass": 66674900,
+        "terminal_m3_outcome_mass": 109557980,
+        "terminal_two_plus_special_union_mass": 66733380,
+        "two_plus_special_union_mass_delta": 58480
+      },
+      "k": 10,
+      "official_absolute_delta": "10/83237",
+      "official_absolute_delta_decimal": 0.00012013888054591107,
+      "official_outcome_count_delta": 72240,
+      "official_relative_lift": "129/314677",
+      "official_relative_lift_decimal": 0.00040994416496915886,
+      "reference_m3_count": 2547540,
+      "reference_m3_q": "212295/1165318",
+      "reference_official_any_prize_count": 176219120,
+      "reference_official_any_prize_q": "286070/976143",
+      "reference_official_any_prize_q_decimal": 0.29306156987244697,
+      "reference_portfolio_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+      "terminal_m3_count": 2547860,
+      "terminal_m3_q": "90995/499422",
+      "terminal_official_any_prize_count": 176291360,
+      "terminal_official_any_prize_q": "66980/228459",
+      "terminal_official_any_prize_q_decimal": 0.2931817087529929,
+      "terminal_portfolio_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5"
+    },
+    "15": {
+      "classification": "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE",
+      "decomposition": {
+        "m3_outcome_mass_delta": 477988,
+        "note": "the union term is net of draws promoted out of the sub-threshold bucket by the M3+ gain",
+        "reference_m3_outcome_mass": 159471692,
+        "reference_two_plus_special_union_mass": 89051548,
+        "terminal_m3_outcome_mass": 159949680,
+        "terminal_two_plus_special_union_mass": 90078420,
+        "two_plus_special_union_mass_delta": 1026872
+      },
+      "k": 15,
+      "official_absolute_delta": "17915/7158382",
+      "official_absolute_delta_decimal": 0.002502660517418601,
+      "official_outcome_count_delta": 1504860,
+      "official_relative_lift": "3583/591722",
+      "official_relative_lift_decimal": 0.006055208357978916,
+      "reference_m3_count": 3708644,
+      "reference_m3_q": "927161/3495954",
+      "reference_official_any_prize_count": 248523240,
+      "reference_official_any_prize_q": "1479305/3579191",
+      "reference_official_any_prize_q_decimal": 0.4133070853162069,
+      "reference_portfolio_sha256": "a4400d0f1d50f096b74bfb72f8eb10f42bb31bfc6d3d180d6781a867ad1b1d62",
+      "terminal_m3_count": 3719760,
+      "terminal_m3_q": "14090/52969",
+      "terminal_official_any_prize_count": 250028100,
+      "terminal_official_any_prize_q": "2976525/7158382",
+      "terminal_official_any_prize_q_decimal": 0.4158097458336255,
+      "terminal_portfolio_sha256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83"
+    },
+    "20": {
+      "classification": "M3_IMPROVEMENT_CONFIRMED_OFFICIAL_ANY_PRIZE_POSITIVE",
+      "decomposition": {
+        "m3_outcome_mass_delta": 280360,
+        "note": "the union term is net of draws promoted out of the sub-threshold bucket by the M3+ gain",
+        "reference_m3_outcome_mass": 206253972,
+        "reference_two_plus_special_union_mass": 105119300,
+        "terminal_m3_outcome_mass": 206534332,
+        "terminal_two_plus_special_union_mass": 105929498,
+        "two_plus_special_union_mass_delta": 810198
+      },
+      "k": 20,
+      "official_absolute_delta": "77897/42950292",
+      "official_absolute_delta_decimal": 0.0018136547243962858,
+      "official_outcome_count_delta": 1090558,
+      "official_relative_lift": "77897/22240948",
+      "official_relative_lift_decimal": 0.0035024136561085436,
+      "reference_m3_count": 4796604,
+      "reference_m3_q": "17379/50666",
+      "reference_official_any_prize_count": 311373272,
+      "reference_official_any_prize_q": "5560237/10737573",
+      "reference_official_any_prize_q_decimal": 0.5178299602712829,
+      "reference_portfolio_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+      "terminal_m3_count": 4803124,
+      "terminal_m3_q": "1200781/3495954",
+      "terminal_official_any_prize_count": 312463830,
+      "terminal_official_any_prize_q": "7439615/14316764",
+      "terminal_official_any_prize_q_decimal": 0.5196436149956792,
+      "terminal_portfolio_sha256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710"
+    }
+  },
+  "task_id": "B649_REFERENCE_E_IMPROVED_PORTFOLIO_OFFICIAL_ANY_PRIZE_POSTCHECK_R1",
+  "task_status": "COMPLETE",
+  "total_main_draw_count": 13983816,
+  "total_outcome_count": 601304088,
+  "verification": {
+    "draw_space_exhaustiveness": "PASS",
+    "duplicate_ticket_invariance": "PASS",
+    "permutation_invariance": "PASS",
+    "portfolio_identity_reconciliation": "PASS",
+    "sealed_m3_parity": "PASS",
+    "single_ticket_oracle": "PASS",
+    "small_domain_brute_force_oracle": "PASS",
+    "special_union_disjoint_from_draw_invariant": "PASS",
+    "ticket_legality": "PASS"
+  },
+  "verification_detail": {
+    "draw_space": {
+      "all_distinct": true,
+      "all_popcount_eq_draw_size": true,
+      "cardinality": true,
+      "status": "PASS",
+      "within_pool": true
+    },
+    "duplicate_ticket_invariance": {
+      "contract": "UNION_SEMANTICS_DUPLICATES_INERT: portfolio success is a union over tickets, so a repeated ticket cannot change the outcome count",
+      "per_portfolio": {
+        "reference_10": {
+          "count": 176219120,
+          "count_with_duplicated_first_ticket": 176219120,
+          "invariant": true
+        },
+        "reference_15": {
+          "count": 248523240,
+          "count_with_duplicated_first_ticket": 248523240,
+          "invariant": true
+        },
+        "reference_20": {
+          "count": 311373272,
+          "count_with_duplicated_first_ticket": 311373272,
+          "invariant": true
+        },
+        "terminal_10": {
+          "count": 176291360,
+          "count_with_duplicated_first_ticket": 176291360,
+          "invariant": true
+        },
+        "terminal_15": {
+          "count": 250028100,
+          "count_with_duplicated_first_ticket": 250028100,
+          "invariant": true
+        },
+        "terminal_20": {
+          "count": 312463830,
+          "count_with_duplicated_first_ticket": 312463830,
+          "invariant": true
+        }
+      },
+      "status": "PASS"
+    },
+    "permutation_invariance": {
+      "per_portfolio": {
+        "reference_10": {
+          "canonical_order_count": 176219120,
+          "invariant": true,
+          "permuted_order_count": 176219120
+        },
+        "reference_15": {
+          "canonical_order_count": 248523240,
+          "invariant": true,
+          "permuted_order_count": 248523240
+        },
+        "reference_20": {
+          "canonical_order_count": 311373272,
+          "invariant": true,
+          "permuted_order_count": 311373272
+        },
+        "terminal_10": {
+          "canonical_order_count": 176291360,
+          "invariant": true,
+          "permuted_order_count": 176291360
+        },
+        "terminal_15": {
+          "canonical_order_count": 250028100,
+          "invariant": true,
+          "permuted_order_count": 250028100
+        },
+        "terminal_20": {
+          "canonical_order_count": 312463830,
+          "invariant": true,
+          "permuted_order_count": 312463830
+        }
+      },
+      "status": "PASS"
+    },
+    "portfolio_identity": {
+      "per_k": {
+        "10": {
+          "reference": {
+            "cardinality_ok": true,
+            "computed_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+            "expected_sha256": "8e7e2dd0417a3eab3b9c9155257cf8be443de4dc34132e50024851ea9b31a810",
+            "match": true,
+            "ticket_count": 10
+          },
+          "terminal": {
+            "cardinality_ok": true,
+            "computed_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+            "expected_sha256": "4167482d739c59896ad9d50d23ebad89c1d22e787df8a34ae2b6bfd9206a69d5",
+            "match": true,
+            "ticket_count": 10
+          }
+        },
+        "15": {
+          "reference": {
+            "cardinality_ok": true,
+            "computed_sha256": "a4400d0f1d50f096b74bfb72f8eb10f42bb31bfc6d3d180d6781a867ad1b1d62",
+            "expected_sha256": "a4400d0f1d50f096b74bfb72f8eb10f42bb31bfc6d3d180d6781a867ad1b1d62",
+            "match": true,
+            "ticket_count": 15
+          },
+          "terminal": {
+            "cardinality_ok": true,
+            "computed_sha256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+            "expected_sha256": "8057138edd980413fa52607144d66a90372e68d251654998e3a1767fd3d9ce83",
+            "match": true,
+            "ticket_count": 15
+          }
+        },
+        "20": {
+          "reference": {
+            "cardinality_ok": true,
+            "computed_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+            "expected_sha256": "ac2198cf057b10ac8bd05e53519e5901999fe0b6beb4c35abb59c92a60ff60ff",
+            "match": true,
+            "ticket_count": 20
+          },
+          "terminal": {
+            "cardinality_ok": true,
+            "computed_sha256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+            "expected_sha256": "bf561d28d26961043f112ba8ed762ba9535666022c7df6bcefe49b8a21412710",
+            "match": true,
+            "ticket_count": 20
+          }
+        }
+      },
+      "status": "PASS"
+    },
+    "sealed_m3_parity": {
+      "per_k": {
+        "10": {
+          "reference": {
+            "match": true,
+            "recomputed_m3_count": 2547540,
+            "recomputed_m3_q": "212295/1165318",
+            "sealed_m3_count": 2547540,
+            "sealed_m3_q": "212295/1165318"
+          },
+          "terminal": {
+            "match": true,
+            "recomputed_m3_count": 2547860,
+            "recomputed_m3_q": "90995/499422",
+            "sealed_m3_count": 2547860,
+            "sealed_m3_q": "90995/499422"
+          }
+        },
+        "15": {
+          "reference": {
+            "match": true,
+            "recomputed_m3_count": 3708644,
+            "recomputed_m3_q": "927161/3495954",
+            "sealed_m3_count": 3708644,
+            "sealed_m3_q": "927161/3495954"
+          },
+          "terminal": {
+            "match": true,
+            "recomputed_m3_count": 3719760,
+            "recomputed_m3_q": "14090/52969",
+            "sealed_m3_count": 3719760,
+            "sealed_m3_q": "14090/52969"
+          }
+        },
+        "20": {
+          "reference": {
+            "match": true,
+            "recomputed_m3_count": 4796604,
+            "recomputed_m3_q": "17379/50666",
+            "sealed_m3_count": 4796604,
+            "sealed_m3_q": "17379/50666"
+          },
+          "terminal": {
+            "match": true,
+            "recomputed_m3_count": 4803124,
+            "recomputed_m3_q": "1200781/3495954",
+            "sealed_m3_count": 4803124,
+            "sealed_m3_q": "1200781/3495954"
+          }
+        }
+      },
+      "status": "PASS"
+    },
+    "single_ticket_oracle": {
+      "canonical_table_single_ticket_count": 18611432,
+      "census_total_outcomes": 601304088,
+      "evaluator_spot_checks": [
+        {
+          "actual_win": true,
+          "agrees": true,
+          "expected_win": true,
+          "special": 7,
+          "tier": "FIRST",
+          "winning_main": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6
+          ]
+        },
+        {
+          "actual_win": true,
+          "agrees": true,
+          "expected_win": true,
+          "special": 6,
+          "tier": "SECOND",
+          "winning_main": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            7
+          ]
+        },
+        {
+          "actual_win": true,
+          "agrees": true,
+          "expected_win": true,
+          "special": 8,
+          "tier": "THIRD",
+          "winning_main": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            7
+          ]
+        },
+        {
+          "actual_win": true,
+          "agrees": true,
+          "expected_win": true,
+          "special": 4,
+          "tier": "SIXTH",
+          "winning_main": [
+            1,
+            2,
+            3,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "actual_win": true,
+          "agrees": true,
+          "expected_win": true,
+          "special": 10,
+          "tier": "GENERAL",
+          "winning_main": [
+            1,
+            2,
+            3,
+            7,
+            8,
+            9
+          ]
+        },
+        {
+          "actual_win": true,
+          "agrees": true,
+          "expected_win": true,
+          "special": 3,
+          "tier": "SEVENTH",
+          "winning_main": [
+            1,
+            2,
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "actual_win": false,
+          "agrees": true,
+          "expected_win": false,
+          "special": 11,
+          "tier": null,
+          "winning_main": [
+            1,
+            2,
+            7,
+            8,
+            9,
+            10
+          ]
+        },
+        {
+          "actual_win": false,
+          "agrees": true,
+          "expected_win": false,
+          "special": 2,
+          "tier": null,
+          "winning_main": [
+            1,
+            7,
+            8,
+            9,
+            10,
+            11
+          ]
+        }
+      ],
+      "expected_total_outcomes": 601304088,
+      "independent_closed_form_count": 18611432,
+      "lottolab_module_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/src/lottolab/__init__.py",
+      "prize_rule_source_locator": "lotto649.tableData, UTF-8 bytes 7446-8159",
+      "prize_rule_source_sha256": "397639210969faba3002ffbd309dba10c44ead2063dd51ed47def98624994c15",
+      "prize_rule_version": "1.0.0",
+      "single_ticket_probability": "7729/249711",
+      "single_ticket_probability_decimal": 0.030951780257978224,
+      "status": "PASS",
+      "this_evaluator_single_ticket_count": 18611432,
+      "winning_signatures": [
+        {
+          "main_hits": 2,
+          "official_label": "\u67d2\u734e",
+          "outcomes": 7404600,
+          "special_hit": true
+        },
+        {
+          "main_hits": 3,
+          "official_label": "\u666e\u734e",
+          "outcomes": 9872800,
+          "special_hit": false
+        },
+        {
+          "main_hits": 3,
+          "official_label": "\u9678\u734e",
+          "outcomes": 740460,
+          "special_hit": true
+        },
+        {
+          "main_hits": 4,
+          "official_label": "\u4f0d\u734e",
+          "outcomes": 555345,
+          "special_hit": false
+        },
+        {
+          "main_hits": 4,
+          "official_label": "\u8086\u734e",
+          "outcomes": 27090,
+          "special_hit": true
+        },
+        {
+          "main_hits": 5,
+          "official_label": "\u53c3\u734e",
+          "outcomes": 10836,
+          "special_hit": false
+        },
+        {
+          "main_hits": 5,
+          "official_label": "\u8cb3\u734e",
+          "outcomes": 258,
+          "special_hit": true
+        },
+        {
+          "main_hits": 6,
+          "official_label": "\u982d\u734e",
+          "outcomes": 43,
+          "special_hit": false
+        }
+      ]
+    },
+    "small_domain_brute_force_oracle": {
+      "cases_compared": 303,
+      "domain": {
+        "draw_size": 3,
+        "pool": 9,
+        "special_pool": 6,
+        "threshold": 2,
+        "ticket_size": 3,
+        "total_outcomes": 504
+      },
+      "draw_space_checks": {
+        "all_distinct": true,
+        "all_popcount_eq_draw_size": true,
+        "cardinality": true,
+        "status": "PASS",
+        "within_pool": true
+      },
+      "mismatches": [],
+      "status": "PASS"
+    },
+    "ticket_legality": {
+      "status": "PASS",
+      "violations": []
+    }
+  }
+}

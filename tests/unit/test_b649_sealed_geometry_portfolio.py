@@ -18,6 +18,8 @@ from typing import cast
 import pytest
 
 from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_METHOD_ID,
+    SEALED_GEOMETRY_METHOD_VERSION,
     SEALED_GEOMETRY_PORTFOLIOS,
     SealedGeometryIntegrityError,
     canonical_portfolio_sha256,
@@ -78,11 +80,16 @@ def test_sealed_portfolios_beat_independent_random_tickets(size: int) -> None:
     assert entry.official_any_prize_probability > independent_random_official_any_prize(size)
 
 
+def test_sealed_geometry_method_identity_and_version() -> None:
+    assert SEALED_GEOMETRY_METHOD_ID == "B649_SEALED_GEOMETRY_PORTFOLIO"
+    assert SEALED_GEOMETRY_METHOD_VERSION == "2.0.0"
+
+
 @pytest.mark.parametrize("size", sorted(P0C_OFFICIAL_ANY_PRIZE_FLOOR))
-def test_sealed_portfolios_are_no_worse_than_the_p0c_solution(size: int) -> None:
+def test_sealed_portfolios_strictly_improve_upon_v1_p0c(size: int) -> None:
     entry = SEALED_GEOMETRY_PORTFOLIOS[size]
 
-    assert entry.official_any_prize_probability >= P0C_OFFICIAL_ANY_PRIZE_FLOOR[size]
+    assert entry.official_any_prize_probability > P0C_OFFICIAL_ANY_PRIZE_FLOOR[size]
 
 
 def _committed_json(locator: str, expected_sha256: str) -> dict[str, object]:
@@ -91,12 +98,60 @@ def _committed_json(locator: str, expected_sha256: str) -> dict[str, object]:
     return cast(dict[str, object], json.loads(raw))
 
 
-@pytest.mark.parametrize("size", sorted(P0C_OFFICIAL_ANY_PRIZE_FLOOR))
-def test_k10_and_k20_are_the_commissioned_p0c_portfolios(size: int) -> None:
+@pytest.mark.parametrize(
+    ("size", "expected_source_id", "expected_sha256", "expected_m3_plus", "expected_any_prize"),
+    [
+        (
+            10,
+            "HARD_DIV_PAIRWISE_OVERLAP_R1_K10_RADIUS2",
+            "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+            Fraction(364025, 1997688),
+            Fraction(536005, 1827672),
+        ),
+        (
+            20,
+            "HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2",
+            "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
+            Fraction(1601841, 4661272),
+            Fraction(22345625, 42950292),
+        ),
+    ],
+)
+def test_k10_and_k20_are_the_canonical_hard_div_radius2_portfolios(
+    size: int,
+    expected_source_id: str,
+    expected_sha256: str,
+    expected_m3_plus: Fraction,
+    expected_any_prize: Fraction,
+) -> None:
     entry = SEALED_GEOMETRY_PORTFOLIOS[size]
 
-    assert entry.source_id == f"B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K{size}"
-    assert entry.official_any_prize_probability == P0C_OFFICIAL_ANY_PRIZE_FLOOR[size]
+    assert entry.source_id == expected_source_id
+    assert entry.portfolio_sha256 == expected_sha256
+    assert entry.m3_plus_probability == expected_m3_plus
+    assert entry.official_any_prize_probability == expected_any_prize
+
+
+@pytest.mark.parametrize(
+    ("size", "selector_idx"),
+    [
+        (10, 4),
+        (20, 8),
+    ],
+)
+def test_k10_and_k20_match_canonical_frontier_authority(size: int, selector_idx: int) -> None:
+    entry = SEALED_GEOMETRY_PORTFOLIOS[size]
+    frontier = _committed_json(entry.source_locator, entry.source_sha256)
+    cands = cast(list[dict[str, object]], frontier["CANDIDATE_IDENTITIES"])
+    cand = cands[selector_idx]
+
+    assert cand["K"] == size
+    assert cand["NORMALIZED_SEMANTIC_ID"] == entry.portfolio_sha256
+    assert [list(t) for t in entry.tickets] == cand["NORMALIZED_TICKET_SET"]
+    eval_res = cast(dict[str, object], cand["EXACT_EVALUATION"])
+    expected_prize_prob = Fraction(cast(str, eval_res["official_any_prize"]))
+    assert expected_prize_prob == entry.official_any_prize_probability
+    assert Fraction(cast(str, eval_res["m3_plus"])) == entry.m3_plus_probability
 
 
 def test_k5_reaches_the_committed_frontier_best_found_with_disjoint_tickets() -> None:

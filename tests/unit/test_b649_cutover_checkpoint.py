@@ -26,6 +26,10 @@ OLD_HEAD = "3" * 40
 LABEL = "com.lottolab.checkpoint-fixture"
 DOMAIN = "gui/501"
 HEALTH_SCHEMA = "b649-goalc-local-scheduler-health-v1"
+GIT_FSMONITOR_COMMAND = (
+    "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+    "fsmonitor--daemon run --detach --ipc-threads=8"
+)
 
 
 @dataclass
@@ -320,6 +324,137 @@ def test_post_unload_absent_pass(harness: Harness, capsys: pytest.CaptureFixture
     for role in ("primary", "scheduler", "shadow", "runtime"):
         assert observation(result, f"old_{role}_ownership")["classification"] == "ABSENT"
     assert {call[0] for call in harness.calls} == {"git", "launchctl", "ps", "lsof"}
+
+
+def test_exact_git_fsmonitor_is_visible_but_ignored_as_runtime(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    pid = harness.add_process(GIT_FSMONITOR_COMMAND, cwd=str(harness.rollback))
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 0, result
+    assert observation(result, "old_runtime_ownership")["classification"] == "ABSENT"
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["ignored_repository_helpers"] == [
+        {"pid": pid, "command": GIT_FSMONITOR_COMMAND, "reason": "GIT_FSMONITOR_DAEMON"}
+    ]
+
+
+def test_exact_git_fsmonitor_does_not_hide_real_scheduler(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    helper = harness.add_process(GIT_FSMONITOR_COMMAND, cwd=str(harness.rollback))
+    scheduler = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run",
+        cwd=str(harness.rollback),
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["pids"] == [scheduler]
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    assert observation(result, "process_snapshot")["ignored_repository_helpers"] == [
+        {"pid": helper, "command": GIT_FSMONITOR_COMMAND, "reason": "GIT_FSMONITOR_DAEMON"}
+    ]
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "/usr/bin/git fsmonitor-wrapper --daemon",
+        "/usr/bin/git fsmonitor--daemon status",
+    ],
+)
+def test_fsmonitor_like_process_still_blocks(
+    harness: Harness, capsys: pytest.CaptureFixture[str], command: str
+) -> None:
+    harness.loaded = False
+    harness.add_process(command, cwd=str(harness.rollback))
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    assert observation(result, "process_snapshot")["ignored_repository_helpers"] == []
+
+
+def test_ordinary_git_process_bound_to_old_worktree_still_blocks(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(f"/usr/bin/git -C {harness.rollback} status --porcelain")
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    assert observation(result, "process_snapshot")["ignored_repository_helpers"] == []
+
+
+@pytest.mark.parametrize(
+    ("lock_name", "role"),
+    [("primary.lock", "primary"), ("shadow.lock", "shadow")],
+)
+def test_exact_git_fsmonitor_holding_runtime_lock_still_blocks(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    lock_name: str,
+    role: str,
+) -> None:
+    harness.loaded = False
+    harness.add_process(
+        GIT_FSMONITOR_COMMAND,
+        cwd=str(harness.rollback),
+        files=[str(harness.root / lock_name)],
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, f"old_{role}_ownership")["classification"] == "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    assert observation(result, "process_snapshot")["ignored_repository_helpers"] == []
+
+
+def test_exact_git_fsmonitor_with_configured_role_marker_still_blocks(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(GIT_FSMONITOR_COMMAND, cwd=str(harness.rollback))
+    args = [*harness.argv("post-unload"), "--old-scheduler-identity", "fsmonitor--daemon"]
+
+    code, result = execute(harness, capsys, "post-unload", argv=args)
+
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    assert observation(result, "process_snapshot")["ignored_repository_helpers"] == []
+
+
+def test_exact_git_fsmonitor_descendant_of_runtime_owner_still_blocks(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    helper = harness.add_process(
+        GIT_FSMONITOR_COMMAND,
+        cwd=str(harness.rollback),
+        ppid=900003,
+    )
+    scheduler = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run",
+        cwd=str(harness.rollback),
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["pids"] == [scheduler]
+    assert observation(result, "old_runtime_ownership")["pids"] == [helper, scheduler]
+    assert observation(result, "process_snapshot")["ignored_repository_helpers"] == []
 
 
 @pytest.mark.parametrize(

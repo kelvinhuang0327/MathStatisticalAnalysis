@@ -28,6 +28,7 @@ import json
 import os
 import plistlib
 import re
+import shlex
 import sqlite3
 import stat
 import subprocess
@@ -349,6 +350,26 @@ class Process:
     cwd: str | None = None
 
 
+def _is_git_fsmonitor_daemon(command: str) -> bool:
+    """Recognize only the exact detached Git fsmonitor daemon argv shape."""
+
+    try:
+        parts = shlex.split(command)
+    except ValueError:
+        return False
+    if len(parts) < 3 or not Path(parts[0]).is_absolute() or Path(parts[0]).name != "git":
+        return False
+    if parts[1:3] != ["fsmonitor--daemon", "run"]:
+        return False
+    options = parts[3:]
+    if len(options) != len(set(options)):
+        return False
+    return all(
+        option == "--detach" or re.fullmatch(r"--ipc-threads=[0-9]+", option) is not None
+        for option in options
+    )
+
+
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     uid = int(args.launch_domain.split("/")[1])
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,command="])
@@ -400,6 +421,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     locks = {"primary": args.primary_lock_path, "shadow": args.shadow_lock_path}
     members: dict[str, set[int]] = {role: set() for role in ROLE_DEFAULTS}
     runtime: set[int] = set()
+    ignored_candidates: dict[int, Process] = {}
     unknown: list[str] = []
     for process in processes.values():
         if process.pid in excluded:
@@ -418,7 +440,10 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             if lock in process.files:
                 roles.add(role)
                 bound = True
-        if bound:
+        evidence_complete = not (process.uid == uid and process.cwd is None)
+        if bound and evidence_complete and not roles and _is_git_fsmonitor_daemon(process.command):
+            ignored_candidates[process.pid] = process
+        elif bound:
             runtime.add(process.pid)
             for role in roles:
                 members[role].add(process.pid)
@@ -445,6 +470,15 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
         "process_count": len(processes),
         "uncertainties": unknown,
         "runtime": {"classification": classification(runtime), "pids": sorted(runtime)},
+        "ignored_repository_helpers": [
+            {
+                "pid": process.pid,
+                "command": process.command,
+                "reason": "GIT_FSMONITOR_DAEMON",
+            }
+            for process in sorted(ignored_candidates.values(), key=lambda item: item.pid)
+            if process.pid not in runtime
+        ],
         "processes": [
             {
                 "pid": p.pid,

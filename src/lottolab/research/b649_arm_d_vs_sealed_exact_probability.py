@@ -45,16 +45,21 @@ SPECIAL_COUNT: Final = POOL_SIZE - DRAW_SIZE  # 43
 TOTAL_MAIN_DRAWS: Final = math.comb(POOL_SIZE, DRAW_SIZE)  # 13,983,816
 TOTAL_OUTCOME_SPACE: Final = TOTAL_MAIN_DRAWS * SPECIAL_COUNT  # 601,304,088
 
-UPSTREAM_AUTHORITY_LOCATOR: Final = (
-    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/"
-    "BRANCH2_PORTFOLIO_GEOMETRY_FOUR_ARM_OOS_R1/docs/research/"
-    "branch2-portfolio-geometry-four-arm-oos-r1-result.json"
+SEALED_INPUT_LOCATOR: Final = (
+    "docs/research/b649-arm-d-vs-sealed-outcome-free-exact-probability-r1-input.json"
 )
+SEALED_INPUT_SHA256: Final = (
+    "ef089c1cdbe4f856a57885206bcf496023140e4047eec661d3e7896da46a286e"
+)
+UPSTREAM_AUTHORITY_LOCATOR: Final = SEALED_INPUT_LOCATOR
 UPSTREAM_AUTHORITY_COMMIT: Final = "d7665ee5d00fac09fdc593908e81e54ae080f2ba"
 UPSTREAM_AUTHORITY_TREE: Final = "5a9cbff94817c82163c32f1274f7c73d19bc8426"
 UPSTREAM_AUTHORITY_SHA256: Final = (
     "af1291ad73b8e78665a7181f4403c243b245855b2d1ce24e64ee950d23294ec3"
 )
+BRANCH2_UPSTREAM_COMMIT: Final = UPSTREAM_AUTHORITY_COMMIT
+BRANCH2_UPSTREAM_TREE: Final = UPSTREAM_AUTHORITY_TREE
+BRANCH2_UPSTREAM_SHA256: Final = UPSTREAM_AUTHORITY_SHA256
 
 PRODUCTION_AUTHORITY_COMMIT: Final = "2560407ec6267e0fcf3b7cfb5627c1a4f1158baf"
 EVALUATOR_CONTENT_SHA256: Final = "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
@@ -142,18 +147,30 @@ def _eval_portfolio_worker(tickets: Sequence[Sequence[int]]) -> int:
     return res.official_any_prize_outcome_count
 
 
-def verify_upstream_authority_file(upstream_path: Path | str = UPSTREAM_AUTHORITY_LOCATOR) -> None:
-    """Verify the Branch2 upstream result artifact existence and SHA256 digest."""
-    path = Path(upstream_path)
+def default_sealed_input_path() -> Path:
+    """Resolve the canonical repository-relative sealed input file."""
+    repo_root = Path(__file__).resolve().parents[3]
+    return repo_root / SEALED_INPUT_LOCATOR
+
+
+def verify_sealed_input_file(input_path: Path | str | None = None) -> Path:
+    """Verify the sealed input artifact exists and matches its expected SHA256 digest."""
+    path = default_sealed_input_path() if input_path is None else Path(input_path)
     if not path.is_file():
-        raise InconclusiveGateError(f"Branch2 upstream artifact absent: {path}")
+        raise InconclusiveGateError(f"Sealed input artifact absent: {path}")
     raw_bytes = path.read_bytes()
     computed_sha256 = hashlib.sha256(raw_bytes).hexdigest()
-    if computed_sha256 != UPSTREAM_AUTHORITY_SHA256:
+    if computed_sha256 != SEALED_INPUT_SHA256:
         raise InconclusiveGateError(
-            f"Branch2 upstream SHA256 mismatch: expected {UPSTREAM_AUTHORITY_SHA256}, "
+            f"Sealed input SHA256 mismatch: expected {SEALED_INPUT_SHA256}, "
             f"observed {computed_sha256}"
         )
+    return path
+
+
+def verify_upstream_authority_file(upstream_path: Path | str | None = None) -> Path:
+    """Validate the upstream sealed input file (alias for verify_sealed_input_file)."""
+    return verify_sealed_input_file(upstream_path)
 
 
 def verify_evaluator_content_sha256(evaluator_path: Path | str | None = None) -> None:
@@ -206,9 +223,9 @@ def verify_production_sealed_portfolios(
 
 
 def load_frozen_arm_d_archive(
-    upstream_path: Path | str = UPSTREAM_AUTHORITY_LOCATOR,
+    input_path: Path | str | None = None,
 ) -> tuple[tuple[str, ...], dict[int, tuple[Portfolio, ...]]]:
-    """Load only target identities and MIN_OVERLAP portfolios from frozen Branch2 result.
+    """Load only target identities and MIN_OVERLAP portfolios from canonical sealed input.
 
     Explicitly does NOT consume:
     - winning numbers;
@@ -219,104 +236,127 @@ def load_frozen_arm_d_archive(
     - historical payout;
     - any outcome-derived values.
     """
-    verify_upstream_authority_file(upstream_path)
-    raw_obj: object = json.loads(Path(upstream_path).read_text(encoding="utf-8"))
+    path = verify_sealed_input_file(input_path)
+    raw_obj: object = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(raw_obj, dict):
-        raise InconclusiveGateError("Malformed upstream artifact: not a JSON object")
+        raise InconclusiveGateError("Malformed sealed input artifact: not a JSON object")
     raw = cast(dict[str, object], raw_obj)
 
-    by_k_obj = raw.get("by_k")
-    if not isinstance(by_k_obj, dict):
-        raise InconclusiveGateError("Malformed upstream artifact: 'by_k' missing or not dict")
-    by_k = cast(dict[str, object], by_k_obj)
+    schema_version = raw.get("schema_version")
+    if schema_version != 1:
+        raise InconclusiveGateError(
+            f"Unsupported schema_version: expected 1, observed {schema_version}"
+        )
+    task_id = raw.get("task_id")
+    if task_id != TASK_ID:
+        raise InconclusiveGateError(f"Task ID mismatch: expected {TASK_ID}, observed {task_id}")
+
+    source_auth_obj = raw.get("source_authority")
+    if not isinstance(source_auth_obj, dict):
+        raise InconclusiveGateError("Missing or malformed source_authority dictionary")
+    source_auth = cast(dict[str, object], source_auth_obj)
+    if source_auth.get("branch2_commit") != BRANCH2_UPSTREAM_COMMIT:
+        raise InconclusiveGateError("source_authority.branch2_commit mismatch")
+    if source_auth.get("branch2_tree") != BRANCH2_UPSTREAM_TREE:
+        raise InconclusiveGateError("source_authority.branch2_tree mismatch")
+    if source_auth.get("branch2_result_sha256") != BRANCH2_UPSTREAM_SHA256:
+        raise InconclusiveGateError("source_authority.branch2_result_sha256 mismatch")
+
+    allowed_root_keys = {
+        "schema_version",
+        "task_id",
+        "source_authority",
+        "target_draws",
+        "portfolios",
+    }
+    extra_root_keys = set(raw.keys()) - allowed_root_keys
+    if extra_root_keys:
+        raise InconclusiveGateError(
+            f"Forbidden or unexpected root keys in sealed input: {extra_root_keys}"
+        )
+
+    target_draws_obj = raw.get("target_draws")
+    if not isinstance(target_draws_obj, list):
+        raise InconclusiveGateError("Missing or malformed target_draws list")
+    target_draws_list = cast(list[object], target_draws_obj)
+    if len(target_draws_list) != EXPECTED_ARCHIVE_ROW_COUNT:
+        raise InconclusiveGateError(
+            f"Archive target_draws count mismatch: expected {EXPECTED_ARCHIVE_ROW_COUNT}, "
+            f"observed {len(target_draws_list)}"
+        )
+    target_ids: list[str] = []
+    for idx, item in enumerate(target_draws_list):
+        if not isinstance(item, (str, int)):
+            raise InconclusiveGateError(f"Invalid target_draw item at index {idx}: {item}")
+        target_ids.append(str(item))
+
+    portfolios_obj = raw.get("portfolios")
+    if not isinstance(portfolios_obj, dict):
+        raise InconclusiveGateError("Missing or malformed portfolios dictionary")
+    portfolios_dict = cast(dict[str, object], portfolios_obj)
 
     loaded_portfolios: dict[int, list[Portfolio]] = {}
-    target_ids_by_k: dict[int, list[str]] = {}
 
     for k in (PRIMARY_K, SECONDARY_K):
         k_str = str(k)
-        if k_str not in by_k:
-            raise InconclusiveGateError(f"Missing 'by_k[{k_str}]' in upstream artifact")
-        k_data_obj = by_k[k_str]
-        if not isinstance(k_data_obj, dict):
-            raise InconclusiveGateError(f"'by_k[{k_str}]' is not a dict")
-        k_data = cast(dict[str, object], k_data_obj)
-        paired_draws_obj = k_data.get("paired_draws")
-        if not isinstance(paired_draws_obj, list):
-            raise InconclusiveGateError(f"'paired_draws' for K{k} missing or not a list")
-        paired_draws = cast(list[object], paired_draws_obj)
-        if len(paired_draws) != EXPECTED_ARCHIVE_ROW_COUNT:
+        if k_str not in portfolios_dict:
+            raise InconclusiveGateError(f"Missing portfolios[{k_str}] in sealed input")
+        k_port_list_obj = portfolios_dict[k_str]
+        if not isinstance(k_port_list_obj, list):
+            raise InconclusiveGateError(f"portfolios[{k_str}] is not a list")
+        k_port_list = cast(list[object], k_port_list_obj)
+        if len(k_port_list) != len(target_ids):
+            raise InconclusiveGateError(
+                f"K{k} portfolio count {len(k_port_list)} diverges from "
+                f"target draw sequence {len(target_ids)}"
+            )
+        if len(k_port_list) != EXPECTED_ARCHIVE_ROW_COUNT:
             raise InconclusiveGateError(
                 f"K{k} archive row count mismatch: expected {EXPECTED_ARCHIVE_ROW_COUNT}, "
-                f"observed {len(paired_draws)}"
+                f"observed {len(k_port_list)}"
             )
 
         k_portfolios: list[Portfolio] = []
-        k_target_ids: list[str] = []
+        for idx, port_obj in enumerate(k_port_list):
+            if not isinstance(port_obj, list):
+                raise InconclusiveGateError(f"K{k} row {idx} portfolio is not a list")
+            port = cast(list[object], port_obj)
+            if len(port) != k:
+                raise InconclusiveGateError(f"K{k} row {idx} ticket count {len(port)} != {k}")
 
-        for idx, row_obj in enumerate(paired_draws):
-            if not isinstance(row_obj, dict):
-                raise InconclusiveGateError(f"K{k} row {idx} is not a dictionary")
-            row = cast(dict[str, object], row_obj)
-            target_draw = row.get("target_draw")
-            if not isinstance(target_draw, (str, int)):
-                raise InconclusiveGateError(
-                    f"K{k} row {idx} has invalid target_draw: {target_draw}"
-                )
-            target_str = str(target_draw)
-            k_target_ids.append(target_str)
-
-            tickets_dict_obj = row.get("tickets")
-            if not isinstance(tickets_dict_obj, dict):
-                raise InconclusiveGateError(f"K{k} row {idx} missing tickets dictionary")
-            tickets_dict = cast(dict[str, object], tickets_dict_obj)
-            raw_min_overlap_obj = tickets_dict.get("MIN_OVERLAP")
-            if not isinstance(raw_min_overlap_obj, list):
-                raise InconclusiveGateError(f"K{k} row {idx} missing MIN_OVERLAP ticket list")
-            raw_min_overlap = cast(list[object], raw_min_overlap_obj)
-            if len(raw_min_overlap) != k:
-                raise InconclusiveGateError(
-                    f"K{k} row {idx} ticket count {len(raw_min_overlap)} != {k}"
-                )
-
-            # Validate tickets
             canonical_tickets: list[Ticket] = []
-            for t_raw_obj in raw_min_overlap:
+            for t_idx, t_raw_obj in enumerate(port):
                 if not isinstance(t_raw_obj, list):
-                    raise InconclusiveGateError(
-                        f"K{k} row {idx} ticket is not a list: {t_raw_obj}"
-                    )
+                    raise InconclusiveGateError(f"K{k} row {idx} ticket {t_idx} is not a list")
                 t_raw = cast(list[object], t_raw_obj)
                 if len(t_raw) != DRAW_SIZE:
                     raise InconclusiveGateError(
-                        f"K{k} row {idx} ticket illegal length: {t_raw}"
+                        f"K{k} row {idx} ticket {t_idx} length != {DRAW_SIZE}"
                     )
                 int_numbers: list[int] = []
                 for n in t_raw:
                     if not isinstance(n, int) or not (1 <= n <= POOL_SIZE):
                         raise InconclusiveGateError(
-                            f"K{k} row {idx} ticket numbers out of pool: {t_raw}"
+                            f"K{k} row {idx} ticket {t_idx} numbers out of pool"
                         )
                     int_numbers.append(n)
                 if len(set(int_numbers)) != DRAW_SIZE:
-                    raise InconclusiveGateError(f"K{k} row {idx} ticket has duplicates: {t_raw}")
+                    raise InconclusiveGateError(f"K{k} row {idx} ticket {t_idx} has duplicates")
                 canonical_tickets.append(tuple(sorted(int_numbers)))
 
+            if len(set(canonical_tickets)) != k:
+                raise InconclusiveGateError(f"K{k} row {idx} has duplicate tickets in portfolio")
             k_portfolios.append(tuple(canonical_tickets))
 
         loaded_portfolios[k] = k_portfolios
-        target_ids_by_k[k] = k_target_ids
 
-    # Target sets and order must be identical between K10 and K20
-    if target_ids_by_k[PRIMARY_K] != target_ids_by_k[SECONDARY_K]:
-        raise InconclusiveGateError("K10 and K20 target draw ID sequences differ between archives")
+    if len(loaded_portfolios[PRIMARY_K]) != len(loaded_portfolios[SECONDARY_K]):
+        raise InconclusiveGateError("K10 and K20 portfolio row counts diverge")
 
-    target_ids_tuple = tuple(target_ids_by_k[PRIMARY_K])
-    frozen_portfolios = {
+    return tuple(target_ids), {
         PRIMARY_K: tuple(loaded_portfolios[PRIMARY_K]),
         SECONDARY_K: tuple(loaded_portfolios[SECONDARY_K]),
     }
-    return target_ids_tuple, frozen_portfolios
 
 
 def evaluate_arm_d_stream(
@@ -402,7 +442,7 @@ def evaluate_arm_d_stream(
 
 
 def run_exact_probability_study(
-    upstream_path: Path | str = UPSTREAM_AUTHORITY_LOCATOR,
+    input_path: Path | str | None = None,
     *,
     evaluator_path: Path | str | None = None,
     max_workers: int = 2,
@@ -410,7 +450,7 @@ def run_exact_probability_study(
 ) -> dict[str, object]:
     """Execute the full frozen ARM_D vs sealed production exact-probability study."""
     # Step 1: Verify authorities
-    verify_upstream_authority_file(upstream_path)
+    sealed_path = verify_sealed_input_file(input_path)
     verify_evaluator_content_sha256(evaluator_path)
 
     # Step 2: Verify production sealed reproduction
@@ -419,7 +459,7 @@ def run_exact_probability_study(
     sealed_k20_prob = sealed_probabilities[SECONDARY_K]
 
     # Step 3: Load frozen archive (contract: no outcome fields)
-    target_draws, portfolios_by_k = load_frozen_arm_d_archive(upstream_path)
+    target_draws, portfolios_by_k = load_frozen_arm_d_archive(sealed_path)
 
     # Step 4: Evaluate K10 (primary)
     k10_result = evaluate_arm_d_stream(
@@ -463,10 +503,11 @@ def run_exact_probability_study(
         "task_id": TASK_ID,
         "method_version": METHOD_VERSION,
         "authorities": {
-            "branch2_upstream_locator": UPSTREAM_AUTHORITY_LOCATOR,
-            "branch2_upstream_commit": UPSTREAM_AUTHORITY_COMMIT,
-            "branch2_upstream_tree": UPSTREAM_AUTHORITY_TREE,
-            "branch2_upstream_sha256": UPSTREAM_AUTHORITY_SHA256,
+            "sealed_input_locator": SEALED_INPUT_LOCATOR,
+            "sealed_input_sha256": SEALED_INPUT_SHA256,
+            "branch2_upstream_commit": BRANCH2_UPSTREAM_COMMIT,
+            "branch2_upstream_tree": BRANCH2_UPSTREAM_TREE,
+            "branch2_upstream_sha256": BRANCH2_UPSTREAM_SHA256,
             "production_authority_commit": PRODUCTION_AUTHORITY_COMMIT,
             "evaluator_content_sha256": EVALUATOR_CONTENT_SHA256,
         },
@@ -549,6 +590,16 @@ def generate_markdown_report(result: Mapping[str, object]) -> str:
     k20_del = k20["exact_delta"]
     k20_d_del = float(cast(float, k20["decimal_delta"]))
 
+    sealed_locator = authorities.get(
+        "sealed_input_locator", authorities.get("branch2_upstream_locator", "")
+    )
+    sealed_sha = authorities.get("sealed_input_sha256", "")
+    b2_commit = authorities.get("branch2_upstream_commit", "")
+    b2_tree = authorities.get("branch2_upstream_tree", "")
+    b2_sha = authorities.get("branch2_upstream_sha256", "")
+    prod_commit = authorities.get("production_authority_commit", "")
+    eval_sha = authorities.get("evaluator_content_sha256", "")
+
     lines = [
         f"# {TASK_ID} — Report",
         "",
@@ -586,11 +637,13 @@ def generate_markdown_report(result: Mapping[str, object]) -> str:
         f"TOTAL_OUTCOME_SPACE:             {model['outcome_space_exact_count']:,}",
         f"EVENT_DEFINITION:                {model['event_definition']}",
         f"EVALUATION_METHOD:               {model['evaluation_method']}",
-        f"BRANCH2_UPSTREAM_COMMIT:         {authorities['branch2_upstream_commit']}",
-        f"BRANCH2_UPSTREAM_TREE:           {authorities['branch2_upstream_tree']}",
-        f"BRANCH2_UPSTREAM_SHA256:         {authorities['branch2_upstream_sha256']}",
-        f"PRODUCTION_AUTHORITY_COMMIT:     {authorities['production_authority_commit']}",
-        f"EVALUATOR_CONTENT_SHA256:        {authorities['evaluator_content_sha256']}",
+        f"SEALED_INPUT_LOCATOR:            {sealed_locator}",
+        f"SEALED_INPUT_SHA256:             {sealed_sha}",
+        f"BRANCH2_UPSTREAM_COMMIT:         {b2_commit}",
+        f"BRANCH2_UPSTREAM_TREE:           {b2_tree}",
+        f"BRANCH2_UPSTREAM_SHA256:         {b2_sha}",
+        f"PRODUCTION_AUTHORITY_COMMIT:     {prod_commit}",
+        f"EVALUATOR_CONTENT_SHA256:        {eval_sha}",
         "```",
         "",
         "## 2. Methodology & Scientific Safeguards",
@@ -665,9 +718,15 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=f"Run {TASK_ID}")
     parser.add_argument(
+        "--input-path",
+        default=None,
+        help="Path to sealed input JSON (default: repo-relative canonical locator)",
+    )
+    parser.add_argument(
         "--upstream",
-        default=UPSTREAM_AUTHORITY_LOCATOR,
-        help="Path to Branch2 upstream result JSON",
+        dest="input_path",
+        default=None,
+        help="Deprecated alias for --input-path",
     )
     parser.add_argument(
         "--output-dir",
@@ -684,7 +743,7 @@ def main() -> None:
 
     max_workers = min(args.workers, 2)
     print(f"Starting {TASK_ID} evaluation (max_workers={max_workers})...")
-    result = run_exact_probability_study(args.upstream, max_workers=max_workers)
+    result = run_exact_probability_study(args.input_path, max_workers=max_workers)
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

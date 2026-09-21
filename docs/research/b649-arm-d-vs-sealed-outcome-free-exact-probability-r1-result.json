@@ -2,7 +2,8 @@
   "task_id": "B649_ARM_D_VS_SEALED_OUTCOME_FREE_EXACT_PROBABILITY_R1",
   "method_version": "1.0.0",
   "authorities": {
-    "branch2_upstream_locator": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/BRANCH2_PORTFOLIO_GEOMETRY_FOUR_ARM_OOS_R1/docs/research/branch2-portfolio-geometry-four-arm-oos-r1-result.json",
+    "sealed_input_locator": "docs/research/b649-arm-d-vs-sealed-outcome-free-exact-probability-r1-input.json",
+    "sealed_input_sha256": "ef089c1cdbe4f856a57885206bcf496023140e4047eec661d3e7896da46a286e",
     "branch2_upstream_commit": "d7665ee5d00fac09fdc593908e81e54ae080f2ba",
     "branch2_upstream_tree": "5a9cbff94817c82163c32f1274f7c73d19bc8426",
     "branch2_upstream_sha256": "af1291ad73b8e78665a7181f4403c243b245855b2d1ce24e64ee950d23294ec3",

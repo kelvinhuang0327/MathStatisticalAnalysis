@@ -1608,6 +1608,7 @@ def _apply_or_restore(
             expected_source,
             runner,
             role="bootstrap-old" if restoring else "bootstrap-new",
+            legacy_prestate=restoring,
         )
         _assert_quiescent(config, runner, expected_source)
         _run_launch_mutation(
@@ -1689,7 +1690,21 @@ def _validate_bound_source(
     runner: Runner,
     *,
     role: str,
+    legacy_prestate: bool = False,
 ) -> Record:
+    """Re-validate one frozen source Record before a mutation boundary.
+
+    ``legacy_prestate`` must be set exactly when ``source`` is the receipt-
+    bound OLD/PRESTATE side, never for a NEW release: NEW materialization
+    always keeps ``config.strict_release_layout``'s ``B649_PRODUCTION_<HEAD>``
+    directory requirement, but a receipt-bound OLD source predates that
+    convention and is already pinned by its own exact HEAD/tree/durable-ref/
+    cleanliness/runtime-tuple containment instead -- the same exemption
+    ``build_plan``'s and ``rollback``'s own inline OLD-role validation already
+    grant by passing ``strict_release_layout=False`` directly. Every other
+    check is unaffected.
+    """
+
     source_path = Path(_text(source.get("source_worktree"), f"{role} source worktree"))
     bound_config = replace(config, source_worktree=source_path)
     return _validate_source(
@@ -1699,7 +1714,7 @@ def _validate_bound_source(
         expected_head=_text(source.get("head"), f"{role} head"),
         expected_tree=_text(source.get("tree"), f"{role} tree"),
         expected_ref=_text(source.get("durable_ref"), f"{role} durable ref"),
-        strict_release_layout=config.strict_release_layout,
+        strict_release_layout=False if legacy_prestate else config.strict_release_layout,
     )
 
 
@@ -1753,7 +1768,7 @@ def _apply_existing_receipt(
     plan = _record(receipt, "receipt")
     prestate = _record(plan.get("prestate"), "receipt prestate")
     source = _prestate_runtime(prestate, "new_source")
-    _validate_bound_source(config, source, runner, role="existing-new")
+    _validate_bound_source(config, source, runner, role="existing-new", legacy_prestate=False)
     if status == "SUCCESS":
         current_identity, current_bytes = _file_identity(
             config.plist_path,
@@ -1834,7 +1849,24 @@ def _reconcile_completed_receipt(
         or current_identity.size != identity.size
     ):
         raise CutoverSafetyError("completed receipt does not match the current plist")
-    _validate_bound_source(config, source, runner, role="existing-after")
+    # "after.source" is frozen from whichever side the last completed
+    # operation actually left running -- a successful apply leaves NEW, a
+    # successful rollback (or a recovery restoring the prestate) leaves OLD --
+    # so legacy_prestate must be bound to that recorded side, not guessed from
+    # role alone, or a completed rollback onto a legacy-layout OLD source
+    # would have NEW's strict layout wrongly reapplied to it here.
+    prestate = _record(receipt.get("prestate"), "receipt prestate")
+    old_source_prestate = _prestate_runtime(prestate, "old_source")
+    new_source_prestate = _prestate_runtime(prestate, "new_source")
+    if source == old_source_prestate:
+        legacy_prestate = True
+    elif source == new_source_prestate:
+        legacy_prestate = False
+    else:
+        raise CutoverSafetyError("completed receipt after-source matches neither prestate side")
+    _validate_bound_source(
+        config, source, runner, role="existing-after", legacy_prestate=legacy_prestate
+    )
     _, current_runtime = _parse_plist(current_bytes, "existing-after")
     if current_runtime != runtime:
         raise CutoverSafetyError("completed receipt runtime differs from the current plist")

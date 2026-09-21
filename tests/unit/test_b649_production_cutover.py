@@ -229,6 +229,9 @@ class FakeLaunchd:
     def __call__(self, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
         args = tuple(argv)
         self.calls.append(args)
+        if args[0] == "git":
+            assert args[1:3] == ("-c", "core.fsmonitor=false")
+            args = ("git", *args[3:])
         if self.fail_command_once == args:
             self.fail_command_once = None
             return _completed(args, stderr="fake mutation failure", returncode=1)
@@ -1066,3 +1069,28 @@ def test_rollback_old_release_drift_fails_before_launchd_mutation(fixture: Fixtu
 
     assert len(runner.mutation_calls) == before_mutations
     assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+
+
+def test_real_command_seams_strip_ambient_git_overrides(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[tuple[list[str], dict[str, object]]] = []
+
+    def run(argv: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        seen.append((argv, kwargs))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", "core.fsmonitor")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "true")
+    monkeypatch.setenv("GIT_DIR", "/not-authorized")
+    monkeypatch.setattr(subprocess, "run", run)
+    for seam in (cutover.run_command, cutover.checkpoint.run_command):
+        seam(["git", "status", "--porcelain=v1"])
+        argv, kwargs = seen[-1]
+        assert argv[:3] == ["git", "-c", "core.fsmonitor=false"]
+        environment = _object(kwargs["env"])
+        assert {key for key in environment if key.startswith("GIT_")} == {"GIT_OPTIONAL_LOCKS"}
+        assert kwargs.get("shell", False) is False
+        with pytest.raises(cutover.checkpoint.Unverifiable):
+            seam(["git", "-c", "core.fsmonitor=true", "status"])

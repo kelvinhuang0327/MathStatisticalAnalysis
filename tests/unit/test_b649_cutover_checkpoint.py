@@ -109,6 +109,9 @@ class Harness:
     def __call__(self, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
         args = tuple(argv)
         self.calls.append(args)
+        if args[0] == "git":
+            assert args[1:3] == ("-c", "core.fsmonitor=false")
+            args = ("git", *args[3:])
         if args[:2] == ("git", "--no-optional-locks"):
             assert args[2] == "-C"
             assert args[4] == "rev-parse"
@@ -837,3 +840,86 @@ def test_concurrent_database_change_invalidates_metadata(
     monkeypatch.setattr(checkpoint.sqlite3, "connect", connect)
     with pytest.raises(checkpoint.Unverifiable, match="changed during"):
         checkpoint.database_metadata(harness.database)
+
+
+@pytest.mark.parametrize(
+    "override",
+    [
+        ["-c", "core.fsmonitor=true"],
+        ["-ccore.fsmonitor=true"],
+        ["--config-env=core.fsmonitor=WATCHER"],
+    ],
+)
+def test_git_command_seam_cannot_enable_fsmonitor(override: list[str]) -> None:
+    calls: list[list[str]] = []
+
+    def runner(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        calls.append(list(argv))
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    with pytest.raises(checkpoint.Unverifiable, match="overrides"):
+        checkpoint.checked(runner, ["git", *override, "status"])
+    assert calls == []
+    checkpoint.checked(runner, ["git", "status", "--porcelain=v1"])
+    assert calls == [["git", "-c", "core.fsmonitor=false", "status", "--porcelain=v1"]]
+
+
+def test_temporary_git_reads_do_not_start_configured_fsmonitor(tmp_path: Path) -> None:
+    # Every command is scoped to this newly-created repository. Never inspect or
+    # stop a watcher in either of the real production worktrees.
+    root = tmp_path / "isolated-git"
+    root.mkdir()
+
+    def git(*args: str) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            ["git", "-C", str(root), *args], capture_output=True, text=True, check=False, timeout=10
+        )
+
+    assert git("init").returncode == 0
+    assert git("config", "core.fsmonitor", "true").returncode == 0
+    assert git("config", "fsmonitor.socketDir", str(root)).returncode == 0
+    assert git("-c", "core.fsmonitor=false", "fsmonitor--daemon", "status").returncode == 1
+    try:
+        for _ in range(2):
+            assert (
+                checkpoint.checked(
+                    checkpoint.run_command, ["git", "-C", str(root), "status", "--porcelain=v1"]
+                )
+                == ""
+            )
+            assert checkpoint.checked(
+                checkpoint.run_command, ["git", "-C", str(root), "rev-parse", "--show-toplevel"]
+            ).strip() == str(root)
+            assert git("-c", "core.fsmonitor=false", "fsmonitor--daemon", "status").returncode == 1
+    finally:
+        stopped = git("-c", "core.fsmonitor=false", "fsmonitor--daemon", "stop")
+        assert stopped.returncode == 0 or (
+            stopped.returncode == 128
+            and stopped.stderr == "fatal: fsmonitor--daemon is not running\n"
+        )
+
+
+def test_checkpoint_named_ancestor_is_not_an_exemption(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.process_rows.append(
+        f"{os.getppid()} 1 501 python b649_cutover_checkpoint.py {harness.rollback}"
+    )
+    harness.file_rows.extend([f"p{os.getppid()}", "fcwd", f"n{harness.rollback}"])
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1 and result["status"] == "FAIL"
+
+
+def test_kernel_python_image_matches_real_process_command() -> None:
+    raw = subprocess.run(
+        ["ps", "-ww", "-p", str(os.getpid()), "-o", "command="],
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=10,
+    ).stdout.strip()
+    process = checkpoint.Process(os.getpid(), os.getppid(), os.getuid(), raw)
+    argv = (sys.executable, *sys.orig_argv[1:])
+    assert checkpoint.interpreter_command_matches(process, argv)
+    assert not checkpoint.interpreter_command_matches(process, (*argv, "--forged"))

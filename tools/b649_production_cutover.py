@@ -121,18 +121,22 @@ def run_command(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     """Run one exact command without a shell and with bounded output."""
 
     return subprocess.run(
-        list(argv),
+        checkpoint.git_read_argv(argv),
         capture_output=True,
         text=True,
         check=False,
         timeout=COMMAND_TIMEOUT,
-        env={**os.environ, "LC_ALL": "C", "GIT_OPTIONAL_LOCKS": "0"},
+        env={
+            **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
+            "LC_ALL": "C",
+            "GIT_OPTIONAL_LOCKS": "0",
+        },
     )
 
 
 def _bounded_command(runner: Runner, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     try:
-        result = runner(argv)
+        result = runner(checkpoint.git_read_argv(argv))
     except Exception as exc:
         raise CutoverSafetyError(f"command {argv[0]} failed: {type(exc).__name__}: {exc}") from exc
     if len(result.stdout) + len(result.stderr) > MAX_OUTPUT_BYTES:
@@ -179,6 +183,7 @@ class CutoverConfig:
     expected_tree: str | None = None
     durable_ref: str | None = None
     strict_release_layout: bool = False
+    protected_execution: checkpoint.ControlledExecution | None = None
 
     def __post_init__(self) -> None:
         path_values = (
@@ -810,7 +815,10 @@ def _probe_lock(path: Path) -> Record:
 
 def _ownership_snapshot(config: CutoverConfig, runner: Runner, source: Record) -> Record:
     args = _launch_args(config, source)
-    process = _record(checkpoint.process_snapshot(args, runner), "process snapshot")
+    process = _record(
+        checkpoint.process_snapshot(args, runner, execution=config.protected_execution),
+        "process snapshot",
+    )
     runtime = _record(process.get("runtime"), "runtime ownership")
     primary = _record(process.get("primary"), "primary ownership")
     scheduler_process = _record(process.get("scheduler"), "scheduler ownership")
@@ -827,6 +835,8 @@ def _ownership_snapshot(config: CutoverConfig, runner: Runner, source: Record) -
 
 
 def _assert_idle(ownership: Record, *, include_runtime: bool = True) -> None:
+    if _record(ownership.get("process"), "process snapshot").get("uncertainties") != []:
+        raise ActiveCycleError("ownership uncertainties are not empty")
     keys = (
         ("runtime", "primary", "scheduler", "shadow")
         if include_runtime
@@ -1316,6 +1326,26 @@ def _assert_runtime_binding(
 
 
 def _assert_quiescent(config: CutoverConfig, runner: Runner, source: Record) -> Record:
+    if config.protected_execution is not None:
+        for worktree, head, tree in config.protected_execution.sources:
+            for revision, expected in (("HEAD", head), ("HEAD^{tree}", tree)):
+                if _git_value(runner, Path(worktree), revision) != expected:
+                    raise CutoverSafetyError(
+                        "protected source identity changed at mutation boundary"
+                    )
+            if _checked_read(
+                runner,
+                [
+                    "git",
+                    "--no-optional-locks",
+                    "-C",
+                    worktree,
+                    "status",
+                    "--porcelain=v1",
+                    "--untracked-files=all",
+                ],
+            ):
+                raise CutoverSafetyError("protected source status changed at mutation boundary")
     ownership = _ownership_snapshot(config, runner, source)
     _assert_idle(ownership)
     return ownership
@@ -1373,6 +1403,84 @@ def _run_launch_mutation(
         except BaseException as exc:
             recorder.event(name + "-postattempt-unverifiable", error=f"{type(exc).__name__}: {exc}")
     raise MutationError(f"{name} failed with exit {result.returncode}")
+
+
+def read_control_json(path: Path) -> tuple[Record, FileIdentity, bytes]:
+    """Owner-only, bounded no-follow read for the protected launcher."""
+    if path != path.resolve():
+        raise CutoverSafetyError("control file path must not traverse symlinks")
+    return _load_json(path)
+
+
+def validate_protected_plan(config: CutoverConfig, plan: Record) -> None:
+    _validate_config(config)
+    _plan_target_matches(config, plan)
+    source = _record(_record(plan.get("source"))["new"])
+    if (
+        source.get("source_worktree") != str(config.source_worktree)
+        or source.get("head") != config.expected_head
+        or source.get("tree") != config.expected_tree
+        or source.get("durable_ref") != config.durable_ref
+        or _record(plan.get("prestate")).get("new_source") != source
+    ):
+        raise CutoverSafetyError("protected plan source identity differs")
+
+
+def protected_snapshot(config: CutoverConfig, plan: Record, runner: Runner) -> Record:
+    """Revalidate both scoped sources and ownership without touching business state."""
+    if config.protected_execution is None:
+        raise CutoverSafetyError("protected snapshot requires a verified execution chain")
+    sources: list[Record] = []
+    ownership: list[Record] = []
+    for role in ("old", "new"):
+        source = _record(_record(plan.get("source"))[role])
+        sources.append(
+            _validate_bound_source(
+                replace(config, strict_release_layout=False),
+                source,
+                runner,
+                role="protected-" + role,
+            )
+        )
+        observed = _assert_quiescent(config, runner, source)
+        ownership.append(
+            {
+                "controlled_execution": _record(observed["process"])["controlled_execution"],
+                **{
+                    key: observed[key]
+                    for key in (
+                        "runtime",
+                        "primary",
+                        "scheduler",
+                        "shadow",
+                        "primary_lock",
+                        "shadow_lock",
+                    )
+                },
+            }
+        )
+    prestate = _record(plan.get("prestate"))
+    identity, _ = _assert_expected_plist(
+        config.plist_path,
+        FileIdentity.from_value(prestate["old_plist_identity"]),
+        expected_bytes=_decode_bytes(prestate["old_plist_bytes_b64"], "old plist"),
+    )
+    launch = _assert_runtime_binding(
+        config,
+        runner,
+        _record(_record(plan["source"])["old"]),
+        _record(prestate["old_runtime"]),
+    )
+    enabled = _enabled_snapshot(config, runner)
+    if launch.get("state") != prestate["old_launch_state"] or enabled != prestate["old_enabled"]:
+        raise CutoverSafetyError("protected launch binding changed")
+    return {
+        "sources": sources,
+        "ownership": ownership,
+        "plist": identity.to_dict(),
+        "launch_state": launch["state"],
+        "enabled": enabled,
+    }
 
 
 def _observe_after_identity(path: Path) -> tuple[Record, str]:
@@ -1860,6 +1968,8 @@ def apply(
     """Apply one validated plan, retaining a bounded receipt and recovery path."""
 
     _validate_config(config)
+    if config.strict_release_layout and config.protected_execution is None:
+        raise CutoverSafetyError("production apply requires b649_protected_cutover.py")
     selected_plan = plan if plan is not None else build_plan(config, runner=runner, now=now)
     _plan_target_matches(config, selected_plan)
     recorder = ActionRecorder([])
@@ -2048,6 +2158,8 @@ def rollback(
 
     del now
     _validate_config(config)
+    if config.strict_release_layout:
+        raise CutoverSafetyError("protected production rollback is not yet supported")
     stored_receipt, receipt_identity, _ = _load_json(config.receipt_path)
     loaded_receipt = stored_receipt if receipt is None else receipt
     if receipt is not None and _canonical_json(receipt) != _canonical_json(stored_receipt):
@@ -2318,6 +2430,8 @@ def parser() -> JsonParser:
     )
     _add_common(apply_parser, source_required=True)
     apply_parser.add_argument("--plan-file")
+    apply_parser.add_argument("--protected-request")
+    apply_parser.add_argument("--protected-execution")
     rollback_parser = commands.add_parser(
         "rollback", allow_abbrev=False, help="Restore one receipt-bound prestate."
     )
@@ -2361,6 +2475,10 @@ def _error_result(command_name: str, status: str, exc: Exception) -> Record:
     }
 
 
+def protected_config(args: argparse.Namespace) -> CutoverConfig:
+    return _config_from_args(args)
+
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -2376,6 +2494,10 @@ def main(
             print(_canonical_json(result))
             return 0 if result.get("status") == "PASS" else 1
         if args.command == "apply":
+            if args.protected_request is not None or args.protected_execution is not None:
+                from tools.b649_protected_cutover import run_managed_child
+
+                return run_managed_child(args, runner=runner)
             config = _config_from_args(args)
             selected_plan: Record | None = None
             if args.plan_file:

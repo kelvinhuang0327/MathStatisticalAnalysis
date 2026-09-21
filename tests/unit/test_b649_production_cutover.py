@@ -23,8 +23,16 @@ NEW_HEAD = "1" * 40
 NEW_TREE = "2" * 40
 OLD_HEAD = "3" * 40
 OLD_TREE = "4" * 40
+LEGACY_HEAD = "5" * 40
+LEGACY_TREE = "6" * 40
 UID = os.getuid()
 DOMAIN = f"gui/{UID}"
+# A receipt-bound OLD/PRESTATE worktree name that predates the
+# B649_PRODUCTION_<HEAD> release-materialization convention -- the real
+# production shape this fixture's default new/old pair (both named
+# B649_PRODUCTION_<HEAD>) never exercises. See b649-cutover-plan-old-runtime-
+# durable-ref-missing / b649-cutover-plan-old-interpreter-outside-worktree.
+LEGACY_WORKTREE_NAME = "B649_V5_ACTIVATION_PREREQUISITE_SUCCESSOR_CONSTRUCTION_R1"
 
 
 def _object(value: object) -> dict[str, object]:
@@ -75,8 +83,8 @@ class Fixture:
         self.worktree_parent = self.root / ".worktrees" / self.canonical.name
         self.new = self.worktree_parent / f"B649_PRODUCTION_{NEW_HEAD}"
         self.old = self.worktree_parent / f"B649_PRODUCTION_{OLD_HEAD}"
-        self._make_source(self.new)
-        self._make_source(self.old)
+        self.make_source(self.new)
+        self.make_source(self.old)
 
         self.operation_root = self.root / "operation"
         self.scheduler_root = self.operation_root / "scheduler"
@@ -155,7 +163,7 @@ class Fixture:
         }
 
     @staticmethod
-    def _make_source(path: Path) -> None:
+    def make_source(path: Path) -> None:
         (path / ".venv" / "bin").mkdir(mode=0o700, parents=True)
         interpreter = path / ".venv" / "bin" / "python"
         interpreter.write_text("#!/bin/sh\n", encoding="utf-8")
@@ -183,10 +191,23 @@ class FakeLaunchd:
     fail_bootstrap_new_once: bool = False
     fail_command_once: tuple[str, ...] | None = None
     after_mutation: Callable[[tuple[str, ...]], None] | None = None
+    # worktree -> (head, tree, has_durable_ref). Defaults to exactly the prior
+    # hardcoded new/old pair; a test registers an additional (e.g. legacy-
+    # layout) worktree by adding an entry. has_durable_ref=False simulates a
+    # worktree with no resolvable refs/heads/runtime/b649/<HEAD> ref -- the
+    # git call fails exactly as it would live, instead of a harness assertion.
+    worktree_identities: dict[Path, tuple[str, str, bool]] = field(
+        default_factory=lambda: dict[Path, tuple[str, str, bool]]()
+    )
 
     def __post_init__(self) -> None:
         if self.loaded_source is None:
             self.loaded_source = self.fixture.old
+        if not self.worktree_identities:
+            self.worktree_identities = {
+                self.fixture.new: (NEW_HEAD, NEW_TREE, True),
+                self.fixture.old: (OLD_HEAD, OLD_TREE, True),
+            }
 
     @property
     def mutation_calls(self) -> list[tuple[str, ...]]:
@@ -234,7 +255,8 @@ class FakeLaunchd:
             return _completed(args, stderr="fake mutation failure", returncode=1)
         if args[:2] == ("git", "--no-optional-locks"):
             worktree = Path(args[3])
-            assert worktree in {self.fixture.new, self.fixture.old}
+            assert worktree in self.worktree_identities, f"unregistered worktree: {worktree}"
+            head, tree, has_ref = self.worktree_identities[worktree]
             if args[4] == "status":
                 return _completed(args, self.status_by_path.get(worktree, ""))
             assert args[4] == "rev-parse"
@@ -242,19 +264,15 @@ class FakeLaunchd:
                 return _completed(args, str(worktree) + "\n")
             assert args[5:7] == ("--verify", "--end-of-options")
             revision = args[7]
-            if worktree == self.fixture.new:
-                values = {
-                    "HEAD": NEW_HEAD,
-                    "HEAD^{tree}": NEW_TREE,
-                    f"refs/heads/runtime/b649/{NEW_HEAD}^{{commit}}": NEW_HEAD,
-                }
-            else:
-                values = {
-                    "HEAD": OLD_HEAD,
-                    "HEAD^{tree}": OLD_TREE,
-                    f"refs/heads/runtime/b649/{OLD_HEAD}^{{commit}}": OLD_HEAD,
-                }
-            assert revision in values
+            values = {"HEAD": head, "HEAD^{tree}": tree}
+            if has_ref:
+                values[f"refs/heads/runtime/b649/{head}^{{commit}}"] = head
+            if revision not in values:
+                return _completed(
+                    args,
+                    stderr=f"fatal: ambiguous argument '{revision}': unknown revision or path\n",
+                    returncode=128,
+                )
             return _completed(args, values[revision] + "\n")
         if args[:2] == ("git", "check-ref-format"):
             return _completed(args)
@@ -1066,3 +1084,325 @@ def test_rollback_old_release_drift_fails_before_launchd_mutation(fixture: Fixtu
 
     assert len(runner.mutation_calls) == before_mutations
     assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+
+
+# --- Receipt-bound OLD/PRESTATE legacy-layout compatibility ---------------
+#
+# _validate_bound_source used to reapply config.strict_release_layout's
+# B649_PRODUCTION_<HEAD> release-materialization naming to every role,
+# including the OLD/PRESTATE side during automatic recovery, explicit
+# rollback, and completed-receipt reconciliation -- even though build_plan's
+# and rollback's own inline OLD-role checks already correctly pass
+# strict_release_layout=False for that side. A real production OLD runtime
+# predates that naming convention (see b649-cutover-plan-old-runtime-durable-
+# ref-missing), so those bootstrap-time re-validations rejected it. The tests
+# below cover the fix: an OLD/PRESTATE source with a same-root runtime tuple
+# that resembles the real historical shape -- valid HEAD/tree/durable-ref/
+# cleanliness, only its directory name is not B649_PRODUCTION_<HEAD> -- is
+# now accepted for the OLD role only; the NEW role's layout requirement, and
+# every other OLD-role guard (durable ref, drift, containment), is unchanged.
+
+
+def _scheduler_config_for(fixture: Fixture, source: Path) -> scheduler.SchedulerConfig:
+    """Build the SchedulerConfig for an arbitrary source worktree.
+
+    Mirrors exactly how ``Fixture.__post_init__`` builds its own old
+    scheduler config, parametrized only by the source worktree.
+    """
+
+    return scheduler.SchedulerConfig(
+        label=cutover.LABEL,
+        version=scheduler.TASK_VERSION,
+        canonical_repository=fixture.canonical,
+        source_worktree=source,
+        python_executable=source / ".venv/bin/python",
+        script_path=source / "tools/b649_goalc_local_scheduler.py",
+        operation_root=fixture.operation_root,
+        data_root=fixture.data_root,
+        database=fixture.data_root / "lottolab.db",
+        announcement=fixture.data_root / "pre-outcome-target-announcements-v1.json",
+        scheduler_root=fixture.scheduler_root,
+        lock_path=fixture.primary_lock_path,
+        health_path=fixture.scheduler_root / "health.json",
+        stdout_path=fixture.scheduler_root / "launchd.stdout.log",
+        stderr_path=fixture.scheduler_root / "launchd.stderr.log",
+        plist_path=fixture.plist_path,
+    )
+
+
+def _install_legacy_old(
+    fixture: Fixture, *, name: str = LEGACY_WORKTREE_NAME
+) -> tuple[Path, bytes]:
+    """Materialize a legacy-layout OLD/PRESTATE worktree and install its plist.
+
+    Built with the same ``Fixture.make_source`` as ``fixture.old`` -- a
+    same-root, ordinary in-worktree interpreter -- so only the directory name
+    differs from the ``B649_PRODUCTION_<HEAD>`` convention. Interpreter/
+    PYTHONPATH containment is unchanged by this task and stays out of scope.
+    """
+
+    legacy = fixture.worktree_parent / name
+    Fixture.make_source(legacy)
+    legacy_bytes = scheduler.build_launchd_plist(_scheduler_config_for(fixture, legacy))
+    fixture.plist_path.write_bytes(legacy_bytes)
+    fixture.plist_path.chmod(0o600)
+    return legacy, legacy_bytes
+
+
+def _legacy_runner(fixture: Fixture, legacy: Path) -> FakeLaunchd:
+    runner = FakeLaunchd(fixture, loaded_source=legacy)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, True)
+    return runner
+
+
+def _patch_production_paths(monkeypatch: pytest.MonkeyPatch, fixture: Fixture) -> None:
+    """Make strict_release_layout=True's exact-production-path gate in
+    ``_validate_config`` match this hermetic fixture.
+
+    ``strict_release_layout=True`` is the real CLI's actual, hardcoded
+    setting (``_config_from_args``), and it gates two independent things: the
+    ``B649_PRODUCTION_<HEAD>`` release-directory naming this task's fix is
+    about (``_source_layout_error``, keyed only off ``config.
+    canonical_repository``/``source_worktree`` and already hermetic), and a
+    separate exact-path check against real production constants (plist,
+    scheduler/data roots, locks, receipt -- see ``_validate_config``). Only
+    the latter needs patching to exercise strict mode end to end without
+    touching real production paths.
+    """
+
+    monkeypatch.setattr(cutover, "DEFAULT_PLIST_PATH", fixture.plist_path)
+    monkeypatch.setattr(cutover, "DEFAULT_OPERATION_ROOT", fixture.operation_root)
+    monkeypatch.setattr(cutover, "DEFAULT_RECEIPT_PATH", fixture.receipt_path)
+    monkeypatch.setattr(cutover, "DEFAULT_CUTOVER_LOCK_PATH", fixture.cutover_lock_path)
+    monkeypatch.setattr(cutover, "DEFAULT_PRIMARY_LOCK_PATH", fixture.primary_lock_path)
+    monkeypatch.setattr(cutover, "DEFAULT_SHADOW_LOCK_PATH", fixture.shadow_lock_path)
+    # scheduler.production_config() builds its own bare SchedulerConfig from
+    # these same-family module globals before _scheduler_config()'s replace()
+    # ever overrides it with config's fields, and SchedulerConfig.__post_init__
+    # validates that bare construction's internal root/child relationships
+    # immediately -- so GOALC_ROOT and LOCK_PATH must move together with
+    # SCHEDULER_ROOT or that first construction raises before the override.
+    monkeypatch.setattr(scheduler, "GOALC_ROOT", fixture.operation_root)
+    monkeypatch.setattr(scheduler, "SCHEDULER_ROOT", fixture.scheduler_root)
+    monkeypatch.setattr(scheduler, "LOCK_PATH", fixture.primary_lock_path)
+    monkeypatch.setattr(scheduler, "DATA_ROOT", fixture.data_root)
+    monkeypatch.setattr(scheduler, "DATABASE_PATH", fixture.config.database)
+    monkeypatch.setattr(scheduler, "ANNOUNCEMENT_PATH", fixture.config.announcement)
+    monkeypatch.setattr(scheduler, "HEALTH_PATH", fixture.config.health_path)
+    monkeypatch.setattr(scheduler, "STDOUT_PATH", fixture.config.stdout_path)
+    monkeypatch.setattr(scheduler, "STDERR_PATH", fixture.config.stderr_path)
+
+
+def test_validate_bound_source_relaxes_layout_only_for_legacy_prestate(
+    fixture: Fixture,
+) -> None:
+    """The exact seam this fix adds, isolated from the rest of build_plan/apply.
+
+    legacy_prestate=True must relax only the B649_PRODUCTION_<HEAD> layout
+    check, and only when the caller explicitly sets it -- proven by a control
+    call with the identical source and config but legacy_prestate=False.
+    """
+
+    legacy = fixture.worktree_parent / LEGACY_WORKTREE_NAME
+    Fixture.make_source(legacy)
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, True)
+    config = replace(fixture.config, strict_release_layout=True)
+    validate_bound_source = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_validate_bound_source"]
+    )
+    source_record: dict[str, object] = {
+        "source_worktree": str(legacy),
+        "head": LEGACY_HEAD,
+        "tree": LEGACY_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{LEGACY_HEAD}",
+    }
+
+    result = validate_bound_source(
+        config, source_record, runner, role="bootstrap-old", legacy_prestate=True
+    )
+
+    assert result["source_worktree"] == str(legacy)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="B649_PRODUCTION_"):
+        validate_bound_source(
+            config, source_record, runner, role="bootstrap-old", legacy_prestate=False
+        )
+
+
+def test_validate_bound_source_legacy_prestate_still_requires_a_durable_ref(
+    fixture: Fixture,
+) -> None:
+    """legacy_prestate=True relaxes only the layout-naming check: the durable-
+    ref requirement (and everything else _validate_source checks) stays
+    exactly as strict as it is for a NEW role."""
+
+    legacy = fixture.worktree_parent / LEGACY_WORKTREE_NAME
+    Fixture.make_source(legacy)
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, False)
+    config = replace(fixture.config, strict_release_layout=True)
+    validate_bound_source = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_validate_bound_source"]
+    )
+    source_record: dict[str, object] = {
+        "source_worktree": str(legacy),
+        "head": LEGACY_HEAD,
+        "tree": LEGACY_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{LEGACY_HEAD}",
+    }
+
+    with pytest.raises(cutover.CutoverSafetyError, match="git failed"):
+        validate_bound_source(
+            config, source_record, runner, role="bootstrap-old", legacy_prestate=True
+        )
+
+
+def test_plan_fails_for_new_release_with_mismatched_strict_layout_name(
+    fixture: Fixture,
+) -> None:
+    """NEW's release-directory naming requirement is unaffected by this fix.
+
+    ``strict_release_layout=True`` also gates ``_validate_config``'s exact-
+    production-path checks (plist/scheduler/data roots, ...), which only
+    match real production paths and so cannot be exercised through
+    ``build_plan`` without patching them (see
+    ``test_apply_automatic_recovery_restores_a_legacy_layout_old_prestate`` and
+    siblings). Calling ``_validate_source`` directly isolates exactly the
+    release-directory-naming check this test targets.
+    """
+
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    mismatched = fixture.worktree_parent / "not-the-strict-layout-name"
+    Fixture.make_source(mismatched)
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[mismatched] = (NEW_HEAD, NEW_TREE, True)
+    config = replace(fixture.config, source_worktree=mismatched, strict_release_layout=True)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="B649_PRODUCTION_"):
+        validate_source(
+            config,
+            runner,
+            role="new",
+            expected_head=NEW_HEAD,
+            expected_tree=NEW_TREE,
+            expected_ref=config.durable_ref,
+            strict_release_layout=True,
+        )
+
+    assert runner.mutation_calls == []
+
+
+def test_apply_automatic_recovery_restores_a_legacy_layout_old_prestate(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_production_paths(monkeypatch, fixture)
+    legacy, legacy_bytes = _install_legacy_old(fixture)
+    runner = _legacy_runner(fixture, legacy)
+    runner.fail_bootstrap_new_once = True
+    config = replace(fixture.config, strict_release_layout=True)
+    plan = cutover.build_plan(config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+
+    result = cutover.apply(config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERED"
+    assert runner.loaded is True
+    assert runner.loaded_source == legacy
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    _assert_business_state_unchanged(fixture)
+    names = [action["name"] for action in _objects(result["actions"])]
+    assert "bootstrap-new" in names
+    assert "restore-plist" in names
+
+
+def test_apply_and_explicit_rollback_accept_a_legacy_layout_old_prestate(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_production_paths(monkeypatch, fixture)
+    legacy, legacy_bytes = _install_legacy_old(fixture)
+    runner = _legacy_runner(fixture, legacy)
+    config = replace(fixture.config, strict_release_layout=True)
+    plan = cutover.build_plan(config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+
+    applied = cutover.apply(config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.new
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    rolled_back = cutover.rollback(config, receipt=receipt, runner=runner)
+
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded is True
+    assert runner.loaded_source == legacy
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    assert rolled_back["business_state"] == "UNCHANGED"
+    _assert_business_state_unchanged(fixture)
+
+
+def test_apply_reconciles_a_completed_legacy_rollback_receipt_for_the_next_cutover(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """_reconcile_completed_receipt's legacy_prestate=True branch, end to end.
+
+    A receipt whose "after" side is the legacy OLD prestate (the most recent
+    completed operation was a rollback onto it) must reconcile -- and must be
+    proven to actually take the reconciliation path, not the already-applied
+    fast path.
+    """
+
+    _patch_production_paths(monkeypatch, fixture)
+    legacy, legacy_bytes = _install_legacy_old(fixture)
+    runner = _legacy_runner(fixture, legacy)
+    config = replace(fixture.config, strict_release_layout=True)
+    first_plan = cutover.build_plan(config, runner=runner)
+    assert first_plan["status"] == "PASS", first_plan["failures"]
+    first = cutover.apply(config, plan=first_plan, runner=runner)
+    assert first["status"] == "SUCCESS"
+    first_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    rolled_back = cutover.rollback(config, receipt=first_receipt, runner=runner)
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    receipt_after_rollback = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt_after_rollback["status"] == "ROLLBACK_SUCCESS"
+    assert _object(receipt_after_rollback["after"])["source"] == _object(
+        _object(receipt_after_rollback["prestate"])["old_source"]
+    )
+
+    second_plan = cutover.build_plan(config, runner=runner)
+    assert second_plan["status"] == "PASS", second_plan["failures"]
+    assert receipt_after_rollback["plan_digest"] != second_plan["plan_digest"]
+
+    second = cutover.apply(config, plan=second_plan, runner=runner)
+
+    assert second["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.new
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["plan_digest"] == second_plan["plan_digest"]
+    assert receipt["status"] == "SUCCESS"
+
+
+def test_reconcile_completed_receipt_fails_closed_when_after_source_matches_neither_side(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_production_paths(monkeypatch, fixture)
+    runner = FakeLaunchd(fixture)
+    config = replace(fixture.config, strict_release_layout=True)
+    plan = cutover.build_plan(config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+    applied = cutover.apply(config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+
+    reconcile = cast(Callable[..., None], vars(cutover)["_reconcile_completed_receipt"])
+    receipt = _object(json.loads(fixture.receipt_path.read_text(encoding="utf-8")))
+    after = _object(receipt["after"])
+    tampered_source = dict(_object(after["source"]))
+    tampered_source["source_worktree"] = str(fixture.root / "not-either-prestate-side")
+    after["source"] = tampered_source
+
+    with pytest.raises(cutover.CutoverSafetyError, match="matches neither prestate side"):
+        reconcile(config, receipt, runner=runner)

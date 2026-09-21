@@ -6,14 +6,27 @@ import hashlib
 import json
 from fractions import Fraction
 from pathlib import Path
+from typing import cast
 from unittest.mock import patch
 
 import pytest
 
+from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_PORTFOLIOS,
+    canonical_portfolio_sha256,
+    verify_sealed_geometry_portfolio,
+)
+from lottolab.research import b649_arm_d_vs_sealed_exact_probability as research_module
 from lottolab.research.b649_arm_d_vs_sealed_exact_probability import (
     EXPECTED_ARCHIVE_ROW_COUNT,
     EXPECTED_SEALED_PROBABILITY_K10,
     EXPECTED_SEALED_PROBABILITY_K20,
+    FROZEN_V1_FRONTIER_LOCATOR,
+    FROZEN_V1_FRONTIER_SHA256,
+    FROZEN_V1_SOURCE_ID_K10,
+    FROZEN_V1_SOURCE_ID_K20,
+    FROZEN_V1_SOURCE_RECORDED_SHA256_K10,
+    FROZEN_V1_SOURCE_RECORDED_SHA256_K20,
     LABEL_SUCCESS,
     PRIMARY_K,
     SEALED_INPUT_LOCATOR,
@@ -21,11 +34,15 @@ from lottolab.research.b649_arm_d_vs_sealed_exact_probability import (
     SECONDARY_K,
     TOTAL_OUTCOME_SPACE,
     InconclusiveGateError,
+    default_frozen_v1_frontier_path,
     default_sealed_input_path,
     evaluate_arm_d_stream,
     generate_markdown_report,
     load_frozen_arm_d_archive,
+    load_frozen_v1_portfolio,
+    load_frozen_v1_source_identity,
     verify_evaluator_content_sha256,
+    verify_frozen_v1_frontier_file,
     verify_production_sealed_portfolios,
     verify_sealed_input_file,
     verify_upstream_authority_file,
@@ -36,6 +53,145 @@ from lottolab.research.b649_official_any_prize_exact import DrawMasks, all_main_
 @pytest.fixture(scope="module")
 def shared_draws() -> DrawMasks:
     return all_main_draw_masks(49, 6)
+
+
+def _frontier_fixture_with_expected_sha(tmp_path: Path, raw: object) -> tuple[Path, str]:
+    path = tmp_path / "frontier_reconciliation.json"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return path, digest
+
+
+def test_frozen_v1_frontier_authority_exists_and_sha_matches() -> None:
+    assert FROZEN_V1_FRONTIER_LOCATOR == (
+        "docs/research/matrix-native-results/"
+        "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
+    )
+    assert ".task-data" not in FROZEN_V1_FRONTIER_LOCATOR
+    path = default_frozen_v1_frontier_path()
+    assert path.is_file(), f"Frozen v1 frontier artifact absent: {path}"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == FROZEN_V1_FRONTIER_SHA256
+    assert verify_frozen_v1_frontier_file() == path
+
+
+def test_frozen_v1_k10_source_identity_and_portfolio_are_exact() -> None:
+    source = load_frozen_v1_source_identity(PRIMARY_K)
+    assert source["SOURCE_ID"] == FROZEN_V1_SOURCE_ID_K10
+    assert source["SOURCE_RECORDED_SHA256"] == FROZEN_V1_SOURCE_RECORDED_SHA256_K10
+    tickets = cast(list[list[int]], source["SOURCE_TICKETS"])
+    assert canonical_portfolio_sha256(tickets) == FROZEN_V1_SOURCE_RECORDED_SHA256_K10
+    assert load_frozen_v1_portfolio(PRIMARY_K) == tuple(tuple(ticket) for ticket in tickets)
+
+
+def test_frozen_v1_k20_source_identity_and_portfolio_are_exact() -> None:
+    source = load_frozen_v1_source_identity(SECONDARY_K)
+    assert source["SOURCE_ID"] == FROZEN_V1_SOURCE_ID_K20
+    assert source["SOURCE_RECORDED_SHA256"] == FROZEN_V1_SOURCE_RECORDED_SHA256_K20
+    tickets = cast(list[list[int]], source["SOURCE_TICKETS"])
+    assert canonical_portfolio_sha256(tickets) == FROZEN_V1_SOURCE_RECORDED_SHA256_K20
+    assert load_frozen_v1_portfolio(SECONDARY_K) == tuple(
+        tuple(ticket) for ticket in tickets
+    )
+
+
+def test_frozen_v1_frontier_missing_authority_fails_closed(tmp_path: Path) -> None:
+    with pytest.raises(InconclusiveGateError, match="absent"):
+        verify_frozen_v1_frontier_file(tmp_path / "missing.json")
+
+
+def test_frozen_v1_frontier_tampered_sha_fails_closed(tmp_path: Path) -> None:
+    tampered = tmp_path / "tampered.json"
+    tampered.write_bytes(default_frozen_v1_frontier_path().read_bytes() + b"\n")
+    with pytest.raises(InconclusiveGateError, match="mismatch"):
+        verify_frozen_v1_frontier_file(tampered)
+
+
+def test_frozen_v1_frontier_malformed_json_fails_closed(tmp_path: Path) -> None:
+    tampered = tmp_path / "malformed.json"
+    tampered.write_text("{", encoding="utf-8")
+    digest = hashlib.sha256(tampered.read_bytes()).hexdigest()
+    with patch.object(research_module, "FROZEN_V1_FRONTIER_SHA256", digest), pytest.raises(
+        InconclusiveGateError, match="Malformed"
+    ):
+        load_frozen_v1_source_identity(PRIMARY_K, tampered)
+
+
+def test_frozen_v1_frontier_missing_candidates_fails_closed(tmp_path: Path) -> None:
+    raw = json.loads(default_frozen_v1_frontier_path().read_text(encoding="utf-8"))
+    del raw["CANDIDATE_IDENTITIES"]
+    frontier, digest = _frontier_fixture_with_expected_sha(tmp_path, raw)
+    with patch.object(research_module, "FROZEN_V1_FRONTIER_SHA256", digest), pytest.raises(
+        InconclusiveGateError, match="CANDIDATE_IDENTITIES"
+    ):
+        load_frozen_v1_source_identity(PRIMARY_K, frontier)
+
+
+def test_frozen_v1_frontier_malformed_source_identities_fails_closed(tmp_path: Path) -> None:
+    raw = json.loads(default_frozen_v1_frontier_path().read_text(encoding="utf-8"))
+    raw["CANDIDATE_IDENTITIES"][0]["SOURCE_IDENTITIES"] = "not-a-list"
+    frontier, digest = _frontier_fixture_with_expected_sha(tmp_path, raw)
+    with patch.object(research_module, "FROZEN_V1_FRONTIER_SHA256", digest), pytest.raises(
+        InconclusiveGateError, match="SOURCE_IDENTITIES"
+    ):
+        load_frozen_v1_source_identity(PRIMARY_K, frontier)
+
+
+def test_frozen_v1_source_identity_non_unique_match_fails_closed(tmp_path: Path) -> None:
+    raw = json.loads(default_frozen_v1_frontier_path().read_text(encoding="utf-8"))
+    for candidate in raw["CANDIDATE_IDENTITIES"]:
+        if candidate["K"] == PRIMARY_K:
+            candidate["SOURCE_IDENTITIES"].append(
+                dict(
+                    next(
+                        source
+                        for source in candidate["SOURCE_IDENTITIES"]
+                        if source.get("SOURCE_ID") == FROZEN_V1_SOURCE_ID_K10
+                    )
+                )
+            )
+            break
+    frontier, digest = _frontier_fixture_with_expected_sha(tmp_path, raw)
+    with patch.object(research_module, "FROZEN_V1_FRONTIER_SHA256", digest), pytest.raises(
+        InconclusiveGateError, match="must be unique"
+    ):
+        load_frozen_v1_source_identity(PRIMARY_K, frontier)
+
+
+@pytest.mark.parametrize("field", ["SOURCE_ID", "SOURCE_RECORDED_SHA256"])
+def test_frozen_v1_wrong_source_identity_fails_closed(tmp_path: Path, field: str) -> None:
+    raw = json.loads(default_frozen_v1_frontier_path().read_text(encoding="utf-8"))
+    for candidate in raw["CANDIDATE_IDENTITIES"]:
+        if candidate["K"] == PRIMARY_K:
+            source = next(
+                source
+                for source in candidate["SOURCE_IDENTITIES"]
+                if source.get("SOURCE_ID") == FROZEN_V1_SOURCE_ID_K10
+            )
+            source[field] = "0" * 64
+            break
+    frontier, digest = _frontier_fixture_with_expected_sha(tmp_path, raw)
+    with patch.object(research_module, "FROZEN_V1_FRONTIER_SHA256", digest), pytest.raises(
+        InconclusiveGateError, match="matched 0 records"
+    ):
+        load_frozen_v1_source_identity(PRIMARY_K, frontier)
+
+
+def test_frozen_v1_baseline_does_not_follow_current_v2_portfolios() -> None:
+    assert not hasattr(research_module, "SEALED_GEOMETRY_PORTFOLIOS")
+    current_k10 = SEALED_GEOMETRY_PORTFOLIOS[PRIMARY_K]
+    current_k20 = SEALED_GEOMETRY_PORTFOLIOS[SECONDARY_K]
+    verify_sealed_geometry_portfolio(current_k10)
+    verify_sealed_geometry_portfolio(current_k20)
+    assert current_k10.portfolio_sha256 == (
+        "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673"
+    )
+    assert current_k20.portfolio_sha256 == (
+        "9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424"
+    )
+    assert current_k10.official_any_prize_probability == Fraction(536005, 1827672)
+    assert current_k20.official_any_prize_probability == Fraction(22345625, 42950292)
+    assert current_k10.official_any_prize_probability != EXPECTED_SEALED_PROBABILITY_K10
+    assert current_k20.official_any_prize_probability != EXPECTED_SEALED_PROBABILITY_K20
 
 
 def test_default_sealed_input_exists_and_sha_matches() -> None:

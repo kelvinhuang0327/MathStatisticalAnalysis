@@ -1,8 +1,10 @@
 """Exact fair-draw OFFICIAL_ANY_PRIZE evaluation of frozen Branch2 ARM_D vs sealed production.
 
 This module evaluates the frozen Branch2 ARM_D (MIN_OVERLAP) ticket portfolios against
-the current sealed production geometry portfolios (B649_SEALED_GEOMETRY_PORTFOLIO 1.0.0)
-under the BIG_LOTTO_UNIFORM_FAIR_DRAW finite outcome space (601,304,088 outcomes).
+the historical ``B649_SEALED_GEOMETRY_PORTFOLIO`` 1.0.0 baseline under the
+BIG_LOTTO_UNIFORM_FAIR_DRAW finite outcome space (601,304,088 outcomes). The historical
+baseline ticket bytes are loaded from a SHA-pinned canonical frontier artifact and are
+independent of the mutable current production geometry.
 
 All outcome counts and probabilities are computed and aggregated using exact integer
 and Fraction arithmetic. No historical draw outcomes are scored.
@@ -22,10 +24,7 @@ from typing import Final, cast
 
 import numpy as np
 
-from lottolab.application.b649_sealed_geometry_portfolio import (
-    SEALED_GEOMETRY_PORTFOLIOS,
-    canonical_portfolio_sha256,
-)
+from lottolab.application.b649_sealed_geometry_portfolio import canonical_portfolio_sha256
 from lottolab.research.b649_official_any_prize_exact import (
     BIG_LOTTO_DRAW_SIZE,
     BIG_LOTTO_POOL_SIZE,
@@ -51,6 +50,27 @@ SEALED_INPUT_LOCATOR: Final = (
 SEALED_INPUT_SHA256: Final = (
     "ef089c1cdbe4f856a57885206bcf496023140e4047eec661d3e7896da46a286e"
 )
+FROZEN_V1_FRONTIER_LOCATOR: Final = (
+    "docs/research/matrix-native-results/"
+    "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
+)
+FROZEN_V1_FRONTIER_SHA256: Final = (
+    "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
+)
+FROZEN_V1_SOURCE_ID_K10: Final = (
+    "B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K10"
+)
+FROZEN_V1_SOURCE_ID_K20: Final = (
+    "B649_ANY_PRIZE_OBJECTIVE_CORRECTION_R1_P0C_CAPTURE_GAP_K20"
+)
+FROZEN_V1_SOURCE_RECORDED_SHA256_K10: Final = (
+    "d73f37721e3378deb024e4b762a915dbfa125d462605c293bc764fef7ea487c2"
+)
+FROZEN_V1_SOURCE_RECORDED_SHA256_K20: Final = (
+    "a0126d34589f82945f5f8895b8812818293a2c04a957ab0a940eaff09fd70332"
+)
+FROZEN_V1_PORTFOLIO_SHA256_K10: Final = FROZEN_V1_SOURCE_RECORDED_SHA256_K10
+FROZEN_V1_PORTFOLIO_SHA256_K20: Final = FROZEN_V1_SOURCE_RECORDED_SHA256_K20
 UPSTREAM_AUTHORITY_LOCATOR: Final = SEALED_INPUT_LOCATOR
 UPSTREAM_AUTHORITY_COMMIT: Final = "d7665ee5d00fac09fdc593908e81e54ae080f2ba"
 UPSTREAM_AUTHORITY_TREE: Final = "5a9cbff94817c82163c32f1274f7c73d19bc8426"
@@ -190,26 +210,217 @@ def verify_evaluator_content_sha256(evaluator_path: Path | str | None = None) ->
         )
 
 
+def default_frozen_v1_frontier_path() -> Path:
+    """Resolve the repository-relative, SHA-pinned historical v1 authority."""
+    repo_root = Path(__file__).resolve().parents[3]
+    return repo_root / FROZEN_V1_FRONTIER_LOCATOR
+
+
+def verify_frozen_v1_frontier_file(frontier_path: Path | str | None = None) -> Path:
+    """Verify that the historical v1 frontier authority exists and is byte-identical."""
+    path = default_frozen_v1_frontier_path() if frontier_path is None else Path(frontier_path)
+    if not path.is_file():
+        raise InconclusiveGateError(f"Frozen v1 frontier artifact absent: {path}")
+    try:
+        raw_bytes = path.read_bytes()
+    except OSError as exc:
+        raise InconclusiveGateError(
+            f"Frozen v1 frontier artifact unreadable: {path}"
+        ) from exc
+    computed_sha256 = hashlib.sha256(raw_bytes).hexdigest()
+    if computed_sha256 != FROZEN_V1_FRONTIER_SHA256:
+        raise InconclusiveGateError(
+            f"Frozen v1 frontier SHA256 mismatch: expected {FROZEN_V1_FRONTIER_SHA256}, "
+            f"observed {computed_sha256}"
+        )
+    return path
+
+
+def _load_frozen_v1_frontier_document(
+    frontier_path: Path | str | None = None,
+) -> dict[str, object]:
+    path = verify_frozen_v1_frontier_file(frontier_path)
+    try:
+        raw_obj: object = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise InconclusiveGateError(
+            f"Malformed frozen v1 frontier artifact: {path}"
+        ) from exc
+    if not isinstance(raw_obj, dict):
+        raise InconclusiveGateError(
+            "Malformed frozen v1 frontier artifact: expected a JSON object"
+        )
+    raw = cast(dict[str, object], raw_obj)
+    candidates_obj = raw.get("CANDIDATE_IDENTITIES")
+    if not isinstance(candidates_obj, list):
+        raise InconclusiveGateError(
+            "Malformed frozen v1 frontier artifact: CANDIDATE_IDENTITIES must be a list"
+        )
+    return raw
+
+
+def _frozen_v1_source_spec(k: int) -> tuple[str, str, str]:
+    if k == PRIMARY_K:
+        return (
+            FROZEN_V1_SOURCE_ID_K10,
+            FROZEN_V1_SOURCE_RECORDED_SHA256_K10,
+            FROZEN_V1_PORTFOLIO_SHA256_K10,
+        )
+    if k == SECONDARY_K:
+        return (
+            FROZEN_V1_SOURCE_ID_K20,
+            FROZEN_V1_SOURCE_RECORDED_SHA256_K20,
+            FROZEN_V1_PORTFOLIO_SHA256_K20,
+        )
+    raise InconclusiveGateError(f"Unsupported frozen v1 K bucket: {k}")
+
+
+def _resolve_frozen_v1_source_identity(
+    k: int,
+    frontier_path: Path | str | None = None,
+) -> tuple[dict[str, object], Portfolio]:
+    raw = _load_frozen_v1_frontier_document(frontier_path)
+    candidates = cast(list[object], raw["CANDIDATE_IDENTITIES"])
+    expected_source_id, expected_recorded_sha256, expected_portfolio_sha256 = (
+        _frozen_v1_source_spec(k)
+    )
+
+    k_candidate_count = 0
+    matches: list[dict[str, object]] = []
+    for candidate_index, candidate_obj in enumerate(candidates):
+        if not isinstance(candidate_obj, dict):
+            raise InconclusiveGateError(
+                "Malformed frozen v1 frontier artifact: "
+                f"CANDIDATE_IDENTITIES[{candidate_index}] must be an object"
+            )
+        candidate = cast(dict[str, object], candidate_obj)
+        candidate_k = candidate.get("K")
+        if type(candidate_k) is not int:
+            raise InconclusiveGateError(
+                "Malformed frozen v1 frontier artifact: candidate K must be an integer"
+            )
+        source_identities_obj = candidate.get("SOURCE_IDENTITIES")
+        if not isinstance(source_identities_obj, list):
+            raise InconclusiveGateError(
+                "Malformed frozen v1 frontier artifact: SOURCE_IDENTITIES must be a list"
+            )
+        if candidate_k == k:
+            k_candidate_count += 1
+
+        for source_index, source_obj in enumerate(cast(list[object], source_identities_obj)):
+            if not isinstance(source_obj, dict):
+                raise InconclusiveGateError(
+                    "Malformed frozen v1 frontier artifact: "
+                    f"SOURCE_IDENTITIES[{source_index}] must be an object"
+                )
+            source = cast(dict[str, object], source_obj)
+            source_id = source.get("SOURCE_ID")
+            source_recorded_sha256 = source.get("SOURCE_RECORDED_SHA256")
+            if not isinstance(source_id, str) or not isinstance(source_recorded_sha256, str):
+                raise InconclusiveGateError(
+                    "Malformed frozen v1 frontier artifact: source identity fields invalid"
+                )
+            if (
+                candidate_k,
+                source_id,
+                source_recorded_sha256,
+            ) == (k, expected_source_id, expected_recorded_sha256):
+                matches.append(source)
+
+    if k_candidate_count == 0:
+        raise InconclusiveGateError(f"Frozen v1 frontier candidate K{k} absent")
+    if len(matches) != 1:
+        raise InconclusiveGateError(
+            "Frozen v1 source identity match must be unique: "
+            f"K{k} matched {len(matches)} records"
+        )
+
+    source = matches[0]
+    source_tickets_obj = source.get("SOURCE_TICKETS")
+    if not isinstance(source_tickets_obj, list):
+        raise InconclusiveGateError(
+            f"Frozen v1 K{k} SOURCE_TICKETS missing or malformed"
+        )
+    source_tickets = cast(list[object], source_tickets_obj)
+    if len(source_tickets) != k:
+        raise InconclusiveGateError(
+            f"Frozen v1 K{k} SOURCE_TICKETS count mismatch: expected {k}, "
+            f"observed {len(source_tickets)}"
+        )
+
+    tickets: list[Ticket] = []
+    for ticket_index, ticket_obj in enumerate(source_tickets):
+        if not isinstance(ticket_obj, list):
+            raise InconclusiveGateError(
+                f"Frozen v1 K{k} ticket {ticket_index} is malformed"
+            )
+        ticket_values = cast(list[object], ticket_obj)
+        if len(ticket_values) != DRAW_SIZE or any(
+            type(value) is not int for value in ticket_values
+        ):
+            raise InconclusiveGateError(
+                f"Frozen v1 K{k} ticket {ticket_index} is malformed"
+            )
+        ticket = tuple(cast(int, value) for value in ticket_values)
+        if (
+            list(ticket) != sorted(set(ticket))
+            or any(not 1 <= number <= POOL_SIZE for number in ticket)
+        ):
+            raise InconclusiveGateError(
+                f"Frozen v1 K{k} ticket {ticket_index} is illegal"
+            )
+        tickets.append(ticket)
+
+    portfolio = tuple(tickets)
+    if len(set(portfolio)) != k:
+        raise InconclusiveGateError(f"Frozen v1 K{k} portfolio contains duplicate tickets")
+    computed_portfolio_sha256 = canonical_portfolio_sha256(portfolio)
+    if computed_portfolio_sha256 != expected_portfolio_sha256:
+        raise InconclusiveGateError(
+            f"Frozen v1 K{k} portfolio SHA256 mismatch: "
+            f"expected {expected_portfolio_sha256}, observed {computed_portfolio_sha256}"
+        )
+    return source, portfolio
+
+
+def load_frozen_v1_source_identity(
+    k: int,
+    frontier_path: Path | str | None = None,
+) -> dict[str, object]:
+    """Return the uniquely selected semantic v1 source identity from the pinned artifact."""
+    source, _ = _resolve_frozen_v1_source_identity(k, frontier_path)
+    return source
+
+
+def load_frozen_v1_portfolio(
+    k: int,
+    frontier_path: Path | str | None = None,
+) -> Portfolio:
+    """Load the exact ordered v1 ticket portfolio from its unique source identity."""
+    _, portfolio = _resolve_frozen_v1_source_identity(k, frontier_path)
+    return portfolio
+
+
 def verify_production_sealed_portfolios(
     draws: DrawMasks | None = None,
 ) -> dict[int, Fraction]:
-    """Verify production sealed K10 and K20 reproduce expected probabilities."""
-    for size in (PRIMARY_K, SECONDARY_K):
-        entry = SEALED_GEOMETRY_PORTFOLIOS.get(size)
-        if entry is None:
-            raise InconclusiveGateError(f"Sealed geometry portfolio missing for K{size}")
+    """Verify the frozen v1 production baseline for this historical study.
+
+    The baseline ticket bytes come only from the SHA-pinned canonical frontier artifact;
+    they intentionally do not follow the mutable current production geometry.
+    """
 
     if draws is None:
         draws = all_main_draw_masks(POOL_SIZE, DRAW_SIZE)
 
-    res10 = evaluate_portfolio(SEALED_GEOMETRY_PORTFOLIOS[PRIMARY_K].tickets, draws=draws)
+    res10 = evaluate_portfolio(load_frozen_v1_portfolio(PRIMARY_K), draws=draws)
     if res10.official_any_prize != EXPECTED_SEALED_PROBABILITY_K10:
         raise InconclusiveGateError(
             f"Sealed K10 reproduction failed: expected {EXPECTED_SEALED_PROBABILITY_K10}, "
             f"observed {res10.official_any_prize}"
         )
 
-    res20 = evaluate_portfolio(SEALED_GEOMETRY_PORTFOLIOS[SECONDARY_K].tickets, draws=draws)
+    res20 = evaluate_portfolio(load_frozen_v1_portfolio(SECONDARY_K), draws=draws)
     if res20.official_any_prize != EXPECTED_SEALED_PROBABILITY_K20:
         raise InconclusiveGateError(
             f"Sealed K20 reproduction failed: expected {EXPECTED_SEALED_PROBABILITY_K20}, "

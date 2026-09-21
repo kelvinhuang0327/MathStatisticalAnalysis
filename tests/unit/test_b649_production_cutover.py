@@ -23,8 +23,13 @@ NEW_HEAD = "1" * 40
 NEW_TREE = "2" * 40
 OLD_HEAD = "3" * 40
 OLD_TREE = "4" * 40
+LEGACY_HEAD = "5" * 40
+LEGACY_TREE = "6" * 40
+DRIFTED_HEAD = "7" * 40
+DRIFTED_TREE = "8" * 40
 UID = os.getuid()
 DOMAIN = f"gui/{UID}"
+LEGACY_WORKTREE_NAME = "B649_V5_ACTIVATION_PREREQUISITE_SUCCESSOR_CONSTRUCTION_R1"
 
 
 def _object(value: object) -> dict[str, object]:
@@ -167,6 +172,35 @@ class Fixture:
         )
         (path / "src").mkdir(mode=0o700)
 
+    def make_legacy_old(self, *, name: str = LEGACY_WORKTREE_NAME) -> Path:
+        """Build an OLD/PRESTATE worktree matching the real pre-managed-cutover shape:
+
+        a directory name that is not ``B649_PRODUCTION_<HEAD>``, and a
+        ``.venv/bin/python`` whose realpath escapes the worktree (an
+        already-running venv predating this convention, symlinked to a
+        system/Homebrew Python). It has no dedicated runtime ref -- callers
+        register it with ``FakeLaunchd.worktree_identities`` and
+        ``durable_ref=False`` rather than any git ref existing for it.
+        """
+
+        path = self.worktree_parent / name
+        self._make_source(path)
+        external = self.root / "external-legacy-python"
+        if not external.exists():
+            external.write_text("#!/bin/sh\n", encoding="utf-8")
+            external.chmod(0o700)
+        interpreter = path / ".venv/bin/python"
+        interpreter.unlink()
+        interpreter.symlink_to(external)
+        return path
+
+    def make_bare_worktree(self, name: str) -> Path:
+        """Build a plain, otherwise-well-formed worktree under worktree_parent."""
+
+        path = self.worktree_parent / name
+        self._make_source(path)
+        return path
+
 
 @dataclass
 class FakeLaunchd:
@@ -183,10 +217,22 @@ class FakeLaunchd:
     fail_bootstrap_new_once: bool = False
     fail_command_once: tuple[str, ...] | None = None
     after_mutation: Callable[[tuple[str, ...]], None] | None = None
+    # path -> (head, tree, has_durable_ref). has_durable_ref=False simulates a
+    # legacy worktree with no refs/heads/runtime/b649/<HEAD> ref: git rev-parse
+    # for that ref fails exactly as it would against a real repository
+    # lacking it, instead of a hard test-harness assertion error.
+    worktree_identities: dict[Path, tuple[str, str, bool]] = field(
+        default_factory=lambda: dict[Path, tuple[str, str, bool]]()
+    )
 
     def __post_init__(self) -> None:
         if self.loaded_source is None:
             self.loaded_source = self.fixture.old
+        if not self.worktree_identities:
+            self.worktree_identities = {
+                self.fixture.new: (NEW_HEAD, NEW_TREE, True),
+                self.fixture.old: (OLD_HEAD, OLD_TREE, True),
+            }
 
     @property
     def mutation_calls(self) -> list[tuple[str, ...]]:
@@ -234,7 +280,8 @@ class FakeLaunchd:
             return _completed(args, stderr="fake mutation failure", returncode=1)
         if args[:2] == ("git", "--no-optional-locks"):
             worktree = Path(args[3])
-            assert worktree in {self.fixture.new, self.fixture.old}
+            assert worktree in self.worktree_identities, f"unregistered worktree: {worktree}"
+            head, tree, has_ref = self.worktree_identities[worktree]
             if args[4] == "status":
                 return _completed(args, self.status_by_path.get(worktree, ""))
             assert args[4] == "rev-parse"
@@ -242,19 +289,15 @@ class FakeLaunchd:
                 return _completed(args, str(worktree) + "\n")
             assert args[5:7] == ("--verify", "--end-of-options")
             revision = args[7]
-            if worktree == self.fixture.new:
-                values = {
-                    "HEAD": NEW_HEAD,
-                    "HEAD^{tree}": NEW_TREE,
-                    f"refs/heads/runtime/b649/{NEW_HEAD}^{{commit}}": NEW_HEAD,
-                }
-            else:
-                values = {
-                    "HEAD": OLD_HEAD,
-                    "HEAD^{tree}": OLD_TREE,
-                    f"refs/heads/runtime/b649/{OLD_HEAD}^{{commit}}": OLD_HEAD,
-                }
-            assert revision in values
+            values = {"HEAD": head, "HEAD^{tree}": tree}
+            if has_ref:
+                values[f"refs/heads/runtime/b649/{head}^{{commit}}"] = head
+            if revision not in values:
+                return _completed(
+                    args,
+                    stderr=f"fatal: ambiguous argument '{revision}': unknown revision or path\n",
+                    returncode=128,
+                )
             return _completed(args, values[revision] + "\n")
         if args[:2] == ("git", "check-ref-format"):
             return _completed(args)
@@ -1066,3 +1109,389 @@ def test_rollback_old_release_drift_fails_before_launchd_mutation(fixture: Fixtu
 
     assert len(runner.mutation_calls) == before_mutations
     assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
+
+
+# --- Legacy/prestate OLD-role compatibility -------------------------------
+#
+# The tests below cover an OLD/PRESTATE source that predates the managed
+# cutover's conventions: a worktree name that is not B649_PRODUCTION_<HEAD>,
+# a .venv/bin/python whose realpath escapes the worktree (Homebrew-style),
+# and no refs/heads/runtime/b649/<HEAD> durable ref. They prove this legacy
+# shape is accepted for the OLD role only, while the NEW role keeps every
+# strict requirement unchanged.
+
+
+def _scheduler_config_for(fixture: Fixture, source: Path) -> scheduler.SchedulerConfig:
+    """Build the SchedulerConfig for an arbitrary source worktree.
+
+    Mirrors exactly how ``Fixture.__post_init__`` builds its own old/new
+    scheduler configs, parametrized only by the source worktree.
+    """
+
+    return scheduler.SchedulerConfig(
+        label=cutover.LABEL,
+        version=scheduler.TASK_VERSION,
+        canonical_repository=fixture.canonical,
+        source_worktree=source,
+        python_executable=source / ".venv/bin/python",
+        script_path=source / "tools/b649_goalc_local_scheduler.py",
+        operation_root=fixture.operation_root,
+        data_root=fixture.data_root,
+        database=fixture.data_root / "lottolab.db",
+        announcement=fixture.data_root / "pre-outcome-target-announcements-v1.json",
+        scheduler_root=fixture.scheduler_root,
+        lock_path=fixture.primary_lock_path,
+        health_path=fixture.scheduler_root / "health.json",
+        stdout_path=fixture.scheduler_root / "launchd.stdout.log",
+        stderr_path=fixture.scheduler_root / "launchd.stderr.log",
+        plist_path=fixture.plist_path,
+    )
+
+
+def _install_plist(fixture: Fixture, plist_bytes: bytes) -> None:
+    fixture.plist_path.write_bytes(plist_bytes)
+    fixture.plist_path.chmod(0o600)
+
+
+def _legacy_setup(fixture: Fixture) -> tuple[Path, bytes, FakeLaunchd]:
+    """Install a legacy OLD/PRESTATE plist and return (legacy, its bytes, runner)."""
+
+    legacy = fixture.make_legacy_old()
+    legacy_bytes = scheduler.build_launchd_plist(_scheduler_config_for(fixture, legacy))
+    _install_plist(fixture, legacy_bytes)
+    runner = FakeLaunchd(fixture, loaded_source=legacy)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, False)
+    return legacy, legacy_bytes, runner
+
+
+def test_plan_passes_for_legacy_old_prestate_while_new_release_remains_strict(
+    fixture: Fixture,
+) -> None:
+    legacy, _legacy_bytes, runner = _legacy_setup(fixture)
+
+    # fixture.config's NEW side is unchanged: same worktree, same durable
+    # ref, same strict runtime-tuple containment -- only the OLD side (read
+    # from the installed plist) is the legacy shape.
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "PASS", result["failures"]
+    old_source = _object(_object(result["source"])["old"])
+    assert old_source["source_worktree"] == str(legacy)
+    assert old_source["head"] == LEGACY_HEAD
+    assert old_source["tree"] == LEGACY_TREE
+    assert old_source["durable_ref"] is None
+    assert old_source["clean"] is True
+    new_source = _object(_object(result["source"])["new"])
+    assert new_source["source_worktree"] == str(fixture.new)
+    assert new_source["head"] == NEW_HEAD
+    # NEW's durable ref is still actively required and verified, not merely
+    # defaulted: it resolves because fixture.new is genuinely registered
+    # with one, not because the check was skipped.
+    assert new_source["durable_ref"] == f"refs/heads/runtime/b649/{NEW_HEAD}"
+    assert runner.mutation_calls == []
+
+
+def test_plan_fails_for_new_release_missing_durable_ref(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[fixture.new] = (NEW_HEAD, NEW_TREE, False)
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    failures = cast(list[object], result["failures"])
+    assert any("new_source" in str(failure) for failure in failures)
+    assert runner.mutation_calls == []
+
+
+def test_plan_fails_for_new_release_with_invalid_strict_layout(fixture: Fixture) -> None:
+    # CutoverConfig.strict_release_layout=True also gates _validate_config's
+    # exact-production-path checks (plist/scheduler/data roots, ...), which
+    # only ever match real production paths and so cannot be exercised
+    # hermetically through build_plan. Call _validate_source directly to
+    # isolate exactly the release-directory-naming check this test targets.
+    # (_source_layout_error itself reads config.strict_release_layout, so it
+    # must be set on the config, not only passed as the call's own override.)
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    mismatched = fixture.make_bare_worktree("not-the-strict-layout-name")
+    runner = FakeLaunchd(fixture)
+    runner.worktree_identities[mismatched] = (NEW_HEAD, NEW_TREE, True)
+    config = replace(fixture.config, source_worktree=mismatched, strict_release_layout=True)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="B649_PRODUCTION_"):
+        validate_source(
+            config,
+            runner,
+            role="new",
+            expected_head=NEW_HEAD,
+            expected_tree=NEW_TREE,
+            expected_ref=config.durable_ref,
+            strict_release_layout=True,
+        )
+
+    assert runner.mutation_calls == []
+
+
+def test_apply_and_rollback_accept_and_restore_the_legacy_old_prestate(fixture: Fixture) -> None:
+    legacy, legacy_bytes, runner = _legacy_setup(fixture)
+
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert applied["status"] == "SUCCESS"
+    assert runner.loaded is True
+    assert runner.loaded_source == fixture.new
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() != legacy_bytes
+    _assert_business_state_unchanged(fixture)
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["status"] == "SUCCESS"
+
+    rolled_back = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert runner.loaded is True
+    assert runner.loaded_source == legacy
+    assert runner.enabled is True
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    assert rolled_back["business_state"] == "UNCHANGED"
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("drift", ["head", "tree"])
+def test_rollback_fails_closed_on_legacy_old_identity_drift(fixture: Fixture, drift: str) -> None:
+    legacy, legacy_bytes, runner = _legacy_setup(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    before_mutations = len(runner.mutation_calls)
+
+    if drift == "head":
+        runner.worktree_identities[legacy] = (DRIFTED_HEAD, LEGACY_TREE, False)
+    else:
+        runner.worktree_identities[legacy] = (LEGACY_HEAD, DRIFTED_TREE, False)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="drifted"):
+        cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    # The drift is caught before any mutation: the plist is still the
+    # applied "new" bytes, not the frozen legacy "old" bytes.
+    assert len(runner.mutation_calls) == before_mutations
+    assert fixture.plist_path.read_bytes() != legacy_bytes
+
+
+def test_rollback_fails_closed_when_legacy_old_loaded_runtime_drifts_after_bootstrap(
+    fixture: Fixture,
+) -> None:
+    _legacy, legacy_bytes, runner = _legacy_setup(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    def corrupt_after_bootstrap(args: tuple[str, ...]) -> None:
+        if args[1] == "bootstrap":
+            # Simulate launchd binding a runtime that differs from the plist
+            # it was just handed -- the frozen old runtime must still win.
+            runner.loaded_source = fixture.new
+
+    runner.after_mutation = corrupt_after_bootstrap
+    result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    failures = cast(list[object], result["failures"])
+    assert any("runtime tuple differs" in str(failure) for failure in failures)
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+
+
+def test_rollback_fails_closed_on_legacy_old_plist_identity_drift(fixture: Fixture) -> None:
+    _legacy, legacy_bytes, runner = _legacy_setup(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    # An out-of-band rewrite of the installed plist: neither the frozen old
+    # bytes nor the frozen new bytes.
+    binding = plistlib.loads(legacy_bytes)
+    binding["ProgramArguments"][0] = str(fixture.new / ".venv/bin/python")
+    fixture.plist_path.write_bytes(plistlib.dumps(binding))
+    fixture.plist_path.chmod(0o600)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="current plist differs"):
+        cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+
+def test_rollback_fails_closed_when_legacy_pythonpath_escapes_after_plan(
+    fixture: Fixture,
+) -> None:
+    legacy, _legacy_bytes, runner = _legacy_setup(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    applied_plist_bytes = fixture.plist_path.read_bytes()
+    before_mutations = len(runner.mutation_calls)
+
+    # PYTHONPATH must stay contained even for the legacy role -- unlike the
+    # interpreter, it is never in the escape-allowed set.
+    pythonpath = legacy / "src"
+    pythonpath.rmdir()
+    external = fixture.root / "external-src"
+    external.mkdir()
+    pythonpath.symlink_to(external)
+
+    # Caught by rollback's own pre-flight revalidation of the frozen OLD
+    # worktree, before any launchd or plist mutation -- same shape as
+    # test_rollback_old_release_drift_fails_before_launchd_mutation.
+    with pytest.raises(cutover.CutoverSafetyError, match="PYTHONPATH"):
+        cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert len(runner.mutation_calls) == before_mutations
+    assert fixture.plist_path.read_bytes() == applied_plist_bytes
+
+
+def test_legacy_old_prestate_still_requires_the_interpreter_to_exist(fixture: Fixture) -> None:
+    legacy, _legacy_bytes, runner = _legacy_setup(fixture)
+    # Legacy prestate relaxes only the interpreter's realpath containment: a
+    # wholly missing interpreter (no symlink at all) fails to resolve at all.
+    (legacy / ".venv/bin/python").unlink()
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    failures = cast(list[object], result["failures"])
+    assert any("interpreter cannot be resolved" in str(failure) for failure in failures)
+
+
+def test_legacy_old_prestate_still_requires_the_interpreter_to_be_executable(
+    fixture: Fixture,
+) -> None:
+    legacy, _legacy_bytes, runner = _legacy_setup(fixture)
+    # Point the (still legacy-escaping) interpreter symlink at a real but
+    # non-executable file: realpath containment is relaxed, executability
+    # is not.
+    interpreter = legacy / ".venv/bin/python"
+    interpreter.unlink()
+    non_executable = fixture.root / "external-non-executable"
+    non_executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    non_executable.chmod(0o600)
+    interpreter.symlink_to(non_executable)
+
+    result = cutover.build_plan(fixture.config, runner=runner)
+
+    assert result["status"] == "FAIL"
+    failures = cast(list[object], result["failures"])
+    assert any("interpreter is unavailable" in str(failure) for failure in failures)
+
+
+def test_apply_reconciles_a_completed_legacy_rollback_receipt_for_the_next_cutover(
+    fixture: Fixture,
+) -> None:
+    """_reconcile_completed_receipt's legacy_prestate=True branch, end to end.
+
+    A receipt whose "after" side is the legacy OLD prestate (i.e. the most
+    recent completed operation was a rollback onto it) must reconcile -- and
+    must be proven to actually take the reconciliation path, not the
+    already-applied fast path.
+    """
+
+    _legacy, legacy_bytes, runner = _legacy_setup(fixture)
+    first_plan = cutover.build_plan(fixture.config, runner=runner)
+    assert first_plan["status"] == "PASS"
+    first = cutover.apply(fixture.config, plan=first_plan, runner=runner)
+    assert first["status"] == "SUCCESS"
+    first_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+
+    rolled_back = cutover.rollback(fixture.config, receipt=first_receipt, runner=runner)
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    assert fixture.plist_path.read_bytes() == legacy_bytes
+    receipt_after_rollback = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt_after_rollback["status"] == "ROLLBACK_SUCCESS"
+    assert _object(receipt_after_rollback["after"])["source"] == _object(
+        _object(receipt_after_rollback["prestate"])["old_source"]
+    )
+
+    second_plan = cutover.build_plan(fixture.config, runner=runner)
+    assert second_plan["status"] == "PASS"
+    # Prove the next apply() cannot take the "matches existing receipt"
+    # fast path -- the plist's replaced-file identity (inode/mtime) changed
+    # across the apply+rollback cycle, so this plan_digest genuinely differs
+    # and _reconcile_completed_receipt must run.
+    assert receipt_after_rollback["plan_digest"] != second_plan["plan_digest"]
+
+    second = cutover.apply(fixture.config, plan=second_plan, runner=runner)
+
+    assert second["status"] == "SUCCESS"
+    assert runner.loaded_source == fixture.new
+    receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert receipt["plan_digest"] == second_plan["plan_digest"]
+    assert receipt["status"] == "SUCCESS"
+
+
+def test_reconcile_completed_receipt_fails_closed_when_after_source_matches_neither_side(
+    fixture: Fixture,
+) -> None:
+    _legacy, _legacy_bytes, runner = _legacy_setup(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    applied = cutover.apply(fixture.config, plan=plan, runner=runner)
+    assert applied["status"] == "SUCCESS"
+
+    reconcile = cast(Callable[..., None], vars(cutover)["_reconcile_completed_receipt"])
+    receipt = _object(json.loads(fixture.receipt_path.read_text(encoding="utf-8")))
+    after = _object(receipt["after"])
+    tampered_source = dict(_object(after["source"]))
+    tampered_source["source_worktree"] = str(fixture.root / "not-either-prestate-side")
+    after["source"] = tampered_source
+
+    with pytest.raises(cutover.CutoverSafetyError, match="matches neither prestate side"):
+        reconcile(fixture.config, receipt, runner=runner)
+
+
+def test_validate_bound_source_does_not_reapply_strict_layout_to_legacy_old(
+    fixture: Fixture,
+) -> None:
+    """_validate_bound_source's OLD-role strict_release_layout relaxation,
+
+    under strict_release_layout=True -- the real CLI's actual, hardcoded
+    setting (_config_from_args always passes strict_release_layout=True) --
+    isolated from the ref/interpreter dimensions already covered elsewhere by
+    giving this legacy source a genuinely resolvable ref.
+    """
+
+    validate_bound_source = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_validate_bound_source"]
+    )
+    legacy = fixture.make_legacy_old()
+    runner = FakeLaunchd(fixture, loaded_source=legacy)
+    runner.worktree_identities[legacy] = (LEGACY_HEAD, LEGACY_TREE, True)
+    config = replace(fixture.config, strict_release_layout=True)
+    old_source_record: dict[str, object] = {
+        "source_worktree": str(legacy),
+        "head": LEGACY_HEAD,
+        "tree": LEGACY_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{LEGACY_HEAD}",
+    }
+
+    # legacy_prestate=True: config.strict_release_layout=True must NOT be
+    # reapplied to the legacy (mismatched-directory-name) OLD source.
+    result = validate_bound_source(
+        config, old_source_record, runner, role="bootstrap-old", legacy_prestate=True
+    )
+    assert result["source_worktree"] == str(legacy)
+
+    # Control: the identical source and strict config, but legacy_prestate=
+    # False, must still fail the layout-naming check -- proving the
+    # exemption above is real and specifically gated by legacy_prestate,
+    # not by something incidental to this source or config.
+    with pytest.raises(cutover.CutoverSafetyError, match="B649_PRODUCTION_"):
+        validate_bound_source(
+            config, old_source_record, runner, role="bootstrap-old", legacy_prestate=False
+        )

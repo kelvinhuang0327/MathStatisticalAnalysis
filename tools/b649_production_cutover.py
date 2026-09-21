@@ -95,6 +95,19 @@ def _text(value: object, label: str) -> str:
     return value
 
 
+def _optional_text(value: object, label: str) -> str | None:
+    """Like ``_text``, but ``None`` passes through instead of failing closed.
+
+    Used only for fields the legacy/prestate role may legitimately omit (the
+    durable runtime ref); every other caller keeps using ``_text`` so a
+    missing value still fails closed exactly as before.
+    """
+
+    if value is None:
+        return None
+    return _text(value, label)
+
+
 def _canonical_json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
 
@@ -523,7 +536,20 @@ def _validate_real_runtime_paths(
     source: Path,
     role: str,
     paths: Mapping[str, Path],
+    *,
+    escape_allowed: frozenset[str] = frozenset(),
 ) -> None:
+    """Require every real (resolved) runtime path to stay inside the source.
+
+    ``escape_allowed`` names path keys that may resolve outside the worktree.
+    Only the legacy/prestate OLD role ever passes a non-empty set here, and
+    only for ``"interpreter"``: an already-running venv that predates this
+    convention commonly symlinks ``.venv/bin/python`` to a system Python. The
+    lexical path is still fixed by the caller, and every other runtime path
+    -- including the scheduler script and PYTHONPATH -- stays contained for
+    both roles.
+    """
+
     try:
         source_root = source.resolve(strict=True)
     except OSError as exc:
@@ -535,6 +561,8 @@ def _validate_real_runtime_paths(
             resolved = path.resolve(strict=True)
         except OSError as exc:
             raise CutoverSafetyError(f"{role} {name} cannot be resolved") from exc
+        if name in escape_allowed:
+            continue
         try:
             resolved.relative_to(source_root)
         except ValueError as exc:
@@ -550,7 +578,21 @@ def _validate_source(
     expected_tree: str | None = None,
     expected_ref: str | None = None,
     strict_release_layout: bool | None = None,
+    legacy_prestate: bool = False,
 ) -> Record:
+    """Validate one exact source worktree for the ``new`` or ``old`` role.
+
+    ``legacy_prestate`` narrows exactly two checks, and only when the caller
+    also omits ``expected_ref``: the durable runtime ref is not required to
+    exist, and the interpreter's realpath is not required to stay inside the
+    worktree (an already-running venv that predates this convention commonly
+    symlinks its interpreter to a system Python). Every other check -- clean
+    source, exact HEAD/tree drift, scheduler script and PYTHONPATH
+    containment, interpreter existence/executability, and release layout when
+    strict -- applies unchanged for both roles. The NEW role never sets this
+    flag, so its validation is unchanged.
+    """
+
     source = config.source_worktree
     if not source.is_dir() or source.is_symlink():
         raise CutoverSafetyError(f"{role} source worktree is not a real directory: {source}")
@@ -589,13 +631,20 @@ def _validate_source(
     )
     if status:
         raise CutoverSafetyError(f"{role} source is not clean: {status.splitlines()[0]}")
-    ref = expected_ref or f"refs/heads/runtime/b649/{head}"
-    if ref != f"refs/heads/runtime/b649/{head}":
-        raise CutoverSafetyError(f"{role} durable ref is not bound to HEAD")
-    _checked_read(runner, ["git", "check-ref-format", ref])
-    durable_head = _git_value(runner, source, ref + "^{commit}")
-    if durable_head != head:
-        raise CutoverSafetyError(f"{role} durable ref does not resolve to HEAD")
+    ref: str | None
+    if legacy_prestate and expected_ref is None:
+        # Legacy/prestate only: no dedicated runtime ref is required. HEAD and
+        # tree above are still pinned and drift-checked; this skips only the
+        # ref's existence, never the commit identity itself.
+        ref = None
+    else:
+        ref = expected_ref or f"refs/heads/runtime/b649/{head}"
+        if ref != f"refs/heads/runtime/b649/{head}":
+            raise CutoverSafetyError(f"{role} durable ref is not bound to HEAD")
+        _checked_read(runner, ["git", "check-ref-format", ref])
+        durable_head = _git_value(runner, source, ref + "^{commit}")
+        if durable_head != head:
+            raise CutoverSafetyError(f"{role} durable ref does not resolve to HEAD")
     layout_error = (
         _source_layout_error(config, head) if strict_release_layout is not False else None
     )
@@ -612,6 +661,7 @@ def _validate_source(
         source,
         role,
         {"interpreter": interpreter, "scheduler script": script, "PYTHONPATH": pythonpath},
+        escape_allowed=frozenset({"interpreter"}) if legacy_prestate else frozenset(),
     )
     if not interpreter.is_file() or not os.access(interpreter, os.X_OK):
         raise CutoverSafetyError(
@@ -842,19 +892,33 @@ def _assert_idle(ownership: Record, *, include_runtime: bool = True) -> None:
             raise ActiveCycleError(f"{key} is active: {value.get('state')}")
 
 
-def _same_root(runtime: Record, source: Record) -> bool:
+def _same_root(
+    runtime: Record, source: Record, *, escape_allowed: frozenset[str] = frozenset()
+) -> bool:
+    """Check that a runtime tuple's paths all resolve inside one source root.
+
+    ``escape_allowed`` names runtime-tuple keys exempt from the containment
+    check; ``working_directory`` is never exempt, since its resolved path
+    must still equal ``root`` exactly. Only the legacy/prestate OLD role in
+    ``build_plan`` ever passes a non-empty set here, and only for
+    ``"interpreter"`` -- see ``_validate_real_runtime_paths`` for why.
+    """
+
+    labels = {
+        "working_directory": "working directory",
+        "interpreter": "interpreter",
+        "script": "script",
+        "pythonpath": "PYTHONPATH",
+    }
     try:
         root = Path(_text(source.get("source_worktree"), "source worktree")).resolve(strict=False)
         paths = tuple(
-            Path(value).resolve(strict=False)
-            for value in (
-                _text(runtime.get("working_directory"), "working directory"),
-                _text(runtime.get("interpreter"), "interpreter"),
-                _text(runtime.get("script"), "script"),
-                _text(runtime.get("pythonpath"), "PYTHONPATH"),
-            )
+            Path(_text(runtime.get(field), label)).resolve(strict=False)
+            for field, label in labels.items()
         )
-        for path in paths:
+        for field, path in zip(labels, paths, strict=True):
+            if field in escape_allowed:
+                continue
             path.relative_to(root)
     except OSError as exc:
         raise CutoverSafetyError("runtime tuple cannot be resolved") from exc
@@ -979,8 +1043,9 @@ def build_plan(
             expected_tree=None,
             expected_ref=None,
             strict_release_layout=False,
+            legacy_prestate=True,
         )
-        if not _same_root(old_runtime, old_source):
+        if not _same_root(old_runtime, old_source, escape_allowed=frozenset({"interpreter"})):
             raise CutoverSafetyError("old plist runtime tuple is not same-root")
         launch = _launch_snapshot(config, runner, old_source)
         enabled = _enabled_snapshot(config, runner)
@@ -1608,6 +1673,7 @@ def _apply_or_restore(
             expected_source,
             runner,
             role="bootstrap-old" if restoring else "bootstrap-new",
+            legacy_prestate=restoring,
         )
         _assert_quiescent(config, runner, expected_source)
         _run_launch_mutation(
@@ -1689,17 +1755,32 @@ def _validate_bound_source(
     runner: Runner,
     *,
     role: str,
+    legacy_prestate: bool = False,
 ) -> Record:
+    """Re-validate one frozen source Record before a mutation boundary.
+
+    ``legacy_prestate`` must be set exactly when ``source`` is the OLD/PRESTATE
+    side read from the installed plist/loaded launchd binding, never for the
+    NEW release: NEW always keeps ``config.strict_release_layout`` and always
+    requires its durable ref, regardless of what the OLD side needed.
+    """
+
     source_path = Path(_text(source.get("source_worktree"), f"{role} source worktree"))
     bound_config = replace(config, source_worktree=source_path)
+    expected_ref = (
+        _optional_text(source.get("durable_ref"), f"{role} durable ref")
+        if legacy_prestate
+        else _text(source.get("durable_ref"), f"{role} durable ref")
+    )
     return _validate_source(
         bound_config,
         runner,
         role=role,
         expected_head=_text(source.get("head"), f"{role} head"),
         expected_tree=_text(source.get("tree"), f"{role} tree"),
-        expected_ref=_text(source.get("durable_ref"), f"{role} durable ref"),
-        strict_release_layout=config.strict_release_layout,
+        expected_ref=expected_ref,
+        strict_release_layout=False if legacy_prestate else config.strict_release_layout,
+        legacy_prestate=legacy_prestate,
     )
 
 
@@ -1753,7 +1834,7 @@ def _apply_existing_receipt(
     plan = _record(receipt, "receipt")
     prestate = _record(plan.get("prestate"), "receipt prestate")
     source = _prestate_runtime(prestate, "new_source")
-    _validate_bound_source(config, source, runner, role="existing-new")
+    _validate_bound_source(config, source, runner, role="existing-new", legacy_prestate=False)
     if status == "SUCCESS":
         current_identity, current_bytes = _file_identity(
             config.plist_path,
@@ -1834,7 +1915,22 @@ def _reconcile_completed_receipt(
         or current_identity.size != identity.size
     ):
         raise CutoverSafetyError("completed receipt does not match the current plist")
-    _validate_bound_source(config, source, runner, role="existing-after")
+    # "after.source" is frozen from whichever side the completed operation
+    # actually left running: bind legacy_prestate to that recorded side, not
+    # to a role-string guess, so a completed rollback onto the legacy OLD
+    # prestate reconciles without reapplying NEW-release strictness to it.
+    prestate = _record(receipt.get("prestate"), "receipt prestate")
+    old_source_prestate = _prestate_runtime(prestate, "old_source")
+    new_source_prestate = _prestate_runtime(prestate, "new_source")
+    if source == old_source_prestate:
+        legacy_prestate = True
+    elif source == new_source_prestate:
+        legacy_prestate = False
+    else:
+        raise CutoverSafetyError("completed receipt after-source matches neither prestate side")
+    _validate_bound_source(
+        config, source, runner, role="existing-after", legacy_prestate=legacy_prestate
+    )
     _, current_runtime = _parse_plist(current_bytes, "existing-after")
     if current_runtime != runtime:
         raise CutoverSafetyError("completed receipt runtime differs from the current plist")
@@ -2096,8 +2192,9 @@ def rollback(
                 role="rollback-old",
                 expected_head=_text(old_source.get("head"), "old head"),
                 expected_tree=_text(old_source.get("tree"), "old tree"),
-                expected_ref=_text(old_source.get("durable_ref"), "old durable ref"),
+                expected_ref=_optional_text(old_source.get("durable_ref"), "old durable ref"),
                 strict_release_layout=False,
+                legacy_prestate=True,
             )
             current_identity, current_bytes = _file_identity(
                 config.plist_path,

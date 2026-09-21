@@ -1,0 +1,79 @@
+{
+  "task_id": "B649_ARM_D_VS_SEALED_OUTCOME_FREE_EXACT_PROBABILITY_R1",
+  "method_version": "1.0.0",
+  "authorities": {
+    "branch2_upstream_locator": "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/BRANCH2_PORTFOLIO_GEOMETRY_FOUR_ARM_OOS_R1/docs/research/branch2-portfolio-geometry-four-arm-oos-r1-result.json",
+    "branch2_upstream_commit": "d7665ee5d00fac09fdc593908e81e54ae080f2ba",
+    "branch2_upstream_tree": "5a9cbff94817c82163c32f1274f7c73d19bc8426",
+    "branch2_upstream_sha256": "af1291ad73b8e78665a7181f4403c243b245855b2d1ce24e64ee950d23294ec3",
+    "production_authority_commit": "2560407ec6267e0fcf3b7cfb5627c1a4f1158baf",
+    "evaluator_content_sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66"
+  },
+  "model": {
+    "model_identity": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+    "outcome_space_exact_count": 601304088,
+    "total_main_draws": 13983816,
+    "special_count": 43,
+    "event_definition": "OFFICIAL_ANY_PRIZE",
+    "evaluation_method": "MAIN_DRAW_COLLAPSED_EXACT_SPECIAL_UNION"
+  },
+  "gates": {
+    "primary_result_label": "NO_MEAN_GEOMETRY_SUPERIORITY_ON_FROZEN_ARCHIVE",
+    "secondary_k20_description": "NO_MEAN_GEOMETRY_SUPERIORITY_AT_K20",
+    "exact_tie": false,
+    "k10_delta_positive": false,
+    "k20_delta_positive": false,
+    "all_identity_checks_passed": true,
+    "reproduction_oracle_passed": true
+  },
+  "k10": {
+    "k": 10,
+    "row_count": 1761,
+    "unique_portfolio_count": 1761,
+    "cache_hit_count": 0,
+    "exact_production_probability": "1095245/3734808",
+    "exact_sum_arm_d_outcomes": 286292272763,
+    "exact_mean_arm_d_probability": "40898896109/151270928424",
+    "exact_delta": "-1730906063/75635464212",
+    "decimal_production_probability": 0.29325336135083785,
+    "decimal_mean_arm_d_probability": 0.27036851386516086,
+    "decimal_delta": -0.022884847485676988,
+    "row_outcomes_sha256": "16e86e4e70c1a7ed9984785ac3e245130136f6bd5d55984488907624eea536d2",
+    "target_draw_count": 1761,
+    "first_target_draw": "97000098",
+    "last_target_draw": "115000089"
+  },
+  "k20": {
+    "k": 20,
+    "row_count": 1761,
+    "unique_portfolio_count": 1761,
+    "cache_hit_count": 0,
+    "exact_production_probability": "44615213/85900584",
+    "exact_sum_arm_d_outcomes": 410756900400,
+    "exact_mean_arm_d_probability": "74090350/190998647",
+    "exact_delta": "-6629277631/50423642808",
+    "decimal_production_probability": 0.5193819520481956,
+    "decimal_mean_arm_d_probability": 0.38791033949052006,
+    "decimal_delta": -0.13147161255767556,
+    "row_outcomes_sha256": "c5377683e70bc332d4540be58f6d1897229049e83430e5738c065d768f009dd6",
+    "target_draw_count": 1761,
+    "first_target_draw": "97000098",
+    "last_target_draw": "115000089"
+  },
+  "claim_boundary": {
+    "permitted_claim": "The exact average OFFICIAL_ANY_PRIZE geometry probability of the 1,761 frozen ARM_D portfolios is compared to the current sealed production portfolio under BIG_LOTTO_UNIFORM_FAIR_DRAW.",
+    "forbidden_claims": [
+      "CONFIRMATORY_OOS_SUCCESS",
+      "PREDICTIVE_EDGE",
+      "FUTURE_SUCCESS_RATE_IMPROVEMENT",
+      "EXPECTED_PAYOUT_ADVANTAGE",
+      "PROFIT",
+      "ROI",
+      "PRODUCTION_PROMOTION",
+      "PRODUCTION_ADOPTION"
+    ],
+    "outcome_fields_used": false,
+    "expected_payout_included": false,
+    "historical_oos_rerun": false
+  }
+}

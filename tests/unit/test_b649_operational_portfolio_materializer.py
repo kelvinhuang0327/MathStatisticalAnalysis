@@ -18,6 +18,7 @@ from lottolab.infrastructure.b649_operational_portfolio_materializer import (
     PortfolioAuthorityConflictError,
     PortfolioMaterializationError,
     PortfolioMaterializationResult,
+    default_portfolio_destination,
     materialize_portfolios,
     read_portfolio_if_present,
 )
@@ -123,6 +124,7 @@ def test_materializes_sealed_geometry_buckets_and_preserves_pre_outcome_provenan
     assert result.status == "CREATED"
     assert payload["schema_version"] == PORTFOLIO_SCHEMA_VERSION
     assert payload["portfolio_method_id"] == "B649_SEALED_GEOMETRY_PORTFOLIO"
+    assert payload["portfolio_method_version"] == "2.0.0"
     provenance = cast(dict[str, dict[str, object]], payload["geometry_provenance"])
     for size in (5, 10, 20):
         entry = SEALED_GEOMETRY_PORTFOLIOS[size]
@@ -169,6 +171,28 @@ def test_health_dict_nests_under_no_extra_wrapper_and_matches_payload(
     assert health["k10"] == result.payload["k10"]
     assert health["k20"] == result.payload["k20"]
     assert health["candidate_count"] == 11
+
+
+def test_v2_destination_isolated_from_the_former_v1_destination(tmp_path: Path) -> None:
+    v2_destination = default_portfolio_destination(tmp_path, TARGET_DRAW)
+    v1_destination = (
+        tmp_path
+        / "forecasts"
+        / TARGET_DRAW
+        / PORTFOLIO_METHOD_ID
+        / "1.0.0"
+        / "final_portfolio_payload.json"
+    )
+
+    assert v2_destination == (
+        tmp_path
+        / "forecasts"
+        / TARGET_DRAW
+        / PORTFOLIO_METHOD_ID
+        / PORTFOLIO_METHOD_VERSION
+        / "final_portfolio_payload.json"
+    )
+    assert v2_destination != v1_destination
 
 
 def test_materialization_is_deterministic_and_idempotent(tmp_path: Path) -> None:
@@ -399,6 +423,22 @@ def test_existing_authority_with_non_sealed_tickets_is_rejected(tmp_path: Path) 
         _materialize(_candidates(), destination)
     with pytest.raises(PortfolioAuthorityConflictError, match="sealed geometry"):
         read_portfolio_if_present(destination)
+
+    assert destination.read_bytes() == original
+
+
+def test_existing_v1_method_authority_is_rejected_by_the_v2_materializer(
+    tmp_path: Path,
+) -> None:
+    destination = tmp_path / "authority" / "final.json"
+    created = _materialize(_candidates(), destination)
+    old_v1 = dict(created.payload)
+    old_v1["portfolio_method_version"] = "1.0.0"
+    destination.write_bytes(canonical_file_bytes(old_v1))
+    original = destination.read_bytes()
+
+    with pytest.raises(PortfolioAuthorityConflictError, match="method provenance"):
+        _materialize(_candidates(), destination)
 
     assert destination.read_bytes() == original
 

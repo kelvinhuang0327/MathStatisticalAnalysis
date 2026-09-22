@@ -185,7 +185,7 @@ class FakeLaunchd:
     calls: list[tuple[str, ...]] = field(default_factory=lambda: list[tuple[str, ...]]())
     status_by_path: dict[Path, str] = field(default_factory=lambda: dict[Path, str]())
     process_rows: list[str] = field(
-        default_factory=lambda: [f"424242 1 {UID} /usr/bin/fixture-shell"]
+        default_factory=lambda: [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     )
     file_rows: list[str] = field(default_factory=lambda: ["p424242", "fcwd", "n/tmp"])
     fail_bootstrap_new_once: bool = False
@@ -295,7 +295,7 @@ class FakeLaunchd:
                 f'    "{cutover.LABEL}" => {str(not self.enabled).lower()}\n'
                 "}\n",
             )
-        if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,command="):
+        if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="):
             return _completed(args, "\n".join(self.process_rows) + "\n")
         if args == ("lsof", "-nP", "-a", "-u", str(UID), "-F", "pfn"):
             return _completed(args, "\n".join(self.file_rows) + "\n")
@@ -724,9 +724,14 @@ def test_apply_and_rollback_preserve_loaded_and_enabled_prestate(
     _assert_business_state_unchanged(fixture)
 
 
-def test_plan_rejects_active_shadow_before_any_mutation(fixture: Fixture) -> None:
+@pytest.mark.parametrize("with_zombie", [False, True])
+def test_plan_rejects_active_shadow_before_any_mutation(
+    fixture: Fixture, with_zombie: bool
+) -> None:
     runner = FakeLaunchd(fixture)
-    runner.process_rows = [f"424242 1 {UID} {fixture.old}/tools/b649_pair_rule_forward_shadow.py"]
+    runner.process_rows = [f"424242 1 {UID} S {fixture.old}/tools/b649_pair_rule_forward_shadow.py"]
+    if with_zombie:
+        runner.process_rows.append(f"424243 1 {UID} Z <defunct>")
 
     result = cutover.build_plan(fixture.config, runner=runner)
 
@@ -739,13 +744,90 @@ def test_plan_rejects_active_shadow_before_any_mutation(fixture: Fixture) -> Non
     assert runner.mutation_calls == []
 
 
+@pytest.mark.parametrize("state", ["Z", "Z+"])
+@pytest.mark.parametrize("stale_scheduler", [False, True])
+def test_plan_passes_with_verified_zombie_only(
+    fixture: Fixture, state: str, stale_scheduler: bool
+) -> None:
+    runner = FakeLaunchd(fixture)
+    command = (
+        f"python {fixture.old}/tools/b649_goalc_local_scheduler.py run"
+        if stale_scheduler
+        else "<defunct>"
+    )
+    runner.process_rows.append(f"424243 1 {UID} {state} {command}")
+    result = cutover.build_plan(fixture.config, runner=runner)
+    assert result["status"] == "PASS", result["failures"]
+    assert result["failures"] == []
+    ownership = _object(result["ownership"])
+    for role in ("runtime", "primary", "scheduler", "shadow"):
+        assert _object(ownership[role]) == {"classification": "ABSENT", "pids": []}
+    process = _object(ownership["process"])
+    assert process["zombie_pids"] == [424243]
+    assert process["uncertainties"] == []
+    assert runner.mutation_calls == []
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert not fixture.receipt_path.exists()
+    assert not fixture.cutover_lock_path.exists()
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("state", ["S", "R"])
+@pytest.mark.parametrize("stale_scheduler", [False, True])
+def test_plan_still_blocks_live_zombie_lookalike(
+    fixture: Fixture, state: str, stale_scheduler: bool
+) -> None:
+    runner = FakeLaunchd(fixture)
+    command = (
+        f"python {fixture.old}/tools/b649_goalc_local_scheduler.py run"
+        if stale_scheduler
+        else "<defunct>"
+    )
+    runner.process_rows.append(f"424243 1 {UID} {state} {command}")
+    result = cutover.build_plan(fixture.config, runner=runner)
+    expected = "PRESENT" if stale_scheduler else "UNVERIFIABLE"
+    assert result["status"] == "FAIL"
+    assert result["failures"] == [
+        f"old_state: ActiveCycleError: runtime ownership is not idle: {expected}"
+    ]
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize("evidence", ["cwd", "primary", "shadow"])
+def test_plan_blocks_zombie_with_inconsistent_evidence(fixture: Fixture, evidence: str) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows.append(f"424243 1 {UID} Z <defunct>")
+    path = {
+        "cwd": fixture.old,
+        "primary": fixture.primary_lock_path,
+        "shadow": fixture.shadow_lock_path,
+    }[evidence]
+    runner.file_rows.extend(["p424243", "fcwd" if evidence == "cwd" else "f3", f"n{path}"])
+    result = cutover.build_plan(fixture.config, runner=runner)
+    assert result["status"] == "FAIL"
+    assert result["failures"] == [
+        "old_state: ActiveCycleError: runtime ownership is not idle: UNVERIFIABLE"
+    ]
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize("state", ["", "Zinvalid"])
+def test_plan_blocks_missing_or_malformed_process_state(fixture: Fixture, state: str) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows.append(f"424243 1 {UID} {state} <defunct>")
+    result = cutover.build_plan(fixture.config, runner=runner)
+    assert result["status"] == "FAIL"
+    assert result["failures"] == ["old_state: Unverifiable: unparseable process table row"]
+    assert runner.mutation_calls == []
+
+
 def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
     fixture: Fixture,
 ) -> None:
     runner = FakeLaunchd(fixture)
     runner.process_rows = [
         (
-            f"10793 1 {UID} /Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+            f"10793 1 {UID} S /Library/Developer/CommandLineTools/usr/libexec/git-core/git "
             "fsmonitor--daemon run --detach --ipc-threads=8"
         )
     ]
@@ -779,7 +861,7 @@ def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     def make_scheduler_active(args: tuple[str, ...]) -> None:
         if args[1] == "disable":
             runner.process_rows = [
-                f"424242 1 {UID} {fixture.old}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = make_scheduler_active
@@ -799,7 +881,7 @@ def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     assert receipt["status"] == "RECOVERY_REQUIRED"
     assert receipt["mutation_summary"]["launchd"] is True
 
-    runner.process_rows = [f"424242 1 {UID} /usr/bin/fixture-shell"]
+    runner.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     recovered = cutover.rollback(fixture.config, runner=runner)
 
     assert recovered["status"] == "ROLLBACK_SUCCESS"
@@ -817,7 +899,7 @@ def test_apply_unloaded_enabled_race_is_detected_before_plist_replacement(
     def make_scheduler_active(args: tuple[str, ...]) -> None:
         if args[1] == "disable":
             runner.process_rows = [
-                f"424242 1 {UID} {fixture.old}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = make_scheduler_active
@@ -989,7 +1071,7 @@ def test_apply_active_cycle_after_enable_blocks_bootstrap(fixture: Fixture) -> N
     def make_scheduler_active(args: tuple[str, ...]) -> None:
         if args[1] == "enable":
             runner.process_rows = [
-                f"424242 1 {UID} {fixture.new}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {fixture.new}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = make_scheduler_active
@@ -1016,7 +1098,7 @@ def test_transition_accepts_run_at_load_activity(
     def run_at_load(args: tuple[str, ...]) -> None:
         if args[1] == "bootstrap":
             runner.process_rows = [
-                f"424242 1 {UID} {runner.loaded_source}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {runner.loaded_source}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = run_at_load
@@ -1036,7 +1118,7 @@ def test_transition_accepts_run_at_load_activity(
     assert runner.loaded_source == expected_source
     assert runner.enabled is enabled
     assert runner.process_rows == [
-        f"424242 1 {UID} {expected_source}/tools/b649_goalc_local_scheduler.py"
+        f"424242 1 {UID} S {expected_source}/tools/b649_goalc_local_scheduler.py"
     ]
     after = _object(result["after"])
     assert _object(after["launchd"])["state"] == "LOADED"
@@ -1204,7 +1286,7 @@ def test_rollback_blocks_when_new_release_cycle_is_active(fixture: Fixture) -> N
     applied = cutover.apply(fixture.config, plan=plan, runner=runner)
     assert applied["status"] == "SUCCESS"
     receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
-    runner.process_rows = [f"424242 1 {UID} {fixture.new}/tools/b649_goalc_local_scheduler.py"]
+    runner.process_rows = [f"424242 1 {UID} S {fixture.new}/tools/b649_goalc_local_scheduler.py"]
     before_mutations = len(runner.mutation_calls)
 
     result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
@@ -1716,7 +1798,7 @@ def test_reconcile_restored_fails_closed_when_ownership_is_not_idle(fixture: Fix
     receipt = _recovery_required_receipt(fixture, plan)
     receipt_sha256 = _write_receipt(fixture, receipt)
     before_receipt_bytes = fixture.receipt_path.read_bytes()
-    runner.process_rows = [f"424242 1 {UID} {fixture.old}/tools/b649_goalc_local_scheduler.py"]
+    runner.process_rows = [f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"]
 
     with pytest.raises(cutover.ActiveCycleError):
         cutover.reconcile_restored(

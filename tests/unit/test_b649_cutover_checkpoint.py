@@ -39,7 +39,9 @@ class Harness:
     process_error: bool = False
     lsof_error: bool = False
     job_error: bool = False
-    process_rows: list[str] = field(default_factory=lambda: ["900001 1 501 /usr/bin/fixture-shell"])
+    process_rows: list[str] = field(
+        default_factory=lambda: ["900001 1 501 S /usr/bin/fixture-shell"]
+    )
     file_rows: list[str] = field(default_factory=lambda: ["p900001", "fcwd", "n/fixture-home"])
 
     @property
@@ -142,7 +144,7 @@ class Harness:
                 if self.disabled_output is not None
                 else f'disabled services = {{\n    "{LABEL}" => {str(self.disabled).lower()}\n}}\n'
             )
-        elif args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,command="):
+        elif args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="):
             if self.process_error:
                 return subprocess.CompletedProcess(args, 1, "", "process enumeration denied")
             out = "\n".join(self.process_rows)
@@ -205,11 +207,20 @@ class Harness:
         return [phase, *(part for key, value in values.items() for part in ("--" + key, value))]
 
     def add_process(
-        self, command: str, *, cwd: str = "/fixture-home", ppid: int = 1, files: Sequence[str] = ()
+        self,
+        command: str,
+        *,
+        state: str = "S",
+        cwd: str | None = "/fixture-home",
+        ppid: int = 1,
+        files: Sequence[str] = (),
     ) -> int:
         pid = 900001 + len(self.process_rows)
-        self.process_rows.append(f"{pid} {ppid} 501 {command}")
-        self.file_rows.extend([f"p{pid}", "fcwd", f"n{cwd}"])
+        self.process_rows.append(f"{pid} {ppid} 501 {state} {command}")
+        if cwd is not None or files:
+            self.file_rows.append(f"p{pid}")
+        if cwd is not None:
+            self.file_rows.extend(["fcwd", f"n{cwd}"])
         for path in files:
             self.file_rows.extend(["f3", f"n{path}"])
         return pid
@@ -322,6 +333,186 @@ def test_post_unload_absent_pass(harness: Harness, capsys: pytest.CaptureFixture
     assert {call[0] for call in harness.calls} == {"git", "launchctl", "ps", "lsof"}
 
 
+@pytest.mark.parametrize("state", ["Z", "Z+", "Zs"])
+@pytest.mark.parametrize("stale_scheduler", [False, True])
+def test_verified_zombie_without_files_is_absent(
+    harness: Harness, capsys: pytest.CaptureFixture[str], state: str, stale_scheduler: bool
+) -> None:
+    harness.loaded = False
+    command = (
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+        if stale_scheduler
+        else "<defunct>"
+    )
+    pid = harness.add_process(command, state=state, cwd=None)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["zombie_pids"] == [pid]
+    assert snapshot["uncertainties"] == []
+    assert snapshot["processes"] == [
+        {
+            "pid": pid,
+            "ppid": 1,
+            "uid": 501,
+            "command": command,
+            "state": state,
+            "cwd": None,
+            "files": [],
+        }
+    ]
+    for role in ("runtime", "primary", "scheduler", "shadow"):
+        assert checkpoint.object_record(snapshot[role]) == {"classification": "ABSENT", "pids": []}
+
+
+@pytest.mark.parametrize("state", ["S", "R"])
+@pytest.mark.parametrize("stale_scheduler", [False, True])
+def test_live_zombie_lookalike_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str], state: str, stale_scheduler: bool
+) -> None:
+    harness.loaded = False
+    command = (
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+        if stale_scheduler
+        else "<defunct>"
+    )
+    pid = harness.add_process(command, state=state, cwd=None)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["zombie_pids"] == []
+    assert snapshot["uncertainties"] == [f"PID {pid}: cwd/open-file coverage unavailable"]
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "PRESENT" if stale_scheduler else "UNVERIFIABLE",
+        "pids": [pid] if stale_scheduler else [],
+    }
+
+
+def test_zombies_do_not_join_or_extend_active_descendant_closure(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    parent = harness.add_process(f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py")
+    child = harness.add_process("python worker.py", ppid=parent)
+    zombie = harness.add_process("<defunct>", state="Z", cwd=None, ppid=parent)
+    harness.add_process("python unrelated.py", ppid=zombie)
+    unrelated_zombie = harness.add_process("<defunct>", state="Z", cwd=None)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["zombie_pids"] == [zombie, unrelated_zombie]
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "PRESENT",
+        "pids": [parent, child],
+    }
+    assert checkpoint.object_record(snapshot["scheduler"])["pids"] == [parent]
+
+
+def test_zombie_parent_cannot_mask_live_runtime_child(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    command = f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py"
+    parent = harness.add_process(command, state="Z", cwd=None)
+    child = harness.add_process(command, ppid=parent)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["zombie_pids"] == [parent]
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "PRESENT",
+        "pids": [child],
+    }
+
+
+@pytest.mark.parametrize("evidence", ["cwd", "old_cwd", "file", "old_file", "primary", "shadow"])
+def test_zombie_with_live_file_evidence_is_unverifiable(
+    harness: Harness, capsys: pytest.CaptureFixture[str], evidence: str
+) -> None:
+    harness.loaded = False
+    cwd = {"cwd": "/fixture-home", "old_cwd": str(harness.rollback)}.get(evidence)
+    file = {
+        "file": "/fixture-home/other.txt",
+        "old_file": str(harness.rollback / "src/mod.py"),
+        "primary": str(harness.root / "primary.lock"),
+        "shadow": str(harness.root / "shadow.lock"),
+    }.get(evidence)
+    pid = harness.add_process("<defunct>", state="Z", cwd=cwd, files=[file] if file else [])
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["zombie_pids"] == [pid]
+    assert snapshot["uncertainties"] == [
+        f"PID {pid}: zombie has inconsistent cwd/open-file evidence"
+    ]
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "UNVERIFIABLE",
+        "pids": [],
+    }
+    process = checkpoint.object_record(cast(list[object], snapshot["processes"])[0])
+    assert process["state"] == "Z"
+    assert process["files"]
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        "900002 1 501 <defunct>",
+        "900002 1 501 python worker.py",
+        "900002 1 501 Q <defunct>",
+        "900002 1 501 Zgarbage <defunct>",
+        "900002 1 501 Z",
+        "900002 1 501 Z   ",
+        "bad 1 501 Z <defunct>",
+        "900001 1 501 Z <defunct>",  # Duplicate PID, even with a different state.
+        "",
+    ],
+)
+def test_malformed_process_state_fails_closed(
+    harness: Harness, capsys: pytest.CaptureFixture[str], row: str
+) -> None:
+    harness.loaded = False
+    harness.process_rows.append(row)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    entry = checkpoint.object_record(checkpoint.object_record(result["checks"])["process_snapshot"])
+    assert entry["classification"] == "UNVERIFIABLE"
+    assert "process table" in str(entry["error"])
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
+def test_zombie_does_not_exempt_malformed_lsof(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process("<defunct>", state="Z", cwd=None)
+    harness.file_rows.append("invalid ownership row")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    entry = checkpoint.object_record(checkpoint.object_record(result["checks"])["process_snapshot"])
+    assert entry["classification"] == "UNVERIFIABLE"
+    assert "unparseable lsof" in str(entry["error"])
+
+
+@pytest.mark.parametrize("bound", [False, True])
+def test_process_appearing_after_ps_keeps_file_ownership_evidence(
+    harness: Harness, capsys: pytest.CaptureFixture[str], bound: bool
+) -> None:
+    harness.loaded = False
+    cwd = str(harness.rollback) if bound else "/fixture-home"
+    harness.file_rows.extend(["p900002", "fcwd", f"n{cwd}"])
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == (1 if bound else 0)
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["zombie_pids"] == []
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"])["classification"] == (
+        "PRESENT" if bound else "ABSENT"
+    )
+
+
 @pytest.mark.parametrize(
     ("role", "script"),
     [
@@ -397,7 +588,7 @@ def test_checkpoint_own_argv_is_excluded(
 ) -> None:
     harness.loaded = False
     harness.process_rows.append(
-        f"{os.getpid()} 1 501 python b649_cutover_checkpoint.py "
+        f"{os.getpid()} 1 501 S python b649_cutover_checkpoint.py "
         f"--expected-rollback-worktree {harness.rollback}"
     )
     code, result = execute(harness, capsys, "post-unload")

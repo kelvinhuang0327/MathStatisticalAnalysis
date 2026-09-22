@@ -346,6 +346,7 @@ class Process:
     ppid: int
     uid: int
     command: str
+    state: str | None = None
     files: list[str] = field(default_factory=lambda: list[str]())
     cwd: str | None = None
 
@@ -405,16 +406,20 @@ def is_passive_git_fsmonitor(
 
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     uid = int(args.launch_domain.split("/")[1])
-    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,command="])
+    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
     processes: dict[int, Process] = {}
     for line in raw.splitlines():
-        match = re.fullmatch(r"\s*(\d+)\s+(\d+)\s+(\d+)\s+(.+)", line)
+        # macOS ps STAT is a run state followed by documented state modifiers.
+        # Keep it separate from argv: command text cannot establish exit state.
+        match = re.fullmatch(
+            r"\s*(\d+)\s+(\d+)\s+(\d+)\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)", line
+        )
         if match is None:
             raise Unverifiable("unparseable process table row")
-        pid, ppid, owner, cmd = match.groups()
+        pid, ppid, owner, state, cmd = match.groups()
         if int(pid) in processes:
             raise Unverifiable("duplicate process table PID")
-        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd)
+        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd, state=state)
     if not processes:
         raise Unverifiable("empty process table")
     # Only this invocation and its helper-launching ancestors are excluded.
@@ -454,9 +459,20 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     locks = {"primary": args.primary_lock_path, "shadow": args.shadow_lock_path}
     members: dict[str, set[int]] = {role: set() for role in ROLE_DEFAULTS}
     runtime: set[int] = set()
+    zombie_pids = {
+        process.pid
+        for process in processes.values()
+        if process.state is not None and process.state.startswith("Z")
+    }
     unknown: list[str] = []
     for process in processes.values():
         if process.pid in excluded:
+            continue
+        if process.pid in zombie_pids:
+            # Exited records retain stale argv, but cannot execute a cycle.
+            # Live file evidence may indicate PID reuse or an inconsistent sample.
+            if process.cwd is not None or process.files:
+                unknown.append(f"PID {process.pid}: zombie has inconsistent cwd/open-file evidence")
             continue
         if process.uid == uid and process.cwd is None:
             unknown.append(f"PID {process.pid}: cwd/open-file coverage unavailable")
@@ -492,7 +508,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     while pending:
         pending = False
         for process in processes.values():
-            if process.ppid in runtime and process.pid not in runtime | excluded:
+            if process.ppid in runtime and process.pid not in runtime | excluded | zombie_pids:
                 runtime.add(process.pid)
                 pending = True
 
@@ -500,10 +516,11 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
         return "PRESENT" if pids else "UNVERIFIABLE" if unknown else "ABSENT"
 
     result: Record = {
-        "scope": f"user {uid}; argv, cwd/open files, descendant closure",
+        "scope": f"user {uid}; ps state, argv, cwd/open files, descendant closure",
         "old_worktree": old,
         "old_head": head,
         "excluded_checkpoint_pids": sorted(excluded),
+        "zombie_pids": sorted(zombie_pids),
         "process_count": len(processes),
         "uncertainties": unknown,
         "runtime": {"classification": classification(runtime), "pids": sorted(runtime)},
@@ -513,11 +530,12 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
                 "ppid": p.ppid,
                 "uid": p.uid,
                 "command": p.command,
+                "state": p.state,
                 "cwd": p.cwd,
                 "files": p.files,
             }
             for p in processes.values()
-            if p.pid in runtime
+            if p.pid in runtime | zombie_pids
         ],
     }
     for role, pids in members.items():

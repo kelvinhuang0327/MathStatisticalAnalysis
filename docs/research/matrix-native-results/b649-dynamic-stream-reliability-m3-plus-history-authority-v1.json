@@ -29,7 +29,7 @@
     "candidate_method_id": "DYNAMIC_STREAM_RELIABILITY_WEIGHTING_V1",
     "candidate_method_version": "1.0.0",
     "candidate_commit": "55c1e7bac12dffcef97fe67527dc4d61d0a42fd5",
-    "candidate_tree": "8f9cd77a4ac13fe81544beadc8ebb869565df4",
+    "candidate_tree": "8f9cd77a4ac13fe81544beadc8ebb869565dfaf4",
     "candidate_definition_path": "docs/research/matrix-native-results/b649-dynamic-stream-reliability-weighting-v1-frozen-candidate.json",
     "candidate_definition_sha256": "23d7d7c98c6e1cdac3f8cc79ec39b21ad9fd2185bc12ac7ddf969dc4445d8b26",
     "target_draw_number": "115000087",
@@ -58791,5 +58791,5 @@
       "success": false
     }
   ],
-  "artifact_content_sha256": "99fcdf98ed497a3b6b6ad13087f416334fd0715df27e2465efe4e4b036876fda"
+  "artifact_content_sha256": "4896ef9ba00eb2873cac137d3bf17ba30651e3aac44fde1299c0f9bed7387747"
 }

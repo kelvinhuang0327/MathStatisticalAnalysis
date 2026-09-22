@@ -312,6 +312,8 @@ class FakeLaunchd:
             self._after(args)
             return _completed(args)
         if args == ("launchctl", "bootstrap", DOMAIN, str(self.fixture.plist_path)):
+            if not self.enabled:
+                return _completed(args, stderr="service is disabled", returncode=5)
             binding = plistlib.loads(self.fixture.plist_path.read_bytes())
             source = Path(binding["WorkingDirectory"])
             if source == self.fixture.new and self.fail_bootstrap_new_once:
@@ -327,6 +329,16 @@ class FakeLaunchd:
 @pytest.fixture
 def fixture(tmp_path: Path) -> Fixture:
     return Fixture(tmp_path)
+
+
+def test_fake_launchd_rejects_bootstrap_while_disabled(fixture: Fixture) -> None:
+    runner = FakeLaunchd(fixture, loaded=False, enabled=False)
+    result = runner(("launchctl", "bootstrap", DOMAIN, str(fixture.plist_path)))
+
+    assert result.returncode == 5
+    assert result.stderr == "service is disabled"
+    assert runner.loaded is False
+    assert runner.enabled is False
 
 
 def _assert_business_state_unchanged(fixture: Fixture) -> None:
@@ -469,8 +481,8 @@ def test_apply_duplicate_and_receipt_bound_rollback_are_hermetic(fixture: Fixtur
     assert runner.mutation_calls == [
         ("launchctl", "disable", f"{DOMAIN}/{cutover.LABEL}"),
         ("launchctl", "bootout", f"{DOMAIN}/{cutover.LABEL}"),
-        ("launchctl", "bootstrap", DOMAIN, str(fixture.plist_path)),
         ("launchctl", "enable", f"{DOMAIN}/{cutover.LABEL}"),
+        ("launchctl", "bootstrap", DOMAIN, str(fixture.plist_path)),
     ]
 
     rolled_back = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
@@ -669,26 +681,47 @@ def test_concurrent_apply_is_rejected_by_the_serialization_lock(fixture: Fixture
     assert not fixture.receipt_path.exists()
 
 
-def test_apply_and_rollback_preserve_unloaded_disabled_prestate(fixture: Fixture) -> None:
-    runner = FakeLaunchd(fixture, loaded=False, enabled=False)
+@pytest.mark.parametrize(
+    ("loaded", "enabled", "verbs"),
+    [
+        (True, True, ["disable", "bootout", "enable", "bootstrap"]),
+        (True, False, ["bootout", "enable", "bootstrap", "disable"]),
+        (False, True, ["disable", "enable"]),
+        (False, False, []),
+    ],
+)
+def test_apply_and_rollback_preserve_loaded_and_enabled_prestate(
+    fixture: Fixture, loaded: bool, enabled: bool, verbs: list[str]
+) -> None:
+    runner = FakeLaunchd(fixture, loaded=loaded, enabled=enabled)
     plan = cutover.build_plan(fixture.config, runner=runner)
     assert plan["status"] == "PASS"
-    assert _object(plan["launchd"])["old_state"] == "UNLOADED"
-    assert _object(plan["launchd"])["old_enabled"] is False
+    assert _object(plan["launchd"])["old_state"] == ("LOADED" if loaded else "UNLOADED")
+    assert _object(plan["launchd"])["old_enabled"] is enabled
 
     applied = cutover.apply(fixture.config, plan=plan, runner=runner)
 
     assert applied["status"] == "SUCCESS"
-    assert runner.loaded is False
-    assert runner.enabled is False
+    assert runner.loaded is loaded
+    assert runner.enabled is enabled
+    assert [call[1] for call in runner.mutation_calls] == verbs
+    mutation_count = len(runner.mutation_calls)
+    after = _object(applied["after"])
+    assert _object(after["launchd"])["state"] == ("LOADED" if loaded else "UNLOADED")
+    assert after["enabled"] is enabled
     receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
 
     rolled_back = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
 
     assert rolled_back["status"] == "ROLLBACK_SUCCESS"
-    assert runner.loaded is False
-    assert runner.enabled is False
+    assert runner.loaded is loaded
+    assert runner.enabled is enabled
+    assert [call[1] for call in runner.mutation_calls[mutation_count:]] == verbs
+    after = _object(rolled_back["after"])
+    assert _object(after["launchd"])["state"] == ("LOADED" if loaded else "UNLOADED")
+    assert after["enabled"] is enabled
     assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    _assert_business_state_unchanged(fixture)
 
 
 def test_plan_rejects_active_shadow_before_any_mutation(fixture: Fixture) -> None:
@@ -864,10 +897,12 @@ def test_apply_launchd_mutation_boundary_failures_are_explicit(fixture: Fixture,
     assert not any(call[1] == "kill" for call in runner.mutation_calls)
 
 
+@pytest.mark.parametrize("loaded", [False, True])
+@pytest.mark.parametrize("enabled", [False, True])
 def test_apply_post_replace_failure_is_counted_and_recovered(
-    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, loaded: bool, enabled: bool
 ) -> None:
-    runner = FakeLaunchd(fixture)
+    runner = FakeLaunchd(fixture, loaded=loaded, enabled=enabled)
     plan = cutover.build_plan(fixture.config, runner=runner)
     assert plan["status"] == "PASS"
     original_atomic_write = cast(
@@ -894,6 +929,11 @@ def test_apply_post_replace_failure_is_counted_and_recovered(
     assert result["status"] == "RECOVERED"
     assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
     assert runner.loaded_source == fixture.old
+    assert runner.loaded is loaded
+    assert runner.enabled is enabled
+    after = _object(result["after"])
+    assert _object(after["launchd"])["state"] == ("LOADED" if loaded else "UNLOADED")
+    assert after["enabled"] is enabled
     names = [action["name"] for action in _objects(result["actions"])]
     assert "install-plist" in names
     assert "restore-plist" in names
@@ -903,6 +943,7 @@ def test_apply_post_replace_failure_is_counted_and_recovered(
     assert install["after_observation"] == "OBSERVED"
     assert _object(install["after"])["sha256"] == _object(plan["prestate"])["new_plist_sha256"]
     _assert_business_state_unchanged(fixture)
+    assert bool(runner.mutation_calls) is (loaded or enabled)
     assert result["mutation_summary"] == {
         "launchd": True,
         "plist": True,
@@ -940,13 +981,13 @@ def test_apply_source_drift_after_plist_install_blocks_new_bootstrap(
     assert not any(action["name"] == "bootstrap-new" for action in _objects(result["actions"]))
 
 
-def test_apply_race_after_bootstrap_is_detected_before_enable(fixture: Fixture) -> None:
+def test_apply_active_cycle_after_enable_blocks_bootstrap(fixture: Fixture) -> None:
     runner = FakeLaunchd(fixture)
     plan = cutover.build_plan(fixture.config, runner=runner)
     assert plan["status"] == "PASS"
 
     def make_scheduler_active(args: tuple[str, ...]) -> None:
-        if args[1] == "bootstrap":
+        if args[1] == "enable":
             runner.process_rows = [
                 f"424242 1 {UID} {fixture.new}/tools/b649_goalc_local_scheduler.py"
             ]
@@ -955,8 +996,82 @@ def test_apply_race_after_bootstrap_is_detected_before_enable(fixture: Fixture) 
     result = cutover.apply(fixture.config, plan=plan, runner=runner)
 
     assert result["status"] == "RECOVERY_REQUIRED"
-    assert not any(call[1] == "enable" for call in runner.mutation_calls)
+    assert any(call[1] == "enable" for call in runner.mutation_calls)
+    assert not any(call[1] == "bootstrap" for call in runner.mutation_calls)
     assert not any(call[1] == "kill" for call in runner.mutation_calls)
+
+
+@pytest.mark.parametrize("operation", ["apply", "recovery", "rollback"])
+@pytest.mark.parametrize("enabled", [False, True])
+def test_transition_accepts_run_at_load_activity(
+    fixture: Fixture, operation: str, enabled: bool
+) -> None:
+    runner = FakeLaunchd(fixture, enabled=enabled)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    if operation == "rollback":
+        assert cutover.apply(fixture.config, plan=plan, runner=runner)["status"] == "SUCCESS"
+    runner.fail_bootstrap_new_once = operation == "recovery"
+
+    def run_at_load(args: tuple[str, ...]) -> None:
+        if args[1] == "bootstrap":
+            runner.process_rows = [
+                f"424242 1 {UID} {runner.loaded_source}/tools/b649_goalc_local_scheduler.py"
+            ]
+
+    runner.after_mutation = run_at_load
+    result = (
+        cutover.rollback(fixture.config, runner=runner)
+        if operation == "rollback"
+        else cutover.apply(fixture.config, plan=plan, runner=runner)
+    )
+
+    assert result["status"] == {
+        "apply": "SUCCESS",
+        "recovery": "RECOVERED",
+        "rollback": "ROLLBACK_SUCCESS",
+    }[operation]
+    expected_source = fixture.new if operation == "apply" else fixture.old
+    assert runner.loaded is True
+    assert runner.loaded_source == expected_source
+    assert runner.enabled is enabled
+    assert runner.process_rows == [
+        f"424242 1 {UID} {expected_source}/tools/b649_goalc_local_scheduler.py"
+    ]
+    after = _object(result["after"])
+    assert _object(after["launchd"])["state"] == "LOADED"
+    assert after["enabled"] is enabled
+    assert not any(call[1] in {"kickstart", "kill"} for call in runner.mutation_calls)
+    _assert_business_state_unchanged(fixture)
+
+
+@pytest.mark.parametrize("operation", ["apply", "recovery", "rollback"])
+def test_transition_rejects_wrong_loaded_binding_after_bootstrap(
+    fixture: Fixture, operation: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    if operation == "rollback":
+        assert cutover.apply(fixture.config, plan=plan, runner=runner)["status"] == "SUCCESS"
+    runner.fail_bootstrap_new_once = operation == "recovery"
+
+    def load_wrong_source(args: tuple[str, ...]) -> None:
+        if args[1] == "bootstrap":
+            runner.loaded_source = fixture.old if operation == "apply" else fixture.new
+
+    runner.after_mutation = load_wrong_source
+    result = (
+        cutover.rollback(fixture.config, runner=runner)
+        if operation == "rollback"
+        else cutover.apply(fixture.config, plan=plan, runner=runner)
+    )
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    failures = cast(list[object], result["failures"])
+    assert any("loaded LaunchAgent runtime tuple differs" in str(f) for f in failures)
+    assert not any(call[1] in {"kickstart", "kill"} for call in runner.mutation_calls)
+    _assert_business_state_unchanged(fixture)
 
 
 def test_same_root_resolves_parent_escape_paths(fixture: Fixture) -> None:

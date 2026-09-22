@@ -1602,6 +1602,21 @@ def _apply_or_restore(
     expected_source = old_source if restoring else new_source
     for source in (current_source, expected_source):
         _assert_quiescent(config, runner, source)
+    # launchd cannot bootstrap a disabled service. A loaded/disabled prestate
+    # needs a temporary enable, followed by restoration of the disabled override.
+    if desired_loaded or old_enabled:
+        _assert_quiescent(config, runner, expected_source)
+        _run_launch_mutation(
+            recorder,
+            runner,
+            "enable-restored" if restoring else "enable-new",
+            ["launchctl", "enable", config.target],
+            observe_satisfied=lambda: _enabled_snapshot(config, runner) is True,
+        )
+        _assert_enabled(config, runner, True)
+    else:
+        recorder.event("enable-skip", reason="prestate was unloaded and disabled")
+        _assert_enabled(config, runner, False)
     if desired_loaded:
         _validate_bound_source(
             config,
@@ -1621,21 +1636,19 @@ def _apply_or_restore(
             ),
         )
         _assert_loaded_binding(config, runner, expected_source, expected_runtime)
+        # RunAtLoad may already be active. Restoring the disabled override does
+        # not stop that cycle; no further bootout or plist replacement is needed.
+        if not old_enabled:
+            _run_launch_mutation(
+                recorder,
+                runner,
+                "disable-restored" if restoring else "disable-new",
+                ["launchctl", "disable", config.target],
+                observe_satisfied=lambda: _enabled_snapshot(config, runner) is False,
+            )
+            _assert_enabled(config, runner, False)
     else:
         recorder.event("bootstrap-skip", reason="prestate was unloaded")
-    if old_enabled:
-        _assert_quiescent(config, runner, expected_source)
-        _run_launch_mutation(
-            recorder,
-            runner,
-            "enable-restored" if restoring else "enable-new",
-            ["launchctl", "enable", config.target],
-            observe_satisfied=lambda: _enabled_snapshot(config, runner) is True,
-        )
-        _assert_enabled(config, runner, True)
-    else:
-        recorder.event("enable-skip", reason="prestate was disabled")
-        _assert_enabled(config, runner, False)
     final_launch = _launch_snapshot(config, runner, expected_source)
     if desired_loaded:
         if (

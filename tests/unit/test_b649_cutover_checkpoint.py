@@ -41,6 +41,12 @@ class Harness:
     job_error: bool = False
     process_rows: list[str] = field(default_factory=lambda: ["900001 1 501 /usr/bin/fixture-shell"])
     file_rows: list[str] = field(default_factory=lambda: ["p900001", "fcwd", "n/fixture-home"])
+    pid_observations: list[subprocess.CompletedProcess[str]] = field(
+        default_factory=lambda: list[subprocess.CompletedProcess[str]]()
+    )
+    pid_files: subprocess.CompletedProcess[str] = field(
+        default_factory=lambda: subprocess.CompletedProcess((), 1, "", "")
+    )
 
     @property
     def successor(self) -> Path:
@@ -146,6 +152,16 @@ class Harness:
             if self.process_error:
                 return subprocess.CompletedProcess(args, 1, "", "process enumeration denied")
             out = "\n".join(self.process_rows)
+        elif args[:3] == ("ps", "-ww", "-p"):
+            assert args[3].isdigit()
+            assert args[4:] == ("-o", "pid=,ppid=,uid=,stat=,lstart=,command=")
+            if not self.pid_observations:
+                return subprocess.CompletedProcess(args, 1, "", "process state unavailable")
+            return self.pid_observations.pop(0)
+        elif args[:3] == ("lsof", "-nP", "-p"):
+            assert args[3].isdigit()
+            assert args[4:] == ("-F", "pfn")
+            return self.pid_files
         elif args == ("lsof", "-nP", "-a", "-u", "501", "-F", "pfn"):
             if self.lsof_error:
                 return subprocess.CompletedProcess(args, 0, "", "lsof: cannot stat filesystem")
@@ -402,6 +418,208 @@ def test_checkpoint_own_argv_is_excluded(
     )
     code, result = execute(harness, capsys, "post-unload")
     assert code == 0, result
+
+
+DEFUNCT_PID = 900002
+DEFUNCT_ROW = f"{DEFUNCT_PID} 1 501 Z Mon Jan 1 00:00:00 2001 <defunct>"
+
+
+def add_defunct(harness: Harness) -> None:
+    harness.process_rows.append(f"{DEFUNCT_PID} 1 501 <defunct>")
+    harness.pid_observations = [
+        subprocess.CompletedProcess((), 0, DEFUNCT_ROW + "\n", "") for _ in range(2)
+    ]
+
+
+def test_confirmed_defunct_without_resources_does_not_block(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["uncertainties"] == []
+    assert snapshot["defunct_nonowners"] == [
+        {
+            "pid": DEFUNCT_PID,
+            "ppid": 1,
+            "uid": 501,
+            "command": "<defunct>",
+            "state": "Z",
+            "started": "Mon Jan 1 00:00:00 2001",
+            "classification": "NON_OWNER",
+        }
+    ]
+    assert observation(result, "old_runtime_ownership")["classification"] == "ABSENT"
+    assert not harness.pid_observations
+
+
+@pytest.mark.parametrize("state", ["S", "R", "T", "?", "Zombie", "<defunct>", "ZZ"])
+def test_uninspectable_process_requires_positive_kernel_z_state(
+    harness: Harness, capsys: pytest.CaptureFixture[str], state: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    harness.pid_observations[0].stdout = DEFUNCT_ROW.replace("501 Z ", f"501 {state} ")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+    assert observation(result, "process_snapshot")["defunct_nonowners"] == []
+
+
+@pytest.mark.parametrize("sample", [0, 1])
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("900002", "900099"),
+        (" 1 501", " 2 501"),
+        (" 501 ", " 502 "),
+        ("00:00:00", "00:00:01"),
+        ("<defunct>", "python worker.py"),
+        (" Z ", " R "),
+    ],
+)
+def test_defunct_identity_drift_fails_closed(
+    harness: Harness, capsys: pytest.CaptureFixture[str], sample: int, old: str, new: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    harness.pid_observations[sample].stdout = DEFUNCT_ROW.replace(old, new)
+    # A changed start between the two samples is the observable reuse case.
+    if sample == 0 and old == "00:00:00":
+        harness.pid_observations[1].stdout = DEFUNCT_ROW
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
+@pytest.mark.parametrize("sample", [0, 1])
+@pytest.mark.parametrize("defect", ["missing", "denied", "duplicate", "malformed", "date"])
+def test_defunct_observation_unavailable_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str], sample: int, defect: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    observation_result = harness.pid_observations[sample]
+    if defect in {"missing", "denied"}:
+        observation_result.returncode = 1
+        observation_result.stdout = ""
+        observation_result.stderr = "Operation not permitted" if defect == "denied" else ""
+    elif defect == "duplicate":
+        observation_result.stdout = DEFUNCT_ROW + "\n" + DEFUNCT_ROW
+    elif defect == "date":
+        observation_result.stdout = DEFUNCT_ROW.replace("2001", "unknown")
+    else:
+        observation_result.stdout = "unparseable"
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
+def test_same_second_start_cannot_hide_pid_reuse(harness: Harness) -> None:
+    process = checkpoint.Process(DEFUNCT_PID, 1, 501, "<defunct>")
+    add_defunct(harness)
+    args = checkpoint.parser().parse_args(harness.argv("post-unload"))
+    assert (
+        checkpoint.confirmed_defunct_nonowner(process, args, harness, datetime(2001, 1, 1)) is None
+    )
+
+
+@pytest.mark.parametrize(
+    "evidence", ["cwd", "open_file", "primary_lock", "shadow_lock", "cutover_lock", "unnamed_fd"]
+)
+def test_defunct_with_observed_resource_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str], evidence: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    harness.file_rows.extend([f"p{DEFUNCT_PID}", "fcwd" if evidence == "cwd" else "f3"])
+    if evidence != "unnamed_fd":
+        path = {
+            "cwd": harness.rollback,
+            "open_file": harness.rollback / "src/mod.py",
+            "primary_lock": harness.root / "primary.lock",
+            "shadow_lock": harness.root / "shadow.lock",
+            "cutover_lock": harness.root / "cutover.lock",
+        }[evidence]
+        harness.file_rows.append(f"n{path}")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    expected = "UNVERIFIABLE" if evidence in {"cutover_lock", "unnamed_fd"} else "PRESENT"
+    assert observation(result, "old_runtime_ownership")["classification"] == expected
+    assert observation(result, "process_snapshot")["defunct_nonowners"] == []
+
+
+@pytest.mark.parametrize("defect", ["file", "permission", "ambiguous_exit"])
+def test_defunct_descriptor_recheck_must_prove_no_files(
+    harness: Harness, capsys: pytest.CaptureFixture[str], defect: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    if defect == "file":
+        harness.pid_files = subprocess.CompletedProcess((), 0, f"p{DEFUNCT_PID}\nf3\n", "")
+    elif defect == "permission":
+        harness.pid_files.stderr = "lsof: permission denied"
+    else:
+        harness.pid_files.returncode = 0
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
+@pytest.mark.parametrize("role", ["primary", "scheduler", "shadow"])
+def test_defunct_with_runtime_role_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str], role: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    marker = checkpoint.ROLE_DEFAULTS[role][0]
+    harness.process_rows[-1] = f"{DEFUNCT_PID} 1 501 {marker} <defunct>"
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "process_snapshot")["defunct_nonowners"] == []
+
+
+@pytest.mark.parametrize("relationship", ["child", "descendant"])
+def test_defunct_does_not_exempt_scheduler_descendants(
+    harness: Harness, capsys: pytest.CaptureFixture[str], relationship: str
+) -> None:
+    harness.loaded = False
+    add_defunct(harness)
+    if relationship == "child":
+        harness.add_process("python worker.py", ppid=DEFUNCT_PID)
+    else:
+        parent = harness.add_process(
+            f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py"
+        )
+        harness.process_rows[1] = f"{DEFUNCT_PID} {parent} 501 <defunct>"
+        for sample in harness.pid_observations:
+            sample.stdout = DEFUNCT_ROW.replace(" 1 501 ", f" {parent} 501 ")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == (
+        "PRESENT" if relationship == "descendant" else "UNVERIFIABLE"
+    )
+    assert observation(result, "process_snapshot")["defunct_nonowners"] == []
+
+
+@pytest.mark.parametrize("job", ["running", "pid", "unavailable"])
+def test_defunct_launchagent_observation_must_be_idle(
+    harness: Harness, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch, job: str
+) -> None:
+    add_defunct(harness)
+    raw = harness.launch_text()
+    if job == "running":
+        raw = raw.replace("state = not running", "state = running")
+    elif job == "pid":
+        raw = raw.replace("state = not running", f"state = not running\n    pid = {DEFUNCT_PID}")
+    else:
+        harness.job_error = True
+    monkeypatch.setattr(harness, "launch_text", lambda: raw)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "process_snapshot")["defunct_nonowners"] == []
 
 
 @pytest.mark.parametrize(

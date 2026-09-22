@@ -769,6 +769,39 @@ def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
     assert runner.mutation_calls == []
 
 
+@pytest.mark.parametrize("state", ["Z", "S"])
+def test_plan_defunct_observation_is_discriminating_and_read_only(
+    fixture: Fixture, state: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    runner.process_rows.append(f"5676 1 {UID} <defunct>")
+    observations: list[tuple[str, ...]] = []
+
+    def observe(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        args = tuple(argv)
+        if args == ("ps", "-ww", "-p", "5676", "-o", "pid=,ppid=,uid=,stat=,lstart=,command="):
+            observations.append(args)
+            return _completed(args, f"5676 1 {UID} {state} Mon Jan 1 00:00:00 2001 <defunct>\n")
+        if args == ("lsof", "-nP", "-p", "5676", "-F", "pfn"):
+            observations.append(args)
+            return _completed(args, returncode=1)
+        return runner(argv)
+
+    result = cutover.build_plan(fixture.config, runner=observe)
+
+    assert result["status"] == ("PASS" if state == "Z" else "FAIL"), result["failures"]
+    ownership = _object(result["ownership"])
+    assert _object(ownership["runtime"])["classification"] == (
+        "ABSENT" if state == "Z" else "UNVERIFIABLE"
+    )
+    assert len(observations) == (3 if state == "Z" else 1)
+    assert fixture.plist_path.read_bytes() == fixture.old_plist_bytes
+    assert not fixture.receipt_path.exists()
+    assert not fixture.cutover_lock_path.exists()
+    assert runner.mutation_calls == []
+    _assert_business_state_unchanged(fixture)
+
+
 def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     fixture: Fixture,
 ) -> None:

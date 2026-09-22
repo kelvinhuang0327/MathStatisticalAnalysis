@@ -348,6 +348,49 @@ class Process:
     command: str
     files: list[str] = field(default_factory=lambda: list[str]())
     cwd: str | None = None
+    has_descriptors: bool = False
+
+
+def confirmed_defunct_nonowner(
+    process: Process, args: argparse.Namespace, runner: Runner, observed_before: datetime
+) -> Record | None:
+    """Prove a stable zombie around an empty descriptor observation, or fail closed."""
+    argv = ["ps", "-ww", "-p", str(process.pid), "-o", "pid=,ppid=,uid=,stat=,lstart=,command="]
+    try:
+        before = checked(runner, argv).strip()
+        fields = before.split(maxsplit=9)
+        if (
+            len(fields) != 10
+            or fields[:4] != [str(process.pid), str(process.ppid), str(process.uid), "Z"]
+            or fields[9] != process.command
+        ):
+            return None
+        started = " ".join(fields[4:9])
+        # ps reports whole seconds. Refuse starts in the observation's current
+        # second, so PID reuse within that second cannot mimic the same identity.
+        if datetime.strptime(started, "%a %b %d %H:%M:%S %Y") >= observed_before:
+            return None
+        job = launch_snapshot(args, runner)
+        if job["state"] == "LOADED":
+            loaded = launch_fields(cast(str, job["raw"]))
+            if loaded.get("state") != "not running" or "pid" in loaded:
+                return None
+        descriptors = command(runner, ["lsof", "-nP", "-p", str(process.pid), "-F", "pfn"])
+        if descriptors.returncode != 1 or descriptors.stdout.strip() or descriptors.stderr.strip():
+            return None
+        if checked(runner, argv).strip() != before:
+            return None
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return None
+    return {
+        "pid": process.pid,
+        "ppid": process.ppid,
+        "uid": process.uid,
+        "command": process.command,
+        "state": "Z",
+        "started": started,
+        "classification": "NON_OWNER",
+    }
 
 
 def is_git_fsmonitor_command(command: str, old_worktree: str | None = None) -> bool:
@@ -404,6 +447,7 @@ def is_passive_git_fsmonitor(
 
 
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
+    observed_before = datetime.now().replace(microsecond=0)
     uid = int(args.launch_domain.split("/")[1])
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,command="])
     processes: dict[int, Process] = {}
@@ -438,6 +482,8 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             descriptor = ""
         elif line.startswith("f"):
             descriptor = line[1:]
+            if current is not None:
+                current.has_descriptors = True
         elif line.startswith("n") and descriptor:
             if current is not None:
                 current.files.append(line[1:])
@@ -455,11 +501,12 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     members: dict[str, set[int]] = {role: set() for role in ROLE_DEFAULTS}
     runtime: set[int] = set()
     unknown: list[str] = []
+    defunct_nonowners: list[Record] = []
+    uncovered: list[tuple[Process, bool]] = []
+    parents = {process.ppid for process in processes.values()}
     for process in processes.values():
         if process.pid in excluded:
             continue
-        if process.uid == uid and process.cwd is None:
-            unknown.append(f"PID {process.pid}: cwd/open-file coverage unavailable")
         evidence = "\n".join([process.command, *process.files])
         path_pattern = re.escape(old) + r"(?=/|[\s\"']|$)"
         bound = bool(re.search(path_pattern, evidence)) or head in evidence
@@ -472,6 +519,19 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             if lock in process.files:
                 roles.add(role)
                 bound = True
+        if process.uid == uid and process.cwd is None:
+            uncovered.append(
+                (
+                    process,
+                    not (
+                        bound
+                        or roles
+                        or process.has_descriptors
+                        or process.files
+                        or process.pid in parents
+                    ),
+                )
+            )
         is_passive_fsmonitor = bound and is_passive_git_fsmonitor(
             process,
             roles=roles,
@@ -496,6 +556,15 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
                 runtime.add(process.pid)
                 pending = True
 
+    for process, eligible in uncovered:
+        proof = None
+        if eligible and process.pid not in runtime:
+            proof = confirmed_defunct_nonowner(process, args, runner, observed_before)
+        if proof is None:
+            unknown.append(f"PID {process.pid}: cwd/open-file coverage unavailable")
+        else:
+            defunct_nonowners.append(proof)
+
     def classification(pids: set[int]) -> str:
         return "PRESENT" if pids else "UNVERIFIABLE" if unknown else "ABSENT"
 
@@ -506,6 +575,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
         "excluded_checkpoint_pids": sorted(excluded),
         "process_count": len(processes),
         "uncertainties": unknown,
+        "defunct_nonowners": defunct_nonowners,
         "runtime": {"classification": classification(runtime), "pids": sorted(runtime)},
         "processes": [
             {

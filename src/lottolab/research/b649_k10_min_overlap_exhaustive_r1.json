@@ -1,0 +1,2538 @@
+{
+  "tool": "nauty",
+  "tool_version": "2.9.0",
+  "tool_url": "https://pallini.di.uniroma1.it/nauty2_9_0.tar.gz",
+  "commands": {
+    "enumerate": "geng -D6 -q 10 0:11 | multig -e11 -D6 -G -q",
+    "isomorphism_check": "labelg -q  on the private-vertex multiplicity gadget"
+  },
+  "labeled_search_definition": "loopless multigraphs on 10 labeled tickets are not enumerated; geng enumerates unlabeled simple graphs with at most 11 edges and maximum degree 6, and multig replaces those edges by all multiplicity vectors whose multiplicities sum to 11 and whose degrees stay at most 6",
+  "enumerator_raw_count": 89262,
+  "canonical_unique_count": 89198,
+  "rejected_invalid_count": 64,
+  "unlabeled_class_count": 89198,
+  "class_set_sha256_run_1": "a3d27e92f4e7adb97effbc2360fcf9e865c1a6ddf745d234618fb3ba1d1e27e3",
+  "class_set_sha256_run_2": "a3d27e92f4e7adb97effbc2360fcf9e865c1a6ddf745d234618fb3ba1d1e27e3",
+  "labelg_class_set_sha256_run_1": "b98de0edd46d4044b07bc391a85d118d164fda9a53e0c8d6225b11b943802446",
+  "labelg_class_set_sha256_run_2": "b98de0edd46d4044b07bc391a85d118d164fda9a53e0c8d6225b11b943802446",
+  "parallel_edges_included": true,
+  "exact_evaluation_count": 89198,
+  "enumeration_wall_time_sec": 8.761729916994227,
+  "scoring_wall_time_sec": 4800.489501999997,
+  "scoring_cpu_time_sec": 20.388445,
+  "peak_memory_bytes": 284574745,
+  "workers": 8,
+  "small_enumeration_cross_check": [
+    {
+      "vertices": 5,
+      "edges": 4,
+      "max_degree": 3,
+      "python_count": 12,
+      "nauty_count": 12,
+      "agree": true
+    },
+    {
+      "vertices": 6,
+      "edges": 4,
+      "max_degree": 3,
+      "python_count": 16,
+      "nauty_count": 16,
+      "agree": true
+    }
+  ],
+  "baseline_in_family": true,
+  "hard_div_class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+  "hard_div_exact": "536005/1827672",
+  "hard_div_sha256": "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673",
+  "hard_div_overlap_mass": 11,
+  "hard_div_pair_histogram": {
+    "0": 34,
+    "1": 11
+  },
+  "hard_div_number_frequency": {
+    "1": 38,
+    "2": 11
+  },
+  "hard_div_structure": {
+    "degree_sequence": [
+      5,
+      4,
+      4,
+      4,
+      4,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "parallel_multiplicity_profile": {
+      "1": 11
+    },
+    "parallel_extra_edges": 0,
+    "underlying_triangles": 10,
+    "isolated_vertices": 4
+  },
+  "best_exact": "536005/1827672",
+  "best_delta": "0",
+  "best_class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+  "best_portfolio_sha256": "f875b5c7d7721dce89b375956dbeb44b8d9bce9c5e7448cb3f0ad0e0051c56a3",
+  "best_tickets": [
+    [
+      1,
+      2,
+      3,
+      4,
+      12,
+      13
+    ],
+    [
+      5,
+      14,
+      15,
+      16,
+      17,
+      18
+    ],
+    [
+      19,
+      20,
+      21,
+      22,
+      23,
+      24
+    ],
+    [
+      25,
+      26,
+      27,
+      28,
+      29,
+      30
+    ],
+    [
+      31,
+      32,
+      33,
+      34,
+      35,
+      36
+    ],
+    [
+      37,
+      38,
+      39,
+      40,
+      41,
+      42
+    ],
+    [
+      1,
+      6,
+      7,
+      8,
+      43,
+      44
+    ],
+    [
+      2,
+      6,
+      9,
+      10,
+      45,
+      46
+    ],
+    [
+      3,
+      7,
+      9,
+      11,
+      47,
+      48
+    ],
+    [
+      4,
+      5,
+      8,
+      10,
+      11,
+      49
+    ]
+  ],
+  "best_structure": {
+    "degree_sequence": [
+      5,
+      4,
+      4,
+      4,
+      4,
+      1,
+      0,
+      0,
+      0,
+      0
+    ],
+    "parallel_multiplicity_profile": {
+      "1": 11
+    },
+    "parallel_extra_edges": 0,
+    "underlying_triangles": 10,
+    "isolated_vertices": 4
+  },
+  "best_pair_histogram": {
+    "0": 34,
+    "1": 11
+  },
+  "top_distinct_fractions": [
+    {
+      "class_id": "10 11 24 0 6 1 0 7 1 0 8 1 0 9 1 1 9 1 6 7 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "536005/1827672",
+      "portfolio_sha256": "f875b5c7d7721dce89b375956dbeb44b8d9bce9c5e7448cb3f0ad0e0051c56a3",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          37,
+          38,
+          39,
+          40,
+          41,
+          42
+        ],
+        [
+          1,
+          6,
+          7,
+          8,
+          43,
+          44
+        ],
+        [
+          2,
+          6,
+          9,
+          10,
+          45,
+          46
+        ],
+        [
+          3,
+          7,
+          9,
+          11,
+          47,
+          48
+        ],
+        [
+          4,
+          5,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          4,
+          4,
+          1,
+          0,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 10,
+        "isolated_vertices": 4
+      },
+      "comparison_label": "TIE"
+    },
+    {
+      "class_id": "10 11 240 0 5 1 0 7 1 0 8 1 0 9 1 1 6 1 5 7 1 5 8 1 5 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "1095245/3734808",
+      "portfolio_sha256": "1a2ab0b96d3d3459f74aa6eb339be3306885f00831280bd727ea0f6af7e4c550",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          19,
+          20,
+          21,
+          22,
+          23,
+          24
+        ],
+        [
+          25,
+          26,
+          27,
+          28,
+          29,
+          30
+        ],
+        [
+          31,
+          32,
+          33,
+          34,
+          35,
+          36
+        ],
+        [
+          1,
+          6,
+          7,
+          8,
+          37,
+          38
+        ],
+        [
+          5,
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        [
+          2,
+          6,
+          9,
+          10,
+          44,
+          45
+        ],
+        [
+          3,
+          7,
+          9,
+          11,
+          46,
+          47
+        ],
+        [
+          4,
+          8,
+          10,
+          11,
+          48,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 10,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 4 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 2 8 1 2 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "12594319/42950292",
+      "portfolio_sha256": "e45e108b5bccb2e8f9be74cf4865eaa24ce52c4e8413454231e0a86bbbf124aa",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          6,
+          15,
+          16,
+          17
+        ],
+        [
+          7,
+          8,
+          18,
+          19,
+          20,
+          21
+        ],
+        [
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          4,
+          9,
+          10,
+          46,
+          47
+        ],
+        [
+          2,
+          5,
+          7,
+          9,
+          11,
+          48
+        ],
+        [
+          3,
+          6,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          5,
+          4,
+          3,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 8,
+        "isolated_vertices": 4
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 16 0 6 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 6 8 1 6 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "4198045/14316764",
+      "portfolio_sha256": "61e1afe9dd5d746bc61e5f0122eba89ddb80eaae44af84774a0fa2b017644313",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          6,
+          15,
+          16,
+          17
+        ],
+        [
+          18,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        [
+          24,
+          25,
+          26,
+          27,
+          28,
+          29
+        ],
+        [
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          36,
+          37,
+          38,
+          39,
+          40,
+          41
+        ],
+        [
+          1,
+          7,
+          8,
+          42,
+          43,
+          44
+        ],
+        [
+          4,
+          9,
+          10,
+          45,
+          46,
+          47
+        ],
+        [
+          2,
+          5,
+          7,
+          9,
+          11,
+          48
+        ],
+        [
+          3,
+          6,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          5,
+          3,
+          3,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 8,
+        "isolated_vertices": 4
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 2 0 6 1 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 6 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "1799161/6135756",
+      "portfolio_sha256": "baaf65d5e311d5a7c431f5ff8e14b9b30c232660948eeed516f532990647bcb2",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          6,
+          7,
+          14,
+          15,
+          16
+        ],
+        [
+          17,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          23,
+          24,
+          25,
+          26,
+          27,
+          28
+        ],
+        [
+          29,
+          30,
+          31,
+          32,
+          33,
+          34
+        ],
+        [
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        [
+          1,
+          8,
+          41,
+          42,
+          43,
+          44
+        ],
+        [
+          2,
+          5,
+          9,
+          10,
+          45,
+          46
+        ],
+        [
+          3,
+          6,
+          9,
+          11,
+          47,
+          48
+        ],
+        [
+          4,
+          7,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          4,
+          3,
+          2,
+          0,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 8,
+        "isolated_vertices": 4
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 8 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 2 9 1 3 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "12593495/42950292",
+      "portfolio_sha256": "a7a5c7acade158058910f1504f5532fc86c32492c88c8f7cbd0a1be91b0afb98",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          6,
+          15,
+          16,
+          17
+        ],
+        [
+          7,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          8,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          4,
+          9,
+          10,
+          46,
+          47
+        ],
+        [
+          2,
+          5,
+          9,
+          11,
+          48,
+          49
+        ],
+        [
+          3,
+          6,
+          7,
+          8,
+          10,
+          11
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          6,
+          4,
+          4,
+          3,
+          3,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 4 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 2 8 1 3 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "381615/1301524",
+      "portfolio_sha256": "8acd2e0790caf09c155c6fcbf39ec61498ef77b84ce08fdadd2d8f2643ae6067",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          6,
+          15,
+          16,
+          17
+        ],
+        [
+          7,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          8,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          4,
+          9,
+          10,
+          46,
+          47
+        ],
+        [
+          2,
+          5,
+          7,
+          9,
+          11,
+          48
+        ],
+        [
+          3,
+          6,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          5,
+          4,
+          3,
+          3,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 2 0 6 1 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 6 8 1 6 9 1 7 9 1 8 9 1",
+      "official_any_prize": "8395413/28633528",
+      "portfolio_sha256": "6ad4ce383dc55797ab1dd11aca637b02fd198f5a8ec2572d776e2271f207850c",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          6,
+          7,
+          14,
+          15,
+          16
+        ],
+        [
+          17,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          23,
+          24,
+          25,
+          26,
+          27,
+          28
+        ],
+        [
+          29,
+          30,
+          31,
+          32,
+          33,
+          34
+        ],
+        [
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        [
+          1,
+          8,
+          9,
+          41,
+          42,
+          43
+        ],
+        [
+          2,
+          5,
+          10,
+          44,
+          45,
+          46
+        ],
+        [
+          3,
+          6,
+          8,
+          11,
+          47,
+          48
+        ],
+        [
+          4,
+          7,
+          9,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          3,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 4
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 2 0 6 1 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 2 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "12593095/42950292",
+      "portfolio_sha256": "a589c46140862f1d091c9a8bed3e265709dd35ee26681f672c8b317868eecbee",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          6,
+          7,
+          14,
+          15,
+          16
+        ],
+        [
+          8,
+          17,
+          18,
+          19,
+          20,
+          21
+        ],
+        [
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          1,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        [
+          2,
+          5,
+          9,
+          10,
+          45,
+          46
+        ],
+        [
+          3,
+          6,
+          9,
+          11,
+          47,
+          48
+        ],
+        [
+          4,
+          7,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          4,
+          3,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 12 0 6 1 0 7 1 0 8 1 0 9 1 1 7 1 2 8 1 6 7 1 6 8 1 6 9 1 7 9 1 8 9 1",
+      "official_any_prize": "1798985/6135756",
+      "portfolio_sha256": "1aada83468d2de98412d17ed91ac958bea4aabfc3eae4357fc752a1e44ebddd2",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          6,
+          19,
+          20,
+          21,
+          22,
+          23
+        ],
+        [
+          24,
+          25,
+          26,
+          27,
+          28,
+          29
+        ],
+        [
+          30,
+          31,
+          32,
+          33,
+          34,
+          35
+        ],
+        [
+          36,
+          37,
+          38,
+          39,
+          40,
+          41
+        ],
+        [
+          1,
+          7,
+          8,
+          9,
+          42,
+          43
+        ],
+        [
+          2,
+          5,
+          7,
+          10,
+          44,
+          45
+        ],
+        [
+          3,
+          6,
+          8,
+          11,
+          46,
+          47
+        ],
+        [
+          4,
+          9,
+          10,
+          11,
+          48,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          4,
+          4,
+          4,
+          4,
+          4,
+          1,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 4 0 6 1 0 9 1 1 7 1 1 8 1 1 9 1 2 7 1 2 8 1 2 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "4197565/14316764",
+      "portfolio_sha256": "786212ad950f7cc835e82546ba6752294daa2c431bdf7d6c0882d00b9be27cc9",
+      "tickets": [
+        [
+          1,
+          2,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          3,
+          4,
+          5,
+          16,
+          17,
+          18
+        ],
+        [
+          6,
+          7,
+          8,
+          19,
+          20,
+          21
+        ],
+        [
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          1,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        [
+          3,
+          6,
+          9,
+          10,
+          45,
+          46
+        ],
+        [
+          4,
+          7,
+          9,
+          11,
+          47,
+          48
+        ],
+        [
+          2,
+          5,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 4 0 7 1 0 8 1 0 9 1 1 8 1 1 9 1 2 8 1 2 9 1 3 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "25185359/85900584",
+      "portfolio_sha256": "38a88a5a8b522c41a72f9a86642b927ad44ce1ca8521a12bd4f0ace5a42f57f0",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          6,
+          7,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          8,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          9,
+          10,
+          46,
+          47,
+          48
+        ],
+        [
+          2,
+          4,
+          6,
+          9,
+          11,
+          49
+        ],
+        [
+          3,
+          5,
+          7,
+          8,
+          10,
+          11
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          6,
+          5,
+          3,
+          3,
+          2,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 6,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 8 0 6 1 1 7 1 1 8 1 1 9 1 2 7 1 2 8 1 2 9 1 3 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "12592495/42950292",
+      "portfolio_sha256": "ddb003617d93e988cc827b7d30ba864b29bb88ea47affe2c6a6a2df4566acd81",
+      "tickets": [
+        [
+          1,
+          12,
+          13,
+          14,
+          15,
+          16
+        ],
+        [
+          2,
+          3,
+          4,
+          17,
+          18,
+          19
+        ],
+        [
+          5,
+          6,
+          7,
+          20,
+          21,
+          22
+        ],
+        [
+          8,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          1,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        [
+          2,
+          5,
+          9,
+          10,
+          45,
+          46
+        ],
+        [
+          3,
+          6,
+          9,
+          11,
+          47,
+          48
+        ],
+        [
+          4,
+          7,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          3,
+          3,
+          1,
+          1,
+          1,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 2
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 2 0 7 1 0 8 1 0 9 1 1 7 1 1 9 1 2 8 1 2 9 1 3 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "25184975/85900584",
+      "portfolio_sha256": "5edbfaa975d15086b954b29d33e5e0c78761dbc80945bee6767ec8d886803956",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          6,
+          7,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          8,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          4,
+          9,
+          10,
+          46,
+          47
+        ],
+        [
+          2,
+          6,
+          9,
+          11,
+          48,
+          49
+        ],
+        [
+          3,
+          5,
+          7,
+          8,
+          10,
+          11
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          6,
+          4,
+          4,
+          3,
+          2,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 6,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 12 0 7 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 2 7 1 2 8 1 2 9 1 7 9 1 8 9 1",
+      "official_any_prize": "1049358/3579191",
+      "portfolio_sha256": "c00b3960719f756f4ffd8a0e10463359943780bc3328e3251c2e45a92d05bfff",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          6,
+          15,
+          16,
+          17
+        ],
+        [
+          7,
+          8,
+          9,
+          18,
+          19,
+          20
+        ],
+        [
+          21,
+          22,
+          23,
+          24,
+          25,
+          26
+        ],
+        [
+          27,
+          28,
+          29,
+          30,
+          31,
+          32
+        ],
+        [
+          33,
+          34,
+          35,
+          36,
+          37,
+          38
+        ],
+        [
+          39,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        [
+          1,
+          4,
+          7,
+          10,
+          45,
+          46
+        ],
+        [
+          2,
+          5,
+          8,
+          11,
+          47,
+          48
+        ],
+        [
+          3,
+          6,
+          9,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          4,
+          4,
+          3,
+          3,
+          3,
+          0,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 6,
+        "isolated_vertices": 4
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 2 0 6 1 0 8 1 0 9 1 1 7 1 1 8 1 1 9 1 2 9 1 6 8 1 6 9 1 7 9 1 8 9 1",
+      "official_any_prize": "25184591/85900584",
+      "portfolio_sha256": "4aaa333289c7280bd400a5cb5cdff508d24531ff10bab5d07ff5bd41553213e2",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          6,
+          15,
+          16,
+          17
+        ],
+        [
+          7,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          23,
+          24,
+          25,
+          26,
+          27,
+          28
+        ],
+        [
+          29,
+          30,
+          31,
+          32,
+          33,
+          34
+        ],
+        [
+          35,
+          36,
+          37,
+          38,
+          39,
+          40
+        ],
+        [
+          1,
+          8,
+          9,
+          41,
+          42,
+          43
+        ],
+        [
+          4,
+          10,
+          44,
+          45,
+          46,
+          47
+        ],
+        [
+          2,
+          5,
+          8,
+          11,
+          48,
+          49
+        ],
+        [
+          3,
+          6,
+          7,
+          9,
+          10,
+          11
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          6,
+          4,
+          3,
+          3,
+          3,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 6,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 12 0 5 1 0 7 1 0 8 1 0 9 1 1 6 1 2 7 1 2 8 1 2 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "12592295/42950292",
+      "portfolio_sha256": "ce5b0f65a9634c629c2697df204dfca29d45d635499b7f0caf1c6185b883aab8",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          4,
+          12,
+          13
+        ],
+        [
+          5,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          6,
+          7,
+          8,
+          19,
+          20,
+          21
+        ],
+        [
+          22,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          1,
+          34,
+          35,
+          36,
+          37,
+          38
+        ],
+        [
+          5,
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        [
+          2,
+          6,
+          9,
+          10,
+          44,
+          45
+        ],
+        [
+          3,
+          7,
+          9,
+          11,
+          46,
+          47
+        ],
+        [
+          4,
+          8,
+          10,
+          11,
+          48,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          4,
+          4,
+          4,
+          4,
+          3,
+          1,
+          1,
+          1,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 7,
+        "isolated_vertices": 2
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 1 0 7 1 0 8 1 0 9 1 1 7 1 1 9 1 2 8 1 2 9 1 3 8 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "25184575/85900584",
+      "portfolio_sha256": "d69e447c9fca1710c0d18e20d518d3d5d57421e5e9891875f53a9391fddff9df",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          5,
+          15,
+          16,
+          17,
+          18
+        ],
+        [
+          6,
+          7,
+          19,
+          20,
+          21,
+          22
+        ],
+        [
+          8,
+          23,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          4,
+          9,
+          10,
+          46,
+          47
+        ],
+        [
+          2,
+          6,
+          8,
+          9,
+          11,
+          48
+        ],
+        [
+          3,
+          5,
+          7,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          5,
+          4,
+          3,
+          2,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 6,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 4 0 7 1 0 8 1 0 9 1 1 7 1 2 8 1 2 9 1 3 8 1 3 9 1 7 8 1 7 9 1 8 9 1",
+      "official_any_prize": "8394853/28633528",
+      "portfolio_sha256": "17e000c2a6aefce446c088b529c511365ce91dbd27d3be466a96dcec810a388b",
+      "tickets": [
+        [
+          1,
+          2,
+          3,
+          12,
+          13,
+          14
+        ],
+        [
+          4,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          5,
+          6,
+          20,
+          21,
+          22,
+          23
+        ],
+        [
+          7,
+          8,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          28,
+          29,
+          30,
+          31,
+          32,
+          33
+        ],
+        [
+          34,
+          35,
+          36,
+          37,
+          38,
+          39
+        ],
+        [
+          40,
+          41,
+          42,
+          43,
+          44,
+          45
+        ],
+        [
+          1,
+          4,
+          9,
+          10,
+          46,
+          47
+        ],
+        [
+          2,
+          5,
+          7,
+          9,
+          11,
+          48
+        ],
+        [
+          3,
+          6,
+          8,
+          10,
+          11,
+          49
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          5,
+          5,
+          4,
+          3,
+          2,
+          2,
+          1,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 6,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    },
+    {
+      "class_id": "10 11 240 0 8 1 0 9 1 1 8 1 1 9 1 2 8 1 2 9 1 3 8 1 3 9 1 4 8 1 4 9 1 8 9 1",
+      "official_any_prize": "66980/228459",
+      "portfolio_sha256": "cd54acf8ce2087370dac8bfbbe7da592cfbffd605e7cc1290056d278b24e4c1d",
+      "tickets": [
+        [
+          1,
+          2,
+          12,
+          13,
+          14,
+          15
+        ],
+        [
+          3,
+          4,
+          16,
+          17,
+          18,
+          19
+        ],
+        [
+          5,
+          6,
+          20,
+          21,
+          22,
+          23
+        ],
+        [
+          7,
+          8,
+          24,
+          25,
+          26,
+          27
+        ],
+        [
+          9,
+          10,
+          28,
+          29,
+          30,
+          31
+        ],
+        [
+          32,
+          33,
+          34,
+          35,
+          36,
+          37
+        ],
+        [
+          38,
+          39,
+          40,
+          41,
+          42,
+          43
+        ],
+        [
+          44,
+          45,
+          46,
+          47,
+          48,
+          49
+        ],
+        [
+          1,
+          3,
+          5,
+          7,
+          9,
+          11
+        ],
+        [
+          2,
+          4,
+          6,
+          8,
+          10,
+          11
+        ]
+      ],
+      "pair_histogram": {
+        "0": 34,
+        "1": 11
+      },
+      "number_frequency": {
+        "1": 38,
+        "2": 11
+      },
+      "overlap_mass": 11,
+      "structure": {
+        "degree_sequence": [
+          6,
+          6,
+          2,
+          2,
+          2,
+          2,
+          2,
+          0,
+          0,
+          0
+        ],
+        "parallel_multiplicity_profile": {
+          "1": 11
+        },
+        "parallel_extra_edges": 0,
+        "underlying_triangles": 5,
+        "isolated_vertices": 3
+      },
+      "comparison_label": "NO_IMPROVEMENT"
+    }
+  ],
+  "global_optimum_status": "UNKNOWN",
+  "exhaustive_status": "PROVEN",
+  "final_decision": "NO_IMPROVEMENT_WITHIN_EXHAUSTED_MIN_OVERLAP_K10_FAMILY",
+  "next_task": "B649_K20_UNLABELED_MIN_OVERLAP_CANONICAL_ENUMERATION_R1",
+  "also_named_not_started": "K10 pairwise overlap mass 12, then 13",
+  "next_task_started": false,
+  "top_structure_finding": "Exactly one isomorphism class meets 536005/1827672. Its multigraph is K5 plus one pendant edge (degree sequence 5,4,4,4,4,1,0,0,0,0), 10 triangles, and no parallel edges. The next distinct fraction is the same K5 plus a disjoint edge, still 10 triangles, strictly lower. 82541 classes have at least one parallel edge; the best of those is 25113635/85900584, also strictly lower. Triangle count separates the top from the rest, but two different 10-triangle graphs are not tied.",
+  "parallel_class_count": 82541,
+  "classes_tied_with_baseline": 1,
+  "best_parallel_exact": "25113635/85900584"
+}

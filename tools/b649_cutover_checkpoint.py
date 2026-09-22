@@ -346,8 +346,13 @@ class Process:
     ppid: int
     uid: int
     command: str
+    state: str | None = None
     files: list[str] = field(default_factory=lambda: list[str]())
     cwd: str | None = None
+
+    @property
+    def is_zombie(self) -> bool:
+        return self.state is not None and self.state.startswith("Z")
 
 
 def is_git_fsmonitor_command(command: str, old_worktree: str | None = None) -> bool:
@@ -405,16 +410,19 @@ def is_passive_git_fsmonitor(
 
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     uid = int(args.launch_domain.split("/")[1])
-    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,command="])
+    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,state=,command="])
     processes: dict[int, Process] = {}
     for line in raw.splitlines():
-        match = re.fullmatch(r"\s*(\d+)\s+(\d+)\s+(\d+)\s+(.+)", line)
+        match = re.fullmatch(r"\s*(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s+(.+)", line)
         if match is None:
             raise Unverifiable("unparseable process table row")
-        pid, ppid, owner, cmd = match.groups()
+        pid, ppid, owner, state, cmd = match.groups()
+        # macOS ps(1): one run state followed by optional additional state flags.
+        if re.fullmatch(r"[IRSTUZ][+<>AELNSsVWX]*", state) is None:
+            raise Unverifiable("unrecognized process state")
         if int(pid) in processes:
             raise Unverifiable("duplicate process table PID")
-        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd)
+        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd, state=state)
     if not processes:
         raise Unverifiable("empty process table")
     # Only this invocation and its helper-launching ancestors are excluded.
@@ -456,7 +464,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     runtime: set[int] = set()
     unknown: list[str] = []
     for process in processes.values():
-        if process.pid in excluded:
+        if process.pid in excluded or process.is_zombie:
             continue
         if process.uid == uid and process.cwd is None:
             unknown.append(f"PID {process.pid}: cwd/open-file coverage unavailable")
@@ -488,12 +496,16 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             # A relative script/import or wrapper cannot be assumed to be a successor.
             unknown.append(f"PID {process.pid}: runtime role has no verified old/source binding")
     # A child may outlive a scheduler and retain none of its parent's argv.
+    # Traverse zombie intermediates without counting them as owners or seeds.
+    descendants = set(runtime)
     pending = True
     while pending:
         pending = False
         for process in processes.values():
-            if process.ppid in runtime and process.pid not in runtime | excluded:
-                runtime.add(process.pid)
+            if process.ppid in descendants and process.pid not in descendants | excluded:
+                descendants.add(process.pid)
+                if not process.is_zombie:
+                    runtime.add(process.pid)
                 pending = True
 
     def classification(pids: set[int]) -> str:
@@ -513,6 +525,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
                 "ppid": p.ppid,
                 "uid": p.uid,
                 "command": p.command,
+                "state": p.state,
                 "cwd": p.cwd,
                 "files": p.files,
             }

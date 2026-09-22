@@ -39,7 +39,9 @@ class Harness:
     process_error: bool = False
     lsof_error: bool = False
     job_error: bool = False
-    process_rows: list[str] = field(default_factory=lambda: ["900001 1 501 /usr/bin/fixture-shell"])
+    process_rows: list[str] = field(
+        default_factory=lambda: ["900001 1 501 S /usr/bin/fixture-shell"]
+    )
     file_rows: list[str] = field(default_factory=lambda: ["p900001", "fcwd", "n/fixture-home"])
 
     @property
@@ -142,7 +144,7 @@ class Harness:
                 if self.disabled_output is not None
                 else f'disabled services = {{\n    "{LABEL}" => {str(self.disabled).lower()}\n}}\n'
             )
-        elif args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,command="):
+        elif args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,state=,command="):
             if self.process_error:
                 return subprocess.CompletedProcess(args, 1, "", "process enumeration denied")
             out = "\n".join(self.process_rows)
@@ -152,7 +154,7 @@ class Harness:
             out = "\n".join(self.file_rows)
         else:
             raise AssertionError(f"unexpected command (possible mutation): {args}")
-        return subprocess.CompletedProcess(args, 0, out + "\n", "")
+        return subprocess.CompletedProcess(args, 0, out + "\n" if out else "", "")
 
     def argv(self, phase: str) -> list[str]:
         values: dict[str, str] = {"expected-label": LABEL, "launch-domain": DOMAIN}
@@ -205,10 +207,16 @@ class Harness:
         return [phase, *(part for key, value in values.items() for part in ("--" + key, value))]
 
     def add_process(
-        self, command: str, *, cwd: str = "/fixture-home", ppid: int = 1, files: Sequence[str] = ()
+        self,
+        command: str,
+        *,
+        cwd: str = "/fixture-home",
+        ppid: int = 1,
+        files: Sequence[str] = (),
+        state: str = "S",
     ) -> int:
         pid = 900001 + len(self.process_rows)
-        self.process_rows.append(f"{pid} {ppid} 501 {command}")
+        self.process_rows.append(f"{pid} {ppid} 501 {state} {command}")
         self.file_rows.extend([f"p{pid}", "fcwd", f"n{cwd}"])
         for path in files:
             self.file_rows.extend(["f3", f"n{path}"])
@@ -322,6 +330,74 @@ def test_post_unload_absent_pass(harness: Harness, capsys: pytest.CaptureFixture
     assert {call[0] for call in harness.calls} == {"git", "launchctl", "ps", "lsof"}
 
 
+@pytest.mark.parametrize("state", ["Z", "Z+", "Zs"])
+def test_zombie_without_lsof_is_non_owning(
+    harness: Harness, capsys: pytest.CaptureFixture[str], state: str
+) -> None:
+    harness.loaded = False
+    harness.process_rows = [f"900001 1 501 {state} <defunct>"]
+    harness.file_rows = []
+    code, result = execute(harness, capsys, "post-unload")
+    snapshot = observation(result, "process_snapshot")
+    assert observation(result, "old_runtime_ownership")["classification"] == "ABSENT", snapshot
+    assert code == 0, result
+    assert snapshot["uncertainties"] == []
+    assert snapshot["processes"] == []
+    for role in ("primary", "scheduler", "shadow", "runtime"):
+        assert snapshot[role] == {
+            "classification": "ABSENT",
+            "pids": [],
+        }
+
+
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "b649_goalc_local_scheduler.py",
+        "b649_operational_prediction_loop.py",
+        "b649_pair_rule_forward_shadow.py",
+        "old-worktree",
+        OLD_HEAD,
+    ],
+)
+def test_zombie_stale_markers_cannot_bind_ownership(
+    harness: Harness, capsys: pytest.CaptureFixture[str], marker: str
+) -> None:
+    harness.loaded = False
+    marker = str(harness.rollback) if marker == "old-worktree" else marker
+    harness.add_process(f"python {marker}", state="Z")
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    for role in ("primary", "scheduler", "shadow", "runtime"):
+        assert observation(result, f"old_{role}_ownership")["classification"] == "ABSENT"
+    assert observation(result, "process_snapshot")["uncertainties"] == []
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        "900001 1 501",
+        "900001 1 501 /usr/bin/fixture-shell",
+        "900001 1 501 S",
+        "900001 1 501 ? <defunct>",
+        "900001 1 501 Q <defunct>",
+        "900001 1 501 Zombie <defunct>",
+        "900001 1 501 Z? <defunct>",
+        "900001 1 501 S? /usr/bin/fixture-shell",
+    ],
+)
+def test_malformed_process_state_fails_closed(
+    harness: Harness, capsys: pytest.CaptureFixture[str], row: str
+) -> None:
+    harness.loaded = False
+    harness.process_rows = [row]
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    entry = checkpoint.object_record(checkpoint.object_record(result["checks"])["process_snapshot"])
+    assert entry["classification"] == "UNVERIFIABLE"
+    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+
+
 @pytest.mark.parametrize(
     ("role", "script"),
     [
@@ -397,7 +473,7 @@ def test_checkpoint_own_argv_is_excluded(
 ) -> None:
     harness.loaded = False
     harness.process_rows.append(
-        f"{os.getpid()} 1 501 python b649_cutover_checkpoint.py "
+        f"{os.getpid()} 1 501 S python b649_cutover_checkpoint.py "
         f"--expected-rollback-worktree {harness.rollback}"
     )
     code, result = execute(harness, capsys, "post-unload")
@@ -438,6 +514,8 @@ def test_real_scheduler_owner_process_is_present(
     assert code == 1
     assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
     assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    processes = cast(list[checkpoint.Record], observation(result, "process_snapshot")["processes"])
+    assert processes[0]["state"] == "S"
 
 
 def test_primary_owner_process_is_present(
@@ -510,10 +588,13 @@ def test_descendant_of_runtime_owner_remains_present(
     assert child in pids
 
 
-def test_unverifiable_fail_closed_remains_unverifiable(
-    harness: Harness, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize("state", ["S", "R", "I", "T", "U", "Ss", "R+"])
+def test_live_missing_coverage_remains_unverifiable(
+    harness: Harness, capsys: pytest.CaptureFixture[str], state: str
 ) -> None:
     harness.loaded = False
+    # Even misleading command text cannot grant the zombie exemption.
+    harness.process_rows = [f"900001 1 501 {state} <defunct>"]
     harness.file_rows = []
     code, result = execute(harness, capsys, "post-unload")
     assert code == 1
@@ -521,7 +602,42 @@ def test_unverifiable_fail_closed_remains_unverifiable(
         checkpoint.object_record(result["checks"])["old_runtime_ownership"]
     )
     assert entry["status"] == "FAIL"
-    assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
+    for role in ("primary", "scheduler", "shadow", "runtime"):
+        assert observation(result, f"old_{role}_ownership")["classification"] == "UNVERIFIABLE"
+    assert observation(result, "process_snapshot")["uncertainties"] == [
+        "PID 900001: cwd/open-file coverage unavailable"
+    ]
+
+
+def test_live_owner_below_zombie_remains_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    zombie = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run", state="Z"
+    )
+    child = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run", ppid=zombie
+    )
+    descendant = harness.add_process("python worker.py", ppid=child)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["pids"] == [child]
+    assert observation(result, "old_runtime_ownership")["pids"] == [child, descendant]
+
+
+def test_descendant_traversal_crosses_zombie_without_counting_it(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    parent = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+    )
+    zombie = harness.add_process("<defunct>", ppid=parent, state="Z+")
+    child = harness.add_process("python worker.py", ppid=zombie)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["pids"] == [parent, child]
 
 
 def test_is_git_fsmonitor_command_boundaries() -> None:
@@ -858,6 +974,22 @@ def test_lsof_only_old_process_is_not_dropped(
     assert code == 1
     assert observation(result, "old_runtime_ownership")["pids"] == [999001]
     assert observation(result, "old_shadow_ownership")["classification"] == "PRESENT"
+    processes = cast(list[checkpoint.Record], observation(result, "process_snapshot")["processes"])
+    assert processes[0]["state"] is None
+
+
+def test_lsof_only_process_without_cwd_remains_unverifiable(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.file_rows.extend(["p999001", "f3", "n/fixture-home/unrelated"])
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    for role in ("primary", "scheduler", "shadow", "runtime"):
+        assert observation(result, f"old_{role}_ownership")["classification"] == "UNVERIFIABLE"
+    assert observation(result, "process_snapshot")["uncertainties"] == [
+        "PID 999001: cwd/open-file coverage unavailable"
+    ]
 
 
 @pytest.mark.parametrize("defect", ["nan", "error-type", "readiness-type", "missing-finished"])

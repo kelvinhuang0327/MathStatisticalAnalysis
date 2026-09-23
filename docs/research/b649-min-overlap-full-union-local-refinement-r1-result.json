@@ -1,0 +1,82 @@
+{
+  "authorities": {
+    "baseline_result_locator": "docs/research/b649-arm-d-vs-sealed-outcome-free-exact-probability-r1-result.json",
+    "baseline_result_sha256": "4cb38b0257b917d9dcd330049848e6406cf73f9c2a5c2702b439a0c08fea4c21",
+    "branch2_result_blob": "feb5b2c715cd107e6dc18ed6566c0cacb96277d9",
+    "branch2_result_sha256": "af1291ad73b8e78665a7181f4403c243b245855b2d1ce24e64ee950d23294ec3",
+    "candidate_k10_archive_sha256": "4ef92a0353d96739f1d0e49dab4555b21985b50646d472f0e99a88191594eba4",
+    "evaluator_content_sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "full_union_archive_sha256": "dcfb3a147397fc5a06a76323046751321dffc820c0d37b4301b63c3a8eb31c9f",
+    "min_overlap_k10_archive_sha256": "ac83b2559a05502926e7eaebaa5ce84aa8062017992be8c05d89ce925b004f82",
+    "sealed_input_locator": "docs/research/b649-arm-d-vs-sealed-outcome-free-exact-probability-r1-input.json",
+    "sealed_input_sha256": "ef089c1cdbe4f856a57885206bcf496023140e4047eec661d3e7896da46a286e"
+  },
+  "claim_boundary": {
+    "branch2_oos_run": false,
+    "database_mutated": false,
+    "frozen_min_overlap_changed": false,
+    "k_changed": false,
+    "production_action": false,
+    "target_outcomes_inspected": false
+  },
+  "evaluation": {
+    "absolute_delta": "4528865/1964557512",
+    "candidate_mean_probability": "2291534373/8403940468",
+    "event_definition": "OFFICIAL_ANY_PRIZE",
+    "exact_evaluation_workers": 2,
+    "exact_outcome_space_count": 601304088,
+    "material_relative_gain_threshold": "1/100",
+    "min_overlap_mean_probability": "40898896109/151270928424",
+    "model_identity": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+    "outside_prior20_subset": {
+      "absolute_delta": "34142921/14149053336",
+      "candidate_mean_probability": "9013559041/33014457784",
+      "min_overlap_mean_probability": "6700419169/24760843338",
+      "relative_delta": "239000447/26801676676",
+      "target_count": 1153
+    },
+    "ready_for_branch2_oos": "NO",
+    "relative_delta": "348722605/40898896109"
+  },
+  "full_union": {
+    "all_baselines_subset_of_full_union": true,
+    "all_pools_match_pinned_predraw_hashes": true,
+    "outside_prior20_distribution": {
+      "0": 608,
+      "1": 831,
+      "2": 322
+    },
+    "outside_prior20_total": 1475,
+    "size_distribution": {
+      "20": 608,
+      "21": 831,
+      "22": 322
+    },
+    "targets_with_outside_tickets": 1153
+  },
+  "schema_id": "lottolab.research.b649_min_overlap_full_union_local_refinement",
+  "schema_version": "1.0.0",
+  "search": {
+    "acceptance": "STRICT_SAMPLE_OFFICIAL_ANY_PRIZE_IMPROVEMENT",
+    "iteration_cap": 4,
+    "k": 10,
+    "mean_swap_count": "1085/587",
+    "move": "ONE_FOR_ONE_SWAP",
+    "sample_main_draw_count": 65536,
+    "seed": 20260923,
+    "selection_sample_baseline_mean": "111432193/413548544",
+    "selection_sample_candidate_mean": "1350076807/4962582528",
+    "swap_count_distribution": {
+      "0": 242,
+      "1": 474,
+      "2": 532,
+      "3": 335,
+      "4": 178
+    },
+    "targets_with_any_swap": 1519,
+    "targets_with_final_portfolio_change": 1519,
+    "tie_break": "REMOVE_PORTFOLIO_POSITION_THEN_ADD_FULL_UNION_POSITION"
+  },
+  "selector_id": "B649_MIN_OVERLAP_FULL_UNION_LOCAL_REFINEMENT_R1",
+  "target_count": 1761
+}

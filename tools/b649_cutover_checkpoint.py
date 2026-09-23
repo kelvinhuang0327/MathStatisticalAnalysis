@@ -404,6 +404,25 @@ def is_passive_git_fsmonitor(
     return is_git_fsmonitor_command(process.command, old_worktree=old_worktree)
 
 
+def is_protected_task_checkpoint_run(command: str) -> bool:
+    """Recognize only the Fable task_checkpoint Ruby wrapper's protected run mode."""
+    try:
+        tokens = shlex.split(command)
+    except Exception:
+        return False
+    if (
+        len(tokens) < 3
+        or Path(tokens[0]).name.lower() != "ruby"
+        or Path(tokens[1]).name != "task_checkpoint.rb"
+    ):
+        return False
+    try:
+        separator = tokens.index("--", 2)
+    except ValueError:
+        separator = len(tokens)
+    return "--run" in tokens[2:separator]
+
+
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     uid = int(args.launch_domain.split("/")[1])
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
@@ -422,8 +441,19 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
         processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd, state=state)
     if not processes:
         raise Unverifiable("empty process table")
+    current_pid = os.getpid()
+    ancestors: set[int] = set()
+    parent = os.getppid()
+    while parent in processes and parent not in ancestors and parent != current_pid:
+        ancestors.add(parent)
+        parent = processes[parent].ppid
+    protected_task_checkpoint_ancestors = {
+        pid
+        for pid in ancestors
+        if is_protected_task_checkpoint_run(processes[pid].command)
+    }
     # Only this invocation and its helper-launching ancestors are excluded.
-    excluded = {os.getpid()}
+    excluded = {current_pid}
     parent = os.getppid()
     while parent in processes and parent not in excluded:
         process = processes[parent]
@@ -488,6 +518,11 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             if lock in process.files:
                 roles.add(role)
                 bound = True
+        if process.pid in protected_task_checkpoint_ancestors and not roles:
+            # The protected wrapper is control-plane infrastructure. Retain
+            # positive role/lock evidence and all missing-coverage uncertainty.
+            # Keep it eligible for descendant propagation from a real owner.
+            continue
         is_passive_fsmonitor = bound and is_passive_git_fsmonitor(
             process,
             roles=roles,

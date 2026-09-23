@@ -1,0 +1,137 @@
+{
+  "base_head": "1ad73707a1a2690cc5a17301f05fca1321cfbaf8",
+  "base_tree": "5c0f4ba856559665c8eb10160df6584ce0975f47",
+  "exhaustive_status": "PROVEN",
+  "families": {
+    "A": {
+      "full": {
+        "canonical_count": 279983,
+        "canonical_state_count_before_ticket_legality": 335154,
+        "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_A_classes.txt",
+        "class_set_sha256": "5f488d0121fe214906841ed4f34fa2e257d3fb09857146b7345520dae62f9708",
+        "family": "A",
+        "illegal_duplicate_ticket_count": 55171,
+        "legal_count": 279983,
+        "raw_count": 10798311,
+        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_A_stage_10.jsonl"
+      },
+      "sharded": {
+        "canonical_count": 279983,
+        "canonical_state_count_before_ticket_legality": 335154,
+        "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_A_classes.txt",
+        "class_set_sha256": "5f488d0121fe214906841ed4f34fa2e257d3fb09857146b7345520dae62f9708",
+        "family": "A",
+        "illegal_duplicate_ticket_count": 55171,
+        "legal_count": 279983,
+        "raw_count": 10798311,
+        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_A_stage_10.jsonl"
+      }
+    },
+    "B": {
+      "full": {
+        "canonical_count": 305165,
+        "canonical_state_count_before_ticket_legality": 317890,
+        "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_B_classes.txt",
+        "class_set_sha256": "fd0a6f9731768ebe63725334f315d0da36cca830a2008ad097c72834529ca0f2",
+        "family": "B",
+        "illegal_duplicate_ticket_count": 12725,
+        "legal_count": 305165,
+        "raw_count": 17236787,
+        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_B_stage_10.jsonl"
+      },
+      "sharded": {
+        "canonical_count": 305165,
+        "canonical_state_count_before_ticket_legality": 317890,
+        "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_B_classes.txt",
+        "class_set_sha256": "fd0a6f9731768ebe63725334f315d0da36cca830a2008ad097c72834529ca0f2",
+        "family": "B",
+        "illegal_duplicate_ticket_count": 12725,
+        "legal_count": 305165,
+        "raw_count": 17236787,
+        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_B_stage_10.jsonl"
+      }
+    }
+  },
+  "final_decision": "NO_STRICT_IMPROVEMENT_IN_EXHAUSTED_K10_OVERLAP_MASS12_SHELL",
+  "full_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
+  "global_k10_optimum_status": "UNKNOWN",
+  "independent_reproduction_status": "MATCH",
+  "mass11_certificate_status": "PASS",
+  "requested_family": "all",
+  "schema_version": 1,
+  "screen": {
+    "best_class_id": null,
+    "best_delta": "0",
+    "best_exact": "536005/1827672",
+    "best_portfolio_sha256": null,
+    "exact_evaluation_count": 0,
+    "exact_rows": [],
+    "exact_scoring_wall_time_sec": 0.074,
+    "families": {
+      "A": {
+        "canonical_count": 279983,
+        "canonical_state_count_before_ticket_legality": 335154,
+        "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_A_classes.txt",
+        "class_set_sha256": "5f488d0121fe214906841ed4f34fa2e257d3fb09857146b7345520dae62f9708",
+        "family": "A",
+        "illegal_duplicate_ticket_count": 55171,
+        "legal_count": 279983,
+        "raw_count": 10798311,
+        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_A_stage_10.jsonl"
+      },
+      "B": {
+        "canonical_count": 305165,
+        "canonical_state_count_before_ticket_legality": 317890,
+        "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_B_classes.txt",
+        "class_set_sha256": "fd0a6f9731768ebe63725334f315d0da36cca830a2008ad097c72834529ca0f2",
+        "family": "B",
+        "illegal_duplicate_ticket_count": 12725,
+        "legal_count": 305165,
+        "raw_count": 17236787,
+        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_full_B_stage_10.jsonl"
+      }
+    },
+    "full_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
+    "pruned_class_count": 585148,
+    "screen_wall_time_sec": 384.42,
+    "survivor_class_count": 0,
+    "total_legal_canonical_count": 585148
+  },
+  "shard_assignment": {
+    "shard_count": 2,
+    "shard_counts": [
+      292688,
+      292460
+    ],
+    "shard_files": [
+      "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_shard_0_class_ids.txt",
+      "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_shard_1_class_ids.txt"
+    ],
+    "sharded_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
+    "sharded_legal_canonical_count": 585148
+  },
+  "sharded_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
+  "structural_profile_proof": {
+    "incidences": 60,
+    "label_cap": 49,
+    "overlap_mass": 12,
+    "profiles": {
+      "A": {
+        "1": 36,
+        "2": 12
+      },
+      "B": {
+        "1": 39,
+        "2": 9,
+        "3": 1
+      }
+    },
+    "proof": "11 <= E=60-U <= 12; mass-E is the sum of C(r-1,2) over r>=3, so it is 0 or 1. Thus there are either twelve doubles, or nine doubles and one triple. The incidence equation fixes the singles.",
+    "used_label_range": [
+      48,
+      49
+    ]
+  },
+  "task_id": "B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1",
+  "total_legal_canonical_count": 585148
+}

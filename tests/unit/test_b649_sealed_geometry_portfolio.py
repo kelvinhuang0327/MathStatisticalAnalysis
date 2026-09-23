@@ -41,6 +41,16 @@ CANONICAL_FRONTIER_LOCATOR = (
 CANONICAL_FRONTIER_SHA256 = (
     "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
 )
+K20_TERMINAL_SOURCE_ID = (
+    "B649_SEALED_V2_DIRECT_OFFICIAL_ANY_PRIZE_ITERATIVE_ASCENT_R1_TERMINAL_K20"
+)
+K20_TERMINAL_AUTHORITY_LOCATOR = (
+    "docs/research/matrix-native-results/"
+    "b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json"
+)
+K20_TERMINAL_AUTHORITY_SHA256 = (
+    "d52b693cebd00be57d8be0ab6db7fad78138d439e45a1a0ba424e4805074392b"
+)
 K5_EXPECTED_TICKETS = (
     (1, 2, 3, 4, 5, 6),
     (7, 8, 9, 10, 11, 12),
@@ -96,8 +106,8 @@ def test_operational_buckets_are_sealed_for_k5_k10_k20() -> None:
     assert buckets[5] != buckets[10][:5]
 
 
-def test_method_v2_and_k5_identity_are_unchanged_from_v1() -> None:
-    assert SEALED_GEOMETRY_METHOD_VERSION == "2.0.0"
+def test_method_v3_and_k5_identity_are_unchanged_from_v1() -> None:
+    assert SEALED_GEOMETRY_METHOD_VERSION == "3.0.0"
     entry = SEALED_GEOMETRY_PORTFOLIOS[5]
 
     assert entry.tickets == K5_EXPECTED_TICKETS
@@ -129,11 +139,12 @@ def _committed_json(locator: str, expected_sha256: str) -> dict[str, object]:
     return cast(dict[str, object], json.loads(raw))
 
 
-def test_k10_and_k20_match_the_frozen_canonical_frontier_contract() -> None:
+def test_k10_matches_the_frozen_canonical_frontier_contract() -> None:
     frontier = _committed_json(CANONICAL_FRONTIER_LOCATOR, CANONICAL_FRONTIER_SHA256)
     identities = cast(list[dict[str, object]], frontier["CANDIDATE_IDENTITIES"])
-
     for size, expected in FROZEN_V2_PORTFOLIOS.items():
+        if size == 20:
+            continue
         entry = SEALED_GEOMETRY_PORTFOLIOS[size]
         selector = cast(int, expected["frontier_selector"])
         candidate = identities[selector]
@@ -158,6 +169,46 @@ def test_k10_and_k20_match_the_frozen_canonical_frontier_contract() -> None:
         assert source["SOURCE_FILE_SHA256"] == (
             "2d37c6dceb69664b489a458f46d201d9e13b544a08c3924ece8b848f44d25b82"
         )
+
+
+def test_k20_matches_direct_official_any_prize_terminal_authority() -> None:
+    entry = SEALED_GEOMETRY_PORTFOLIOS[20]
+    authority = _committed_json(entry.source_locator, entry.source_sha256)
+    terminal_tickets = cast(list[list[int]], authority["TERMINAL_TICKETS"])
+
+    assert entry.source_id == K20_TERMINAL_SOURCE_ID
+    assert entry.source_locator == K20_TERMINAL_AUTHORITY_LOCATOR
+    assert entry.source_sha256 == K20_TERMINAL_AUTHORITY_SHA256
+    assert entry.tickets == tuple(tuple(ticket) for ticket in terminal_tickets)
+    assert entry.portfolio_sha256 == authority["TERMINAL_K20_PORTFOLIO_SHA256"]
+    assert canonical_portfolio_sha256(entry.tickets) == entry.portfolio_sha256
+    assert str(entry.m3_plus_probability) == authority["TERMINAL_M3_PLUS_PROBABILITY"]
+    assert str(entry.official_any_prize_probability) == authority[
+        "TERMINAL_K20_EXACT_PROBABILITY"
+    ]
+    assert authority["TERMINAL_K20_OUTCOME_COUNT"] == 312850818
+    assert authority["TOTAL_DELTA_OUTCOME_COUNT"] == 12068
+    assert authority["TERMINAL_ONE_NUMBER_EXCHANGE_LOCAL_OPTIMUM"] == "YES"
+    assert authority["FINAL_EXACT_RECOMPUTE"] == "PASS"
+    assert authority["GLOBAL_OPTIMUM_STATUS"] == "UNKNOWN"
+    assert authority["OUTCOME_FIELDS_USED"] == "NO"
+
+    frontier = _committed_json(CANONICAL_FRONTIER_LOCATOR, CANONICAL_FRONTIER_SHA256)
+    identities = cast(list[dict[str, object]], frontier["CANDIDATE_IDENTITIES"])
+    v2_selector = cast(int, FROZEN_V2_PORTFOLIOS[20]["frontier_selector"])
+    v2_tickets = cast(list[list[int]], identities[v2_selector]["NORMALIZED_TICKET_SET"])
+    move = cast(dict[str, object], authority["ACCEPTED_MOVE"])
+    removed_ticket = cast(list[int], move["REMOVED_TICKET"])
+    added_ticket = cast(list[int], move["ADDED_TICKET"])
+    changed_tickets = [
+        (tuple(previous), current)
+        for previous, current in zip(v2_tickets, entry.tickets, strict=True)
+        if tuple(previous) != current
+    ]
+
+    assert changed_tickets == [(tuple(removed_ticket), tuple(added_ticket))]
+    assert set(removed_ticket) - set(added_ticket) == {20}
+    assert set(added_ticket) - set(removed_ticket) == {28}
 
 
 def test_k5_reaches_the_committed_frontier_best_found_with_disjoint_tickets() -> None:

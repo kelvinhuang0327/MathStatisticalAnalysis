@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import plistlib
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -26,6 +27,12 @@ OLD_HEAD = "3" * 40
 LABEL = "com.lottolab.checkpoint-fixture"
 DOMAIN = "gui/501"
 HEALTH_SCHEMA = "b649-goalc-local-scheduler-health-v1"
+
+
+def _git_executable_path() -> str:
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    return str(Path(git_executable).resolve(strict=True))
 
 
 @dataclass
@@ -898,31 +905,29 @@ def test_protected_task_checkpoint_ancestor_preserves_passive_fsmonitor_exemptio
 
 
 @pytest.mark.parametrize(
-    ("cmd", "executable_file"),
-    [
-        (
-            "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
-            "fsmonitor--daemon run --detach --ipc-threads=8",
-            "/Library/Developer/CommandLineTools/usr/libexec/git-core/git",
-        ),
-        ("git fsmonitor--daemon run", "/usr/bin/git"),
-        ("/usr/bin/git fsmonitor--daemon start --detach", "/usr/bin/git"),
-        (
-            "/Library/Developer/CommandLineTools/usr/libexec/git-core/git-fsmonitor--daemon run",
-            "/Library/Developer/CommandLineTools/usr/libexec/git-core/git-fsmonitor--daemon",
-        ),
-        ("git -C /Users/kelvin fsmonitor--daemon run", "/usr/bin/git"),
-    ],
+    "command_style", ["absolute_git", "bare_git", "git_start", "git_c"]
 )
 def test_passive_git_fsmonitor_is_excluded_from_runtime_ownership(
     harness: Harness,
     capsys: pytest.CaptureFixture[str],
-    cmd: str,
-    executable_file: str,
+    command_style: str,
 ) -> None:
+    git_executable = _git_executable_path()
+    command, executable_file = {
+        "absolute_git": (
+            f"{git_executable} fsmonitor--daemon run --detach --ipc-threads=8",
+            git_executable,
+        ),
+        "bare_git": ("git fsmonitor--daemon run", git_executable),
+        "git_start": (
+            f"{git_executable} fsmonitor--daemon start --detach",
+            git_executable,
+        ),
+        "git_c": ("git -C /Users/kelvin fsmonitor--daemon run", git_executable),
+    }[command_style]
     harness.loaded = False
     harness.add_process(
-        cmd, files=[str(harness.rollback)], executable_file=executable_file
+        command, files=[str(harness.rollback)], executable_file=executable_file
     )
     code, result = execute(harness, capsys, "post-unload")
     assert code == 0, result
@@ -940,7 +945,7 @@ def test_passive_fsmonitor_allows_auxiliary_system_txt_mapping(
         "/usr/bin/git fsmonitor--daemon run",
         files=[str(harness.rollback)],
         executable_file="/usr/bin/git",
-        additional_executable_files=("/usr/lib/dyld",),
+        additional_executable_files=(sys.executable,),
     )
 
     code, result = execute(harness, capsys, "post-unload")
@@ -1156,27 +1161,58 @@ def test_unverifiable_fail_closed_remains_unverifiable(
     assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
 
 
-def test_is_git_fsmonitor_command_boundaries() -> None:
+def test_is_git_fsmonitor_command_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    git_executable = _git_executable_path()
+    mac_git_core = Path(
+        "/Library/Developer/CommandLineTools/usr/libexec/git-core"
+    )
+    mac_git = mac_git_core / "git"
+    mac_git_fsmonitor_executable = mac_git_core / "git-fsmonitor--daemon"
+    untrusted_git = Path("/tmp/untrusted-bin/git")
+    native_resolve = Path.resolve
+    controlled_macos_paths = {
+        mac_git_core,
+        mac_git,
+        mac_git_fsmonitor_executable,
+        untrusted_git,
+    }
+
+    def resolve_with_macos_git_paths(path: Path, strict: bool = False) -> Path:
+        if path in controlled_macos_paths:
+            assert strict
+            return path
+        return native_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", resolve_with_macos_git_paths)
+
     assert checkpoint.is_git_fsmonitor_command(
-        "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
-        "fsmonitor--daemon run --detach --ipc-threads=8",
-        executable_files=("/Library/Developer/CommandLineTools/usr/libexec/git-core/git",),
+        f"{git_executable} fsmonitor--daemon run --detach --ipc-threads=8",
+        executable_files=(git_executable,),
     )
     assert checkpoint.is_git_fsmonitor_command(
-        "git fsmonitor--daemon run", executable_files=("/usr/bin/git",)
+        "git fsmonitor--daemon run", executable_files=(git_executable,)
     )
     assert checkpoint.is_git_fsmonitor_command(
-        "git fsmonitor--daemon run", executable_files=("/usr/bin/git", "/usr/lib/dyld")
+        "git fsmonitor--daemon run",
+        executable_files=(git_executable, sys.executable),
     )
     assert checkpoint.is_git_fsmonitor_command(
-        "/usr/bin/git fsmonitor--daemon start", executable_files=("/usr/bin/git",)
-    )
-    git_daemon = "/Library/Developer/CommandLineTools/usr/libexec/git-core/git-fsmonitor--daemon"
-    assert checkpoint.is_git_fsmonitor_command(
-        f"{git_daemon} run", executable_files=(git_daemon,)
+        f"{git_executable} fsmonitor--daemon start",
+        executable_files=(git_executable,),
     )
     assert checkpoint.is_git_fsmonitor_command(
-        "git -C /some/path fsmonitor--daemon run", executable_files=("/usr/bin/git",)
+        f"{mac_git} fsmonitor--daemon run --detach --ipc-threads=8",
+        executable_files=(str(mac_git),),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        f"{mac_git_fsmonitor_executable} run",
+        executable_files=(str(mac_git_fsmonitor_executable),),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        "git -C /some/path fsmonitor--daemon run",
+        executable_files=(git_executable,),
     )
     assert not checkpoint.is_git_fsmonitor_command("git status")
     assert not checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon status")
@@ -1186,8 +1222,8 @@ def test_is_git_fsmonitor_command_boundaries() -> None:
         "fake-git fsmonitor--daemon run", executable_files=("/tmp/fake-git",)
     )
     assert not checkpoint.is_git_fsmonitor_command(
-        "/tmp/untrusted-bin/git fsmonitor--daemon run",
-        executable_files=("/tmp/untrusted-bin/git",),
+        f"{untrusted_git} fsmonitor--daemon run",
+        executable_files=(str(untrusted_git),),
     )
     assert not checkpoint.is_git_fsmonitor_command("sh -c 'git fsmonitor--daemon run'")
     assert not checkpoint.is_git_fsmonitor_command(

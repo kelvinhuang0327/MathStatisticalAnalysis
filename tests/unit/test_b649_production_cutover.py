@@ -9,8 +9,10 @@ import hashlib
 import json
 import os
 import plistlib
+import shutil
 import stat
 import subprocess
+import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -889,10 +891,13 @@ def test_plan_blocks_missing_or_malformed_process_state(fixture: Fixture, state:
 def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
     fixture: Fixture,
 ) -> None:
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    git_executable = str(Path(git_executable).resolve(strict=True))
     runner = FakeLaunchd(fixture)
     runner.process_rows = [
         (
-            f"10793 1 {UID} S /Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+            f"10793 1 {UID} S {git_executable} "
             "fsmonitor--daemon run --detach --ipc-threads=8"
         )
     ]
@@ -901,9 +906,9 @@ def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
         "fcwd",
         "n/Users/kelvin",
         "ftxt",
-        "n/Library/Developer/CommandLineTools/usr/libexec/git-core/git",
+        f"n{git_executable}",
         "ftxt",
-        "n/usr/lib/dyld",
+        f"n{sys.executable}",
         "f4",
         f"n{fixture.old}",
     ]

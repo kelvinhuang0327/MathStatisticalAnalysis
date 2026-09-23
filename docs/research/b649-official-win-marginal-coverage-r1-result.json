@@ -1,0 +1,64 @@
+{
+  "authorities": {
+    "baseline_result_locator": "docs/research/b649-arm-d-vs-sealed-outcome-free-exact-probability-r1-result.json",
+    "baseline_result_sha256": "4cb38b0257b917d9dcd330049848e6406cf73f9c2a5c2702b439a0c08fea4c21",
+    "branch2_upstream_commit": "d7665ee5d00fac09fdc593908e81e54ae080f2ba",
+    "branch2_upstream_tree": "5a9cbff94817c82163c32f1274f7c73d19bc8426",
+    "candidate_pool_archive_sha256": "f03c68d64e9cdf46bf332f278d203a3e597eef27b810560f6acb16343b92c151",
+    "evaluator_content_sha256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "min_overlap_k10_archive_sha256": "ac83b2559a05502926e7eaebaa5ce84aa8062017992be8c05d89ce925b004f82",
+    "sealed_input_locator": "docs/research/b649-arm-d-vs-sealed-outcome-free-exact-probability-r1-input.json",
+    "sealed_input_sha256": "ef089c1cdbe4f856a57885206bcf496023140e4047eec661d3e7896da46a286e",
+    "selector_k10_archive_sha256": "9bc8c75921430e0b116b90603d0a2eb6fcffa26493f119b816b1d795e451187b"
+  },
+  "claim_boundary": {
+    "branch2_oos_run": false,
+    "candidate_pool_changed": false,
+    "database_mutated": false,
+    "historical_win_rate_tuning": false,
+    "k_increased": false,
+    "min_overlap_modified": false,
+    "outcome_replay": false,
+    "production_action": false,
+    "target_outcomes_used": false
+  },
+  "k10": {
+    "baseline_exact_mean_probability": "40898896109/151270928424",
+    "baseline_nested_rows": 1761,
+    "candidate_pool_size_per_row": 20,
+    "exact_delta": "-17830049/151270928424",
+    "exact_evaluation_workers": 2,
+    "exact_probability_evaluated_portfolio_count": 1761,
+    "material_relative_gain_threshold": "1/100",
+    "ready_for_branch2_oos": "NO",
+    "relative_delta": "-17830049/40898896109",
+    "row_count": 1761,
+    "selection_sample_official_any_prize_mean": "1948283/7213056",
+    "selector_exact_mean_probability": "3406755505/12605910702",
+    "unique_candidate_pool_count": 1761
+  },
+  "k20": {
+    "candidate_pool_size_per_row": 20,
+    "requested_k": 20,
+    "status": "SKIPPED_FORCED_SELECTION"
+  },
+  "model": {
+    "event_definition": "OFFICIAL_ANY_PRIZE",
+    "exactness": "EXHAUSTIVE_COMBINATORIAL_OFFICIAL_PRIZE_PROBABILITY",
+    "main_draw_count": 13983816,
+    "model_identity": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+    "outcome_space_count": 601304088,
+    "special_ball_count_per_main_draw": 43
+  },
+  "schema_id": "lottolab.research.b649_official_win_marginal_coverage",
+  "schema_version": "1.0.0",
+  "selector": {
+    "primary_k": 10,
+    "selection_draw_count": 65536,
+    "selection_seed": 20260923,
+    "selector_id": "B649_OFFICIAL_WIN_MARGINAL_COVERAGE_V1",
+    "special_ball_handling": "ANALYTIC_UNION_PER_SAMPLED_MAIN_DRAW",
+    "tie_break": "EARLIEST_CANDIDATE_POOL_POSITION"
+  },
+  "study_id": "B649_OFFICIAL_WIN_MARGINAL_COVERAGE_PREOUTCOME_R1"
+}

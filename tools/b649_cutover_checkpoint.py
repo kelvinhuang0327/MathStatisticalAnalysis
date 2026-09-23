@@ -349,9 +349,64 @@ class Process:
     state: str | None = None
     files: list[str] = field(default_factory=lambda: list[str]())
     cwd: str | None = None
+    executable_files: list[str] = field(default_factory=lambda: list[str]())
 
 
-def is_git_fsmonitor_command(command: str, old_worktree: str | None = None) -> bool:
+def _is_trusted_git_executable(executable: str, text_files: Sequence[str]) -> bool:
+    binary = Path(executable).name.lower()
+    if binary not in {
+        "git",
+        "git.exe",
+        "git-fsmonitor--daemon",
+        "git-fsmonitor--daemon.exe",
+    }:
+        return False
+    matching_text_files = {
+        path
+        for path in set(text_files)
+        if Path(path).is_absolute() and Path(path).name.lower() == binary
+    }
+    if len(matching_text_files) != 1:
+        return False
+    text_path = Path(next(iter(matching_text_files)))
+    try:
+        actual = text_path.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    if Path(executable).is_absolute():
+        try:
+            if Path(executable).resolve(strict=True) != actual:
+                return False
+        except (OSError, RuntimeError, ValueError):
+            return False
+    elif executable.lower() != binary:
+        return False
+
+    trusted_roots = (
+        Path("/usr/bin"),
+        Path("/usr/libexec/git-core"),
+        Path("/Library/Developer/CommandLineTools/usr/bin"),
+        Path("/Library/Developer/CommandLineTools/usr/libexec/git-core"),
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin"),
+        Path("/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core"),
+        Path("/opt/homebrew/Cellar/git"),
+        Path("/usr/local/Cellar/git"),
+    )
+    for root in trusted_roots:
+        try:
+            if actual.is_relative_to(root.resolve(strict=True)):
+                return True
+        except (OSError, RuntimeError, ValueError):
+            continue
+    return False
+
+
+def is_git_fsmonitor_command(
+    command: str,
+    old_worktree: str | None = None,
+    *,
+    executable_files: Sequence[str] = (),
+) -> bool:
     """Narrowly recognize genuine git fsmonitor daemon executions."""
     try:
         tokens = shlex.split(command)
@@ -366,6 +421,8 @@ def is_git_fsmonitor_command(command: str, old_worktree: str | None = None) -> b
             return False
     binary = Path(executable).name.lower()
     if binary in {"git", "git.exe"}:
+        if not _is_trusted_git_executable(executable, executable_files):
+            return False
         idx = 1
         while idx < len(tokens):
             tok = tokens[idx]
@@ -380,8 +437,49 @@ def is_git_fsmonitor_command(command: str, old_worktree: str | None = None) -> b
                 return False
         return False
     elif binary in {"git-fsmonitor--daemon", "git-fsmonitor--daemon.exe"}:
+        if not _is_trusted_git_executable(executable, executable_files):
+            return False
         sub_tokens = [t for t in tokens[1:] if not t.startswith("-")]
         return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+    return False
+
+
+def _is_target_git_admin_metadata(path: str, *, head: str, old_worktree: str) -> bool:
+    """Recognize Git admin paths linked by this B649 worktree's .git file."""
+    worktree_name = f"B649_PRODUCTION_{head}"
+    if Path(old_worktree).name != worktree_name or any(char in path for char in "\x00\r\n"):
+        return False
+    metadata_path = Path(path)
+    if not metadata_path.is_absolute():
+        return False
+    git_file = Path(old_worktree) / ".git"
+    try:
+        lines = git_file.read_text(encoding="utf-8").splitlines()
+        if len(lines) != 1 or not lines[0].startswith("gitdir: "):
+            return False
+        gitdir_text = lines[0][len("gitdir: ") :]
+        if not gitdir_text or any(char in gitdir_text for char in "\x00\r\n"):
+            return False
+        gitdir = Path(gitdir_text)
+        if not gitdir.is_absolute():
+            gitdir = git_file.parent / gitdir
+        actual_gitdir = gitdir.resolve(strict=True)
+        actual_metadata = metadata_path.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return actual_gitdir.name == worktree_name and actual_metadata.is_relative_to(actual_gitdir)
+
+
+def _head_appears_outside_target_git_metadata(
+    process: Process, *, head: str, old_worktree: str
+) -> bool:
+    if head in process.command.replace(old_worktree, ""):
+        return True
+    for path in process.files:
+        if head not in path.replace(old_worktree, ""):
+            continue
+        if not _is_target_git_admin_metadata(path, head=head, old_worktree=old_worktree):
+            return True
     return False
 
 
@@ -391,7 +489,6 @@ def is_passive_git_fsmonitor(
     roles: set[str],
     locks: Mapping[str, str],
     head: str,
-    evidence: str,
     old_worktree: str,
 ) -> bool:
     """Return True only if process is a legitimate git fsmonitor without B649 ownership."""
@@ -399,9 +496,15 @@ def is_passive_git_fsmonitor(
         return False
     if any(lock in process.files for lock in locks.values()):
         return False
-    if head and head in evidence.replace(old_worktree, ""):
+    if head and _head_appears_outside_target_git_metadata(
+        process, head=head, old_worktree=old_worktree
+    ):
         return False
-    return is_git_fsmonitor_command(process.command, old_worktree=old_worktree)
+    return is_git_fsmonitor_command(
+        process.command,
+        old_worktree=old_worktree,
+        executable_files=process.executable_files,
+    )
 
 
 def is_protected_task_checkpoint_run(command: str) -> bool:
@@ -475,9 +578,12 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             descriptor = line[1:]
         elif line.startswith("n") and descriptor:
             if current is not None:
-                current.files.append(line[1:])
+                name = line[1:]
+                current.files.append(name)
                 if descriptor == "cwd":
-                    current.cwd = line[1:]
+                    current.cwd = name
+                elif descriptor == "txt":
+                    current.executable_files.append(name)
         else:
             raise Unverifiable("unparseable lsof ownership row")
     old = args.expected_rollback_worktree
@@ -528,7 +634,6 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             roles=roles,
             locks=locks,
             head=head,
-            evidence=evidence,
             old_worktree=old,
         )
         if bound and not is_passive_fsmonitor:

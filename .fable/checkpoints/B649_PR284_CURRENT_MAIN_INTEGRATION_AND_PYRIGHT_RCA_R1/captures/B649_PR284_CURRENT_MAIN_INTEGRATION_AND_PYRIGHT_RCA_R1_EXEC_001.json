@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/bin/zsh"
+  ],
+  "stdout": "",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:01:44Z",
+  "ended_at": "2026-09-10T09:01:45Z"
+}

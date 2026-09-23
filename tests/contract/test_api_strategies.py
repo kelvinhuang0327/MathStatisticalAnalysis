@@ -433,8 +433,9 @@ def test_openapi_exposes_exact_local_runtime_operation_set() -> None:
             "get",
             "/api/v1/replay-scoring/{scoring_artifact_payload_sha256}/overall-aggregate",
         ),
+        ("get", "/api/v1/next-draw-recommendation"),
     }
-    assert len(operations) == 68
+    assert len(operations) == 69
 
 
 def test_replay_ranking_openapi_requires_exact_persisted_scoring_sha() -> None:

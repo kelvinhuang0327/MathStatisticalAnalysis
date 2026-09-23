@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "tools/evaluate_b649_dynamic_weighting_paired_outcome_pilot.py"
+  ],
+  "stdout": "{\n  \"eligible_targets\": 8,\n  \"scored_targets\": 7,\n  \"pending_targets\": 1,\n  \"output_changed_targets\": 5,\n  \"scored_output_changed_targets\": 4,\n  \"candidate_only_wins\": 0,\n  \"baseline_only_wins\": 0,\n  \"both_win\": 2,\n  \"both_lose\": 5,\n  \"baseline_wins\": 2,\n  \"candidate_wins\": 2,\n  \"discordant_count\": 0,\n  \"baseline_scored_success_rate\": 0.2857142857142857,\n  \"candidate_scored_success_rate\": 0.2857142857142857,\n  \"absolute_delta_scored\": 0.0,\n  \"absolute_delta_complete_cohort\": null,\n  \"paired_exact_test\": {\n    \"method\": \"McNemar exact conditional binomial\",\n    \"alternative\": \"two-sided\",\n    \"null_probability\": 0.5,\n    \"p_value\": 1.0,\n    \"status\": \"NO_DISCORDANT_PAIRS\",\n    \"scope\": \"descriptive pilot; no adoption or future-lift claim\"\n  }\n}\n| Target | K | Changed | Status | Baseline win | Candidate win | Main hits B/C | Special B/C |\n|---|---:|---|---|---|---|---|---|\n| 115000081 | 1 | True | SCORED | False | False | 0/0 | 0/0 |\n| 115000082 | 1 | True | SCORED | True | True | 3/3 | 0/0 |\n| 115000083 | 1 | False | SCORED | True | True | 2/2 | 1/1 |\n| 115000086 | 1 | True | SCORED | False | False | 0/0 | 0/0 |\n| 115000087 | 1 | True | SCORED | False | False | 1/0 | 1/1 |\n| 115000088 | 1 | False | SCORED | False | False | 0/0 | 0/0 |\n| 115000089 | 1 | False | SCORED | False | False | 0/0 | 0/0 |\n| 115000090 | 1 | True | PENDING | PENDING | PENDING | — | — |\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-22T06:19:23Z",
+  "ended_at": "2026-09-22T06:19:23Z"
+}

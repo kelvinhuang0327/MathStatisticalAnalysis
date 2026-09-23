@@ -2103,6 +2103,32 @@ export interface paths {
                 }
         }
     }
+  "/api/v1/next-draw-recommendation": {
+      get: {
+          parameters: {
+            "query": {
+              "native_ticket_count": number
+            }
+          }
+          responses: {
+                  200: {
+                          content: {
+                                    "application/json": components['schemas']["NextDrawRecommendationResponse"]
+                                  }
+                        }
+                  422: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                  503: {
+                          content: {
+                                    "application/json": components['schemas']["ApiErrorResponse"]
+                                  }
+                        }
+                }
+        }
+    }
 }
 
 export interface components {
@@ -3194,6 +3220,19 @@ export interface components {
           "stability": Array<components['schemas']["StabilityDeltaView"]>
           "source_authority": string
         }
+    "NextDrawRecommendationResponse": {
+          "ranking_policy_id": string
+          "lottery_type": string
+          "native_ticket_count": number
+          "availability": string
+          "total_candidate_count": number
+          "ranked": Array<components['schemas']["RecommendationCandidateView"]>
+          "excluded": Array<components['schemas']["RecommendationExclusionView"]>
+          "hit_tier_id": string
+          "evidence_computation_status": string
+          "evidence_artifact_sha256": string
+          "evidence_last_causal_draw_id": string
+        }
     "NormalizedDrawPreviewView": {
           "source_row_number": number
           "lottery_type": components['schemas']["LotteryType"]
@@ -3407,6 +3446,31 @@ export interface components {
           "prize_tier": string | null
           "prize_tier_order": number | null
           "prize_amount": number | null
+        }
+    "RecommendationCandidateView": {
+          "rank": number
+          "strategy_id": string
+          "strategy_name": string
+          "native_ticket_count": number
+          "windows": Array<components['schemas']["RecommendationWindowMetricView"]>
+          "cross_window_rank_sum": number | null
+          "highest_historical_prize_label": string | null
+          "ticket_generation_status": string | null
+          "tickets": Array<Array<number>> | null
+          "ticket_generation_detail": string
+        }
+    "RecommendationExclusionView": {
+          "strategy_id": string
+          "reason": string
+          "detail": string
+        }
+    "RecommendationWindowMetricView": {
+          "window_kind": string
+          "eligible_draw_count": number
+          "window_complete": boolean
+          "observed_rate": number | null
+          "random_baseline_rate": number | null
+          "delta_vs_random": number | null
         }
     "ReplayExecutionRequest": {
           "lottery_type": components['schemas']["LotteryType"]

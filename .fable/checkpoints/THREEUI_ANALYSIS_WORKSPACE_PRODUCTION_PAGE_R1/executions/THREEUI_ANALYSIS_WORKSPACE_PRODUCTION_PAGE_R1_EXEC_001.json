@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "THREEUI_ANALYSIS_WORKSPACE_PRODUCTION_PAGE_R1",
+  "execution_id": "THREEUI_ANALYSIS_WORKSPACE_PRODUCTION_PAGE_R1_EXEC_001",
+  "pid": 31383,
+  "status": "STARTED",
+  "durable_capture_path": null,
+  "started_at": "2026-09-10T14:24:06Z",
+  "ended_at": null
+}

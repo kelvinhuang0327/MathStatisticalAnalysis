@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/bin/zsh",
+    "-lc",
+    "uv run ruff check --select I --diff tests/unit/test_b649_operational_prediction_loop.py"
+  ],
+  "stdout": "--- tests/unit/test_b649_operational_prediction_loop.py\n+++ tests/unit/test_b649_operational_prediction_loop.py\n@@ -15,8 +15,8 @@\n     PredictionTarget,\n     StrategyStream,\n     build_canonical_predraw_consensus,\n+    build_current_target_freshness_report,\n     build_descriptive_predraw_consensus,\n-    build_current_target_freshness_report,\n     classify_prediction_temporal,\n     compute_history_freshness,\n     compute_number_consensus,\n\nWould fix 1 error.\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-09-10T09:22:59Z",
+  "ended_at": "2026-09-10T09:22:59Z"
+}

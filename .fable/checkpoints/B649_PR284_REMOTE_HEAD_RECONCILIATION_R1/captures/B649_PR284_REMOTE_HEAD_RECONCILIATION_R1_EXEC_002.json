@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "git rev-parse HEAD; git rev-parse HEAD^{tree}; git rev-parse --git-common-dir; git rev-parse --show-toplevel"
+  ],
+  "stdout": "7777379beeaf211776a3d52f9d81ce63dcfa2945\n4a088f48d152c2dda546d18ac93e2b1aa39ea590\n/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.git\n/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PR284_CURRENT_MAIN_INTEGRATION_AND_PYRIGHT_RCA_R1\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:56:06Z",
+  "ended_at": "2026-09-10T09:56:07Z"
+}

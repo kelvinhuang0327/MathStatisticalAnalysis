@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "import pytest; from lottolab.research import b649_frozen_min_overlap_success_probability as model; model.conditional_units = lambda *args, **kwargs: (0, 0, 0); raise SystemExit(pytest.main([\"-q\", \"-p\", \"no:cacheprovider\", \"tests/unit/test_b649_frozen_min_overlap_success_probability.py\", \"-k\", \"special_union_counts\"]))"
+  ],
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_ test_special_union_counts_each_eligible_number_once_and_excludes_main_numbers _\n\n    def test_special_union_counts_each_eligible_number_once_and_excludes_main_numbers():\n        winning = (1, 2, 9, 10, 11, 12)\n        # Both tickets hit 1,2; remaining union is {3,4,5,6,7,8}, not 8 ticket incidences.\n>       assert model.conditional_units(PORTFOLIO, winning) == (6, 0, 0)\nE       assert (0, 0, 0) == (6, 0, 0)\nE         \nE         At index 0 diff: 0 != 6\nE         Use -v to get more diff\n\ntests/unit/test_b649_frozen_min_overlap_success_probability.py:51: AssertionError\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_frozen_min_overlap_success_probability.py::test_special_union_counts_each_eligible_number_once_and_excludes_main_numbers\n1 failed, 18 deselected in 0.06s\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-09-22T04:18:33Z",
+  "ended_at": "2026-09-22T04:18:33Z"
+}

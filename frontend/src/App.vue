@@ -8,6 +8,7 @@ import HistoryPage from './features/history/HistoryPage.vue'
 import HistoricalSuccessWindowsPage from './features/historical-success-windows/HistoricalSuccessWindowsPage.vue'
 import HistoricalBaseDataPage from './features/historical-base-data/HistoricalBaseDataPage.vue'
 import LiveZoneSplitBetsPage from './features/live-zone-split-bets/LiveZoneSplitBetsPage.vue'
+import NextDrawRecommendationPage from './features/next-draw-recommendation/NextDrawRecommendationPage.vue'
 import P638HistoricalReplayPage from './features/p638-historical-replay/P638HistoricalReplayPage.vue'
 import P638StrategyAnalysisPage from './features/p638-strategy-analysis/P638StrategyAnalysisPage.vue'
 import ReplayHistoryPage from './features/replay-history/ReplayHistoryPage.vue'
@@ -17,6 +18,7 @@ import T539StrategyAnalysisPage from './features/t539-strategy-analysis/T539Stra
 
 type Page =
   | 'strategies'
+  | 'next-draw-recommendation'
   | 'historical-success-windows'
   | 'historical-base-data'
   | 'b649-multi-ticket-records'
@@ -34,6 +36,7 @@ const currentPage = ref<Page>(pageFromHash())
 
 function pageFromHash(): Page {
   const route = window.location.hash.replace(/^#\/?/, '')
+  if (route === 'next-draw-recommendation') return 'next-draw-recommendation'
   if (route === 'historical-success-windows') return 'historical-success-windows'
   if (route === 'historical-base-data') return 'historical-base-data'
   if (route === 'b649-multi-ticket-records') return 'b649-multi-ticket-records'
@@ -70,6 +73,12 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
       <nav class="primary-nav" aria-label="Primary navigation">
         <a href="#/strategies" :aria-current="currentPage === 'strategies' ? 'page' : undefined">
           Strategy Overview
+        </a>
+        <a
+          href="#/next-draw-recommendation"
+          :aria-current="currentPage === 'next-draw-recommendation' ? 'page' : undefined"
+        >
+          下一期推薦
         </a>
         <a
           href="#/historical-success-windows"
@@ -143,6 +152,7 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
 
     <main>
       <StrategyCatalogPage v-if="currentPage === 'strategies'" />
+      <NextDrawRecommendationPage v-else-if="currentPage === 'next-draw-recommendation'" />
       <HistoricalSuccessWindowsPage v-else-if="currentPage === 'historical-success-windows'" />
       <HistoricalBaseDataPage v-else-if="currentPage === 'historical-base-data'" />
       <B649MultiTicketRecordsPage v-else-if="currentPage === 'b649-multi-ticket-records'" />
@@ -160,6 +170,9 @@ onBeforeUnmount(() => window.removeEventListener('hashchange', synchronizePage))
     <footer class="app-footer">
       <template v-if="currentPage === 'strategies'">
         Strategy Overview remains a DB-free metadata request path with explicit evidence gaps.
+      </template>
+      <template v-else-if="currentPage === 'next-draw-recommendation'">
+        NEXT_DRAW_ROBUSTNESS_V1 是描述性排名政策，依各策略原生注數的真實回測表現排序；不是中獎機率主張、不保證未來表現。
       </template>
       <template v-else-if="currentPage === 'historical-success-windows'">
         Historical Success Windows are descriptive, exact-source research evidence—not rankings,

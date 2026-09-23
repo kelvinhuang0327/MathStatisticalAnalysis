@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "ps -axo pid=,command= | awk -v root=/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PR284_CURRENT_MAIN_INTEGRATION_AND_PYRIGHT_RCA_R1 '$0 ~ root && $0 !~ /task_checkpoint/ && $0 !~ /ps -axo/ && $0 !~ /awk -v/ {print}' || true"
+  ],
+  "stdout": "",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:57:07Z",
+  "ended_at": "2026-09-10T09:57:07Z"
+}

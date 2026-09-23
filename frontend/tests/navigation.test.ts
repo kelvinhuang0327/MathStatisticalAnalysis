@@ -299,6 +299,7 @@ describe('App navigation', () => {
     const navigation = wrapper.get('nav[aria-label="Primary navigation"]')
     expect(navigation.findAll('a').map((link) => link.text())).toEqual([
       'Strategy Overview',
+      '下一期推薦',
       'Success Windows',
       'Base Data Browser',
       'B649 Records',
@@ -518,6 +519,7 @@ describe('App navigation', () => {
     expect(document.activeElement).toBe(document.body)
     expect(keyboardTab().getAttribute('aria-label')).toBe('LottoLab home')
     expect(keyboardTab().textContent?.trim()).toBe('Strategy Overview')
+    expect(keyboardTab().textContent?.trim()).toBe('下一期推薦')
     expect(keyboardTab().textContent?.trim()).toBe('Success Windows')
     expect(keyboardTab().textContent?.trim()).toBe('Base Data Browser')
     expect(keyboardTab().textContent?.trim()).toBe('B649 Records')

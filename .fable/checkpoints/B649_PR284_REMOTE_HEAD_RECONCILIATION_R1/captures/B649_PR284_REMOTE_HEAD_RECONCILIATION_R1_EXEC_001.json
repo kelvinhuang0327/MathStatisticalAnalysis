@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": [
+    "git",
+    "status",
+    "--short",
+    "--branch"
+  ],
+  "stdout": "## codex/b649-pr284-current-main-integration-pyright-rca-r1\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:56:00Z",
+  "ended_at": "2026-09-10T09:56:00Z"
+}

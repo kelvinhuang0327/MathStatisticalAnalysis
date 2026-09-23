@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": [
+    "git",
+    "diff",
+    "--cached",
+    "--check"
+  ],
+  "stdout": "",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T12:27:42Z",
+  "ended_at": "2026-09-10T12:27:43Z"
+}

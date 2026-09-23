@@ -31,6 +31,9 @@ from lottolab.strategies.adapters.biglotto_frontend_markov import (
 from lottolab.strategies.adapters.biglotto_frontend_trend import (
     BigLottoFrontendTrendAdapter,
 )
+from lottolab.strategies.adapters.biglotto_frontend_zone_balance import (
+    BigLottoFrontendZoneBalanceAdapter,
+)
 from lottolab.strategies.adapters.biglotto_orthogonal_2bet import (
     BigLottoOrthogonal2BetAdapter,
 )
@@ -66,6 +69,7 @@ __all__ = [
     "BigLottoFrontendHotColdAdapter",
     "BigLottoFrontendMarkovAdapter",
     "BigLottoFrontendTrendAdapter",
+    "BigLottoFrontendZoneBalanceAdapter",
     "BigLottoGraphPredictorAdapter",
     "BigLottoHotCooccurrenceAdapter",
     "BigLottoMustHitTop6Adapter",

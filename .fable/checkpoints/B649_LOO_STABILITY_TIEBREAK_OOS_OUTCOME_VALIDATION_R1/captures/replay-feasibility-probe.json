@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "from pathlib import Path; from datetime import datetime; from time import monotonic; from tools.b649_operational_prediction_loop import STRATEGY_STREAMS,load_canonical_history,run_strategy_stream,PredictionTarget,TAIPEI; history=load_canonical_history(Path(\"/Users/kelvin/Library/Application Support/LottoLab/lottolab.db\"),target_draw_number=\"115000088\",target_draw_date=\"2026-09-15\"); target=PredictionTarget(\"BIG_LOTTO\",\"115000088\",\"2026-09-15\",\"2026-09-15T20:30:00+08:00\"); start=monotonic(); results=[run_strategy_stream(s,history,target,created_at=datetime(2026,9,15,0,0,tzinfo=TAIPEI),prediction_run_id=\"research-probe\") for s in STRATEGY_STREAMS if s.enabled]; print({\"history_count\":history.draw_count,\"elapsed_seconds\":monotonic()-start,\"stream_availability\":[(r[\"strategy_id\"],r[\"availability\"],r[\"unavailable_reason\"]) for r in results],\"ticket_count\":sum(len(r[\"tickets\"]) for r in results)})"
+  ],
+  "stdout": "{'history_count': 2169, 'elapsed_seconds': 0.42750066699954914, 'stream_availability': [('b649_new_horizon_minimax_disagreement_r1', 'AVAILABLE', None), ('biglotto_social_wisdom_anti_popularity', 'AVAILABLE', None), ('biglotto_deviation_2bet', 'AVAILABLE', None), ('legacy_biglotto__graph_predictor__cd70713a5709', 'AVAILABLE', None), ('legacy_biglotto__pure_cold_predict__9e89f2b41add', 'AVAILABLE', None), ('legacy_biglotto__hpsb_optimizer__cf5cd7d971e8', 'AVAILABLE', None), ('legacy_biglotto__test_asm__d39a233a4c75', 'AVAILABLE', None), ('legacy_biglotto__test_ces__78d17c530ab8', 'AVAILABLE', None), ('legacy_biglotto__test_ecp__c9d5ac6decdd', 'AVAILABLE', None), ('legacy_biglotto__test_mwsc__ba37643d6a3b', 'AVAILABLE', None), ('legacy_biglotto__test_tme__f3bb5106dfe3', 'AVAILABLE', None)], 'ticket_count': 22}\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-18T10:47:08Z",
+  "ended_at": "2026-09-18T10:47:09Z"
+}

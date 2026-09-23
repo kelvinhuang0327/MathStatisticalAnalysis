@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "printf \"origin/main \"; git rev-parse refs/remotes/origin/main; printf \"remote_pr \"; git rev-parse refs/remotes/origin/codex/b649-goalc-canonical-consensus-implementation-r1"
+  ],
+  "stdout": "origin/main 49931d75b9984042ede07f6f29368e557f160f54\nremote_pr 831e66fb54f52914dc68c757e1dc71223a51d172\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:56:39Z",
+  "ended_at": "2026-09-10T09:56:39Z"
+}

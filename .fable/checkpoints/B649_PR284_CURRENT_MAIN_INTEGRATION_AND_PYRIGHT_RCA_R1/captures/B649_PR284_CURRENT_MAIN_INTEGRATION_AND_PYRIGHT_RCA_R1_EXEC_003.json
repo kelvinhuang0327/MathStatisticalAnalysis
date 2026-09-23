@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/bin/zsh",
+    "-lc",
+    "uv run pytest -q tests/unit/test_b649_operational_prediction_loop.py -k test_build_canonical_predraw_consensus_matches_115000087_characterization"
+  ],
+  "stdout": ".                                                                        [100%]\n1 passed, 35 deselected in 0.93s\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:17:23Z",
+  "ended_at": "2026-09-10T09:17:25Z"
+}

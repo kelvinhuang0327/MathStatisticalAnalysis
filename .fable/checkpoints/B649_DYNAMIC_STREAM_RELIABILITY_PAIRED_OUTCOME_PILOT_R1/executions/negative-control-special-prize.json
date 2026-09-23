@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_DYNAMIC_STREAM_RELIABILITY_PAIRED_OUTCOME_PILOT_R1",
+  "execution_id": "negative-control-special-prize",
+  "pid": 51765,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_DYNAMIC_STREAM_RELIABILITY_PAIRED_OUTCOME_PILOT_R1/captures/negative-control-special-prize.json",
+  "started_at": "2026-09-22T06:19:13Z",
+  "ended_at": "2026-09-22T06:19:13Z"
+}

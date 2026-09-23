@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "printf \"canonical\\n\"; rg --files -g AGENTS.md -g AGENTS.override.md /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis; printf \"worktree\\n\"; rg --files -g AGENTS.md -g AGENTS.override.md /Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PR284_CURRENT_MAIN_INTEGRATION_AND_PYRIGHT_RCA_R1"
+  ],
+  "stdout": "canonical\nworktree\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-09-10T09:57:22Z",
+  "ended_at": "2026-09-10T09:57:22Z"
+}

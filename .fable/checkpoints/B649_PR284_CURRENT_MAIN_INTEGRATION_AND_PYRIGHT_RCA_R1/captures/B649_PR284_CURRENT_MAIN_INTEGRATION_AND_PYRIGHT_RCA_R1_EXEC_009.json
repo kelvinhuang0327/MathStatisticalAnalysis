@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/bin/zsh",
+    "-lc",
+    "uv run ruff check src/lottolab/domain/b649_canonical_consensus.py src/lottolab/infrastructure/b649_canonical_forecast_writer.py tests/integration/test_b649_canonical_forecast_materialization.py tests/unit/test_b649_canonical_consensus.py tests/unit/test_b649_canonical_forecast_writer.py tests/unit/test_b649_operational_prediction_loop.py tools/b649_forward_auto_cycle_adapter.py tools/b649_operational_prediction_loop.py tools/materialize_b649_canonical_forecast.py"
+  ],
+  "stdout": "All checks passed!\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:24:03Z",
+  "ended_at": "2026-09-10T09:24:03Z"
+}

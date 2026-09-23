@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "zsh",
+    "-lc",
+    "set -u\ngit -C /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis fetch --no-tags origin refs/heads/main:refs/remotes/origin/main\necho origin_main=$(git -C /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis rev-parse refs/remotes/origin/main)\necho origin_main_tree=$(git -C /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis rev-parse \"refs/remotes/origin/main^{tree}\")\nif test \"$(git -C /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis rev-parse refs/remotes/origin/main)\" = 39bb3bbfae71106ba7eeec61660d7f9c9bddb1a6; then echo required_head=PASS; else echo required_head=FAIL; exit 10; fi\nif test \"$(git -C /Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis rev-parse \"refs/remotes/origin/main^{tree}\")\" = 7086929469b4e97b5a8331b4dc68196e88d91713; then echo required_tree=PASS; else echo required_tree=FAIL; exit 11; fi"
+  ],
+  "stdout": "origin_main=06c1d2861d065189ff77f1a007aee3e5f428116b\norigin_main_tree=2b50074bf5a916725069fbcf2aa0f6ca8c658bfc\nrequired_head=FAIL\n",
+  "stderr": "",
+  "exit_status": 10,
+  "started_at": "2026-09-10T11:47:50Z",
+  "ended_at": "2026-09-10T11:47:53Z"
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_87b30f26835e878a0d5c0056e103d403203d702f/.venv/bin/python",
+    "/Users/kelvin/VibeCoding-WorkSpace/.worktrees/MathStatisticalAnalysis/B649_PRODUCTION_87b30f26835e878a0d5c0056e103d403203d702f/tools/b649_production_cutover.py",
+    "rollback"
+  ],
+  "stdout": "{\"actions\":[{\"name\":\"cutover-lock-acquired\",\"observed_at\":\"2026-09-23T03:17:59.878758Z\",\"path\":\"/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-production-cutover.lock\"}],\"command\":\"rollback\",\"failures\":[\"runtime ownership is not idle: PRESENT\"],\"kill_attempted\":false,\"operation_id\":\"8745224825aa4225a14b43a451c97559\",\"receipt_path\":\"/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/scheduler/b649-production-cutover-receipt.json\",\"status\":\"ROLLBACK_BLOCKED_ACTIVE_CYCLE\",\"task\":\"B649_MANAGED_PRODUCTION_CUTOVER_ENTRYPOINT_R1\"}\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-09-23T03:17:58Z",
+  "ended_at": "2026-09-23T03:18:00Z"
+}

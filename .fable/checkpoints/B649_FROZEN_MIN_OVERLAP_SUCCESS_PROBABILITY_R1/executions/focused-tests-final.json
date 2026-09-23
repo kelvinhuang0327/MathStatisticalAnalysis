@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_FROZEN_MIN_OVERLAP_SUCCESS_PROBABILITY_R1",
+  "execution_id": "focused-tests-final",
+  "pid": 37396,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_FROZEN_MIN_OVERLAP_SUCCESS_PROBABILITY_R1/captures/focused-tests-final.json",
+  "started_at": "2026-09-22T04:18:33Z",
+  "ended_at": "2026-09-22T04:18:34Z"
+}

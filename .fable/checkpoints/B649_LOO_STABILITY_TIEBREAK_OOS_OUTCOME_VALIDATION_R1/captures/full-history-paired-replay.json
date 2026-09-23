@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-m",
+    "lottolab.research.b649_loo_oos_validation",
+    "--database",
+    "/Users/kelvin/Library/Application Support/LottoLab/lottolab.db",
+    "--output",
+    "docs/research/b649-loo-stability-tiebreak-oos-outcome-validation-r1-result.json"
+  ],
+  "stdout": "INSUFFICIENT_EVIDENCE\n",
+  "stderr": "processed 100/2170; paired=0\nprocessed 200/2170; paired=0\nprocessed 300/2170; paired=82\nprocessed 400/2170; paired=174\nprocessed 500/2170; paired=258\nprocessed 600/2170; paired=346\nprocessed 700/2170; paired=443\nprocessed 800/2170; paired=527\nprocessed 900/2170; paired=620\nprocessed 1000/2170; paired=717\nprocessed 1100/2170; paired=815\nprocessed 1200/2170; paired=901\nprocessed 1300/2170; paired=982\nprocessed 1400/2170; paired=1077\nprocessed 1500/2170; paired=1174\nprocessed 1600/2170; paired=1258\nprocessed 1700/2170; paired=1345\nprocessed 1800/2170; paired=1434\nprocessed 1900/2170; paired=1527\nprocessed 2000/2170; paired=1625\nprocessed 2100/2170; paired=1710\n",
+  "exit_status": 0,
+  "started_at": "2026-09-18T10:51:37Z",
+  "ended_at": "2026-09-18T11:02:23Z"
+}

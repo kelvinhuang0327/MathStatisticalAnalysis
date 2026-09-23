@@ -38,8 +38,17 @@ from lottolab.application.use_cases.generate_live_zone_split_bets import (
     build_production_generate_live_zone_split_bets,
 )
 from lottolab.domain.biglotto_full_strategy_catalog import load_full_strategy_catalog
+from lottolab.domain.draws import LotteryType
+from lottolab.evidence.next_draw_recommendation_evidence import (
+    NextDrawRecommendationEvidenceArtifact,
+)
 from lottolab.infrastructure.biglotto_multi_ticket_record_reader import (
     PackagedB649MultiTicketRecordReader,
+)
+from lottolab.infrastructure.causal_history_reader import read_full_causal_history
+from lottolab.infrastructure.next_draw_recommendation_evidence_reader import (
+    NextDrawRecommendationEvidenceUnavailableError,
+    PackagedNextDrawRecommendationEvidenceReader,
 )
 from lottolab.infrastructure.persistence.draw_schema import (
     LocalDataPaths,
@@ -70,6 +79,11 @@ from lottolab.interfaces.api.live_zone_split import create_live_zone_split_route
 from lottolab.interfaces.api.multiwindow_success_windows import (
     create_multiwindow_success_windows_router,
 )
+from lottolab.interfaces.api.next_draw_recommendation import (
+    CausalHistoryFactory as NextDrawRecommendationCausalHistoryFactory,
+    NextDrawEvidenceArtifactFactory,
+    create_next_draw_recommendation_router,
+)
 from lottolab.interfaces.api.p638_historical import create_p638_historical_router
 from lottolab.interfaces.api.replay_execution import (
     ReplayExecutor,
@@ -87,6 +101,7 @@ from lottolab.interfaces.api.strategy_catalog import (
 )
 from lottolab.interfaces.api.strategy_evidence import create_strategy_evidence_router
 from lottolab.interfaces.api.t539_historical import create_t539_historical_router
+from lottolab.strategies.adapters.base import CausalDrawRow
 from lottolab.strategies.catalog import StrategyCatalog, production_catalog
 
 LocalDataPathsProvider = Callable[[], LocalDataPaths]
@@ -128,6 +143,12 @@ def create_app(
     p638_multiwindow_success_source_reader_factory: (
         MultiWindowSuccessSourceReaderFactory | None
     ) = None,
+    next_draw_recommendation_evidence_factory: (
+        NextDrawEvidenceArtifactFactory | None
+    ) = None,
+    next_draw_recommendation_causal_history_factory: (
+        NextDrawRecommendationCausalHistoryFactory | None
+    ) = None,
 ) -> FastAPI:
     app = FastAPI(title="LottoLab API", version="0.1.0")
     resolved_catalog = catalog if catalog is not None else production_catalog()
@@ -151,6 +172,31 @@ def create_app(
         b649_multi_ticket_record_reader_factory
         if b649_multi_ticket_record_reader_factory is not None
         else PackagedB649MultiTicketRecordReader
+    )
+
+    def _default_next_draw_recommendation_evidence_factory() -> (
+        NextDrawRecommendationEvidenceArtifact | None
+    ):
+        try:
+            return PackagedNextDrawRecommendationEvidenceReader().read()
+        except NextDrawRecommendationEvidenceUnavailableError:
+            return None
+
+    resolved_next_draw_recommendation_evidence_factory = (
+        next_draw_recommendation_evidence_factory
+        if next_draw_recommendation_evidence_factory is not None
+        else _default_next_draw_recommendation_evidence_factory
+    )
+
+    def _default_next_draw_recommendation_causal_history_factory(
+        lottery_type: LotteryType,
+    ) -> tuple[CausalDrawRow, ...]:
+        return read_full_causal_history(resolved_paths_provider(), lottery_type)
+
+    resolved_next_draw_recommendation_causal_history_factory = (
+        next_draw_recommendation_causal_history_factory
+        if next_draw_recommendation_causal_history_factory is not None
+        else _default_next_draw_recommendation_causal_history_factory
     )
 
     def repository_factory() -> SQLiteDrawDataRepository:
@@ -232,6 +278,13 @@ def create_app(
         create_multiwindow_success_windows_router(
             t539_multiwindow_success_source_reader_factory,
             p638_multiwindow_success_source_reader_factory,
+        )
+    )
+    app.include_router(
+        create_next_draw_recommendation_router(
+            resolved_catalog,
+            resolved_next_draw_recommendation_evidence_factory,
+            resolved_next_draw_recommendation_causal_history_factory,
         )
     )
 

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "forecast=/Users/kelvin/VibeCoding-WorkSpace/.task-data/B649_OPERATIONAL_PREDICTION_LOOP_R1/forecasts/115000087/B649_11_STREAM_EQUAL_WEIGHT_NUMBER_CONSENSUS/1.0.0/final_forecast_payload.json; actual=$(shasum -a 256 \"$forecast\" | awk '{print $1}'); printf \"IMMUTABLE_FORECAST_SHA256 %s\\n\" \"$actual\"; test \"$actual\" = 6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c; printf \"CHANGED_PATHS_FROM_777\\n\"; git diff --name-only 7777379beeaf211776a3d52f9d81ce63dcfa2945 HEAD; printf \"WORKTREE_STATUS\\n\"; git status --short; printf \"CONTRACT_ASSERTION_LOCATIONS\\n\"; rg -n \"descriptive_top6.*\\[1, 4, 18, 25, 26, 29\\]|final_recommended_output.*\\[4, 12, 24, 25, 26, 29\\]|target_result_used.*False|test_outcome_key_in_any_frozen_input_is_rejected\" tests/unit/test_b649_operational_prediction_loop.py tests/integration/test_b649_canonical_forecast_materialization.py"
+  ],
+  "stdout": "IMMUTABLE_FORECAST_SHA256 6290813f8bc7669425fb106a576499bcf5d2d48162e5d05bebdcf6a575a2fe3c\nCHANGED_PATHS_FROM_777\nsrc/lottolab/domain/b649_canonical_consensus.py\ntests/integration/test_b649_canonical_forecast_materialization.py\nWORKTREE_STATUS\nCONTRACT_ASSERTION_LOCATIONS\ntests/integration/test_b649_canonical_forecast_materialization.py:89:    assert result.payload[\"target_result_used\"] is False\ntests/integration/test_b649_canonical_forecast_materialization.py:129:            \"descriptive_top6\": [1, 4, 18, 25, 26, 29],\ntests/integration/test_b649_canonical_forecast_materialization.py:157:    assert diagnostic.payload[\"target_result_used\"] is False\ntests/integration/test_b649_canonical_forecast_materialization.py:268:def test_outcome_key_in_any_frozen_input_is_rejected(tmp_path: Path) -> None:\ntests/unit/test_b649_operational_prediction_loop.py:1176:    assert result[\"descriptive_top6\"] == [1, 4, 18, 25, 26, 29]\ntests/unit/test_b649_operational_prediction_loop.py:1180:    assert result[\"target_result_used\"] is False\ntests/unit/test_b649_operational_prediction_loop.py:1261:    assert result[\"target_result_used\"] is False\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T10:01:59Z",
+  "ended_at": "2026-09-10T10:02:00Z"
+}

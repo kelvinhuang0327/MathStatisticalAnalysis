@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "command": [
+    "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.venv/bin/python",
+    "-B",
+    "-c",
+    "import pytest; from tools import evaluate_b649_dynamic_weighting_paired_outcome_pilot as p; original = p.resolve_big_lotto_prize_tier; p.resolve_big_lotto_prize_tier = lambda hits, special: p.NoPrizeResult.NO_PRIZE if hits == 2 else original(hits, special); raise SystemExit(pytest.main([\"-q\", \"-p\", \"no:cacheprovider\", \"tests/unit/test_b649_dynamic_weighting_paired_outcome_pilot.py\", \"-k\", \"SEVENTH\"]))"
+  ],
+  "stdout": "F                                                                        [100%]\n=================================== FAILURES ===================================\n_____________ test_official_known_answers[ticket6-2-True-SEVENTH] ______________\n\nticket = (1, 2, 7, 8, 9, 10), hits = 2, special = True, tier = 'SEVENTH'\n\n    @pytest.mark.parametrize(\n        (\"ticket\", \"hits\", \"special\", \"tier\"),\n        [\n            ((1, 2, 3, 4, 5, 6), 6, False, \"FIRST\"),\n            ((1, 2, 3, 4, 5, 7), 5, True, \"SECOND\"),\n            ((1, 2, 3, 4, 5, 8), 5, False, \"THIRD\"),\n            ((1, 2, 3, 4, 7, 8), 4, True, \"FOURTH\"),\n            ((1, 2, 3, 4, 8, 9), 4, False, \"FIFTH\"),\n            ((1, 2, 3, 7, 8, 9), 3, True, \"SIXTH\"),\n            ((1, 2, 7, 8, 9, 10), 2, True, \"SEVENTH\"),\n            ((1, 2, 3, 8, 9, 10), 3, False, \"GENERAL\"),\n            ((1, 2, 8, 9, 10, 11), 2, False, \"NO_PRIZE\"),\n            ((1, 7, 8, 9, 10, 11), 1, True, \"NO_PRIZE\"),\n        ],\n    )\n    def test_official_known_answers(\n        ticket: tuple[int, ...],\n        hits: int,\n        special: bool,\n        tier: str,\n    ) -> None:\n        actual = pilot.score(ticket, outcome())\n>       assert (actual.main_hits, actual.special_hit, actual.prize_tier) == (hits, special, tier)\nE       AssertionError: assert (2, True, 'NO_PRIZE') == (2, True, 'SEVENTH')\nE         \nE         At index 2 diff: 'NO_PRIZE' != 'SEVENTH'\nE         Use -v to get more diff\n\ntests/unit/test_b649_dynamic_weighting_paired_outcome_pilot.py:57: AssertionError\n=========================== short test summary info ============================\nFAILED tests/unit/test_b649_dynamic_weighting_paired_outcome_pilot.py::test_official_known_answers[ticket6-2-True-SEVENTH]\n1 failed, 14 deselected in 0.04s\n",
+  "stderr": "",
+  "exit_status": 1,
+  "started_at": "2026-09-22T06:19:13Z",
+  "ended_at": "2026-09-22T06:19:13Z"
+}

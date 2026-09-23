@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_CUTOVER_PROTECTED_WRAPPER_ANCESTOR_OWNERSHIP_REPAIR_R1",
+  "execution_id": "draft-pr-39959602c1ce9ac2",
+  "pid": 33237,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_CUTOVER_PROTECTED_WRAPPER_ANCESTOR_OWNERSHIP_REPAIR_R1/captures/draft-pr-39959602c1ce9ac2.json",
+  "started_at": "2026-09-23T04:12:30Z",
+  "ended_at": "2026-09-23T04:12:33Z"
+}

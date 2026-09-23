@@ -55,6 +55,7 @@ _ALLOWED_OPENAPI_OPERATIONS = {
     "/api/v1/ingestion-runs/{run_id}": frozenset({"get"}),
     "/api/v1/generate-bet": frozenset({"post"}),
     "/api/v1/live-zone-split-bets": frozenset({"post"}),
+    "/api/v1/next-draw-recommendation": frozenset({"get"}),
     "/api/v1/historical-results/runs": frozenset({"get"}),
     "/api/v1/historical-results/runs/{run_id}/strategies": frozenset({"get"}),
     "/api/v1/historical-results/runs/{run_id}/replay": frozenset({"get"}),

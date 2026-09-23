@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_LOO_STABILITY_TIEBREAK_OOS_OUTCOME_VALIDATION_R1",
+  "execution_id": "full-history-paired-replay",
+  "pid": 37146,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_LOO_STABILITY_TIEBREAK_OOS_OUTCOME_VALIDATION_R1/captures/full-history-paired-replay.json",
+  "started_at": "2026-09-18T10:51:37Z",
+  "ended_at": "2026-09-18T11:02:23Z"
+}

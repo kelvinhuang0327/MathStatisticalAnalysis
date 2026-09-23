@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "command": [
+    "gh",
+    "pr",
+    "create",
+    "--draft",
+    "--base",
+    "main",
+    "--head",
+    "codex/b649-protected-wrapper-ownership-repair-r1",
+    "--title",
+    "fix(b649): exclude protected cutover wrapper ownership",
+    "--body",
+    "Repairs B649 runtime ownership detection for protected task_checkpoint.rb --run ancestors. Adds ancestor-only and positive-owner/fail-closed regressions, including hermetic rollback gating. Focused pytest passed (230 tests); Ruff, Pyright, and git diff check passed. No production mutation."
+  ],
+  "stdout": "https://github.com/kelvinhuang0327/MathStatisticalAnalysis/pull/322\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-23T04:12:30Z",
+  "ended_at": "2026-09-23T04:12:33Z"
+}

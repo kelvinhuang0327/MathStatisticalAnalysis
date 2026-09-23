@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "git status --short; git rev-parse HEAD; git rev-parse HEAD^{tree}; git diff --name-only 7777379beeaf211776a3d52f9d81ce63dcfa2945 831e66fb54f52914dc68c757e1dc71223a51d172 -- src/lottolab/domain/b649_canonical_consensus.py tests/integration/test_b649_canonical_forecast_materialization.py"
+  ],
+  "stdout": "7777379beeaf211776a3d52f9d81ce63dcfa2945\n4a088f48d152c2dda546d18ac93e2b1aa39ea590\nsrc/lottolab/domain/b649_canonical_consensus.py\ntests/integration/test_b649_canonical_forecast_materialization.py\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:58:48Z",
+  "ended_at": "2026-09-10T09:58:48Z"
+}

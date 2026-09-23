@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "command": [
+    "sh",
+    "-c",
+    "before=$(git status --porcelain=v1; git rev-parse HEAD; git rev-parse HEAD^{tree}); sleep 5; after=$(git status --porcelain=v1; git rev-parse HEAD; git rev-parse HEAD^{tree}); printf \"BEFORE\\n%s\\nAFTER\\n%s\\n\" \"$before\" \"$after\""
+  ],
+  "stdout": "BEFORE\n7777379beeaf211776a3d52f9d81ce63dcfa2945\n4a088f48d152c2dda546d18ac93e2b1aa39ea590\nAFTER\n7777379beeaf211776a3d52f9d81ce63dcfa2945\n4a088f48d152c2dda546d18ac93e2b1aa39ea590\n",
+  "stderr": "",
+  "exit_status": 0,
+  "started_at": "2026-09-10T09:56:16Z",
+  "ended_at": "2026-09-10T09:56:22Z"
+}

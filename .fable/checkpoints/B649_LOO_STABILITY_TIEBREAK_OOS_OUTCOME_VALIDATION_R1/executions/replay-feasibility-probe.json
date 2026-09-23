@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_LOO_STABILITY_TIEBREAK_OOS_OUTCOME_VALIDATION_R1",
+  "execution_id": "replay-feasibility-probe",
+  "pid": 35758,
+  "status": "COMPLETED",
+  "durable_capture_path": "/Users/kelvin/VibeCoding-WorkSpace/MathStatisticalAnalysis/.fable/checkpoints/B649_LOO_STABILITY_TIEBREAK_OOS_OUTCOME_VALIDATION_R1/captures/replay-feasibility-probe.json",
+  "started_at": "2026-09-18T10:47:08Z",
+  "ended_at": "2026-09-18T10:47:09Z"
+}

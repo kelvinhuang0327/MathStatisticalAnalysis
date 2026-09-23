@@ -3,9 +3,9 @@
 Under a fair BIG_LOTTO draw every single ticket has the same OFFICIAL_ANY_PRIZE
 probability (``7729/249711``), so no ticket beats another one-for-one. What a
 K-ticket set does change is how much its tickets overlap, and with it
-P(at least one ticket wins). K10 and K20 are the frozen HARD_DIV pairwise-overlap
-radius2 authorities for sealed-geometry v2; K5 is the best-known disjoint
-construction. They
+P(at least one ticket wins). K10 remains the frozen HARD_DIV pairwise-overlap
+radius2 authority from sealed-geometry v2; K20 is its direct OFFICIAL_ANY_PRIZE
+terminal successor in v3. K5 is the best-known disjoint construction. They
 carry no predictive signal: they do not depend on the target draw, the
 prediction streams, or any historical outcome. Their probabilities are exact
 counts over the full outcome space, verified by
@@ -29,7 +29,7 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
-SEALED_GEOMETRY_METHOD_VERSION: Final = "2.0.0"
+SEALED_GEOMETRY_METHOD_VERSION: Final = "3.0.0"
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -123,8 +123,7 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(536005, 1827672),
 )
 
-# Frozen HARD_DIV pairwise-overlap radius2 authority selected by the canonical
-# OFFICIAL_ANY_PRIZE frontier for sealed-geometry v2.
+# Direct OFFICIAL_ANY_PRIZE terminal successor to sealed-geometry v2.
 _K20 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
@@ -133,7 +132,7 @@ _K20 = SealedGeometryPortfolio(
         (2, 5, 33, 35, 40, 48),
         (3, 4, 6, 10, 15, 23),
         (3, 9, 12, 16, 29, 39),
-        (3, 13, 14, 20, 36, 44),
+        (3, 13, 14, 28, 36, 44),
         (4, 7, 11, 16, 24, 47),
         (4, 8, 26, 31, 37, 39),
         (5, 17, 25, 27, 36, 41),
@@ -149,15 +148,15 @@ _K20 = SealedGeometryPortfolio(
         (22, 27, 35, 45, 47, 49),
         (27, 32, 38, 40, 42, 43),
     ),
-    portfolio_sha256="9a802a103f79948f2345e51f4746860236857f18beece22fe444886cde9d3424",
-    source_id="HARD_DIV_PAIRWISE_OVERLAP_R1_K20_RADIUS2",
+    portfolio_sha256="242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+    source_id="B649_SEALED_V2_DIRECT_OFFICIAL_ANY_PRIZE_ITERATIVE_ASCENT_R1_TERMINAL_K20",
     source_locator=(
         "docs/research/matrix-native-results/"
-        "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
+        "b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json"
     ),
-    source_sha256="5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e",
-    m3_plus_probability=Fraction(1601841, 4661272),
-    official_any_prize_probability=Fraction(22345625, 42950292),
+    source_sha256="d52b693cebd00be57d8be0ab6db7fad78138d439e45a1a0ba424e4805074392b",
+    m3_plus_probability=Fraction(1601861, 4661272),
+    official_any_prize_probability=Fraction(7448829, 14316764),
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(

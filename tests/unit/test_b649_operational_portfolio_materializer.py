@@ -124,7 +124,7 @@ def test_materializes_sealed_geometry_buckets_and_preserves_pre_outcome_provenan
     assert result.status == "CREATED"
     assert payload["schema_version"] == PORTFOLIO_SCHEMA_VERSION
     assert payload["portfolio_method_id"] == "B649_SEALED_GEOMETRY_PORTFOLIO"
-    assert payload["portfolio_method_version"] == "2.0.0"
+    assert payload["portfolio_method_version"] == "3.0.0"
     provenance = cast(dict[str, dict[str, object]], payload["geometry_provenance"])
     for size in (5, 10, 20):
         entry = SEALED_GEOMETRY_PORTFOLIOS[size]

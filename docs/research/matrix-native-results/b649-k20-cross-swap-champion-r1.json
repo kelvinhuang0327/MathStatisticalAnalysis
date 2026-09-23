@@ -1,0 +1,227 @@
+{
+  "TASK_ID": "B649_K20_BONFERRONI_FILTERED_EXHAUSTIVE_2TICKET_CROSS_SWAP_R1",
+  "EXECUTION_ID": "B649_K20_2TICKET_CROSS_SWAP_SEALED_AE1CC3F_R2",
+  "UPSTREAM_RESULT_SHA256": "aaed1323c76615127861a09f5560f9c5eb41bf5e30e803ccab1b435e11949b30",
+  "UPSTREAM_CHECKPOINT_SHA256": "c0c423310f5627f048f86e8ea84165df1b49630ef8f999a9fd45ea7f59bbcb57",
+  "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-bonferroni-filtered-exhaustive-2ticket-cross-swap-r1/MathStatisticalAnalysis/.task-data/B649_K20_BONFERRONI_FILTERED_EXHAUSTIVE_2TICKET_CROSS_SWAP_R1/B649_K20_2TICKET_CROSS_SWAP_LOCAL_R1/sealed-rerun-ae1cc3f-r2/",
+  "CANONICAL_BASE_HEAD": "ae1cc3fdb217ca0821bbdb03dc0264e7fb8c4dfb",
+  "CANONICAL_BASE_TREE": "b1810f926d9cc139e4aff77d27367da81609c2c6",
+  "INCUMBENT_METHOD_ID": "B649_K20_2TICKET_CROSS_SWAP_LOCAL_R1",
+  "INCUMBENT_METHOD_VERSION": "1.0.0",
+  "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+  "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+  "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+  "TERMINAL_K20_PORTFOLIO_SHA256": "220450a945b54c87a29ff1b60cd46e6a0a93e12718b288ca517986d190b0b93c",
+  "INITIAL_K20_OUTCOME_COUNT": 312850818,
+  "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+  "TERMINAL_K20_OUTCOME_COUNT": 312859106,
+  "TERMINAL_K20_EXACT_PROBABILITY": "22347079/42950292",
+  "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+  "TERMINAL_M3_PLUS_DRAW_COUNT": 4805642,
+  "TERMINAL_M3_PLUS_MAIN_DRAW_COUNT": 13983816,
+  "TERMINAL_M3_PLUS_PROBABILITY": "2402821/6991908",
+  "TOTAL_DELTA_OUTCOME_COUNT": 8288,
+  "TOTAL_DELTA_PP": 1.378337544247662e-05,
+  "TOTAL_DELTA_PP_EXACT": "296/21475146",
+  "ACCEPTED_MOVE": {
+    "TICKET_A_BEFORE": [
+      12,
+      13,
+      15,
+      19,
+      24,
+      32
+    ],
+    "TICKET_A_AFTER": [
+      12,
+      13,
+      15,
+      19,
+      24,
+      37
+    ],
+    "TICKET_B_BEFORE": [
+      18,
+      20,
+      24,
+      29,
+      37,
+      46
+    ],
+    "TICKET_B_AFTER": [
+      18,
+      20,
+      24,
+      29,
+      32,
+      46
+    ],
+    "SWAPPED_FROM_A": 32,
+    "SWAPPED_FROM_B": 37
+  },
+  "FINAL_EXACT_RECOMPUTE": "PASS",
+  "TERMINAL_TICKETS": [
+    [
+      1,
+      2,
+      34,
+      41,
+      42,
+      45
+    ],
+    [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+    ],
+    [
+      2,
+      5,
+      33,
+      35,
+      40,
+      48
+    ],
+    [
+      3,
+      4,
+      6,
+      10,
+      15,
+      23
+    ],
+    [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+    ],
+    [
+      3,
+      13,
+      14,
+      28,
+      36,
+      44
+    ],
+    [
+      4,
+      7,
+      11,
+      16,
+      24,
+      47
+    ],
+    [
+      4,
+      8,
+      26,
+      31,
+      37,
+      39
+    ],
+    [
+      5,
+      17,
+      25,
+      27,
+      36,
+      41
+    ],
+    [
+      6,
+      7,
+      9,
+      13,
+      18,
+      26
+    ],
+    [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+    ],
+    [
+      8,
+      9,
+      11,
+      15,
+      20,
+      28
+    ],
+    [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+    ],
+    [
+      12,
+      13,
+      15,
+      19,
+      24,
+      37
+    ],
+    [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+    ],
+    [
+      17,
+      21,
+      34,
+      40,
+      44,
+      49
+    ],
+    [
+      18,
+      20,
+      24,
+      29,
+      32,
+      46
+    ],
+    [
+      21,
+      25,
+      30,
+      38,
+      45,
+      48
+    ],
+    [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+    ],
+    [
+      27,
+      32,
+      38,
+      40,
+      42,
+      43
+    ]
+  ],
+  "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+  "OUTCOME_FIELDS_USED": "NO"
+}

@@ -9,8 +9,10 @@ import hashlib
 import json
 import os
 import plistlib
+import shutil
 import stat
 import subprocess
+import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -341,6 +343,69 @@ def test_fake_launchd_rejects_bootstrap_while_disabled(fixture: Fixture) -> None
     assert result.stderr == "service is disabled"
     assert runner.loaded is False
     assert runner.enabled is False
+
+
+def test_source_validation_fsmonitor_metadata_is_passive_before_ownership_snapshot(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    git_admin = fixture.canonical / ".git" / "worktrees" / fixture.new.name
+    git_admin.mkdir(parents=True)
+    (git_admin / "index").touch()
+    (fixture.new / ".git").write_text(f"gitdir: {git_admin}\n", encoding="utf-8")
+    fsmonitor_pid = 424243
+    status_call = (
+        "git",
+        "--no-optional-locks",
+        "-C",
+        str(fixture.new),
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+    )
+
+    def runner_after_source_validation(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        result = runner(argv)
+        if tuple(argv) == status_call:
+            runner.process_rows.append(
+                f"{fsmonitor_pid} 1 {UID} S git fsmonitor--daemon run"
+            )
+            runner.file_rows.extend(
+                [
+                    f"p{fsmonitor_pid}",
+                    "fcwd",
+                    "n/tmp",
+                    "ftxt",
+                    "n/usr/bin/git",
+                    "f3",
+                    f"n{git_admin / 'index'}",
+                ]
+            )
+        return result
+
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    ownership_snapshot = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_ownership_snapshot"]
+    )
+    source = validate_source(
+        fixture.config,
+        runner_after_source_validation,
+        role="new",
+        expected_head=NEW_HEAD,
+        expected_tree=NEW_TREE,
+        expected_ref=fixture.config.durable_ref,
+    )
+    assert any(row.startswith(f"{fsmonitor_pid} ") for row in runner.process_rows)
+
+    ownership = ownership_snapshot(fixture.config, runner_after_source_validation, source)
+
+    runtime = _object(ownership["runtime"])
+    process_calls = runner.calls
+    assert process_calls.index(status_call) < process_calls.index(
+        ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command=")
+    )
+    assert runtime["classification"] == "ABSENT"
+    assert runtime["pids"] == []
 
 
 def _assert_business_state_unchanged(fixture: Fixture) -> None:
@@ -826,10 +891,13 @@ def test_plan_blocks_missing_or_malformed_process_state(fixture: Fixture, state:
 def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
     fixture: Fixture,
 ) -> None:
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    git_executable = str(Path(git_executable).resolve(strict=True))
     runner = FakeLaunchd(fixture)
     runner.process_rows = [
         (
-            f"10793 1 {UID} S /Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+            f"10793 1 {UID} S {git_executable} "
             "fsmonitor--daemon run --detach --ipc-threads=8"
         )
     ]
@@ -837,6 +905,10 @@ def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
         "p10793",
         "fcwd",
         "n/Users/kelvin",
+        "ftxt",
+        f"n{git_executable}",
+        "ftxt",
+        f"n{sys.executable}",
         "f4",
         f"n{fixture.old}",
     ]

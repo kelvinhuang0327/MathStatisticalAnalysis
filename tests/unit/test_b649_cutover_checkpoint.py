@@ -6,6 +6,7 @@ import hashlib
 import json
 import os
 import plistlib
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -28,6 +29,12 @@ DOMAIN = "gui/501"
 HEALTH_SCHEMA = "b649-goalc-local-scheduler-health-v1"
 
 
+def _git_executable_path() -> str:
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    return str(Path(git_executable).resolve(strict=True))
+
+
 @dataclass
 class Harness:
     root: Path
@@ -43,6 +50,7 @@ class Harness:
         default_factory=lambda: ["900001 1 501 S /usr/bin/fixture-shell"]
     )
     file_rows: list[str] = field(default_factory=lambda: ["p900001", "fcwd", "n/fixture-home"])
+    rollback_path: Path | None = None
 
     @property
     def successor(self) -> Path:
@@ -50,7 +58,13 @@ class Harness:
 
     @property
     def rollback(self) -> Path:
-        return self.root / "rollback"
+        return self.rollback_path or self.root / "rollback"
+
+    def use_production_rollback_worktree(self, head: str = OLD_HEAD) -> Path:
+        target = self.root / f"B649_PRODUCTION_{head}"
+        target.mkdir()
+        self.rollback_path = target
+        return target
 
     @property
     def backup(self) -> Path:
@@ -214,13 +228,19 @@ class Harness:
         cwd: str | None = "/fixture-home",
         ppid: int = 1,
         files: Sequence[str] = (),
+        executable_file: str | None = None,
+        additional_executable_files: Sequence[str] = (),
     ) -> int:
         pid = 900001 + len(self.process_rows)
         self.process_rows.append(f"{pid} {ppid} 501 {state} {command}")
-        if cwd is not None or files:
+        if cwd is not None or files or executable_file is not None or additional_executable_files:
             self.file_rows.append(f"p{pid}")
         if cwd is not None:
             self.file_rows.extend(["fcwd", f"n{cwd}"])
+        if executable_file is not None:
+            self.file_rows.extend(["ftxt", f"n{executable_file}"])
+        for path in additional_executable_files:
+            self.file_rows.extend(["ftxt", f"n{path}"])
         for path in files:
             self.file_rows.extend(["f3", f"n{path}"])
         return pid
@@ -606,6 +626,15 @@ def _protected_task_checkpoint_command(harness: Harness, *, run: bool = True) ->
     )
 
 
+def _target_git_admin_metadata(harness: Harness) -> tuple[Path, Path]:
+    target = harness.use_production_rollback_worktree()
+    git_admin = harness.root / ".git" / "worktrees" / target.name
+    git_admin.mkdir(parents=True)
+    (git_admin / "index").touch()
+    (target / ".git").write_text(f"gitdir: {git_admin}\n", encoding="utf-8")
+    return target, git_admin
+
+
 def _add_protected_task_checkpoint_ancestor(
     harness: Harness,
     monkeypatch: pytest.MonkeyPatch,
@@ -673,7 +702,14 @@ def test_non_ancestor_task_checkpoint_run_remains_runtime_owner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     harness.loaded = False
+    target, git_admin = _target_git_admin_metadata(harness)
     wrapper_pid = harness.add_process(_protected_task_checkpoint_command(harness))
+    fsmonitor_pid = harness.add_process(
+        "git fsmonitor--daemon run",
+        ppid=1,
+        files=[str(git_admin / "index")],
+        executable_file="/usr/bin/git",
+    )
     monkeypatch.setattr(checkpoint.os, "getpid", lambda: 990002)
     monkeypatch.setattr(checkpoint.os, "getppid", lambda: 990003)
 
@@ -682,6 +718,9 @@ def test_non_ancestor_task_checkpoint_run_remains_runtime_owner(
     assert code == 1
     runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
     assert wrapper_pid in runtime_pids
+    assert fsmonitor_pid not in runtime_pids
+    assert target == harness.rollback
+
 
 
 def test_task_checkpoint_ancestor_without_run_mode_remains_runtime_owner(
@@ -708,10 +747,17 @@ def test_protected_task_checkpoint_ancestor_does_not_hide_live_scheduler(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     harness.loaded = False
+    _, git_admin = _target_git_admin_metadata(harness)
     wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
     scheduler_pid = harness.add_process(
         f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run",
         ppid=wrapper_pid,
+    )
+    fsmonitor_pid = harness.add_process(
+        "git fsmonitor--daemon run",
+        ppid=wrapper_pid,
+        files=[str(git_admin / "index")],
+        executable_file="/usr/bin/git",
     )
 
     code, result = execute(harness, capsys, "post-unload")
@@ -720,6 +766,8 @@ def test_protected_task_checkpoint_ancestor_does_not_hide_live_scheduler(
     assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
     runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
     assert scheduler_pid in runtime_pids
+    assert fsmonitor_pid not in runtime_pids
+
 
 
 def test_actual_scheduler_ancestor_is_not_exempted_with_wrapper(
@@ -763,6 +811,29 @@ def test_live_runtime_ancestor_still_propagates_through_protected_wrapper(
     assert wrapper_pid in runtime_pids
 
 
+def test_protected_wrapper_fsmonitor_with_owner_lock_remains_present(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    _, git_admin = _target_git_admin_metadata(harness)
+    wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
+    fsmonitor_pid = harness.add_process(
+        "git fsmonitor--daemon run",
+        ppid=wrapper_pid,
+        files=[str(git_admin / "index"), str(harness.root / "primary.lock")],
+        executable_file="/usr/bin/git",
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_primary_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert fsmonitor_pid in runtime_pids
+
+
 @pytest.mark.parametrize("role", ["primary", "shadow"])
 def test_protected_wrapper_with_owner_lock_is_not_exempted(
     harness: Harness,
@@ -789,8 +860,15 @@ def test_protected_task_checkpoint_ancestor_keeps_missing_coverage_fail_closed(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     harness.loaded = False
+    _, git_admin = _target_git_admin_metadata(harness)
     wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
     harness.add_process("python live-but-unobserved.py", cwd=None, ppid=wrapper_pid)
+    fsmonitor_pid = harness.add_process(
+        "git fsmonitor--daemon run",
+        ppid=wrapper_pid,
+        files=[str(git_admin / "index")],
+        executable_file="/usr/bin/git",
+    )
 
     code, result = execute(harness, capsys, "post-unload")
 
@@ -798,6 +876,8 @@ def test_protected_task_checkpoint_ancestor_keeps_missing_coverage_fail_closed(
     runtime = observation(result, "old_runtime_ownership")
     assert runtime["classification"] == "UNVERIFIABLE"
     assert runtime["process_classification"] == "UNVERIFIABLE"
+    assert fsmonitor_pid not in cast(list[int], runtime["pids"])
+
 
 
 def test_protected_task_checkpoint_ancestor_preserves_passive_fsmonitor_exemption(
@@ -806,44 +886,184 @@ def test_protected_task_checkpoint_ancestor_preserves_passive_fsmonitor_exemptio
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     harness.loaded = False
+    _, git_admin = _target_git_admin_metadata(harness)
     wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
     harness.add_process(
         "git fsmonitor--daemon run",
         ppid=wrapper_pid,
-        files=[str(harness.rollback)],
+        files=[str(git_admin / "index")],
+        executable_file="/usr/bin/git",
     )
 
     code, result = execute(harness, capsys, "post-unload")
 
-    assert code == 0, result
     runtime = observation(result, "old_runtime_ownership")
+    assert code == 0, result
     assert runtime["classification"] == "ABSENT"
     assert runtime["pids"] == []
 
 
+
 @pytest.mark.parametrize(
-    "cmd",
-    [
-        (
-            "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
-            "fsmonitor--daemon run --detach --ipc-threads=8"
-        ),
-        "git fsmonitor--daemon run",
-        "/usr/bin/git fsmonitor--daemon start --detach",
-        "/usr/libexec/git-core/git-fsmonitor--daemon run",
-        "git -C /Users/kelvin fsmonitor--daemon run",
-    ],
+    "command_style", ["absolute_git", "bare_git", "git_start", "git_c"]
 )
 def test_passive_git_fsmonitor_is_excluded_from_runtime_ownership(
-    harness: Harness, capsys: pytest.CaptureFixture[str], cmd: str
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    command_style: str,
 ) -> None:
+    git_executable = _git_executable_path()
+    command, executable_file = {
+        "absolute_git": (
+            f"{git_executable} fsmonitor--daemon run --detach --ipc-threads=8",
+            git_executable,
+        ),
+        "bare_git": ("git fsmonitor--daemon run", git_executable),
+        "git_start": (
+            f"{git_executable} fsmonitor--daemon start --detach",
+            git_executable,
+        ),
+        "git_c": ("git -C /Users/kelvin fsmonitor--daemon run", git_executable),
+    }[command_style]
     harness.loaded = False
-    harness.add_process(cmd, files=[str(harness.rollback)])
+    harness.add_process(
+        command, files=[str(harness.rollback)], executable_file=executable_file
+    )
     code, result = execute(harness, capsys, "post-unload")
     assert code == 0, result
     obs = observation(result, "old_runtime_ownership")
     assert obs["classification"] == "ABSENT"
     assert obs["pids"] == []
+
+
+
+def test_passive_fsmonitor_allows_auxiliary_system_txt_mapping(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    harness.add_process(
+        "/usr/bin/git fsmonitor--daemon run",
+        files=[str(harness.rollback)],
+        executable_file="/usr/bin/git",
+        additional_executable_files=(sys.executable,),
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 0, result
+    assert observation(result, "old_runtime_ownership")["classification"] == "ABSENT"
+
+
+@pytest.mark.parametrize("include_direct_worktree", [False, True])
+@pytest.mark.parametrize(
+    ("command", "executable_file"),
+    [
+        ("git fsmonitor--daemon run", "/usr/bin/git"),
+        ("/usr/bin/git fsmonitor--daemon run", "/usr/bin/git"),
+    ],
+)
+def test_passive_git_fsmonitor_ignores_target_git_metadata_head(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    include_direct_worktree: bool,
+    command: str,
+    executable_file: str,
+) -> None:
+    harness.loaded = False
+    target = harness.use_production_rollback_worktree()
+    git_admin = harness.root / ".git" / "worktrees" / target.name
+    git_admin.mkdir(parents=True)
+    (git_admin / "index").touch()
+    (target / ".git").write_text(f"gitdir: {git_admin}\n", encoding="utf-8")
+    files = [str(git_admin / "index")]
+    if include_direct_worktree:
+        files.append(str(target))
+    harness.add_process(command, files=files, executable_file=executable_file)
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    obs = observation(result, "old_runtime_ownership")
+    assert obs["classification"] == "ABSENT", result
+    assert obs["pids"] == []
+    assert code == 0, result
+
+
+def test_untrusted_absolute_git_with_target_metadata_remains_runtime_owner(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    _, git_admin = _target_git_admin_metadata(harness)
+    pid = harness.add_process(
+        "/tmp/untrusted-bin/git fsmonitor--daemon run",
+        files=[str(git_admin / "index")],
+        executable_file="/tmp/untrusted-bin/git",
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "PRESENT"
+    assert runtime["pids"] == [pid]
+
+
+def test_fsmonitor_metadata_with_matching_name_but_wrong_gitdir_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    target, _ = _target_git_admin_metadata(harness)
+    unrelated_git_admin = harness.root / "unrelated-repo" / ".git" / "worktrees" / target.name
+    unrelated_git_admin.mkdir(parents=True)
+    (unrelated_git_admin / "index").touch()
+    pid = harness.add_process(
+        "git fsmonitor--daemon run",
+        files=[str(unrelated_git_admin / "index")],
+        executable_file="/usr/bin/git",
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "PRESENT"
+    assert runtime["pids"] == [pid]
+
+
+def test_head_token_in_fsmonitor_command_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    target = harness.use_production_rollback_worktree()
+    pid = harness.add_process(
+        f"git fsmonitor--daemon run --head {OLD_HEAD}",
+        files=[str(target)],
+        executable_file="/usr/bin/git",
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "PRESENT"
+    assert pid in cast(list[int], runtime["pids"])
+
+
+def test_fsmonitor_executable_inside_target_worktree_is_not_exempt(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    target = harness.use_production_rollback_worktree()
+    pid = harness.add_process(
+        f"{target}/git fsmonitor--daemon run",
+        files=[str(target)],
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "PRESENT"
+    assert pid in cast(list[int], runtime["pids"])
 
 
 def test_real_scheduler_owner_process_is_present(
@@ -941,24 +1161,75 @@ def test_unverifiable_fail_closed_remains_unverifiable(
     assert observation(result, "old_runtime_ownership")["classification"] == "UNVERIFIABLE"
 
 
-def test_is_git_fsmonitor_command_boundaries() -> None:
-    assert checkpoint.is_git_fsmonitor_command(
-        "/Library/Developer/CommandLineTools/usr/libexec/git-core/git "
-        "fsmonitor--daemon run --detach --ipc-threads=8"
+def test_is_git_fsmonitor_command_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    git_executable = _git_executable_path()
+    mac_git_core = Path(
+        "/Library/Developer/CommandLineTools/usr/libexec/git-core"
     )
-    assert checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon run")
-    assert checkpoint.is_git_fsmonitor_command("/usr/bin/git fsmonitor--daemon start")
-    assert checkpoint.is_git_fsmonitor_command("/usr/libexec/git-core/git-fsmonitor--daemon run")
-    assert checkpoint.is_git_fsmonitor_command("git -C /some/path fsmonitor--daemon run")
+    mac_git = mac_git_core / "git"
+    mac_git_fsmonitor_executable = mac_git_core / "git-fsmonitor--daemon"
+    untrusted_git = Path("/tmp/untrusted-bin/git")
+    native_resolve = Path.resolve
+    controlled_macos_paths = {
+        mac_git_core,
+        mac_git,
+        mac_git_fsmonitor_executable,
+        untrusted_git,
+    }
+
+    def resolve_with_macos_git_paths(path: Path, strict: bool = False) -> Path:
+        if path in controlled_macos_paths:
+            assert strict
+            return path
+        return native_resolve(path, strict=strict)
+
+    monkeypatch.setattr(Path, "resolve", resolve_with_macos_git_paths)
+
+    assert checkpoint.is_git_fsmonitor_command(
+        f"{git_executable} fsmonitor--daemon run --detach --ipc-threads=8",
+        executable_files=(git_executable,),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        "git fsmonitor--daemon run", executable_files=(git_executable,)
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        "git fsmonitor--daemon run",
+        executable_files=(git_executable, sys.executable),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        f"{git_executable} fsmonitor--daemon start",
+        executable_files=(git_executable,),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        f"{mac_git} fsmonitor--daemon run --detach --ipc-threads=8",
+        executable_files=(str(mac_git),),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        f"{mac_git_fsmonitor_executable} run",
+        executable_files=(str(mac_git_fsmonitor_executable),),
+    )
+    assert checkpoint.is_git_fsmonitor_command(
+        "git -C /some/path fsmonitor--daemon run",
+        executable_files=(git_executable,),
+    )
     assert not checkpoint.is_git_fsmonitor_command("git status")
     assert not checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon status")
     assert not checkpoint.is_git_fsmonitor_command("git fsmonitor--daemon stop")
     assert not checkpoint.is_git_fsmonitor_command("python worker.py --fsmonitor")
-    assert not checkpoint.is_git_fsmonitor_command("fake-git fsmonitor--daemon run")
+    assert not checkpoint.is_git_fsmonitor_command(
+        "fake-git fsmonitor--daemon run", executable_files=("/tmp/fake-git",)
+    )
+    assert not checkpoint.is_git_fsmonitor_command(
+        f"{untrusted_git} fsmonitor--daemon run",
+        executable_files=(str(untrusted_git),),
+    )
     assert not checkpoint.is_git_fsmonitor_command("sh -c 'git fsmonitor--daemon run'")
     assert not checkpoint.is_git_fsmonitor_command(
         "/Users/kelvin/old/git fsmonitor--daemon run", old_worktree="/Users/kelvin/old"
     )
+
 
 
 @pytest.mark.parametrize("failed_job", [False, True])

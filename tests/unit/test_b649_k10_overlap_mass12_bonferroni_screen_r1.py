@@ -7,9 +7,15 @@ import itertools
 from collections import Counter
 from math import comb
 
+import pytest
+
+import lottolab.research.b649_k10_overlap_mass12_bonferroni_screen_r1 as research
 from lottolab.research.b649_k10_overlap_mass12_bonferroni_screen_r1 import (
     _canonicalize_state,
+    _iter_extensions,
+    _owned_prefix_parents,
     _portfolio_from_state,
+    _state_from_key,
     _state_key,
     exact_union_outcome_count,
     incumbent_outcome_count,
@@ -140,3 +146,39 @@ def test_incumbent_threshold_is_an_exact_integer_outcome_count() -> None:
         numerator * outcomes // denominator
     )
     assert outcomes == comb(49, 6) * 43
+
+
+def test_deterministic_parent_shards_reproduce_a_small_full_search(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(research, "TICKET_COUNT", 4)
+
+    def expand_one_stage(class_ids: set[str]) -> set[str]:
+        return {
+            _state_key(_canonicalize_state(child))
+            for class_id in class_ids
+            for child in _iter_extensions(
+                _state_from_key(class_id), target_pair_mass=1, target_triples=0
+            )
+        }
+
+    root_ids = {_state_key((0, (), 0))}
+    split_parent_ids = expand_one_stage(expand_one_stage(root_ids))
+    partitions = [
+        _owned_prefix_parents(sorted(split_parent_ids), family="A", shard_index=index)
+        for index in range(2)
+    ]
+    flattened = [class_id for partition in partitions for class_id in partition]
+    assert len(flattened) == len(set(flattened))
+    assert set(flattened) == split_parent_ids
+
+    full_ids = split_parent_ids
+    for _ in range(2):
+        full_ids = expand_one_stage(full_ids)
+    sharded_ids: set[str] = set()
+    for partition in partitions:
+        shard_ids = set(partition)
+        for _ in range(2):
+            shard_ids = expand_one_stage(shard_ids)
+        sharded_ids.update(shard_ids)
+    assert sharded_ids == full_ids

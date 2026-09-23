@@ -23,8 +23,34 @@
         "family": "A",
         "illegal_duplicate_ticket_count": 55171,
         "legal_count": 279983,
-        "raw_count": 10798311,
-        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_A_stage_10.jsonl"
+        "overlap_class_count_across_shards": 275275,
+        "raw_count": 18662835,
+        "recomputed_prefix_count": 83073,
+        "recomputed_prefix_sha256": "3e39ede3e339140c494f1fd45011fab51d24bcf0639237910537591f293e3372",
+        "shard_stage_paths": [
+          "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s0_A_stage_10.jsonl",
+          "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s1_A_stage_10.jsonl"
+        ],
+        "sharding_strategy": "independent-canonical-prefix-parent-v1",
+        "shards": [
+          {
+            "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s0_A_classes.txt",
+            "class_set_sha256": "a5fe9d013aa49e42c6fe9bf5596cf84e1e0f99ac5766aa49720c2f51f15920a1",
+            "legal_count": 275460,
+            "owned_parent_count": 41303,
+            "owned_parent_sha256": "23a44de776a7d7f1159bde31f188e0621529b64531788d8fc5eab367b400bce1",
+            "shard_index": 0
+          },
+          {
+            "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s1_A_classes.txt",
+            "class_set_sha256": "76bd81897f5c5567447dff8eabf52ec1db27dcf1cd0a9c94d54609fc12d33f1f",
+            "legal_count": 279798,
+            "owned_parent_count": 41770,
+            "owned_parent_sha256": "113894f6799674457f3f4b0c577b87c1b5e183ccf6e013edff0a4c6911c67b8b",
+            "shard_index": 1
+          }
+        ],
+        "split_stage_vertices": 7
       }
     },
     "B": {
@@ -47,8 +73,34 @@
         "family": "B",
         "illegal_duplicate_ticket_count": 12725,
         "legal_count": 305165,
-        "raw_count": 17236787,
-        "stage_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_B_stage_10.jsonl"
+        "overlap_class_count_across_shards": 298858,
+        "raw_count": 28914977,
+        "recomputed_prefix_count": 233904,
+        "recomputed_prefix_sha256": "b9a351591341d5b2a3d73c554627b7a4106bbb0e88432e3fbbb61e8a50cf144d",
+        "shard_stage_paths": [
+          "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s0_B_stage_10.jsonl",
+          "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s1_B_stage_10.jsonl"
+        ],
+        "sharding_strategy": "independent-canonical-prefix-parent-v1",
+        "shards": [
+          {
+            "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s0_B_classes.txt",
+            "class_set_sha256": "9d93e6d8acc8cccdf21ea5a659cd7bf805c30a161b98f486222ce953d03056a9",
+            "legal_count": 301450,
+            "owned_parent_count": 117164,
+            "owned_parent_sha256": "53c8087f0633b20ae53534b54c52432e8f8447ddcffdb7886570d1fdad6ec4d4",
+            "shard_index": 0
+          },
+          {
+            "class_ids_path": "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_sharded_v1_s1_B_classes.txt",
+            "class_set_sha256": "a3ef4f78c8a33b691d250bf3c25ee7230af44d80dbfe9557591ecc3d60952244",
+            "legal_count": 302573,
+            "owned_parent_count": 116740,
+            "owned_parent_sha256": "6950657ad1d7529fde08e3b8038ff9b406f56d974b5ad6f5bf53f15d9bb45011",
+            "shard_index": 1
+          }
+        ],
+        "split_stage_vertices": 7
       }
     }
   },
@@ -98,19 +150,23 @@
     "total_legal_canonical_count": 585148
   },
   "shard_assignment": {
+    "cross_shard_duplicate_class_count": 574133,
     "shard_count": 2,
     "shard_counts": [
-      292688,
-      292460
+      576910,
+      582371
     ],
     "shard_files": [
       "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_shard_0_class_ids.txt",
       "/Users/kelvin/.codex/worktrees/b649-k10-overlap-mass12-bonferroni-screen-r1/MathStatisticalAnalysis/.task-data/B649_K10_OVERLAP_MASS12_BONFERRONI_SCREEN_R1/mass12_shard_1_class_ids.txt"
     ],
     "sharded_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
-    "sharded_legal_canonical_count": 585148
+    "sharded_legal_canonical_count": 585148,
+    "split_stage_vertices": 7,
+    "strategy": "independent-canonical-prefix-parent-v1"
   },
   "sharded_class_set_sha256": "1158c4f662167056ba3a2ed6a7729f1fb7d336eb228465ad33bdd91fe6b66bf0",
+  "sharding_strategy": "independent-canonical-prefix-parent-v1",
   "structural_profile_proof": {
     "incidences": 60,
     "label_cap": 49,

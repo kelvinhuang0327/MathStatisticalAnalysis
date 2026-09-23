@@ -43,6 +43,9 @@ MAX_CANONICAL_STAGE_STATES = 750_000
 MAX_RAW_EXTENSIONS_PER_FAMILY = 20_000_000
 MAX_PROJECTED_FINAL_CLASSES = 2_000_000
 MAX_SCREEN_CLASSES = 1_000_000
+SHARD_COUNT = 2
+SHARD_SPLIT_STAGE = 7
+SHARDING_STRATEGY = "independent-canonical-prefix-parent-v1"
 
 RepoState = tuple[int, tuple[int, ...], int]
 
@@ -591,9 +594,20 @@ def _live_base_identity() -> tuple[str, str]:
 
 def _require_base_identity() -> None:
     head, tree = _live_base_identity()
-    if head != BASE_HEAD or tree != BASE_TREE:
+    base_tree = subprocess.check_output(
+        ["git", "rev-parse", f"{BASE_HEAD}^{{tree}}"], cwd=_repo_root(), text=True
+    ).strip()
+    ancestor = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", BASE_HEAD, "HEAD"],
+        cwd=_repo_root(),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if base_tree != BASE_TREE or ancestor.returncode != 0:
         raise RuntimeError(
-            f"WORKTREE_IDENTITY_MISMATCH: expected {BASE_HEAD}/{BASE_TREE}, got {head}/{tree}"
+            "WORKTREE_IDENTITY_MISMATCH: pinned authority commit/tree must be an ancestor; "
+            f"expected {BASE_HEAD}/{BASE_TREE}, got HEAD {head}/{tree} and base tree {base_tree}"
         )
 
 
@@ -1053,6 +1067,31 @@ def _stage_path(root: Path, pass_name: str, family: str, vertex_count: int) -> P
     return root / f"mass12_{pass_name}_{family}_stage_{vertex_count:02d}.jsonl"
 
 
+def _shard_pass_name(shard_index: int) -> str:
+    if not 0 <= shard_index < SHARD_COUNT:
+        raise ValueError("shard index is outside the configured shard range")
+    return f"sharded_v1_s{shard_index}"
+
+
+def _prefix_parent_shard(family: str, class_id: str) -> int:
+    digest = hashlib.sha256(
+        f"mass12-prefix-shard-v1|{family}|{class_id}".encode()
+    ).digest()
+    return digest[0] % SHARD_COUNT
+
+
+def _owned_prefix_parents(
+    class_ids: Sequence[str], *, family: str, shard_index: int
+) -> list[str]:
+    if not 0 <= shard_index < SHARD_COUNT:
+        raise ValueError("shard index is outside the configured shard range")
+    return [
+        class_id
+        for class_id in class_ids
+        if _prefix_parent_shard(family, class_id) == shard_index
+    ]
+
+
 def _write_root_state(path: Path) -> None:
     if path.exists():
         if _read_lines(path) != ["0:0:"]:
@@ -1078,11 +1117,16 @@ def _initialize_enumerator(
     checkpoint: dict[str, object],
     pass_name: str,
     family: str,
+    shard_index: int | None = None,
 ) -> dict[str, object]:
     active_value = checkpoint.get("active_enumerator")
     if active_value is not None:
         active = _json_object(active_value, context="active enumeration checkpoint")
-        if active.get("pass_name") != pass_name or active.get("family") != family:
+        if (
+            active.get("pass_name") != pass_name
+            or active.get("family") != family
+            or active.get("shard_index") != shard_index
+        ):
             raise RuntimeError("active enumeration checkpoint does not match requested family")
         state_value = checkpoint.get("enumerator_state")
         state = _json_object(state_value, context="enumerator_state")
@@ -1149,6 +1193,7 @@ def _initialize_enumerator(
     active: dict[str, object] = {
         "pass_name": pass_name,
         "family": family,
+        "shard_index": shard_index,
         "stage_n": 1,
         "parent_index": 0,
         "extension_index": 0,
@@ -1191,6 +1236,7 @@ def _generate_family(
     family: str,
     numerator: int,
     denominator: int,
+    shard_index: int | None = None,
 ) -> dict[str, object]:
     summaries_key = f"{pass_name}_families"
     summaries = _summary_map(checkpoint.get(summaries_key, {}), context=summaries_key)
@@ -1205,6 +1251,7 @@ def _generate_family(
         checkpoint=checkpoint,
         pass_name=pass_name,
         family=family,
+        shard_index=shard_index,
     )
     stage_started = time.monotonic()
     previous_stage_count: int | None = None
@@ -1214,6 +1261,10 @@ def _generate_family(
         parent_path = _stage_path(root, pass_name, family, stage_n - 1)
         output_path = _stage_path(root, pass_name, family, stage_n)
         parent_keys = sorted(_read_lines(parent_path))
+        if shard_index is not None and stage_n == SHARD_SPLIT_STAGE + 1:
+            parent_keys = _owned_prefix_parents(
+                parent_keys, family=family, shard_index=shard_index
+            )
         if not parent_keys:
             raise RuntimeError(f"missing parent stage states: {parent_path}")
         byte_offset = _integer(active["output_offset"], context="output_offset")
@@ -1475,6 +1526,23 @@ def _generate_family(
         "class_ids_path": str(class_path),
         "stage_path": str(final_path),
     }
+    if shard_index is not None:
+        prefix_keys = sorted(
+            _read_lines(_stage_path(root, pass_name, family, SHARD_SPLIT_STAGE))
+        )
+        owned_prefix_keys = _owned_prefix_parents(
+            prefix_keys, family=family, shard_index=shard_index
+        )
+        summary["shard_reproduction"] = {
+            "strategy": SHARDING_STRATEGY,
+            "shard_index": shard_index,
+            "shard_count": SHARD_COUNT,
+            "split_stage_vertices": SHARD_SPLIT_STAGE,
+            "recomputed_prefix_state_count": len(prefix_keys),
+            "recomputed_prefix_state_sha256": _sha256_lines(prefix_keys),
+            "owned_parent_count": len(owned_prefix_keys),
+            "owned_parent_sha256": _sha256_lines(owned_prefix_keys),
+        }
     summaries_key = f"{pass_name}_families"
     summaries = _summary_map(checkpoint.get(summaries_key, {}), context=summaries_key)
     summaries[family] = summary
@@ -1515,6 +1583,7 @@ def _new_mass12_checkpoint(
             "last_completed_class_id": None,
             "full_families": {},
             "sharded_families": {},
+            "sharding_strategy": SHARDING_STRATEGY,
             "class_set_digest_inputs_path": None,
             "pruned_count": 0,
             "survivor_count": 0,
@@ -1531,19 +1600,159 @@ def _load_family_class_ids(root: Path, pass_name: str, family: str) -> list[str]
     return sorted(_read_lines(path))
 
 
+def _aggregate_sharded_family(
+    *,
+    root: Path,
+    checkpoint: dict[str, object],
+    family: str,
+    full_summary: dict[str, object],
+) -> dict[str, object]:
+    full_prefix = sorted(
+        _read_lines(_stage_path(root, "full", family, SHARD_SPLIT_STAGE))
+    )
+    full_prefix_digest = _sha256_lines(full_prefix)
+    expected_partitions = [
+        _owned_prefix_parents(full_prefix, family=family, shard_index=index)
+        for index in range(SHARD_COUNT)
+    ]
+    if sum(map(len, expected_partitions)) != len(full_prefix):
+        raise RuntimeError("deterministic shard parent partition is incomplete")
+
+    shard_summaries: list[dict[str, object]] = []
+    shard_class_sets: list[set[str]] = []
+    raw_state_union: set[str] = set()
+    for shard_index in range(SHARD_COUNT):
+        pass_name = _shard_pass_name(shard_index)
+        summaries_key = f"{pass_name}_families"
+        summaries = _summary_map(checkpoint.get(summaries_key, {}), context=summaries_key)
+        shard_summary = summaries.get(family)
+        if shard_summary is None:
+            raise RuntimeError(f"sharded family is incomplete: {family}/{shard_index}")
+        shard_reproduction = _json_object(
+            shard_summary.get("shard_reproduction"), context="shard reproduction summary"
+        )
+        prefix_keys = sorted(
+            _read_lines(_stage_path(root, pass_name, family, SHARD_SPLIT_STAGE))
+        )
+        if prefix_keys != full_prefix:
+            raise RuntimeError(f"independent shard prefix mismatch: {family}/{shard_index}")
+        owned_parents = expected_partitions[shard_index]
+        if (
+            shard_reproduction.get("strategy") != SHARDING_STRATEGY
+            or shard_reproduction.get("shard_index") != shard_index
+            or shard_reproduction.get("split_stage_vertices") != SHARD_SPLIT_STAGE
+            or shard_reproduction.get("recomputed_prefix_state_count") != len(prefix_keys)
+            or shard_reproduction.get("recomputed_prefix_state_sha256")
+            != full_prefix_digest
+            or shard_reproduction.get("owned_parent_count") != len(owned_parents)
+            or shard_reproduction.get("owned_parent_sha256") != _sha256_lines(owned_parents)
+        ):
+            raise RuntimeError(f"deterministic shard ownership mismatch: {family}/{shard_index}")
+
+        parent_path = root / f"mass12_sharded_{family}_s{shard_index}_parent_states.txt"
+        _atomic_lines(parent_path, owned_parents)
+        shard_class_ids = _load_family_class_ids(root, pass_name, family)
+        if len(shard_class_ids) != len(set(shard_class_ids)):
+            raise RuntimeError(f"duplicate class ids inside shard: {family}/{shard_index}")
+        shard_class_sets.append(set(shard_class_ids))
+        stage_keys = _read_lines(_stage_path(root, pass_name, family, TICKET_COUNT))
+        target_pair_mass = 12 if family == "A" else 9
+        target_triples = 0 if family == "A" else 3
+        for key in stage_keys:
+            state = _state_from_key(key)
+            if sum(state[1]) == target_pair_mass and state[2].bit_count() == target_triples:
+                raw_state_union.add(key)
+        shard_summaries.append(
+            {
+                **shard_summary,
+                "owned_parent_ids_path": str(parent_path),
+                "owned_parent_count": len(owned_parents),
+                "owned_parent_sha256": _sha256_lines(owned_parents),
+            }
+        )
+
+    flattened_parents = [
+        parent
+        for partition in expected_partitions
+        for parent in partition
+    ]
+    if len(flattened_parents) != len(set(flattened_parents)) or set(flattened_parents) != set(
+        full_prefix
+    ):
+        raise RuntimeError(f"shard parent partitions do not cover the prefix: {family}")
+
+    merged_class_set: set[str] = set()
+    for shard_class_set in shard_class_sets:
+        merged_class_set.update(shard_class_set)
+    merged_class_ids = sorted(merged_class_set)
+    if not set(merged_class_ids).issubset({f"{family}:{key}" for key in raw_state_union}):
+        raise RuntimeError(f"sharded legal classes are absent from their final states: {family}")
+    class_path = root / f"mass12_sharded_{family}_classes.txt"
+    _atomic_lines(class_path, merged_class_ids)
+    shard_final_counts = [len(class_ids) for class_ids in shard_class_sets]
+    overlap_count = sum(shard_final_counts) - len(merged_class_ids)
+    summary: dict[str, object] = {
+        "family": family,
+        "raw_count": sum(
+            _integer(item.get("raw_count"), context="shard raw_count")
+            for item in shard_summaries
+        ),
+        "canonical_state_count_before_ticket_legality": len(raw_state_union),
+        "legal_count": len(merged_class_ids),
+        "canonical_count": len(merged_class_ids),
+        "class_set_sha256": _sha256_lines(merged_class_ids),
+        "illegal_duplicate_ticket_count": len(raw_state_union) - len(merged_class_ids),
+        "class_ids_path": str(class_path),
+        "shard_stage_paths": [item["stage_path"] for item in shard_summaries],
+        "shards": [
+            {
+                "shard_index": index,
+                "legal_count": shard_final_counts[index],
+                "class_set_sha256": _sha256_lines(sorted(shard_class_sets[index])),
+                "class_ids_path": shard_summaries[index]["class_ids_path"],
+                "owned_parent_count": shard_summaries[index]["owned_parent_count"],
+                "owned_parent_sha256": shard_summaries[index]["owned_parent_sha256"],
+            }
+            for index in range(SHARD_COUNT)
+        ],
+        "sharding_strategy": SHARDING_STRATEGY,
+        "split_stage_vertices": SHARD_SPLIT_STAGE,
+        "recomputed_prefix_count": len(full_prefix),
+        "recomputed_prefix_sha256": full_prefix_digest,
+        "overlap_class_count_across_shards": overlap_count,
+    }
+    if (
+        summary["canonical_state_count_before_ticket_legality"]
+        != full_summary["canonical_state_count_before_ticket_legality"]
+        or summary["illegal_duplicate_ticket_count"]
+        != full_summary["illegal_duplicate_ticket_count"]
+    ):
+        raise RuntimeError(f"sharded final-state coverage mismatch: {family}")
+    family_summaries = _summary_map(
+        checkpoint.get("sharded_families", {}), context="sharded_families"
+    )
+    family_summaries[family] = summary
+    checkpoint["sharded_families"] = family_summaries
+    return summary
+
+
 def _write_shard_files(root: Path, families: Sequence[str]) -> dict[str, object]:
     buckets: list[list[str]] = [[], []]
     for family in families:
-        for class_id in _load_family_class_ids(root, "sharded", family):
-            shard_hash = hashlib.sha256(("mass12-shard-v1|" + class_id).encode("utf-8")).digest()
-            buckets[shard_hash[0] & 1].append(class_id)
+        for shard_index in range(SHARD_COUNT):
+            buckets[shard_index].extend(
+                _load_family_class_ids(root, _shard_pass_name(shard_index), family)
+            )
     for index, values in enumerate(buckets):
         values.sort()
         _atomic_lines(root / f"mass12_shard_{index}_class_ids.txt", values)
-    reproduced = sorted(buckets[0] + buckets[1])
+    reproduced = sorted(set(buckets[0]).union(buckets[1]))
     return {
-        "shard_count": 2,
+        "shard_count": SHARD_COUNT,
+        "strategy": SHARDING_STRATEGY,
+        "split_stage_vertices": SHARD_SPLIT_STAGE,
         "shard_counts": [len(buckets[0]), len(buckets[1])],
+        "cross_shard_duplicate_class_count": sum(map(len, buckets)) - len(reproduced),
         "sharded_legal_canonical_count": len(reproduced),
         "sharded_class_set_sha256": _sha256_lines(reproduced),
         "shard_files": [
@@ -1860,6 +2069,7 @@ def _resource_limited_result(
         "task_id": TASK_ID,
         "base_head": BASE_HEAD,
         "base_tree": BASE_TREE,
+        "sharding_strategy": SHARDING_STRATEGY,
         "requested_family": requested_family,
         "final_decision": "MASS12_REQUIRES_BRANCH_AND_BOUND",
         "exhaustive_status": "NOT_PROVEN",
@@ -1951,6 +2161,22 @@ def _run_mass12(
             raise RuntimeError("mass-12 checkpoint family mismatch")
         if checkpoint.get("structural_profile_proof") != structural_proof:
             raise RuntimeError("mass-12 checkpoint structural profile proof mismatch")
+        if checkpoint.get("sharding_strategy") != SHARDING_STRATEGY:
+            active_value = checkpoint.get("active_enumerator")
+            active_pass = None
+            if active_value is not None:
+                active_pass = _json_object(
+                    active_value, context="active enumeration checkpoint"
+                ).get("pass_name")
+            checkpoint["sharding_strategy"] = SHARDING_STRATEGY
+            checkpoint["sharded_families"] = {}
+            if active_pass != "full":
+                checkpoint["active_enumerator"] = None
+                checkpoint["enumerator_state"] = None
+                checkpoint["status"] = "RUNNING"
+                checkpoint.pop("resource_stop", None)
+                checkpoint.pop("final_decision", None)
+            _save_enumeration_checkpoint(checkpoint_path, checkpoint)
         if checkpoint.get("status") == "MASS12_REQUIRES_BRANCH_AND_BOUND":
             projection = checkpoint.get("resource_stop")
             if _resource_projection_within_current_limits(
@@ -1969,9 +2195,18 @@ def _run_mass12(
                     projection=checkpoint.get("resource_stop"),
                 )
             else:
-                return _json_object(
+                prior_result = _json_object(
                     json.loads(result_path.read_text(encoding="utf-8")),
                     context="mass-12 result",
+                )
+                if prior_result.get("sharding_strategy") == SHARDING_STRATEGY:
+                    return prior_result
+                return _resource_limited_result(
+                    root=root,
+                    checkpoint_path=checkpoint_path,
+                    checkpoint=checkpoint,
+                    requested_family=requested_family,
+                    projection=checkpoint.get("resource_stop"),
                 )
         if checkpoint.get("status") == "COMPLETE" and result_path.exists():
             return _json_object(
@@ -1997,15 +2232,26 @@ def _run_mass12(
                 numerator=numerator,
                 denominator=denominator,
             )
+        for shard_index in range(SHARD_COUNT):
+            pass_name = _shard_pass_name(shard_index)
+            for family in families:
+                _generate_family(
+                    root=root,
+                    checkpoint_path=checkpoint_path,
+                    checkpoint=checkpoint,
+                    pass_name=pass_name,
+                    family=family,
+                    numerator=numerator,
+                    denominator=denominator,
+                    shard_index=shard_index,
+                )
+        full_summaries = _summary_map(checkpoint["full_families"], context="full_families")
         for family in families:
-            _generate_family(
+            _aggregate_sharded_family(
                 root=root,
-                checkpoint_path=checkpoint_path,
                 checkpoint=checkpoint,
-                pass_name="sharded",
                 family=family,
-                numerator=numerator,
-                denominator=denominator,
+                full_summary=full_summaries[family],
             )
     except _Mass12ResourceLimit as exc:
         return _resource_limited_result(
@@ -2079,6 +2325,7 @@ def _run_mass12(
         "task_id": TASK_ID,
         "base_head": BASE_HEAD,
         "base_tree": BASE_TREE,
+        "sharding_strategy": SHARDING_STRATEGY,
         "mass11_certificate_status": "PASS",
         "requested_family": requested_family,
         "structural_profile_proof": structural_proof,

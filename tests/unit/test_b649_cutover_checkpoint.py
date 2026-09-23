@@ -595,6 +595,232 @@ def test_checkpoint_own_argv_is_excluded(
     assert code == 0, result
 
 
+def _protected_task_checkpoint_command(harness: Harness, *, run: bool = True) -> str:
+    mode = "--run" if run else "--inspect"
+    return (
+        "ruby /opt/fable-method/scripts/task_checkpoint.rb "
+        f"{mode} --repo /repo --worktree {harness.rollback} "
+        "--task-id B649_CUTOVER_PROTECTED_WRAPPER_ANCESTOR_OWNERSHIP_REPAIR_R1 "
+        "--execution-id focused-test -- "
+        "python tools/b649_production_cutover.py rollback"
+    )
+
+
+def _add_protected_task_checkpoint_ancestor(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    command: str | None = None,
+    live_scheduler_ancestor: bool = False,
+    live_scheduler_parent: bool = False,
+) -> int:
+    wrapper_pid = 990001
+    invocation_pid = 990002
+    scheduler_pid = 990003
+    parent_pid = scheduler_pid if live_scheduler_ancestor else wrapper_pid
+    wrapper_parent_pid = scheduler_pid if live_scheduler_parent else 1
+    scheduler_parent_pid = wrapper_pid if live_scheduler_ancestor else 1
+    harness.process_rows.extend(
+        [
+            f"{invocation_pid} {parent_pid} 501 S python tools/b649_production_cutover.py rollback",
+        ]
+    )
+    if live_scheduler_ancestor or live_scheduler_parent:
+        harness.process_rows.append(
+            f"{scheduler_pid} {scheduler_parent_pid} 501 S "
+            f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+        )
+    harness.process_rows.append(
+        f"{wrapper_pid} {wrapper_parent_pid} 501 S "
+        f"{command or _protected_task_checkpoint_command(harness)}"
+    )
+    harness.file_rows.extend(
+        [
+            f"p{invocation_pid}",
+            "fcwd",
+            "n/fixture-home",
+            f"p{wrapper_pid}",
+            "fcwd",
+            "n/fixture-home",
+        ]
+    )
+    if live_scheduler_ancestor or live_scheduler_parent:
+        harness.file_rows.extend([f"p{scheduler_pid}", "fcwd", f"n{harness.rollback}"])
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: invocation_pid)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: parent_pid)
+    return wrapper_pid
+
+
+def test_protected_task_checkpoint_run_ancestor_is_not_runtime_owner(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "ABSENT", result
+    assert code == 0, result
+    assert runtime["pids"] == []
+
+
+def test_non_ancestor_task_checkpoint_run_remains_runtime_owner(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    wrapper_pid = harness.add_process(_protected_task_checkpoint_command(harness))
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: 990002)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: 990003)
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert wrapper_pid in runtime_pids
+
+
+def test_task_checkpoint_ancestor_without_run_mode_remains_runtime_owner(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    _add_protected_task_checkpoint_ancestor(
+        harness,
+        monkeypatch,
+        command=_protected_task_checkpoint_command(harness, run=False),
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+
+
+def test_protected_task_checkpoint_ancestor_does_not_hide_live_scheduler(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
+    scheduler_pid = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run",
+        ppid=wrapper_pid,
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert scheduler_pid in runtime_pids
+
+
+def test_actual_scheduler_ancestor_is_not_exempted_with_wrapper(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    _add_protected_task_checkpoint_ancestor(
+        harness,
+        monkeypatch,
+        live_scheduler_ancestor=True,
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert 990003 in runtime_pids
+
+
+def test_live_runtime_ancestor_still_propagates_through_protected_wrapper(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    wrapper_pid = _add_protected_task_checkpoint_ancestor(
+        harness,
+        monkeypatch,
+        live_scheduler_parent=True,
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert 990003 in runtime_pids
+    assert wrapper_pid in runtime_pids
+
+
+@pytest.mark.parametrize("role", ["primary", "shadow"])
+def test_protected_wrapper_with_owner_lock_is_not_exempted(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    role: str,
+) -> None:
+    harness.loaded = False
+    wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
+    lock_path = harness.root / f"{role}.lock"
+    harness.file_rows.extend([f"p{wrapper_pid}", "f4", f"n{lock_path}"])
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    assert observation(result, f"old_{role}_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert wrapper_pid in runtime_pids
+
+
+def test_protected_task_checkpoint_ancestor_keeps_missing_coverage_fail_closed(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
+    harness.add_process("python live-but-unobserved.py", cwd=None, ppid=wrapper_pid)
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 1
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "UNVERIFIABLE"
+    assert runtime["process_classification"] == "UNVERIFIABLE"
+
+
+def test_protected_task_checkpoint_ancestor_preserves_passive_fsmonitor_exemption(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    wrapper_pid = _add_protected_task_checkpoint_ancestor(harness, monkeypatch)
+    harness.add_process(
+        "git fsmonitor--daemon run",
+        ppid=wrapper_pid,
+        files=[str(harness.rollback)],
+    )
+
+    code, result = execute(harness, capsys, "post-unload")
+
+    assert code == 0, result
+    runtime = observation(result, "old_runtime_ownership")
+    assert runtime["classification"] == "ABSENT"
+    assert runtime["pids"] == []
+
+
 @pytest.mark.parametrize(
     "cmd",
     [

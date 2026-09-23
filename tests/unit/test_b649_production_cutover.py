@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import copy
 import hashlib
 import json
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import cast
 
 import pytest
+import tools.b649_cutover_checkpoint as checkpoint
 import tools.b649_goalc_local_scheduler as scheduler
 import tools.b649_production_cutover as cutover
 
@@ -1297,6 +1299,58 @@ def test_rollback_blocks_when_new_release_cycle_is_active(fixture: Fixture) -> N
     assert fixture.plist_path.read_bytes() != fixture.old_plist_bytes
 
 
+def test_rollback_passes_wrapper_only_ownership_gate_without_mutating_fake(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    receipt, new_plist_bytes = _prepare_recovery_required_new_release(fixture, runner)
+    _set_protected_task_checkpoint_ancestor(fixture, runner, monkeypatch)
+
+    def stop_after_ownership_gate(
+        config: cutover.CutoverConfig,
+        gate_runner: FakeLaunchd,
+        source: dict[str, object],
+        expected_runtime: dict[str, object],
+    ) -> dict[str, object]:
+        raise cutover.CutoverSafetyError("test stopped after rollback ownership gate")
+
+    monkeypatch.setattr(cutover, "_assert_runtime_binding", stop_after_ownership_gate)
+
+    try:
+        result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+    except cutover.CutoverSafetyError as exc:
+        assert "stopped after rollback ownership gate" in str(exc)
+    else:
+        pytest.fail(f"rollback stopped before the post-gate sentinel: {result!r}")
+
+    assert runner.mutation_calls == []
+    assert fixture.plist_path.read_bytes() == new_plist_bytes
+    persisted_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert persisted_receipt["status"] == "RECOVERY_REQUIRED"
+
+
+def test_rollback_still_blocks_scheduler_with_protected_wrapper_ancestor(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    receipt, new_plist_bytes = _prepare_recovery_required_new_release(fixture, runner)
+    _set_protected_task_checkpoint_ancestor(
+        fixture,
+        runner,
+        monkeypatch,
+        live_scheduler=True,
+    )
+
+    result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)
+
+    assert result["status"] == "ROLLBACK_BLOCKED_ACTIVE_CYCLE"
+    assert "runtime ownership is not idle: PRESENT" in cast(list[str], result["failures"])[0]
+    assert runner.mutation_calls == []
+    assert fixture.plist_path.read_bytes() == new_plist_bytes
+    persisted_receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
+    assert persisted_receipt["status"] == "RECOVERY_REQUIRED"
+
+
 def test_rollback_old_release_drift_fails_before_launchd_mutation(fixture: Fixture) -> None:
     runner = FakeLaunchd(fixture)
     plan = cutover.build_plan(fixture.config, runner=runner)
@@ -1667,6 +1721,59 @@ def _write_receipt(fixture: Fixture, receipt: dict[str, object]) -> str:
     write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
     write_json(fixture.receipt_path, receipt, expected=None)
     return hashlib.sha256(fixture.receipt_path.read_bytes()).hexdigest()
+
+
+def _prepare_recovery_required_new_release(
+    fixture: Fixture, runner: FakeLaunchd
+) -> tuple[dict[str, object], bytes]:
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS", plan["failures"]
+    receipt = _recovery_required_receipt(fixture, plan)
+    prestate = _object(receipt["prestate"])
+    new_plist_bytes = base64.b64decode(
+        cast(str, prestate["new_plist_bytes_b64"]),
+        validate=True,
+    )
+    fixture.plist_path.write_bytes(new_plist_bytes)
+    _write_receipt(fixture, receipt)
+    return receipt, new_plist_bytes
+
+
+def _set_protected_task_checkpoint_ancestor(
+    fixture: Fixture,
+    runner: FakeLaunchd,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    live_scheduler: bool = False,
+) -> int:
+    wrapper_pid = 952001
+    invocation_pid = 952002
+    runner.process_rows = [
+        f"{invocation_pid} {wrapper_pid} {UID} S python tools/b649_production_cutover.py rollback",
+        f"{wrapper_pid} 1 {UID} S ruby /opt/fable-method/scripts/task_checkpoint.rb "
+        f"--run --repo {fixture.canonical} --worktree {fixture.new} "
+        "--task-id B649_CUTOVER_PROTECTED_WRAPPER_ANCESTOR_OWNERSHIP_REPAIR_R1 "
+        "--execution-id integration-test -- "
+        "python tools/b649_production_cutover.py rollback",
+    ]
+    runner.file_rows = [
+        f"p{invocation_pid}",
+        "fcwd",
+        "n/tmp",
+        f"p{wrapper_pid}",
+        "fcwd",
+        "n/tmp",
+    ]
+    if live_scheduler:
+        scheduler_pid = 952003
+        runner.process_rows.append(
+            f"{scheduler_pid} {wrapper_pid} {UID} S "
+            f"python {fixture.new}/tools/b649_goalc_local_scheduler.py run"
+        )
+        runner.file_rows.extend([f"p{scheduler_pid}", "fcwd", f"n{fixture.new}"])
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: invocation_pid)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: wrapper_pid)
+    return wrapper_pid
 
 
 def test_reconcile_restored_finalizes_an_already_restored_recovery_required_receipt(

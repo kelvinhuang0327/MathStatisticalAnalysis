@@ -56,6 +56,8 @@ SCHEMA = "b649-protected-cutover-execution-receipt-v1"
 TASK_KEY = checkpoint.PROTECTED_TASK_KEY
 RECEIPT_NAME = "b649-protected-cutover-execution-receipt.json"
 ROLLBACK_RECEIPT_NAME = "b649-protected-rollback-execution-receipt.json"
+LIFECYCLE_RECEIPT_NAME = "b649-control-lifecycle-reconciliation.json"
+LIFECYCLE_SCHEMA = "b649-control-lifecycle-reconciliation-v1"
 CONTROL_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = CONTROL_ROOT / "tools/b649_protected_cutover.py"
 MANAGED = CONTROL_ROOT / "tools/b649_production_cutover.py"
@@ -138,6 +140,12 @@ class Request:
     plan_sha256: str
     claim_root: Path
     takeover_stale: bool = False
+    reservation_id: str | None = None
+    operation_id: str = ""
+    managed_receipt_sha256: str | None = None
+    control_head: str = ""
+    control_tree: str = ""
+    owner_id_argument: bool = False
 
     @property
     def action(self) -> str:
@@ -179,6 +187,18 @@ class Request:
             "execution_receipt_path": str(self.receipt_path),
             "claim_root": str(self.claim_root),
             "control_worktree": str(CONTROL_ROOT),
+            "control_head": self.control_head,
+            "control_tree": self.control_tree,
+            "reservation_id": self.reservation_id,
+            "operation_id": self.operation_id,
+            "managed_receipt_sha256": self.managed_receipt_sha256,
+            "owner_id_argument": self.owner_id_argument,
+            "target": {
+                "source_worktree": str(self.config.source_worktree),
+                "head": self.config.expected_head,
+                "tree": self.config.expected_tree,
+                "durable_ref": self.config.durable_ref,
+            },
             "interpreter": sys.executable,
         }
 
@@ -205,6 +225,7 @@ class Request:
             self.legacy_tree,
             "--plan-file",
             str(self.plan_file),
+            *(["--owner-id", text(self.reservation_id)] if self.owner_id_argument else []),
             *(["--takeover-stale"] if self.takeover_stale else []),
         ]
 
@@ -265,6 +286,9 @@ def make_request(
     claim_root: Path,
     *,
     takeover_stale: bool = False,
+    reservation_id: str | None = None,
+    owner_id_argument: bool = False,
+    operation_id: str | None = None,
 ) -> Request:
     for path in (
         config.source_worktree,
@@ -283,6 +307,16 @@ def make_request(
     if legacy_worktree == config.source_worktree:
         raise ProtectedError("legacy and successor worktrees must differ")
     plan, identity, _ = cutover.read_control_json(plan_file)
+    managed: Record | None = None
+    managed_identity: cutover.FileIdentity | None = None
+    if os.path.lexists(config.receipt_path):
+        managed, managed_identity, _ = cutover.read_control_json(config.receipt_path)
+    control_head, control_tree = control_identity()
+    selected_operation_id = operation_id or (
+        text(managed.get("operation_id"))
+        if managed is not None and managed.get("plan_digest") == plan.get("plan_digest")
+        else uuid4().hex
+    )
     request = Request(
         config,
         legacy_worktree,
@@ -293,6 +327,12 @@ def make_request(
         identity.sha256,
         claim_root,
         takeover_stale,
+        reservation_id,
+        selected_operation_id,
+        None if managed_identity is None else managed_identity.sha256,
+        control_head,
+        control_tree,
+        owner_id_argument,
     )
     if request.receipt_path in {config.receipt_path, config.plist_path, plan_file}:
         raise ProtectedError("execution receipt must have its own canonical path")
@@ -323,6 +363,8 @@ class RollbackRequest:
     control_tree: str
     claim_root: Path
     takeover_stale: bool = False
+    reservation_id: str | None = None
+    owner_id_argument: bool = False
 
     @property
     def action(self) -> str:
@@ -367,6 +409,14 @@ class RollbackRequest:
             "control_worktree": str(CONTROL_ROOT),
             "control_head": self.control_head,
             "control_tree": self.control_tree,
+            "reservation_id": self.reservation_id,
+            "owner_id_argument": self.owner_id_argument,
+            "target": {
+                "source_worktree": str(self.legacy_worktree),
+                "head": self.legacy_head,
+                "tree": self.legacy_tree,
+                "durable_ref": self.old_durable_ref,
+            },
             "protected_wrapper_schema": SCHEMA,
             "claim_root": str(self.claim_root),
             "execution_receipt_path": str(self.receipt_path),
@@ -390,6 +440,7 @@ class RollbackRequest:
             self.legacy_head,
             "--legacy-tree",
             self.legacy_tree,
+            *(["--owner-id", text(self.reservation_id)] if self.owner_id_argument else []),
             *( ["--takeover-stale"] if self.takeover_stale else []),
         ]
 
@@ -431,6 +482,8 @@ def make_rollback_request(
     claim_root: Path,
     *,
     takeover_stale: bool = False,
+    reservation_id: str | None = None,
+    owner_id_argument: bool = False,
 ) -> RollbackRequest:
     for path in (
         config.source_worktree,
@@ -448,6 +501,10 @@ def make_rollback_request(
     if legacy_worktree == config.source_worktree:
         raise ProtectedError("legacy and successor worktrees must differ")
     receipt, identity, _ = cutover.read_control_json(config.receipt_path)
+    if receipt.get("status") == ROLLBACK_SUCCESS:
+        raise ProtectedError(
+            "managed rollback already completed; use managed-only lifecycle closure"
+        )
     plan = cutover.receipt_to_plan(config, receipt)
     cutover.validate_protected_plan(config, plan)
     if receipt.get("status") not in {
@@ -457,7 +514,6 @@ def make_rollback_request(
         "RECOVERED",
         "ROLLBACK_IN_PROGRESS",
         "IN_PROGRESS",
-        "ROLLBACK_SUCCESS",
     }:
         raise ProtectedError("managed receipt is not eligible for explicit rollback")
     prestate = record(receipt.get("prestate"))
@@ -491,7 +547,41 @@ def make_rollback_request(
         control_tree=control_tree,
         claim_root=claim_root,
         takeover_stale=takeover_stale,
+        reservation_id=reservation_id,
+        owner_id_argument=owner_id_argument,
     )
+
+
+def request_owner_target(request: Request | RollbackRequest) -> Record:
+    if request.action == "apply":
+        return {
+            "source_worktree": str(request.config.source_worktree),
+            "head": text(request.config.expected_head),
+            "tree": text(request.config.expected_tree),
+            "durable_ref": text(request.config.durable_ref),
+        }
+    rollback_request = cast(RollbackRequest, request)
+    return {
+        "source_worktree": str(rollback_request.legacy_worktree),
+        "head": rollback_request.legacy_head,
+        "tree": rollback_request.legacy_tree,
+        "durable_ref": rollback_request.old_durable_ref,
+    }
+
+
+def request_owner_authorization(request: Request | RollbackRequest) -> Record:
+    identity = request.identity
+    if identity.get("reservation_id") is None:
+        raise ProtectedError("request is missing its durable reservation id")
+    return {
+        "reservation_id": identity["reservation_id"],
+        "operation_id": identity["operation_id"],
+        "managed_receipt_sha256": identity["managed_receipt_sha256"],
+        "control_head": identity["control_head"],
+        "control_tree": identity["control_tree"],
+        "action": identity["action"],
+        "target": request_owner_target(request),
+    }
 
 
 @dataclass(frozen=True)
@@ -785,6 +875,180 @@ class ReceiptFile:
             os.close(directory)
 
 
+def _lifecycle_path(config: cutover.CutoverConfig) -> Path:
+    return config.scheduler_root / LIFECYCLE_RECEIPT_NAME
+
+
+def _lifecycle_record(config: cutover.CutoverConfig) -> tuple[Record, cutover.FileIdentity] | None:
+    path = _lifecycle_path(config)
+    if not os.path.lexists(path):
+        return None
+    value, identity, _ = cutover.read_control_json(path)
+    unsigned = {key: item for key, item in value.items() if key != "record_sha256"}
+    if (
+        value.get("schema") != LIFECYCLE_SCHEMA
+        or value.get("record_sha256") != digest(unsigned)
+        or value.get("disposition") != "MANAGED_ONLY_EXTERNALLY_COMPLETED"
+        or value.get("provenance") != "MANAGED_ONLY_CONFIRMED"
+        or value.get("protected_wrapper_executed") is not False
+    ):
+        raise ProtectedError("lifecycle reconciliation evidence is invalid")
+    return value, identity
+
+
+def _lifecycle_source_identity(value: object) -> Record:
+    source = record(value)
+    return {
+        key: text(source.get(key))
+        for key in ("source_worktree", "head", "tree", "durable_ref")
+    }
+
+
+def close_managed_only_lifecycle(
+    config: cutover.CutoverConfig,
+    *,
+    operation_id: str,
+    managed_receipt_sha256: str,
+    restored_source: Record,
+    runtime_verification: Record,
+) -> Record:
+    """Close verified external rollback history without running or claiming execution."""
+    if re.fullmatch(r"[0-9a-f]{64}", managed_receipt_sha256) is None:
+        raise ProtectedError("managed receipt SHA256 is invalid")
+    path = _lifecycle_path(config)
+    rollback_path = config.scheduler_root / ROLLBACK_RECEIPT_NAME
+    apply_path = config.scheduler_root / RECEIPT_NAME
+    with cutover.CutoverLock(config.cutover_lock_path):
+        owner = cutover.inspect_control_owner(config)
+        if owner is not None and owner.get("phase") != "RELEASED":
+            raise ProtectedError("durable control owner requires reconciliation before closure")
+        if os.path.lexists(rollback_path):
+            raise ProtectedError("protected rollback receipt already exists; closure is ambiguous")
+        managed, managed_identity, managed_bytes = cutover.read_control_json(config.receipt_path)
+        if (
+            managed_identity.sha256 != managed_receipt_sha256
+            or managed.get("operation_id") != operation_id
+            or managed.get("status") != ROLLBACK_SUCCESS
+            or managed.get("phase") != "COMPLETED"
+        ):
+            raise ProtectedError("managed rollback is not the exact terminal success")
+        plan = cutover.receipt_to_plan(config, managed)
+        prestate = record(managed.get("prestate"))
+        expected_source = record(prestate.get("old_source"))
+        source = {
+            key: expected_source.get(key)
+            for key in ("source_worktree", "head", "tree", "durable_ref")
+        }
+        if _lifecycle_source_identity(restored_source) != source:
+            raise ProtectedError("restored source differs from the managed receipt")
+        after = record(managed.get("after"))
+        after_source = record(after.get("source"))
+        old_runtime = record(prestate.get("old_runtime"))
+        after_runtime = record(after.get("runtime"))
+        after_plist = record(after.get("plist"))
+        after_launchd = record(after.get("launchd"))
+        observer = runtime_verification.get("observer")
+        if (
+            runtime_verification.get("kind") != "independent-runtime-verification-v1"
+            or runtime_verification.get("verified") is not True
+            or not isinstance(observer, str)
+            or observer == "managed-receipt"
+            or _lifecycle_source_identity(runtime_verification.get("source")) != source
+            or record(runtime_verification.get("runtime")) != old_runtime
+            or runtime_verification.get("plist_sha256") != after_plist.get("sha256")
+            or runtime_verification.get("launch_state") != after_launchd.get("state")
+            or runtime_verification.get("enabled") is not after.get("enabled")
+            or _lifecycle_source_identity(after_source) != source
+            or after_runtime != old_runtime
+            or _lifecycle_source_identity(record(plan.get("source")).get("old")) != source
+        ):
+            raise ProtectedError("independent restored-runtime verification differs")
+        apply_before = cutover.inspect_control_file(apply_path, missing_ok=True)[0]
+        existing = _lifecycle_record(config)
+        control = cutover.control_version()
+        closure_identity: Record = {
+            "control_head": control["head"],
+            "control_tree": control["tree"],
+            "operation_id": operation_id,
+            "managed_receipt_sha256": managed_receipt_sha256,
+            "restored_source": source,
+            "runtime_verification_sha256": digest(runtime_verification),
+        }
+        if existing is not None:
+            saved, _ = existing
+            if saved.get("identity") != closure_identity:
+                raise ProtectedError("a different lifecycle closure already exists")
+            result = saved
+        else:
+            unsigned: Record = {
+                "schema": LIFECYCLE_SCHEMA,
+                "disposition": "MANAGED_ONLY_EXTERNALLY_COMPLETED",
+                "provenance": "MANAGED_ONLY_CONFIRMED",
+                "protected_wrapper_executed": False,
+                "operation_id": operation_id,
+                "managed_receipt_sha256": managed_receipt_sha256,
+                "managed_status": ROLLBACK_SUCCESS,
+                "protected_rollback_receipt": None,
+                "identity": closure_identity,
+                "runtime_verification": runtime_verification,
+                "closed_at": now(),
+            }
+            result = {**unsigned, "record_sha256": digest(unsigned)}
+            cutover.write_control_json(path, result, expected=None)
+        readback, _, _ = cutover.read_control_json(path)
+        if readback != result:
+            raise ProtectedError("lifecycle closure readback differs")
+        managed_after, managed_identity_after, managed_bytes_after = cutover.read_control_json(
+            config.receipt_path
+        )
+        apply_after = cutover.inspect_control_file(apply_path, missing_ok=True)[0]
+        if (
+            managed_identity_after.sha256 != managed_identity.sha256
+            or managed_bytes_after != managed_bytes
+            or managed_after != managed
+            or (None if apply_before is None else apply_before.key())
+            != (None if apply_after is None else apply_after.key())
+            or os.path.lexists(rollback_path)
+        ):
+            raise ProtectedError("control evidence changed while lifecycle closure was written")
+        return result
+
+
+def classify_execution_provenance(
+    config: cutover.CutoverConfig,
+    *,
+    operation_id: str,
+    managed_receipt_sha256: str,
+) -> str:
+    """Keep protected execution distinct from external managed completion."""
+    rollback_path = config.scheduler_root / ROLLBACK_RECEIPT_NAME
+    if os.path.lexists(rollback_path):
+        receipt = ReceiptFile(rollback_path).read()
+        if receipt is None:
+            raise ProtectedError("protected rollback receipt disappeared")
+        identity = record(receipt.get("identity"))
+        link_value = receipt.get("managed_receipt")
+        link = record(link_value) if link_value is not None else {}
+        if (
+            receipt.get("status") == ROLLBACK_SUCCESS
+            and receipt.get("phase") == "COMPLETED"
+            and identity.get("operation_id") == operation_id
+            and link.get("sha256") == managed_receipt_sha256
+        ):
+            return "PROTECTED_WRAPPER_CONFIRMED"
+        return "PROTECTED_EXECUTION_NOT_CONFIRMED"
+    lifecycle = _lifecycle_record(config)
+    if lifecycle is not None:
+        value, _ = lifecycle
+        identity = record(value.get("identity"))
+        if (
+            identity.get("operation_id") == operation_id
+            and identity.get("managed_receipt_sha256") == managed_receipt_sha256
+        ):
+            return "MANAGED_ONLY_CONFIRMED"
+    return "PROVENANCE_NOT_ESTABLISHED"
+
+
 class BoundedStream(io.TextIOBase):
     def __init__(self) -> None:
         self.prefix = bytearray()
@@ -955,6 +1219,10 @@ def child_request(args: argparse.Namespace) -> Request | RollbackRequest:
     identity = record(wire.get("identity"))
     if type(wire.get("takeover_stale")) is not bool:
         raise ProtectedError("invalid takeover flag")
+    if type(identity.get("owner_id_argument")) is not bool:
+        raise ProtectedError("invalid owner-id argument binding")
+    reservation_id_value = identity.get("reservation_id")
+    reservation_id = None if reservation_id_value is None else text(reservation_id_value)
     try:
         config = cutover.protected_config(args)
         if identity.get("action") == "rollback":
@@ -965,6 +1233,8 @@ def child_request(args: argparse.Namespace) -> Request | RollbackRequest:
                 text(identity.get("legacy_tree")),
                 repository_claim_root(),
                 takeover_stale=bool(wire["takeover_stale"]),
+                reservation_id=reservation_id,
+                owner_id_argument=bool(identity["owner_id_argument"]),
             )
         else:
             request = make_request(
@@ -975,6 +1245,9 @@ def child_request(args: argparse.Namespace) -> Request | RollbackRequest:
                 Path(text(args.plan_file)),
                 repository_claim_root(),
                 takeover_stale=bool(wire["takeover_stale"]),
+                reservation_id=reservation_id,
+                owner_id_argument=bool(identity["owner_id_argument"]),
+                operation_id=text(identity.get("operation_id")),
             )
     except (OSError, ValueError, cutover.CutoverError) as exc:
         raise ProtectedError(f"protected request cannot be revalidated: {exc}") from exc
@@ -1008,7 +1281,13 @@ def run_managed_child(
         str(CONTROL_ROOT),
         request.sources,
     )
-    config = replace(request.config, protected_execution=execution)
+    config = replace(
+        request.config,
+        protected_execution=execution,
+        control_owner_id=request.reservation_id,
+        control_owner_kind="protected",
+        operation_id=text(request.identity.get("operation_id")),
+    )
     # This snapshot validates the real parent/child before trusting any claimed PID.
     checkpoint.process_snapshot(
         argparse.Namespace(
@@ -1108,6 +1387,88 @@ def launch(request: Request | RollbackRequest) -> Record:
     """Compose ClaimStore.run unchanged; the child owns all pre-action preparation."""
     if Path.cwd() != CONTROL_ROOT:
         raise ProtectedError("launch from the exact control-plane checkout")
+    receipt_file = ReceiptFile(request.receipt_path)
+    receipt_parent = request.receipt_path.parent
+    if receipt_parent != receipt_parent.resolve(strict=False):
+        raise ProtectedError("receipt parent must not traverse symlinks")
+    receipt_metadata = os.lstat(receipt_parent)
+    if (
+        not stat.S_ISDIR(receipt_metadata.st_mode)
+        or receipt_metadata.st_uid != os.getuid()
+        or stat.S_IMODE(receipt_metadata.st_mode) != 0o700
+    ):
+        raise ProtectedError("receipt directory must be existing owner-only mode 0700")
+    version = {"head": request.identity["control_head"], "tree": request.identity["control_tree"]}
+    owner = cutover.inspect_control_owner(request.config)
+    if owner is not None and owner.get("phase") == "RELEASED":
+        released_id = text(owner.get("reservation_id"))
+        execution_exists = os.path.lexists(request.receipt_path)
+        if request.reservation_id is None:
+            candidate = replace(request, reservation_id=released_id)
+            if (
+                execution_exists
+                and cutover.control_owner_authorization(owner)
+                == request_owner_authorization(candidate)
+            ):
+                request = candidate
+            elif execution_exists:
+                raise ProtectedError("a different completed owner identity blocks receipt reuse")
+        elif request.reservation_id == released_id:
+            if not execution_exists:
+                request = replace(request, reservation_id=None)
+        elif execution_exists:
+            raise ProtectedError("a different completed owner identity blocks receipt reuse")
+        else:
+            request = replace(request, reservation_id=None)
+    if request.reservation_id is None:
+        owner = cutover.acquire_control_owner(
+            request.config,
+            action=request.action,
+            target=request_owner_target(request),
+            owner_kind="protected",
+            version=version,
+        )
+        request = replace(request, reservation_id=text(owner.get("reservation_id")))
+        owner = cutover.bind_control_owner(
+            request.config,
+            text(request.reservation_id),
+            action=request.action,
+            target=request_owner_target(request),
+            operation_id=text(request.identity.get("operation_id")),
+            managed_receipt_sha256=cast(
+                str | None,
+                request.identity.get("managed_receipt_sha256"),
+            ),
+            version=version,
+        )
+    else:
+        owner = cutover.inspect_control_owner(request.config)
+        if owner is None or owner.get("reservation_id") != request.reservation_id:
+            raise ProtectedError("durable control owner is absent or changed")
+        if owner.get("phase") != "RELEASED":
+            owner = cutover.bind_control_owner(
+                request.config,
+                text(request.reservation_id),
+                action=request.action,
+                target=request_owner_target(request),
+                operation_id=text(request.identity.get("operation_id")),
+                managed_receipt_sha256=cast(
+                    str | None,
+                    request.identity.get("managed_receipt_sha256"),
+                ),
+                version=version,
+            )
+    if owner.get("phase") != "RELEASED":
+        authorization = request_owner_authorization(request)
+        if owner.get("authorization") is None:
+            return {
+                "status": "AUTHORIZATION_PENDING",
+                "reservation_id": request.reservation_id,
+                "authorization": authorization,
+                "owner_phase": owner.get("phase"),
+            }
+        if owner.get("authorization") != authorization:
+            raise ProtectedError("durable owner authorization differs from this request")
     success_status = ROLLBACK_SUCCESS if request.action == "rollback" else "SUCCESS"
     incomplete_status = (
         ROLLBACK_INCOMPLETE
@@ -1115,7 +1476,6 @@ def launch(request: Request | RollbackRequest) -> Record:
         else "INCOMPLETE_OR_AMBIGUOUS"
     )
     store = ReceiptClaimStore(request)
-    receipt_file = ReceiptFile(request.receipt_path)
     prior = receipt_file.read()
     if prior is not None:
         if prior.get("identity") != request.identity:
@@ -1126,7 +1486,22 @@ def launch(request: Request | RollbackRequest) -> Record:
             raise ProtectedError("claim is still owned or uncertain")
         if prior.get("managed_receipt") != managed_link(request):
             raise ProtectedError("managed receipt linkage changed")
+        current_owner = cutover.inspect_control_owner(request.config)
+        if (
+            current_owner is not None
+            and current_owner.get("reservation_id") == request.reservation_id
+            and current_owner.get("phase") == "TERMINAL_CAPTURE_PENDING"
+        ):
+            cutover.release_control_owner(
+                request.config,
+                text(request.reservation_id),
+                protected_receipt_path=request.receipt_path,
+            )
         return {**prior, "reused": True}
+    if owner.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}:
+        raise ProtectedError(
+            "started owner has no reusable protected terminal receipt; reconcile exact evidence"
+        )
     code = store.run(TASK_KEY, request.managed_argv(), takeover_stale=request.takeover_stale)
     if store.owner_record is None:
         return {"status": incomplete_status, "exit_code": code or claims.UNVERIFIABLE}
@@ -1192,6 +1567,31 @@ def launch(request: Request | RollbackRequest) -> Record:
         },
         expected=staged,
     )
+    readback = receipt_file.read()
+    if readback != saved:
+        raise ProtectedError("protected terminal receipt verification failed")
+    try:
+        cutover.release_control_owner(
+            request.config,
+            text(request.reservation_id),
+            protected_receipt_path=request.receipt_path,
+        )
+    except cutover.CutoverSafetyError as exc:
+        owner_after = cutover.inspect_control_owner(request.config)
+        if (
+            status not in {"SUCCESS", ROLLBACK_SUCCESS}
+            and owner_after is not None
+            and owner_after.get("reservation_id") == request.reservation_id
+            and owner_after.get("phase")
+            in {"AUTHORIZED_PENDING", "MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}
+        ):
+            return {
+                **saved,
+                "reused": False,
+                "owner_release": "RETAINED_FOR_RECONCILIATION",
+                "owner_release_error": str(exc),
+            }
+        raise
     return {**saved, "reused": False}
 
 
@@ -1221,6 +1621,65 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected = list(sys.argv[1:] if argv is None else argv)
     args = parser().parse_args(selected)
     try:
+        version = cutover.control_version()
+        if args.action == "rollback":
+            receipt_path = Path(args.receipt_file)
+            reservation_config = cutover.CutoverConfig(
+                source_worktree=Path(args.legacy_worktree),
+                receipt_path=receipt_path,
+                strict_release_layout=True,
+            )
+            reservation_target: cutover.Record = {
+                "source_worktree": args.legacy_worktree,
+                "head": args.legacy_head,
+                "tree": args.legacy_tree,
+            }
+        else:
+            config = cutover.CutoverConfig(
+                source_worktree=Path(args.source_worktree),
+                expected_head=args.expected_head,
+                expected_tree=args.expected_tree,
+                durable_ref=f"refs/heads/runtime/b649/{args.expected_head}",
+                strict_release_layout=True,
+            )
+            reservation_config = config
+            reservation_target = {
+                "source_worktree": args.source_worktree,
+                "head": args.expected_head,
+                "tree": args.expected_tree,
+                "durable_ref": config.durable_ref,
+            }
+        prior_owner = cutover.inspect_control_owner(reservation_config)
+        prior_execution_path = reservation_config.scheduler_root / (
+            ROLLBACK_RECEIPT_NAME if args.action == "rollback" else RECEIPT_NAME
+        )
+        if prior_owner is not None and prior_owner.get("phase") != "RELEASED":
+            reservation_id = text(prior_owner.get("reservation_id"))
+            owner = cutover.acquire_control_owner(
+                reservation_config,
+                action=args.action,
+                target=reservation_target,
+                owner_kind="protected",
+                reservation_id=reservation_id,
+                version=version,
+            )
+            owner = cutover.resume_control_owner(
+                reservation_config,
+                reservation_id,
+                version=version,
+            )
+        elif prior_owner is not None and os.path.lexists(prior_execution_path):
+            reservation_id = text(prior_owner.get("reservation_id"))
+            owner = prior_owner
+        else:
+            owner = cutover.acquire_control_owner(
+                reservation_config,
+                action=args.action,
+                target=reservation_target,
+                owner_kind="protected",
+                version=version,
+            )
+            reservation_id = text(owner.get("reservation_id"))
         if args.action == "rollback":
             receipt_path = Path(args.receipt_file)
             managed, _, _ = cutover.read_control_json(receipt_path)
@@ -1242,6 +1701,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.legacy_tree,
                 repository_claim_root(),
                 takeover_stale=args.takeover_stale,
+                reservation_id=reservation_id,
+                owner_id_argument=False,
             )
         else:
             config = cutover.CutoverConfig(
@@ -1259,7 +1720,37 @@ def main(argv: Sequence[str] | None = None) -> int:
                 Path(args.plan_file),
                 repository_claim_root(),
                 takeover_stale=args.takeover_stale,
+                reservation_id=reservation_id,
+                owner_id_argument=False,
             )
+        if owner.get("phase") != "RELEASED":
+            owner = cutover.bind_control_owner(
+                reservation_config,
+                reservation_id,
+                action=request.action,
+                target=request_owner_target(request),
+                operation_id=text(request.identity.get("operation_id")),
+                managed_receipt_sha256=cast(
+                    str | None,
+                    request.identity.get("managed_receipt_sha256"),
+                ),
+                version=version,
+            )
+        authorization = request_owner_authorization(request)
+        if owner.get("phase") != "RELEASED":
+            if owner.get("authorization") is None:
+                print(
+                    canonical(
+                        {
+                            "status": "AUTHORIZATION_PENDING",
+                            "reservation_id": reservation_id,
+                            "authorization": authorization,
+                        }
+                    )
+                )
+                return claims.REFUSED
+            if owner.get("authorization") != authorization:
+                raise ProtectedError("owner authorization is bound to different identities")
         if selected != request.owner_argv()[2:]:
             raise ProtectedError("use the canonical argument order shown by --help")
         result = launch(request)

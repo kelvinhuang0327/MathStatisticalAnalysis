@@ -115,6 +115,14 @@ class Harness:
                 cast(str, self.request.identity["control_tree"]),
             ),
         )
+        self.monkeypatch.setattr(
+            cutover,
+            "control_version",
+            lambda: {
+                "head": self.request.identity["control_head"],
+                "tree": self.request.identity["control_tree"],
+            },
+        )
 
         def config(_args: argparse.Namespace) -> cutover.CutoverConfig:
             return self.fixture.config
@@ -182,6 +190,23 @@ class Harness:
     ) -> FakeChild:
         self.launches += 1
         assert list(argv[:3]) == [sys.executable, "-c", claims._GATED_EXEC]
+        wire = protected.record(json.loads(list(argv[4:])[-3]))
+        identity = protected.record(wire["identity"])
+        old_child_row = (
+            f"{self.child} {self.owner} {UID} S {' '.join(self.request.managed_argv())}"
+        )
+        self.request = replace(
+            self.request,
+            reservation_id=cast(str | None, identity["reservation_id"]),
+            owner_id_argument=cast(bool, identity["owner_id_argument"]),
+        )
+        new_child_row = (
+            f"{self.child} {self.owner} {UID} S {' '.join(self.request.managed_argv())}"
+        )
+        self.launchd.process_rows = [
+            new_child_row if row == old_child_row else row
+            for row in self.launchd.process_rows
+        ]
         assert list(argv[4:]) == self.request.managed_argv()
         assert start_new_session and pass_fds == (int(argv[3]),)
         state = claims.ClaimStore(self.request.claim_root).inspect(protected.TASK_KEY)
@@ -189,6 +214,67 @@ class Harness:
         return FakeChild(self, os.dup(pass_fds[0]))
 
     def launch(self) -> protected.Record:
+        protected.ReceiptFile(self.request.receipt_path).read()
+        owner = cutover.inspect_control_owner(self.fixture.config)
+        if self.request.reservation_id is None and (
+            owner is None or owner.get("phase") == "RELEASED"
+        ):
+            version: cutover.Record = {
+                "head": self.request.identity["control_head"],
+                "tree": self.request.identity["control_tree"],
+            }
+            target = protected.request_owner_target(self.request)
+            owner = cutover.acquire_control_owner(
+                self.fixture.config,
+                action=self.request.action,
+                target=target,
+                owner_kind="protected",
+                version=version,
+            )
+            old_child_row = (
+                f"{self.child} {self.owner} {UID} S {' '.join(self.request.managed_argv())}"
+            )
+            self.request = replace(
+                self.request,
+                reservation_id=str(owner["reservation_id"]),
+            )
+            new_child_row = (
+                f"{self.child} {self.owner} {UID} S {' '.join(self.request.managed_argv())}"
+            )
+            self.launchd.process_rows = [
+                new_child_row if row == old_child_row else row
+                for row in self.launchd.process_rows
+            ]
+        if (
+            owner is not None
+            and owner.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}
+            and owner.get("reservation_id") == self.request.reservation_id
+        ):
+            version = {
+                "head": self.request.identity["control_head"],
+                "tree": self.request.identity["control_tree"],
+            }
+            owner = cutover.bind_control_owner(
+                self.fixture.config,
+                str(self.request.reservation_id),
+                action=self.request.action,
+                target=protected.request_owner_target(self.request),
+                operation_id=str(self.request.identity["operation_id"]),
+                managed_receipt_sha256=cast(
+                    str | None,
+                    self.request.identity["managed_receipt_sha256"],
+                ),
+                version=version,
+            )
+            authorization = protected.request_owner_authorization(self.request)
+            if owner.get("authorization") is None:
+                cutover.authorize_control_owner(
+                    self.fixture.config,
+                    str(self.request.reservation_id),
+                    authorization,
+                )
+            elif owner.get("authorization") != authorization:
+                raise AssertionError("test harness owner authorization drift")
         return protected.launch(self.request)
 
     def external(self, command: str, *, cwd: str | None = "/isolated") -> None:
@@ -946,3 +1032,303 @@ def test_already_stopped_fsmonitor_requires_exact_negative_status(confirmed: boo
         ["git", "-c", "core.fsmonitor=false", "-C", worktree, "fsmonitor--daemon", verb]
         for verb in ("stop", "status")
     ]
+
+
+def _reserve_request_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> protected.Request | protected.RollbackRequest:
+    version = {
+        "head": harness.request.identity["control_head"],
+        "tree": harness.request.identity["control_tree"],
+    }
+    monkeypatch.setattr(cutover, "control_version", lambda: version)
+    reservation_id = str(uuid4())
+    request = replace(
+        harness.request,
+        reservation_id=reservation_id,
+        owner_id_argument=False,
+    )
+    cutover.acquire_control_owner(
+        request.config,
+        action=request.action,
+        target=protected.request_owner_target(request),
+        owner_kind="protected",
+        reservation_id=reservation_id,
+        version=version,
+    )
+    cutover.bind_control_owner(
+        request.config,
+        reservation_id,
+        action=request.action,
+        target=protected.request_owner_target(request),
+        operation_id=str(request.identity["operation_id"]),
+        managed_receipt_sha256=cast(
+            str | None, request.identity["managed_receipt_sha256"]
+        ),
+        version=version,
+    )
+    cutover.authorize_control_owner(
+        request.config,
+        reservation_id,
+        protected.request_owner_authorization(request),
+    )
+    harness.request = request
+    harness.chain()
+    return request
+
+
+def test_protected_apply_blocks_when_another_durable_owner_is_pending(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    version = {
+        "head": harness.request.identity["control_head"],
+        "tree": harness.request.identity["control_tree"],
+    }
+    monkeypatch.setattr(cutover, "control_version", lambda: version)
+    target = protected.request_owner_target(harness.request)
+    owner = cutover.acquire_control_owner(
+        harness.fixture.config,
+        action="apply",
+        target=target,
+        owner_kind="protected",
+        version=version,
+    )
+    owner = cutover.bind_control_owner(
+        harness.fixture.config,
+        str(owner["reservation_id"]),
+        action="apply",
+        target=target,
+        operation_id=str(harness.request.identity["operation_id"]),
+        managed_receipt_sha256=cast(
+            str | None, harness.request.identity["managed_receipt_sha256"]
+        ),
+        version=version,
+    )
+    cutover.authorize_control_owner(
+        harness.fixture.config,
+        str(owner["reservation_id"]),
+        {
+            "reservation_id": owner["reservation_id"],
+            "operation_id": owner["operation_id"],
+            "managed_receipt_sha256": owner["managed_receipt_sha256"],
+            "control_head": owner["control_head"],
+            "control_tree": owner["control_tree"],
+            "action": owner["action"],
+            "target": target,
+        },
+    )
+
+    with pytest.raises(cutover.CutoverSafetyError, match="blocks takeover"):
+        harness.launch()
+
+    assert harness.launches == 0
+    assert harness.launchd.mutation_calls == []
+    assert not harness.fixture.receipt_path.exists()
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZED_PENDING"
+
+
+def test_new_protected_request_waits_for_explicit_owner_authorization(
+    harness: Harness,
+) -> None:
+    pending = protected.launch(harness.request)
+
+    assert pending["status"] == "AUTHORIZATION_PENDING"
+    assert (
+        protected.record(pending["authorization"])["operation_id"]
+        == harness.request.identity["operation_id"]
+    )
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "AUTHORIZATION_PENDING"
+    assert harness.launches == 0 and harness.launchd.mutation_calls == []
+
+    harness.request = replace(
+        harness.request,
+        reservation_id=str(pending["reservation_id"]),
+    )
+    harness.chain()
+    authorized = cutover.authorize_control_owner(
+        harness.fixture.config,
+        str(pending["reservation_id"]),
+        protected.request_owner_authorization(harness.request),
+    )
+    assert authorized["phase"] == "AUTHORIZED_PENDING"
+
+    result = harness.launch()
+    assert result["status"] == "SUCCESS"
+
+
+def test_same_authorized_protected_owner_resumes_and_releases(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    request = _reserve_request_owner(harness, monkeypatch)
+
+    result = harness.launch()
+
+    assert result["status"] == "SUCCESS"
+    assert result["identity"] == request.identity
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+    assert owner["reservation_id"] == request.reservation_id
+
+
+def test_terminal_protected_receipt_can_release_owner_after_worker_interruption(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    original_release = cutover.release_control_owner
+    calls = 0
+
+    def fail_first_release(
+        selected_config: cutover.CutoverConfig,
+        reservation_id: str,
+        *,
+        protected_receipt_path: Path | None = None,
+    ) -> protected.Record:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise cutover.CutoverSafetyError("injected interruption after terminal receipt")
+        return original_release(
+            selected_config,
+            reservation_id,
+            protected_receipt_path=protected_receipt_path,
+        )
+
+    monkeypatch.setattr(cutover, "release_control_owner", fail_first_release)
+    with pytest.raises(cutover.CutoverSafetyError, match="injected interruption"):
+        harness.launch()
+    assert harness.request.receipt_path.exists()
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "TERMINAL_CAPTURE_PENDING"
+
+    result = harness.launch()
+
+    assert result["status"] == "SUCCESS" and result["reused"] is True
+    assert harness.launches == 1
+    owner = cutover.inspect_control_owner(harness.fixture.config)
+    assert owner is not None and owner["phase"] == "RELEASED"
+
+
+def _managed_rollback_for_closure(
+    harness: Harness,
+) -> tuple[Path, bytes, dict[str, object], bytes]:
+    assert harness.launch()["status"] == "SUCCESS"
+    apply_receipt_path = harness.request.receipt_path
+    apply_receipt_bytes = apply_receipt_path.read_bytes()
+    harness.launchd.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
+    harness.launchd.file_rows = ["p424242", "fcwd", "n/tmp"]
+    before = json.loads(harness.fixture.receipt_path.read_text(encoding="utf-8"))
+    rolled_back = cutover.rollback(
+        harness.fixture.config,
+        receipt=before,
+        runner=harness.launchd,
+    )
+    assert rolled_back["status"] == "ROLLBACK_SUCCESS"
+    managed, identity, managed_bytes = cutover.read_control_json(harness.fixture.receipt_path)
+    assert managed["status"] == "ROLLBACK_SUCCESS"
+    assert identity.sha256
+    return apply_receipt_path, apply_receipt_bytes, managed, managed_bytes
+
+
+def _external_runtime_verification(
+    managed: dict[str, object],
+) -> tuple[dict[str, object], dict[str, object]]:
+    prestate = protected.record(managed["prestate"])
+    restored_source = protected.record(prestate["old_source"])
+    after = protected.record(managed["after"])
+    plist = protected.record(after["plist"])
+    launchd = protected.record(after["launchd"])
+    verification: dict[str, object] = {
+        "kind": "independent-runtime-verification-v1",
+        "verified": True,
+        "observer": "isolated-test-inspector",
+        "source": restored_source,
+        "runtime": prestate["old_runtime"],
+        "plist_sha256": plist["sha256"],
+        "launch_state": launchd["state"],
+        "enabled": after["enabled"],
+    }
+    return restored_source, verification
+
+
+def test_managed_only_lifecycle_closure_is_truthful_idempotent_and_preserves_receipts(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_path, apply_before, managed, managed_before = _managed_rollback_for_closure(harness)
+    managed_identity, _ = cutover._file_identity(harness.fixture.receipt_path, missing_ok=False)
+    assert managed_identity is not None
+    restored_source, verification = _external_runtime_verification(managed)
+    rollback_path = harness.fixture.scheduler_root / protected.ROLLBACK_RECEIPT_NAME
+    assert not rollback_path.exists()
+
+    def forbidden(*_args: object, **_kwargs: object) -> object:
+        raise AssertionError("managed-only closure must not execute apply or rollback")
+
+    monkeypatch.setattr(cutover, "apply", forbidden)
+    monkeypatch.setattr(cutover, "rollback", forbidden)
+    monkeypatch.setattr(protected, "launch", forbidden)
+    closed = protected.close_managed_only_lifecycle(
+        harness.fixture.config,
+        operation_id=str(managed["operation_id"]),
+        managed_receipt_sha256=managed_identity.sha256,
+        restored_source=restored_source,
+        runtime_verification=verification,
+    )
+    repeated = protected.close_managed_only_lifecycle(
+        harness.fixture.config,
+        operation_id=str(managed["operation_id"]),
+        managed_receipt_sha256=managed_identity.sha256,
+        restored_source=restored_source,
+        runtime_verification=verification,
+    )
+
+    assert closed == repeated
+    assert closed["disposition"] == "MANAGED_ONLY_EXTERNALLY_COMPLETED"
+    assert closed["provenance"] == "MANAGED_ONLY_CONFIRMED"
+    assert closed["protected_wrapper_executed"] is False
+    assert protected.classify_execution_provenance(
+        harness.fixture.config,
+        operation_id=str(managed["operation_id"]),
+        managed_receipt_sha256=managed_identity.sha256,
+    ) == "MANAGED_ONLY_CONFIRMED"
+    assert (harness.fixture.receipt_path.read_bytes()) == managed_before
+    assert apply_path.read_bytes() == apply_before
+    assert not rollback_path.exists()
+
+
+@pytest.mark.parametrize(
+    "defect", ["operation", "receipt_hash", "source", "nonterminal", "ambiguous"]
+)
+def test_managed_only_lifecycle_closure_rejects_mismatch_and_recovery_state(
+    harness: Harness, defect: str
+) -> None:
+    _apply_path, _apply_before, managed, _managed_before = _managed_rollback_for_closure(harness)
+    if defect == "nonterminal":
+        managed["status"] = "RECOVERY_REQUIRED"
+        managed["phase"] = "RECOVERY_REQUIRED"
+        harness.fixture.receipt_path.write_text(protected.canonical(managed), encoding="utf-8")
+        harness.fixture.receipt_path.chmod(0o600)
+    if defect == "ambiguous":
+        rollback_path = harness.fixture.scheduler_root / protected.ROLLBACK_RECEIPT_NAME
+        rollback_path.write_text("ambiguous\n", encoding="utf-8")
+        rollback_path.chmod(0o600)
+    current, identity, _ = cutover.read_control_json(harness.fixture.receipt_path)
+    restored_source, verification = _external_runtime_verification(current)
+    operation_id = str(current["operation_id"])
+    receipt_hash = identity.sha256
+    if defect == "operation":
+        operation_id = uuid4().hex
+    elif defect == "receipt_hash":
+        receipt_hash = "a" * 64
+    elif defect == "source":
+        restored_source = {**restored_source, "head": "0" * 40}
+
+    with pytest.raises(protected.ProtectedError):
+        protected.close_managed_only_lifecycle(
+            harness.fixture.config,
+            operation_id=operation_id,
+            managed_receipt_sha256=receipt_hash,
+            restored_source=restored_source,
+            runtime_verification=verification,
+        )

@@ -1,0 +1,225 @@
+{
+  "ABSOLUTE_DELTA": 0,
+  "ACCEPTED_2TICKET_RECLOSURE_MOVES": 0,
+  "ACCEPTED_3TICKET_MOVES": [],
+  "BASE_HEAD": "5ef79bf38b22252caaba4a74206438ef80fc0cb0",
+  "BASE_TREE": "f2f17fb9c2dc54c1278b684c1fb1260915608ece",
+  "BONFERRONI_FILTER": "REUSED_R4_U3_SAFE_UPPER_BOUND",
+  "BONFERRONI_PRUNED": 367191,
+  "COMBINED_LOCAL_OPTIMUM_STATUS": "PROVEN_FOR_DEFINED_2TICKET_PLUS_3CYCLE_NEIGHBORHOODS",
+  "COMPLETED_AT_EPOCH_SECONDS": 1790254816.076159,
+  "EXACT_ACCEPTANCE_AUTHORITY": "OFFICIAL_ANY_PRIZE_OUTCOME_COUNT",
+  "EXACT_EVALUATIONS": 19674,
+  "FINAL_DISPOSITION": "NO_3TICKET_IMPROVEMENT_FROM_R4_LOCAL_OPTIMUM",
+  "FINAL_EXACT": 312867226,
+  "FINAL_EXACT_FRACTION": "519713/998844",
+  "FINAL_PORTFOLIO": [
+    [
+      1,
+      2,
+      34,
+      41,
+      42,
+      45
+    ],
+    [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+    ],
+    [
+      2,
+      5,
+      33,
+      35,
+      40,
+      48
+    ],
+    [
+      3,
+      4,
+      6,
+      10,
+      15,
+      23
+    ],
+    [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+    ],
+    [
+      3,
+      13,
+      14,
+      28,
+      36,
+      44
+    ],
+    [
+      4,
+      8,
+      26,
+      31,
+      37,
+      39
+    ],
+    [
+      4,
+      18,
+      20,
+      24,
+      28,
+      29
+    ],
+    [
+      5,
+      17,
+      25,
+      27,
+      36,
+      41
+    ],
+    [
+      6,
+      7,
+      9,
+      13,
+      18,
+      26
+    ],
+    [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+    ],
+    [
+      7,
+      11,
+      16,
+      24,
+      32,
+      47
+    ],
+    [
+      8,
+      9,
+      11,
+      15,
+      20,
+      46
+    ],
+    [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+    ],
+    [
+      12,
+      13,
+      15,
+      19,
+      24,
+      37
+    ],
+    [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+    ],
+    [
+      17,
+      21,
+      34,
+      40,
+      44,
+      49
+    ],
+    [
+      21,
+      25,
+      30,
+      38,
+      45,
+      48
+    ],
+    [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+    ],
+    [
+      27,
+      32,
+      38,
+      40,
+      42,
+      43
+    ]
+  ],
+  "FINAL_PORTFOLIO_SHA256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "INCOMPLETE_TWO_TICKET_RECLOSURE": null,
+  "LEGAL_3CYCLE_OPERATIONS": 398882,
+  "NEXT_TASK_STARTED": "NO",
+  "OFFICIAL_ANY_PRIZE_SEMANTICS_CHANGED": false,
+  "R4_2TICKET_SEMANTICS_CHANGED": false,
+  "R4_INCUMBENT_ARTIFACT_BLOB": "bb61553f28d0634e0dd6abd128bfcb75a54aff36",
+  "R4_INCUMBENT_ARTIFACT_SHA256": "5b3217f25998129a0cc7ccab12da93d5a3c47b6a102cb4013159f1a2062003e9",
+  "R4_INCUMBENT_SOURCE_PATH": "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json",
+  "RAW_3CYCLE_OPERATIONS_PER_SCAN": 492480,
+  "RAW_OPERATION_COUNT": 492480,
+  "RELATIVE_DELTA": "0",
+  "ROUND_CAP": 4,
+  "RUN_ID": "run1",
+  "SOURCE_COMMIT": "5ef79bf38b22252caaba4a74206438ef80fc0cb0",
+  "SOURCE_TREE": "f2f17fb9c2dc54c1278b684c1fb1260915608ece",
+  "STARTED_AT_EPOCH_SECONDS": 1790242968.125157,
+  "START_EXACT": 312867226,
+  "START_EXACT_FRACTION": "519713/998844",
+  "START_PORTFOLIO_SHA256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+  "TASK_ID": "B649_K20_BONFERRONI_FILTERED_3TICKET_CYCLIC_CROSS_SWAP_VND_R1",
+  "TASK_STATUS": "COMPLETE",
+  "TERMINAL_EVIDENCE_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-cross-swap-ascent-r4/MathStatisticalAnalysis/.task-data/B649_K20_BONFERRONI_FILTERED_EXHAUSTIVE_2TICKET_CROSS_SWAP_ASCENT_R4/run2/run-result.json",
+  "TERMINAL_EVIDENCE_SHA256": "c0ca7609075a2df96e32142e8953011596ef2a898c28e6b3a04ca1bfadda92a9",
+  "TWO_TICKET_RECLOSURES": [],
+  "UNIQUE_3CYCLE_PORTFOLIOS": 386865,
+  "VND_ROUNDS_COMPLETED": 1,
+  "VND_SCAN_RECORDS": [
+    {
+      "audit_digest": "e321e17261c623c0f31fea7a4b2b14db782216b6e03f2c19ff02db201837b318",
+      "best_exact_outcome_count": 312867226,
+      "best_move": null,
+      "best_portfolio_sha256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+      "bonferroni_pruned_count": 367191,
+      "complete": true,
+      "duplicate_result_count": 12017,
+      "exact_evaluation_count": 19674,
+      "illegal_operation_count": 93598,
+      "legal_operation_count": 398882,
+      "no_op_rejection_count": 44,
+      "raw_operation_count": 492480,
+      "round": 1,
+      "unique_portfolio_count": 386865
+    }
+  ],
+  "WALL_CLOCK_CAP_SECONDS": 21600
+}

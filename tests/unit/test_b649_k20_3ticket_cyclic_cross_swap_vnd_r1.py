@@ -38,6 +38,19 @@ def _ignore_call(*_args: object, **_kwargs: object) -> None:
     return None
 
 
+def _patch_candidate_head_guard(monkeypatch: pytest.MonkeyPatch) -> None:
+    git_stdout = vnd._git_stdout
+
+    def report_pinned_head(repository: Path, arguments: list[str]) -> str:
+        if arguments == ["rev-parse", "HEAD"]:
+            return vnd.BASE_COMMIT
+        if arguments == ["rev-parse", "HEAD^{tree}"]:
+            return vnd.BASE_TREE
+        return git_stdout(repository, arguments)
+
+    monkeypatch.setattr(vnd, "_git_stdout", report_pinned_head)
+
+
 @pytest.fixture(scope="module")
 def starting() -> vnd.StartingPortfolio:
     return vnd.load_run2_starting_portfolio(REPOSITORY)
@@ -406,6 +419,7 @@ def test_two_ticket_reclosure_runs_before_the_final_complete_scan(
     monkeypatch.setattr(vnd, "_write_json_result", _ignore_call)
     monkeypatch.setattr(r4_runner, "_canonical_draw_space", fake_draws)
     monkeypatch.setattr(r4, "run_cross_swap_sweep", fake_r4_scan)
+    _patch_candidate_head_guard(monkeypatch)
     result = vnd.run_task(
         REPOSITORY,
         run_data_dir=tmp_path,
@@ -467,6 +481,7 @@ def test_round_cap_and_wall_clock_cap_never_claim_combined_local_optimality(
     monkeypatch.setattr(vnd, "_write_json_result", _ignore_call)
     monkeypatch.setattr(r4_runner, "_canonical_draw_space", lambda: object())
     monkeypatch.setattr(r4, "run_cross_swap_sweep", fake_r4_scan)
+    _patch_candidate_head_guard(monkeypatch)
     round_result = vnd.run_task(
         REPOSITORY,
         run_data_dir=tmp_path / "round-cap",
@@ -488,6 +503,33 @@ def test_round_cap_and_wall_clock_cap_never_claim_combined_local_optimality(
         "scan-4",
         "r4-reclosure",
     ]
+
+    events.clear()
+    clock_calls = 0
+
+    def deadline_after_completed_scan() -> float:
+        nonlocal clock_calls
+        clock_calls += 1
+        return (
+            0.0
+            if clock_calls <= 3
+            else float(vnd.WALL_CLOCK_CAP_SECONDS + clock_calls)
+        )
+
+    post_scan_time_result = vnd.run_task(
+        REPOSITORY,
+        run_data_dir=tmp_path / "time-cap-after-scan",
+        canonical_result_path=REPOSITORY
+        / "docs/research/b649-k20-3ticket-cyclic-cross-swap-vnd-r1-result.json",
+        now_fn=deadline_after_completed_scan,
+    )
+    assert events == ["scan-1"]
+    assert post_scan_time_result["VND_ROUNDS_COMPLETED"] == 1
+    assert post_scan_time_result["FINAL_DISPOSITION"] == "BOUNDED_PROGRESS_NOT_CONVERGED"
+    assert post_scan_time_result["COMBINED_LOCAL_OPTIMUM_STATUS"] == "NOT_PROVEN"
+    assert post_scan_time_result["GLOBAL_K20_OPTIMUM_STATUS"] == "UNKNOWN"
+    assert post_scan_time_result["ACCEPTED_3TICKET_MOVES"] == []
+    assert post_scan_time_result["FINAL_EXACT"] == starting.exact_outcome_count
 
     calls = 0
 

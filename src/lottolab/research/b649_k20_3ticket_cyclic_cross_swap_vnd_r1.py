@@ -1445,6 +1445,12 @@ def run_task(
             scans.append(_scan_record(latest_scan))
             state["completed_scan_records"] = scans
             state["rounds_completed"] = current_round
+            if now_fn() >= deadline:
+                state["terminal_disposition"] = "BOUNDED_PROGRESS_NOT_CONVERGED"
+                state["combined_local_optimum_status"] = "NOT_PROVEN"
+                state["next_action"] = "DONE"
+                _save_vnd_state(state_path, state)
+                break
             if latest_scan.best_exact_count <= current_exact:
                 state["terminal_disposition"] = (
                     "NO_3TICKET_IMPROVEMENT_FROM_R4_LOCAL_OPTIMUM"

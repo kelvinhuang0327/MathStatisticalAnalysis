@@ -135,8 +135,8 @@ class Harness:
 
     def chain(self) -> None:
         self.launchd.process_rows = [
-            f"{self.owner} 1 {UID} {' '.join(self.request.owner_argv())}",
-            f"{self.child} {self.owner} {UID} {' '.join(self.request.managed_argv())}",
+            f"{self.owner} 1 {UID} S {' '.join(self.request.owner_argv())}",
+            f"{self.child} {self.owner} {UID} S {' '.join(self.request.managed_argv())}",
         ]
         self.launchd.file_rows = [
             f"p{pid}\nfcwd\nn{protected.CONTROL_ROOT}" for pid in (self.owner, self.child)
@@ -192,7 +192,7 @@ class Harness:
         return protected.launch(self.request)
 
     def external(self, command: str, *, cwd: str | None = "/isolated") -> None:
-        self.launchd.process_rows.append(f"900099 1 {UID} {command}")
+        self.launchd.process_rows.append(f"900099 1 {UID} S {command}")
         if cwd is not None:
             self.launchd.file_rows.extend(["p900099", "fcwd", "n" + cwd])
 

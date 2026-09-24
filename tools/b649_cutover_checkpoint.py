@@ -29,11 +29,12 @@ import json
 import os
 import plistlib
 import re
+import shlex
 import sqlite3
 import stat
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -367,8 +368,190 @@ class Process:
     ppid: int
     uid: int
     command: str
+    state: str | None = None
     files: list[str] = field(default_factory=lambda: list[str]())
     cwd: str | None = None
+    executable_files: list[str] = field(default_factory=lambda: list[str]())
+
+
+def _is_trusted_git_executable(executable: str, text_files: Sequence[str]) -> bool:
+    binary = Path(executable).name.lower()
+    if binary not in {
+        "git",
+        "git.exe",
+        "git-fsmonitor--daemon",
+        "git-fsmonitor--daemon.exe",
+    }:
+        return False
+    matching_text_files = {
+        path
+        for path in set(text_files)
+        if Path(path).is_absolute() and Path(path).name.lower() == binary
+    }
+    if len(matching_text_files) != 1:
+        return False
+    text_path = Path(next(iter(matching_text_files)))
+    try:
+        actual = text_path.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    if Path(executable).is_absolute():
+        try:
+            if Path(executable).resolve(strict=True) != actual:
+                return False
+        except (OSError, RuntimeError, ValueError):
+            return False
+    elif executable.lower() != binary:
+        return False
+
+    trusted_roots = (
+        Path("/usr/bin"),
+        Path("/usr/libexec/git-core"),
+        Path("/Library/Developer/CommandLineTools/usr/bin"),
+        Path("/Library/Developer/CommandLineTools/usr/libexec/git-core"),
+        Path("/Applications/Xcode.app/Contents/Developer/usr/bin"),
+        Path("/Applications/Xcode.app/Contents/Developer/usr/libexec/git-core"),
+        Path("/opt/homebrew/Cellar/git"),
+        Path("/usr/local/Cellar/git"),
+    )
+    for root in trusted_roots:
+        try:
+            if actual.is_relative_to(root.resolve(strict=True)):
+                return True
+        except (OSError, RuntimeError, ValueError):
+            continue
+    return False
+
+
+def is_git_fsmonitor_command(
+    command: str,
+    old_worktree: str | None = None,
+    *,
+    executable_files: Sequence[str] = (),
+) -> bool:
+    """Narrowly recognize genuine git fsmonitor daemon executions."""
+    try:
+        tokens = shlex.split(command)
+    except Exception:
+        return False
+    if not tokens:
+        return False
+    executable = tokens[0]
+    if old_worktree:
+        path_pattern = re.escape(old_worktree) + r"(?=/|[\s\"']|$)"
+        if re.search(path_pattern, executable):
+            return False
+    binary = Path(executable).name.lower()
+    if binary in {"git", "git.exe"}:
+        if not _is_trusted_git_executable(executable, executable_files):
+            return False
+        idx = 1
+        while idx < len(tokens):
+            tok = tokens[idx]
+            if tok == "fsmonitor--daemon":
+                sub_tokens = [t for t in tokens[idx + 1 :] if not t.startswith("-")]
+                return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+            elif tok in {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--super-prefix"}:
+                idx += 2
+            elif tok.startswith("-"):
+                idx += 1
+            else:
+                return False
+        return False
+    elif binary in {"git-fsmonitor--daemon", "git-fsmonitor--daemon.exe"}:
+        if not _is_trusted_git_executable(executable, executable_files):
+            return False
+        sub_tokens = [t for t in tokens[1:] if not t.startswith("-")]
+        return bool(sub_tokens and sub_tokens[0] in {"run", "start"})
+    return False
+
+
+def _is_target_git_admin_metadata(path: str, *, head: str, old_worktree: str) -> bool:
+    """Recognize Git admin paths linked by this B649 worktree's .git file."""
+    worktree_name = f"B649_PRODUCTION_{head}"
+    if Path(old_worktree).name != worktree_name or any(char in path for char in "\x00\r\n"):
+        return False
+    metadata_path = Path(path)
+    if not metadata_path.is_absolute():
+        return False
+    git_file = Path(old_worktree) / ".git"
+    try:
+        lines = git_file.read_text(encoding="utf-8").splitlines()
+        if len(lines) != 1 or not lines[0].startswith("gitdir: "):
+            return False
+        gitdir_text = lines[0][len("gitdir: ") :]
+        if not gitdir_text or any(char in gitdir_text for char in "\x00\r\n"):
+            return False
+        gitdir = Path(gitdir_text)
+        if not gitdir.is_absolute():
+            gitdir = git_file.parent / gitdir
+        actual_gitdir = gitdir.resolve(strict=True)
+        actual_metadata = metadata_path.resolve(strict=True)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    return actual_gitdir.name == worktree_name and actual_metadata.is_relative_to(actual_gitdir)
+
+
+def _head_appears_outside_target_git_metadata(
+    process: Process, *, head: str, old_worktree: str
+) -> bool:
+    if head in process.command.replace(old_worktree, ""):
+        return True
+    for path in process.files:
+        if head not in path.replace(old_worktree, ""):
+            continue
+        if not _is_target_git_admin_metadata(path, head=head, old_worktree=old_worktree):
+            return True
+    return False
+
+
+def is_passive_git_fsmonitor(
+    process: Process,
+    *,
+    roles: set[str],
+    locks: Mapping[str, str],
+    head: str,
+    old_worktree: str,
+) -> bool:
+    """Return True only if process is a legitimate git fsmonitor without B649 ownership."""
+    if roles:
+        return False
+    if any(lock in process.files for lock in locks.values()):
+        return False
+    if head and _head_appears_outside_target_git_metadata(
+        process, head=head, old_worktree=old_worktree
+    ):
+        return False
+    return is_git_fsmonitor_command(
+        process.command,
+        old_worktree=old_worktree,
+        executable_files=process.executable_files,
+    )
+
+
+def is_protected_task_checkpoint_run(
+    command: str, *, protected_owner_argv: Sequence[str] | None = None
+) -> bool:
+    """Recognize a task_checkpoint wrapper for the verified protected owner command."""
+    try:
+        tokens = shlex.split(command)
+    except Exception:
+        return False
+    if (
+        protected_owner_argv is None
+        or len(tokens) < 3
+        or Path(tokens[0]).name.lower() != "ruby"
+        or Path(tokens[1]).name != "task_checkpoint.rb"
+    ):
+        return False
+    try:
+        separator = tokens.index("--", 2)
+    except ValueError:
+        return False
+    return (
+        "--run" in tokens[2:separator]
+        and tuple(tokens[separator + 1 :]) == tuple(protected_owner_argv)
+    )
 
 
 def process_image(pid: int) -> Path:
@@ -517,20 +700,33 @@ def process_snapshot(
     args: argparse.Namespace, runner: Runner, *, execution: ControlledExecution | None = None
 ) -> Record:
     uid = int(args.launch_domain.split("/")[1])
-    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,command="])
+    raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
     processes: dict[int, Process] = {}
     for line in raw.splitlines():
-        match = re.fullmatch(r"\s*(\d+)\s+(\d+)\s+(\d+)\s+(.+)", line)
+        # macOS ps STAT is a run state followed by documented state modifiers.
+        # Keep it separate from argv: command text cannot establish exit state.
+        match = re.fullmatch(
+            r"\s*(\d+)\s+(\d+)\s+(\d+)\s+([IRSTUZ][+<>AELNSVWXs]*)\s+(\S.*)", line
+        )
         if match is None:
             raise Unverifiable("unparseable process table row")
-        pid, ppid, owner, cmd = match.groups()
+        pid, ppid, owner, state, cmd = match.groups()
         if int(pid) in processes:
             raise Unverifiable("duplicate process table PID")
-        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd)
+        processes[int(pid)] = Process(int(pid), int(ppid), int(owner), cmd, state=state)
     if not processes:
         raise Unverifiable("empty process table")
-    # A process name is never authority to exempt an ancestor.
-    excluded = {os.getpid()}
+    current_pid = os.getpid()
+    ancestors: set[int] = set()
+    parent = os.getppid()
+    while parent in processes and parent not in ancestors and parent != current_pid:
+        ancestors.add(parent)
+        parent = processes[parent].ppid
+    # A process name is never authority to exempt an ancestor by itself; only
+    # this invocation is excluded here (a verified protected parent is added
+    # below, and a task_checkpoint wrapper is considered only after that
+    # claim-bound proof identifies the exact owner command it launched).
+    excluded = {current_pid}
     files = checked(runner, ["lsof", "-nP", "-a", "-u", str(uid), "-F", "pfn"])
     current: Process | None = None
     descriptor = ""
@@ -545,14 +741,36 @@ def process_snapshot(
             descriptor = line[1:]
         elif line.startswith("n") and descriptor:
             if current is not None:
-                current.files.append(line[1:])
+                name = line[1:]
+                current.files.append(name)
                 if descriptor == "cwd":
-                    current.cwd = line[1:]
+                    current.cwd = name
+                elif descriptor == "txt":
+                    current.executable_files.append(name)
         else:
             raise Unverifiable("unparseable lsof ownership row")
     controlled = None if execution is None else execution.verify(processes, uid)
+    protected_task_checkpoint_ancestors: set[int] = set()
     if controlled is not None:
-        excluded.add(os.getppid())
+        supervisor_value = object_record(controlled).get("supervisor_pid")
+        if (
+            not isinstance(supervisor_value, int)
+            or isinstance(supervisor_value, bool)
+            or supervisor_value not in ancestors
+        ):
+            raise Unverifiable("protected supervisor is not in the observed ancestor chain")
+        supervisor_pid = supervisor_value
+        excluded.add(supervisor_pid)
+        parent = processes[supervisor_pid].ppid
+        seen: set[int] = set()
+        while parent in ancestors and parent in processes and parent not in seen:
+            seen.add(parent)
+            if is_protected_task_checkpoint_run(
+                processes[parent].command,
+                protected_owner_argv=execution.owner_argv if execution is not None else None,
+            ):
+                protected_task_checkpoint_ancestors.add(parent)
+            parent = processes[parent].ppid
     old = args.expected_rollback_worktree
     head = args.expected_rollback_head
     identities = {
@@ -562,19 +780,32 @@ def process_snapshot(
     locks = {"primary": args.primary_lock_path, "shadow": args.shadow_lock_path}
     members: dict[str, set[int]] = {role: set() for role in ROLE_DEFAULTS}
     runtime: set[int] = set()
+    zombie_pids = {
+        process.pid
+        for process in processes.values()
+        if process.state is not None and process.state.startswith("Z")
+    }
     unknown: list[str] = []
     for process in processes.values():
         if process.pid in excluded:
+            continue
+        if process.pid in zombie_pids:
+            # Exited records retain stale argv, but cannot execute a cycle.
+            # Live file evidence may indicate PID reuse or an inconsistent sample.
+            if process.cwd is not None or process.files:
+                unknown.append(f"PID {process.pid}: zombie has inconsistent cwd/open-file evidence")
             continue
         if process.uid == uid and process.cwd is None:
             unknown.append(f"PID {process.pid}: cwd/open-file coverage unavailable")
         evidence = "\n".join([process.command, *process.files])
         scopes = ((old, head, ""),) if execution is None else execution.sources
-        bound = any(
-            bool(re.search(re.escape(path) + r"(?=/|[\s\"']|$)", evidence))
-            or source_head in evidence
+        matched_scopes = [
+            (path, source_head)
             for path, source_head, _ in scopes
-        )
+            if bool(re.search(re.escape(path) + r"(?=/|[\s\"']|$)", evidence))
+            or source_head in evidence
+        ]
+        bound = bool(matched_scopes)
         roles = {
             role
             for role, markers in identities.items()
@@ -584,7 +815,18 @@ def process_snapshot(
             if lock in process.files:
                 roles.add(role)
                 bound = True
-        if bound:
+        if process.pid in protected_task_checkpoint_ancestors and not roles:
+            # The protected wrapper is control-plane infrastructure. Retain
+            # positive role/lock evidence and all missing-coverage uncertainty.
+            # Keep it eligible for descendant propagation from a real owner.
+            continue
+        is_passive_fsmonitor = bool(matched_scopes) and all(
+            is_passive_git_fsmonitor(
+                process, roles=roles, locks=locks, head=source_head, old_worktree=path
+            )
+            for path, source_head in matched_scopes
+        )
+        if bound and not is_passive_fsmonitor:
             runtime.add(process.pid)
             for role in roles:
                 members[role].add(process.pid)
@@ -596,7 +838,7 @@ def process_snapshot(
     while pending:
         pending = False
         for process in processes.values():
-            if process.ppid in runtime and process.pid not in runtime | excluded:
+            if process.ppid in runtime and process.pid not in runtime | excluded | zombie_pids:
                 runtime.add(process.pid)
                 pending = True
 
@@ -604,11 +846,12 @@ def process_snapshot(
         return "PRESENT" if pids else "UNVERIFIABLE" if unknown else "ABSENT"
 
     result: Record = {
-        "scope": f"user {uid}; argv, cwd/open files, descendant closure",
+        "scope": f"user {uid}; ps state, argv, cwd/open files, descendant closure",
         "old_worktree": old,
         "old_head": head,
         "excluded_checkpoint_pids": sorted(excluded),
         "controlled_execution": controlled,
+        "zombie_pids": sorted(zombie_pids),
         "process_count": len(processes),
         "uncertainties": unknown,
         "runtime": {"classification": classification(runtime), "pids": sorted(runtime)},
@@ -618,11 +861,12 @@ def process_snapshot(
                 "ppid": p.ppid,
                 "uid": p.uid,
                 "command": p.command,
+                "state": p.state,
                 "cwd": p.cwd,
                 "files": p.files,
             }
             for p in processes.values()
-            if p.pid in runtime
+            if p.pid in runtime | zombie_pids
         ],
     }
     for role, pids in members.items():

@@ -178,7 +178,7 @@ class FakeLaunchd:
     calls: list[tuple[str, ...]] = field(default_factory=lambda: list[tuple[str, ...]]())
     status_by_path: dict[Path, str] = field(default_factory=lambda: dict[Path, str]())
     process_rows: list[str] = field(
-        default_factory=lambda: [f"424242 1 {UID} /usr/bin/fixture-shell"]
+        default_factory=lambda: [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     )
     file_rows: list[str] = field(default_factory=lambda: ["p424242", "fcwd", "n/tmp"])
     fail_bootstrap_new_once: bool = False
@@ -281,7 +281,7 @@ class FakeLaunchd:
                 f'    "{cutover.LABEL}" => {str(not self.enabled).lower()}\n'
                 "}\n",
             )
-        if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,command="):
+        if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="):
             return _completed(args, "\n".join(self.process_rows) + "\n")
         if args == ("lsof", "-nP", "-a", "-u", str(UID), "-F", "pfn"):
             return _completed(args, "\n".join(self.file_rows) + "\n")
@@ -399,6 +399,66 @@ def test_plan_is_read_only_and_reports_exact_runtime(fixture: Fixture) -> None:
     }
     assert runner.mutation_calls == []
     assert all(not path.exists() for path in before_paths)
+
+
+def test_source_validation_fsmonitor_metadata_is_passive_before_ownership_snapshot(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    git_admin = fixture.canonical / ".git" / "worktrees" / fixture.new.name
+    git_admin.mkdir(parents=True)
+    (git_admin / "index").touch()
+    (fixture.new / ".git").write_text(f"gitdir: {git_admin}\n", encoding="utf-8")
+    fsmonitor_pid = 424243
+    observed_calls: list[tuple[str, ...]] = []
+
+    def runner_after_source_validation(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        observed_calls.append(tuple(argv))
+        result = runner(argv)
+        if "status" in argv and str(fixture.new) in argv:
+            runner.process_rows.append(
+                f"{fsmonitor_pid} 1 {UID} S git fsmonitor--daemon run"
+            )
+            runner.file_rows.extend(
+                [
+                    f"p{fsmonitor_pid}",
+                    "fcwd",
+                    "n/tmp",
+                    "ftxt",
+                    "n/usr/bin/git",
+                    "f3",
+                    f"n{git_admin / 'index'}",
+                ]
+            )
+        return result
+
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    ownership_snapshot = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_ownership_snapshot"]
+    )
+    source = validate_source(
+        fixture.config,
+        runner_after_source_validation,
+        role="new",
+        expected_head=NEW_HEAD,
+        expected_tree=NEW_TREE,
+        expected_ref=fixture.config.durable_ref,
+    )
+    ownership = ownership_snapshot(fixture.config, runner_after_source_validation, source)
+
+    runtime = _object(ownership["runtime"])
+    assert any(row.startswith(f"{fsmonitor_pid} ") for row in runner.process_rows)
+    source_status_index = next(
+        i
+        for i, call in enumerate(observed_calls)
+        if "status" in call and str(fixture.new) in call
+    )
+    ownership_snapshot_index = next(
+        i for i, call in enumerate(observed_calls) if call[:1] == ("ps",)
+    )
+    assert source_status_index < ownership_snapshot_index
+    assert runtime["classification"] == "ABSENT"
+    assert runtime["pids"] == []
 
 
 @pytest.mark.parametrize("drift", ["source", "plist"])
@@ -723,7 +783,7 @@ def test_apply_and_rollback_preserve_unloaded_disabled_prestate(fixture: Fixture
 
 def test_plan_rejects_active_shadow_before_any_mutation(fixture: Fixture) -> None:
     runner = FakeLaunchd(fixture)
-    runner.process_rows = [f"424242 1 {UID} {fixture.old}/tools/b649_pair_rule_forward_shadow.py"]
+    runner.process_rows = [f"424242 1 {UID} S {fixture.old}/tools/b649_pair_rule_forward_shadow.py"]
 
     result = cutover.build_plan(fixture.config, runner=runner)
 
@@ -746,7 +806,7 @@ def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     def make_scheduler_active(args: tuple[str, ...]) -> None:
         if args[1] == "disable":
             runner.process_rows = [
-                f"424242 1 {UID} {fixture.old}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = make_scheduler_active
@@ -766,7 +826,7 @@ def test_apply_race_after_disable_becomes_recovery_required_without_kill(
     assert receipt["status"] == "RECOVERY_REQUIRED"
     assert receipt["mutation_summary"]["launchd"] is True
 
-    runner.process_rows = [f"424242 1 {UID} /usr/bin/fixture-shell"]
+    runner.process_rows = [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     recovered = cutover.rollback(fixture.config, runner=runner)
 
     assert recovered["status"] == "ROLLBACK_SUCCESS"
@@ -784,7 +844,7 @@ def test_apply_unloaded_enabled_race_is_detected_before_plist_replacement(
     def make_scheduler_active(args: tuple[str, ...]) -> None:
         if args[1] == "disable":
             runner.process_rows = [
-                f"424242 1 {UID} {fixture.old}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {fixture.old}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = make_scheduler_active
@@ -948,7 +1008,7 @@ def test_apply_race_after_bootstrap_is_detected_before_enable(fixture: Fixture) 
     def make_scheduler_active(args: tuple[str, ...]) -> None:
         if args[1] == "bootstrap":
             runner.process_rows = [
-                f"424242 1 {UID} {fixture.new}/tools/b649_goalc_local_scheduler.py"
+                f"424242 1 {UID} S {fixture.new}/tools/b649_goalc_local_scheduler.py"
             ]
 
     runner.after_mutation = make_scheduler_active
@@ -1089,7 +1149,7 @@ def test_rollback_blocks_when_new_release_cycle_is_active(fixture: Fixture) -> N
     applied = cutover.apply(fixture.config, plan=plan, runner=runner)
     assert applied["status"] == "SUCCESS"
     receipt = json.loads(fixture.receipt_path.read_text(encoding="utf-8"))
-    runner.process_rows = [f"424242 1 {UID} {fixture.new}/tools/b649_goalc_local_scheduler.py"]
+    runner.process_rows = [f"424242 1 {UID} S {fixture.new}/tools/b649_goalc_local_scheduler.py"]
     before_mutations = len(runner.mutation_calls)
 
     result = cutover.rollback(fixture.config, receipt=receipt, runner=runner)

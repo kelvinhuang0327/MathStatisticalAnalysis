@@ -192,6 +192,7 @@ class FakeLaunchd:
         default_factory=lambda: [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     )
     file_rows: list[str] = field(default_factory=lambda: ["p424242", "fcwd", "n/tmp"])
+    vanished_pids: set[int] = field(default_factory=lambda: set[int]())
     fail_bootstrap_new_once: bool = False
     fail_command_once: tuple[str, ...] | None = None
     after_mutation: Callable[[tuple[str, ...]], None] | None = None
@@ -301,6 +302,10 @@ class FakeLaunchd:
             )
         if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="):
             return _completed(args, "\n".join(self.process_rows) + "\n")
+        if len(args) == 5 and args[0] == "ps" and args[1] == "-p" and args[3:] == ("-o", "pid="):
+            requested = {int(value) for value in args[2].split(",")}
+            alive = sorted(requested - self.vanished_pids)
+            return _completed(args, "\n".join(str(pid) for pid in alive) + "\n")
         if args == ("lsof", "-nP", "-a", "-u", str(UID), "-F", "pfn"):
             return _completed(args, "\n".join(self.file_rows) + "\n")
         if args == ("launchctl", "disable", f"{DOMAIN}/{cutover.LABEL}"):

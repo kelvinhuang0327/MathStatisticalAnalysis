@@ -51,6 +51,7 @@ class Harness:
     )
     file_rows: list[str] = field(default_factory=lambda: ["p900001", "fcwd", "n/fixture-home"])
     rollback_path: Path | None = None
+    vanished_pids: set[int] = field(default_factory=lambda: set[int]())
 
     @property
     def successor(self) -> Path:
@@ -162,6 +163,9 @@ class Harness:
             if self.process_error:
                 return subprocess.CompletedProcess(args, 1, "", "process enumeration denied")
             out = "\n".join(self.process_rows)
+        elif len(args) == 5 and args[0] == "ps" and args[1] == "-p" and args[3:] == ("-o", "pid="):
+            requested = {int(value) for value in args[2].split(",")}
+            out = "\n".join(str(pid) for pid in sorted(requested - self.vanished_pids))
         elif args == ("lsof", "-nP", "-a", "-u", "501", "-F", "pfn"):
             if self.lsof_error:
                 return subprocess.CompletedProcess(args, 0, "", "lsof: cannot stat filesystem")
@@ -723,11 +727,16 @@ def test_non_ancestor_task_checkpoint_run_remains_runtime_owner(
 
 
 
-def test_task_checkpoint_ancestor_without_run_mode_remains_runtime_owner(
+def test_task_checkpoint_ancestor_without_run_mode_falls_through_to_ancestor_rule(
     harness: Harness,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # Without --run, the wrapper does not get the protected blanket skip; it
+    # falls through to ordinary ancestor evaluation. It is still a genuine
+    # ancestor with only argv-text (--worktree) evidence and no role/lock/cwd
+    # binding of its own, so the general ancestor rule now (correctly) clears
+    # it too, just through a different path than the --run-mode exemption.
     harness.loaded = False
     _add_protected_task_checkpoint_ancestor(
         harness,
@@ -737,8 +746,8 @@ def test_task_checkpoint_ancestor_without_run_mode_remains_runtime_owner(
 
     code, result = execute(harness, capsys, "post-unload")
 
-    assert code == 1
-    assert observation(result, "old_runtime_ownership")["classification"] == "PRESENT"
+    assert code == 0, result
+    assert observation(result, "old_runtime_ownership")["classification"] == "ABSENT"
 
 
 def test_protected_task_checkpoint_ancestor_does_not_hide_live_scheduler(
@@ -1145,6 +1154,137 @@ def test_descendant_of_runtime_owner_remains_present(
     pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
     assert parent in pids
     assert child in pids
+
+
+def test_ancestor_argv_only_worktree_path_is_not_runtime_owner(
+    harness: Harness, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.loaded = False
+    ancestor_pid = harness.add_process(
+        "/bin/bash -c 'python tools/b649_production_cutover.py rollback "
+        f"--expected-rollback-worktree {harness.rollback} "
+        f"--expected-rollback-head {OLD_HEAD}'"
+    )
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: 999999)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: ancestor_pid)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["uncertainties"] == []
+    assert observation(result, "old_runtime_ownership")["classification"] == "ABSENT"
+
+
+def test_non_ancestor_with_identical_command_remains_runtime_owner(
+    harness: Harness, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.loaded = False
+    unrelated_pid = harness.add_process(
+        "/bin/bash -c 'python tools/b649_production_cutover.py rollback "
+        f"--expected-rollback-worktree {harness.rollback} "
+        f"--expected-rollback-head {OLD_HEAD}'"
+    )
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: 999999)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: 1)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert unrelated_pid in runtime_pids
+
+
+def test_ancestor_running_real_scheduler_role_remains_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.loaded = False
+    ancestor_pid = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+    )
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: 999999)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: ancestor_pid)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert ancestor_pid in runtime_pids
+
+
+@pytest.mark.parametrize("role", ["primary", "shadow"])
+def test_ancestor_holding_lock_remains_present(
+    harness: Harness,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    role: str,
+) -> None:
+    harness.loaded = False
+    lock_path = harness.root / f"{role}.lock"
+    ancestor_pid = harness.add_process("/bin/bash -c 'sleep 100'", files=[str(lock_path)])
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: 999999)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: ancestor_pid)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    assert observation(result, f"old_{role}_ownership")["classification"] == "PRESENT"
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert ancestor_pid in runtime_pids
+
+
+def test_ancestor_with_cwd_inside_target_worktree_remains_present(
+    harness: Harness, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.loaded = False
+    ancestor_pid = harness.add_process("/bin/bash -c 'sleep 100'", cwd=str(harness.rollback))
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: 999999)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: ancestor_pid)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    runtime_pids = cast(list[int], observation(result, "old_runtime_ownership")["pids"])
+    assert ancestor_pid in runtime_pids
+
+
+def test_transient_coverage_gap_reconciled_as_vanished_is_not_unverifiable(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    pid = harness.add_process("python worker.py", cwd=None)
+    harness.vanished_pids.add(pid)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 0, result
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"]) == {"classification": "ABSENT", "pids": []}
+
+
+def test_persistent_coverage_gap_remains_unverifiable(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    pid = harness.add_process("python worker.py", cwd=None)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["uncertainties"] == [f"PID {pid}: cwd/open-file coverage unavailable"]
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "UNVERIFIABLE",
+        "pids": [],
+    }
+
+
+def test_reconciliation_does_not_erase_positive_owner_evidence(
+    harness: Harness, capsys: pytest.CaptureFixture[str]
+) -> None:
+    harness.loaded = False
+    owner = harness.add_process(
+        f"python {harness.rollback}/tools/b649_goalc_local_scheduler.py run"
+    )
+    gap_pid = harness.add_process("python worker.py", cwd=None)
+    harness.vanished_pids.add(gap_pid)
+    code, result = execute(harness, capsys, "post-unload")
+    assert code == 1
+    snapshot = observation(result, "process_snapshot")
+    assert snapshot["uncertainties"] == []
+    assert checkpoint.object_record(snapshot["runtime"]) == {
+        "classification": "PRESENT",
+        "pids": [owner],
+    }
+    assert observation(result, "old_scheduler_ownership")["classification"] == "PRESENT"
 
 
 def test_unverifiable_fail_closed_remains_unverifiable(

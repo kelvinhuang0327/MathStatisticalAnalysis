@@ -526,6 +526,29 @@ def is_protected_task_checkpoint_run(command: str) -> bool:
     return "--run" in tokens[2:separator]
 
 
+def reconcile_coverage_gap_liveness(runner: Runner, pending: set[int]) -> set[int]:
+    """One bounded liveness sample for PIDs whose only uncertainty is missing
+    ps/lsof coverage between the process-table and file-ownership snapshots.
+
+    Returns the subset of `pending` still alive; a PID this omits was proven
+    to have exited, and this is never retried or polled further.
+    """
+    result = command(
+        runner, ["ps", "-p", ",".join(str(pid) for pid in sorted(pending)), "-o", "pid="]
+    )
+    if result.stderr.strip():
+        raise Unverifiable(f"liveness reconciliation failed: {result.stderr.strip()}")
+    alive: set[int] = set()
+    for line in result.stdout.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if not stripped.isdigit():
+            raise Unverifiable("unparseable liveness reconciliation row")
+        alive.add(int(stripped))
+    return alive
+
+
 def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     uid = int(args.launch_domain.split("/")[1])
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
@@ -601,6 +624,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
         if process.state is not None and process.state.startswith("Z")
     }
     unknown: list[str] = []
+    coverage_gap_pids: set[int] = set()
     for process in processes.values():
         if process.pid in excluded:
             continue
@@ -611,19 +635,37 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
                 unknown.append(f"PID {process.pid}: zombie has inconsistent cwd/open-file evidence")
             continue
         if process.uid == uid and process.cwd is None:
-            unknown.append(f"PID {process.pid}: cwd/open-file coverage unavailable")
+            coverage_gap_pids.add(process.pid)
+        file_evidence = "\n".join(process.files)
         evidence = "\n".join([process.command, *process.files])
         path_pattern = re.escape(old) + r"(?=/|[\s\"']|$)"
-        bound = bool(re.search(path_pattern, evidence)) or head in evidence
+        argv_bound = bool(re.search(path_pattern, process.command)) or head in process.command
+        files_bound = bool(re.search(path_pattern, file_evidence)) or head in file_evidence
+        bound = argv_bound or files_bound
         roles = {
             role
             for role, markers in identities.items()
             if any(marker in evidence for marker in markers)
         }
+        lock_bound = False
         for role, lock in locks.items():
             if lock in process.files:
                 roles.add(role)
-                bound = True
+                lock_bound = True
+        bound = bound or lock_bound
+        if (
+            process.pid in ancestors
+            and argv_bound
+            and not files_bound
+            and not lock_bound
+            and not roles
+        ):
+            # A real ancestor's own argv may merely pass the target worktree
+            # path or head down to a subprocess it launches; that
+            # command-text-only evidence alone cannot prove THIS process
+            # owns the runtime. Any independently verified evidence above
+            # (role marker, lock, or cwd/file binding) already kept bound=True.
+            bound = False
         if process.pid in protected_task_checkpoint_ancestors and not roles:
             # The protected wrapper is control-plane infrastructure. Retain
             # positive role/lock evidence and all missing-coverage uncertainty.
@@ -651,6 +693,14 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             if process.ppid in runtime and process.pid not in runtime | excluded | zombie_pids:
                 runtime.add(process.pid)
                 pending = True
+    if coverage_gap_pids:
+        # Exactly one bounded recheck: a PID proven gone here was a sampling
+        # race, not a real gap; a PID still present with no coverage stays
+        # fail-closed UNVERIFIABLE, and this never repeats or polls further.
+        coverage_gap_pids &= reconcile_coverage_gap_liveness(runner, coverage_gap_pids)
+    unknown.extend(
+        f"PID {pid}: cwd/open-file coverage unavailable" for pid in sorted(coverage_gap_pids)
+    )
 
     def classification(pids: set[int]) -> str:
         return "PRESENT" if pids else "UNVERIFIABLE" if unknown else "ABSENT"

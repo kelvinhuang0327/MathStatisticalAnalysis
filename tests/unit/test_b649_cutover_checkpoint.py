@@ -126,6 +126,8 @@ class Harness:
     def __call__(self, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
         args = tuple(argv)
         self.calls.append(args)
+        if args[:3] == ("git", "-c", "core.fsmonitor=false"):
+            args = ("git", *args[3:])
         if args[:2] == ("git", "--no-optional-locks"):
             assert args[2] == "-C"
             assert args[4] == "rev-parse"
@@ -1805,3 +1807,73 @@ def test_concurrent_database_change_invalidates_metadata(
     monkeypatch.setattr(checkpoint.sqlite3, "connect", connect)
     with pytest.raises(checkpoint.Unverifiable, match="changed during"):
         checkpoint.database_metadata(harness.database)
+
+
+
+def test_task_checkpoint_run_requires_the_exact_protected_owner_argv(
+    harness: Harness,
+) -> None:
+    command = _protected_task_checkpoint_command(harness)
+    owner_argv = ("python", "tools/b649_production_cutover.py", "rollback")
+
+    assert not checkpoint.is_protected_task_checkpoint_run(command)
+    assert checkpoint.is_protected_task_checkpoint_run(
+        command, protected_owner_argv=owner_argv
+    )
+    assert not checkpoint.is_protected_task_checkpoint_run(
+        command, protected_owner_argv=("python", "tools/unrelated.py", "rollback")
+    )
+
+
+def test_verified_task_checkpoint_wrapper_with_source_file_evidence_remains_owner(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    harness.loaded = False
+    invocation_pid, supervisor_pid, wrapper_pid = 990002, 990003, 990001
+    owner_argv = ("python", "tools/b649_production_cutover.py", "rollback")
+    wrapper = _protected_task_checkpoint_command(harness)
+    harness.process_rows.extend(
+        [
+            f"{invocation_pid} {supervisor_pid} 501 S python b649_cutover_checkpoint.py",
+            f"{supervisor_pid} {wrapper_pid} 501 S python tools/b649_protected_cutover.py rollback",
+            f"{wrapper_pid} 1 501 S {wrapper}",
+        ]
+    )
+    harness.file_rows.extend(
+        [
+            f"p{invocation_pid}", "fcwd", "n/fixture-home",
+            f"p{supervisor_pid}", "fcwd", "n/fixture-home",
+            f"p{wrapper_pid}", "fcwd", "n/fixture-home",
+            f"p{wrapper_pid}", "f3", f"n{harness.rollback / 'src/active.py'}",
+        ]
+    )
+    monkeypatch.setattr(checkpoint.os, "getpid", lambda: invocation_pid)
+    monkeypatch.setattr(checkpoint.os, "getppid", lambda: supervisor_pid)
+
+    execution = checkpoint.ControlledExecution(
+        claim_root=harness.root,
+        task_key=checkpoint.PROTECTED_TASK_KEY,
+        execution_id="e" * 64,
+        owner_id="fixture-owner",
+        child_argv=(),
+        owner_argv=owner_argv,
+        owner_cwd="/fixture-home",
+        sources=((str(harness.rollback), OLD_HEAD, ""),),
+    )
+
+    def verified(
+        _self: checkpoint.ControlledExecution,
+        _processes: dict[int, checkpoint.Process],
+        _uid: int,
+    ) -> checkpoint.Record:
+        return {"supervisor_pid": supervisor_pid}
+
+    monkeypatch.setattr(checkpoint.ControlledExecution, "verify", verified)
+    args = checkpoint.parser().parse_args(harness.argv("post-unload"))
+
+    snapshot = checkpoint.process_snapshot(args, harness, execution=execution)
+
+    runtime = checkpoint.object_record(snapshot["runtime"])
+    assert runtime["classification"] == "PRESENT"
+    assert wrapper_pid in cast(list[int], runtime["pids"])

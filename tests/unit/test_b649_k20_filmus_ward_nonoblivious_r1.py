@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import ast
 import itertools
+import json
 import math
 import random
 import sys
 from collections import Counter
+from dataclasses import fields
 from decimal import Decimal, localcontext
 from fractions import Fraction
 from pathlib import Path
@@ -16,6 +18,9 @@ import pytest
 
 from lottolab.research import (
     b649_k20_bonferroni_filtered_exhaustive_2ticket_cross_swap_r1 as bonferroni,
+)
+from lottolab.research import (
+    b649_k20_filmus_ward_nonoblivious_r1 as filmus_ward,
 )
 from lottolab.research.b649_k20_bonferroni_filtered_exhaustive_2ticket_cross_swap_runner import (
     load_and_verify_pinned_incumbent,
@@ -98,6 +103,248 @@ def _official_ticket_wins(
 
 def _coverage_ticket_wins(ticket: tuple[int, ...], w_set: tuple[int, ...]) -> bool:
     return len(set(ticket).intersection(w_set)) >= 3
+
+
+def _seed_64921_config() -> filmus_ward.ExecutionConfig:
+    return filmus_ward._resolve_execution_config(
+        seed=64_921,
+        task_id="B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921",
+        execution_id="RUN1_S64921",
+        preregistration_path=(
+            "docs/research/matrix-native-results/"
+            "b649-k20-filmus-ward-nonoblivious-s64921-preregistration.json"
+        ),
+        task_runtime_root=(
+            ".task-data/B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921/run1"
+        ),
+        result_path=(
+            "docs/research/matrix-native-results/"
+            "b649-k20-filmus-ward-nonoblivious-s64921-result.json"
+        ),
+        report_path=(
+            "docs/research/matrix-native-results/"
+            "b649-k20-filmus-ward-nonoblivious-s64921-report.md"
+        ),
+        expected_seal_head="a" * 40,
+        expected_seal_tree="b" * 40,
+    )
+
+
+def test_execution_config_defaults_preserve_r1_identity() -> None:
+    config = filmus_ward._resolve_execution_config()
+    assert config == filmus_ward.ExecutionConfig()
+    assert config.compatibility_mode
+    assert filmus_ward._resolve_execution_config(compatibility=True) == config
+    assert filmus_ward._execution_config_payload(config) == {
+        "compatibility_mode": True,
+        "seed": 64_920,
+        "task_id": filmus_ward.TASK_ID,
+        "run_id": "RUN1",
+        "execution_id": "RUN1",
+        "preregistration_path": filmus_ward.PREREGISTRATION_PATH,
+        "task_runtime_root": filmus_ward.EVIDENCE_RELATIVE_PATH,
+        "result_path": filmus_ward.RESULT_PATH,
+        "report_path": filmus_ward.REPORT_PATH,
+        "expected_seal_head": None,
+        "expected_seal_tree": None,
+    }
+
+
+def test_execution_config_contains_only_seed_and_identity_fields() -> None:
+    config_64920 = filmus_ward.ExecutionConfig()
+    config_64921 = _seed_64921_config()
+    assert {field.name for field in fields(filmus_ward.ExecutionConfig)} == {
+        "seed",
+        "task_id",
+        "execution_id",
+        "preregistration_path",
+        "task_runtime_root",
+        "result_path",
+        "report_path",
+        "expected_seal_head",
+        "expected_seal_tree",
+    }
+    assert config_64920.compatibility_mode
+    assert not config_64921.compatibility_mode
+
+
+def test_config_resolution_does_not_construct_or_consume_rng(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    constructed_seeds: list[int] = []
+    original_random = random.Random
+
+    class RecordingRandom(original_random):
+        def __init__(self, seed: int) -> None:
+            constructed_seeds.append(seed)
+            super().__init__(seed)
+
+    monkeypatch.setattr(filmus_ward.random, "Random", RecordingRandom)
+    assert filmus_ward._resolve_execution_config().seed == 64_920
+    assert _seed_64921_config().seed == 64_921
+    assert constructed_seeds == []
+
+
+def test_explicit_seed_64921_routes_to_one_dedicated_random(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    expected_state = random.Random(64_921).getstate()
+    constructed_seeds: list[int] = []
+    original_random = random.Random
+
+    class RecordingRandom(original_random):
+        def __init__(self, seed: int) -> None:
+            constructed_seeds.append(seed)
+            super().__init__(seed)
+
+    monkeypatch.setattr(filmus_ward.random, "Random", RecordingRandom)
+    rng = filmus_ward._new_search_rng(_seed_64921_config())
+    assert constructed_seeds == [64_921]
+    assert rng.getstate() == expected_state
+
+
+def test_parameterized_identity_routes_to_payloads_and_report() -> None:
+    config = _seed_64921_config()
+    payload = filmus_ward._execution_config_payload(config)
+    summary_payload = filmus_ward._summary_payload(RunSummary(), config)
+    report = filmus_ward._report_text(RunSummary(), config)
+    assert payload["task_id"] == "B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921"
+    assert payload["execution_id"] == "RUN1_S64921"
+    assert payload["preregistration_path"] == config.preregistration_path
+    assert payload["task_runtime_root"] == config.task_runtime_root
+    assert payload["result_path"] == config.result_path
+    assert payload["report_path"] == config.report_path
+    assert payload["expected_seal_head"] == "a" * 40
+    assert payload["expected_seal_tree"] == "b" * 40
+    assert summary_payload["task_id"] == config.task_id
+    assert summary_payload["run_id"] == config.execution_id
+    assert summary_payload["execution_id"] == config.execution_id
+    assert summary_payload["seed"] == 64_921
+    assert "Task / execution:** B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921 / RUN1_S64921" in report
+    assert "Seed / interpreter:** 64921 / CPython 3.13.8" in report
+    assert f"{config.task_runtime_root}/provenance.json" in report
+
+
+def test_preregistration_identity_and_seed_must_match_execution_config() -> None:
+    compatibility_preregistration = json.loads(
+        (REPOSITORY / filmus_ward.PREREGISTRATION_PATH).read_text(encoding="utf-8")
+    )
+    filmus_ward._validate_preregistration_payload(
+        compatibility_preregistration, filmus_ward.ExecutionConfig()
+    )
+
+    config = _seed_64921_config()
+    future_preregistration = {
+        "task_id": config.task_id,
+        "run_id": config.execution_id,
+        "rng_and_proposals": {
+            "rng": "one dedicated random.Random(64921) search RNG"
+        },
+    }
+    filmus_ward._validate_preregistration_payload(future_preregistration, config)
+    with pytest.raises(IncompleteRun, match="task_id"):
+        filmus_ward._validate_preregistration_payload(
+            compatibility_preregistration, config
+        )
+
+
+def test_invalid_or_conflicting_execution_identity_fails_closed() -> None:
+    with pytest.raises(ValueError, match="distinct value"):
+        filmus_ward._resolve_execution_config(seed=64_921)
+    with pytest.raises(ValueError, match="supplied together"):
+        filmus_ward._resolve_execution_config(
+            seed=64_921,
+            task_id="B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921",
+            execution_id="RUN1_S64921",
+            preregistration_path=(
+                "docs/research/matrix-native-results/future-preregistration.json"
+            ),
+            task_runtime_root=".task-data/future/run1",
+            result_path="docs/research/matrix-native-results/future-result.json",
+            report_path="docs/research/matrix-native-results/future-report.md",
+            expected_seal_head="a" * 40,
+        )
+    with pytest.raises(ValueError, match="compatibility mode"):
+        filmus_ward._resolve_execution_config(seed=64_921, compatibility=True)
+
+
+def test_r1_outputs_are_not_reused_by_a_new_execution_configuration() -> None:
+    protected_hashes = {
+        path: filmus_ward._sha256_file(REPOSITORY / path)
+        for path in (filmus_ward.RESULT_PATH, filmus_ward.REPORT_PATH)
+    }
+    with pytest.raises(ValueError, match="R1 preregistration/result/report path"):
+        filmus_ward._resolve_execution_config(
+            seed=64_921,
+            task_id="B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921",
+            execution_id="RUN1_S64921",
+            preregistration_path=(
+                "docs/research/matrix-native-results/"
+                "b649-k20-filmus-ward-nonoblivious-s64921-preregistration.json"
+            ),
+            task_runtime_root=".task-data/B649_K20_FILMUS_WARD_NONOBLIVIOUS_S64921/run1",
+            result_path=filmus_ward.REPORT_PATH,
+            report_path="docs/research/matrix-native-results/future-report.md",
+            expected_seal_head="a" * 40,
+            expected_seal_tree="b" * 40,
+        )
+    assert protected_hashes == {
+        path: filmus_ward._sha256_file(REPOSITORY / path)
+        for path in (filmus_ward.RESULT_PATH, filmus_ward.REPORT_PATH)
+    }
+
+
+def test_seed_64921_config_resolution_is_dry(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    config = _seed_64921_config()
+
+    def fail_if_search_starts(
+        repository: Path,
+        deadline: float,
+        summary: RunSummary,
+        execution_config: filmus_ward.ExecutionConfig,
+    ) -> None:
+        pytest.fail("config resolution must not start scientific search")
+
+    monkeypatch.setattr(filmus_ward, "_run_search", fail_if_search_starts)
+    result = REPOSITORY / config.result_path
+    report = REPOSITORY / config.report_path
+    runtime = REPOSITORY / config.task_runtime_root
+    assert not result.exists()
+    assert not report.exists()
+    assert not runtime.exists()
+
+    exit_code = filmus_ward.main(
+        [
+            "--resolve-config",
+            "--seed",
+            str(config.seed),
+            "--task-id",
+            config.task_id,
+            "--execution-id",
+            config.execution_id,
+            "--preregistration-path",
+            config.preregistration_path,
+            "--task-runtime-root",
+            config.task_runtime_root,
+            "--result-path",
+            config.result_path,
+            "--report-path",
+            config.report_path,
+            "--expected-seal-head",
+            config.expected_seal_head or "",
+            "--expected-seal-tree",
+            config.expected_seal_tree or "",
+        ]
+    )
+    output = json.loads(capsys.readouterr().out)
+    assert exit_code == 0
+    assert output == filmus_ward._execution_config_payload(config)
+    assert not result.exists()
+    assert not report.exists()
+    assert not runtime.exists()
 
 
 def test_pinned_incumbent_identity_and_exact_score() -> None:
@@ -320,7 +567,7 @@ def test_proposal_order_and_rng_replay_under_required_cpython() -> None:
     assert sys.version_info[:3] == REQUIRED_PYTHON == (3, 13, 8)
     assert SEED == 64_920
     portfolio = _legal_k20()
-    rng = random.Random(SEED)
+    rng = filmus_ward._new_search_rng(filmus_ward.ExecutionConfig())
     replay_rng = random.Random(SEED)
     generated_slots: list[int] = []
     proposals = _generate_raw_batch(
@@ -550,7 +797,7 @@ def test_search_code_has_no_result_dependent_data_inputs() -> None:
         if isinstance(node, ast.FunctionDef) and node.name == "_run_search"
     )
     argument_names = [argument.arg for argument in function.args.args]
-    assert argument_names == ["repository", "deadline", "summary"]
+    assert argument_names == ["repository", "deadline", "summary", "config"]
     referenced_names = {
         node.id for node in ast.walk(function) if isinstance(node, ast.Name)
     }

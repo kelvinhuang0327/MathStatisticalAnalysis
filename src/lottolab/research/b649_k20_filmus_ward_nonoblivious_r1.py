@@ -10,6 +10,7 @@ import json
 import math
 import platform
 import random
+import re
 import signal
 import subprocess
 import sys
@@ -78,6 +79,7 @@ REPORT_PATH = (
     "docs/research/matrix-native-results/"
     "b649-k20-filmus-ward-nonoblivious-r1-report.md"
 )
+RESULTS_ROOT = "docs/research/matrix-native-results"
 EVIDENCE_RELATIVE_PATH = (
     ".task-data/B649_K20_FILMUS_WARD_NONOBLIVIOUS_R1/run1"
 )
@@ -97,6 +99,258 @@ OUTCOME_SIZE = BIG_LOTTO_DRAW_SIZE + 1
 MINIMUM_TICKET_HITS = 3
 TOTAL_SEVEN_SETS = math.comb(BIG_LOTTO_POOL_SIZE, OUTCOME_SIZE)
 SEAL_COMMIT_SUBJECT = "research(b649): seal Filmus-Ward nonoblivious r1"
+
+PARAMETERIZATION_BRANCH = "b649-k20-filmus-ward-seed-parameterization-r1"
+PARAMETERIZATION_BASE_HEAD = "a9c04a05a47c144e8fcb4ee35e2e36a4993c5baa"
+PARAMETERIZATION_BASE_TREE = "8e65c646208e8f4ab3769ee9474219bdd176b888"
+PARAMETERIZATION_COMMIT_SUBJECT = (
+    "research(b649): parameterize Filmus-Ward experiment seed"
+)
+PARAMETERIZATION_CHANGED_PATHS = tuple(
+    sorted((IMPLEMENTATION_PATH, TEST_PATH))
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ExecutionConfig:
+    """Experiment identity and seed inputs; search policy remains module-frozen."""
+
+    seed: int = SEED
+    task_id: str = TASK_ID
+    execution_id: str = RUN_ID
+    preregistration_path: str = PREREGISTRATION_PATH
+    task_runtime_root: str = EVIDENCE_RELATIVE_PATH
+    result_path: str = RESULT_PATH
+    report_path: str = REPORT_PATH
+    expected_seal_head: str | None = None
+    expected_seal_tree: str | None = None
+
+    @property
+    def compatibility_mode(self) -> bool:
+        return (
+            self.seed == SEED
+            and self.task_id == TASK_ID
+            and self.execution_id == RUN_ID
+            and self.preregistration_path == PREREGISTRATION_PATH
+            and self.task_runtime_root == EVIDENCE_RELATIVE_PATH
+            and self.result_path == RESULT_PATH
+            and self.report_path == REPORT_PATH
+            and self.expected_seal_head is None
+            and self.expected_seal_tree is None
+        )
+
+
+def _paths_overlap(first: str, second: str) -> bool:
+    first_path = Path(first)
+    second_path = Path(second)
+    return (
+        first_path == second_path
+        or first_path in second_path.parents
+        or second_path in first_path.parents
+    )
+
+
+def _validate_relative_path(value: str, name: str) -> None:
+    path = Path(value)
+    if (
+        not value
+        or path.is_absolute()
+        or ".." in path.parts
+        or "\\" in value
+        or path.as_posix() != value
+    ):
+        raise ValueError(f"{name} must be a normalized repository-relative path")
+
+
+def _validate_execution_config(config: ExecutionConfig) -> None:
+    if type(config.seed) is not int or config.seed < 0:
+        raise ValueError("seed must be a nonnegative integer")
+    for name, value in (
+        ("task_id", config.task_id),
+        ("execution_id", config.execution_id),
+    ):
+        if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,127}", value) is None:
+            raise ValueError(f"{name} must be a nonempty execution identifier")
+    for name, value in (
+        ("preregistration_path", config.preregistration_path),
+        ("task_runtime_root", config.task_runtime_root),
+        ("result_path", config.result_path),
+        ("report_path", config.report_path),
+    ):
+        _validate_relative_path(value, name)
+    if config.task_runtime_root == ".task-data" or not Path(
+        config.task_runtime_root
+    ).is_relative_to(Path(".task-data")):
+        raise ValueError("task runtime root must remain under .task-data")
+    for name, value in (
+        ("preregistration_path", config.preregistration_path),
+        ("result_path", config.result_path),
+        ("report_path", config.report_path),
+    ):
+        if not Path(value).is_relative_to(Path(RESULTS_ROOT)):
+            raise ValueError(f"{name} must remain under {RESULTS_ROOT}")
+
+    if (config.expected_seal_head is None) != (config.expected_seal_tree is None):
+        raise ValueError("expected seal head and tree must be supplied together")
+    for name, value in (
+        ("expected_seal_head", config.expected_seal_head),
+        ("expected_seal_tree", config.expected_seal_tree),
+    ):
+        if value is not None and re.fullmatch(r"[0-9a-f]{40}", value) is None:
+            raise ValueError(f"{name} must be a lowercase 40-character Git identity")
+
+    if config.result_path == config.report_path:
+        raise ValueError("result and report paths must be distinct")
+    if len(
+        {
+            config.preregistration_path,
+            config.result_path,
+            config.report_path,
+        }
+    ) != 3:
+        raise ValueError("preregistration, result, and report paths must be distinct")
+    protected_files = {
+        IMPLEMENTATION_PATH,
+        TEST_PATH,
+        INCUMBENT_PATH,
+    }
+    if {
+        config.preregistration_path,
+        config.result_path,
+        config.report_path,
+    }.intersection(protected_files):
+        raise ValueError("execution identity path conflicts with a protected source artifact")
+    if config.compatibility_mode:
+        return
+
+    default_identities = (
+        ("task_id", config.task_id, TASK_ID),
+        ("execution_id", config.execution_id, RUN_ID),
+        ("preregistration_path", config.preregistration_path, PREREGISTRATION_PATH),
+        ("task_runtime_root", config.task_runtime_root, EVIDENCE_RELATIVE_PATH),
+        ("result_path", config.result_path, RESULT_PATH),
+        ("report_path", config.report_path, REPORT_PATH),
+    )
+    unchanged = [name for name, actual, default in default_identities if actual == default]
+    if unchanged:
+        raise ValueError(
+            "non-compatibility configuration must give every execution identity "
+            f"a distinct value: {', '.join(unchanged)}"
+        )
+    if config.expected_seal_head is None or config.expected_seal_tree is None:
+        raise ValueError(
+            "non-compatibility configuration requires an exact expected seal head/tree"
+        )
+
+    legacy_output_paths = {PREREGISTRATION_PATH, RESULT_PATH, REPORT_PATH}
+    if config.preregistration_path in {RESULT_PATH, REPORT_PATH}:
+        raise ValueError("preregistration path conflicts with an R1 result/report path")
+    if config.result_path in legacy_output_paths or config.report_path in legacy_output_paths:
+        raise ValueError("new execution cannot reuse an R1 preregistration/result/report path")
+    if _paths_overlap(config.task_runtime_root, EVIDENCE_RELATIVE_PATH):
+        raise ValueError("new task runtime root overlaps the original R1 runtime root")
+    for output_path in (
+        config.preregistration_path,
+        config.result_path,
+        config.report_path,
+    ):
+        if _paths_overlap(config.task_runtime_root, output_path):
+            raise ValueError("task runtime root cannot contain or overlap an identity file")
+
+
+def _resolve_execution_config(
+    *,
+    seed: int | None = None,
+    task_id: str | None = None,
+    execution_id: str | None = None,
+    preregistration_path: str | None = None,
+    task_runtime_root: str | None = None,
+    result_path: str | None = None,
+    report_path: str | None = None,
+    expected_seal_head: str | None = None,
+    expected_seal_tree: str | None = None,
+    compatibility: bool = False,
+) -> ExecutionConfig:
+    overrides = (
+        seed,
+        task_id,
+        execution_id,
+        preregistration_path,
+        task_runtime_root,
+        result_path,
+        report_path,
+        expected_seal_head,
+        expected_seal_tree,
+    )
+    if compatibility and any(value is not None for value in overrides):
+        raise ValueError("compatibility mode cannot be combined with identity overrides")
+    config = ExecutionConfig(
+        seed=SEED if seed is None else seed,
+        task_id=TASK_ID if task_id is None else task_id,
+        execution_id=RUN_ID if execution_id is None else execution_id,
+        preregistration_path=(
+            PREREGISTRATION_PATH if preregistration_path is None else preregistration_path
+        ),
+        task_runtime_root=(
+            EVIDENCE_RELATIVE_PATH if task_runtime_root is None else task_runtime_root
+        ),
+        result_path=RESULT_PATH if result_path is None else result_path,
+        report_path=REPORT_PATH if report_path is None else report_path,
+        expected_seal_head=expected_seal_head,
+        expected_seal_tree=expected_seal_tree,
+    )
+    _validate_execution_config(config)
+    return config
+
+
+def _execution_config_payload(config: ExecutionConfig) -> dict[str, object]:
+    return {
+        "compatibility_mode": config.compatibility_mode,
+        "seed": config.seed,
+        "task_id": config.task_id,
+        "run_id": config.execution_id,
+        "execution_id": config.execution_id,
+        "preregistration_path": config.preregistration_path,
+        "task_runtime_root": config.task_runtime_root,
+        "result_path": config.result_path,
+        "report_path": config.report_path,
+        "expected_seal_head": config.expected_seal_head,
+        "expected_seal_tree": config.expected_seal_tree,
+    }
+
+
+def _new_search_rng(config: ExecutionConfig) -> random.Random:
+    return random.Random(config.seed)
+
+
+def _validate_preregistration_payload(
+    payload: object, config: ExecutionConfig
+) -> None:
+    if not isinstance(payload, dict):
+        raise IncompleteRun("preregistration must be a JSON object")
+    registration_with_untyped_keys = cast(dict[object, object], payload)
+    if any(not isinstance(key, str) for key in registration_with_untyped_keys):
+        raise IncompleteRun("preregistration must be a JSON object")
+    registration = cast(dict[str, object], registration_with_untyped_keys)
+    if registration.get("task_id") != config.task_id:
+        raise IncompleteRun("preregistration task_id does not match execution config")
+    if registration.get("run_id") != config.execution_id:
+        raise IncompleteRun("preregistration run_id does not match execution config")
+    if (
+        "execution_id" in registration
+        and registration.get("execution_id") != config.execution_id
+    ):
+        raise IncompleteRun("preregistration execution_id does not match execution config")
+    rng_and_proposals_value = registration.get("rng_and_proposals")
+    if not isinstance(rng_and_proposals_value, dict):
+        raise IncompleteRun("preregistration RNG identity is missing")
+    rng_with_untyped_keys = cast(dict[object, object], rng_and_proposals_value)
+    if any(not isinstance(key, str) for key in rng_with_untyped_keys):
+        raise IncompleteRun("preregistration RNG identity is missing")
+    rng_and_proposals = cast(dict[str, object], rng_with_untyped_keys)
+    expected_rng = f"one dedicated random.Random({config.seed}) search RNG"
+    if rng_and_proposals.get("rng") != expected_rng:
+        raise IncompleteRun("preregistration seed does not match execution config")
 
 
 class IncompleteRun(RuntimeError):
@@ -698,23 +952,34 @@ def _git_output(repository: Path, *arguments: str) -> str:
     return completed.stdout.strip()
 
 
-def _verify_sealed_tree(repository: Path) -> tuple[str, str]:
+def _verify_sealed_tree(
+    repository: Path, config: ExecutionConfig
+) -> tuple[str, str]:
     head = _git_output(repository, "rev-parse", "HEAD")
     tree = _git_output(repository, "rev-parse", "HEAD^{tree}")
-    branch = _git_output(repository, "branch", "--show-current")
-    subject = _git_output(repository, "show", "-s", "--format=%s", "HEAD")
-    parent = _git_output(repository, "rev-parse", "HEAD^")
-    parent_tree = _git_output(repository, "rev-parse", f"{parent}^{{tree}}")
-    if branch != BRANCH or subject != SEAL_COMMIT_SUBJECT:
-        raise IncompleteRun("implementation seal branch or commit subject mismatch")
-    if parent != BASE_HEAD or parent_tree != BASE_TREE:
-        raise IncompleteRun("implementation seal is not based on the exact pinned base")
-    changed = _git_output(
-        repository, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"
-    ).splitlines()
-    expected = sorted((IMPLEMENTATION_PATH, TEST_PATH, PREREGISTRATION_PATH))
-    if sorted(changed) != expected:
-        raise IncompleteRun("implementation seal changed paths do not match the packet")
+    if config.expected_seal_head is not None and config.expected_seal_tree is not None:
+        if head != config.expected_seal_head or tree != config.expected_seal_tree:
+            raise IncompleteRun("worktree does not match the configured exact seal head/tree")
+    else:
+        branch = _git_output(repository, "branch", "--show-current")
+        subject = _git_output(repository, "show", "-s", "--format=%s", "HEAD")
+        parent = _git_output(repository, "rev-parse", "HEAD^")
+        parent_tree = _git_output(repository, "rev-parse", f"{parent}^{{tree}}")
+        if (
+            branch != PARAMETERIZATION_BRANCH
+            or subject != PARAMETERIZATION_COMMIT_SUBJECT
+        ):
+            raise IncompleteRun("implementation seal branch or commit subject mismatch")
+        if (
+            parent != PARAMETERIZATION_BASE_HEAD
+            or parent_tree != PARAMETERIZATION_BASE_TREE
+        ):
+            raise IncompleteRun("implementation seal is not based on the exact pinned base")
+        changed = _git_output(
+            repository, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"
+        ).splitlines()
+        if sorted(changed) != list(PARAMETERIZATION_CHANGED_PATHS):
+            raise IncompleteRun("implementation seal changed paths do not match the packet")
     dirty = _git_output(
         repository, "status", "--porcelain=v2", "--untracked-files=all"
     )
@@ -740,11 +1005,11 @@ def _sealed_file_identity(
 
 
 def _load_sealed_identities(
-    repository: Path, commit: str
+    repository: Path, commit: str, config: ExecutionConfig
 ) -> tuple[dict[str, dict[str, str]], dict[str, dict[str, str]]]:
     implementation = {
         path: _sealed_file_identity(repository, commit, path)
-        for path in (IMPLEMENTATION_PATH, TEST_PATH, PREREGISTRATION_PATH)
+        for path in (IMPLEMENTATION_PATH, TEST_PATH, config.preregistration_path)
     }
     reused = {
         path: _sealed_file_identity(repository, commit, path)
@@ -757,6 +1022,17 @@ def _load_sealed_identities(
         )
     }
     return implementation, reused
+
+
+def _load_preregistration(repository: Path, config: ExecutionConfig) -> None:
+    path = repository / config.preregistration_path
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise IncompleteRun(
+            f"could not load configured preregistration: {config.preregistration_path}"
+        ) from exc
+    _validate_preregistration_payload(payload, config)
 
 
 def _write_json(path: Path, payload: object) -> None:
@@ -812,7 +1088,12 @@ def _portfolio_payload(
     }
 
 
-def _run_search(repository: Path, deadline: float, summary: RunSummary) -> None:
+def _run_search(
+    repository: Path,
+    deadline: float,
+    summary: RunSummary,
+    config: ExecutionConfig,
+) -> None:
     _check_deadline(deadline)
     _claim_canonical_exact_call(summary, "INITIAL_CHAMPION_VERIFICATION")
     validated = load_and_verify_pinned_incumbent(
@@ -852,7 +1133,7 @@ def _run_search(repository: Path, deadline: float, summary: RunSummary) -> None:
     summary.final_champion_sha256 = summary.initial_portfolio_sha256
     summary.final_champion_outcome_count = current_champion_count
     summary.final_champion_fraction = summary.initial_fraction
-    rng = random.Random(SEED)
+    rng = _new_search_rng(config)
     summary.initial_rng_state = _random_state_json(rng)
     draws = all_main_draw_masks(BIG_LOTTO_POOL_SIZE, BIG_LOTTO_DRAW_SIZE)
     if draws.size * (BIG_LOTTO_POOL_SIZE - BIG_LOTTO_DRAW_SIZE) != (
@@ -1269,10 +1550,15 @@ def _run_search(repository: Path, deadline: float, summary: RunSummary) -> None:
     )
 
 
-def _summary_payload(summary: RunSummary) -> dict[str, object]:
+def _summary_payload(
+    summary: RunSummary, config: ExecutionConfig
+) -> dict[str, object]:
     return {
-        "task_id": TASK_ID,
-        "run_id": RUN_ID,
+        "task_id": config.task_id,
+        "run_id": config.execution_id,
+        "execution_id": config.execution_id,
+        "seed": config.seed,
+        "execution_config": _execution_config_payload(config),
         "run_status": summary.run_status,
         "termination_reason": summary.termination_reason,
         "final_decision": summary.final_decision,
@@ -1341,7 +1627,7 @@ def _summary_payload(summary: RunSummary) -> dict[str, object]:
     }
 
 
-def _report_text(summary: RunSummary) -> str:
+def _report_text(summary: RunSummary, config: ExecutionConfig) -> str:
     initial = summary.initial_outcome_count
     final_x = summary.final_x_outcome_count
     final_c = summary.final_champion_outcome_count
@@ -1357,7 +1643,8 @@ def _report_text(summary: RunSummary) -> str:
             f"- **Run status:** {summary.run_status}",
             f"- **Final decision:** {summary.final_decision}",
             f"- **Termination:** {summary.termination_reason}",
-            f"- **Seed / interpreter:** {SEED} / CPython 3.13.8",
+            f"- **Task / execution:** {config.task_id} / {config.execution_id}",
+            f"- **Seed / interpreter:** {config.seed} / CPython 3.13.8",
             f"- **Rounds completed:** {summary.rounds_completed}",
             "",
             "## Initial champion",
@@ -1407,8 +1694,8 @@ def _report_text(summary: RunSummary) -> str:
             "- A negative result, if present, is limited to this seed, proposal policy,",
             "  trajectory, and frozen budget.",
             "",
-            f"Project-local provenance: {EVIDENCE_RELATIVE_PATH}/provenance.json",
-            f"Trace: {EVIDENCE_RELATIVE_PATH}/trace.jsonl",
+            f"Project-local provenance: {config.task_runtime_root}/provenance.json",
+            f"Trace: {config.task_runtime_root}/trace.jsonl",
             "",
         )
     )
@@ -1419,7 +1706,13 @@ def _write_run_artifacts(
     evidence_dir: Path,
     summary: RunSummary,
     command_argv: list[str],
+    config: ExecutionConfig,
 ) -> None:
+    result_file = repository / config.result_path
+    report_file = repository / config.report_path
+    if result_file.exists() or report_file.exists():
+        raise IncompleteRun("configured result/report path already exists; refusing overwrite")
+
     evidence_dir.mkdir(parents=True, exist_ok=True)
     trace_path = evidence_dir / "trace.jsonl"
     checkpoint_path = evidence_dir / "checkpoint.json"
@@ -1435,8 +1728,10 @@ def _write_run_artifacts(
         encoding="utf-8",
     )
     checkpoint = {
-        "task_id": TASK_ID,
-        "run_id": RUN_ID,
+        "task_id": config.task_id,
+        "run_id": config.execution_id,
+        "execution_id": config.execution_id,
+        "seed": config.seed,
         "status": summary.run_status,
         "termination_reason": summary.termination_reason,
         "last_completed_round": summary.rounds_completed,
@@ -1457,7 +1752,8 @@ def _write_run_artifacts(
     stdout_path.write_text(
         "\n".join(
             (
-                f"RUN_ID={RUN_ID}",
+                f"RUN_ID={config.execution_id}",
+                f"SEED={config.seed}",
                 f"RUN_STATUS={summary.run_status}",
                 f"FINAL_DECISION={summary.final_decision}",
                 f"ROUNDS_COMPLETED={summary.rounds_completed}",
@@ -1472,30 +1768,34 @@ def _write_run_artifacts(
         encoding="utf-8",
     )
 
-    result_payload = _summary_payload(summary)
-    result_file = repository / RESULT_PATH
-    report_file = repository / REPORT_PATH
-    if result_file.exists() or report_file.exists():
-        raise IncompleteRun("authorized result/report path already exists; refusing overwrite")
+    result_payload = _summary_payload(summary, config)
+    result_file.parent.mkdir(parents=True, exist_ok=True)
+    report_file.parent.mkdir(parents=True, exist_ok=True)
     result_file.write_text(
         json.dumps(result_payload, ensure_ascii=False, sort_keys=True, indent=2) + "\n",
         encoding="utf-8",
     )
-    report_file.write_text(_report_text(summary), encoding="utf-8")
+    report_file.write_text(_report_text(summary, config), encoding="utf-8")
     summary.artifact_hashes = {
         "trace.jsonl": _sha256_file(trace_path),
         "checkpoint.json": _sha256_file(checkpoint_path),
         "stdout.log": _sha256_file(stdout_path),
         "stderr.log": _sha256_file(stderr_path),
-        RESULT_PATH: _sha256_file(result_file),
-        REPORT_PATH: _sha256_file(report_file),
+        config.result_path: _sha256_file(result_file),
+        config.report_path: _sha256_file(report_file),
     }
 
     provenance = {
-        "task_id": TASK_ID,
-        "run_id": RUN_ID,
+        "task_id": config.task_id,
+        "run_id": config.execution_id,
+        "execution_id": config.execution_id,
+        "seed": config.seed,
+        "preregistration_path": config.preregistration_path,
+        "task_runtime_root": config.task_runtime_root,
+        "result_path": config.result_path,
+        "report_path": config.report_path,
+        "execution_config": _execution_config_payload(config),
         "run_count": 1,
-        "execution_id": RUN_ID,
         "run_status": summary.run_status,
         "termination_reason": summary.termination_reason,
         "final_decision": summary.final_decision,
@@ -1529,12 +1829,12 @@ def _write_run_artifacts(
         },
         "rng": {
             "class": "random.Random",
-            "seed": SEED,
+            "seed": config.seed,
             "initial_state": summary.initial_rng_state,
             "per_round_states": summary.round_rng_states,
             "final_state": summary.final_rng_state,
         },
-        "accounting": _summary_payload(summary)["accounting"],
+        "accounting": _summary_payload(summary, config)["accounting"],
         "champion_updates": summary.champion_updates,
         "initial_champion": _portfolio_payload(
             summary.initial_portfolio,
@@ -1557,24 +1857,31 @@ def _write_run_artifacts(
     _write_json(provenance_path, provenance)
 
 
-def run_scientific_run1(repository: Path) -> RunSummary:
+def run_scientific_run1(
+    repository: Path, config: ExecutionConfig | None = None
+) -> RunSummary:
     """Execute exactly one frozen run and write only the packet-authorized outputs."""
 
+    config = ExecutionConfig() if config is None else config
+    _validate_execution_config(config)
     repository = repository.resolve(strict=True)
     _check_python_runtime()
-    evidence_dir = repository / EVIDENCE_RELATIVE_PATH
+    evidence_dir = repository / config.task_runtime_root
     if evidence_dir.exists() and any(evidence_dir.iterdir()):
-        raise IncompleteRun("RUN1 evidence path is nonempty; restart is forbidden")
-    if (repository / RESULT_PATH).exists() or (repository / REPORT_PATH).exists():
-        raise IncompleteRun("RUN1 result/report path already exists; refusing a second run")
+        raise IncompleteRun("configured task runtime path is nonempty; restart is forbidden")
+    if (repository / config.result_path).exists() or (
+        repository / config.report_path
+    ).exists():
+        raise IncompleteRun("configured result/report path exists; refusing a second run")
 
     summary = RunSummary(start_utc=_utc_now())
     summary.implementation_seal_head, summary.implementation_seal_tree = (
-        _verify_sealed_tree(repository)
+        _verify_sealed_tree(repository, config)
     )
     summary.implementation_hashes, summary.reused_source_hashes = (
-        _load_sealed_identities(repository, summary.implementation_seal_head)
+        _load_sealed_identities(repository, summary.implementation_seal_head, config)
     )
+    _load_preregistration(repository, config)
     started = time.monotonic()
     deadline = started + WALL_CLOCK_LIMIT_SECONDS
     old_handler = signal.getsignal(signal.SIGALRM)
@@ -1585,7 +1892,7 @@ def run_scientific_run1(repository: Path) -> RunSummary:
     signal.signal(signal.SIGALRM, timeout_handler)
     signal.setitimer(signal.ITIMER_REAL, WALL_CLOCK_LIMIT_SECONDS)
     try:
-        _run_search(repository, deadline, summary)
+        _run_search(repository, deadline, summary, config)
     except (Exception, KeyboardInterrupt) as exc:
         summary.run_status = "BOUNDED_INCOMPLETE"
         summary.termination_reason = (
@@ -1616,27 +1923,70 @@ def run_scientific_run1(repository: Path) -> RunSummary:
         "lottolab.research.b649_k20_filmus_ward_nonoblivious_r1",
         "--run1",
     ]
-    _write_run_artifacts(repository, evidence_dir, summary, command_argv)
+    if not config.compatibility_mode:
+        for option, value in (
+            ("--seed", str(config.seed)),
+            ("--task-id", config.task_id),
+            ("--execution-id", config.execution_id),
+            ("--preregistration-path", config.preregistration_path),
+            ("--task-runtime-root", config.task_runtime_root),
+            ("--result-path", config.result_path),
+            ("--report-path", config.report_path),
+            ("--expected-seal-head", config.expected_seal_head or ""),
+            ("--expected-seal-tree", config.expected_seal_tree or ""),
+        ):
+            command_argv.extend((option, value))
+    _write_run_artifacts(repository, evidence_dir, summary, command_argv, config)
     return summary
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run the preregistered B649 K20 Filmus-Ward RUN1."
+        description="Resolve or run the preregistered B649 K20 Filmus-Ward search."
     )
-    parser.add_argument("--run1", action="store_true", required=True)
+    operation = parser.add_mutually_exclusive_group(required=True)
+    operation.add_argument("--run1", action="store_true")
+    operation.add_argument("--resolve-config", action="store_true")
+    parser.add_argument("--compatibility", action="store_true")
+    parser.add_argument("--seed", type=int)
+    parser.add_argument("--task-id")
+    parser.add_argument("--execution-id")
+    parser.add_argument("--preregistration-path")
+    parser.add_argument("--task-runtime-root")
+    parser.add_argument("--result-path")
+    parser.add_argument("--report-path")
+    parser.add_argument("--expected-seal-head")
+    parser.add_argument("--expected-seal-tree")
     arguments = parser.parse_args(argv)
-    if not arguments.run1:
-        return 2
     try:
-        summary = run_scientific_run1(Path.cwd())
+        config = _resolve_execution_config(
+            seed=arguments.seed,
+            task_id=arguments.task_id,
+            execution_id=arguments.execution_id,
+            preregistration_path=arguments.preregistration_path,
+            task_runtime_root=arguments.task_runtime_root,
+            result_path=arguments.result_path,
+            report_path=arguments.report_path,
+            expected_seal_head=arguments.expected_seal_head,
+            expected_seal_tree=arguments.expected_seal_tree,
+            compatibility=arguments.compatibility,
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+    if arguments.resolve_config:
+        sys.stdout.write(
+            json.dumps(_execution_config_payload(config), sort_keys=True, indent=2) + "\n"
+        )
+        return 0
+    try:
+        summary = run_scientific_run1(Path.cwd(), config)
     except Exception as exc:
         sys.stderr.write(f"{type(exc).__name__}: {exc}\n")
         return 2
     sys.stdout.write(
         f"RUN_STATUS={summary.run_status}\n"
         f"FINAL_DECISION={summary.final_decision}\n"
-        f"PROVENANCE_PATH={EVIDENCE_RELATIVE_PATH}/provenance.json\n"
+        f"PROVENANCE_PATH={config.task_runtime_root}/provenance.json\n"
     )
     return 0 if summary.run_status == "COMPLETE" else 1
 

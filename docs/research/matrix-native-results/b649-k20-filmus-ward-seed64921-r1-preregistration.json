@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "task_id": "B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1",
+  "run_id": "B649_K20_FILMUS_WARD_SEED64921_RUN1",
+  "status": "PREREGISTERED_BEFORE_EXECUTION",
+  "repository": {
+    "base_head": "fd6291b959e33ab0492567c45ed00cb7a2ddcf2a",
+    "base_tree": "9f7d2727f6fe4948603edbbdfa4bcba0158ad361",
+    "branch": "b649-k20-filmus-ward-seed-parameterization-r1",
+    "worktree": "/Users/kelvin/.codex/worktrees/b649-k20-filmus-ward-seed-parameterization-r1/MathStatisticalAnalysis"
+  },
+  "incumbent": {
+    "source_commit": "b24646d1ba86690bffd1acdf21fec5b64c56834d",
+    "source_tree": "d2fe5f0ef46c4518ff960f9e10d8ba1f3e14c4d8",
+    "source_path": "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json",
+    "artifact_sha256": "5a2839db8fe5cd38f03366968cc6a024a5aa378ab360d4d049b9b45baa8e84df",
+    "artifact_git_blob": "a5bc9a73d5c31cf44a4c79cafb69b0af3d9fc5d5",
+    "portfolio_sha256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+    "official_any_prize_outcome_count": 312867226,
+    "exact_fraction": "519713/998844",
+    "total_official_outcomes": 601304088
+  },
+  "scientific_question": "Whether this single frozen seed-64921 trajectory encounters a K20 portfolio whose canonical OFFICIAL_ANY_PRIZE exact count strictly exceeds the pinned champion.",
+  "scope": {
+    "portfolio_size": 20,
+    "ticket_size": 6,
+    "pool_size": 49,
+    "ticket_values": "six distinct integers in 1..49",
+    "portfolio_invariants": "exactly 20 unique legal tickets; canonicalize by sorting values within tickets and sorting tickets lexicographically",
+    "initial_search_state": "X = C = the independently verified pinned champion",
+    "move": "replace exactly one ticket t in frozen X with one legal six-number ticket u not already in X; this may change one through six numbers in t",
+    "forbidden_constraints": [
+      "number-frequency constraints",
+      "pair-overlap constraints",
+      "minimum-overlap profile constraints",
+      "second move family",
+      "three-ticket search",
+      "cross-swap ascent"
+    ]
+  },
+  "mathematics": {
+    "official_outcome_reduction": "For outcome (D,s), W = D union {s}; a ticket wins OFFICIAL_ANY_PRIZE iff its intersection with W has size at least 3. Every 7-number W corresponds to exactly seven official B649 outcomes.",
+    "coverage_multiplicity": "c_P(W) is the number of tickets in P with at least three values in W.",
+    "canonical_objective": "F(P) = 7 * sum_W 1[c_P(W) > 0].",
+    "search_potential": "G(P) = 7 * sum_W h_{c_P(W)} with curvature parameter 1; h_0 = 0 and h_m = integral_0^1 (e^p/(e-1)) * (1-(1-p)^m)/p dp.",
+    "marginal_histogram": "For R = X without t, H_(R,v)(r) counts 7-sets W for which v intersects W in at least 3 values and c_R(W)=r. The exact move difference is 7 * sum_(r=0..19) [H_(R,u)(r)-H_(R,t)(r)] * (h_(r+1)-h_r).",
+    "marginal_enumeration": "Enumerate each measured ticket's winning W once using j=3..6 ticket values and 7-j complement values; expected production count is 2,658,776 per marginal; process chunks no larger than 65,536.",
+    "potential_coefficients": "b_0=1; b_r=r*b_(r-1)+1; h_(r+1)-h_r=(r!*e-b_r)/(e-1). Each potential difference is (A*e-B)/(e-1), with arbitrary-precision integer A and B recorded as decimal strings.",
+    "certified_e_bounds": "L_n=sum_(j=0..n)1/j! and L_n < e < L_n+1/(n*n!). Compare using exact rational arithmetic at n=64, then n=128 if unresolved. Equality is exact only when A=0 and B=0. Unresolved at n=128 makes RUN1 BOUNDED_INCOMPLETE.",
+    "bonferroni_role": "SAFE_EXACT_SCORE_FILTER_ONLY; recompute full_u3_components from scratch for every unique legal proposal, and do not use the two-changed-ticket incremental helper. U3 <= F(C) excludes exact champion scoring only; neither branch suppresses marginal potential evaluation or movement."
+  },
+  "rng_and_proposals": {
+    "determinism_class": "SEEDED_STOCHASTIC_WITH_DETERMINISTIC_REPLAY",
+    "interpreter": {
+      "implementation": "CPython",
+      "version": "3.13.8",
+      "executable": "/opt/homebrew/opt/python@3.13/bin/python3.13"
+    },
+    "rng": "one dedicated random.Random(64921) search RNG",
+    "round_batch": "freeze X and generate all 32 raw proposals in raw-slot order before evaluation",
+    "slots_0_15": "choose ticket index with rng.randrange(20) over canonical X; rng.sample one value from the selected ticket's ascending values; then rng.sample one value from its ascending complement; removal sample precedes addition sample",
+    "slots_16_23": "choose ticket index with rng.randrange(20); sample two removals from the ascending ticket values, then two additions from the ascending complement",
+    "slots_24_31": "choose ticket index with rng.randrange(20); sample a new ticket of six from ascending 1..49",
+    "slot_semantics": "normalize every proposal; no-op, duplicate ticket, and repeated candidate consume the slot and are never redrawn; earliest raw occurrence owns a repeated candidate",
+    "trace": "preserve RNG pre/post states, raw proposal and normalized candidate identity"
+  },
+  "selection_and_champion": {
+    "candidate_order": "evaluate each distinct legal candidate in raw-slot order, including its U3 screen/exact requirement and its certified potential",
+    "search_move": "after the complete batch, choose the candidate with greatest strictly positive potential difference; potential decreases and exact-objective decreases are allowed only when the potential strictly improves",
+    "potential_tie": "lexicographically smallest normalized portfolio",
+    "repeated_candidate_tie": "earliest raw slot",
+    "champion_rule": "C changes only after canonical OFFICIAL_ANY_PRIZE exact scoring proves a strict integer-count increase; equal count retains existing C; update C independently while evaluating proposals and do not reset X to C",
+    "score_delta_consistency": "F(X')-F(X)=7*[H_(R,u)(0)-H_(R,t)(0)] is a consistency check only and never substitutes for canonical exact champion scoring"
+  },
+  "exact_score_triggers": [
+    "pinned incumbent loader performs one canonical exact champion recomputation and its distinct exact bound fixtures; count every scorer call against the canonical exact-call budget",
+    "initial champion verification",
+    "every unique legal proposal with U3 > F(C)",
+    "selected search move if it has not already received canonical exact scoring",
+    "terminal search state",
+    "final archived champion recomputed without trusting caches"
+  ],
+  "frozen_budgets": {
+    "rounds": 8,
+    "raw_proposals_per_round": 32,
+    "total_raw_proposals": 256,
+    "distinct_proposal_evaluations_max": 256,
+    "accepted_search_moves_max": 8,
+    "marginal_histogram_evaluations_max": 416,
+    "canonical_exact_calls_max": 272,
+    "wall_clock_seconds": 3600,
+    "histogram_chunk_size_max": 65536,
+    "removal_marginal_cache_scope": "current round only"
+  },
+  "termination": {
+    "normal": [
+      "a fully evaluated batch has no strict potential improvement",
+      "round 8 completes"
+    ],
+    "incomplete": [
+      "timeout",
+      "unresolved n=128 comparison",
+      "identity mismatch",
+      "illegal state",
+      "exact-score inconsistency",
+      "unfinished mandatory evaluation",
+      "budget accounting violation"
+    ],
+    "restart_reseed_or_retry": "forbidden"
+  },
+  "claims": {
+    "positive_final_decision": "STRICT_IMPROVEMENT_FOUND only when exact champion count > 312867226",
+    "complete_negative_final_decision": "DIRECT_OBJECTIVE_BOUNDED_NEGATIVE only after legitimate completion without an exact champion improvement; limited to seed 64921, frozen proposal policy, observed trajectory and budgets",
+    "incomplete_final_decision": "BOUNDED_INCOMPLETE; never relabel as negative",
+    "global_k20_optimum_status": "UNKNOWN",
+    "neighborhood_completeness": "NOT_PROVEN",
+    "global_optimum_claim": "FORBIDDEN",
+    "filmus_ward_approximation_guarantee": "NOT_CLAIMED"
+  },
+  "no_result_leakage": {
+    "allowed_inputs": [
+      "verified current champion",
+      "static mathematical constants"
+    ],
+    "forbidden_inputs": [
+      "historical lottery draws",
+      "realized future outcomes",
+      "prediction results",
+      "post-hoc strategy performance",
+      "previous random Filmus-Ward runs",
+      "other result-dependent inputs"
+    ]
+  },
+  "authorized_tracked_paths": [
+    "src/lottolab/research/b649_k20_filmus_ward_nonoblivious_r1.py",
+    "tests/unit/test_b649_k20_filmus_ward_nonoblivious_r1.py",
+    "docs/research/matrix-native-results/b649-k20-filmus-ward-seed64921-r1-preregistration.json",
+    "docs/research/matrix-native-results/b649-k20-filmus-ward-seed64921-r1-result.json",
+    "docs/research/matrix-native-results/b649-k20-filmus-ward-seed64921-r1-report.md"
+  ],
+  "authorized_run_evidence": [
+    ".task-data/B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1/provenance.json",
+    ".task-data/B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1/trace.jsonl",
+    ".task-data/B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1/checkpoint.json",
+    ".task-data/B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1/stdout.log",
+    ".task-data/B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1/stderr.log"
+  ],
+  "authorization": {
+    "owner_token": "B649_K20_FILMUS_WARD_SEED64921_SCIENTIFIC_RUN_R1",
+    "scientific_run_count": 1,
+    "push": "NOT_AUTHORIZED",
+    "pull_request": "NOT_AUTHORIZED",
+    "merge": "NOT_AUTHORIZED",
+    "production_mutation": "NOT_AUTHORIZED"
+  }
+}

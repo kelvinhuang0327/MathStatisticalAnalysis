@@ -23,6 +23,7 @@ both the on-disk plist and launchd's independently loaded binding.
 from __future__ import annotations
 
 import argparse
+import ctypes
 import hashlib
 import json
 import os
@@ -39,9 +40,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn, cast
 
+if __package__ in {None, ""}:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools.task_execution_claim import ClaimStore
+
 PHASES = ("pre-cutover", "post-unload", "post-load")
 COMMAND_TIMEOUT = 10
 MAX_BYTES = 16 * 1024 * 1024
+PROTECTED_TASK_KEY = "b649-protected-cutover:com.lottolab.b649-goalc-r1"
 ROLE_DEFAULTS = {
     "primary": ["b649_operational_prediction_loop.py", "b649_forward_auto_cycle_adapter.py"],
     "scheduler": ["b649_goalc_local_scheduler.py"],
@@ -55,10 +62,21 @@ class Unverifiable(ValueError):
     """A mandatory observation cannot establish the expected state."""
 
 
+def git_read_argv(argv: Sequence[str]) -> list[str]:
+    """Pin fsmonitor off at both the injectable and the real command boundary."""
+    result = list(argv)
+    if result and result[0] == "git":
+        rest = result[3:] if result[1:3] == ["-c", "core.fsmonitor=false"] else result[1:]
+        if any(arg.startswith(("-c", "--config-env")) for arg in rest):
+            raise Unverifiable("Git command configuration overrides are forbidden")
+        result = ["git", "-c", "core.fsmonitor=false", *rest]
+    return result
+
+
 def run_command(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     """The only command execution seam; callers supply fixed read-only verbs."""
     return subprocess.run(
-        list(argv),
+        git_read_argv(argv),
         capture_output=True,
         text=True,
         check=False,
@@ -68,7 +86,7 @@ def run_command(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
 
 
 def command(runner: Runner, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
-    result = runner(argv)
+    result = runner(git_read_argv(argv))
     if len(result.stdout) + len(result.stderr) > MAX_BYTES:
         raise Unverifiable(f"{argv[0]} observation exceeded the output bound")
     return result
@@ -352,6 +370,153 @@ class Process:
     executable_files: list[str] = field(default_factory=lambda: list[str]())
 
 
+def process_image(pid: int) -> Path:
+    """Return the kernel executable image for a process."""
+    if sys.platform == "darwin":
+        library = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+        query = library.proc_pidpath
+        query.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+        query.restype = ctypes.c_int
+        buffer = ctypes.create_string_buffer(4096)
+        if query(pid, buffer, len(buffer)) <= 0:
+            raise Unverifiable("cannot observe protected process executable")
+        path = Path(os.fsdecode(buffer.value))
+    elif sys.platform == "linux":
+        path = Path(os.readlink(f"/proc/{pid}/exe"))
+    else:
+        raise Unverifiable("protected executable observation is unsupported")
+    return path.resolve(strict=True)
+
+
+def interpreter_command_matches(process: Process, argv: tuple[str, ...]) -> bool:
+    if not argv:
+        return False
+    suffix = " " + " ".join(argv[1:])
+    if not process.command.endswith(suffix):
+        return False
+    executable = Path(process.command[: -len(suffix)])
+    image = process_image(os.getpid())
+    return (
+        executable.is_absolute()
+        and executable.resolve(strict=True) == image
+        and process_image(process.pid) == image
+    )
+
+
+@dataclass(frozen=True)
+class ControlledExecution:
+    """Claim-bound proof inputs; never a caller-supplied PID exemption."""
+
+    claim_root: Path
+    task_key: str
+    execution_id: str
+    owner_id: str
+    child_argv: tuple[str, ...]
+    owner_argv: tuple[str, ...]
+    owner_cwd: str
+    sources: tuple[tuple[str, str, str], ...]
+
+    def verify(self, processes: dict[int, Process], uid: int) -> Record:
+        root = Path(__file__).resolve().parents[1]
+        if (
+            self.task_key != PROTECTED_TASK_KEY
+            or self.child_argv[:3]
+            != (sys.executable, str(root / "tools/b649_production_cutover.py"), "apply")
+            or self.child_argv[-4:-3] != ("--protected-request",)
+        ):
+            raise Unverifiable("only the protected B649 command can control ownership")
+        try:
+            wire = object_record(json.loads(self.child_argv[-3]))
+            identity = object_record(wire.get("identity"))
+            identity_digest = hashlib.sha256(
+                json.dumps(
+                    identity,
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                    allow_nan=False,
+                ).encode()
+            ).hexdigest()
+        except (IndexError, TypeError, ValueError) as exc:
+            raise Unverifiable("protected request identity is invalid") from exc
+        expected_owner = (
+            sys.executable,
+            str(root / "tools/b649_protected_cutover.py"),
+            "apply",
+            "--source-worktree",
+            identity.get("source_worktree"),
+            "--expected-head",
+            identity.get("source_head"),
+            "--expected-tree",
+            identity.get("source_tree"),
+            "--legacy-worktree",
+            identity.get("legacy_worktree"),
+            "--legacy-head",
+            identity.get("legacy_head"),
+            "--legacy-tree",
+            identity.get("legacy_tree"),
+            "--plan-file",
+            identity.get("plan_file"),
+            *(("--takeover-stale",) if wire.get("takeover_stale") is True else ()),
+        )
+        expected_sources = (
+            (
+                identity.get("legacy_worktree"),
+                identity.get("legacy_head"),
+                identity.get("legacy_tree"),
+            ),
+            (
+                identity.get("source_worktree"),
+                identity.get("source_head"),
+                identity.get("source_tree"),
+            ),
+        )
+        if (
+            identity_digest != self.execution_id
+            or identity.get("task_key") != self.task_key
+            or identity.get("action") != "apply"
+            or identity.get("claim_root") != str(self.claim_root)
+            or identity.get("control_worktree") != str(root)
+            or self.owner_cwd != str(root)
+            or self.owner_argv != expected_owner
+            or self.sources != expected_sources
+        ):
+            raise Unverifiable("protected execution proof is not bound to its immutable identity")
+        claim = ClaimStore(self.claim_root).inspect(self.task_key)
+        child, owner = os.getpid(), os.getppid()
+        if (
+            claim.get("status") != "ACTIVE"
+            or claim.get("owner_alive") is not True
+            or claim.get("child_alive") is not True
+            or claim.get("owner_id") != self.owner_id
+            or claim.get("owner_pid") != owner
+            or claim.get("child_pid") != child
+            or claim.get("command") != list(self.child_argv)
+            or claim.get("cwd") != self.owner_cwd
+            or not re.fullmatch(r"[0-9a-f]{64}", self.execution_id)
+            or "--protected-execution" not in self.child_argv
+            or self.child_argv[-1] != self.execution_id
+        ):
+            raise Unverifiable("protected execution claim/identity does not match this child")
+        for pid, argv in ((owner, self.owner_argv), (child, self.child_argv)):
+            process = processes.get(pid)
+            if (
+                process is None
+                or process.uid != uid
+                or not interpreter_command_matches(process, argv)
+                or process.cwd != self.owner_cwd
+            ):
+                raise Unverifiable("protected execution process identity is unverified")
+        if processes[child].ppid != owner or owner == child:
+            raise Unverifiable("protected execution parent/child chain changed")
+        return {
+            "execution_id": self.execution_id,
+            "owner_id": self.owner_id,
+            "supervisor_pid": owner,
+            "gated_child_pid": child,
+        }
+
+
 def _is_trusted_git_executable(executable: str, text_files: Sequence[str]) -> bool:
     binary = Path(executable).name.lower()
     if binary not in {
@@ -507,14 +672,17 @@ def is_passive_git_fsmonitor(
     )
 
 
-def is_protected_task_checkpoint_run(command: str) -> bool:
-    """Recognize only the Fable task_checkpoint Ruby wrapper's protected run mode."""
+def is_protected_task_checkpoint_run(
+    command: str, *, protected_owner_argv: Sequence[str] | None = None
+) -> bool:
+    """Recognize only a wrapper that launched the verified protected owner."""
     try:
         tokens = shlex.split(command)
     except Exception:
         return False
     if (
-        len(tokens) < 3
+        protected_owner_argv is None
+        or len(tokens) < 3
         or Path(tokens[0]).name.lower() != "ruby"
         or Path(tokens[1]).name != "task_checkpoint.rb"
     ):
@@ -522,8 +690,11 @@ def is_protected_task_checkpoint_run(command: str) -> bool:
     try:
         separator = tokens.index("--", 2)
     except ValueError:
-        separator = len(tokens)
-    return "--run" in tokens[2:separator]
+        return False
+    return (
+        "--run" in tokens[2:separator]
+        and tuple(tokens[separator + 1 :]) == tuple(protected_owner_argv)
+    )
 
 
 def reconcile_coverage_gap_liveness(runner: Runner, pending: set[int]) -> set[int]:
@@ -549,7 +720,12 @@ def reconcile_coverage_gap_liveness(runner: Runner, pending: set[int]) -> set[in
     return alive
 
 
-def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
+def process_snapshot(
+    args: argparse.Namespace,
+    runner: Runner,
+    *,
+    execution: ControlledExecution | None = None,
+) -> Record:
     uid = int(args.launch_domain.split("/")[1])
     raw = checked(runner, ["ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="])
     processes: dict[int, Process] = {}
@@ -573,12 +749,8 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
     while parent in processes and parent not in ancestors and parent != current_pid:
         ancestors.add(parent)
         parent = processes[parent].ppid
-    protected_task_checkpoint_ancestors = {
-        pid
-        for pid in ancestors
-        if is_protected_task_checkpoint_run(processes[pid].command)
-    }
-    # Only this invocation and its helper-launching ancestors are excluded.
+    protected_task_checkpoint_ancestors: set[int] = set()
+    controlled: Record | None = None
     excluded = {current_pid}
     parent = os.getppid()
     while parent in processes and parent not in excluded:
@@ -609,6 +781,22 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
                     current.executable_files.append(name)
         else:
             raise Unverifiable("unparseable lsof ownership row")
+    if execution is not None:
+        controlled = execution.verify(processes, uid)
+        supervisor_pid = object_record(controlled).get("supervisor_pid")
+        if type(supervisor_pid) is not int or supervisor_pid not in ancestors:
+            raise Unverifiable("protected supervisor is not in the observed ancestor chain")
+        excluded.add(supervisor_pid)
+        parent = processes[supervisor_pid].ppid
+        seen: set[int] = set()
+        while parent in ancestors and parent in processes and parent not in seen:
+            seen.add(parent)
+            if is_protected_task_checkpoint_run(
+                processes[parent].command,
+                protected_owner_argv=execution.owner_argv,
+            ):
+                protected_task_checkpoint_ancestors.add(parent)
+            parent = processes[parent].ppid
     old = args.expected_rollback_worktree
     head = args.expected_rollback_head
     identities = {
@@ -638,9 +826,25 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             coverage_gap_pids.add(process.pid)
         file_evidence = "\n".join(process.files)
         evidence = "\n".join([process.command, *process.files])
-        path_pattern = re.escape(old) + r"(?=/|[\s\"']|$)"
-        argv_bound = bool(re.search(path_pattern, process.command)) or head in process.command
-        files_bound = bool(re.search(path_pattern, file_evidence)) or head in file_evidence
+        scopes = ((old, head, ""),) if execution is None else execution.sources
+        matched_scopes = [
+            (worktree, source_head)
+            for worktree, source_head, _tree in scopes
+            if (
+                bool(re.search(re.escape(worktree) + r"(?=/|[\s\"']|$)", evidence))
+                or (source_head and source_head in evidence)
+            )
+        ]
+        argv_bound = any(
+            bool(re.search(re.escape(worktree) + r"(?=/|[\s\"']|$)", process.command))
+            or (source_head and source_head in process.command)
+            for worktree, source_head in matched_scopes
+        )
+        files_bound = any(
+            bool(re.search(re.escape(worktree) + r"(?=/|[\s\"']|$)", file_evidence))
+            or (source_head and source_head in file_evidence)
+            for worktree, source_head in matched_scopes
+        )
         bound = argv_bound or files_bound
         roles = {
             role
@@ -666,17 +870,24 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
             # owns the runtime. Any independently verified evidence above
             # (role marker, lock, or cwd/file binding) already kept bound=True.
             bound = False
-        if process.pid in protected_task_checkpoint_ancestors and not roles:
-            # The protected wrapper is control-plane infrastructure. Retain
-            # positive role/lock evidence and all missing-coverage uncertainty.
-            # Keep it eligible for descendant propagation from a real owner.
+        if (
+            process.pid in protected_task_checkpoint_ancestors
+            and not roles
+            and not files_bound
+            and not lock_bound
+        ):
+            # The verified wrapper is control-plane infrastructure only when it
+            # has no independent runtime file/lock evidence of its own.
             continue
-        is_passive_fsmonitor = bound and is_passive_git_fsmonitor(
-            process,
-            roles=roles,
-            locks=locks,
-            head=head,
-            old_worktree=old,
+        is_passive_fsmonitor = bool(matched_scopes) and all(
+            is_passive_git_fsmonitor(
+                process,
+                roles=roles,
+                locks=locks,
+                head=source_head,
+                old_worktree=worktree,
+            )
+            for worktree, source_head in matched_scopes
         )
         if bound and not is_passive_fsmonitor:
             runtime.add(process.pid)
@@ -710,6 +921,7 @@ def process_snapshot(args: argparse.Namespace, runner: Runner) -> Record:
         "old_worktree": old,
         "old_head": head,
         "excluded_checkpoint_pids": sorted(excluded),
+        "controlled_execution": controlled,
         "zombie_pids": sorted(zombie_pids),
         "process_count": len(processes),
         "uncertainties": unknown,

@@ -58,6 +58,7 @@ RECEIPT_NAME = "b649-protected-cutover-execution-receipt.json"
 ROLLBACK_RECEIPT_NAME = "b649-protected-rollback-execution-receipt.json"
 LIFECYCLE_RECEIPT_NAME = "b649-control-lifecycle-reconciliation.json"
 LIFECYCLE_SCHEMA = "b649-control-lifecycle-reconciliation-v1"
+APPLY_OPERATION_SCHEMA = "b649-protected-apply-operation-v1"
 CONTROL_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHER = CONTROL_ROOT / "tools/b649_protected_cutover.py"
 MANAGED = CONTROL_ROOT / "tools/b649_production_cutover.py"
@@ -68,6 +69,13 @@ ROLLBACK_SUCCESS = "ROLLBACK_SUCCESS"
 ROLLBACK_FAILED = "ROLLBACK_FAILED"
 ROLLBACK_INCOMPLETE = "ROLLBACK_INCOMPLETE_OR_AMBIGUOUS"
 type Record = dict[str, object]
+
+
+class _Unset:
+    """Marker distinguishing 'caller did not supply this' from an explicit None."""
+
+
+_UNSET = _Unset()
 
 
 class ProtectedError(RuntimeError):
@@ -82,6 +90,83 @@ def canonical(value: object) -> str:
 
 def digest(value: object) -> str:
     return hashlib.sha256(canonical(value).encode()).hexdigest()
+
+
+def apply_operation_id(
+    reservation_id: str, plan_sha256: str, prior_execution_receipt_sha256: str | None
+) -> str:
+    """Derive the deterministic protected-apply operation identity.
+
+    The same frozen reservation, plan and prior protected receipt must derive
+    the same operation ID across a fresh process/session so that resume can
+    rebind to the exact durable owner instead of minting an incompatible one.
+    """
+    return digest(
+        {
+            "schema": APPLY_OPERATION_SCHEMA,
+            "reservation_id": reservation_id,
+            "plan_sha256": plan_sha256,
+            "prior_execution_receipt_sha256": prior_execution_receipt_sha256,
+        }
+    )[:32]
+
+
+def _existing_receipt_sha256(path: Path) -> str | None:
+    if not os.path.lexists(path):
+        return None
+    _, identity, _ = cutover.read_control_json(path)
+    return identity.sha256
+
+
+def _existing_prior_receipt_sha256(path: Path, reservation_id: str | None) -> str | None:
+    """The prior protected receipt's file hash, excluding this reservation's own.
+
+    A receipt already bound to the reservation being computed for is this
+    operation's own in-flight or terminal result, not a distinct prior
+    execution. Folding it into the operation-identity input would make the
+    deterministic operation ID shift under its own output, breaking resume
+    and reuse for the exact reservation that produced it.
+    """
+    if not os.path.lexists(path):
+        return None
+    value, identity, _ = cutover.read_control_json(path)
+    try:
+        owner_reservation = record(value.get("identity")).get("reservation_id")
+    except checkpoint.Unverifiable:
+        owner_reservation = None
+    if reservation_id is not None and owner_reservation == reservation_id:
+        prior_sha = record(value.get("identity")).get("prior_execution_receipt_sha256")
+        return None if prior_sha is None else text(prior_sha)
+    return identity.sha256
+
+
+def _find_archived_prior_receipt(path: Path, matches_sha: Callable[[str], bool]) -> Record | None:
+    """Recover only sealed archive bytes matching the caller's frozen binding."""
+    found: Record | None = None
+    for index, archive in enumerate(path.parent.glob(f"{path.stem}.*.superseded.json")):
+        if index >= 1024:
+            raise ProtectedError("superseded receipt lookup exceeds bound")
+        value, file_identity, _ = cutover.read_control_json(archive)
+        if not matches_sha(file_identity.sha256):
+            continue
+        identity = record(value.get("identity"))
+        execution_id = digest(identity)
+        unsigned = {key: item for key, item in value.items() if key != "receipt_sha256"}
+        if (
+            archive.name != f"{path.stem}.{execution_id}.superseded.json"
+            or value.get("schema_version") != SCHEMA
+            or value.get("receipt_sha256") != digest(unsigned)
+            or value.get("execution_id") != execution_id
+            or value.get("phase") != "COMPLETED"
+            or value.get("status") not in {"SUCCESS", "FAILED"}
+            or identity.get("execution_receipt_path") != str(path)
+            or identity.get("task_key") != TASK_KEY
+        ):
+            raise ProtectedError("bound superseded receipt integrity differs")
+        if found is not None:
+            raise ProtectedError("bound superseded receipt is ambiguous")
+        found = {"path": str(archive), "execution_id": execution_id, "sha256": file_identity.sha256}
+    return found
 
 
 def now() -> str:
@@ -146,6 +231,7 @@ class Request:
     control_head: str = ""
     control_tree: str = ""
     owner_id_argument: bool = False
+    prior_execution_receipt_sha256: str | None = None
 
     @property
     def action(self) -> str:
@@ -193,6 +279,7 @@ class Request:
             "operation_id": self.operation_id,
             "managed_receipt_sha256": self.managed_receipt_sha256,
             "owner_id_argument": self.owner_id_argument,
+            "prior_execution_receipt_sha256": self.prior_execution_receipt_sha256,
             "target": {
                 "source_worktree": str(self.config.source_worktree),
                 "head": self.config.expected_head,
@@ -289,6 +376,8 @@ def make_request(
     reservation_id: str | None = None,
     owner_id_argument: bool = False,
     operation_id: str | None = None,
+    prior_execution_receipt_sha256: str | None | _Unset = _UNSET,
+    managed_receipt_sha256: str | None | _Unset = _UNSET,
 ) -> Request:
     for path in (
         config.source_worktree,
@@ -312,11 +401,55 @@ def make_request(
     if os.path.lexists(config.receipt_path):
         managed, managed_identity, _ = cutover.read_control_json(config.receipt_path)
     control_head, control_tree = control_identity()
-    selected_operation_id = operation_id or (
-        text(managed.get("operation_id"))
-        if managed is not None and managed.get("plan_digest") == plan.get("plan_digest")
-        else uuid4().hex
+    resolved_prior_receipt_sha: str | None = (
+        _existing_prior_receipt_sha256(config.scheduler_root / RECEIPT_NAME, reservation_id)
+        if isinstance(prior_execution_receipt_sha256, _Unset)
+        else prior_execution_receipt_sha256
     )
+    if (
+        isinstance(prior_execution_receipt_sha256, _Unset)
+        and reservation_id is not None
+        and not os.path.lexists(config.scheduler_root / RECEIPT_NAME)
+    ):
+        owner = cutover.inspect_control_owner(config)
+        if owner is not None and owner.get("reservation_id") == reservation_id:
+            bound_operation = owner.get("operation_id")
+            if bound_operation is not None and bound_operation != apply_operation_id(
+                reservation_id, identity.sha256, None
+            ):
+                evidence = _find_archived_prior_receipt(
+                    config.scheduler_root / RECEIPT_NAME,
+                    lambda sha: (
+                        apply_operation_id(reservation_id, identity.sha256, sha) == bound_operation
+                    ),
+                )
+                if evidence is None:
+                    raise ProtectedError("bound operation has no matching prior receipt archive")
+                resolved_prior_receipt_sha = text(evidence["sha256"])
+    # A reservation that has already bound a managed-receipt snapshot must
+    # keep it fixed: the managed receipt this very operation later writes
+    # (on success) would otherwise be picked up as a "fresh" read on the next
+    # resume/replay call, shifting the identity under its own output.
+    resolved_managed_receipt_sha256: str | None = (
+        (None if managed_identity is None else managed_identity.sha256)
+        if isinstance(managed_receipt_sha256, _Unset)
+        else managed_receipt_sha256
+    )
+    if operation_id is not None:
+        selected_operation_id = operation_id
+    elif reservation_id is not None:
+        # Deterministic so that a fresh process resuming the same reservation
+        # against the same plan and prior protected receipt rebinds to the
+        # exact durable owner instead of minting an incompatible identity.
+        selected_operation_id = apply_operation_id(
+            reservation_id, identity.sha256, resolved_prior_receipt_sha
+        )
+    else:
+        selected_operation_id = (
+            text(managed.get("operation_id"))
+            if managed is not None and managed.get("plan_digest") == plan.get("plan_digest")
+            else uuid4().hex
+        )
     request = Request(
         config,
         legacy_worktree,
@@ -329,10 +462,11 @@ def make_request(
         takeover_stale,
         reservation_id,
         selected_operation_id,
-        None if managed_identity is None else managed_identity.sha256,
+        resolved_managed_receipt_sha256,
         control_head,
         control_tree,
         owner_id_argument,
+        resolved_prior_receipt_sha,
     )
     if request.receipt_path in {config.receipt_path, config.plist_path, plan_file}:
         raise ProtectedError("execution receipt must have its own canonical path")
@@ -441,7 +575,7 @@ class RollbackRequest:
             "--legacy-tree",
             self.legacy_tree,
             *(["--owner-id", text(self.reservation_id)] if self.owner_id_argument else []),
-            *( ["--takeover-stale"] if self.takeover_stale else []),
+            *(["--takeover-stale"] if self.takeover_stale else []),
         ]
 
     def managed_argv(self) -> list[str]:
@@ -588,14 +722,11 @@ def request_owner_authorization(request: Request | RollbackRequest) -> Record:
 class RollbackControlledExecution(checkpoint.ControlledExecution):
     """The existing process-snapshot proof specialized to protected rollback."""
 
-    def verify(
-        self, processes: dict[int, checkpoint.Process], uid: int
-    ) -> Record:
+    def verify(self, processes: dict[int, checkpoint.Process], uid: int) -> Record:
         root = Path(__file__).resolve().parents[1]
         if (
             self.task_key != TASK_KEY
-            or self.child_argv[:3]
-            != (sys.executable, str(MANAGED), "rollback")
+            or self.child_argv[:3] != (sys.executable, str(MANAGED), "rollback")
             or self.child_argv[-4:-3] != ("--protected-request",)
         ):
             raise checkpoint.Unverifiable("only the protected B649 rollback can control ownership")
@@ -614,7 +745,7 @@ class RollbackControlledExecution(checkpoint.ControlledExecution):
             identity.get("legacy_head"),
             "--legacy-tree",
             identity.get("legacy_tree"),
-            *( ["--takeover-stale"] if wire.get("takeover_stale") is True else []),
+            *(["--takeover-stale"] if wire.get("takeover_stale") is True else []),
         )
         if (
             identity_digest != self.execution_id
@@ -810,18 +941,26 @@ class ReceiptFile:
             or type(value.get("exit_code")) is not int
         ):
             raise ProtectedError("terminal receipt is incomplete")
-        if action == "apply" and value["status"] == "SUCCESS" and (
-            value.get("exit_code") != 0
-            or value.get("child_exit_code") != 0
-            or value.get("result_status") not in {"SUCCESS", "ALREADY_APPLIED"}
-            or not isinstance(value.get("managed_receipt"), dict)
+        if (
+            action == "apply"
+            and value["status"] == "SUCCESS"
+            and (
+                value.get("exit_code") != 0
+                or value.get("child_exit_code") != 0
+                or value.get("result_status") not in {"SUCCESS", "ALREADY_APPLIED"}
+                or not isinstance(value.get("managed_receipt"), dict)
+            )
         ):
             raise ProtectedError("success receipt lacks terminal evidence")
-        if action == "rollback" and value["status"] == ROLLBACK_SUCCESS and (
-            value.get("exit_code") != 0
-            or value.get("child_exit_code") != 0
-            or value.get("result_status") not in {ROLLBACK_SUCCESS, "ALREADY_ROLLED_BACK"}
-            or not isinstance(value.get("managed_receipt"), dict)
+        if (
+            action == "rollback"
+            and value["status"] == ROLLBACK_SUCCESS
+            and (
+                value.get("exit_code") != 0
+                or value.get("child_exit_code") != 0
+                or value.get("result_status") not in {ROLLBACK_SUCCESS, "ALREADY_ROLLED_BACK"}
+                or not isinstance(value.get("managed_receipt"), dict)
+            )
         ):
             raise ProtectedError("rollback success receipt lacks terminal evidence")
         return value
@@ -874,6 +1013,63 @@ class ReceiptFile:
                 os.unlink(temporary, dir_fd=directory)
             os.close(directory)
 
+    def archive_to(self, destination_name: str, *, expected_sha256: str) -> None:
+        """Move this receipt to a sibling name via link-then-unlink; never delete content.
+
+        Idempotent when the destination already holds byte-identical content;
+        refuses (leaving both paths untouched) when it exists with conflicting
+        bytes, so a superseded receipt is always recoverable under its own
+        identity-qualified name.
+        """
+        directory = self._directory()
+        try:
+            descriptor = os.open(
+                self.path.name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory
+            )
+            with os.fdopen(descriptor, "rb") as stream:
+                before = os.fstat(stream.fileno())
+                if not stat.S_ISREG(before.st_mode) or before.st_nlink != 1:
+                    raise ProtectedError("prior receipt must be a regular single-link file")
+                raw = stream.read(MAX_RECEIPT_BYTES + 1)
+            if len(raw) > MAX_RECEIPT_BYTES or hashlib.sha256(raw).hexdigest() != expected_sha256:
+                raise ProtectedError("prior receipt changed before archive")
+            try:
+                existing_descriptor: int | None = os.open(
+                    destination_name,
+                    os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK,
+                    dir_fd=directory,
+                )
+            except FileNotFoundError:
+                existing_descriptor = None
+            if existing_descriptor is not None:
+                with os.fdopen(existing_descriptor, "rb") as stream:
+                    archive_stat = os.fstat(stream.fileno())
+                    if (
+                        not stat.S_ISREG(archive_stat.st_mode)
+                        or archive_stat.st_nlink != 1
+                        or archive_stat.st_uid != os.getuid()
+                        or stat.S_IMODE(archive_stat.st_mode) != 0o600
+                    ):
+                        raise ProtectedError("superseded receipt archive metadata is invalid")
+                    existing_raw = stream.read(MAX_RECEIPT_BYTES + 1)
+                if existing_raw != raw:
+                    raise ProtectedError(
+                        "superseded receipt archive path already exists with conflicting bytes"
+                    )
+                os.unlink(self.path.name, dir_fd=directory)
+            else:
+                os.link(
+                    self.path.name,
+                    destination_name,
+                    src_dir_fd=directory,
+                    dst_dir_fd=directory,
+                    follow_symlinks=False,
+                )
+                os.unlink(self.path.name, dir_fd=directory)
+            os.fsync(directory)
+        finally:
+            os.close(directory)
+
 
 def _lifecycle_path(config: cutover.CutoverConfig) -> Path:
     return config.scheduler_root / LIFECYCLE_RECEIPT_NAME
@@ -899,8 +1095,7 @@ def _lifecycle_record(config: cutover.CutoverConfig) -> tuple[Record, cutover.Fi
 def _lifecycle_source_identity(value: object) -> Record:
     source = record(value)
     return {
-        key: text(source.get(key))
-        for key in ("source_worktree", "head", "tree", "durable_ref")
+        key: text(source.get(key)) for key in ("source_worktree", "head", "tree", "durable_ref")
     }
 
 
@@ -1084,6 +1279,7 @@ class ReceiptClaimStore(claims.ClaimStore):
         self.request = request
         self.owner_record: claims.Metadata | None = None
         self.gated = False
+        self.superseded_receipt: Record | None = None
 
     def _write(self, record: claims.Metadata) -> None:
         value = record
@@ -1127,6 +1323,7 @@ class ReceiptClaimStore(claims.ClaimStore):
                 "stderr": None,
                 "managed_receipt": None,
                 "result_status": None,
+                "superseded_execution_receipt": self.superseded_receipt,
             },
             expected=previous,
         )
@@ -1237,6 +1434,7 @@ def child_request(args: argparse.Namespace) -> Request | RollbackRequest:
                 owner_id_argument=bool(identity["owner_id_argument"]),
             )
         else:
+            prior_receipt_sha_value = identity.get("prior_execution_receipt_sha256")
             request = make_request(
                 config,
                 Path(text(identity.get("legacy_worktree"))),
@@ -1248,6 +1446,13 @@ def child_request(args: argparse.Namespace) -> Request | RollbackRequest:
                 reservation_id=reservation_id,
                 owner_id_argument=bool(identity["owner_id_argument"]),
                 operation_id=text(identity.get("operation_id")),
+                # Trust the wire snapshot: by the time this child re-validates,
+                # a parent-side supersession may have already archived the
+                # prior receipt slot, which would change what a fresh disk
+                # read observes.
+                prior_execution_receipt_sha256=(
+                    None if prior_receipt_sha_value is None else text(prior_receipt_sha_value)
+                ),
             )
     except (OSError, ValueError, cutover.CutoverError) as exc:
         raise ProtectedError(f"protected request cannot be revalidated: {exc}") from exc
@@ -1383,6 +1588,90 @@ def run_managed_child(
     return code
 
 
+def supersede_prior_execution_receipt(
+    request: Request | RollbackRequest,
+    receipt_file: ReceiptFile,
+    prior: Record,
+) -> bool:
+    """Archive a stale, sealed prior protected receipt so a new operation can proceed.
+
+    Only ``Request`` (apply) carries the ``prior_execution_receipt_sha256``
+    identity input the CTO-frozen contract requires; rollback's operation
+    identity is receipt-derived and unchanged, so a differing rollback
+    receipt is never eligible here. Returns True when the prior receipt was
+    archived; the caller must fail closed on False rather than reuse or
+    delete anything.
+    """
+    if not isinstance(request, Request):
+        return False
+    # Prior receipt is not sealed/terminal.
+    if prior.get("phase") != "COMPLETED" or prior.get("status") not in {"SUCCESS", "FAILED"}:
+        return False
+    prior_identity = record(prior.get("identity"))
+    # Prior receipt is the current execution; nothing to supersede.
+    if prior_identity == request.identity:
+        return False
+    prior_execution_id = prior.get("execution_id")
+    # Prior receipt identity digest is invalid.
+    if not isinstance(prior_execution_id, str) or digest(prior_identity) != prior_execution_id:
+        return False
+    owner = cutover.inspect_control_owner(request.config)
+    if (
+        owner is None
+        or owner.get("phase") != "AUTHORIZED_PENDING"
+        or owner.get("owner_kind") != "protected"
+        or owner.get("authorization") != request_owner_authorization(request)
+    ):
+        return False
+    # A claim is still owned or uncertain.
+    if claims.ClaimStore(request.claim_root).inspect(TASK_KEY).get("status") != "ABSENT":
+        return False
+    bound_prior_sha = request.identity.get("prior_execution_receipt_sha256")
+    # Prior receipt disappeared before supersession could bind its SHA.
+    if not os.path.lexists(request.receipt_path):
+        return False
+    _, current_slot_identity, _ = cutover.read_control_json(request.receipt_path)
+    # Prior receipt SHA is not part of the authorized operation identity.
+    if bound_prior_sha != current_slot_identity.sha256:
+        return False
+    managed_receipt_sha = cast(str | None, request.identity.get("managed_receipt_sha256"))
+    # No terminal managed receipt is bound to the new operation.
+    if managed_receipt_sha is None or not os.path.lexists(request.config.receipt_path):
+        return False
+    managed, managed_identity, _ = cutover.read_control_json(request.config.receipt_path)
+    # Current managed receipt is not a verified terminal success.
+    if (
+        managed_identity.sha256 != managed_receipt_sha
+        or managed.get("phase") != "COMPLETED"
+        or managed.get("status") not in {ROLLBACK_SUCCESS, "RECOVERED"}
+        or managed.get("schema_version") != cutover.RECEIPT_SCHEMA_VERSION
+        or managed.get("task") != cutover.TASK_ID
+        or managed.get("operation_id") != prior_identity.get("operation_id")
+        or managed.get("plan_digest") != prior_identity.get("plan_digest")
+    ):
+        return False
+    prior_link_value = prior.get("managed_receipt")
+    prior_link = record(prior_link_value) if prior_link_value is not None else {}
+    # Managed receipt evidence does not prove the prior execution is superseded.
+    if (
+        prior_link.get("path") != str(request.config.receipt_path)
+        or re.fullmatch(r"[0-9a-f]{64}", str(prior_link.get("sha256"))) is None
+        or prior_link.get("sha256") == managed_identity.sha256
+    ):
+        return False
+    prior_config = replace(
+        request.config,
+        source_worktree=Path(text(prior_identity.get("source_worktree"))),
+        expected_head=text(prior_identity.get("source_head")),
+        expected_tree=text(prior_identity.get("source_tree")),
+        durable_ref=text(record(prior_identity.get("target")).get("durable_ref")),
+    )
+    cutover.validate_protected_plan(prior_config, cutover.receipt_to_plan(prior_config, managed))
+    destination_name = f"{request.receipt_path.stem}.{prior_execution_id}.superseded.json"
+    receipt_file.archive_to(destination_name, expected_sha256=current_slot_identity.sha256)
+    return True
+
+
 def launch(request: Request | RollbackRequest) -> Record:
     """Compose ClaimStore.run unchanged; the child owns all pre-action preparation."""
     if Path.cwd() != CONTROL_ROOT:
@@ -1405,11 +1694,9 @@ def launch(request: Request | RollbackRequest) -> Record:
         execution_exists = os.path.lexists(request.receipt_path)
         if request.reservation_id is None:
             candidate = replace(request, reservation_id=released_id)
-            if (
-                execution_exists
-                and cutover.control_owner_authorization(owner)
-                == request_owner_authorization(candidate)
-            ):
+            if execution_exists and cutover.control_owner_authorization(
+                owner
+            ) == request_owner_authorization(candidate):
                 request = candidate
             elif execution_exists:
                 raise ProtectedError("a different completed owner identity blocks receipt reuse")
@@ -1469,14 +1756,33 @@ def launch(request: Request | RollbackRequest) -> Record:
             }
         if owner.get("authorization") != authorization:
             raise ProtectedError("durable owner authorization differs from this request")
+    if (
+        isinstance(request, Request)
+        and owner.get("phase") == "AUTHORIZED_PENDING"
+        and _existing_receipt_sha256(request.config.receipt_path) != request.managed_receipt_sha256
+    ):
+        raise ProtectedError("managed receipt changed after authorization")
     success_status = ROLLBACK_SUCCESS if request.action == "rollback" else "SUCCESS"
     incomplete_status = (
-        ROLLBACK_INCOMPLETE
-        if request.action == "rollback"
-        else "INCOMPLETE_OR_AMBIGUOUS"
+        ROLLBACK_INCOMPLETE if request.action == "rollback" else "INCOMPLETE_OR_AMBIGUOUS"
     )
     store = ReceiptClaimStore(request)
     prior = receipt_file.read()
+    if (
+        prior is not None
+        and prior.get("identity") != request.identity
+        and supersede_prior_execution_receipt(request, receipt_file, prior)
+    ):
+        store.superseded_receipt = {
+            "path": str(
+                request.receipt_path.with_name(
+                    f"{request.receipt_path.stem}.{prior['execution_id']}.superseded.json"
+                )
+            ),
+            "execution_id": prior["execution_id"],
+            "sha256": request.identity["prior_execution_receipt_sha256"],
+        }
+        prior = receipt_file.read()
     if prior is not None:
         if prior.get("identity") != request.identity:
             raise ProtectedError("execution identity mismatch; prior result cannot be reused")
@@ -1498,6 +1804,12 @@ def launch(request: Request | RollbackRequest) -> Record:
                 protected_receipt_path=request.receipt_path,
             )
         return {**prior, "reused": True}
+    if isinstance(request, Request) and request.prior_execution_receipt_sha256 is not None:
+        store.superseded_receipt = _find_archived_prior_receipt(
+            request.receipt_path, lambda sha: sha == request.prior_execution_receipt_sha256
+        )
+        if store.superseded_receipt is None:
+            raise ProtectedError("authorized prior receipt archive is absent or changed")
     if owner.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}:
         raise ProtectedError(
             "started owner has no reusable protected terminal receipt; reconcile exact evidence"
@@ -1595,6 +1907,138 @@ def launch(request: Request | RollbackRequest) -> Record:
     return {**saved, "reused": False}
 
 
+def build_reservation_config(args: argparse.Namespace, *, for_action: str) -> cutover.CutoverConfig:
+    """Hermetic seam: the durable-owner-keyed config CLI commands reserve/inspect against.
+
+    Tests redirect the whole two-stage lifecycle to temporary paths by
+    monkeypatching this one function, exactly as ``cutover.protected_config``
+    already redirects the gated child's own config construction.
+    """
+    if for_action == "rollback":
+        if args.legacy_worktree is None or args.receipt_file is None:
+            raise ProtectedError(
+                "--legacy-worktree and --receipt-file are required for --for rollback"
+            )
+        return cutover.CutoverConfig(
+            source_worktree=Path(args.legacy_worktree),
+            receipt_path=Path(args.receipt_file),
+            strict_release_layout=True,
+        )
+    if args.source_worktree is None or args.expected_head is None or args.expected_tree is None:
+        raise ProtectedError(
+            "--source-worktree, --expected-head and --expected-tree are required for --for apply"
+        )
+    return cutover.CutoverConfig(
+        source_worktree=Path(args.source_worktree),
+        expected_head=args.expected_head,
+        expected_tree=args.expected_tree,
+        durable_ref=f"refs/heads/runtime/b649/{args.expected_head}",
+        strict_release_layout=True,
+    )
+
+
+def status_report(config: cutover.CutoverConfig) -> Record:
+    """Read-only owner/receipt snapshot; performs no mutation of any kind."""
+    owner = cutover.inspect_control_owner(config)
+    managed_sha = _existing_receipt_sha256(config.receipt_path)
+    apply_sha = _existing_receipt_sha256(config.scheduler_root / RECEIPT_NAME)
+    rollback_sha = _existing_receipt_sha256(config.scheduler_root / ROLLBACK_RECEIPT_NAME)
+    return {
+        "status": "OK",
+        "owner": owner,
+        "managed_receipt": {
+            "path": str(config.receipt_path),
+            "sha256": managed_sha,
+            "exists": managed_sha is not None,
+        },
+        "protected_apply_receipt": {
+            "path": str(config.scheduler_root / RECEIPT_NAME),
+            "sha256": apply_sha,
+            "exists": apply_sha is not None,
+        },
+        "protected_rollback_receipt": {
+            "path": str(config.scheduler_root / ROLLBACK_RECEIPT_NAME),
+            "sha256": rollback_sha,
+            "exists": rollback_sha is not None,
+        },
+    }
+
+
+def cmd_status(args: argparse.Namespace) -> Record:
+    config = build_reservation_config(args, for_action=text(args.target_action))
+    return status_report(config)
+
+
+def cmd_authorize(args: argparse.Namespace) -> Record:
+    config = build_reservation_config(args, for_action=text(args.target_action))
+    reservation_id = text(args.reservation_id)
+    target: Record = {
+        "source_worktree": text(args.target_source_worktree),
+        "head": text(args.target_head),
+        "tree": text(args.target_tree),
+    }
+    if args.target_durable_ref is not None:
+        target["durable_ref"] = text(args.target_durable_ref)
+    authorization: Record = {
+        "reservation_id": reservation_id,
+        "operation_id": text(args.operation_id),
+        "managed_receipt_sha256": args.managed_receipt_sha256,
+        "control_head": text(args.control_head),
+        "control_tree": text(args.control_tree),
+        "action": text(args.target_action),
+        "target": target,
+    }
+    # Live re-verification the durable owner alone does not perform: the
+    # authorization must match the managed receipt's actual current bytes,
+    # not merely the bind-time snapshot the owner file already carries.
+    live_managed_sha = _existing_receipt_sha256(config.receipt_path)
+    if live_managed_sha != authorization["managed_receipt_sha256"]:
+        raise ProtectedError(
+            "owner authorization managed receipt SHA differs from the live managed receipt"
+        )
+    return cutover.authorize_control_owner(config, reservation_id, authorization)
+
+
+def cmd_abandon(args: argparse.Namespace) -> Record:
+    config = build_reservation_config(args, for_action=text(args.target_action))
+    reservation_id = text(args.reservation_id)
+    owner = cutover.inspect_control_owner(config)
+    if owner is None or owner.get("reservation_id") != reservation_id:
+        raise ProtectedError("durable control owner is absent or a different reservation")
+    live_control = cutover.control_version()
+    if owner.get("phase") != "ABANDONED":
+        cutover.reconcile_control_owner(
+            config,
+            reservation_id,
+            disposition="ABANDON_BEFORE_MUTATION",
+            version=live_control,
+            observed_managed_receipt_sha256=cast(str | None, args.observed_managed_receipt_sha256),
+        )
+    return cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="RELEASE_ABANDONED",
+        version=live_control,
+    )
+
+
+def _add_reservation_lookup_arguments(sub: argparse.ArgumentParser) -> None:
+    """Explicit, non-defaulting reservation identity: caller states which target.
+
+    Every field here is optional at the argparse level because exactly one
+    shape (apply or rollback) is required depending on ``--for``; the
+    required subset is enforced by ``build_reservation_config`` so that
+    nothing silently falls back to the current owner, latest receipt, or
+    current target.
+    """
+    sub.add_argument("--for", dest="target_action", choices=("apply", "rollback"), required=True)
+    sub.add_argument("--source-worktree")
+    sub.add_argument("--expected-head")
+    sub.add_argument("--expected-tree")
+    sub.add_argument("--legacy-worktree")
+    sub.add_argument("--receipt-file")
+
+
 def parser() -> argparse.ArgumentParser:
     cli = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
     commands = cli.add_subparsers(dest="action", required=True)
@@ -1614,6 +2058,26 @@ def parser() -> argparse.ArgumentParser:
     for name in ("receipt-file", "legacy-worktree", "legacy-head", "legacy-tree"):
         rollback_parser.add_argument("--" + name, required=True)
     rollback_parser.add_argument("--takeover-stale", action="store_true")
+    status_parser = commands.add_parser("status", allow_abbrev=False)
+    _add_reservation_lookup_arguments(status_parser)
+    authorize_parser = commands.add_parser("authorize", allow_abbrev=False)
+    _add_reservation_lookup_arguments(authorize_parser)
+    for name in (
+        "reservation-id",
+        "operation-id",
+        "control-head",
+        "control-tree",
+        "target-source-worktree",
+        "target-head",
+        "target-tree",
+    ):
+        authorize_parser.add_argument("--" + name, required=True)
+    authorize_parser.add_argument("--managed-receipt-sha256")
+    authorize_parser.add_argument("--target-durable-ref")
+    abandon_parser = commands.add_parser("abandon", allow_abbrev=False)
+    _add_reservation_lookup_arguments(abandon_parser)
+    abandon_parser.add_argument("--reservation-id", required=True)
+    abandon_parser.add_argument("--observed-managed-receipt-sha256")
     return cli
 
 
@@ -1621,38 +2085,50 @@ def main(argv: Sequence[str] | None = None) -> int:
     selected = list(sys.argv[1:] if argv is None else argv)
     args = parser().parse_args(selected)
     try:
+        if args.action == "status":
+            print(canonical(cmd_status(args)))
+            return 0
+        if args.action == "authorize":
+            print(canonical(cmd_authorize(args)))
+            return 0
+        if args.action == "abandon":
+            print(canonical(cmd_abandon(args)))
+            return 0
         version = cutover.control_version()
         if args.action == "rollback":
-            receipt_path = Path(args.receipt_file)
-            reservation_config = cutover.CutoverConfig(
-                source_worktree=Path(args.legacy_worktree),
-                receipt_path=receipt_path,
-                strict_release_layout=True,
-            )
+            reservation_config = build_reservation_config(args, for_action="rollback")
             reservation_target: cutover.Record = {
                 "source_worktree": args.legacy_worktree,
                 "head": args.legacy_head,
                 "tree": args.legacy_tree,
             }
         else:
-            config = cutover.CutoverConfig(
-                source_worktree=Path(args.source_worktree),
-                expected_head=args.expected_head,
-                expected_tree=args.expected_tree,
-                durable_ref=f"refs/heads/runtime/b649/{args.expected_head}",
-                strict_release_layout=True,
-            )
-            reservation_config = config
+            reservation_config = build_reservation_config(args, for_action="apply")
             reservation_target = {
                 "source_worktree": args.source_worktree,
                 "head": args.expected_head,
                 "tree": args.expected_tree,
-                "durable_ref": config.durable_ref,
+                "durable_ref": reservation_config.durable_ref,
             }
         prior_owner = cutover.inspect_control_owner(reservation_config)
         prior_execution_path = reservation_config.scheduler_root / (
             ROLLBACK_RECEIPT_NAME if args.action == "rollback" else RECEIPT_NAME
         )
+        released_replay = prior_owner is not None and os.path.lexists(prior_execution_path)
+        if released_replay and args.action == "apply" and prior_owner is not None:
+            prior_execution = ReceiptFile(prior_execution_path).read()
+            if prior_execution is None:
+                raise ProtectedError("prior execution disappeared before reservation")
+            prior_link = prior_execution.get("managed_receipt")
+            prior_identity = record(prior_execution.get("identity"))
+            released_replay = (
+                prior_identity.get("reservation_id") == prior_owner.get("reservation_id")
+                and prior_identity.get("plan_sha256")
+                == _existing_receipt_sha256(Path(args.plan_file))
+                and isinstance(prior_link, dict)
+                and cast(Record, prior_link).get("sha256")
+                == _existing_receipt_sha256(reservation_config.receipt_path)
+            )
         if prior_owner is not None and prior_owner.get("phase") != "RELEASED":
             reservation_id = text(prior_owner.get("reservation_id"))
             owner = cutover.acquire_control_owner(
@@ -1668,7 +2144,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 reservation_id,
                 version=version,
             )
-        elif prior_owner is not None and os.path.lexists(prior_execution_path):
+        elif prior_owner is not None and released_replay:
             reservation_id = text(prior_owner.get("reservation_id"))
             owner = prior_owner
         else:
@@ -1683,9 +2159,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.action == "rollback":
             receipt_path = Path(args.receipt_file)
             managed, _, _ = cutover.read_control_json(receipt_path)
-            new_source = record(
-                record(record(managed.get("prestate")).get("new_source"))
-            )
+            new_source = record(record(record(managed.get("prestate")).get("new_source")))
             config = cutover.CutoverConfig(
                 source_worktree=Path(text(new_source.get("source_worktree"))),
                 expected_head=text(new_source.get("head")),
@@ -1705,13 +2179,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 owner_id_argument=False,
             )
         else:
-            config = cutover.CutoverConfig(
-                source_worktree=Path(args.source_worktree),
-                expected_head=args.expected_head,
-                expected_tree=args.expected_tree,
-                durable_ref=f"refs/heads/runtime/b649/{args.expected_head}",
-                strict_release_layout=True,
-            )
+            config = reservation_config
+            # Once this reservation has already bound an operation identity,
+            # keep it and its managed-receipt snapshot fixed rather than
+            # re-deriving from current disk state: a successful mutation
+            # writes its own managed receipt, which a fresh read on the next
+            # resume/replay call would otherwise mistake for new input. A
+            # bound managed-receipt SHA of None is itself meaningful (no
+            # managed receipt existed yet at first bind) and must still be
+            # held fixed, so the gate is whether binding already happened
+            # (operation_id set), not whether the value itself is None.
+            bound_operation_id = owner.get("operation_id")
+            already_bound = bound_operation_id is not None
             request = make_request(
                 config,
                 Path(args.legacy_worktree),
@@ -1722,7 +2201,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 takeover_stale=args.takeover_stale,
                 reservation_id=reservation_id,
                 owner_id_argument=False,
+                managed_receipt_sha256=(
+                    cast(str | None, owner.get("managed_receipt_sha256"))
+                    if already_bound
+                    else _UNSET
+                ),
             )
+            if already_bound and request.operation_id != bound_operation_id:
+                raise ProtectedError("bound operation identity differs from plan/prior receipt")
         if owner.get("phase") != "RELEASED":
             owner = cutover.bind_control_owner(
                 reservation_config,

@@ -186,10 +186,10 @@ def test_frozen_v1_baseline_does_not_follow_current_v2_portfolios() -> None:
         "13b1126d5b26ce44c9aba24670142eeab49f4a4b51aaf3bbabe7a7f1659ac673"
     )
     assert current_k20.portfolio_sha256 == (
-        "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd"
+        "34f3905bd1cf46b910330e4e8ee9d7168c6a1421be8f414ceccd0ada17551891"
     )
     assert current_k10.official_any_prize_probability == Fraction(536005, 1827672)
-    assert current_k20.official_any_prize_probability == Fraction(7448829, 14316764)
+    assert current_k20.official_any_prize_probability == Fraction(44709019, 85900584)
     assert current_k10.official_any_prize_probability != EXPECTED_SEALED_PROBABILITY_K10
     assert current_k20.official_any_prize_probability != EXPECTED_SEALED_PROBABILITY_K20
 

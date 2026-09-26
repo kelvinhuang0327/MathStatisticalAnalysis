@@ -1,0 +1,1837 @@
+{
+  "TASK_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R5",
+  "SEALED_FROM_HEAD": "e3b0f1985e7abf4da0d02dfc689fcfd0cc06fc01",
+  "SEALED_FROM_TREE": "29e4cc9c4aa2cd8e9b8a395efb8c423313c4d0cf",
+  "SEALED_FROM_RESULT_PATH": ".task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R5/run1/run-result.json",
+  "SEALED_FROM_RESULT_SHA256": "64ef6f6affa5a018dc47bf519e23c3f064c2173af44112d1d40ac2d35006347c",
+  "UPSTREAM_RESULT_SHA256": "64ef6f6affa5a018dc47bf519e23c3f064c2173af44112d1d40ac2d35006347c",
+  "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r5/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R5/run1/run-result.json",
+  "UPSTREAM_SOURCE_HEAD": "e3b0f1985e7abf4da0d02dfc689fcfd0cc06fc01",
+  "UPSTREAM_SOURCE_TREE": "29e4cc9c4aa2cd8e9b8a395efb8c423313c4d0cf",
+  "CANONICAL_BASE_HEAD": "e3b0f1985e7abf4da0d02dfc689fcfd0cc06fc01",
+  "CANONICAL_BASE_TREE": "29e4cc9c4aa2cd8e9b8a395efb8c423313c4d0cf",
+  "INCUMBENT_METHOD_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1",
+  "INCUMBENT_METHOD_VERSION": "1.0.0",
+  "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+  "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+  "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+  "TERMINAL_K20_PORTFOLIO_SHA256": "34f3905bd1cf46b910330e4e8ee9d7168c6a1421be8f414ceccd0ada17551891",
+  "INITIAL_K20_OUTCOME_COUNT": 312850818,
+  "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+  "TERMINAL_K20_OUTCOME_COUNT": 312963133,
+  "TERMINAL_K20_EXACT_PROBABILITY": "44709019/85900584",
+  "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+  "TERMINAL_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+  "TOTAL_DELTA_OUTCOME_COUNT": 112315,
+  "TOTAL_DELTA_PP": 0.00018678569170146737,
+  "TOTAL_DELTA_PP_EXACT": "16045/85900584",
+  "ROUND_DELTA_FROM_PRIOR_INCUMBENT_OUTCOME_COUNT": 14,
+  "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP": 2.3282728787967262e-08,
+  "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP_EXACT": "1/42950292",
+  "ACCEPTED_MOVE": {
+    "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+    "TICKET_A_BEFORE": [
+      3,
+      4,
+      7,
+      15,
+      23,
+      27
+    ],
+    "TICKET_A_AFTER": [
+      3,
+      4,
+      14,
+      15,
+      26,
+      27
+    ],
+    "TICKET_B_BEFORE": [
+      4,
+      14,
+      26,
+      37,
+      39,
+      44
+    ],
+    "TICKET_B_AFTER": [
+      4,
+      7,
+      23,
+      37,
+      39,
+      44
+    ],
+    "SWAPPED_FROM_A": [
+      7,
+      23
+    ],
+    "SWAPPED_FROM_B": [
+      14,
+      26
+    ]
+  },
+  "FINAL_EXACT_RECOMPUTE": "PASS",
+  "NEIGHBORHOOD_COMPLETENESS": "PROVEN",
+  "TERMINAL_TICKETS": [
+    [
+      1,
+      2,
+      34,
+      41,
+      42,
+      45
+    ],
+    [
+      1,
+      17,
+      22,
+      30,
+      33,
+      43
+    ],
+    [
+      2,
+      5,
+      33,
+      35,
+      40,
+      48
+    ],
+    [
+      3,
+      4,
+      14,
+      15,
+      26,
+      27
+    ],
+    [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+    ],
+    [
+      3,
+      9,
+      12,
+      16,
+      29,
+      39
+    ],
+    [
+      4,
+      7,
+      23,
+      37,
+      39,
+      44
+    ],
+    [
+      4,
+      18,
+      20,
+      24,
+      28,
+      29
+    ],
+    [
+      5,
+      17,
+      25,
+      32,
+      41,
+      47
+    ],
+    [
+      6,
+      7,
+      9,
+      13,
+      18,
+      26
+    ],
+    [
+      6,
+      10,
+      11,
+      16,
+      24,
+      36
+    ],
+    [
+      7,
+      8,
+      10,
+      14,
+      19,
+      29
+    ],
+    [
+      8,
+      9,
+      11,
+      15,
+      20,
+      46
+    ],
+    [
+      11,
+      12,
+      14,
+      18,
+      23,
+      31
+    ],
+    [
+      12,
+      13,
+      15,
+      19,
+      24,
+      37
+    ],
+    [
+      16,
+      19,
+      23,
+      26,
+      28,
+      46
+    ],
+    [
+      17,
+      27,
+      34,
+      38,
+      40,
+      44
+    ],
+    [
+      21,
+      25,
+      30,
+      38,
+      45,
+      48
+    ],
+    [
+      21,
+      32,
+      40,
+      42,
+      43,
+      49
+    ],
+    [
+      22,
+      27,
+      35,
+      45,
+      47,
+      49
+    ]
+  ],
+  "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+  "OUTCOME_FIELDS_USED": "NO",
+  "PRIOR_INCUMBENT_SOURCE_COMMIT": "e3b0f1985e7abf4da0d02dfc689fcfd0cc06fc01",
+  "PRIOR_INCUMBENT_OUTCOME_COUNT": 312963119,
+  "PRIOR_INCUMBENT_EXACT_PROBABILITY": "44709017/85900584",
+  "PRIOR_INCUMBENT_PORTFOLIO_SHA256": "4d90381038d74c967980cbb430cfd9de12c6e2418230b08097357b28586f55ce",
+  "PRIOR_INCUMBENT_M3_PLUS_DRAW_COUNT": null,
+  "PRIOR_INCUMBENT_M3_PLUS_MAIN_DRAW_COUNT": null,
+  "PRIOR_INCUMBENT_M3_PLUS_PROBABILITY": null,
+  "PRIOR_INCUMBENT_ACCEPTED_MOVE": {
+    "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+    "TICKET_A_BEFORE": [
+      3,
+      13,
+      14,
+      28,
+      36,
+      44
+    ],
+    "TICKET_A_AFTER": [
+      3,
+      8,
+      13,
+      28,
+      31,
+      36
+    ],
+    "TICKET_B_BEFORE": [
+      4,
+      8,
+      26,
+      31,
+      37,
+      39
+    ],
+    "TICKET_B_AFTER": [
+      4,
+      14,
+      26,
+      37,
+      39,
+      44
+    ],
+    "SWAPPED_FROM_A": [
+      14,
+      44
+    ],
+    "SWAPPED_FROM_B": [
+      8,
+      31
+    ]
+  },
+  "SEAL_TASK_ID": "B649_K20_DOUBLE_CROSS_SWAP_ASCENT_R5_CHAMPION_SEAL_R1",
+  "UPSTREAM_RESULT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r5/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R5/run1/run-result.json",
+  "FINAL_EXACT_RECOMPUTE_PROVENANCE": "REUSED_EXACT_TREE_EVIDENCE",
+  "SEAL_EXACT_RECOMPUTE": "NOT_RUN",
+  "NEIGHBORHOOD_STARTING_PORTFOLIO_SHA256": "4d90381038d74c967980cbb430cfd9de12c6e2418230b08097357b28586f55ce",
+  "PRIOR_INCUMBENT_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+  "SOURCE_NEIGHBORHOOD": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+  "SOURCE_MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+  "SOURCE_MOVE_SEMANTICS": "one atomic exchange of two numbers from ticket A with two numbers from ticket B",
+  "VERIFIED_FAMILY_SIZE": 31125,
+  "FAMILY_SIZE_SEMANTICS": "ACCOUNTING_ONLY",
+  "REUSED_JUDGE_EVIDENCE": {
+    "CONTEXT": "FRESH_CONTEXT",
+    "DEPTH": "FULL",
+    "VERDICT": "VERIFIED_WITH_CAVEATS",
+    "EXECUTION_PROVENANCE_VERDICT": "NONMATERIAL_WITH_CAVEATS",
+    "SOURCE_HEAD": "e3b0f1985e7abf4da0d02dfc689fcfd0cc06fc01",
+    "SOURCE_TREE": "29e4cc9c4aa2cd8e9b8a395efb8c423313c4d0cf"
+  },
+  "PRIOR_INCUMBENT_ARTIFACT": {
+    "TASK_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R4",
+    "SEALED_FROM_HEAD": "ac4bf4a943a1c1b640eeb145175e5b25a27ca107",
+    "SEALED_FROM_TREE": "f14441cd3e2ddc20e73893f8fabce25279fda48b",
+    "SEALED_FROM_RESULT_PATH": ".task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R4/run1/run-result.json",
+    "SEALED_FROM_RESULT_SHA256": "9bad29e65640f785ef6e2a27d485af36f740e86456e4714f4c43b603150b78ce",
+    "UPSTREAM_RESULT_SHA256": "9bad29e65640f785ef6e2a27d485af36f740e86456e4714f4c43b603150b78ce",
+    "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r4/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R4/run1/run-result.json",
+    "UPSTREAM_SOURCE_HEAD": "ac4bf4a943a1c1b640eeb145175e5b25a27ca107",
+    "UPSTREAM_SOURCE_TREE": "f14441cd3e2ddc20e73893f8fabce25279fda48b",
+    "CANONICAL_BASE_HEAD": "ac4bf4a943a1c1b640eeb145175e5b25a27ca107",
+    "CANONICAL_BASE_TREE": "f14441cd3e2ddc20e73893f8fabce25279fda48b",
+    "INCUMBENT_METHOD_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1",
+    "INCUMBENT_METHOD_VERSION": "1.0.0",
+    "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+    "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+    "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+    "TERMINAL_K20_PORTFOLIO_SHA256": "4d90381038d74c967980cbb430cfd9de12c6e2418230b08097357b28586f55ce",
+    "INITIAL_K20_OUTCOME_COUNT": 312850818,
+    "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+    "TERMINAL_K20_OUTCOME_COUNT": 312963119,
+    "TERMINAL_K20_EXACT_PROBABILITY": "44709017/85900584",
+    "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+    "TERMINAL_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+    "TOTAL_DELTA_OUTCOME_COUNT": 112301,
+    "TOTAL_DELTA_PP": 0.00018676240897267938,
+    "TOTAL_DELTA_PP_EXACT": "16043/85900584",
+    "ROUND_DELTA_FROM_PRIOR_INCUMBENT_OUTCOME_COUNT": 8813,
+    "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP": 1.4656477772025391e-05,
+    "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP_EXACT": "1259/85900584",
+    "ACCEPTED_MOVE": {
+      "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+      "TICKET_A_BEFORE": [
+        3,
+        13,
+        14,
+        28,
+        36,
+        44
+      ],
+      "TICKET_A_AFTER": [
+        3,
+        8,
+        13,
+        28,
+        31,
+        36
+      ],
+      "TICKET_B_BEFORE": [
+        4,
+        8,
+        26,
+        31,
+        37,
+        39
+      ],
+      "TICKET_B_AFTER": [
+        4,
+        14,
+        26,
+        37,
+        39,
+        44
+      ],
+      "SWAPPED_FROM_A": [
+        14,
+        44
+      ],
+      "SWAPPED_FROM_B": [
+        8,
+        31
+      ]
+    },
+    "FINAL_EXACT_RECOMPUTE": "PASS",
+    "NEIGHBORHOOD_COMPLETENESS": "PROVEN",
+    "TERMINAL_TICKETS": [
+      [
+        1,
+        2,
+        34,
+        41,
+        42,
+        45
+      ],
+      [
+        1,
+        17,
+        22,
+        30,
+        33,
+        43
+      ],
+      [
+        2,
+        5,
+        33,
+        35,
+        40,
+        48
+      ],
+      [
+        3,
+        4,
+        7,
+        15,
+        23,
+        27
+      ],
+      [
+        3,
+        8,
+        13,
+        28,
+        31,
+        36
+      ],
+      [
+        3,
+        9,
+        12,
+        16,
+        29,
+        39
+      ],
+      [
+        4,
+        14,
+        26,
+        37,
+        39,
+        44
+      ],
+      [
+        4,
+        18,
+        20,
+        24,
+        28,
+        29
+      ],
+      [
+        5,
+        17,
+        25,
+        32,
+        41,
+        47
+      ],
+      [
+        6,
+        7,
+        9,
+        13,
+        18,
+        26
+      ],
+      [
+        6,
+        10,
+        11,
+        16,
+        24,
+        36
+      ],
+      [
+        7,
+        8,
+        10,
+        14,
+        19,
+        29
+      ],
+      [
+        8,
+        9,
+        11,
+        15,
+        20,
+        46
+      ],
+      [
+        11,
+        12,
+        14,
+        18,
+        23,
+        31
+      ],
+      [
+        12,
+        13,
+        15,
+        19,
+        24,
+        37
+      ],
+      [
+        16,
+        19,
+        23,
+        26,
+        28,
+        46
+      ],
+      [
+        17,
+        27,
+        34,
+        38,
+        40,
+        44
+      ],
+      [
+        21,
+        25,
+        30,
+        38,
+        45,
+        48
+      ],
+      [
+        21,
+        32,
+        40,
+        42,
+        43,
+        49
+      ],
+      [
+        22,
+        27,
+        35,
+        45,
+        47,
+        49
+      ]
+    ],
+    "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+    "OUTCOME_FIELDS_USED": "NO",
+    "PRIOR_INCUMBENT_SOURCE_COMMIT": "ac4bf4a943a1c1b640eeb145175e5b25a27ca107",
+    "PRIOR_INCUMBENT_OUTCOME_COUNT": 312954306,
+    "PRIOR_INCUMBENT_EXACT_PROBABILITY": "7451293/14316764",
+    "PRIOR_INCUMBENT_PORTFOLIO_SHA256": "b54c2e2e7ea5cbc35f85ebe8a561abdf71a15abcf43c71c3e72fe897a8275fb8",
+    "PRIOR_INCUMBENT_M3_PLUS_DRAW_COUNT": null,
+    "PRIOR_INCUMBENT_M3_PLUS_MAIN_DRAW_COUNT": null,
+    "PRIOR_INCUMBENT_M3_PLUS_PROBABILITY": null,
+    "PRIOR_INCUMBENT_ACCEPTED_MOVE": {
+      "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+      "TICKET_A_BEFORE": [
+        3,
+        4,
+        6,
+        10,
+        15,
+        23
+      ],
+      "TICKET_A_AFTER": [
+        3,
+        4,
+        7,
+        15,
+        23,
+        27
+      ],
+      "TICKET_B_BEFORE": [
+        7,
+        11,
+        16,
+        24,
+        27,
+        36
+      ],
+      "TICKET_B_AFTER": [
+        6,
+        10,
+        11,
+        16,
+        24,
+        36
+      ],
+      "SWAPPED_FROM_A": [
+        6,
+        10
+      ],
+      "SWAPPED_FROM_B": [
+        7,
+        27
+      ]
+    },
+    "SEAL_TASK_ID": "B649_K20_DOUBLE_CROSS_SWAP_ASCENT_R4_CHAMPION_SEAL_R1",
+    "UPSTREAM_RESULT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r4/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R4/run1/run-result.json",
+    "FINAL_EXACT_RECOMPUTE_PROVENANCE": "REUSED_EXACT_TREE_EVIDENCE",
+    "SEAL_EXACT_RECOMPUTE": "NOT_RUN",
+    "NEIGHBORHOOD_STARTING_PORTFOLIO_SHA256": "b54c2e2e7ea5cbc35f85ebe8a561abdf71a15abcf43c71c3e72fe897a8275fb8",
+    "PRIOR_INCUMBENT_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+    "SOURCE_NEIGHBORHOOD": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+    "SOURCE_MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+    "SOURCE_MOVE_SEMANTICS": "one atomic exchange of two numbers from ticket A with two numbers from ticket B",
+    "VERIFIED_FAMILY_SIZE": 31125,
+    "FAMILY_SIZE_SEMANTICS": "ACCOUNTING_ONLY",
+    "REUSED_JUDGE_EVIDENCE": {
+      "CONTEXT": "FRESH_CONTEXT",
+      "DEPTH": "FULL",
+      "VERDICT": "VERIFIED",
+      "EXECUTION_PROVENANCE_VERDICT": "PASS",
+      "SOURCE_HEAD": "ac4bf4a943a1c1b640eeb145175e5b25a27ca107",
+      "SOURCE_TREE": "f14441cd3e2ddc20e73893f8fabce25279fda48b"
+    },
+    "PRIOR_INCUMBENT_ARTIFACT": {
+      "TASK_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R3",
+      "SEALED_FROM_HEAD": "66d121527d66dfcc66d5f86e42295774193d7401",
+      "SEALED_FROM_TREE": "7b2b315e836449853101ad6276531ad3f4b3e949",
+      "SEALED_FROM_RESULT_PATH": ".task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R3/run1/run-result.json",
+      "SEALED_FROM_RESULT_SHA256": "9f0bc5b8a4eb68f808f9b3cf298ca9ed59a1fdc5067ec49ee7137ce584d0b5d1",
+      "UPSTREAM_RESULT_SHA256": "9f0bc5b8a4eb68f808f9b3cf298ca9ed59a1fdc5067ec49ee7137ce584d0b5d1",
+      "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r3/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R3/run1/run-result.json",
+      "UPSTREAM_SOURCE_HEAD": "66d121527d66dfcc66d5f86e42295774193d7401",
+      "UPSTREAM_SOURCE_TREE": "7b2b315e836449853101ad6276531ad3f4b3e949",
+      "CANONICAL_BASE_HEAD": "66d121527d66dfcc66d5f86e42295774193d7401",
+      "CANONICAL_BASE_TREE": "7b2b315e836449853101ad6276531ad3f4b3e949",
+      "INCUMBENT_METHOD_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1",
+      "INCUMBENT_METHOD_VERSION": "1.0.0",
+      "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+      "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+      "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+      "TERMINAL_K20_PORTFOLIO_SHA256": "b54c2e2e7ea5cbc35f85ebe8a561abdf71a15abcf43c71c3e72fe897a8275fb8",
+      "INITIAL_K20_OUTCOME_COUNT": 312850818,
+      "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+      "TERMINAL_K20_OUTCOME_COUNT": 312954306,
+      "TERMINAL_K20_EXACT_PROBABILITY": "7451293/14316764",
+      "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+      "TERMINAL_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+      "TOTAL_DELTA_OUTCOME_COUNT": 103488,
+      "TOTAL_DELTA_PP": 0.000172105931200654,
+      "TOTAL_DELTA_PP_EXACT": "8/46483",
+      "ROUND_DELTA_FROM_PRIOR_INCUMBENT_OUTCOME_COUNT": 5922,
+      "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP": 9.848594277310152e-06,
+      "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP_EXACT": "3/304612",
+      "ACCEPTED_MOVE": {
+        "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+        "TICKET_A_BEFORE": [
+          3,
+          4,
+          6,
+          10,
+          15,
+          23
+        ],
+        "TICKET_A_AFTER": [
+          3,
+          4,
+          7,
+          15,
+          23,
+          27
+        ],
+        "TICKET_B_BEFORE": [
+          7,
+          11,
+          16,
+          24,
+          27,
+          36
+        ],
+        "TICKET_B_AFTER": [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        "SWAPPED_FROM_A": [
+          6,
+          10
+        ],
+        "SWAPPED_FROM_B": [
+          7,
+          27
+        ]
+      },
+      "FINAL_EXACT_RECOMPUTE": "PASS",
+      "NEIGHBORHOOD_COMPLETENESS": "PROVEN",
+      "TERMINAL_TICKETS": [
+        [
+          1,
+          2,
+          34,
+          41,
+          42,
+          45
+        ],
+        [
+          1,
+          17,
+          22,
+          30,
+          33,
+          43
+        ],
+        [
+          2,
+          5,
+          33,
+          35,
+          40,
+          48
+        ],
+        [
+          3,
+          4,
+          7,
+          15,
+          23,
+          27
+        ],
+        [
+          3,
+          9,
+          12,
+          16,
+          29,
+          39
+        ],
+        [
+          3,
+          13,
+          14,
+          28,
+          36,
+          44
+        ],
+        [
+          4,
+          8,
+          26,
+          31,
+          37,
+          39
+        ],
+        [
+          4,
+          18,
+          20,
+          24,
+          28,
+          29
+        ],
+        [
+          5,
+          17,
+          25,
+          32,
+          41,
+          47
+        ],
+        [
+          6,
+          7,
+          9,
+          13,
+          18,
+          26
+        ],
+        [
+          6,
+          10,
+          11,
+          16,
+          24,
+          36
+        ],
+        [
+          7,
+          8,
+          10,
+          14,
+          19,
+          29
+        ],
+        [
+          8,
+          9,
+          11,
+          15,
+          20,
+          46
+        ],
+        [
+          11,
+          12,
+          14,
+          18,
+          23,
+          31
+        ],
+        [
+          12,
+          13,
+          15,
+          19,
+          24,
+          37
+        ],
+        [
+          16,
+          19,
+          23,
+          26,
+          28,
+          46
+        ],
+        [
+          17,
+          27,
+          34,
+          38,
+          40,
+          44
+        ],
+        [
+          21,
+          25,
+          30,
+          38,
+          45,
+          48
+        ],
+        [
+          21,
+          32,
+          40,
+          42,
+          43,
+          49
+        ],
+        [
+          22,
+          27,
+          35,
+          45,
+          47,
+          49
+        ]
+      ],
+      "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+      "OUTCOME_FIELDS_USED": "NO",
+      "PRIOR_INCUMBENT_SOURCE_COMMIT": "66d121527d66dfcc66d5f86e42295774193d7401",
+      "PRIOR_INCUMBENT_OUTCOME_COUNT": 312948384,
+      "PRIOR_INCUMBENT_EXACT_PROBABILITY": "1862788/3579191",
+      "PRIOR_INCUMBENT_PORTFOLIO_SHA256": "615630b53cf22b434d80d1ec0d2301171d33c252b78b5191476983099b8898bc",
+      "PRIOR_INCUMBENT_M3_PLUS_DRAW_COUNT": null,
+      "PRIOR_INCUMBENT_M3_PLUS_MAIN_DRAW_COUNT": null,
+      "PRIOR_INCUMBENT_M3_PLUS_PROBABILITY": null,
+      "PRIOR_INCUMBENT_ACCEPTED_MOVE": {
+        "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+        "TICKET_A_BEFORE": [
+          17,
+          21,
+          34,
+          40,
+          44,
+          49
+        ],
+        "TICKET_A_AFTER": [
+          17,
+          27,
+          34,
+          38,
+          40,
+          44
+        ],
+        "TICKET_B_BEFORE": [
+          27,
+          32,
+          38,
+          40,
+          42,
+          43
+        ],
+        "TICKET_B_AFTER": [
+          21,
+          32,
+          40,
+          42,
+          43,
+          49
+        ],
+        "SWAPPED_FROM_A": [
+          21,
+          49
+        ],
+        "SWAPPED_FROM_B": [
+          27,
+          38
+        ]
+      },
+      "SEAL_TASK_ID": "B649_K20_DOUBLE_CROSS_SWAP_ASCENT_R3_CHAMPION_SEAL_R1",
+      "UPSTREAM_RESULT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r3/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R3/run1/run-result.json",
+      "FINAL_EXACT_RECOMPUTE_PROVENANCE": "REUSED_EXACT_TREE_EVIDENCE",
+      "SEAL_EXACT_RECOMPUTE": "NOT_RUN",
+      "NEIGHBORHOOD_STARTING_PORTFOLIO_SHA256": "615630b53cf22b434d80d1ec0d2301171d33c252b78b5191476983099b8898bc",
+      "PRIOR_INCUMBENT_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+      "SOURCE_NEIGHBORHOOD": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+      "SOURCE_MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+      "SOURCE_MOVE_SEMANTICS": "one atomic exchange of two numbers from ticket A with two numbers from ticket B",
+      "VERIFIED_FAMILY_SIZE": 31125,
+      "FAMILY_SIZE_SEMANTICS": "ACCOUNTING_ONLY",
+      "REUSED_JUDGE_EVIDENCE": {
+        "CONTEXT": "FRESH_CONTEXT",
+        "DEPTH": "FULL",
+        "VERDICT": "VERIFIED_WITH_CAVEATS",
+        "EXECUTION_PROVENANCE_VERDICT": "PASS",
+        "SOURCE_HEAD": "66d121527d66dfcc66d5f86e42295774193d7401",
+        "SOURCE_TREE": "7b2b315e836449853101ad6276531ad3f4b3e949"
+      },
+      "PRIOR_INCUMBENT_ARTIFACT": {
+        "TASK_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R2",
+        "SEALED_FROM_HEAD": "a5c442187d723a9bbf8bbd79074f1cfb835368ad",
+        "SEALED_FROM_TREE": "c1eee1829fdc777fb9696715bb508b45519126cd",
+        "SEALED_FROM_RESULT_PATH": ".task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R2/run1/run-result.json",
+        "SEALED_FROM_RESULT_SHA256": "8557d9edbba50ceac1540efdf7f0e92e3fa83eee9681cdcae2ea9dba5690eb4c",
+        "UPSTREAM_RESULT_SHA256": "8557d9edbba50ceac1540efdf7f0e92e3fa83eee9681cdcae2ea9dba5690eb4c",
+        "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r2/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R2/run1/run-result.json",
+        "UPSTREAM_SOURCE_HEAD": "a5c442187d723a9bbf8bbd79074f1cfb835368ad",
+        "UPSTREAM_SOURCE_TREE": "c1eee1829fdc777fb9696715bb508b45519126cd",
+        "CANONICAL_BASE_HEAD": "a5c442187d723a9bbf8bbd79074f1cfb835368ad",
+        "CANONICAL_BASE_TREE": "c1eee1829fdc777fb9696715bb508b45519126cd",
+        "INCUMBENT_METHOD_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1",
+        "INCUMBENT_METHOD_VERSION": "1.0.0",
+        "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+        "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+        "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+        "TERMINAL_K20_PORTFOLIO_SHA256": "615630b53cf22b434d80d1ec0d2301171d33c252b78b5191476983099b8898bc",
+        "INITIAL_K20_OUTCOME_COUNT": 312850818,
+        "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+        "TERMINAL_K20_OUTCOME_COUNT": 312948384,
+        "TERMINAL_K20_EXACT_PROBABILITY": "1862788/3579191",
+        "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+        "TERMINAL_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+        "TOTAL_DELTA_OUTCOME_COUNT": 97566,
+        "TOTAL_DELTA_PP": 0.00016225733692334384,
+        "TOTAL_DELTA_PP_EXACT": "101/622468",
+        "ROUND_DELTA_FROM_PRIOR_INCUMBENT_OUTCOME_COUNT": 13888,
+        "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP": 2.3096466957663523e-05,
+        "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP_EXACT": "248/10737573",
+        "ACCEPTED_MOVE": {
+          "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+          "TICKET_A_BEFORE": [
+            17,
+            21,
+            34,
+            40,
+            44,
+            49
+          ],
+          "TICKET_A_AFTER": [
+            17,
+            27,
+            34,
+            38,
+            40,
+            44
+          ],
+          "TICKET_B_BEFORE": [
+            27,
+            32,
+            38,
+            40,
+            42,
+            43
+          ],
+          "TICKET_B_AFTER": [
+            21,
+            32,
+            40,
+            42,
+            43,
+            49
+          ],
+          "SWAPPED_FROM_A": [
+            21,
+            49
+          ],
+          "SWAPPED_FROM_B": [
+            27,
+            38
+          ]
+        },
+        "FINAL_EXACT_RECOMPUTE": "PASS",
+        "NEIGHBORHOOD_COMPLETENESS": "PROVEN",
+        "TERMINAL_TICKETS": [
+          [
+            1,
+            2,
+            34,
+            41,
+            42,
+            45
+          ],
+          [
+            1,
+            17,
+            22,
+            30,
+            33,
+            43
+          ],
+          [
+            2,
+            5,
+            33,
+            35,
+            40,
+            48
+          ],
+          [
+            3,
+            4,
+            6,
+            10,
+            15,
+            23
+          ],
+          [
+            3,
+            9,
+            12,
+            16,
+            29,
+            39
+          ],
+          [
+            3,
+            13,
+            14,
+            28,
+            36,
+            44
+          ],
+          [
+            4,
+            8,
+            26,
+            31,
+            37,
+            39
+          ],
+          [
+            4,
+            18,
+            20,
+            24,
+            28,
+            29
+          ],
+          [
+            5,
+            17,
+            25,
+            32,
+            41,
+            47
+          ],
+          [
+            6,
+            7,
+            9,
+            13,
+            18,
+            26
+          ],
+          [
+            7,
+            8,
+            10,
+            14,
+            19,
+            29
+          ],
+          [
+            7,
+            11,
+            16,
+            24,
+            27,
+            36
+          ],
+          [
+            8,
+            9,
+            11,
+            15,
+            20,
+            46
+          ],
+          [
+            11,
+            12,
+            14,
+            18,
+            23,
+            31
+          ],
+          [
+            12,
+            13,
+            15,
+            19,
+            24,
+            37
+          ],
+          [
+            16,
+            19,
+            23,
+            26,
+            28,
+            46
+          ],
+          [
+            17,
+            27,
+            34,
+            38,
+            40,
+            44
+          ],
+          [
+            21,
+            25,
+            30,
+            38,
+            45,
+            48
+          ],
+          [
+            21,
+            32,
+            40,
+            42,
+            43,
+            49
+          ],
+          [
+            22,
+            27,
+            35,
+            45,
+            47,
+            49
+          ]
+        ],
+        "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+        "OUTCOME_FIELDS_USED": "NO",
+        "PRIOR_INCUMBENT_SOURCE_COMMIT": "a5c442187d723a9bbf8bbd79074f1cfb835368ad",
+        "PRIOR_INCUMBENT_OUTCOME_COUNT": 312934496,
+        "PRIOR_INCUMBENT_EXACT_PROBABILITY": "5588116/10737573",
+        "PRIOR_INCUMBENT_PORTFOLIO_SHA256": "308f9e5913a1a3d8744acd76480c569bef5aa0702245f690659c341d9f727e6d",
+        "PRIOR_INCUMBENT_M3_PLUS_DRAW_COUNT": null,
+        "PRIOR_INCUMBENT_M3_PLUS_MAIN_DRAW_COUNT": null,
+        "PRIOR_INCUMBENT_M3_PLUS_PROBABILITY": null,
+        "PRIOR_INCUMBENT_ACCEPTED_MOVE": {
+          "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+          "TICKET_A_BEFORE": [
+            5,
+            17,
+            25,
+            27,
+            36,
+            41
+          ],
+          "TICKET_A_AFTER": [
+            5,
+            17,
+            25,
+            32,
+            41,
+            47
+          ],
+          "TICKET_B_BEFORE": [
+            7,
+            11,
+            16,
+            24,
+            32,
+            47
+          ],
+          "TICKET_B_AFTER": [
+            7,
+            11,
+            16,
+            24,
+            27,
+            36
+          ],
+          "SWAPPED_FROM_A": [
+            27,
+            36
+          ],
+          "SWAPPED_FROM_B": [
+            32,
+            47
+          ]
+        },
+        "SEAL_TASK_ID": "B649_K20_DOUBLE_CROSS_SWAP_ASCENT_R2_CHAMPION_SEAL_R1",
+        "UPSTREAM_RESULT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-ascent-r2/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R2/run1/run-result.json",
+        "FINAL_EXACT_RECOMPUTE_PROVENANCE": "REUSED_EXACT_TREE_EVIDENCE",
+        "SEAL_EXACT_RECOMPUTE": "NOT_RUN",
+        "NEIGHBORHOOD_STARTING_PORTFOLIO_SHA256": "308f9e5913a1a3d8744acd76480c569bef5aa0702245f690659c341d9f727e6d",
+        "PRIOR_INCUMBENT_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+        "SOURCE_NEIGHBORHOOD": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+        "SOURCE_MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+        "SOURCE_MOVE_SEMANTICS": "one atomic exchange of two numbers from ticket A with two numbers from ticket B",
+        "VERIFIED_FAMILY_SIZE": 31125,
+        "FAMILY_SIZE_SEMANTICS": "ACCOUNTING_ONLY",
+        "REUSED_JUDGE_EVIDENCE": {
+          "CONTEXT": "FRESH_CONTEXT",
+          "DEPTH": "FULL",
+          "VERDICT": "VERIFIED_WITH_CAVEATS",
+          "EXECUTION_PROVENANCE_VERDICT": "NONMATERIAL_WITH_CAVEATS",
+          "SOURCE_HEAD": "a5c442187d723a9bbf8bbd79074f1cfb835368ad",
+          "SOURCE_TREE": "c1eee1829fdc777fb9696715bb508b45519126cd"
+        },
+        "PRIOR_INCUMBENT_ARTIFACT": {
+          "TASK_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1",
+          "SEALED_FROM_HEAD": "6e0fa190b8fe931ad797279a7fe86bc73f398f5f",
+          "SEALED_FROM_TREE": "02bde1485db6ea1cb71d15556e4cee136aaf2a22",
+          "SEALED_FROM_RESULT_PATH": ".task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1/best-candidate.json",
+          "SEALED_FROM_RESULT_SHA256": "45eecd5a2b0f1363fb113d95100dd31c3140b8b19e1fac6a2515896ed8011c50",
+          "UPSTREAM_RESULT_SHA256": "a49a7fd875e700787d49e8fec6baa1a0cb842829855c0ceb7af94480c77184e8",
+          "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-r1/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1/best-candidate.json",
+          "UPSTREAM_SOURCE_HEAD": "6e0fa190b8fe931ad797279a7fe86bc73f398f5f",
+          "UPSTREAM_SOURCE_TREE": "02bde1485db6ea1cb71d15556e4cee136aaf2a22",
+          "CANONICAL_BASE_HEAD": "6e0fa190b8fe931ad797279a7fe86bc73f398f5f",
+          "CANONICAL_BASE_TREE": "02bde1485db6ea1cb71d15556e4cee136aaf2a22",
+          "INCUMBENT_METHOD_ID": "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1",
+          "INCUMBENT_METHOD_VERSION": "1.0.0",
+          "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+          "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+          "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+          "TERMINAL_K20_PORTFOLIO_SHA256": "308f9e5913a1a3d8744acd76480c569bef5aa0702245f690659c341d9f727e6d",
+          "INITIAL_K20_OUTCOME_COUNT": 312850818,
+          "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+          "TERMINAL_K20_OUTCOME_COUNT": 312934496,
+          "TERMINAL_K20_EXACT_PROBABILITY": "5588116/10737573",
+          "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+          "TERMINAL_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+          "TOTAL_DELTA_OUTCOME_COUNT": 83678,
+          "TOTAL_DELTA_PP": 0.00013916086996568032,
+          "TOTAL_DELTA_PP_EXACT": "139/998844",
+          "ROUND_DELTA_FROM_PRIOR_INCUMBENT_OUTCOME_COUNT": 67270,
+          "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP": 0.00011187351182618269,
+          "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP_EXACT": "4805/42950292",
+          "ACCEPTED_MOVE": {
+            "MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+            "TICKET_A_BEFORE": [
+              5,
+              17,
+              25,
+              27,
+              36,
+              41
+            ],
+            "TICKET_A_AFTER": [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            "TICKET_B_BEFORE": [
+              7,
+              11,
+              16,
+              24,
+              32,
+              47
+            ],
+            "TICKET_B_AFTER": [
+              7,
+              11,
+              16,
+              24,
+              27,
+              36
+            ],
+            "SWAPPED_FROM_A": [
+              27,
+              36
+            ],
+            "SWAPPED_FROM_B": [
+              32,
+              47
+            ]
+          },
+          "FINAL_EXACT_RECOMPUTE": "PASS",
+          "NEIGHBORHOOD_COMPLETENESS": "PROVEN",
+          "TERMINAL_TICKETS": [
+            [
+              1,
+              2,
+              34,
+              41,
+              42,
+              45
+            ],
+            [
+              1,
+              17,
+              22,
+              30,
+              33,
+              43
+            ],
+            [
+              2,
+              5,
+              33,
+              35,
+              40,
+              48
+            ],
+            [
+              3,
+              4,
+              6,
+              10,
+              15,
+              23
+            ],
+            [
+              3,
+              9,
+              12,
+              16,
+              29,
+              39
+            ],
+            [
+              3,
+              13,
+              14,
+              28,
+              36,
+              44
+            ],
+            [
+              4,
+              8,
+              26,
+              31,
+              37,
+              39
+            ],
+            [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            [
+              5,
+              17,
+              25,
+              32,
+              41,
+              47
+            ],
+            [
+              6,
+              7,
+              9,
+              13,
+              18,
+              26
+            ],
+            [
+              7,
+              8,
+              10,
+              14,
+              19,
+              29
+            ],
+            [
+              7,
+              11,
+              16,
+              24,
+              27,
+              36
+            ],
+            [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            [
+              11,
+              12,
+              14,
+              18,
+              23,
+              31
+            ],
+            [
+              12,
+              13,
+              15,
+              19,
+              24,
+              37
+            ],
+            [
+              16,
+              19,
+              23,
+              26,
+              28,
+              46
+            ],
+            [
+              17,
+              21,
+              34,
+              40,
+              44,
+              49
+            ],
+            [
+              21,
+              25,
+              30,
+              38,
+              45,
+              48
+            ],
+            [
+              22,
+              27,
+              35,
+              45,
+              47,
+              49
+            ],
+            [
+              27,
+              32,
+              38,
+              40,
+              42,
+              43
+            ]
+          ],
+          "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+          "OUTCOME_FIELDS_USED": "NO",
+          "PRIOR_INCUMBENT_SOURCE_COMMIT": "b24646d1ba86690bffd1acdf21fec5b64c56834d",
+          "PRIOR_INCUMBENT_OUTCOME_COUNT": 312867226,
+          "PRIOR_INCUMBENT_EXACT_PROBABILITY": "519713/998844",
+          "PRIOR_INCUMBENT_PORTFOLIO_SHA256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+          "PRIOR_INCUMBENT_M3_PLUS_DRAW_COUNT": null,
+          "PRIOR_INCUMBENT_M3_PLUS_MAIN_DRAW_COUNT": null,
+          "PRIOR_INCUMBENT_M3_PLUS_PROBABILITY": null,
+          "PRIOR_INCUMBENT_ACCEPTED_MOVE": {
+            "TICKET_A_BEFORE": [
+              4,
+              18,
+              20,
+              24,
+              29,
+              46
+            ],
+            "TICKET_A_AFTER": [
+              4,
+              18,
+              20,
+              24,
+              28,
+              29
+            ],
+            "TICKET_B_BEFORE": [
+              8,
+              9,
+              11,
+              15,
+              20,
+              28
+            ],
+            "TICKET_B_AFTER": [
+              8,
+              9,
+              11,
+              15,
+              20,
+              46
+            ],
+            "SWAPPED_FROM_A": 46,
+            "SWAPPED_FROM_B": 28
+          },
+          "SEAL_TASK_ID": "B649_K20_DOUBLE_CROSS_SWAP_R1_CHAMPION_SEAL_R1",
+          "UPSTREAM_RESULT_PATH": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-double-cross-swap-r1/MathStatisticalAnalysis/.task-data/B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_R1/run1/run-result.json",
+          "FINAL_EXACT_RECOMPUTE_PROVENANCE": "REUSED_EXACT_TREE_EVIDENCE",
+          "SEAL_EXACT_RECOMPUTE": "NOT_RUN",
+          "NEIGHBORHOOD_STARTING_PORTFOLIO_SHA256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+          "PRIOR_INCUMBENT_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+          "SOURCE_NEIGHBORHOOD": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+          "SOURCE_MOVE_FAMILY": "EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP",
+          "SOURCE_MOVE_SEMANTICS": "one atomic exchange of two numbers from ticket A with two numbers from ticket B",
+          "VERIFIED_FAMILY_SIZE": 31125,
+          "FAMILY_SIZE_SEMANTICS": "ACCOUNTING_ONLY",
+          "REUSED_JUDGE_EVIDENCE": {
+            "CONTEXT": "FRESH_CONTEXT",
+            "DEPTH": "FULL",
+            "VERDICT": "VERIFIED",
+            "SOURCE_HEAD": "6e0fa190b8fe931ad797279a7fe86bc73f398f5f",
+            "SOURCE_TREE": "02bde1485db6ea1cb71d15556e4cee136aaf2a22"
+          },
+          "PRIOR_INCUMBENT_ARTIFACT": {
+            "TASK_ID": "B649_K20_BONFERRONI_FILTERED_EXHAUSTIVE_2TICKET_CROSS_SWAP_ASCENT_R3",
+            "EXECUTION_ID": "B649_K20_2TICKET_CROSS_SWAP_ASCENT_R3_RUN1",
+            "SEALED_FROM_HEAD": "1d90731a0e4d7fad12e7b834dc2e23fdf365d5a3",
+            "SEALED_FROM_TREE": "031132917503491660d37eec09907ae5eaa3fb9d",
+            "SEALED_FROM_RESULT_PATH": ".task-data/B649_K20_BONFERRONI_FILTERED_EXHAUSTIVE_2TICKET_CROSS_SWAP_ASCENT_R3/run1/run-result.json",
+            "SEALED_FROM_RESULT_SHA256": "a5f93e80be0e2024b55feb3894cd15af624a95f7f07d3c635a38f0cad503a498",
+            "UPSTREAM_RESULT_SHA256": "a5f93e80be0e2024b55feb3894cd15af624a95f7f07d3c635a38f0cad503a498",
+            "UPSTREAM_CHECKPOINT_SHA256": "d31eee9d61e738fdc868d134dabbcd6e574b35fcae5e9a6f54aba51a5c1c5761",
+            "UPSTREAM_AUTHORITY_LOCATOR": "/Users/kelvin/.codex/worktrees/b649-k20-2ticket-cross-swap-ascent-r2/MathStatisticalAnalysis/.task-data/B649_K20_BONFERRONI_FILTERED_EXHAUSTIVE_2TICKET_CROSS_SWAP_ASCENT_R3/run1/",
+            "UPSTREAM_SOURCE_HEAD": "1d90731a0e4d7fad12e7b834dc2e23fdf365d5a3",
+            "UPSTREAM_SOURCE_TREE": "031132917503491660d37eec09907ae5eaa3fb9d",
+            "UPSTREAM_EXECUTION_ID": "B649_K20_2TICKET_CROSS_SWAP_ASCENT_R3_RUN1",
+            "CANONICAL_BASE_HEAD": "ae1cc3fdb217ca0821bbdb03dc0264e7fb8c4dfb",
+            "CANONICAL_BASE_TREE": "b1810f926d9cc139e4aff77d27367da81609c2c6",
+            "INCUMBENT_METHOD_ID": "B649_K20_2TICKET_CROSS_SWAP_LOCAL_R1",
+            "INCUMBENT_METHOD_VERSION": "1.0.0",
+            "SCIENTIFIC_OBJECTIVE": "OFFICIAL_ANY_PRIZE",
+            "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+            "INITIAL_K20_PORTFOLIO_SHA256": "242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
+            "TERMINAL_K20_PORTFOLIO_SHA256": "4343a4aa699050f71d5913d26d59b138d637c8aad3528111d9bcf6d69593546b",
+            "INITIAL_K20_OUTCOME_COUNT": 312850818,
+            "INITIAL_K20_EXACT_PROBABILITY": "7448829/14316764",
+            "TERMINAL_K20_OUTCOME_COUNT": 312867226,
+            "TERMINAL_K20_EXACT_PROBABILITY": "519713/998844",
+            "TOTAL_OFFICIAL_OUTCOMES": 601304088,
+            "TERMINAL_M3_PLUS_STATUS": "NOT_RECOMPUTED_FOR_THIS_SEAL",
+            "TOTAL_DELTA_OUTCOME_COUNT": 16408,
+            "TOTAL_DELTA_PP": 2.728735813949763e-05,
+            "TOTAL_DELTA_PP_EXACT": "293/10737573",
+            "ROUND_DELTA_FROM_PRIOR_INCUMBENT_OUTCOME_COUNT": 14,
+            "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP": 2.3282728787967262e-08,
+            "ROUND_DELTA_FROM_PRIOR_INCUMBENT_PP_EXACT": "1/42950292",
+            "ACCEPTED_MOVE": {
+              "TICKET_A_BEFORE": [
+                4,
+                18,
+                20,
+                24,
+                29,
+                46
+              ],
+              "TICKET_A_AFTER": [
+                4,
+                18,
+                20,
+                24,
+                28,
+                29
+              ],
+              "TICKET_B_BEFORE": [
+                8,
+                9,
+                11,
+                15,
+                20,
+                28
+              ],
+              "TICKET_B_AFTER": [
+                8,
+                9,
+                11,
+                15,
+                20,
+                46
+              ],
+              "SWAPPED_FROM_A": 46,
+              "SWAPPED_FROM_B": 28
+            },
+            "FINAL_EXACT_RECOMPUTE": "PASS",
+            "NEIGHBORHOOD_COMPLETENESS": "PROVEN",
+            "TERMINAL_TICKETS": [
+              [
+                1,
+                2,
+                34,
+                41,
+                42,
+                45
+              ],
+              [
+                1,
+                17,
+                22,
+                30,
+                33,
+                43
+              ],
+              [
+                2,
+                5,
+                33,
+                35,
+                40,
+                48
+              ],
+              [
+                3,
+                4,
+                6,
+                10,
+                15,
+                23
+              ],
+              [
+                3,
+                9,
+                12,
+                16,
+                29,
+                39
+              ],
+              [
+                3,
+                13,
+                14,
+                28,
+                36,
+                44
+              ],
+              [
+                4,
+                8,
+                26,
+                31,
+                37,
+                39
+              ],
+              [
+                4,
+                18,
+                20,
+                24,
+                28,
+                29
+              ],
+              [
+                5,
+                17,
+                25,
+                27,
+                36,
+                41
+              ],
+              [
+                6,
+                7,
+                9,
+                13,
+                18,
+                26
+              ],
+              [
+                7,
+                8,
+                10,
+                14,
+                19,
+                29
+              ],
+              [
+                7,
+                11,
+                16,
+                24,
+                32,
+                47
+              ],
+              [
+                8,
+                9,
+                11,
+                15,
+                20,
+                46
+              ],
+              [
+                11,
+                12,
+                14,
+                18,
+                23,
+                31
+              ],
+              [
+                12,
+                13,
+                15,
+                19,
+                24,
+                37
+              ],
+              [
+                16,
+                19,
+                23,
+                26,
+                28,
+                46
+              ],
+              [
+                17,
+                21,
+                34,
+                40,
+                44,
+                49
+              ],
+              [
+                21,
+                25,
+                30,
+                38,
+                45,
+                48
+              ],
+              [
+                22,
+                27,
+                35,
+                45,
+                47,
+                49
+              ],
+              [
+                27,
+                32,
+                38,
+                40,
+                42,
+                43
+              ]
+            ],
+            "GLOBAL_OPTIMUM_STATUS": "UNKNOWN",
+            "OUTCOME_FIELDS_USED": "NO",
+            "PRIOR_INCUMBENT_SOURCE_COMMIT": "1d90731a0e4d7fad12e7b834dc2e23fdf365d5a3",
+            "PRIOR_INCUMBENT_OUTCOME_COUNT": 312867212,
+            "PRIOR_INCUMBENT_EXACT_PROBABILITY": "11173829/21475146",
+            "PRIOR_INCUMBENT_PORTFOLIO_SHA256": "ad8ebdb41b40638815f39b395adfdaf40de6110019d22595e72b1aa1bef6e6ea",
+            "PRIOR_INCUMBENT_M3_PLUS_DRAW_COUNT": null,
+            "PRIOR_INCUMBENT_M3_PLUS_MAIN_DRAW_COUNT": null,
+            "PRIOR_INCUMBENT_M3_PLUS_PROBABILITY": null,
+            "PRIOR_INCUMBENT_ACCEPTED_MOVE": {
+              "TICKET_A_BEFORE": [
+                18,
+                20,
+                24,
+                29,
+                32,
+                46
+              ],
+              "TICKET_A_AFTER": [
+                4,
+                18,
+                20,
+                24,
+                29,
+                46
+              ],
+              "TICKET_B_BEFORE": [
+                4,
+                7,
+                11,
+                16,
+                24,
+                47
+              ],
+              "TICKET_B_AFTER": [
+                7,
+                11,
+                16,
+                24,
+                32,
+                47
+              ],
+              "SWAPPED_FROM_A": 32,
+              "SWAPPED_FROM_B": 4
+            }
+          }
+        }
+      },
+      "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+      "FAMILY_SIZE_ROLE": "ACCOUNTING_ONLY",
+      "NEIGHBORHOOD_SHA256": "977e9f1c1877afe61d49d00b5b48a44c650c97f84d7aa598da845fe00f331611",
+      "U3_PRUNED_COUNT": 30647,
+      "U3_SURVIVOR_COUNT": 478,
+      "EXACTLY_RESCORED_COUNT": 478,
+      "EXECUTION_PROVENANCE_VERDICT": "PASS"
+    },
+    "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+    "FAMILY_SIZE_ROLE": "ACCOUNTING_ONLY",
+    "NEIGHBORHOOD_SHA256": "4a1a508d208536e1725c5c614fe360ff1291fd27ad427e0f726ca119171d86d7",
+    "U3_PRUNED_COUNT": 30631,
+    "U3_SURVIVOR_COUNT": 494,
+    "EXACTLY_RESCORED_COUNT": 494,
+    "EXECUTION_PROVENANCE_VERDICT": "PASS"
+  },
+  "GLOBAL_K20_OPTIMUM_STATUS": "UNKNOWN",
+  "FAMILY_SIZE_ROLE": "ACCOUNTING_ONLY",
+  "NEIGHBORHOOD_SHA256": "8170c31357202051a93c8de290879947f23f66defa5ef07ad7cefcec382f1546",
+  "U3_PRUNED_COUNT": 30457,
+  "U3_SURVIVOR_COUNT": 668,
+  "EXACTLY_RESCORED_COUNT": 668,
+  "EXECUTION_PROVENANCE_VERDICT": "PASS"
+}

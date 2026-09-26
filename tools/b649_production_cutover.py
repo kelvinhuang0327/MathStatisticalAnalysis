@@ -30,7 +30,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import NoReturn, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -42,17 +42,24 @@ import tools.b649_pair_rule_forward_shadow as shadow
 TASK_ID = "B649_MANAGED_PRODUCTION_CUTOVER_ENTRYPOINT_R1"
 PLAN_SCHEMA_VERSION = "b649-managed-production-cutover-plan-v1"
 RECEIPT_SCHEMA_VERSION = "b649-managed-production-cutover-receipt-v1"
+CONTROL_OWNER_SCHEMA = "b649-durable-control-owner-v1"
+CONTROL_OWNER_NAME = "b649-control-owner-reservation.json"
 COMMAND_TIMEOUT = 10
 MAX_OUTPUT_BYTES = 2 * 1024 * 1024
 MAX_RECEIPT_BYTES = 4 * 1024 * 1024
 HEX40 = re.compile(r"[0-9a-f]{40}\Z", re.ASCII)
 DOMAIN = f"gui/{os.getuid()}"
+PRODUCTION_DOMAIN = DOMAIN
 
 LABEL = scheduler.SCHEDULER_LABEL
+CONTROL_ROOT = Path(__file__).resolve().parents[1]
 CANONICAL_REPOSITORY = scheduler.CANONICAL_REPOSITORY
 DEFAULT_PLIST_PATH = scheduler.PLIST_PATH
 DEFAULT_OPERATION_ROOT = scheduler.GOALC_ROOT
 DEFAULT_RECEIPT_PATH = scheduler.SCHEDULER_ROOT / "b649-production-cutover-receipt.json"
+PRODUCTION_PLIST_PATH = DEFAULT_PLIST_PATH
+PRODUCTION_RECEIPT_PATH = DEFAULT_RECEIPT_PATH
+PRODUCTION_CONTROL_OWNER_PATH = DEFAULT_RECEIPT_PATH.with_name(CONTROL_OWNER_NAME)
 DEFAULT_CUTOVER_LOCK_PATH = scheduler.SCHEDULER_ROOT / "b649-production-cutover.lock"
 DEFAULT_PRIMARY_LOCK_PATH = scheduler.LOCK_PATH
 DEFAULT_SHADOW_LOCK_PATH = shadow.RUNTIME_SUBROOT / shadow.SHADOW_LOCK_FILE
@@ -121,18 +128,22 @@ def run_command(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     """Run one exact command without a shell and with bounded output."""
 
     return subprocess.run(
-        list(argv),
+        checkpoint.git_read_argv(argv),
         capture_output=True,
         text=True,
         check=False,
         timeout=COMMAND_TIMEOUT,
-        env={**os.environ, "LC_ALL": "C", "GIT_OPTIONAL_LOCKS": "0"},
+        env={
+            **{key: value for key, value in os.environ.items() if not key.startswith("GIT_")},
+            "LC_ALL": "C",
+            "GIT_OPTIONAL_LOCKS": "0",
+        },
     )
 
 
 def _bounded_command(runner: Runner, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
     try:
-        result = runner(argv)
+        result = runner(checkpoint.git_read_argv(argv))
     except Exception as exc:
         raise CutoverSafetyError(f"command {argv[0]} failed: {type(exc).__name__}: {exc}") from exc
     if len(result.stdout) + len(result.stderr) > MAX_OUTPUT_BYTES:
@@ -179,6 +190,10 @@ class CutoverConfig:
     expected_tree: str | None = None
     durable_ref: str | None = None
     strict_release_layout: bool = False
+    protected_execution: checkpoint.ControlledExecution | None = None
+    control_owner_id: str | None = None
+    control_owner_kind: str = "managed"
+    operation_id: str | None = None
 
     def __post_init__(self) -> None:
         path_values = (
@@ -810,7 +825,10 @@ def _probe_lock(path: Path) -> Record:
 
 def _ownership_snapshot(config: CutoverConfig, runner: Runner, source: Record) -> Record:
     args = _launch_args(config, source)
-    process = _record(checkpoint.process_snapshot(args, runner), "process snapshot")
+    process = _record(
+        checkpoint.process_snapshot(args, runner, execution=config.protected_execution),
+        "process snapshot",
+    )
     runtime = _record(process.get("runtime"), "runtime ownership")
     primary = _record(process.get("primary"), "primary ownership")
     scheduler_process = _record(process.get("scheduler"), "scheduler ownership")
@@ -840,6 +858,8 @@ def _assert_idle(ownership: Record, *, include_runtime: bool = True) -> None:
         value = _record(ownership.get(key), f"{key} lock")
         if value.get("state") != "IDLE":
             raise ActiveCycleError(f"{key} is active: {value.get('state')}")
+    if _record(ownership.get("process"), "process snapshot").get("uncertainties") != []:
+        raise ActiveCycleError("ownership uncertainties are not empty")
 
 
 def _same_root(runtime: Record, source: Record) -> bool:
@@ -1154,6 +1174,829 @@ class CutoverLock:
             self.descriptor = None
 
 
+def control_version() -> Record:
+    """Return the immutable control checkout identity used by reservations."""
+    head = checkpoint.git_value(run_command, str(CONTROL_ROOT), "HEAD")
+    tree = checkpoint.git_value(run_command, str(CONTROL_ROOT), "HEAD^{tree}")
+    if HEX40.fullmatch(head) is None or HEX40.fullmatch(tree) is None:
+        raise CutoverSafetyError("control checkout identity is unresolved")
+    return {"head": head, "tree": tree}
+
+
+def _control_owner_path(config: CutoverConfig) -> Path:
+    if _is_production_control_target(config):
+        return PRODUCTION_CONTROL_OWNER_PATH
+    return config.receipt_path.with_name(CONTROL_OWNER_NAME)
+
+
+def _control_owner_lock_path(config: CutoverConfig) -> Path:
+    return _control_owner_path(config).with_name(CONTROL_OWNER_NAME + ".lock")
+
+
+def _is_production_control_target(config: CutoverConfig) -> bool:
+    if config.launch_domain == PRODUCTION_DOMAIN:
+        return True
+    production_paths = {
+        PRODUCTION_RECEIPT_PATH.resolve(strict=False),
+        PRODUCTION_PLIST_PATH.resolve(strict=False),
+    }
+    return any(
+        path.resolve(strict=False) in production_paths
+        for path in (config.receipt_path, config.plist_path)
+    )
+
+
+def _normalized_owner_target(value: object) -> Record:
+    target = _record(value, "control owner target")
+    required = {"source_worktree", "head", "tree"}
+    if not required.issubset(target) or set(target) - (required | {"durable_ref"}):
+        raise CutoverSafetyError("control owner target identity is malformed")
+    source = _text(target.get("source_worktree"), "control owner source")
+    head = _text(target.get("head"), "control owner source head")
+    tree = _text(target.get("tree"), "control owner source tree")
+    if (
+        not Path(source).is_absolute()
+        or Path(source) != Path(source).resolve(strict=False)
+        or HEX40.fullmatch(head) is None
+        or HEX40.fullmatch(tree) is None
+    ):
+        raise CutoverSafetyError("control owner target requires an exact source identity")
+    normalized: Record = {"source_worktree": source, "head": head, "tree": tree}
+    if "durable_ref" in target:
+        normalized["durable_ref"] = _text(target.get("durable_ref"), "control owner durable ref")
+    return normalized
+
+
+def _owner_unsigned(value: Record) -> Record:
+    return {key: item for key, item in value.items() if key != "record_sha256"}
+
+
+def _seal_control_owner(value: Record) -> Record:
+    unsigned = _owner_unsigned(value)
+    return {**unsigned, "record_sha256": _sha256_json(unsigned)}
+
+
+def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | None:
+    path = _control_owner_path(config)
+    if not os.path.lexists(path):
+        return None
+    value, identity, _ = _load_json(path)
+    required = {
+        "schema",
+        "reservation_id",
+        "owner_kind",
+        "owner_pid",
+        "action",
+        "target",
+        "control_head",
+        "control_tree",
+        "operation_id",
+        "managed_receipt_sha256",
+        "phase",
+        "created_at",
+        "updated_at",
+        "authorization",
+        "mutation_started",
+        "terminal",
+        "release_evidence",
+        "record_sha256",
+    }
+    if set(value) != required or value.get("schema") != CONTROL_OWNER_SCHEMA:
+        raise CutoverSafetyError("durable control owner schema is invalid")
+    unsigned = _owner_unsigned(value)
+    if value.get("record_sha256") != _sha256_json(unsigned):
+        raise CutoverSafetyError("durable control owner integrity differs")
+    reservation_id = _text(value.get("reservation_id"), "reservation id")
+    try:
+        if str(UUID(reservation_id)) != reservation_id:
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("durable control owner id is invalid") from exc
+    if value.get("owner_kind") not in {"managed", "protected"}:
+        raise CutoverSafetyError("durable control owner class is invalid")
+    if value.get("action") not in {"apply", "rollback"}:
+        raise CutoverSafetyError("durable control owner action is invalid")
+    if value.get("phase") not in {
+        "AUTHORIZATION_PENDING",
+        "AUTHORIZED_PENDING",
+        "MUTATION_IN_PROGRESS",
+        "TERMINAL_CAPTURE_PENDING",
+        "ABANDONED",
+        "RELEASED",
+    }:
+        raise CutoverSafetyError("durable control owner phase is invalid")
+    owner_pid = value.get("owner_pid")
+    if (
+        type(owner_pid) is not int
+        or owner_pid <= 0
+        or HEX40.fullmatch(str(value.get("control_head"))) is None
+        or HEX40.fullmatch(str(value.get("control_tree"))) is None
+        or type(value.get("mutation_started")) is not bool
+    ):
+        raise CutoverSafetyError("durable control owner identity is malformed")
+    if value.get("target") is not None:
+        _normalized_owner_target(value["target"])
+    if value.get("operation_id") is not None:
+        _text(value.get("operation_id"), "operation id")
+    receipt_hash = value.get("managed_receipt_sha256")
+    if receipt_hash is not None and re.fullmatch(r"[0-9a-f]{64}", str(receipt_hash)) is None:
+        raise CutoverSafetyError("durable control owner receipt hash is invalid")
+    authorization = value.get("authorization")
+    if authorization is not None:
+        authorization_record = _record(authorization, "owner authorization")
+        if (
+            set(authorization_record)
+            != {
+                "reservation_id",
+                "operation_id",
+                "managed_receipt_sha256",
+                "control_head",
+                "control_tree",
+                "action",
+                "target",
+            }
+            or authorization_record != _owner_identity(value)
+            or value.get("operation_id") is None
+            or value.get("target") is None
+        ):
+            raise CutoverSafetyError("durable control owner authorization is malformed")
+    elif value.get("phase") in {
+        "AUTHORIZED_PENDING",
+        "MUTATION_IN_PROGRESS",
+        "TERMINAL_CAPTURE_PENDING",
+    }:
+        raise CutoverSafetyError("durable control owner phase has no authorization")
+    terminal = value.get("terminal")
+    if value.get("phase") == "TERMINAL_CAPTURE_PENDING":
+        terminal_record = _record(terminal, "managed terminal evidence")
+        if (
+            set(terminal_record) != {"operation_id", "managed_receipt_sha256", "status"}
+            or terminal_record.get("operation_id") != value.get("operation_id")
+            or re.fullmatch(r"[0-9a-f]{64}", str(terminal_record.get("managed_receipt_sha256")))
+            is None
+            or terminal_record.get("status")
+            not in {"SUCCESS", "ROLLBACK_SUCCESS", "RECOVERED", "RECOVERY_REQUIRED"}
+        ):
+            raise CutoverSafetyError("durable control owner terminal evidence is malformed")
+    elif terminal is not None and value.get("phase") not in {"RELEASED"}:
+        raise CutoverSafetyError("durable control owner has unexpected terminal evidence")
+    evidence = value.get("release_evidence")
+    if value.get("phase") == "RELEASED":
+        evidence_record = _record(evidence, "control owner release evidence")
+        if evidence_record.get("verified") is not True:
+            raise CutoverSafetyError("durable control owner release evidence is invalid")
+    elif evidence is not None:
+        raise CutoverSafetyError("unreleased control owner has release evidence")
+    if value.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"} and not value[
+        "mutation_started"
+    ]:
+        raise CutoverSafetyError("durable control owner mutation phase is malformed")
+    if value.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING", "ABANDONED"} and value[
+        "mutation_started"
+    ]:
+        raise CutoverSafetyError("durable control owner pre-mutation phase is malformed")
+    return value, identity
+
+
+def _save_control_owner(
+    config: CutoverConfig,
+    value: Record,
+    *,
+    expected: FileIdentity | None,
+) -> Record:
+    saved = _seal_control_owner({**value, "updated_at": _utc_text(_now())})
+    _write_json(_control_owner_path(config), saved, expected=expected)
+    return saved
+
+
+def _pid_state(pid: int) -> str:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return "STALE_PROCESS"
+    except PermissionError:
+        return "ACTIVE_PROCESS"
+    except OSError:
+        return "PROCESS_STATE_UNKNOWN"
+    return "ACTIVE_PROCESS"
+
+
+def inspect_control_owner(config: CutoverConfig) -> Record | None:
+    """Inspect the durable reservation; process death never deletes it."""
+    stored = _read_control_owner(config)
+    if stored is None:
+        return None
+    value, _ = stored
+    return {**value, "worker_state": _pid_state(cast(int, value["owner_pid"]))}
+
+
+def _owner_identity(value: Record) -> Record:
+    return {
+        "reservation_id": value["reservation_id"],
+        "operation_id": value["operation_id"],
+        "managed_receipt_sha256": value["managed_receipt_sha256"],
+        "control_head": value["control_head"],
+        "control_tree": value["control_tree"],
+        "action": value["action"],
+        "target": value["target"],
+    }
+
+
+def _verify_protected_owner_receipt(
+    value: Record,
+    *,
+    path: Path,
+    bound_identity: Record,
+    successful: bool,
+) -> None:
+    unsigned = {key: item for key, item in value.items() if key != "receipt_sha256"}
+    try:
+        encoded = json.dumps(
+            unsigned,
+            ensure_ascii=True,
+            separators=(",", ":"),
+            sort_keys=True,
+            allow_nan=False,
+        ).encode("utf-8")
+        identity = _record(value.get("identity"), "protected execution identity")
+        identity_digest = hashlib.sha256(
+            json.dumps(
+                identity,
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+    except (TypeError, ValueError) as exc:
+        raise CutoverSafetyError("protected terminal receipt encoding is invalid") from exc
+    if (
+        value.get("schema_version") != "b649-protected-cutover-execution-receipt-v1"
+        or value.get("task_key") != "b649-protected-cutover:com.lottolab.b649-goalc-r1"
+        or value.get("receipt_sha256") != hashlib.sha256(encoded).hexdigest()
+        or value.get("execution_id") != identity_digest
+        or identity.get("execution_receipt_path") != str(path)
+        or any(identity.get(key) != item for key, item in bound_identity.items())
+        or value.get("phase") != "COMPLETED"
+    ):
+        raise CutoverSafetyError("protected terminal receipt integrity or identity differs")
+    if successful:
+        expected_status = (
+            "ROLLBACK_SUCCESS" if bound_identity["action"] == "rollback" else "SUCCESS"
+        )
+        expected_results = (
+            {"ROLLBACK_SUCCESS", "ALREADY_ROLLED_BACK"}
+            if bound_identity["action"] == "rollback"
+            else {"SUCCESS", "ALREADY_APPLIED"}
+        )
+        if (
+            value.get("status") != expected_status
+            or type(value.get("exit_code")) is not int
+            or value.get("exit_code") != 0
+            or type(value.get("child_exit_code")) is not int
+            or value.get("child_exit_code") != 0
+            or value.get("result_status") not in expected_results
+        ):
+            raise CutoverSafetyError("protected success receipt lacks verified terminal status")
+    elif (
+        value.get("status") not in {"FAILED", "ROLLBACK_FAILED"}
+        or type(value.get("exit_code")) is not int
+        or value.get("exit_code") == 0
+    ):
+        raise CutoverSafetyError("protected failure receipt is not terminal")
+
+
+def acquire_control_owner(
+    config: CutoverConfig,
+    *,
+    action: str,
+    target: Record | None,
+    owner_kind: str = "managed",
+    reservation_id: str | None = None,
+    version: Record | None = None,
+) -> Record:
+    """Atomically reserve the shared control boundary before receipt capture."""
+    if action not in {"apply", "rollback"} or owner_kind not in {"managed", "protected"}:
+        raise CutoverSafetyError("durable control owner action/class is invalid")
+    control = control_version() if version is None else _record(version, "control version")
+    head = _text(control.get("head"), "control HEAD")
+    tree = _text(control.get("tree"), "control tree")
+    if HEX40.fullmatch(head) is None or HEX40.fullmatch(tree) is None:
+        raise CutoverSafetyError("durable owner requires an exact control HEAD/tree")
+    normalized_target = None if target is None else _normalized_owner_target(target)
+    selected_id = reservation_id or str(uuid4())
+    try:
+        if str(UUID(selected_id)) != selected_id:
+            raise ValueError
+    except ValueError as exc:
+        raise CutoverSafetyError("durable control owner id is invalid") from exc
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is not None:
+            value, identity = current
+            stored_target = (
+                None
+                if value.get("target") is None
+                else _record(value.get("target"), "durable owner target")
+            )
+            if value["phase"] == "RELEASED":
+                expected = identity
+            elif (
+                value["reservation_id"] == selected_id
+                and value["action"] == action
+                and value["owner_kind"] == owner_kind
+                and (
+                    normalized_target is None
+                    or stored_target is None
+                    or all(
+                        stored_target.get(key) == normalized_target.get(key)
+                        for key in ("source_worktree", "head", "tree")
+                    )
+                )
+                and (value["control_head"], value["control_tree"]) == (head, tree)
+            ):
+                return value
+            else:
+                raise CutoverSafetyError(
+                    "durable control owner reservation blocks takeover; reconcile the exact owner"
+                )
+        else:
+            expected = None
+        created: Record = {
+            "schema": CONTROL_OWNER_SCHEMA,
+            "reservation_id": selected_id,
+            "owner_kind": owner_kind,
+            "owner_pid": os.getpid(),
+            "action": action,
+            "target": normalized_target,
+            "control_head": head,
+            "control_tree": tree,
+            "operation_id": None,
+            "managed_receipt_sha256": None,
+            "phase": "AUTHORIZATION_PENDING",
+            "created_at": _utc_text(_now()),
+            "updated_at": _utc_text(_now()),
+            "authorization": None,
+            "mutation_started": False,
+            "terminal": None,
+            "release_evidence": None,
+        }
+        return _save_control_owner(config, created, expected=expected)
+
+
+def resume_control_owner(
+    config: CutoverConfig,
+    reservation_id: str,
+    *,
+    version: Record | None = None,
+) -> Record:
+    """Resume the same identity; interrupted mutation remains recovery-only."""
+    control = control_version() if version is None else _record(version, "control version")
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner is absent")
+        value, identity = current
+        if value["reservation_id"] != reservation_id:
+            raise CutoverSafetyError("durable control owner id changed")
+        if (value["control_head"], value["control_tree"]) != (
+            control.get("head"),
+            control.get("tree"),
+        ):
+            raise CutoverSafetyError("durable control owner control version changed")
+        if value["phase"] in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}:
+            return _save_control_owner(
+                config,
+                {**value, "owner_pid": os.getpid()},
+                expected=identity,
+            )
+        return value
+
+
+def bind_control_owner(
+    config: CutoverConfig,
+    reservation_id: str,
+    *,
+    action: str,
+    target: Record,
+    operation_id: str,
+    managed_receipt_sha256: str | None,
+    version: Record,
+) -> Record:
+    """Bind receipt and operation identity after the reservation already exists."""
+    normalized_target = _normalized_owner_target(target)
+    if managed_receipt_sha256 is not None and re.fullmatch(
+        r"[0-9a-f]{64}", managed_receipt_sha256
+    ) is None:
+        raise CutoverSafetyError("managed receipt SHA256 is invalid")
+    control = _record(version, "control version")
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner is absent")
+        value, identity = current
+        if value["reservation_id"] != reservation_id:
+            raise CutoverSafetyError("durable control owner id changed")
+        live_control = control_version()
+        if (value["control_head"], value["control_tree"]) != (
+            live_control.get("head"),
+            live_control.get("tree"),
+        ):
+            raise CutoverSafetyError("durable control owner control version changed")
+        if value["phase"] not in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}:
+            if value["phase"] not in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}:
+                raise CutoverSafetyError("durable control owner cannot be rebound in this phase")
+            if (
+                value["action"] != action
+                or value["target"] != normalized_target
+                or value["operation_id"] != operation_id
+                or value["managed_receipt_sha256"] != managed_receipt_sha256
+                or (value["control_head"], value["control_tree"])
+                != (control.get("head"), control.get("tree"))
+            ):
+                raise CutoverSafetyError("started control owner identity cannot be changed")
+            return value
+        if value["action"] != action:
+            raise CutoverSafetyError("durable control owner action changed")
+        if (value["control_head"], value["control_tree"]) != (
+            control.get("head"),
+            control.get("tree"),
+        ):
+            raise CutoverSafetyError("durable control owner control version changed")
+        prior_target = (
+            None
+            if value.get("target") is None
+            else _record(value.get("target"), "durable owner target")
+        )
+        if prior_target is not None and any(
+            normalized_target.get(key) != prior_target.get(key)
+            for key in ("source_worktree", "head", "tree")
+        ):
+            raise CutoverSafetyError("durable control owner target changed")
+        if value["operation_id"] not in {None, operation_id}:
+            raise CutoverSafetyError("durable control owner operation changed")
+        if value["managed_receipt_sha256"] not in {None, managed_receipt_sha256}:
+            raise CutoverSafetyError("durable control owner receipt hash changed")
+        updated = {
+            **value,
+            "action": action,
+            "target": normalized_target,
+            "operation_id": _text(operation_id, "operation id"),
+            "managed_receipt_sha256": managed_receipt_sha256,
+        }
+        return _save_control_owner(config, updated, expected=identity)
+
+
+def control_owner_authorization(value: Record) -> Record:
+    """Return the exact user-approval envelope for a fully bound owner."""
+    return _owner_identity(value)
+
+
+def authorize_control_owner(
+    config: CutoverConfig,
+    reservation_id: str,
+    authorization: Record,
+) -> Record:
+    expected_fields = {
+        "reservation_id",
+        "operation_id",
+        "managed_receipt_sha256",
+        "control_head",
+        "control_tree",
+        "action",
+        "target",
+    }
+    if set(authorization) != expected_fields:
+        raise CutoverSafetyError("owner authorization binding is incomplete")
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner is absent")
+        value, identity = current
+        if value["reservation_id"] != reservation_id:
+            raise CutoverSafetyError("durable control owner id changed")
+        live_control = control_version()
+        if (value["control_head"], value["control_tree"]) != (
+            live_control.get("head"),
+            live_control.get("tree"),
+        ):
+            raise CutoverSafetyError("durable control owner control version changed")
+        if value["phase"] not in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}:
+            raise CutoverSafetyError("owner authorization arrived after mutation started")
+        expected = _owner_identity(value)
+        if expected["operation_id"] is None or expected["target"] is None:
+            raise CutoverSafetyError("owner identity must be fully bound before authorization")
+        if authorization != expected:
+            raise CutoverSafetyError("owner authorization identity differs")
+        if value["authorization"] is not None and value["authorization"] != expected:
+            raise CutoverSafetyError("durable owner authorization changed")
+        return _save_control_owner(
+            config,
+            {**value, "authorization": expected, "phase": "AUTHORIZED_PENDING"},
+            expected=identity,
+        )
+
+
+def _verify_control_owner_binding(
+    config: CutoverConfig,
+    *,
+    reservation_id: str | None,
+    action: str,
+    target: Record,
+    operation_id: str,
+    managed_receipt_sha256: str | None,
+    phases: set[str],
+) -> Record | None:
+    current = _read_control_owner(config)
+    if current is None:
+        if reservation_id is None:
+            return None
+        raise CutoverSafetyError("durable control owner disappeared")
+    value, _ = current
+    if value["phase"] == "RELEASED" and reservation_id is None:
+        return None
+    if reservation_id is None or value["reservation_id"] != reservation_id:
+        raise CutoverSafetyError("a different durable control owner blocks this mutation")
+    control = control_version()
+    expected = {
+        "reservation_id": reservation_id,
+        "operation_id": operation_id,
+        "managed_receipt_sha256": managed_receipt_sha256,
+        "control_head": control.get("head"),
+        "control_tree": control.get("tree"),
+        "action": action,
+        "target": _normalized_owner_target(target),
+    }
+    if _owner_identity(value) != expected:
+        raise CutoverSafetyError("durable control owner identity differs")
+    if value["phase"] not in phases or value["authorization"] != expected:
+        raise CutoverSafetyError("durable control owner is not authorized for this phase")
+    if (value["owner_kind"] == "protected") != (config.protected_execution is not None):
+        raise CutoverSafetyError("durable control owner execution class differs")
+    return value
+
+
+def check_control_owner(
+    config: CutoverConfig,
+    *,
+    action: str,
+    target: Record,
+    operation_id: str,
+    managed_receipt_sha256: str | None,
+    begin_mutation: bool = False,
+) -> Record | None:
+    """Common fail-closed gate used by direct managed and protected actions."""
+    phases = {"AUTHORIZED_PENDING"} if begin_mutation else {
+        "AUTHORIZATION_PENDING",
+        "AUTHORIZED_PENDING",
+        "MUTATION_IN_PROGRESS",
+        "TERMINAL_CAPTURE_PENDING",
+    }
+    if not begin_mutation:
+        return _verify_control_owner_binding(
+            config,
+            reservation_id=config.control_owner_id,
+            action=action,
+            target=target,
+            operation_id=operation_id,
+            managed_receipt_sha256=managed_receipt_sha256,
+            phases=phases,
+        )
+    with CutoverLock(_control_owner_lock_path(config)):
+        value = _verify_control_owner_binding(
+            config,
+            reservation_id=config.control_owner_id,
+            action=action,
+            target=target,
+            operation_id=operation_id,
+            managed_receipt_sha256=managed_receipt_sha256,
+            phases=phases,
+        )
+        if value is None:
+            return None
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner disappeared at mutation gate")
+        latest, identity = current
+        if latest["reservation_id"] != value["reservation_id"]:
+            raise CutoverSafetyError("durable control owner changed at mutation gate")
+        return _save_control_owner(
+            config,
+            {**latest, "phase": "MUTATION_IN_PROGRESS", "mutation_started": True},
+            expected=identity,
+        )
+
+
+def mark_control_terminal_pending(
+    config: CutoverConfig,
+    reservation_id: str,
+    *,
+    operation_id: str,
+    status: str,
+) -> Record:
+    """Persist the verified managed receipt identity before protected capture."""
+    receipt, receipt_identity, _ = _load_json(config.receipt_path)
+    if (
+        receipt.get("operation_id") != operation_id
+        or receipt.get("status") != status
+        or receipt.get("phase") not in {"COMPLETED", "RECOVERY_REQUIRED"}
+    ):
+        raise CutoverSafetyError("managed terminal receipt identity differs")
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner disappeared before terminal capture")
+        value, identity = current
+        if value["reservation_id"] != reservation_id or value["operation_id"] != operation_id:
+            raise CutoverSafetyError(
+                "durable control owner identity changed before terminal capture"
+            )
+        preexisting_terminal = (
+            value["phase"] == "AUTHORIZED_PENDING"
+            and value["managed_receipt_sha256"] == receipt_identity.sha256
+            and status in {"SUCCESS", "ROLLBACK_SUCCESS"}
+        )
+        if value["phase"] != "MUTATION_IN_PROGRESS" and not preexisting_terminal:
+            raise CutoverSafetyError("durable control owner is not awaiting terminal evidence")
+        terminal = {
+            "operation_id": operation_id,
+            "managed_receipt_sha256": receipt_identity.sha256,
+            "status": status,
+        }
+        return _save_control_owner(
+            config,
+            {**value, "phase": "TERMINAL_CAPTURE_PENDING", "terminal": terminal},
+            expected=identity,
+        )
+
+
+def reconcile_control_owner(
+    config: CutoverConfig,
+    reservation_id: str,
+    *,
+    disposition: str,
+    version: Record,
+) -> Record:
+    """Explicitly reconcile an unchanged pre-mutation reservation; PID death is not authority."""
+    if disposition not in {"ABANDON_BEFORE_MUTATION", "RELEASE_ABANDONED"}:
+        raise CutoverSafetyError("unsupported durable owner reconciliation")
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner is absent")
+        value, identity = current
+        if value["reservation_id"] != reservation_id or (
+            value["control_head"], value["control_tree"]
+        ) != (version.get("head"), version.get("tree")):
+            raise CutoverSafetyError("durable owner reconciliation identity differs")
+        live_control = control_version()
+        if (value["control_head"], value["control_tree"]) != (
+            live_control.get("head"),
+            live_control.get("tree"),
+        ):
+            raise CutoverSafetyError("control version changed during owner reconciliation")
+        if value["mutation_started"] or value["phase"] in {
+            "MUTATION_IN_PROGRESS",
+            "TERMINAL_CAPTURE_PENDING",
+        }:
+            raise CutoverSafetyError("a started mutation requires terminal evidence reconciliation")
+        current_receipt = _file_identity(config.receipt_path, missing_ok=True)[0]
+        if (None if current_receipt is None else current_receipt.sha256) != value[
+            "managed_receipt_sha256"
+        ]:
+            raise CutoverSafetyError("managed receipt changed during owner reconciliation")
+        if disposition == "ABANDON_BEFORE_MUTATION":
+            if value["phase"] not in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}:
+                raise CutoverSafetyError("owner is not eligible for pre-mutation abandonment")
+            return _save_control_owner(
+                config,
+                {**value, "phase": "ABANDONED"},
+                expected=identity,
+            )
+        if value["phase"] != "ABANDONED":
+            raise CutoverSafetyError("explicit abandonment must precede release")
+        return _save_control_owner(
+            config,
+            {
+                **value,
+                "phase": "RELEASED",
+                "release_evidence": {
+                    "kind": "EXPLICIT_ABANDON_NO_MUTATION",
+                    "verified": True,
+                },
+            },
+            expected=identity,
+        )
+
+
+def release_control_owner(
+    config: CutoverConfig,
+    reservation_id: str,
+    *,
+    protected_receipt_path: Path | None = None,
+) -> Record:
+    """Release only after terminal evidence is re-read and bound to this owner."""
+    with CutoverLock(_control_owner_lock_path(config)):
+        current = _read_control_owner(config)
+        if current is None:
+            raise CutoverSafetyError("durable control owner is absent")
+        value, identity = current
+        if value["reservation_id"] != reservation_id:
+            raise CutoverSafetyError("durable control owner id changed before release")
+        if value["phase"] == "RELEASED":
+            return value
+        live_control = control_version()
+        if (value["control_head"], value["control_tree"]) != (
+            live_control.get("head"),
+            live_control.get("tree"),
+        ):
+            raise CutoverSafetyError("control version changed before owner release")
+        if value["phase"] == "TERMINAL_CAPTURE_PENDING":
+            terminal = _record(value.get("terminal"), "managed terminal evidence")
+            managed, managed_identity, _ = _load_json(config.receipt_path)
+            if (
+                managed_identity.sha256 != terminal.get("managed_receipt_sha256")
+                or managed.get("operation_id") != value.get("operation_id")
+                or managed.get("status") != terminal.get("status")
+                or managed.get("phase") != "COMPLETED"
+            ):
+                raise CutoverSafetyError("managed terminal evidence verification failed")
+            if value["owner_kind"] == "protected":
+                expected_path = config.scheduler_root / (
+                    "b649-protected-rollback-execution-receipt.json"
+                    if value["action"] == "rollback"
+                    else "b649-protected-cutover-execution-receipt.json"
+                )
+                if protected_receipt_path != expected_path:
+                    raise CutoverSafetyError("protected terminal receipt path differs")
+                protected, protected_identity, _ = _load_json(expected_path)
+                bound_identity = _owner_identity(value)
+                _verify_protected_owner_receipt(
+                    protected,
+                    path=expected_path,
+                    bound_identity=bound_identity,
+                    successful=True,
+                )
+                link = _record(protected.get("managed_receipt"), "protected managed receipt link")
+                if (
+                    link.get("path") != str(config.receipt_path)
+                    or link.get("sha256") != managed_identity.sha256
+                    or link.get("status") != managed.get("status")
+                ):
+                    raise CutoverSafetyError("protected terminal evidence verification failed")
+                evidence: Record = {
+                    "managed_receipt_sha256": managed_identity.sha256,
+                    "protected_receipt_sha256": protected_identity.sha256,
+                    "verified": True,
+                }
+            else:
+                if protected_receipt_path is not None:
+                    raise CutoverSafetyError("managed owner cannot claim protected execution")
+                if managed.get("status") not in {"SUCCESS", "ROLLBACK_SUCCESS"}:
+                    raise CutoverSafetyError("managed terminal status is not releasable")
+                evidence = {"managed_receipt_sha256": managed_identity.sha256, "verified": True}
+        elif value["phase"] == "AUTHORIZED_PENDING" and value["owner_kind"] == "protected":
+            if protected_receipt_path is None:
+                raise CutoverSafetyError("protected terminal receipt is required before release")
+            expected_path = config.scheduler_root / (
+                "b649-protected-rollback-execution-receipt.json"
+                if value["action"] == "rollback"
+                else "b649-protected-cutover-execution-receipt.json"
+            )
+            if protected_receipt_path != expected_path:
+                raise CutoverSafetyError("protected terminal receipt path differs")
+            protected, protected_identity, _ = _load_json(expected_path)
+            bound_identity = _owner_identity(value)
+            _verify_protected_owner_receipt(
+                protected,
+                path=expected_path,
+                bound_identity=bound_identity,
+                successful=False,
+            )
+            current_managed = _file_identity(config.receipt_path, missing_ok=True)[0]
+            current_hash = None if current_managed is None else current_managed.sha256
+            if (
+                current_hash != value.get("managed_receipt_sha256")
+            ):
+                raise CutoverSafetyError("pre-mutation terminal evidence verification failed")
+            evidence = {
+                "protected_receipt_sha256": protected_identity.sha256,
+                "managed_receipt_unchanged": True,
+                "verified": True,
+            }
+        else:
+            raise CutoverSafetyError("durable owner has no verified terminal evidence to release")
+        return _save_control_owner(
+            config,
+            {
+                **value,
+                "phase": "RELEASED",
+                "release_evidence": evidence,
+            },
+            expected=identity,
+        )
+
+
 @dataclass
 class ActionRecorder:
     actions: list[Record]
@@ -1316,6 +2159,26 @@ def _assert_runtime_binding(
 
 
 def _assert_quiescent(config: CutoverConfig, runner: Runner, source: Record) -> Record:
+    if config.protected_execution is not None:
+        for worktree, head, tree in config.protected_execution.sources:
+            for revision, expected in (("HEAD", head), ("HEAD^{tree}", tree)):
+                if _git_value(runner, Path(worktree), revision) != expected:
+                    raise CutoverSafetyError(
+                        "protected source identity changed at mutation boundary"
+                    )
+            if _checked_read(
+                runner,
+                [
+                    "git",
+                    "--no-optional-locks",
+                    "-C",
+                    worktree,
+                    "status",
+                    "--porcelain=v1",
+                    "--untracked-files=all",
+                ],
+            ):
+                raise CutoverSafetyError("protected source status changed at mutation boundary")
     ownership = _ownership_snapshot(config, runner, source)
     _assert_idle(ownership)
     return ownership
@@ -1373,6 +2236,148 @@ def _run_launch_mutation(
         except BaseException as exc:
             recorder.event(name + "-postattempt-unverifiable", error=f"{type(exc).__name__}: {exc}")
     raise MutationError(f"{name} failed with exit {result.returncode}")
+
+
+def read_control_json(path: Path) -> tuple[Record, FileIdentity, bytes]:
+    """Owner-only, bounded no-follow read for the protected launcher."""
+    if path != path.resolve():
+        raise CutoverSafetyError("control file path must not traverse symlinks")
+    return _load_json(path)
+
+
+def inspect_control_file(
+    path: Path,
+    *,
+    missing_ok: bool = False,
+    require_mode: int | None = 0o600,
+) -> tuple[FileIdentity | None, bytes | None]:
+    """Read a canonical control-file identity without following symlinks."""
+    if path != path.resolve(strict=False):
+        raise CutoverSafetyError("control file path must not traverse symlinks")
+    return _file_identity(path, missing_ok=missing_ok, require_mode=require_mode)
+
+
+def write_control_json(
+    path: Path,
+    value: Record,
+    *,
+    expected: FileIdentity | None,
+) -> FileIdentity:
+    """Atomically persist one canonical control record with optimistic identity."""
+    if path != path.resolve(strict=False):
+        raise CutoverSafetyError("control file path must not traverse symlinks")
+    return _write_json(path, value, expected=expected)
+
+
+def validate_protected_plan(config: CutoverConfig, plan: Record) -> None:
+    _validate_config(config)
+    _plan_target_matches(config, plan)
+    source = _record(_record(plan.get("source"))["new"])
+    if (
+        source.get("source_worktree") != str(config.source_worktree)
+        or source.get("head") != config.expected_head
+        or source.get("tree") != config.expected_tree
+        or source.get("durable_ref") != config.durable_ref
+        or _record(plan.get("prestate")).get("new_source") != source
+    ):
+        raise CutoverSafetyError("protected plan source identity differs")
+
+
+def protected_snapshot(
+    config: CutoverConfig,
+    plan: Record,
+    runner: Runner,
+    *,
+    rollback: bool = False,
+) -> Record:
+    """Revalidate both scoped sources and ownership without touching business state."""
+    if config.protected_execution is None:
+        raise CutoverSafetyError("protected snapshot requires a verified execution chain")
+    sources: list[Record] = []
+    ownership: list[Record] = []
+    for role in ("old", "new"):
+        source = _record(_record(plan.get("source"))[role])
+        sources.append(
+            _validate_bound_source(
+                config,
+                source,
+                runner,
+                role="protected-" + role,
+                legacy_prestate=role == "old",
+            )
+        )
+        observed = _assert_quiescent(config, runner, source)
+        ownership.append(
+            {
+                "controlled_execution": _record(observed["process"])["controlled_execution"],
+                **{
+                    key: observed[key]
+                    for key in (
+                        "runtime",
+                        "primary",
+                        "scheduler",
+                        "shadow",
+                        "primary_lock",
+                        "shadow_lock",
+                    )
+                },
+            }
+        )
+    prestate = _record(plan.get("prestate"))
+    old_bytes = _decode_bytes(prestate["old_plist_bytes_b64"], "old plist")
+    new_bytes = _decode_bytes(prestate["new_plist_bytes_b64"], "new plist")
+    if rollback:
+        identity, current_bytes = _file_identity(
+            config.plist_path,
+            missing_ok=False,
+            require_mode=0o600,
+        )
+        if identity is None or current_bytes is None:
+            raise CutoverSafetyError("protected rollback plist is unavailable")
+        if current_bytes == old_bytes:
+            current_source = _record(_record(plan["source"])["old"])
+            current_runtime = _record(prestate["old_runtime"])
+        elif current_bytes == new_bytes:
+            current_source = _record(_record(plan["source"])["new"])
+            current_runtime = _record(_record(plan["runtime"])["new"])
+        else:
+            raise CutoverSafetyError("current plist differs from receipt-bound old/new bytes")
+        binding, parsed_runtime = _parse_plist(current_bytes, "protected-rollback-current")
+        if parsed_runtime != current_runtime:
+            raise CutoverSafetyError("protected rollback plist runtime differs from receipt")
+        launch = _assert_runtime_binding(config, runner, current_source, current_runtime)
+        enabled = _enabled_snapshot(config, runner)
+        return {
+            "sources": sources,
+            "ownership": ownership,
+            "plist": identity.to_dict(),
+            "plist_binding": binding,
+            "launch_state": launch["state"],
+            "enabled": enabled,
+            "current_source": current_source,
+            "current_runtime": current_runtime,
+        }
+    identity, _ = _assert_expected_plist(
+        config.plist_path,
+        FileIdentity.from_value(prestate["old_plist_identity"]),
+        expected_bytes=old_bytes,
+    )
+    launch = _assert_runtime_binding(
+        config,
+        runner,
+        _record(_record(plan["source"])["old"]),
+        _record(prestate["old_runtime"]),
+    )
+    enabled = _enabled_snapshot(config, runner)
+    if launch.get("state") != prestate["old_launch_state"] or enabled != prestate["old_enabled"]:
+        raise CutoverSafetyError("protected launch binding changed")
+    return {
+        "sources": sources,
+        "ownership": ownership,
+        "plist": identity.to_dict(),
+        "launch_state": launch["state"],
+        "enabled": enabled,
+    }
 
 
 def _observe_after_identity(path: Path) -> tuple[Record, str]:
@@ -1895,6 +2900,28 @@ def _reconcile_completed_receipt(
         raise CutoverSafetyError("completed receipt enabled state differs from live state")
 
 
+def _capture_managed_terminal(
+    config: CutoverConfig,
+    *,
+    operation_id: str,
+    status: str,
+) -> None:
+    if config.control_owner_id is None:
+        return
+    mark_control_terminal_pending(
+        config,
+        config.control_owner_id,
+        operation_id=operation_id,
+        status=status,
+    )
+    if (
+        config.control_owner_kind == "managed"
+        and config.protected_execution is None
+        and status in {"SUCCESS", "ROLLBACK_SUCCESS"}
+    ):
+        release_control_owner(config, config.control_owner_id)
+
+
 def apply(
     config: CutoverConfig,
     *,
@@ -1905,12 +2932,35 @@ def apply(
     """Apply one validated plan, retaining a bounded receipt and recovery path."""
 
     _validate_config(config)
+    if (
+        _is_production_control_target(config)
+        and config.strict_release_layout
+        and config.protected_execution is None
+    ):
+        raise CutoverSafetyError("production apply requires b649_protected_cutover.py")
+    if _is_production_control_target(config) and config.control_owner_id is None:
+        raise CutoverSafetyError("production control mutation requires a durable control owner")
     selected_plan = plan if plan is not None else build_plan(config, runner=runner, now=now)
     _plan_target_matches(config, selected_plan)
+    source_identity = _record(_record(selected_plan.get("source"), "plan source").get("new"))
+    owner_target = _normalized_owner_target(
+        {key: source_identity[key] for key in ("source_worktree", "head", "tree", "durable_ref")}
+    )
+    operation_id = config.operation_id or uuid4().hex
     recorder = ActionRecorder([])
     try:
         with CutoverLock(config.cutover_lock_path):
             recorder.event("cutover-lock-acquired", path=str(config.cutover_lock_path))
+            initial_receipt = _file_identity(config.receipt_path, missing_ok=True)[0]
+            initial_receipt_hash = None if initial_receipt is None else initial_receipt.sha256
+            check_control_owner(
+                config,
+                action="apply",
+                target=owner_target,
+                operation_id=operation_id,
+                managed_receipt_sha256=initial_receipt_hash,
+                begin_mutation=False,
+            )
             receipt_expected: FileIdentity | None = None
             existing_record = _receipt_status(config.receipt_path)
             if existing_record is not None:
@@ -1931,10 +2981,23 @@ def apply(
                     already = _apply_existing_receipt(config, existing, runner=runner)
                 if already is not None:
                     already["actions"] = recorder.actions
+                    _capture_managed_terminal(
+                        config,
+                        operation_id=_text(already.get("operation_id"), "operation id"),
+                        status="SUCCESS",
+                    )
                     return already
 
             fresh = _fresh_plan_matches(config, selected_plan, runner=runner)
-            receipt = _receipt_base(config, fresh, uuid4().hex)
+            receipt = _receipt_base(config, fresh, operation_id)
+            check_control_owner(
+                config,
+                action="apply",
+                target=owner_target,
+                operation_id=operation_id,
+                managed_receipt_sha256=initial_receipt_hash,
+                begin_mutation=True,
+            )
             try:
                 receipt_identity = _save_receipt(config, receipt, expected=receipt_expected)
             except BaseException as exc:
@@ -1999,6 +3062,12 @@ def apply(
                         receipt, f"receipt final write: {type(receipt_exc).__name__}: {receipt_exc}"
                     )
                     _best_effort_recovery_receipt(config, receipt, expected=receipt_identity)
+                else:
+                    _capture_managed_terminal(
+                        config,
+                        operation_id=operation_id,
+                        status=_text(receipt.get("status"), "managed receipt status"),
+                    )
                 return {
                     "command": "apply",
                     "task": TASK_ID,
@@ -2038,6 +3107,7 @@ def apply(
                     "actions": recorder.actions,
                     "mutation_summary": receipt["mutation_summary"],
                 }
+            _capture_managed_terminal(config, operation_id=operation_id, status="SUCCESS")
             return {
                 "command": "apply",
                 "task": TASK_ID,
@@ -2082,6 +3152,12 @@ def _receipt_to_plan(config: CutoverConfig, receipt: Record) -> Record:
     }
 
 
+def receipt_to_plan(config: CutoverConfig, receipt: Record) -> Record:
+    """Render a managed receipt as the validated rollback plan shape."""
+
+    return _receipt_to_plan(config, receipt)
+
+
 def rollback(
     config: CutoverConfig,
     *,
@@ -2093,6 +3169,21 @@ def rollback(
 
     del now
     _validate_config(config)
+    if (
+        _is_production_control_target(config)
+        and config.strict_release_layout
+        and config.protected_execution is None
+    ):
+        raise CutoverSafetyError("production rollback requires b649_protected_cutover.py")
+    if _is_production_control_target(config) and config.control_owner_id is None:
+        raise CutoverSafetyError("production control mutation requires a durable control owner")
+    reservation = inspect_control_owner(config)
+    if (
+        reservation is not None
+        and reservation["phase"] != "RELEASED"
+        and reservation["reservation_id"] != config.control_owner_id
+    ):
+        raise CutoverSafetyError("a different durable control owner blocks this rollback")
     stored_receipt, receipt_identity, _ = _load_json(config.receipt_path)
     loaded_receipt = stored_receipt if receipt is None else receipt
     if receipt is not None and _canonical_json(receipt) != _canonical_json(stored_receipt):
@@ -2131,6 +3222,10 @@ def rollback(
         source_worktree=Path(_text(old_source.get("source_worktree"), "old source")),
         strict_release_layout=False,
     )
+    rollback_target = _normalized_owner_target(
+        {key: old_source[key] for key in ("source_worktree", "head", "tree", "durable_ref")}
+    )
+    operation_id = _text(loaded_receipt.get("operation_id"), "rollback operation id")
     recorder = ActionRecorder([])
     try:
         with CutoverLock(config.cutover_lock_path):
@@ -2195,6 +3290,14 @@ def rollback(
             loaded_receipt["status"] = "ROLLBACK_IN_PROGRESS"
             loaded_receipt["before"] = rollback_before
             loaded_receipt["actions"] = recorder.actions
+            check_control_owner(
+                config,
+                action="rollback",
+                target=rollback_target,
+                operation_id=operation_id,
+                managed_receipt_sha256=receipt_identity.sha256,
+                begin_mutation=True,
+            )
             try:
                 receipt_identity = _save_receipt(
                     config,
@@ -2256,6 +3359,12 @@ def rollback(
                         loaded_receipt,
                         expected=receipt_identity,
                     )
+                else:
+                    _capture_managed_terminal(
+                        config,
+                        operation_id=operation_id,
+                        status="RECOVERY_REQUIRED",
+                    )
                 return {
                     "command": "rollback",
                     "task": TASK_ID,
@@ -2303,6 +3412,11 @@ def rollback(
                     "actions": recorder.actions,
                     "business_state": "UNCHANGED",
                 }
+            _capture_managed_terminal(
+                config,
+                operation_id=operation_id,
+                status="ROLLBACK_SUCCESS",
+            )
             return {
                 "command": "rollback",
                 "task": TASK_ID,
@@ -2355,6 +3469,9 @@ def reconcile_restored(
 
     del now
     _validate_config(config)
+    reservation = inspect_control_owner(config)
+    if reservation is not None and reservation.get("phase") != "RELEASED":
+        raise CutoverSafetyError("active durable control owner blocks reconcile-restored")
     stored_receipt, receipt_identity, raw_bytes = _load_json(config.receipt_path)
     loaded_receipt = stored_receipt if receipt is None else receipt
     if receipt is not None and _canonical_json(receipt) != _canonical_json(stored_receipt):
@@ -2491,11 +3608,15 @@ def parser() -> JsonParser:
     )
     _add_common(apply_parser, source_required=True)
     apply_parser.add_argument("--plan-file")
+    apply_parser.add_argument("--protected-request")
+    apply_parser.add_argument("--protected-execution")
     rollback_parser = commands.add_parser(
         "rollback", allow_abbrev=False, help="Restore one receipt-bound prestate."
     )
     _add_common(rollback_parser, source_required=False)
     rollback_parser.add_argument("--receipt-file")
+    rollback_parser.add_argument("--protected-request")
+    rollback_parser.add_argument("--protected-execution")
     reconcile_parser = commands.add_parser(
         "reconcile-restored",
         allow_abbrev=False,
@@ -2509,7 +3630,10 @@ def parser() -> JsonParser:
 
 
 def _config_from_args(
-    args: argparse.Namespace, *, source_worktree: Path | None = None
+    args: argparse.Namespace,
+    *,
+    source_worktree: Path | None = None,
+    receipt_path: Path | None = None,
 ) -> CutoverConfig:
     source_value = source_worktree or (
         None if args.source_worktree is None else Path(args.source_worktree)
@@ -2522,7 +3646,7 @@ def _config_from_args(
         source_worktree=source_value,
         launch_domain=args.launch_domain,
         plist_path=Path(args.plist_path),
-        receipt_path=Path(args.receipt_path),
+        receipt_path=receipt_path or Path(args.receipt_path),
         cutover_lock_path=Path(args.cutover_lock_path),
         primary_lock_path=Path(args.primary_lock_path),
         shadow_lock_path=Path(args.shadow_lock_path),
@@ -2543,6 +3667,30 @@ def _error_result(command_name: str, status: str, exc: Exception) -> Record:
     }
 
 
+
+def protected_config(args: argparse.Namespace) -> CutoverConfig:
+    if args.command == "rollback":
+        receipt_path = Path(args.receipt_file) if args.receipt_file else Path(args.receipt_path)
+        receipt, _, _ = _load_json(receipt_path)
+        new_source_record = _record(
+            _record(receipt.get("prestate"), "receipt prestate").get("new_source"),
+            "new source",
+        )
+        config = _config_from_args(
+            args,
+            source_worktree=Path(
+                _text(new_source_record.get("source_worktree"), "new source worktree")
+            ),
+            receipt_path=receipt_path,
+        )
+        return replace(
+            config,
+            expected_head=_text(new_source_record.get("head"), "new source head"),
+            expected_tree=_text(new_source_record.get("tree"), "new source tree"),
+            durable_ref=_text(new_source_record.get("durable_ref"), "new source durable ref"),
+        )
+    return _config_from_args(args)
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -2553,6 +3701,13 @@ def main(
     try:
         args = parser().parse_args(argv)
         command_name = args.command
+        if (
+            args.command in {"apply", "rollback"}
+            and (args.protected_request is not None or args.protected_execution is not None)
+        ):
+            from tools.b649_protected_cutover import run_managed_child
+
+            return run_managed_child(args, runner=runner)
         if args.command == "plan":
             result = build_plan(_config_from_args(args), runner=runner, now=now)
             print(_canonical_json(result))
@@ -2630,6 +3785,8 @@ __all__ = [
     "build_plan",
     "main",
     "parser",
+    "protected_config",
+    "receipt_to_plan",
     "reconcile_restored",
     "rollback",
     "run_command",

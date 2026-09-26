@@ -4,8 +4,10 @@ Under a fair BIG_LOTTO draw every single ticket has the same OFFICIAL_ANY_PRIZE
 probability (``7729/249711``), so no ticket beats another one-for-one. What a
 K-ticket set does change is how much its tickets overlap, and with it
 P(at least one ticket wins). K10 remains the frozen HARD_DIV pairwise-overlap
-radius2 authority from sealed-geometry v2; K20 is its direct OFFICIAL_ANY_PRIZE
-terminal successor in v3. K5 is the best-known disjoint construction. They
+radius2 authority from sealed-geometry v2; K20 is its OFFICIAL_ANY_PRIZE
+successor, most recently advanced in v4 by an exhaustive two-ticket
+double-cross-swap ascent over the v3 terminal. K5 is the best-known disjoint
+construction. They
 carry no predictive signal: they do not depend on the target draw, the
 prediction streams, or any historical outcome. Their probabilities are exact
 counts over the full outcome space, verified by
@@ -29,7 +31,7 @@ from typing import Final
 type Ticket = tuple[int, ...]
 
 SEALED_GEOMETRY_METHOD_ID: Final = "B649_SEALED_GEOMETRY_PORTFOLIO"
-SEALED_GEOMETRY_METHOD_VERSION: Final = "3.0.0"
+SEALED_GEOMETRY_METHOD_VERSION: Final = "4.0.0"
 PROBABILITY_MODEL: Final = "BIG_LOTTO_UNIFORM_FAIR_DRAW"
 PRIZE_EVENT: Final = "OFFICIAL_ANY_PRIZE"
 POOL_SIZE: Final = 49
@@ -123,40 +125,39 @@ _K10 = SealedGeometryPortfolio(
     official_any_prize_probability=Fraction(536005, 1827672),
 )
 
-# Direct OFFICIAL_ANY_PRIZE terminal successor to sealed-geometry v2.
+# OFFICIAL_ANY_PRIZE successor to sealed-geometry v3: an exhaustive two-ticket
+# double-cross-swap local-search ascent (R1-R5) over the v3 terminal, with the
+# R5 champion sealed against the full outcome space.
 _K20 = SealedGeometryPortfolio(
     ticket_count=20,
     tickets=(
         (1, 2, 34, 41, 42, 45),
         (1, 17, 22, 30, 33, 43),
         (2, 5, 33, 35, 40, 48),
-        (3, 4, 6, 10, 15, 23),
+        (3, 4, 14, 15, 26, 27),
+        (3, 8, 13, 28, 31, 36),
         (3, 9, 12, 16, 29, 39),
-        (3, 13, 14, 28, 36, 44),
-        (4, 7, 11, 16, 24, 47),
-        (4, 8, 26, 31, 37, 39),
-        (5, 17, 25, 27, 36, 41),
+        (4, 7, 23, 37, 39, 44),
+        (4, 18, 20, 24, 28, 29),
+        (5, 17, 25, 32, 41, 47),
         (6, 7, 9, 13, 18, 26),
+        (6, 10, 11, 16, 24, 36),
         (7, 8, 10, 14, 19, 29),
-        (8, 9, 11, 15, 20, 28),
+        (8, 9, 11, 15, 20, 46),
         (11, 12, 14, 18, 23, 31),
-        (12, 13, 15, 19, 24, 32),
+        (12, 13, 15, 19, 24, 37),
         (16, 19, 23, 26, 28, 46),
-        (17, 21, 34, 40, 44, 49),
-        (18, 20, 24, 29, 37, 46),
+        (17, 27, 34, 38, 40, 44),
         (21, 25, 30, 38, 45, 48),
+        (21, 32, 40, 42, 43, 49),
         (22, 27, 35, 45, 47, 49),
-        (27, 32, 38, 40, 42, 43),
     ),
-    portfolio_sha256="242a04c1236f53d74a939f24495868287a4ad63d63b20903fc91d5987b14a9bd",
-    source_id="B649_SEALED_V2_DIRECT_OFFICIAL_ANY_PRIZE_ITERATIVE_ASCENT_R1_TERMINAL_K20",
-    source_locator=(
-        "docs/research/matrix-native-results/"
-        "b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json"
-    ),
-    source_sha256="d52b693cebd00be57d8be0ab6db7fad78138d439e45a1a0ba424e4805074392b",
-    m3_plus_probability=Fraction(1601861, 4661272),
-    official_any_prize_probability=Fraction(7448829, 14316764),
+    portfolio_sha256="34f3905bd1cf46b910330e4e8ee9d7168c6a1421be8f414ceccd0ada17551891",
+    source_id="B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R5",
+    source_locator=("docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json"),
+    source_sha256="90e701d207d0951e92014a895210702b9a5ab4d4851f6709cff664c0345ac280",
+    m3_plus_probability=Fraction(200258, 582659),
+    official_any_prize_probability=Fraction(44709019, 85900584),
 )
 
 SEALED_GEOMETRY_PORTFOLIOS: Final[Mapping[int, SealedGeometryPortfolio]] = MappingProxyType(

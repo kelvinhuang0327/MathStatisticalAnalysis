@@ -9,8 +9,10 @@ import hashlib
 import json
 import os
 import plistlib
+import shutil
 import stat
 import subprocess
+import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -27,7 +29,7 @@ OLD_HEAD = "3" * 40
 OLD_TREE = "4" * 40
 LEGACY_HEAD = "5" * 40
 LEGACY_TREE = "6" * 40
-UID = os.getuid()
+UID = os.getuid() + 1000000
 DOMAIN = f"gui/{UID}"
 # A receipt-bound OLD/PRESTATE worktree name that predates the
 # B649_PRODUCTION_<HEAD> release-materialization convention -- the real
@@ -61,6 +63,7 @@ def _completed(
 @dataclass
 class Fixture:
     root: Path
+    old_name: str = field(default=f"B649_PRODUCTION_{OLD_HEAD}")
     canonical: Path = field(init=False)
     worktree_parent: Path = field(init=False)
     new: Path = field(init=False)
@@ -84,7 +87,7 @@ class Fixture:
         self.canonical.mkdir()
         self.worktree_parent = self.root / ".worktrees" / self.canonical.name
         self.new = self.worktree_parent / f"B649_PRODUCTION_{NEW_HEAD}"
-        self.old = self.worktree_parent / f"B649_PRODUCTION_{OLD_HEAD}"
+        self.old = self.worktree_parent / self.old_name
         self.make_source(self.new)
         self.make_source(self.old)
 
@@ -190,6 +193,7 @@ class FakeLaunchd:
         default_factory=lambda: [f"424242 1 {UID} S /usr/bin/fixture-shell"]
     )
     file_rows: list[str] = field(default_factory=lambda: ["p424242", "fcwd", "n/tmp"])
+    vanished_pids: set[int] = field(default_factory=lambda: set[int]())
     fail_bootstrap_new_once: bool = False
     fail_command_once: tuple[str, ...] | None = None
     after_mutation: Callable[[tuple[str, ...]], None] | None = None
@@ -250,8 +254,11 @@ class FakeLaunchd:
             self.after_mutation(args)
 
     def __call__(self, argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
-        args = tuple(argv)
-        self.calls.append(args)
+        raw_args = tuple(argv)
+        self.calls.append(raw_args)
+        args = raw_args
+        if args[:3] == ("git", "-c", "core.fsmonitor=false"):
+            args = ("git", *args[3:])
         if self.fail_command_once == args:
             self.fail_command_once = None
             return _completed(args, stderr="fake mutation failure", returncode=1)
@@ -299,6 +306,10 @@ class FakeLaunchd:
             )
         if args == ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command="):
             return _completed(args, "\n".join(self.process_rows) + "\n")
+        if len(args) == 5 and args[0] == "ps" and args[1] == "-p" and args[3:] == ("-o", "pid="):
+            requested = {int(value) for value in args[2].split(",")}
+            alive = sorted(requested - self.vanished_pids)
+            return _completed(args, "\n".join(str(pid) for pid in alive) + "\n")
         if args == ("lsof", "-nP", "-a", "-u", str(UID), "-F", "pfn"):
             return _completed(args, "\n".join(self.file_rows) + "\n")
         if args == ("launchctl", "disable", f"{DOMAIN}/{cutover.LABEL}"):
@@ -341,6 +352,71 @@ def test_fake_launchd_rejects_bootstrap_while_disabled(fixture: Fixture) -> None
     assert result.stderr == "service is disabled"
     assert runner.loaded is False
     assert runner.enabled is False
+
+
+def test_source_validation_fsmonitor_metadata_is_passive_before_ownership_snapshot(
+    fixture: Fixture,
+) -> None:
+    runner = FakeLaunchd(fixture)
+    git_admin = fixture.canonical / ".git" / "worktrees" / fixture.new.name
+    git_admin.mkdir(parents=True)
+    (git_admin / "index").touch()
+    (fixture.new / ".git").write_text(f"gitdir: {git_admin}\n", encoding="utf-8")
+    fsmonitor_pid = 424243
+    status_call = (
+        "git",
+        "-c",
+        "core.fsmonitor=false",
+        "--no-optional-locks",
+        "-C",
+        str(fixture.new),
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+    )
+
+    def runner_after_source_validation(argv: Sequence[str]) -> subprocess.CompletedProcess[str]:
+        result = runner(argv)
+        if tuple(argv) == status_call:
+            runner.process_rows.append(
+                f"{fsmonitor_pid} 1 {UID} S git fsmonitor--daemon run"
+            )
+            runner.file_rows.extend(
+                [
+                    f"p{fsmonitor_pid}",
+                    "fcwd",
+                    "n/tmp",
+                    "ftxt",
+                    "n/usr/bin/git",
+                    "f3",
+                    f"n{git_admin / 'index'}",
+                ]
+            )
+        return result
+
+    validate_source = cast(Callable[..., dict[str, object]], vars(cutover)["_validate_source"])
+    ownership_snapshot = cast(
+        Callable[..., dict[str, object]], vars(cutover)["_ownership_snapshot"]
+    )
+    source = validate_source(
+        fixture.config,
+        runner_after_source_validation,
+        role="new",
+        expected_head=NEW_HEAD,
+        expected_tree=NEW_TREE,
+        expected_ref=fixture.config.durable_ref,
+    )
+    assert any(row.startswith(f"{fsmonitor_pid} ") for row in runner.process_rows)
+
+    ownership = ownership_snapshot(fixture.config, runner_after_source_validation, source)
+
+    runtime = _object(ownership["runtime"])
+    process_calls = runner.calls
+    assert process_calls.index(status_call) < process_calls.index(
+        ("ps", "-ww", "-axo", "pid=,ppid=,uid=,stat=,command=")
+    )
+    assert runtime["classification"] == "ABSENT"
+    assert runtime["pids"] == []
 
 
 def _assert_business_state_unchanged(fixture: Fixture) -> None:
@@ -826,10 +902,13 @@ def test_plan_blocks_missing_or_malformed_process_state(fixture: Fixture, state:
 def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
     fixture: Fixture,
 ) -> None:
+    git_executable = shutil.which("git")
+    assert git_executable is not None
+    git_executable = str(Path(git_executable).resolve(strict=True))
     runner = FakeLaunchd(fixture)
     runner.process_rows = [
         (
-            f"10793 1 {UID} S /Library/Developer/CommandLineTools/usr/libexec/git-core/git "
+            f"10793 1 {UID} S {git_executable} "
             "fsmonitor--daemon run --detach --ipc-threads=8"
         )
     ]
@@ -837,6 +916,10 @@ def test_plan_passes_when_only_passive_git_fsmonitor_daemon_is_present(
         "p10793",
         "fcwd",
         "n/Users/kelvin",
+        "ftxt",
+        f"n{git_executable}",
+        "ftxt",
+        f"n{sys.executable}",
         "f4",
         f"n{fixture.old}",
     ]
@@ -1452,6 +1535,7 @@ def _patch_production_paths(monkeypatch: pytest.MonkeyPatch, fixture: Fixture) -
     """
 
     monkeypatch.setattr(cutover, "DEFAULT_PLIST_PATH", fixture.plist_path)
+    monkeypatch.setattr(cutover, "DOMAIN", DOMAIN)
     monkeypatch.setattr(cutover, "DEFAULT_OPERATION_ROOT", fixture.operation_root)
     monkeypatch.setattr(cutover, "DEFAULT_RECEIPT_PATH", fixture.receipt_path)
     monkeypatch.setattr(cutover, "DEFAULT_CUTOVER_LOCK_PATH", fixture.cutover_lock_path)
@@ -2012,3 +2096,429 @@ def test_cli_reconcile_restored_finalizes_and_reports_success(
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "ROLLBACK_SUCCESS"
     assert runner.mutation_calls == []
+
+
+OWNER_CONTROL_VERSION: cutover.Record = {"head": "5" * 40, "tree": "6" * 40}
+
+
+def _authorized_owner(
+    fixture: Fixture,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    target: dict[str, object] | None = None,
+    operation_id: str | None = None,
+) -> tuple[cutover.CutoverConfig, dict[str, object], dict[str, object], str, str]:
+    fixture.scheduler_root.mkdir(mode=0o700, parents=True, exist_ok=True)
+    monkeypatch.setattr(cutover, "control_version", lambda: OWNER_CONTROL_VERSION)
+    reservation_id = str(cutover.uuid4())
+    selected_target: cutover.Record = target or {
+        "source_worktree": str(fixture.new),
+        "head": NEW_HEAD,
+        "tree": NEW_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{NEW_HEAD}",
+    }
+    selected_operation = operation_id or cutover.uuid4().hex
+    reservation = cutover.acquire_control_owner(
+        fixture.config,
+        action="apply",
+        target=selected_target,
+        reservation_id=reservation_id,
+        version=OWNER_CONTROL_VERSION,
+    )
+    file_identity = cast(
+        Callable[..., tuple[cutover.FileIdentity | None, bytes | None]],
+        vars(cutover)["_file_identity"],
+    )
+    initial_identity, _ = file_identity(fixture.receipt_path, missing_ok=True)
+    initial_hash = None if initial_identity is None else initial_identity.sha256
+    bound = cutover.bind_control_owner(
+        fixture.config,
+        reservation_id,
+        action="apply",
+        target=selected_target,
+        operation_id=selected_operation,
+        managed_receipt_sha256=initial_hash,
+        version=OWNER_CONTROL_VERSION,
+    )
+    authorized = cutover.authorize_control_owner(
+        fixture.config,
+        reservation_id,
+        cutover.control_owner_authorization(bound),
+    )
+    config = replace(
+        fixture.config,
+        control_owner_id=reservation_id,
+        operation_id=selected_operation,
+    )
+    assert reservation["managed_receipt_sha256"] is None
+    return config, authorized, selected_target, selected_operation, reservation_id
+
+
+def test_production_owner_is_shared_across_receipt_paths_and_owner_classes(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    shared_owner_path = fixture.root / "shared-production-control-owner.json"
+    monkeypatch.setattr(cutover, "PRODUCTION_CONTROL_OWNER_PATH", shared_owner_path)
+    target: cutover.Record = {
+        "source_worktree": str(fixture.new),
+        "head": NEW_HEAD,
+        "tree": NEW_TREE,
+        "durable_ref": f"refs/heads/runtime/b649/{NEW_HEAD}",
+    }
+    managed_config = replace(
+        fixture.config,
+        launch_domain=cutover.DOMAIN,
+        plist_path=cutover.DEFAULT_PLIST_PATH,
+        receipt_path=fixture.root / "managed-owner-a" / "receipt.json",
+    )
+    protected_config = replace(
+        managed_config,
+        receipt_path=fixture.root / "managed-owner-b" / "receipt.json",
+    )
+
+    managed_owner = cutover.acquire_control_owner(
+        managed_config,
+        action="apply",
+        target=target,
+        owner_kind="managed",
+        version=OWNER_CONTROL_VERSION,
+    )
+
+    observed = cutover.inspect_control_owner(protected_config)
+    assert observed is not None
+    assert observed["reservation_id"] == managed_owner["reservation_id"]
+    with pytest.raises(cutover.CutoverSafetyError, match="blocks takeover"):
+        cutover.acquire_control_owner(
+            protected_config,
+            action="apply",
+            target=target,
+            owner_kind="protected",
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_durable_owner_survives_worker_exit_and_blocks_competing_owner(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, owner, target, operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    def stale_worker(_pid: int) -> str:
+        return "STALE_PROCESS"
+
+    monkeypatch.setattr(cutover, "_pid_state", stale_worker)
+
+    inspected = cutover.inspect_control_owner(config)
+    assert inspected is not None
+    assert inspected["worker_state"] == "STALE_PROCESS"
+    assert inspected["reservation_id"] == reservation_id
+    assert inspected["phase"] == "AUTHORIZED_PENDING"
+    resumed = cutover.resume_control_owner(
+        config, reservation_id, version=OWNER_CONTROL_VERSION
+    )
+    assert resumed["reservation_id"] == reservation_id
+    assert resumed["operation_id"] == operation_id
+    assert resumed["target"] == target
+    assert resumed["authorization"] == owner["authorization"]
+    with pytest.raises(cutover.CutoverSafetyError, match="blocks takeover"):
+        cutover.acquire_control_owner(
+            fixture.config,
+            action="apply",
+            target=target,
+            reservation_id=str(cutover.uuid4()),
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_stale_owner_requires_explicit_two_step_abandonment(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, _target, _operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    def stale_worker(_pid: int) -> str:
+        return "STALE_PROCESS"
+
+    monkeypatch.setattr(cutover, "_pid_state", stale_worker)
+
+    abandoned = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="ABANDON_BEFORE_MUTATION",
+        version=OWNER_CONTROL_VERSION,
+    )
+    assert abandoned["phase"] == "ABANDONED"
+    released = cutover.reconcile_control_owner(
+        config,
+        reservation_id,
+        disposition="RELEASE_ABANDONED",
+        version=OWNER_CONTROL_VERSION,
+    )
+    assert released["phase"] == "RELEASED"
+    assert released["release_evidence"] == {
+        "kind": "EXPLICIT_ABANDON_NO_MUTATION",
+        "verified": True,
+    }
+
+
+def test_active_owner_blocks_direct_managed_apply_before_mutation(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    _authorized_owner(fixture, monkeypatch)
+    runner.calls.clear()
+
+    with pytest.raises(cutover.CutoverSafetyError, match="different durable control owner"):
+        cutover.apply(fixture.config, plan=plan, runner=runner)
+
+    assert runner.mutation_calls == []
+    assert not fixture.receipt_path.exists()
+
+
+@pytest.mark.parametrize("action", ["apply", "rollback"])
+@pytest.mark.parametrize("production_binding", ["receipt", "plist", "domain"])
+def test_non_strict_managed_api_requires_owner_for_production_receipt(
+    fixture: Fixture, action: str, production_binding: str
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    overrides: dict[str, object] = {"strict_release_layout": False}
+    if production_binding == "receipt":
+        overrides["receipt_path"] = cutover.DEFAULT_RECEIPT_PATH
+    elif production_binding == "plist":
+        overrides["plist_path"] = cutover.DEFAULT_PLIST_PATH
+    else:
+        overrides["launch_domain"] = cutover.DOMAIN
+    production_config = replace(fixture.config, **overrides)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="requires a durable control owner"):
+        if action == "apply":
+            cutover.apply(production_config, plan=plan, runner=runner)
+        else:
+            cutover.rollback(production_config, runner=runner)
+
+    assert runner.mutation_calls == []
+
+
+@pytest.mark.parametrize(
+    "drift",
+    ["owner", "operation", "receipt", "target", "control"],
+)
+def test_owner_authorization_rejects_identity_drift(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch, drift: str
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    actual_owner = reservation_id
+    actual_target = target
+    actual_operation = operation_id
+    actual_receipt_hash: str | None = None
+    if drift == "owner":
+        actual_owner = cutover.uuid4().hex
+    elif drift == "operation":
+        actual_operation = cutover.uuid4().hex
+    elif drift == "receipt":
+        actual_receipt_hash = "a" * 64
+    elif drift == "target":
+        actual_target = {**target, "head": "7" * 40}
+    elif drift == "control":
+        monkeypatch.setattr(
+            cutover,
+            "control_version",
+            lambda: {"head": "8" * 40, "tree": "9" * 40},
+        )
+
+    with pytest.raises(cutover.CutoverSafetyError):
+        cutover.check_control_owner(
+            replace(config, control_owner_id=actual_owner),
+            action="apply",
+            target=actual_target,
+            operation_id=actual_operation,
+            managed_receipt_sha256=actual_receipt_hash,
+        )
+
+
+def test_started_owner_is_recoverable_and_cannot_release_before_terminal_evidence(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    started = cutover.check_control_owner(
+        config,
+        action="apply",
+        target=target,
+        operation_id=operation_id,
+        managed_receipt_sha256=None,
+        begin_mutation=True,
+    )
+    assert started is not None and started["phase"] == "MUTATION_IN_PROGRESS"
+    with pytest.raises(cutover.CutoverSafetyError, match="no verified terminal evidence"):
+        cutover.release_control_owner(config, reservation_id)
+
+    resumed = cutover.resume_control_owner(
+        config, reservation_id, version=OWNER_CONTROL_VERSION
+    )
+    assert resumed["phase"] == "MUTATION_IN_PROGRESS"
+    inspected = cutover.inspect_control_owner(config)
+    assert inspected is not None
+    assert inspected["reservation_id"] == reservation_id
+    with pytest.raises(cutover.CutoverSafetyError, match="started mutation"):
+        cutover.reconcile_control_owner(
+            config,
+            reservation_id,
+            disposition="ABANDON_BEFORE_MUTATION",
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+def test_verified_managed_terminal_receipt_allows_owner_release(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    cutover.check_control_owner(
+        config,
+        action="apply",
+        target=target,
+        operation_id=operation_id,
+        managed_receipt_sha256=None,
+        begin_mutation=True,
+    )
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(
+        fixture.receipt_path,
+        {"operation_id": operation_id, "status": "SUCCESS", "phase": "COMPLETED"},
+        expected=None,
+    )
+    cutover.mark_control_terminal_pending(
+        config, reservation_id, operation_id=operation_id, status="SUCCESS"
+    )
+
+    released = cutover.release_control_owner(config, reservation_id)
+
+    assert released["phase"] == "RELEASED"
+    assert _object(released["release_evidence"])["verified"] is True
+
+
+def test_terminal_verification_drift_retains_control_owner(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    cutover.check_control_owner(
+        config,
+        action="apply",
+        target=target,
+        operation_id=operation_id,
+        managed_receipt_sha256=None,
+        begin_mutation=True,
+    )
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(
+        fixture.receipt_path,
+        {"operation_id": operation_id, "status": "SUCCESS", "phase": "COMPLETED"},
+        expected=None,
+    )
+    cutover.mark_control_terminal_pending(
+        config, reservation_id, operation_id=operation_id, status="SUCCESS"
+    )
+    file_identity = cast(
+        Callable[..., tuple[cutover.FileIdentity | None, bytes | None]],
+        vars(cutover)["_file_identity"],
+    )
+    write_json = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_write_json"])
+    write_json(
+        fixture.receipt_path,
+        {
+            "operation_id": operation_id,
+            "status": "RECOVERY_REQUIRED",
+            "phase": "RECOVERY_REQUIRED",
+        },
+        expected=file_identity(fixture.receipt_path, missing_ok=False)[0],
+    )
+
+    with pytest.raises(cutover.CutoverSafetyError, match="verification failed"):
+        cutover.release_control_owner(config, reservation_id)
+    owner = cutover.inspect_control_owner(config)
+    assert owner is not None and owner["phase"] == "TERMINAL_CAPTURE_PENDING"
+
+
+def test_managed_terminal_receipt_write_failure_retains_started_owner(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    runner = FakeLaunchd(fixture)
+    plan = cutover.build_plan(fixture.config, runner=runner)
+    assert plan["status"] == "PASS"
+    config, _owner, _target, _operation_id, reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    original_save = cast(Callable[..., cutover.FileIdentity], vars(cutover)["_save_receipt"])
+
+    def fail_success(
+        selected_config: cutover.CutoverConfig,
+        value: dict[str, object],
+        *,
+        expected: cutover.FileIdentity | None,
+    ) -> cutover.FileIdentity:
+        if value.get("status") == "SUCCESS":
+            raise OSError("injected terminal evidence write failure")
+        return original_save(selected_config, value, expected=expected)
+
+    monkeypatch.setattr(cutover, "_save_receipt", fail_success)
+    result = cutover.apply(config, plan=plan, runner=runner)
+
+    assert result["status"] == "RECOVERY_REQUIRED"
+    owner = cutover.inspect_control_owner(config)
+    assert owner is not None
+    assert owner["reservation_id"] == reservation_id
+    assert owner["phase"] == "MUTATION_IN_PROGRESS"
+    assert owner["mutation_started"] is True
+
+
+def test_malformed_durable_owner_fails_closed(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, target, _operation_id, _reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    owner_path = config.receipt_path.with_name(cutover.CONTROL_OWNER_NAME)
+    owner_path.write_text('{"schema":"unknown"}\n', encoding="utf-8")
+    owner_path.chmod(0o600)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="schema is invalid"):
+        cutover.inspect_control_owner(config)
+    with pytest.raises(cutover.CutoverSafetyError, match="schema is invalid"):
+        cutover.acquire_control_owner(
+            fixture.config,
+            action="apply",
+            target=target,
+            version=OWNER_CONTROL_VERSION,
+        )
+
+
+
+def test_active_owner_blocks_reconcile_restored_before_receipt_reads_or_mutation(
+    fixture: Fixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config, _owner, _target, operation_id, _reservation_id = _authorized_owner(
+        fixture, monkeypatch
+    )
+    runner = FakeLaunchd(fixture)
+
+    with pytest.raises(cutover.CutoverSafetyError, match="active durable control owner"):
+        cutover.reconcile_restored(
+            config,
+            expected_operation_id=operation_id,
+            expected_receipt_sha256="a" * 64,
+            runner=runner,
+        )
+
+    assert runner.mutation_calls == []
+    assert not fixture.receipt_path.exists()

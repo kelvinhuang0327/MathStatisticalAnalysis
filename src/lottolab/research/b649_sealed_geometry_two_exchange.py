@@ -1,12 +1,14 @@
-"""Exact two-number-exchange steepest ascent for the sealed B649 K20 portfolio.
+"""Exact single-ticket number-exchange steepest ascent for the sealed B649 K20 portfolio.
 
 One scan enumerates the complete single-ticket exchange neighborhood of a portfolio --
 for each ticket remove exactly ``e`` of its numbers and insert exactly ``e`` of the
-numbers it lacks, every other ticket unchanged (``20 * C(6, 2) * C(43, 2) = 270900``
-candidates for the K20 two-number exchange) -- and scores every candidate on exact
-OFFICIAL_ANY_PRIZE over the complete fair-draw outcome space. The ascent accepts the
-single best strict improvement (ties: lexicographically smallest canonical portfolio)
-and rescans until one complete scan finds none.
+numbers it lacks, every other ticket unchanged, for every ``e`` in the scan's exchange
+sizes (``20 * C(6, 2) * C(43, 2) = 270900`` candidates for the K20 two-number exchange,
+``20 * C(6, 3) * C(43, 3) = 4936400`` for the three-number exchange, 5212460 for the
+1-, 2- and 3-number union) -- and scores every candidate on exact OFFICIAL_ANY_PRIZE over
+the complete fair-draw outcome space. The ascent accepts the single best strict
+improvement (ties: lexicographically smallest canonical portfolio) and rescans until one
+complete scan finds none.
 
 Exact delta scoring
 -------------------
@@ -27,9 +29,10 @@ B649 that forces ``w(3) = 1/4, w(4) = 0, w(5) = 1/2, w(6) = -2``. Through the su
 marginals ``V_k(A) = sum_{B >= A} u(B)`` -- exact integer down-projections of ``u`` --
 the newly won ``E`` count is ``(T3 - 4 T4 + 12 T5 - 40 T6) / 4`` with ``T_k`` the sum
 of ``V_k`` over the ``k``-subsets of ``t'``: 42 table lookups per candidate instead of
-a full 601,304,088-outcome evaluation. Arithmetic is int64 throughout, every division
-is checked to be exact, and every accepted portfolio is re-scored by
-``lottolab.research.b649_official_any_prize_exact.evaluate_portfolio``.
+a full 601,304,088-outcome evaluation. Nothing here depends on how ``t'`` relates to the
+ticket it replaces, so one scorer serves every exchange size. Arithmetic is int64
+throughout, every division is checked to be exact, and every accepted portfolio is
+re-scored by ``lottolab.research.b649_official_any_prize_exact.evaluate_portfolio``.
 
 No historical draw, prediction stream, or live result is read: the only inputs are
 the sealed portfolio and the combinatorial outcome space.
@@ -40,6 +43,7 @@ from __future__ import annotations
 import argparse
 import itertools
 import json
+import random
 import sys
 import time
 from collections.abc import Callable, Mapping, Sequence
@@ -57,6 +61,7 @@ from lottolab.application.b649_sealed_geometry_portfolio import (
     SEALED_GEOMETRY_METHOD_ID,
     SEALED_GEOMETRY_METHOD_VERSION,
     SEALED_GEOMETRY_PORTFOLIOS,
+    SealedGeometryPortfolio,
     canonical_portfolio_sha256,
     verify_sealed_geometry_portfolio,
 )
@@ -75,8 +80,11 @@ type Portfolio = tuple[Ticket, ...]
 type TicketRows = npt.NDArray[np.int64]
 type OutcomeCounts = npt.NDArray[np.int64]
 
-TASK_ID: Final = "B649_V3_K20_EXACT_TWO_NUMBER_EXCHANGE_SEARCH_R1"
+TWO_EXCHANGE_TASK_ID: Final = "B649_V3_K20_EXACT_TWO_NUMBER_EXCHANGE_SEARCH_R1"
+THREE_EXCHANGE_TASK_ID: Final = "B649_V3_K20_EXACT_THREE_NUMBER_EXCHANGE_SEARCH_R1"
 TWO_NUMBER_EXCHANGE: Final = 2
+THREE_NUMBER_EXCHANGE: Final = 3
+UP_TO_THREE_NUMBER_EXCHANGES: Final = (1, 2, 3)
 BASELINE_TICKET_COUNT: Final = 20
 BASELINE_METHOD_VERSION: Final = "3.0.0"
 BASELINE_PORTFOLIO_SHA256: Final = (
@@ -89,6 +97,31 @@ BASELINE_WINNING_OUTCOMES: Final = 312850818
 KNOWN_V2_TICKET: Final = (3, 13, 14, 20, 36, 44)
 KNOWN_V3_TICKET: Final = (3, 13, 14, 28, 36, 44)
 KNOWN_V2_WINNING_OUTCOMES: Final = 312838750
+# Complete-neighborhood evidence for the unchanged v3 baseline that the three-number search
+# reuses instead of re-running: the terminal authority above certifies the one-number local
+# optimum, and this module's two-number search (commit 75fa570) scanned all 270900
+# two-number candidates without a strict improvement.
+PRIOR_ONE_EXCHANGE_EVIDENCE: Final = (
+    "docs/research/matrix-native-results/"
+    "b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json"
+    "#TERMINAL_ONE_NUMBER_EXCHANGE_LOCAL_OPTIMUM"
+)
+PRIOR_TWO_EXCHANGE_EVIDENCE: Final = (
+    "B649_V3_K20_EXACT_TWO_NUMBER_EXCHANGE_SEARCH_R1@75fa570bf4fc616a02722cbade6eb500f959a9c7"
+)
+_THREE_EXCHANGE_PARITY_SEED: Final = 20260926
+_THREE_EXCHANGE_SPREAD_INDICES: Final = (0, 4, 9, 14, 19)
+# BIG_LOTTO's recursion depth (draw 6, outright 3) on a 16-number pool: small enough to check
+# all 9405 <=3-number exchange candidates of this portfolio against the canonical evaluator,
+# yet far from covering every outcome (a 12-number pool saturates at three or four tickets,
+# so nearly every candidate would score the same). Its first two tickets share three
+# numbers, so the enumeration includes duplicate-ticket candidates.
+_SMALL_PARITY_SHAPE: Final = (16, 6, 3)
+_SMALL_PARITY_PORTFOLIO: Final = (
+    (1, 2, 3, 4, 5, 6),
+    (4, 5, 6, 7, 8, 9),
+    (1, 7, 10, 12, 14, 16),
+)
 _DEFAULT_CHUNK_SIZE: Final = 1 << 21
 _INT32_MAX: Final = int(np.iinfo(np.int32).max)
 
@@ -489,6 +522,22 @@ class ExchangeMove:
     removed_numbers: Ticket
     inserted_numbers: Ticket
 
+    @property
+    def exchange_size(self) -> int:
+        """How many numbers of the old ticket the move replaces."""
+
+        return len(self.removed_numbers)
+
+
+def _exchange_move(index: int, ticket: Ticket, new_ticket: Ticket) -> ExchangeMove:
+    return ExchangeMove(
+        ticket_index=index,
+        old_ticket=ticket,
+        new_ticket=new_ticket,
+        removed_numbers=tuple(number for number in ticket if number not in new_ticket),
+        inserted_numbers=tuple(number for number in new_ticket if number not in ticket),
+    )
+
 
 @dataclass(frozen=True, slots=True)
 class TicketNeighborhoodBest:
@@ -507,15 +556,20 @@ class TicketNeighborhoodBest:
 
 @dataclass(frozen=True, slots=True)
 class NeighborhoodScan:
-    """One complete exact scan of a portfolio's single-ticket exchange neighborhood."""
+    """One complete exact scan of a portfolio's single-ticket exchange neighborhood.
+
+    The ``*_by_size`` counts are aligned with ``exchange_sizes``.
+    """
 
     portfolio: Portfolio
     outcome_count: int
-    exchange_size: int
+    exchange_sizes: tuple[int, ...]
     candidate_count: int
+    candidate_count_by_size: tuple[int, ...]
     distinct_portfolio_count: int
     duplicate_ticket_candidate_count: int
     improving_candidate_count: int
+    improving_candidate_count_by_size: tuple[int, ...]
     best_outcome_count: int
     best_tie_count: int
     best_move: ExchangeMove
@@ -523,85 +577,106 @@ class NeighborhoodScan:
     per_ticket: tuple[TicketNeighborhoodBest, ...]
 
 
+def _exchange_sizes(exchange_sizes: Sequence[int]) -> tuple[int, ...]:
+    sizes = tuple(sorted(set(exchange_sizes)))
+    if not sizes or len(sizes) != len(exchange_sizes):
+        raise ValueError("exchange_sizes must be a non-empty collection of distinct sizes")
+    return sizes
+
+
 def scan_exchange_neighborhood(
     space: ExactExchangeSpace,
     portfolio: Sequence[Sequence[int]],
     *,
-    exchange_size: int = TWO_NUMBER_EXCHANGE,
+    exchange_sizes: Sequence[int] = (TWO_NUMBER_EXCHANGE,),
 ) -> NeighborhoodScan:
     """Exact-score every candidate of the complete single-ticket exchange neighborhood.
 
+    The neighborhood is the union over ``exchange_sizes``; a size-``e`` candidate keeps
+    exactly ``draw_size - e`` numbers of the ticket it replaces, so the sizes never overlap.
     A candidate that would repeat another ticket of the portfolio is scored but is not
     eligible (a sealed portfolio's tickets are distinct); it can never improve anyway,
     since everything it covers is already covered by the ticket it repeats.
+
+    Replacing ticket ``t`` of portfolio ``P`` by ``t' != t`` gives the multiset
+    ``P - {t} + {t'}``, whose differences from ``P`` are exactly ``{t}`` and ``{t'}``. The
+    colex-rank pair of ``(t, t')`` is therefore a canonical key of the resulting portfolio,
+    so candidates are deduplicated without materializing whole portfolios.
     """
 
+    sizes = _exchange_sizes(exchange_sizes)
     tickets = canonical_portfolio(portfolio, pool_size=space.pool_size, draw_size=space.draw_size)
     if len(set(tickets)) != len(tickets):
         raise ValueError("portfolio tickets must be distinct")
     coverage = space.coverage(tickets)
     current = coverage.outcome_count
     ticket_ranks = space.ticket_ranks(tickets)
+    ticket_space = comb(space.pool_size, space.draw_size)
     per_ticket: list[TicketNeighborhoodBest] = []
     portfolio_keys: list[npt.NDArray[np.int64]] = []
+    candidates_by_size = [0] * len(sizes)
+    improving_by_size = [0] * len(sizes)
     for index, ticket in enumerate(tickets):
         scorer = space.replacement_scorer(coverage, index)
         if int(space.replacement_outcome_counts(scorer, [ticket])[0]) != current:
             raise ArithmeticError(f"re-inserting ticket {index} does not reproduce the portfolio")
-        neighborhood = exchange_neighborhood(
-            ticket, pool_size=space.pool_size, exchange_size=exchange_size
-        )
-        counts = space.replacement_outcome_counts(scorer, neighborhood.rows)
-        ranks = space.ticket_ranks(neighborhood.rows)
-        if np.unique(ranks).size != ranks.size:
-            raise AssertionError("exchange neighborhood produced a repeated candidate ticket")
+        blocks = [
+            exchange_neighborhood(ticket, pool_size=space.pool_size, exchange_size=size).rows
+            for size in sizes
+        ]
+        rows = np.concatenate(blocks)
+        counts = space.replacement_outcome_counts(scorer, rows)
+        ranks = space.ticket_ranks(rows)
+        if np.unique(ranks).size != ranks.size or bool((ranks == ticket_ranks[index]).any()):
+            raise AssertionError("exchange neighborhood produced a repeated or unchanged ticket")
         other_ranks = np.delete(ticket_ranks, index)
         duplicate = np.isin(ranks, other_ranks)
         eligible = np.where(duplicate, -1, counts)
         best_count = int(eligible.max())
         if best_count < 0:
             raise ValueError(f"ticket {index} has no eligible exchange candidate")
+        improving = eligible > current
+        start = 0
+        for position, block in enumerate(blocks):
+            stop = start + block.shape[0]
+            candidates_by_size[position] += block.shape[0]
+            improving_by_size[position] += int(np.count_nonzero(improving[start:stop]))
+            start = stop
         others = tickets[:index] + tickets[index + 1 :]
-        tied: list[tuple[Portfolio, int]] = []
+        tied: list[tuple[Portfolio, Ticket]] = []
         for row in np.flatnonzero(eligible == best_count).tolist():
-            new_ticket = neighborhood.move(row)[2]
-            tied.append((tuple(sorted((*others, new_ticket))), row))
-        best_portfolio, best_row = min(tied)
-        removed, inserted, new_ticket = neighborhood.move(best_row)
+            new_ticket = tuple(int(number) for number in rows[row])
+            tied.append((tuple(sorted((*others, new_ticket))), new_ticket))
+        best_portfolio, new_ticket = min(tied)
         per_ticket.append(
             TicketNeighborhoodBest(
                 ticket_index=index,
                 ticket=ticket,
                 candidate_count=int(ranks.size),
                 duplicate_ticket_candidate_count=int(np.count_nonzero(duplicate)),
-                improving_candidate_count=int(np.count_nonzero(eligible > current)),
+                improving_candidate_count=int(np.count_nonzero(improving)),
                 best_outcome_count=best_count,
                 best_tie_count=len(tied),
-                best_move=ExchangeMove(index, ticket, new_ticket, removed, inserted),
+                best_move=_exchange_move(index, ticket, new_ticket),
                 best_portfolio=best_portfolio,
             )
         )
-        portfolio_keys.append(
-            np.sort(
-                np.column_stack(
-                    (np.broadcast_to(other_ranks, (ranks.size, other_ranks.size)), ranks)
-                ),
-                axis=1,
-            )
-        )
+        portfolio_keys.append(ranks + int(ticket_ranks[index]) * ticket_space)
     best_outcome_count = max(entry.best_outcome_count for entry in per_ticket)
     leaders = [entry for entry in per_ticket if entry.best_outcome_count == best_outcome_count]
     winner = min(leaders, key=lambda entry: entry.best_portfolio)
     return NeighborhoodScan(
         portfolio=tickets,
         outcome_count=current,
-        exchange_size=exchange_size,
+        exchange_sizes=sizes,
         candidate_count=sum(entry.candidate_count for entry in per_ticket),
-        distinct_portfolio_count=int(np.unique(np.concatenate(portfolio_keys), axis=0).shape[0]),
+        candidate_count_by_size=tuple(candidates_by_size),
+        distinct_portfolio_count=int(np.unique(np.concatenate(portfolio_keys)).size),
         duplicate_ticket_candidate_count=sum(
             entry.duplicate_ticket_candidate_count for entry in per_ticket
         ),
         improving_candidate_count=sum(entry.improving_candidate_count for entry in per_ticket),
+        improving_candidate_count_by_size=tuple(improving_by_size),
         best_outcome_count=best_outcome_count,
         best_tie_count=sum(entry.best_tie_count for entry in leaders),
         best_move=winner.best_move,
@@ -634,7 +709,7 @@ class ExchangeAscent:
 
     @property
     def local_optimum(self) -> bool:
-        """The last complete scan found no strict improvement."""
+        """The last complete scan (over its ``exchange_sizes``) found no strict improvement."""
 
         return self.scans[-1].best_outcome_count <= self.final_outcome_count
 
@@ -655,14 +730,18 @@ def exact_steepest_ascent(
     space: ExactExchangeSpace,
     portfolio: Sequence[Sequence[int]],
     *,
-    exchange_size: int = TWO_NUMBER_EXCHANGE,
+    exchange_sizes: Sequence[int] = (TWO_NUMBER_EXCHANGE,),
+    first_scan_exchange_sizes: Sequence[int] | None = None,
     draws: DrawMasks | None = None,
     on_scan: Callable[[NeighborhoodScan], None] | None = None,
 ) -> ExchangeAscent:
     """Accept the best strict improvement per complete scan until a scan finds none.
 
-    Each accepted portfolio is re-scored by the canonical evaluator and must agree
-    exactly; any disagreement aborts the ascent.
+    ``first_scan_exchange_sizes`` (default ``exchange_sizes``) narrows only the scan of the
+    starting portfolio, for a start already proven optimal under the other sizes; every
+    scan after an accepted move covers the complete ``exchange_sizes`` union. Each accepted
+    portfolio is re-scored by the canonical evaluator and must agree exactly; any
+    disagreement aborts the ascent.
     """
 
     if draws is None:
@@ -672,8 +751,9 @@ def exact_steepest_ascent(
     initial_portfolio, initial_count = current, current_count
     scans: list[NeighborhoodScan] = []
     accepted: list[AcceptedExchange] = []
+    sizes = exchange_sizes if first_scan_exchange_sizes is None else first_scan_exchange_sizes
     while True:
-        scan = scan_exchange_neighborhood(space, current, exchange_size=exchange_size)
+        scan = scan_exchange_neighborhood(space, current, exchange_sizes=sizes)
         if scan.outcome_count != current_count:
             raise ArithmeticError("accelerated and canonical portfolio counts disagree")
         scans.append(scan)
@@ -694,6 +774,7 @@ def exact_steepest_ascent(
             )
         )
         current, current_count = scan.best_portfolio, verified
+        sizes = exchange_sizes
     return ExchangeAscent(
         initial_portfolio=initial_portfolio,
         initial_outcome_count=initial_count,
@@ -784,6 +865,105 @@ def _scorer_parity_checks(
     return checks
 
 
+def _three_exchange_parity_checks(
+    space: ExactExchangeSpace, draws: DrawMasks, baseline: Portfolio
+) -> list[dict[str, object]]:
+    """Accelerated vs canonical exact counts for three-number replacements of ``baseline``.
+
+    Every ticket gets one seeded-random candidate plus the two candidates that meet the rest
+    of the portfolio hardest -- the largest overlap with any single other ticket, and the
+    largest overlap summed over all of them; five tickets also get rows spread across their
+    whole neighborhood.
+    """
+
+    coverage = space.coverage(baseline)
+    rng = random.Random(_THREE_EXCHANGE_PARITY_SEED)
+    checks: list[dict[str, object]] = []
+    for index, ticket in enumerate(baseline):
+        neighborhood = exchange_neighborhood(
+            ticket, pool_size=space.pool_size, exchange_size=THREE_NUMBER_EXCHANGE
+        )
+        other_masks = np.array(
+            coverage.masks[:index] + coverage.masks[index + 1 :], dtype=np.uint64
+        )
+        overlaps = np.bitwise_count(
+            _row_masks((neighborhood.rows - 1).astype(np.uint8))[:, np.newaxis] & other_masks
+        ).astype(np.int64)
+        single, total = overlaps.max(axis=1), overlaps.sum(axis=1)
+        last = neighborhood.rows.shape[0] - 1
+        # argmax takes the first row among ties, so every pick is deterministic.
+        samples = {
+            "RANDOM": rng.randint(0, last),
+            "MAX_ONE_TICKET_OVERLAP": int(np.argmax(single * (int(total.max()) + 1) + total)),
+            "MAX_TOTAL_OVERLAP": int(np.argmax(total * (int(single.max()) + 1) + single)),
+        }
+        if index in _THREE_EXCHANGE_SPREAD_INDICES:
+            samples |= {"FIRST": 0, "THIRD": last // 3, "TWO_THIRDS": 2 * last // 3, "LAST": last}
+        scorer = space.replacement_scorer(coverage, index)
+        accelerated = space.replacement_outcome_counts(
+            scorer, neighborhood.rows[list(samples.values())]
+        ).tolist()
+        for (label, row), count in zip(samples.items(), accelerated, strict=True):
+            portfolio = _replaced(baseline, index, neighborhood.move(row)[2])
+            canonical = _canonical_outcome_count(space, portfolio, draws)
+            checks.append(
+                {
+                    "CHECK": f"THREE_NUMBER_{label}[{index}][{row}]",
+                    "PORTFOLIO_SHA256": canonical_portfolio_sha256(sorted(portfolio)),
+                    "MAX_OVERLAP_WITH_ONE_OTHER_TICKET": int(single[row]),
+                    "TOTAL_OVERLAP_WITH_OTHER_TICKETS": int(total[row]),
+                    "ACCELERATED_WINNING_OUTCOMES": count,
+                    "CANONICAL_WINNING_OUTCOMES": canonical,
+                    "EXACT_MATCH": count == canonical,
+                }
+            )
+    return checks
+
+
+def _small_lottery_exchange_parity() -> dict[str, object]:
+    """Every <=3-number exchange candidate of a small-lottery portfolio vs the canonical count."""
+
+    pool_size, draw_size, outright_matches = _SMALL_PARITY_SHAPE
+    space = ExactExchangeSpace(
+        pool_size=pool_size, draw_size=draw_size, outright_matches=outright_matches
+    )
+    draws = all_main_draw_masks(pool_size, draw_size)
+    portfolio = canonical_portfolio(
+        _SMALL_PARITY_PORTFOLIO, pool_size=pool_size, draw_size=draw_size
+    )
+    coverage = space.coverage(portfolio)
+    candidates = dict.fromkeys(UP_TO_THREE_NUMBER_EXCHANGES, 0)
+    values: set[int] = set()
+    duplicates = exact = 0
+    for index, ticket in enumerate(portfolio):
+        scorer = space.replacement_scorer(coverage, index)
+        for size in UP_TO_THREE_NUMBER_EXCHANGES:
+            neighborhood = exchange_neighborhood(ticket, pool_size=pool_size, exchange_size=size)
+            counts = space.replacement_outcome_counts(scorer, neighborhood.rows).tolist()
+            for row, count in enumerate(counts):
+                replaced = _replaced(portfolio, index, neighborhood.move(row)[2])
+                canonical = _canonical_outcome_count(space, replaced, draws)
+                exact += int(count == canonical)
+                values.add(canonical)
+                duplicates += int(len(set(replaced)) != len(replaced))
+                candidates[size] += 1
+    total = sum(candidates.values())
+    return {
+        "POOL_SIZE": pool_size,
+        "DRAW_SIZE": draw_size,
+        "OUTRIGHT_MATCHES": outright_matches,
+        "PORTFOLIO": [list(ticket) for ticket in portfolio],
+        "PORTFOLIO_WINNING_OUTCOMES": coverage.outcome_count,
+        "TOTAL_OUTCOMES": space.total_outcomes,
+        "CANDIDATES_BY_EXCHANGE_SIZE": {str(size): count for size, count in candidates.items()},
+        "CANDIDATES": total,
+        "DISTINCT_CANONICAL_WINNING_OUTCOME_VALUES": len(values),
+        "DUPLICATE_TICKET_CANDIDATES": duplicates,
+        "EXACT_MATCHES": exact,
+        "EXACT_MATCH": exact == total,
+    }
+
+
 def _fraction_text(value: Fraction) -> str:
     return f"{value.numerator}/{value.denominator}"
 
@@ -801,6 +981,7 @@ def _decimal_text(value: Fraction, places: int = 12) -> str:
 def _move_record(move: ExchangeMove) -> dict[str, object]:
     return {
         "TICKET_INDEX": move.ticket_index,
+        "EXCHANGE_SIZE": move.exchange_size,
         "OLD_TICKET": list(move.old_ticket),
         "NEW_TICKET": list(move.new_ticket),
         "REMOVED_NUMBERS": list(move.removed_numbers),
@@ -808,15 +989,24 @@ def _move_record(move: ExchangeMove) -> dict[str, object]:
     }
 
 
+def _by_size(scan: NeighborhoodScan, counts: tuple[int, ...]) -> dict[str, int]:
+    return {str(size): count for size, count in zip(scan.exchange_sizes, counts, strict=True)}
+
+
 def _scan_record(iteration: int, scan: NeighborhoodScan) -> dict[str, object]:
     return {
         "ITERATION": iteration,
         "PORTFOLIO_SHA256": canonical_portfolio_sha256(scan.portfolio),
         "CURRENT_WINNING_OUTCOMES": scan.outcome_count,
+        "EXCHANGE_SIZES": list(scan.exchange_sizes),
         "CANDIDATE_COUNT": scan.candidate_count,
+        "CANDIDATE_COUNT_BY_EXCHANGE_SIZE": _by_size(scan, scan.candidate_count_by_size),
         "DISTINCT_CANDIDATE_PORTFOLIOS": scan.distinct_portfolio_count,
         "DUPLICATE_TICKET_CANDIDATES": scan.duplicate_ticket_candidate_count,
         "STRICTLY_IMPROVING_CANDIDATES": scan.improving_candidate_count,
+        "STRICTLY_IMPROVING_CANDIDATES_BY_EXCHANGE_SIZE": _by_size(
+            scan, scan.improving_candidate_count_by_size
+        ),
         "BEST_NEIGHBOR_WINNING_OUTCOMES": scan.best_outcome_count,
         "BEST_NEIGHBOR_TIE_COUNT": scan.best_tie_count,
         "BEST_NEIGHBOR_MOVE": _move_record(scan.best_move),
@@ -826,10 +1016,10 @@ def _scan_record(iteration: int, scan: NeighborhoodScan) -> dict[str, object]:
     }
 
 
-def run_v3_k20_two_exchange_search(
-    *, log: Callable[[str], None] = lambda _message: None
-) -> dict[str, object]:
-    """Parity-gate the accelerated scorer, then run the exact ascent from sealed v3 K20."""
+def _frozen_v3_k20_baseline(
+    started: float, log: Callable[[str], None]
+) -> tuple[SealedGeometryPortfolio, ExactExchangeSpace, DrawMasks, Portfolio]:
+    """The sealed v3 K20 portfolio, re-verified against its seal and the canonical evaluator."""
 
     entry = SEALED_GEOMETRY_PORTFOLIOS[BASELINE_TICKET_COUNT]
     verify_sealed_geometry_portfolio(entry)
@@ -838,7 +1028,6 @@ def run_v3_k20_two_exchange_search(
         or entry.portfolio_sha256 != BASELINE_PORTFOLIO_SHA256
     ):
         raise ValueError("sealed K20 portfolio is not the frozen v3 baseline")
-    started = time.perf_counter()
     space = ExactExchangeSpace()
     draws = all_main_draw_masks(space.pool_size, space.draw_size)
     log(f"space ready in {time.perf_counter() - started:.1f}s")
@@ -846,14 +1035,37 @@ def run_v3_k20_two_exchange_search(
     if baseline != entry.tickets:
         raise ValueError("sealed K20 tickets are not in canonical order")
     baseline_result = evaluate_portfolio(baseline, draws=draws)
-    baseline_count = baseline_result.official_any_prize_outcome_count
     if (
-        baseline_count != BASELINE_WINNING_OUTCOMES
+        baseline_result.official_any_prize_outcome_count != BASELINE_WINNING_OUTCOMES
         or baseline_result.official_any_prize != entry.official_any_prize_probability
     ):
         raise ArithmeticError("canonical evaluator does not reproduce the v3 baseline")
+    return entry, space, draws, baseline
 
+
+def _run_v3_k20_ascent(
+    *,
+    task_id: str,
+    search_algorithm: str,
+    exchange_sizes: Sequence[int],
+    first_scan_exchange_sizes: Sequence[int] | None = None,
+    extra_parity_checks: (
+        Callable[[ExactExchangeSpace, DrawMasks, Portfolio], list[dict[str, object]]] | None
+    ) = None,
+    log: Callable[[str], None],
+) -> tuple[ExchangeAscent, dict[str, object]]:
+    """Parity-gate the accelerated scorer, then run the exact ascent from sealed v3 K20.
+
+    Every count in the returned record has been checked against the canonical evaluator:
+    the parity samples, each accepted portfolio, each terminal per-ticket best, and the
+    original and final portfolios.
+    """
+
+    started = time.perf_counter()
+    entry, space, draws, baseline = _frozen_v3_k20_baseline(started, log)
     parity = _scorer_parity_checks(space, draws, baseline)
+    if extra_parity_checks is not None:
+        parity += extra_parity_checks(space, draws, baseline)
     known = {str(check["CHECK"]): check for check in parity}
     if (
         not all(check["EXACT_MATCH"] for check in parity)
@@ -865,14 +1077,30 @@ def run_v3_k20_two_exchange_search(
 
     def on_scan(scan: NeighborhoodScan) -> None:
         log(
-            f"scan: current={scan.outcome_count} best={scan.best_outcome_count} "
-            f"improving={scan.improving_candidate_count} candidates={scan.candidate_count} "
-            f"t={time.perf_counter() - started:.1f}s"
+            f"scan {list(scan.exchange_sizes)}: current={scan.outcome_count} "
+            f"best={scan.best_outcome_count} improving={scan.improving_candidate_count} "
+            f"candidates={scan.candidate_count} t={time.perf_counter() - started:.1f}s"
         )
 
     ascent = exact_steepest_ascent(
-        space, baseline, exchange_size=TWO_NUMBER_EXCHANGE, draws=draws, on_scan=on_scan
+        space,
+        baseline,
+        exchange_sizes=exchange_sizes,
+        first_scan_exchange_sizes=first_scan_exchange_sizes,
+        draws=draws,
+        on_scan=on_scan,
     )
+    outside = space.pool_size - space.draw_size
+    for scan in ascent.scans:
+        complete = tuple(
+            len(scan.portfolio) * comb(space.draw_size, size) * comb(outside, size)
+            for size in scan.exchange_sizes
+        )
+        if (
+            scan.candidate_count_by_size != complete
+            or scan.distinct_portfolio_count != scan.candidate_count
+        ):
+            raise AssertionError("an exchange scan did not cover its complete neighborhood")
     final_result = evaluate_portfolio(ascent.final_portfolio, draws=draws)
     original_recheck = evaluate_portfolio(entry.tickets, draws=draws)
     terminal = ascent.scans[-1]
@@ -901,15 +1129,11 @@ def run_v3_k20_two_exchange_search(
     total = space.total_outcomes
     gain = ascent.final_outcome_count - ascent.initial_outcome_count
     final_probability = final_result.official_any_prize
-    return {
-        "TASK_ID": TASK_ID,
+    return ascent, {
+        "TASK_ID": task_id,
         "OBJECTIVE": "OFFICIAL_ANY_PRIZE",
         "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
-        "SEARCH_ALGORITHM": (
-            "EXACT_STEEPEST_ASCENT_SINGLE_TICKET_TWO_NUMBER_EXCHANGE: complete neighborhood "
-            "K*C(6,2)*C(43,2) per scan; accept the best strict improvement (ties: smallest "
-            "canonical lexical portfolio); stop when a complete scan has none"
-        ),
+        "SEARCH_ALGORITHM": search_algorithm,
         "SCORER": (
             "EXACT_SUPERSET_MARGINAL_DELTA: 4*newly_won_7sets = T3 - 4*T4 + 12*T5 - 40*T6 "
             "over per-draw losing-special counts of the other tickets; int64, exact division"
@@ -924,6 +1148,7 @@ def run_v3_k20_two_exchange_search(
             "EXACT_ANY_PRIZE": _fraction_text(Fraction(ascent.initial_outcome_count, total)),
         },
         "SCORER_PARITY_CHECKS": parity,
+        "SCORER_PARITY_CHECK_COUNT": len(parity),
         "SCORER_PARITY": "PASS",
         "ITERATIONS": [
             _scan_record(iteration, scan) for iteration, scan in enumerate(ascent.scans)
@@ -965,22 +1190,108 @@ def run_v3_k20_two_exchange_search(
         "ABSOLUTE_GAIN_PERCENTAGE_POINTS_DECIMAL": _decimal_text(Fraction(100 * gain, total)),
         "RELATIVE_GAIN": _fraction_text(Fraction(gain, ascent.initial_outcome_count)),
         "SEARCH_SPACE_COMPLETE": "YES",
-        "TWO_EXCHANGE_LOCAL_OPTIMUM": "YES" if ascent.local_optimum else "NO",
         "RESULT_LEAKAGE": "NONE",
         "OUTCOME_FIELDS_USED": "NO",
     }
 
 
+def run_v3_k20_two_exchange_search(
+    *, log: Callable[[str], None] = lambda _message: None
+) -> dict[str, object]:
+    """Parity-gate the accelerated scorer, then run the exact ascent from sealed v3 K20."""
+
+    ascent, result = _run_v3_k20_ascent(
+        task_id=TWO_EXCHANGE_TASK_ID,
+        search_algorithm=(
+            "EXACT_STEEPEST_ASCENT_SINGLE_TICKET_TWO_NUMBER_EXCHANGE: complete neighborhood "
+            "K*C(6,2)*C(43,2) per scan; accept the best strict improvement (ties: smallest "
+            "canonical lexical portfolio); stop when a complete scan has none"
+        ),
+        exchange_sizes=(TWO_NUMBER_EXCHANGE,),
+        log=log,
+    )
+    return result | {"TWO_EXCHANGE_LOCAL_OPTIMUM": "YES" if ascent.local_optimum else "NO"}
+
+
+def run_v3_k20_three_exchange_search(
+    *, log: Callable[[str], None] = lambda _message: None
+) -> dict[str, object]:
+    """Exact three-number ascent from sealed v3 K20, widening to the <=3 union after a move.
+
+    The unchanged baseline is already one- and two-number optimal (``PRIOR_*_EVIDENCE``), so
+    the first scan covers its three-number neighborhood only. An accepted move voids that
+    evidence for the new portfolio, so every later scan covers the complete 1-, 2- and
+    3-number union, until one finds no strict improvement.
+    """
+
+    small = _small_lottery_exchange_parity()
+    if small["EXACT_MATCH"] is not True:
+        raise ArithmeticError("small-lottery exhaustive exchange parity failed")
+    log(f"small-lottery exhaustive parity: {small['EXACT_MATCHES']}/{small['CANDIDATES']} exact")
+    ascent, result = _run_v3_k20_ascent(
+        task_id=THREE_EXCHANGE_TASK_ID,
+        search_algorithm=(
+            "EXACT_STEEPEST_ASCENT_SINGLE_TICKET_LEQ3_NUMBER_EXCHANGE: iteration 0 scans the "
+            "complete three-number neighborhood K*C(6,3)*C(43,3) of the sealed v3 baseline "
+            "(already one- and two-number optimal); every scan after an accepted move covers "
+            "the complete union K*(C(6,1)*C(43,1)+C(6,2)*C(43,2)+C(6,3)*C(43,3)); accept the "
+            "best strict improvement (ties: smallest canonical lexical portfolio); stop when a "
+            "complete scan has none"
+        ),
+        exchange_sizes=UP_TO_THREE_NUMBER_EXCHANGES,
+        first_scan_exchange_sizes=(THREE_NUMBER_EXCHANGE,),
+        extra_parity_checks=_three_exchange_parity_checks,
+        log=log,
+    )
+    first, *later = ascent.scans
+    terminal = ascent.scans[-1]
+    three_optimum = ascent.local_optimum and THREE_NUMBER_EXCHANGE in terminal.exchange_sizes
+    union_optimum = three_optimum and terminal.exchange_sizes == UP_TO_THREE_NUMBER_EXCHANGES
+    # Without an accepted move the final portfolio is the baseline itself, whose one- and
+    # two-number optimality is the reused prior evidence.
+    prior_optimum = three_optimum and not ascent.accepted
+    return result | {
+        "PRIOR_EXCHANGE_EVIDENCE_REUSED": {
+            "ONE_NUMBER_EXCHANGE_LOCAL_OPTIMUM": PRIOR_ONE_EXCHANGE_EVIDENCE,
+            "TWO_NUMBER_EXCHANGE_LOCAL_OPTIMUM": PRIOR_TWO_EXCHANGE_EVIDENCE,
+        },
+        "SMALL_LOTTERY_EXHAUSTIVE_EXCHANGE_PARITY": small,
+        "FIRST_THREE_EXCHANGE_SCAN_CANDIDATES": first.candidate_count,
+        "POST_MOVE_UNION_SCAN_CANDIDATES": [scan.candidate_count for scan in later],
+        "POST_MOVE_UNION_SCAN_CANDIDATES_TOTAL": sum(scan.candidate_count for scan in later),
+        "THREE_EXCHANGE_LOCAL_OPTIMUM": "YES" if three_optimum else "NO",
+        "LEQ3_EXCHANGE_LOCAL_OPTIMUM": "YES" if union_optimum or prior_optimum else "NO",
+        "LEQ3_EXCHANGE_LOCAL_OPTIMUM_BASIS": (
+            "THIS_RUN_COMPLETE_1_2_3_UNION_SCAN_OF_FINAL_PORTFOLIO"
+            if union_optimum
+            else "THIS_RUN_COMPLETE_3_SCAN_PLUS_PRIOR_EXCHANGE_EVIDENCE_REUSED"
+            if prior_optimum
+            else "NONE"
+        ),
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description=f"Run {TASK_ID}")
+    parser = argparse.ArgumentParser(description="Run an exact sealed-v3 K20 exchange search")
+    parser.add_argument(
+        "--search",
+        choices=("two-number", "three-number"),
+        required=True,
+        help=f"two-number: {TWO_EXCHANGE_TASK_ID}; three-number: {THREE_EXCHANGE_TASK_ID}",
+    )
     parser.add_argument("--output", type=Path, required=True, help="result JSON path")
     arguments = parser.parse_args(argv)
     output: Path = arguments.output
+    search: str = arguments.search
 
     def log(message: str) -> None:
         print(message, file=sys.stderr, flush=True)
 
-    result = run_v3_k20_two_exchange_search(log=log)
+    log(f"{search} search: {__file__}")
+    if search == "three-number":
+        result = run_v3_k20_three_exchange_search(log=log)
+    else:
+        result = run_v3_k20_two_exchange_search(log=log)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
     log(f"wrote {output}")

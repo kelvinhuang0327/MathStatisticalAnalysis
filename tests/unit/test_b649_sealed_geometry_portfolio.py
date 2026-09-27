@@ -41,11 +41,11 @@ CANONICAL_FRONTIER_LOCATOR = (
 CANONICAL_FRONTIER_SHA256 = (
     "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
 )
-K20_DONOR_SOURCE_ID = "B649_K20_EXHAUSTIVE_2TICKET_DOUBLE_CROSS_SWAP_ASCENT_R5"
-K20_DONOR_SEAL_TASK_ID = "B649_K20_DOUBLE_CROSS_SWAP_ASCENT_R5_CHAMPION_SEAL_R1"
-K20_DONOR_SEALED_FROM_HEAD = "e3b0f1985e7abf4da0d02dfc689fcfd0cc06fc01"
+K20_DONOR_SOURCE_ID = "B649_K20_EXACT_SINGLE_TICKET_BEST_RESPONSE_SWEEP_R1"
+K20_DONOR_SEAL_TASK_ID = "B649_K20_EXACT_SINGLE_TICKET_BEST_RESPONSE_SWEEP_R1"
+K20_DONOR_SEALED_FROM_HEAD = "470db0ab8c03462876b391d100b0c75f30c41073"
 K20_DONOR_LOCATOR = "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json"
-K20_DONOR_SHA256 = "90e701d207d0951e92014a895210702b9a5ab4d4851f6709cff664c0345ac280"
+K20_DONOR_SHA256 = "2deb616dc0c69dc0d6d41bc3d815f834f065c056b668a2e8db07b3a5064c05ea"
 K5_EXPECTED_TICKETS = (
     (1, 2, 3, 4, 5, 6),
     (7, 8, 9, 10, 11, 12),
@@ -101,8 +101,8 @@ def test_operational_buckets_are_sealed_for_k5_k10_k20() -> None:
     assert buckets[5] != buckets[10][:5]
 
 
-def test_method_v4_and_k5_identity_are_unchanged_from_v1() -> None:
-    assert SEALED_GEOMETRY_METHOD_VERSION == "4.0.0"
+def test_method_v5_and_k5_identity_are_unchanged_from_v1() -> None:
+    assert SEALED_GEOMETRY_METHOD_VERSION == "5.0.0"
     entry = SEALED_GEOMETRY_PORTFOLIOS[5]
 
     assert entry.tickets == K5_EXPECTED_TICKETS
@@ -166,7 +166,7 @@ def test_k10_matches_the_frozen_canonical_frontier_contract() -> None:
         )
 
 
-def test_k20_matches_v4_cross_swap_champion_donor_authority() -> None:
+def test_k20_matches_v5_single_ticket_best_response_donor_authority() -> None:
     entry = SEALED_GEOMETRY_PORTFOLIOS[20]
     authority = _committed_json(entry.source_locator, entry.source_sha256)
     terminal_tickets = cast(list[list[int]], authority["TERMINAL_TICKETS"])
@@ -185,15 +185,16 @@ def test_k20_matches_v4_cross_swap_champion_donor_authority() -> None:
     # test_exact_probabilities_reproduce_the_sealed_record via the real
     # evaluator, and pinned here as the sealed regression floor.
     assert authority["TERMINAL_M3_PLUS_STATUS"] == "NOT_RECOMPUTED_FOR_THIS_SEAL"
-    assert entry.m3_plus_probability == Fraction(200258, 582659)
-    assert entry.official_any_prize_probability == Fraction(44709019, 85900584)
+    assert entry.m3_plus_probability == Fraction(4806013, 13983816)
+    assert entry.official_any_prize_probability == Fraction(1863012, 3579191)
 
     assert authority["TASK_ID"] == entry.source_id
     assert authority["SEAL_TASK_ID"] == K20_DONOR_SEAL_TASK_ID
     assert authority["SEALED_FROM_HEAD"] == K20_DONOR_SEALED_FROM_HEAD
+    assert authority["PRIOR_INCUMBENT_OUTCOME_COUNT"] == 312963133
     assert authority["INITIAL_K20_OUTCOME_COUNT"] == 312850818
-    assert authority["TERMINAL_K20_OUTCOME_COUNT"] == 312963133
-    assert authority["TOTAL_DELTA_OUTCOME_COUNT"] == 112315
+    assert authority["TERMINAL_K20_OUTCOME_COUNT"] == 312986016
+    assert authority["TOTAL_DELTA_OUTCOME_COUNT"] == 135198
     assert authority["FINAL_EXACT_RECOMPUTE"] == "PASS"
     assert authority["GLOBAL_OPTIMUM_STATUS"] == "UNKNOWN"
     assert authority["OUTCOME_FIELDS_USED"] == "NO"

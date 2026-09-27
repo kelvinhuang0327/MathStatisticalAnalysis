@@ -1347,13 +1347,15 @@ def _read_control_owner(config: CutoverConfig) -> tuple[Record, FileIdentity] | 
             raise CutoverSafetyError("durable control owner release evidence is invalid")
     elif evidence is not None:
         raise CutoverSafetyError("unreleased control owner has release evidence")
-    if value.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"} and not value[
-        "mutation_started"
-    ]:
+    if (
+        value.get("phase") in {"MUTATION_IN_PROGRESS", "TERMINAL_CAPTURE_PENDING"}
+        and not value["mutation_started"]
+    ):
         raise CutoverSafetyError("durable control owner mutation phase is malformed")
-    if value.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING", "ABANDONED"} and value[
-        "mutation_started"
-    ]:
+    if (
+        value.get("phase") in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING", "ABANDONED"}
+        and value["mutation_started"]
+    ):
         raise CutoverSafetyError("durable control owner pre-mutation phase is malformed")
     return value, identity
 
@@ -1585,9 +1587,10 @@ def bind_control_owner(
 ) -> Record:
     """Bind receipt and operation identity after the reservation already exists."""
     normalized_target = _normalized_owner_target(target)
-    if managed_receipt_sha256 is not None and re.fullmatch(
-        r"[0-9a-f]{64}", managed_receipt_sha256
-    ) is None:
+    if (
+        managed_receipt_sha256 is not None
+        and re.fullmatch(r"[0-9a-f]{64}", managed_receipt_sha256) is None
+    ):
         raise CutoverSafetyError("managed receipt SHA256 is invalid")
     control = _record(version, "control version")
     with CutoverLock(_control_owner_lock_path(config)):
@@ -1746,12 +1749,16 @@ def check_control_owner(
     begin_mutation: bool = False,
 ) -> Record | None:
     """Common fail-closed gate used by direct managed and protected actions."""
-    phases = {"AUTHORIZED_PENDING"} if begin_mutation else {
-        "AUTHORIZATION_PENDING",
-        "AUTHORIZED_PENDING",
-        "MUTATION_IN_PROGRESS",
-        "TERMINAL_CAPTURE_PENDING",
-    }
+    phases = (
+        {"AUTHORIZED_PENDING"}
+        if begin_mutation
+        else {
+            "AUTHORIZATION_PENDING",
+            "AUTHORIZED_PENDING",
+            "MUTATION_IN_PROGRESS",
+            "TERMINAL_CAPTURE_PENDING",
+        }
+    )
     if not begin_mutation:
         return _verify_control_owner_binding(
             config,
@@ -1830,12 +1837,55 @@ def mark_control_terminal_pending(
         )
 
 
+MANAGED_RECEIPT_DRIFT_SCHEMA = "b649-control-owner-managed-receipt-drift-v1"
+
+
+def _managed_receipt_drift_evidence_path(config: CutoverConfig, reservation_id: str) -> Path:
+    return _control_owner_path(config).with_name(
+        f"b649-control-owner-managed-receipt-drift.{reservation_id}.json"
+    )
+
+
+def _record_managed_receipt_drift_evidence(
+    config: CutoverConfig,
+    *,
+    reservation_id: str,
+    expected_managed_receipt_sha256: str | None,
+    observed_managed_receipt_sha256: str | None,
+) -> Record:
+    """Persist explicit, durable evidence that an abandon tolerated observed drift.
+
+    Never silently accepted: the caller's exact live observation is recorded
+    beside the owner file rather than folded into the owner's own fixed
+    schema, and a differing prior record for the same reservation refuses
+    rather than overwrites.
+    """
+    path = _managed_receipt_drift_evidence_path(config, reservation_id)
+    unsigned: Record = {
+        "schema": MANAGED_RECEIPT_DRIFT_SCHEMA,
+        "reservation_id": reservation_id,
+        "expected_managed_receipt_sha256": expected_managed_receipt_sha256,
+        "observed_managed_receipt_sha256": observed_managed_receipt_sha256,
+    }
+    sealed = {**unsigned, "record_sha256": _sha256_json(unsigned)}
+    if os.path.lexists(path):
+        existing, _, _ = _load_json(path)
+        if existing != sealed:
+            raise CutoverSafetyError(
+                "managed receipt drift evidence already exists with conflicting content"
+            )
+        return existing
+    _write_json(path, sealed, expected=None)
+    return sealed
+
+
 def reconcile_control_owner(
     config: CutoverConfig,
     reservation_id: str,
     *,
     disposition: str,
     version: Record,
+    observed_managed_receipt_sha256: str | None = None,
 ) -> Record:
     """Explicitly reconcile an unchanged pre-mutation reservation; PID death is not authority."""
     if disposition not in {"ABANDON_BEFORE_MUTATION", "RELEASE_ABANDONED"}:
@@ -1846,7 +1896,8 @@ def reconcile_control_owner(
             raise CutoverSafetyError("durable control owner is absent")
         value, identity = current
         if value["reservation_id"] != reservation_id or (
-            value["control_head"], value["control_tree"]
+            value["control_head"],
+            value["control_tree"],
         ) != (version.get("head"), version.get("tree")):
             raise CutoverSafetyError("durable owner reconciliation identity differs")
         live_control = control_version()
@@ -1860,14 +1911,28 @@ def reconcile_control_owner(
             "TERMINAL_CAPTURE_PENDING",
         }:
             raise CutoverSafetyError("a started mutation requires terminal evidence reconciliation")
-        current_receipt = _file_identity(config.receipt_path, missing_ok=True)[0]
-        if (None if current_receipt is None else current_receipt.sha256) != value[
-            "managed_receipt_sha256"
-        ]:
-            raise CutoverSafetyError("managed receipt changed during owner reconciliation")
         if disposition == "ABANDON_BEFORE_MUTATION":
             if value["phase"] not in {"AUTHORIZATION_PENDING", "AUTHORIZED_PENDING"}:
                 raise CutoverSafetyError("owner is not eligible for pre-mutation abandonment")
+            current_receipt = _file_identity(config.receipt_path, missing_ok=True)[0]
+            live_receipt_sha256 = None if current_receipt is None else current_receipt.sha256
+            if live_receipt_sha256 != value["managed_receipt_sha256"]:
+                if (
+                    live_receipt_sha256 is None
+                    or observed_managed_receipt_sha256 != live_receipt_sha256
+                ):
+                    raise CutoverSafetyError(
+                        "managed receipt changed during owner reconciliation; abandon requires "
+                        "the caller's observed live SHA to match the current managed receipt"
+                    )
+                _record_managed_receipt_drift_evidence(
+                    config,
+                    reservation_id=reservation_id,
+                    expected_managed_receipt_sha256=cast(
+                        str | None, value["managed_receipt_sha256"]
+                    ),
+                    observed_managed_receipt_sha256=observed_managed_receipt_sha256,
+                )
             return _save_control_owner(
                 config,
                 {**value, "phase": "ABANDONED"},
@@ -1975,9 +2040,7 @@ def release_control_owner(
             )
             current_managed = _file_identity(config.receipt_path, missing_ok=True)[0]
             current_hash = None if current_managed is None else current_managed.sha256
-            if (
-                current_hash != value.get("managed_receipt_sha256")
-            ):
+            if current_hash != value.get("managed_receipt_sha256"):
                 raise CutoverSafetyError("pre-mutation terminal evidence verification failed")
             evidence = {
                 "protected_receipt_sha256": protected_identity.sha256,
@@ -3667,7 +3730,6 @@ def _error_result(command_name: str, status: str, exc: Exception) -> Record:
     }
 
 
-
 def protected_config(args: argparse.Namespace) -> CutoverConfig:
     if args.command == "rollback":
         receipt_path = Path(args.receipt_file) if args.receipt_file else Path(args.receipt_path)
@@ -3691,6 +3753,7 @@ def protected_config(args: argparse.Namespace) -> CutoverConfig:
         )
     return _config_from_args(args)
 
+
 def main(
     argv: Sequence[str] | None = None,
     *,
@@ -3701,9 +3764,8 @@ def main(
     try:
         args = parser().parse_args(argv)
         command_name = args.command
-        if (
-            args.command in {"apply", "rollback"}
-            and (args.protected_request is not None or args.protected_execution is not None)
+        if args.command in {"apply", "rollback"} and (
+            args.protected_request is not None or args.protected_execution is not None
         ):
             from tools.b649_protected_cutover import run_managed_child
 

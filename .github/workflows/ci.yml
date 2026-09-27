@@ -12,6 +12,8 @@ jobs:
       LOTTOLAB_B649_PAIR_RULE_FORWARD_SHADOW_READINESS_ROOT: ${{ github.workspace }}/tests/fixtures/b649_pair_rule_forward_shadow_readiness
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
       - run: uv sync --frozen --extra research
       - run: uv run ruff check .

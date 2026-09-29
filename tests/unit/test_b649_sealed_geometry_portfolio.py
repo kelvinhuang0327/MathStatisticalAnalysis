@@ -18,6 +18,7 @@ from typing import cast
 import pytest
 
 from lottolab.application.b649_sealed_geometry_portfolio import (
+    SEALED_GEOMETRY_METHOD_ID,
     SEALED_GEOMETRY_METHOD_VERSION,
     SEALED_GEOMETRY_PORTFOLIOS,
     SealedGeometryIntegrityError,
@@ -38,14 +39,13 @@ CANONICAL_FRONTIER_LOCATOR = (
     "docs/research/matrix-native-results/"
     "b649-official-any-prize-frontier-reconciliation-r1/frontier_reconciliation.json"
 )
-CANONICAL_FRONTIER_SHA256 = (
-    "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
+CANONICAL_FRONTIER_SHA256 = "5b0ccf7485c3db699b9bb9e398f04857d018ec7b1ca87700f86cbace5a719d3e"
+K20_DONOR_SOURCE_ID = "B649_K20_EXACT_TWO_TICKET_JOINT_REPLACEMENT_SWEEP_R1"
+K20_DONOR_SEAL_TASK_ID = "B649_K20_ACTIVE_SWEEP_INCUMBENT_SEAL_HANDOFF_R1"
+K20_DONOR_LOCATOR = (
+    "docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json"
 )
-K20_DONOR_SOURCE_ID = "B649_K20_EXACT_SINGLE_TICKET_BEST_RESPONSE_SWEEP_R1"
-K20_DONOR_SEAL_TASK_ID = "B649_K20_EXACT_SINGLE_TICKET_BEST_RESPONSE_SWEEP_R1"
-K20_DONOR_SEALED_FROM_HEAD = "470db0ab8c03462876b391d100b0c75f30c41073"
-K20_DONOR_LOCATOR = "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json"
-K20_DONOR_SHA256 = "2deb616dc0c69dc0d6d41bc3d815f834f065c056b668a2e8db07b3a5064c05ea"
+K20_DONOR_SHA256 = "14f070a764a48a09007e18db212d491867a7c8dc59e775115391a02c8840f632"
 K5_EXPECTED_TICKETS = (
     (1, 2, 3, 4, 5, 6),
     (7, 8, 9, 10, 11, 12),
@@ -96,13 +96,14 @@ def test_operational_buckets_are_sealed_for_k5_k10_k20() -> None:
         entry = SEALED_GEOMETRY_PORTFOLIOS[size]
         assert tickets == entry.tickets
         assert canonical_portfolio_sha256(tickets) == entry.portfolio_sha256
-    # Independently optimal per K, so deliberately not nested.
+    # Selected independently per K, so deliberately not nested.
     assert buckets[10] != buckets[20][:10]
     assert buckets[5] != buckets[10][:5]
 
 
-def test_method_v5_and_k5_identity_are_unchanged_from_v1() -> None:
-    assert SEALED_GEOMETRY_METHOD_VERSION == "5.0.0"
+def test_method_v6_and_k5_identity_are_unchanged_from_v1() -> None:
+    assert SEALED_GEOMETRY_METHOD_ID == "B649_SEALED_GEOMETRY_PORTFOLIO"
+    assert SEALED_GEOMETRY_METHOD_VERSION == "6.0.0"
     entry = SEALED_GEOMETRY_PORTFOLIOS[5]
 
     assert entry.tickets == K5_EXPECTED_TICKETS
@@ -119,6 +120,11 @@ def test_exact_probabilities_reproduce_the_sealed_record(
 
     assert result.m3_plus == entry.m3_plus_probability
     assert result.official_any_prize == entry.official_any_prize_probability
+    if size == 20:
+        assert result.official_any_prize_outcome_count == 313239647
+        assert result.official_any_prize_outcome_count - 312986016 == 253631
+        assert result.m3_plus_draw_count == 4807367
+        assert result.main_draw_count * result.special_count == 601304088
 
 
 @pytest.mark.parametrize("size", [5, 10, 20])
@@ -166,38 +172,56 @@ def test_k10_matches_the_frozen_canonical_frontier_contract() -> None:
         )
 
 
-def test_k20_matches_v5_single_ticket_best_response_donor_authority() -> None:
+def test_k20_matches_v6_sealed_two_ticket_joint_replacement_incumbent() -> None:
     entry = SEALED_GEOMETRY_PORTFOLIOS[20]
     authority = _committed_json(entry.source_locator, entry.source_sha256)
-    terminal_tickets = cast(list[list[int]], authority["TERMINAL_TICKETS"])
+    sealed_tickets = cast(list[list[int]], authority["TICKETS"])
 
     assert entry.source_id == K20_DONOR_SOURCE_ID
     assert entry.source_locator == K20_DONOR_LOCATOR
     assert entry.source_sha256 == K20_DONOR_SHA256
-    assert entry.tickets == tuple(tuple(ticket) for ticket in terminal_tickets)
-    assert entry.portfolio_sha256 == authority["TERMINAL_K20_PORTFOLIO_SHA256"]
+    assert entry.tickets == tuple(tuple(ticket) for ticket in sealed_tickets)
+    assert entry.portfolio_sha256 == authority["PORTFOLIO_SHA256"]
+    assert entry.portfolio_sha256 == (
+        "0c52a1f0bed90cd47d08bb031b13c9bf693317493f88e45da8e087bd4a0ab65b"
+    )
     assert canonical_portfolio_sha256(entry.tickets) == entry.portfolio_sha256
-    assert str(entry.official_any_prize_probability) == authority[
-        "TERMINAL_K20_EXACT_PROBABILITY"
-    ]
-    # The donor artifact did not recompute M3+ for this seal; that fraction is
-    # instead independently reproduced by
-    # test_exact_probabilities_reproduce_the_sealed_record via the real
-    # evaluator, and pinned here as the sealed regression floor.
-    assert authority["TERMINAL_M3_PLUS_STATUS"] == "NOT_RECOMPUTED_FOR_THIS_SEAL"
-    assert entry.m3_plus_probability == Fraction(4806013, 13983816)
-    assert entry.official_any_prize_probability == Fraction(1863012, 3579191)
+    assert str(entry.official_any_prize_probability) == authority["EXACT_ANY_PRIZE"]
+    assert str(entry.m3_plus_probability) == authority["M3_PLUS"]
+    assert entry.m3_plus_probability == Fraction(4807367, 13983816)
+    assert entry.official_any_prize_probability == Fraction(44748521, 85900584)
 
-    assert authority["TASK_ID"] == entry.source_id
-    assert authority["SEAL_TASK_ID"] == K20_DONOR_SEAL_TASK_ID
-    assert authority["SEALED_FROM_HEAD"] == K20_DONOR_SEALED_FROM_HEAD
-    assert authority["PRIOR_INCUMBENT_OUTCOME_COUNT"] == 312963133
-    assert authority["INITIAL_K20_OUTCOME_COUNT"] == 312850818
-    assert authority["TERMINAL_K20_OUTCOME_COUNT"] == 312986016
-    assert authority["TOTAL_DELTA_OUTCOME_COUNT"] == 135198
-    assert authority["FINAL_EXACT_RECOMPUTE"] == "PASS"
+    assert authority["SOURCE_TASK"] == entry.source_id
+    assert authority["TASK_ID"] == K20_DONOR_SEAL_TASK_ID
+    assert authority["SOURCE_CHECKPOINT_SHA256"] == (
+        "8061c02b65a6ae3ec3dc16295dd483f9bae3ed3e2f1f979f7bb864b4853070bb"
+    )
+    assert authority["SOURCE_ACCEPTED_MOVES"] == 3
+    assert authority["SOURCE_ITERATION"] == 4
+    assert authority["WINNING_OUTCOMES"] == 313239647
+    assert authority["TOTAL_OUTCOMES"] == 601304088
+    assert (
+        entry.official_any_prize_probability * cast(int, authority["TOTAL_OUTCOMES"])
+        == (authority["WINNING_OUTCOMES"])
+    )
+    assert authority["EXACT_RECOMPUTE_STATUS"] == "REUSED_MATCHING_PORTFOLIO_IDENTITY"
     assert authority["GLOBAL_OPTIMUM_STATUS"] == "UNKNOWN"
+    assert authority["SWEEP_TERMINAL"] == "NO"
+    assert authority["ACTIVE_SWEEP_CONTINUES"] == "YES"
     assert authority["OUTCOME_FIELDS_USED"] == "NO"
+    assert authority["HISTORICAL_OUTCOME_TUNING"] == "NO"
+
+    prior_v5 = _committed_json(
+        "docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json",
+        "2deb616dc0c69dc0d6d41bc3d815f834f065c056b668a2e8db07b3a5064c05ea",
+    )
+    assert authority["LIVE_V5_WINNING_OUTCOMES"] == prior_v5["TERMINAL_K20_OUTCOME_COUNT"]
+    assert prior_v5["TERMINAL_K20_OUTCOME_COUNT"] == 312986016
+    gain = cast(int, authority["WINNING_OUTCOMES"]) - cast(
+        int, prior_v5["TERMINAL_K20_OUTCOME_COUNT"]
+    )
+    assert gain == authority["GAIN_OVER_LIVE_V5_OUTCOMES"] == 253631
+    assert gain > 0
 
 
 def test_k5_reaches_the_committed_frontier_best_found_with_disjoint_tickets() -> None:

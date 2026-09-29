@@ -127,6 +127,29 @@ DB 不會被自動採用或修改。P638 API routes 為 `/api/v1/p638-historical
 - 固定研究限制為：「歷史成功率、排名與隨機基準差異僅供描述性研究，不構成未來預測、推薦、
   上線決策或中獎保證。」
 
+<!-- BEGIN GENERATED B649 EVIDENCE STATUS -->
+
+### B649 回測證據現況（自動產生，請勿手改）
+
+本區塊由 `uv run python tools/b649_evidence_status.py --write-readme` 產生，`--check-readme`（pytest 內亦執行）會在與 canonical evidence 不一致時失敗。
+README 只是導覽索引，權威是下表 locator；README 沒列出某注數**不代表沒有回測**。
+新鮮度參照為 repo 內最新證據 cutoff `115000084`；repo 不追蹤線上最新期，判定實際缺期請加 `--latest-draw <期號>`。舊 cutoff 證據是 `AVAILABLE_STALE`，應先回報歷史排名，再以補期（delta refresh）而非全量重跑更新。
+
+| 注數 | 狀態（相對參照） | 最新 cutoff | 缺期（相對參照） | 策略數 | 排名 | 權威 locator |
+|---|---|---|---|---|---|---|
+| 2 | `AVAILABLE_CURRENT` | 115000084 | 無 | 19 | YES | `.task-data/BRANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1/rankings.json`；內嵌排名 `src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v2.json`（cutoff 115000073） |
+| 3 | `AVAILABLE_CURRENT` | 115000084 | 無 | 27 | YES | `.task-data/BRANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1/rankings.json`；內嵌排名 `src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v2.json`（cutoff 115000073） |
+| 5 | `AVAILABLE_CURRENT` | 115000084 | 無 | 5 | YES | `src/lottolab/strategies/data/biglotto_exact_native_k5_115000084_records_v1.json` |
+| 10 | `AVAILABLE_CURRENT` | 115000084 | 無 | 2 | YES | `src/lottolab/strategies/data/biglotto_exact_native_k10_115000084_records_v1.json` |
+| 15 | `AVAILABLE_STALE` | 115000073 | 115000074–115000084 | 133 | YES | `src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v2.json` |
+| 20 | `AVAILABLE_STALE` | 115000073 | 115000074–115000084 | 133 | YES | `src/lottolab/strategies/data/biglotto_multi_ticket_historical_records_v2.json` |
+
+未打包（task-owned、gitignored）的 locator 由已提交 provenance 宣告，本工具不讀取其內容：`.task-data/BRANCH6_BIGLOTTO_K2_K3_K5_K10_FINALIZATION_R1/rankings.json`。
+
+Sealed-geometry K20 組合屬 outcome-independent 研究族，不是回測排名，不得以歷史開獎結果調參：`docs/research/matrix-native-results/b649-k20-cross-swap-champion-r1.json`、`docs/research/matrix-native-results/b649-k20-two-ticket-joint-replacement-incumbent-r1.json`、`docs/research/matrix-native-results/b649-sealed-v2-direct-official-any-prize-k20-terminal-r1.json`。
+
+<!-- END GENERATED B649 EVIDENCE STATUS -->
+
 ## Historical Results 明確匯入
 
 本機 operator 可將一個已符合 LottoLab `HistoricalResultImportV1` target envelope 的 JSON 檔案，

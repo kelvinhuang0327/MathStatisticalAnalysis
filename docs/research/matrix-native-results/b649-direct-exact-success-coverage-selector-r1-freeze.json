@@ -1,0 +1,438 @@
+{
+  "TASK_ID": "B649_DIRECT_EXACT_SUCCESS_COVERAGE_SELECTOR_R1",
+  "ARTIFACT_KIND": "FROZEN_EXPERIMENTAL_SELECTOR",
+  "METHOD_ID": "B649_DIRECT_EXACT_SUCCESS_COVERAGE_SELECTOR",
+  "METHOD_VERSION": "1.0.0",
+  "CANDIDATE_ID": "B649_DIRECT_EXACT_SUCCESS_COVERAGE_SELECTOR_V1",
+  "BASE_HEAD": "76085ccc8f226c8752cc7df28390e27009d21746",
+  "BASE_TREE": "a2bd43ed9019e4cf2f330eb7d0dfa498d7904b43",
+  "MODULE_PATH": "src/lottolab/research/b649_direct_exact_coverage_selector.py",
+  "MODULE_SHA256": "ff0d0ddf2ea05c80df7c0148ffc306bea79278a319d24d36156bc28df132362b",
+  "LOTTERY": "BIG_LOTTO",
+  "PRIMARY_K": 10,
+  "SECONDARY_K": 20,
+  "SUPPORTED_K": [10, 20],
+  "EXACT_OBJECTIVE_AUTHORITY": {
+    "MODULE": "lottolab.research.b649_official_any_prize_exact",
+    "MODULE_PATH": "src/lottolab/research/b649_official_any_prize_exact.py",
+    "MODULE_SHA256": "92dcb836254cc6dbcd6c2ad907e619a5eb8cf3917197a8f6de3e5f989825cf66",
+    "FUNCTION": "evaluate_portfolio",
+    "EVENT": "OFFICIAL_ANY_PRIZE",
+    "PROBABILITY_MODEL": "BIG_LOTTO_UNIFORM_FAIR_DRAW",
+    "TOTAL_OUTCOMES": 601304088,
+    "SECOND_SUCCESS_METRIC_CREATED": false,
+    "ENGINE_IS_AUTHORITY": false,
+    "ENGINE_GATE": "every accepted state is recounted by evaluate_portfolio; mismatch raises"
+  },
+  "ALGORITHM_CONTRACT": {
+    "INPUT": "ordered pool of distinct legal tickets (candidate-pool order) and k",
+    "STAGE_A": "exact greedy marginal coverage: choose argmax over unchosen pool tickets of N(S+t)-N(S)",
+    "STAGE_B": "at most MAX_ACCEPTED_SWAPS best-improvement one-ticket swaps with unchosen pool tickets; strict improvement only",
+    "MAX_ACCEPTED_SWAPS": 2,
+    "LOCAL_OPTIMUM_CERTIFIED_MEANS": "a complete swap scan found no strict improvement inside the bound",
+    "NEVER_WORSE_THAN_OWN_INITIALISATION": true,
+    "GLOBAL_OPTIMUM_CLAIMED": false
+  },
+  "DETERMINISTIC_TIEBREAK": {
+    "STAGE_A": "EARLIEST_POOL_POSITION (first pick is always pool position 1: every single ticket ties)",
+    "STAGE_B": "LEXICOGRAPHICALLY_SMALLEST_RESULTING_ASCENDING_RANK_VECTOR"
+  },
+  "COMPLEXITY": {
+    "PASS": "one pass over the 13,983,816 main draws",
+    "STAGE_A_GAIN_EVALUATIONS": "sum_{j<k}(P-j)",
+    "STAGE_B_GAIN_EVALUATIONS_MAX": "MAX_ACCEPTED_SWAPS * k * (P-k)",
+    "STAGE_B_STATE_FOLDS_MAX": "MAX_ACCEPTED_SWAPS * k * (k-1)",
+    "CANONICAL_EVALUATIONS": "k (greedy steps) + 1 + accepted swaps + 1 (final)"
+  },
+  "MIN_OVERLAP_AUTHORITY": {
+    "COMMIT": "fbed3da52e4b6b8907afe71eed52e802b51a5cb0",
+    "PATH": "src/lottolab/application/b649_k_dpp_portfolio_selector.py",
+    "BLOB": "4178aaf1322e81f5249914312c7582a5ae76aae0",
+    "SHA256": "fb96b7f481d08dbea55b6dee42143fed5fa7cfe63055e1b581e92f3befb82576",
+    "OBSERVED_VIA": "unmodified pinned-blob functions, loaded by the frozen seed loader of branch codex/b649-official-any-prize-direct-refinement-candidate-r1 @2096136"
+  },
+  "OPERATIONAL_INCUMBENT_DEFINITION": "build_portfolio ranked[:k]; equals the first k tickets of the ordered pool",
+  "FIXTURE_DISCLOSURE": "synthetic, outcome-free, deterministic pools; probabilities are pre-draw exact quantities",
+  "OUTCOME_DATA_ACCESSED": "NO",
+  "OOS_REPLAY": "NOT RUN",
+  "PREDICTIVE_LIFT_CLAIMED": "NO",
+  "FIXTURES": [
+    {
+      "FIXTURE_ID": "F0_SPREAD_P12_K10",
+      "K": 10,
+      "POOL": {
+        "GENERATOR": "ARITHMETIC_V1",
+        "COUNT": 12,
+        "MULTIPLIER": 11,
+        "OFFSET": 3,
+        "SPAN": 49,
+        "SHA256": "7acf765ade77e1844581c96aff996947e7dca44e5eb932c0f51249ce04b72bf7"
+      },
+      "OPERATIONAL_INCUMBENT_PREFIX": {
+        "RANKS": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "OUTCOME_COUNT": 170980992,
+        "M3_PLUS_DRAW_COUNT": 2497272,
+        "PROBABILITY_FRACTION": "145392/511313",
+        "PROBABILITY_PCT": "28.435029"
+      },
+      "MIN_OVERLAP": {
+        "RANKS": [1, 2, 3, 4, 5, 6, 7, 8, 10, 11],
+        "OUTCOME_COUNT": 171001271,
+        "M3_PLUS_DRAW_COUNT": 2497352,
+        "PROBABILITY_FRACTION": "24428753/85900584",
+        "PROBABILITY_PCT": "28.438402"
+      },
+      "SELECTOR_GREEDY": {
+        "RANKS": [1, 2, 4, 5, 6, 7, 8, 10, 11, 12],
+        "OUTCOME_COUNT": 171032666,
+        "M3_PLUS_DRAW_COUNT": 2497586,
+        "PROBABILITY_FRACTION": "12216619/42950292",
+        "PROBABILITY_PCT": "28.443623"
+      },
+      "SELECTOR_FINAL": {
+        "RANKS": [1, 2, 5, 6, 7, 8, 9, 10, 11, 12],
+        "OUTCOME_COUNT": 171033590,
+        "M3_PLUS_DRAW_COUNT": 2497668,
+        "PROBABILITY_FRACTION": "12216685/42950292",
+        "PROBABILITY_PCT": "28.443776"
+      },
+      "GREEDY_PICK_ORDER": [1, 2, 5, 4, 8, 11, 7, 6, 10, 12],
+      "GREEDY_MARGINAL_GAINS": [18611432, 18503632, 18395832, 17821832, 17714032, 17148432, 17037832, 16063824, 15303932, 14431886],
+      "ACCEPTED_SWAPS": [
+        {
+          "OUTGOING_RANK": 4,
+          "INCOMING_RANK": 9,
+          "RESULTING_RANKS": [1, 2, 5, 6, 7, 8, 9, 10, 11, 12],
+          "PREVIOUS_OUTCOME_COUNT": 171032666,
+          "RESULTING_OUTCOME_COUNT": 171033590
+        }
+      ],
+      "LOCAL_OPTIMUM_CERTIFIED": true,
+      "CANDIDATE_GAIN_EVALUATIONS": 115,
+      "CANONICAL_EVALUATIONS": 13,
+      "ELAPSED_SECONDS_FIRST_RUN": 43.4,
+      "INDEPENDENT_RANDOM_BASELINE_PCT": "26.977974",
+      "DECISION_LEVERAGE_VS_INCUMBENT": {
+        "TICKETS_CHANGED": 2,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 52598,
+        "DELTA_PP": "0.008747",
+        "RELATIVE_DELTA_PCT": "0.0308"
+      },
+      "DECISION_LEVERAGE_VS_MIN_OVERLAP": {
+        "TICKETS_CHANGED": 2,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 32319,
+        "DELTA_PP": "0.005375",
+        "RELATIVE_DELTA_PCT": "0.0189"
+      },
+      "MIN_OVERLAP_VS_INCUMBENT_TICKETS_CHANGED": 1
+    },
+    {
+      "FIXTURE_ID": "F1_SPREAD_P30_K10",
+      "K": 10,
+      "POOL": {
+        "GENERATOR": "ARITHMETIC_V1",
+        "COUNT": 30,
+        "MULTIPLIER": 11,
+        "OFFSET": 3,
+        "SPAN": 49,
+        "SHA256": "afc409a8a3a6aa2c006fd7be7f40e6417638432e0cf20f01e513fd77b76feb8a"
+      },
+      "OPERATIONAL_INCUMBENT_PREFIX": {
+        "RANKS": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "OUTCOME_COUNT": 170980992,
+        "M3_PLUS_DRAW_COUNT": 2497272,
+        "PROBABILITY_FRACTION": "145392/511313",
+        "PROBABILITY_PCT": "28.435029"
+      },
+      "MIN_OVERLAP": {
+        "RANKS": [1, 2, 4, 5, 7, 8, 11, 14, 18, 21],
+        "OUTCOME_COUNT": 172625544,
+        "M3_PLUS_DRAW_COUNT": 2518260,
+        "PROBABILITY_FRACTION": "1027533/3579191",
+        "PROBABILITY_PCT": "28.708527"
+      },
+      "SELECTOR_GREEDY": {
+        "RANKS": [1, 2, 4, 5, 7, 8, 11, 14, 17, 18],
+        "OUTCOME_COUNT": 172907392,
+        "M3_PLUS_DRAW_COUNT": 2517044,
+        "PROBABILITY_FRACTION": "3087632/10737573",
+        "PROBABILITY_PCT": "28.755399"
+      },
+      "SELECTOR_FINAL": {
+        "RANKS": [1, 4, 5, 7, 8, 10, 11, 14, 17, 21],
+        "OUTCOME_COUNT": 173493712,
+        "M3_PLUS_DRAW_COUNT": 2525532,
+        "PROBABILITY_FRACTION": "442586/1533939",
+        "PROBABILITY_PCT": "28.852907"
+      },
+      "GREEDY_PICK_ORDER": [1, 2, 5, 4, 8, 11, 14, 7, 18, 17],
+      "GREEDY_MARGINAL_GAINS": [18611432, 18503632, 18395832, 17821832, 17714032, 17148432, 17046232, 16475032, 15931104, 15259832],
+      "ACCEPTED_SWAPS": [
+        {
+          "OUTGOING_RANK": 2,
+          "INCOMING_RANK": 21,
+          "RESULTING_RANKS": [1, 4, 5, 7, 8, 11, 14, 17, 18, 21],
+          "PREVIOUS_OUTCOME_COUNT": 172907392,
+          "RESULTING_OUTCOME_COUNT": 173060384
+        },
+        {
+          "OUTGOING_RANK": 18,
+          "INCOMING_RANK": 10,
+          "RESULTING_RANKS": [1, 4, 5, 7, 8, 10, 11, 14, 17, 21],
+          "PREVIOUS_OUTCOME_COUNT": 173060384,
+          "RESULTING_OUTCOME_COUNT": 173493712
+        }
+      ],
+      "LOCAL_OPTIMUM_CERTIFIED": false,
+      "CANDIDATE_GAIN_EVALUATIONS": 655,
+      "CANONICAL_EVALUATIONS": 14,
+      "ELAPSED_SECONDS_FIRST_RUN": 60.7,
+      "INDEPENDENT_RANDOM_BASELINE_PCT": "26.977974",
+      "DECISION_LEVERAGE_VS_INCUMBENT": {
+        "TICKETS_CHANGED": 4,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 2512720,
+        "DELTA_PP": "0.417878",
+        "RELATIVE_DELTA_PCT": "1.4696"
+      },
+      "DECISION_LEVERAGE_VS_MIN_OVERLAP": {
+        "TICKETS_CHANGED": 2,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 868168,
+        "DELTA_PP": "0.144381",
+        "RELATIVE_DELTA_PCT": "0.5029"
+      },
+      "MIN_OVERLAP_VS_INCUMBENT_TICKETS_CHANGED": 4
+    },
+    {
+      "FIXTURE_ID": "F2_CLUSTER20_P30_K10",
+      "K": 10,
+      "POOL": {
+        "GENERATOR": "SCRAMBLED_COMBINATIONS_V1",
+        "COUNT": 30,
+        "MULTIPLIER": 7,
+        "OFFSET": 5,
+        "SPAN": 20,
+        "SHA256": "0c4302e8d4080f75971dd3fc27836afde65d0781d9176d3dad5c6dda235672fc"
+      },
+      "OPERATIONAL_INCUMBENT_PREFIX": {
+        "RANKS": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "OUTCOME_COUNT": 109039966,
+        "M3_PLUS_DRAW_COUNT": 1662313,
+        "PROBABILITY_FRACTION": "7788569/42950292",
+        "PROBABILITY_PCT": "18.133914"
+      },
+      "MIN_OVERLAP": {
+        "RANKS": [1, 6, 8, 10, 12, 13, 18, 21, 23, 24],
+        "OUTCOME_COUNT": 137991252,
+        "M3_PLUS_DRAW_COUNT": 2093017,
+        "PROBABILITY_FRACTION": "234679/1022626",
+        "PROBABILITY_PCT": "22.948664"
+      },
+      "SELECTOR_GREEDY": {
+        "RANKS": [1, 7, 8, 9, 13, 14, 22, 24, 25, 30],
+        "OUTCOME_COUNT": 138269684,
+        "M3_PLUS_DRAW_COUNT": 2094627,
+        "PROBABILITY_FRACTION": "4938203/21475146",
+        "PROBABILITY_PCT": "22.994968"
+      },
+      "SELECTOR_FINAL": {
+        "RANKS": [1, 4, 7, 9, 13, 22, 24, 25, 29, 30],
+        "OUTCOME_COUNT": 141142477,
+        "M3_PLUS_DRAW_COUNT": 2141209,
+        "PROBABILITY_FRACTION": "20163211/85900584",
+        "PROBABILITY_PCT": "23.472729"
+      },
+      "GREEDY_PICK_ORDER": [1, 8, 13, 25, 9, 14, 30, 7, 22, 24],
+      "GREEDY_MARGINAL_GAINS": [18611432, 18037432, 17483704, 15898631, 14188902, 12529370, 11859694, 11093089, 9861635, 8705795],
+      "ACCEPTED_SWAPS": [
+        {
+          "OUTGOING_RANK": 8,
+          "INCOMING_RANK": 29,
+          "RESULTING_RANKS": [1, 7, 9, 13, 14, 22, 24, 25, 29, 30],
+          "PREVIOUS_OUTCOME_COUNT": 138269684,
+          "RESULTING_OUTCOME_COUNT": 139552126
+        },
+        {
+          "OUTGOING_RANK": 14,
+          "INCOMING_RANK": 4,
+          "RESULTING_RANKS": [1, 4, 7, 9, 13, 22, 24, 25, 29, 30],
+          "PREVIOUS_OUTCOME_COUNT": 139552126,
+          "RESULTING_OUTCOME_COUNT": 141142477
+        }
+      ],
+      "LOCAL_OPTIMUM_CERTIFIED": false,
+      "CANDIDATE_GAIN_EVALUATIONS": 655,
+      "CANONICAL_EVALUATIONS": 14,
+      "ELAPSED_SECONDS_FIRST_RUN": 62.2,
+      "INDEPENDENT_RANDOM_BASELINE_PCT": "26.977974",
+      "DECISION_LEVERAGE_VS_INCUMBENT": {
+        "TICKETS_CHANGED": 6,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 32102511,
+        "DELTA_PP": "5.338815",
+        "RELATIVE_DELTA_PCT": "29.4411"
+      },
+      "DECISION_LEVERAGE_VS_MIN_OVERLAP": {
+        "TICKETS_CHANGED": 7,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 3151225,
+        "DELTA_PP": "0.524065",
+        "RELATIVE_DELTA_PCT": "2.2836"
+      },
+      "MIN_OVERLAP_VS_INCUMBENT_TICKETS_CHANGED": 6
+    },
+    {
+      "FIXTURE_ID": "F3_CLUSTER25_P30_K10",
+      "K": 10,
+      "POOL": {
+        "GENERATOR": "SCRAMBLED_COMBINATIONS_V1",
+        "COUNT": 30,
+        "MULTIPLIER": 13,
+        "OFFSET": 2,
+        "SPAN": 25,
+        "SHA256": "b18347474134ae39855bc17016b951804c41de88a509a682734bf988384f0370"
+      },
+      "OPERATIONAL_INCUMBENT_PREFIX": {
+        "RANKS": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+        "OUTCOME_COUNT": 118173153,
+        "M3_PLUS_DRAW_COUNT": 1801771,
+        "PROBABILITY_FRACTION": "803899/4090504",
+        "PROBABILITY_PCT": "19.652811"
+      },
+      "MIN_OVERLAP": {
+        "RANKS": [1, 7, 10, 12, 14, 17, 23, 26, 27, 28],
+        "OUTCOME_COUNT": 136616207,
+        "M3_PLUS_DRAW_COUNT": 2073699,
+        "PROBABILITY_FRACTION": "19516601/85900584",
+        "PROBABILITY_PCT": "22.719986"
+      },
+      "SELECTOR_GREEDY": {
+        "RANKS": [1, 6, 7, 10, 16, 17, 23, 24, 25, 28],
+        "OUTCOME_COUNT": 137441374,
+        "M3_PLUS_DRAW_COUNT": 2087729,
+        "PROBABILITY_FRACTION": "1402463/6135756",
+        "PROBABILITY_PCT": "22.857216"
+      },
+      "SELECTOR_FINAL": {
+        "RANKS": [6, 7, 10, 16, 17, 23, 24, 25, 28, 30],
+        "OUTCOME_COUNT": 137894792,
+        "M3_PLUS_DRAW_COUNT": 2095618,
+        "PROBABILITY_FRACTION": "2462407/10737573",
+        "PROBABILITY_PCT": "22.932622"
+      },
+      "GREEDY_PICK_ORDER": [1, 10, 28, 7, 23, 17, 16, 25, 6, 24],
+      "GREEDY_MARGINAL_GAINS": [18611432, 18037432, 17470432, 15864604, 14468888, 12473790, 11122748, 10862824, 9603216, 8926008],
+      "ACCEPTED_SWAPS": [
+        {
+          "OUTGOING_RANK": 1,
+          "INCOMING_RANK": 30,
+          "RESULTING_RANKS": [6, 7, 10, 16, 17, 23, 24, 25, 28, 30],
+          "PREVIOUS_OUTCOME_COUNT": 137441374,
+          "RESULTING_OUTCOME_COUNT": 137894792
+        }
+      ],
+      "LOCAL_OPTIMUM_CERTIFIED": true,
+      "CANDIDATE_GAIN_EVALUATIONS": 655,
+      "CANONICAL_EVALUATIONS": 13,
+      "ELAPSED_SECONDS_FIRST_RUN": 50.2,
+      "INDEPENDENT_RANDOM_BASELINE_PCT": "26.977974",
+      "DECISION_LEVERAGE_VS_INCUMBENT": {
+        "TICKETS_CHANGED": 7,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 19721639,
+        "DELTA_PP": "3.279811",
+        "RELATIVE_DELTA_PCT": "16.6888"
+      },
+      "DECISION_LEVERAGE_VS_MIN_OVERLAP": {
+        "TICKETS_CHANGED": 5,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 1278585,
+        "DELTA_PP": "0.212635",
+        "RELATIVE_DELTA_PCT": "0.9359"
+      },
+      "MIN_OVERLAP_VS_INCUMBENT_TICKETS_CHANGED": 7
+    },
+    {
+      "FIXTURE_ID": "F4_SPREAD_P36_K20",
+      "K": 20,
+      "POOL": {
+        "GENERATOR": "ARITHMETIC_V1",
+        "COUNT": 36,
+        "MULTIPLIER": 11,
+        "OFFSET": 3,
+        "SPAN": 49,
+        "SHA256": "1c3ddc263e04c01146fa5053eedfd822fc1e3d8cdf1d0ac368e903119b29c171"
+      },
+      "OPERATIONAL_INCUMBENT_PREFIX": {
+        "RANKS": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+        "OUTCOME_COUNT": 300673779,
+        "M3_PLUS_DRAW_COUNT": 4639419,
+        "PROBABILITY_FRACTION": "622513/1244936",
+        "PROBABILITY_PCT": "50.003615"
+      },
+      "MIN_OVERLAP": {
+        "RANKS": [1, 2, 4, 5, 7, 8, 11, 14, 16, 17, 18, 20, 21, 25, 27, 28, 30, 31, 32, 34],
+        "OUTCOME_COUNT": 303492056,
+        "M3_PLUS_DRAW_COUNT": 4696261,
+        "PROBABILITY_FRACTION": "5419501/10737573",
+        "PROBABILITY_PCT": "50.472309"
+      },
+      "SELECTOR_GREEDY": {
+        "RANKS": [1, 2, 4, 5, 7, 8, 9, 11, 14, 18, 20, 21, 23, 24, 25, 27, 30, 32, 34, 36],
+        "OUTCOME_COUNT": 304664584,
+        "M3_PLUS_DRAW_COUNT": 4709807,
+        "PROBABILITY_FRACTION": "5440439/10737573",
+        "PROBABILITY_PCT": "50.667306"
+      },
+      "SELECTOR_FINAL": {
+        "RANKS": [2, 4, 5, 7, 8, 9, 11, 14, 16, 18, 20, 21, 23, 25, 27, 30, 31, 32, 34, 36],
+        "OUTCOME_COUNT": 304842160,
+        "M3_PLUS_DRAW_COUNT": 4711231,
+        "PROBABILITY_FRACTION": "5443610/10737573",
+        "PROBABILITY_PCT": "50.696838"
+      },
+      "GREEDY_PICK_ORDER": [1, 2, 5, 4, 8, 11, 14, 7, 18, 32, 21, 20, 23, 27, 34, 30, 24, 25, 36, 9],
+      "GREEDY_MARGINAL_GAINS": [18611432, 18503632, 18395832, 17821832, 17714032, 17148432, 17046232, 16475032, 15931104, 15396976, 14881272, 14631260, 14135128, 13781110, 13320125, 13220501, 12640173, 12371086, 11665325, 10974068],
+      "ACCEPTED_SWAPS": [
+        {
+          "OUTGOING_RANK": 1,
+          "INCOMING_RANK": 31,
+          "RESULTING_RANKS": [2, 4, 5, 7, 8, 9, 11, 14, 18, 20, 21, 23, 24, 25, 27, 30, 31, 32, 34, 36],
+          "PREVIOUS_OUTCOME_COUNT": 304664584,
+          "RESULTING_OUTCOME_COUNT": 304717861
+        },
+        {
+          "OUTGOING_RANK": 24,
+          "INCOMING_RANK": 16,
+          "RESULTING_RANKS": [2, 4, 5, 7, 8, 9, 11, 14, 16, 18, 20, 21, 23, 25, 27, 30, 31, 32, 34, 36],
+          "PREVIOUS_OUTCOME_COUNT": 304717861,
+          "RESULTING_OUTCOME_COUNT": 304842160
+        }
+      ],
+      "LOCAL_OPTIMUM_CERTIFIED": false,
+      "CANDIDATE_GAIN_EVALUATIONS": 1170,
+      "CANONICAL_EVALUATIONS": 24,
+      "ELAPSED_SECONDS_FIRST_RUN": 165.9,
+      "INDEPENDENT_RANDOM_BASELINE_PCT": "46.677837",
+      "DECISION_LEVERAGE_VS_INCUMBENT": {
+        "TICKETS_CHANGED": 9,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 4168381,
+        "DELTA_PP": "0.693223",
+        "RELATIVE_DELTA_PCT": "1.3863"
+      },
+      "DECISION_LEVERAGE_VS_MIN_OVERLAP": {
+        "TICKETS_CHANGED": 3,
+        "SELECTOR_PORTFOLIO_IDENTICAL": false,
+        "DELTA_OUTCOME_COUNT": 1350104,
+        "DELTA_PP": "0.224529",
+        "RELATIVE_DELTA_PCT": "0.4449"
+      },
+      "MIN_OVERLAP_VS_INCUMBENT_TICKETS_CHANGED": 8
+    }
+  ],
+  "READY_FOR_BRANCH2_OOS": "YES"
+}
